@@ -1,0 +1,145 @@
+#!/bin/bash
+
+set -e
+
+# Check if path provided
+if [ $# -eq 0 ]; then
+    cat <<'EOF'
+Usage: bench <project-path>
+
+Benchmarks rux against turbo_tests using hyperfine for performance comparison.
+
+Examples:
+  bench ./rux-ruby
+  bench ./example-project-1234567890
+  bench /path/to/ruby/project
+
+What it does:
+  - Verifies project has spec directory and dependencies
+  - Installs turbo_tests temporarily if not present
+  - Runs hyperfine benchmarks comparing turbo_tests vs rux variants
+  - Exports results to markdown and JSON
+  - Cleans up temporary changes
+
+Requirements:
+  - hyperfine (brew install hyperfine)
+  - rux binary in PATH
+  - Ruby project with spec directory
+
+Output:
+  Creates bench-results.md and bench-results.json in the project directory
+EOF
+    exit 1
+fi
+
+PROJECT_PATH="$1"
+
+# Verify project path exists
+if [ ! -d "$PROJECT_PATH" ]; then
+    echo "Error: Project path '$PROJECT_PATH' does not exist"
+    exit 1
+fi
+
+# Verify project has spec directory
+if [ ! -d "$PROJECT_PATH/spec" ]; then
+    echo "Error: No spec directory found in '$PROJECT_PATH'"
+    exit 1
+fi
+
+# Check for required tools
+if ! command -v hyperfine &> /dev/null; then
+    echo "Error: hyperfine not found. Install with: brew install hyperfine"
+    exit 1
+fi
+
+if ! command -v rux &> /dev/null; then
+    echo "Error: rux not found. Make sure it's installed and in PATH"
+    exit 1
+fi
+
+# Change to project directory
+cd "$PROJECT_PATH"
+
+# Ensure dependencies are installed
+echo "Installing dependencies..."
+bundle install
+
+# Count specs for context
+SPEC_COUNT=$(find spec -name "*_spec.rb" | wc -l | tr -d ' ')
+echo "Found $SPEC_COUNT spec files in $(pwd)"
+echo ""
+
+# Setup turbo_tests if needed
+CLEANUP_TURBO=false
+if ! bundle list | grep -q turbo_tests; then
+    echo "turbo_tests not found in Gemfile, adding temporarily..."
+    echo "" >> Gemfile
+    echo "gem 'turbo_tests'" >> Gemfile
+    echo "Installing turbo_tests..."
+    bundle install
+    CLEANUP_TURBO=true
+    echo "turbo_tests setup complete"
+else
+    echo "turbo_tests already available"
+fi
+
+# Verify all commands work before benchmarking
+TURBO_CMD="bundle exec turbo_tests"
+echo ""
+echo "Verifying commands work..."
+echo "Testing turbo_tests..."
+if $TURBO_CMD --help > /dev/null 2>&1; then
+    echo "✓ turbo_tests ready"
+else
+    echo "✗ turbo_tests failed"
+    exit 1
+fi
+
+echo "Testing rux..."
+if rux --help > /dev/null 2>&1; then
+    echo "✓ rux ready"
+else
+    echo "✗ rux failed"
+    exit 1
+fi
+echo ""
+
+# Run benchmarks
+echo "Running benchmarks..."
+echo "===================="
+
+hyperfine \
+    --warmup 1 \
+    --runs 3 \
+    --ignore-failure \
+    --export-markdown bench-results.md \
+    --export-json bench-results.json \
+    "$TURBO_CMD" \
+    "rux" \
+    "rux --workers 4" \
+    "rux --workers 8"
+
+cat <<EOF
+
+Benchmark complete!
+Results saved to:
+  - bench-results.md (markdown table)
+  - bench-results.json (detailed data)
+
+EOF
+
+# Show quick summary
+if [ -f bench-results.md ]; then
+    cat <<EOF
+Quick Summary:
+==============
+EOF
+    cat bench-results.md
+fi
+
+# Cleanup turbo_tests if we added it
+if [ "$CLEANUP_TURBO" = true ]; then
+    echo ""
+    echo "Cleaning up temporarily added turbo_tests..."
+    git checkout Gemfile 2>/dev/null || sed -i '' '/turbo_tests/d' Gemfile
+fi

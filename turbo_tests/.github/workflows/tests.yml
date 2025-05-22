@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        ruby: [ 2.7, "3.0", 3.1, 3.2, 3.3 ]
+        os: [ ubuntu-latest, windows-latest ]
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{matrix.ruby}}
+          rubygems: latest
+          bundler-cache: true
+
+      - name: Run tests
+        timeout-minutes: 5
+        run: |
+          bundle exec turbo_tests -n4

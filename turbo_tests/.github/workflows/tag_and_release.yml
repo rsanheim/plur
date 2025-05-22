@@ -1,0 +1,82 @@
+name: Tag and Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - "lib/turbo_tests/version.rb"
+
+jobs:
+  release:
+    env:
+      GEM_NAME: turbo_tests
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    name: Tag and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby 2.7
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 2.7
+        bundler-cache: true
+
+    - name: Run tests
+      run: |
+        bundle exec rake install:local
+        bundle install
+        bundle exec turbo_tests
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: "ruby-gem"
+        path: "pkg/*.gem"
+
+    - name: Configure Git
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "Actions Auto Build"
+
+    - name: Get current version
+      id: version-label
+      run: |
+        VERSION=$(grep VERSION lib/turbo_tests/version.rb | head -n 1 | cut -d'"' -f2)
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+    - name: Create tag
+      run: |
+        git tag -a v${{ steps.version-label.outputs.version }} -m "Release v${{ steps.version-label.outputs.version }}"
+        git push origin --tags
+
+    - name: Publish release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create v${{ steps.version-label.outputs.version }} --generate-notes
+
+    - name: Publish to GPR
+      run: |
+        mkdir -p $HOME/.gem
+        touch $HOME/.gem/credentials
+        chmod 0600 $HOME/.gem/credentials
+        printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
+        gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} pkg/*.gem
+      env:
+        GEM_HOST_API_KEY: "Bearer ${{secrets.GITHUB_TOKEN}}"
+        OWNER: ${{ github.repository_owner }}
+
+    - name: Publish to RubyGems
+      run: |
+        mkdir -p $HOME/.gem
+        touch $HOME/.gem/credentials
+        chmod 0600 $HOME/.gem/credentials
+        printf -- "---\n:rubygems_api_key: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
+        gem push pkg/*.gem
+      env:
+        GEM_HOST_API_KEY: "${{secrets.RUBYGEMS_API_KEY}}"
