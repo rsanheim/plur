@@ -1,0 +1,299 @@
+package main
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
+
+// TestResult represents the result of running a single spec file
+type TestResult struct {
+	SpecFile string
+	Success  bool
+	Output   string
+	Error    error
+	Duration time.Duration
+}
+
+// FindSpecFiles discovers all spec files in the spec directory
+func FindSpecFiles() ([]string, error) {
+	var specFiles []string
+
+	// Check if spec directory exists
+	if _, err := os.Stat("spec"); os.IsNotExist(err) {
+		return specFiles, nil // Return empty list if no spec directory
+	}
+
+	// Walk the spec directory recursively
+	err := filepath.WalkDir("spec", func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip directories
+		if d.IsDir() {
+			return nil
+		}
+
+		// Check if file ends with _spec.rb
+		if strings.HasSuffix(path, "_spec.rb") {
+			specFiles = append(specFiles, path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error walking spec directory: %v", err)
+	}
+
+	return specFiles, nil
+}
+
+// GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
+func GetWorkerCount(cliWorkers int) int {
+	// Priority: CLI flag > ENV var > default (cores-2)
+	if cliWorkers > 0 {
+		return cliWorkers
+	}
+
+	if envVar := os.Getenv("PARALLEL_TEST_PROCESSORS"); envVar != "" {
+		if count, err := strconv.Atoi(envVar); err == nil && count > 0 {
+			return count
+		}
+	}
+
+	// Default: cores minus 2, minimum 1
+	workers := runtime.NumCPU() - 2
+	if workers < 1 {
+		workers = 1
+	}
+	return workers
+}
+
+// RunSpecFile executes a single spec file and returns the result
+func RunSpecFile(ctx context.Context, specFile string, dryRun bool, saveJSON bool, outputMutex *sync.Mutex) TestResult {
+	start := time.Now()
+
+	args := []string{"bundle", "exec", "rspec", "--format", "progress", specFile}
+
+	var jsonFile string
+	if saveJSON {
+		// Create temp file for JSON output
+		tmpFile, err := os.CreateTemp("", "rux-results-*.json")
+		if err != nil {
+			return TestResult{
+				SpecFile: specFile,
+				Success:  false,
+				Output:   "",
+				Error:    fmt.Errorf("failed to create temp file: %v", err),
+				Duration: time.Since(start),
+			}
+		}
+		jsonFile = tmpFile.Name()
+		tmpFile.Close()
+
+		// Add JSON output args
+		args = append(args, "--format", "json", "--out", jsonFile)
+	}
+
+	if dryRun {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  true,
+			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
+			Error:    nil,
+			Duration: time.Since(start),
+		}
+	}
+
+	// Create command with context for timeout handling
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+
+	// Set up stdout and stderr pipes
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  false,
+			Output:   "",
+			Error:    fmt.Errorf("failed to create stdout pipe: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  false,
+			Output:   "",
+			Error:    fmt.Errorf("failed to create stderr pipe: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  false,
+			Output:   "",
+			Error:    fmt.Errorf("failed to start command: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	var outputBuilder strings.Builder
+	var wg sync.WaitGroup
+
+	// Stream stdout in real-time (only progress dots now)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			outputBuilder.WriteString(line + "\n")
+
+			// Check if this line contains only progress indicators
+			isProgressLine := len(strings.TrimSpace(line)) > 0 &&
+				strings.Trim(line, ".F*") == ""
+
+			outputMutex.Lock()
+			if isProgressLine {
+				// Progress dots - print without newline
+				fmt.Print(line)
+			}
+			// Skip "Finished in..." and other RSpec output
+			outputMutex.Unlock()
+		}
+	}()
+
+	// Stream stderr in real-time
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			outputBuilder.WriteString("STDERR: " + line + "\n")
+
+			outputMutex.Lock()
+			fmt.Fprintf(os.Stderr, "[%s] %s\n", specFile, line)
+			outputMutex.Unlock()
+		}
+	}()
+
+	// Wait for command to complete
+	err = cmd.Wait()
+
+	// Wait for output streaming to complete
+	wg.Wait()
+
+	// Determine success
+	success := err == nil
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		// RSpec failed tests return exit code 1, which is still a "successful" run
+		success = exitErr.ExitCode() <= 1
+	}
+
+	// Clean up JSON file if not saving
+	if saveJSON && jsonFile != "" {
+		defer os.Remove(jsonFile)
+		// TODO: Could read and process JSON here if needed
+	}
+
+	return TestResult{
+		SpecFile: specFile,
+		Success:  success,
+		Output:   outputBuilder.String(),
+		Error:    err,
+		Duration: time.Since(start),
+	}
+}
+
+// RunTestsInParallel executes spec files in parallel using a worker pool
+func RunTestsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorkers int) ([]TestResult, time.Duration) {
+	start := time.Now()
+	ctx := context.Background()
+	results := make(chan TestResult, len(specFiles))
+
+	// Mutex to synchronize output from multiple processes
+	var outputMutex sync.Mutex
+
+	// Create worker pool with limited workers
+	jobs := make(chan string, len(specFiles))
+	var wg sync.WaitGroup
+
+	// Start worker goroutines
+	for i := 0; i < maxWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for specFile := range jobs {
+				result := RunSpecFile(ctx, specFile, dryRun, saveJSON, &outputMutex)
+				results <- result
+			}
+		}()
+	}
+
+	// Send jobs to workers
+	go func() {
+		for _, specFile := range specFiles {
+			jobs <- specFile
+		}
+		close(jobs)
+	}()
+
+	// Wait for all workers to complete
+	wg.Wait()
+	close(results)
+
+	// Collect results
+	var testResults []TestResult
+	for result := range results {
+		testResults = append(testResults, result)
+	}
+
+	return testResults, time.Since(start)
+}
+
+// PrintResults displays a summary of test results
+func PrintResults(results []TestResult, wallTime time.Duration) {
+	fmt.Println() // New line after progress dots
+
+	// Calculate total CPU time
+	var totalCPUTime time.Duration
+	passed := 0
+
+	for _, result := range results {
+		totalCPUTime += result.Duration
+		if result.Success {
+			passed++
+		}
+	}
+
+	fmt.Println("\n=== Summary ===")
+	fmt.Printf("Files: %d/%d passed\n", passed, len(results))
+	fmt.Printf("Wall time: %v\n", wallTime)
+	fmt.Printf("Total CPU time: %v\n", totalCPUTime)
+
+	// Show failed files if any
+	for _, result := range results {
+		if !result.Success {
+			fmt.Printf("FAILED: %s\n", result.SpecFile)
+			if result.Error != nil {
+				fmt.Printf("  Error: %v\n", result.Error)
+			}
+		}
+	}
+}

@@ -1,0 +1,137 @@
+package main
+
+import (
+	"os"
+	"runtime"
+	"testing"
+)
+
+func TestFindSpecFilesRunner(t *testing.T) {
+	// Test the runner version more thoroughly
+	originalDir, _ := os.Getwd()
+	defer os.Chdir(originalDir)
+
+	// Create temp directory in rux/tmp/
+	os.MkdirAll("tmp", 0755)
+	tempDir, err := os.MkdirTemp("tmp", "test-runner-specs-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	os.Chdir(tempDir)
+
+	// Test empty directory
+	files, err := FindSpecFiles()
+	if err != nil {
+		t.Errorf("FindSpecFiles() returned error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("FindSpecFiles() returned %d files, expected 0", len(files))
+	}
+
+	// Create complex directory structure
+	os.MkdirAll("spec/models", 0755)
+	os.MkdirAll("spec/controllers", 0755)
+	os.MkdirAll("spec/lib/utils", 0755)
+
+	specFiles := []string{
+		"spec/user_spec.rb",
+		"spec/models/post_spec.rb",
+		"spec/models/comment_spec.rb",
+		"spec/controllers/users_controller_spec.rb",
+		"spec/lib/utils/helper_spec.rb",
+		"spec/not_a_spec.rb.bak", // Should be ignored
+		"spec/README.md",         // Should be ignored
+	}
+
+	for _, file := range specFiles {
+		f, _ := os.Create(file)
+		f.Close()
+	}
+
+	files, err = FindSpecFiles()
+	if err != nil {
+		t.Errorf("FindSpecFiles() returned error: %v", err)
+	}
+
+	expectedFiles := 5 // Only *_spec.rb files
+	if len(files) != expectedFiles {
+		t.Errorf("FindSpecFiles() found %d files, expected %d", len(files), expectedFiles)
+	}
+
+	// Verify all expected spec files were found
+	expectedSpecs := map[string]bool{
+		"spec/user_spec.rb":                         false,
+		"spec/models/post_spec.rb":                  false,
+		"spec/models/comment_spec.rb":               false,
+		"spec/controllers/users_controller_spec.rb": false,
+		"spec/lib/utils/helper_spec.rb":             false,
+	}
+
+	for _, file := range files {
+		if _, exists := expectedSpecs[file]; exists {
+			expectedSpecs[file] = true
+		} else {
+			t.Errorf("Unexpected spec file found: %s", file)
+		}
+	}
+
+	for specFile, found := range expectedSpecs {
+		if !found {
+			t.Errorf("Expected spec file not found: %s", specFile)
+		}
+	}
+}
+
+func TestGetWorkerCountEdgeCases(t *testing.T) {
+	originalEnv := os.Getenv("PARALLEL_TEST_PROCESSORS")
+	defer os.Setenv("PARALLEL_TEST_PROCESSORS", originalEnv)
+
+	tests := []struct {
+		name       string
+		cliWorkers int
+		envVar     string
+		expected   int
+	}{
+		{
+			name:       "Very high CLI workers",
+			cliWorkers: 100,
+			envVar:     "4",
+			expected:   100,
+		},
+		{
+			name:       "Zero env var",
+			cliWorkers: 0,
+			envVar:     "0",
+			expected:   max(1, runtime.NumCPU()-2),
+		},
+		{
+			name:       "Negative env var",
+			cliWorkers: 0,
+			envVar:     "-5",
+			expected:   max(1, runtime.NumCPU()-2),
+		},
+		{
+			name:       "Empty env var",
+			cliWorkers: 0,
+			envVar:     "",
+			expected:   max(1, runtime.NumCPU()-2),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envVar != "" {
+				os.Setenv("PARALLEL_TEST_PROCESSORS", tt.envVar)
+			} else {
+				os.Unsetenv("PARALLEL_TEST_PROCESSORS")
+			}
+
+			result := GetWorkerCount(tt.cliWorkers)
+			if result != tt.expected {
+				t.Errorf("GetWorkerCount(%d) = %d, expected %d", tt.cliWorkers, result, tt.expected)
+			}
+		})
+	}
+}
