@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"testing"
@@ -131,6 +132,28 @@ func TestGetWorkerCountEdgeCases(t *testing.T) {
 			result := GetWorkerCount(tt.cliWorkers)
 			if result != tt.expected {
 				t.Errorf("GetWorkerCount(%d) = %d, expected %d", tt.cliWorkers, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetTestEnvNumber(t *testing.T) {
+	tests := []struct {
+		workerIndex int
+		expected    string
+	}{
+		{0, ""},     // First worker gets empty string
+		{1, "2"},    // Second worker gets "2"
+		{2, "3"},    // Third worker gets "3"
+		{3, "4"},    // Fourth worker gets "4"
+		{10, "11"},  // Nth worker gets "N+1"
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("worker_%d", tt.workerIndex), func(t *testing.T) {
+			result := GetTestEnvNumber(tt.workerIndex)
+			if result != tt.expected {
+				t.Errorf("GetTestEnvNumber(%d) = %q, expected %q", tt.workerIndex, result, tt.expected)
 			}
 		})
 	}

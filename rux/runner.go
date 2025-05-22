@@ -23,6 +23,12 @@ type TestResult struct {
 	Duration time.Duration
 }
 
+// JobWithWorker represents a job assigned to a specific worker
+type JobWithWorker struct {
+	SpecFile    string
+	WorkerIndex int
+}
+
 // FindSpecFiles discovers all spec files in the spec directory
 func FindSpecFiles() ([]string, error) {
 	var specFiles []string
@@ -79,8 +85,17 @@ func GetWorkerCount(cliWorkers int) int {
 	return workers
 }
 
+// GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index
+// Following parallel_tests convention: worker 0 gets "", worker 1 gets "2", etc.
+func GetTestEnvNumber(workerIndex int) string {
+	if workerIndex == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d", workerIndex+1)
+}
+
 // RunSpecFile executes a single spec file and returns the result
-func RunSpecFile(ctx context.Context, specFile string, dryRun bool, saveJSON bool, outputMutex *sync.Mutex) TestResult {
+func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, outputMutex *sync.Mutex) TestResult {
 	start := time.Now()
 
 	args := []string{"bundle", "exec", "rspec", "--format", "progress", specFile}
@@ -117,6 +132,13 @@ func RunSpecFile(ctx context.Context, specFile string, dryRun bool, saveJSON boo
 
 	// Create command with context for timeout handling
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	
+	// Set up environment variables for parallel testing
+	testEnvNumber := GetTestEnvNumber(workerIndex)
+	cmd.Env = append(os.Environ(),
+		"TEST_ENV_NUMBER="+testEnvNumber,
+		"PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"), // Will be set by caller
+	)
 
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
@@ -230,17 +252,21 @@ func RunTestsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorke
 	// Mutex to synchronize output from multiple processes
 	var outputMutex sync.Mutex
 
+	// Set PARALLEL_TEST_GROUPS environment variable
+	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", maxWorkers))
+	
 	// Create worker pool with limited workers
-	jobs := make(chan string, len(specFiles))
+	jobs := make(chan JobWithWorker, len(specFiles))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
 	for i := 0; i < maxWorkers; i++ {
+		workerIndex := i
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for specFile := range jobs {
-				result := RunSpecFile(ctx, specFile, dryRun, saveJSON, &outputMutex)
+			for job := range jobs {
+				result := RunSpecFile(ctx, job.SpecFile, workerIndex, dryRun, saveJSON, &outputMutex)
 				results <- result
 			}
 		}()
@@ -248,8 +274,11 @@ func RunTestsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorke
 
 	// Send jobs to workers
 	go func() {
-		for _, specFile := range specFiles {
-			jobs <- specFile
+		for i, specFile := range specFiles {
+			jobs <- JobWithWorker{
+				SpecFile:    specFile,
+				WorkerIndex: i % maxWorkers, // Distribute files across workers
+			}
 		}
 		close(jobs)
 	}()
