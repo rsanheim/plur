@@ -11,8 +11,8 @@ go.work.sum
 vendor/
 
 # Go build artifacts
-rux
 main
+./rux/rux
 
 # Ruby
 *.gem
