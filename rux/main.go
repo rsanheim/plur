@@ -14,6 +14,80 @@ func createApp() *cli.App {
 	return &cli.App{
 		Name:  "rux",
 		Usage: "A fast Go-based test runner for Ruby/RSpec",
+		Commands: []*cli.Command{
+			{
+				Name:  "db:setup",
+				Usage: "Setup test databases in parallel",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:    "workers",
+						Aliases: []string{"j"},
+						Usage:   "Number of parallel workers",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "Show what would be executed without running",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return runDatabaseTask("db:setup", c)
+				},
+			},
+			{
+				Name:  "db:create",
+				Usage: "Create test databases in parallel",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:    "workers",
+						Aliases: []string{"j"},
+						Usage:   "Number of parallel workers",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "Show what would be executed without running",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return runDatabaseTask("db:create", c)
+				},
+			},
+			{
+				Name:  "db:migrate",
+				Usage: "Migrate test databases in parallel",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:    "workers",
+						Aliases: []string{"j"},
+						Usage:   "Number of parallel workers",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "Show what would be executed without running",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return runDatabaseTask("db:migrate", c)
+				},
+			},
+			{
+				Name:  "db:test:prepare",
+				Usage: "Prepare test databases in parallel",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:    "workers",
+						Aliases: []string{"j"},
+						Usage:   "Number of parallel workers",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "Show what would be executed without running",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return runDatabaseTask("db:test:prepare", c)
+				},
+			},
+		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "dry-run",
@@ -105,6 +179,13 @@ func createApp() *cli.App {
 			return nil
 		},
 	}
+}
+
+func runDatabaseTask(task string, c *cli.Context) error {
+	workerCount := GetWorkerCount(c.Int("workers"))
+	dryRun := c.Bool("dry-run")
+	
+	return RunDatabaseTask(task, workerCount, dryRun)
 }
 
 func main() {
