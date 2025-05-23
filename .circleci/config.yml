@@ -6,6 +6,7 @@ orbs:
 
 jobs:
   build-and-test-go:
+    working_directory: ~/project/rux
     executor:
       name: go/default
       tag: "1.21"
