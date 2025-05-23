@@ -6,11 +6,11 @@ A research repository for `rux`, a Go-based parallel test runner for Ruby/RSpec 
 
 ```bash
 # Set up everything (builds rux, creates Rails app, runs tests)
-./setup_rails_testing.rb
+./script/setup
 
 # Or manually:
-cd rux && go build -o rux main.go runner.go
-cd ../test_app && ../rux/rux --workers 3
+cd rux && go build -o rux main.go
+cd ../test_app && ../rux/rux -n 3
 ```
 
 ## 📦 What's Included
@@ -42,16 +42,16 @@ cd ../test_app && ../rux/rux --workers 3
 
 ### Parallel Test Execution
 ```bash
-rux --workers 4              # Run with specific worker count
+rux -n 4                    # Run with specific worker count
 rux                          # Auto-detect workers (cores-2)
 rux --dry-run               # Preview execution plan
 ```
 
 ### Database Management
 ```bash
-rux db:create --workers 3    # Create test databases in parallel
-rux db:migrate --workers 3   # Run migrations across all test DBs
-rux db:setup --workers 3     # Full database setup
+rux db:create -n 3          # Create test databases in parallel
+rux db:migrate -n 3         # Run migrations across all test DBs
+rux db:setup -n 3           # Full database setup
 ```
 
 ### Environment Variables
@@ -65,7 +65,7 @@ Benchmarked on example-project project (24 spec files):
 
 | Command | Time | Relative Performance |
 |---------|------|---------------------|
-| `rux --workers 4` | **9.04s** | Fastest (baseline) |
+| `rux -n 4` | **9.04s** | Fastest (baseline) |
 | `rux` (default) | 10.15s | +12% slower |
 | `bundle exec turbo_tests` | 10.18s | +13% slower |
 
@@ -82,8 +82,8 @@ ruby test_rux_integration.rb # Ruby integration tests
 ### Test with Rails App
 ```bash
 cd test_app
-../rux/rux --workers 3      # Run RSpec tests in parallel
-../rux/rux db:create --workers 3  # Set up databases
+../rux/rux -n 3            # Run RSpec tests in parallel
+../rux/rux db:create -n 3        # Set up databases
 ```
 
 ### Benchmarking
@@ -120,7 +120,7 @@ cd test_app
 ## 🛠️ Development
 
 ### Requirements
-- Go 1.21+
+- Go 1.22+
 - Ruby 3.0+ (for Rails testing)
 - Rails 8+ (for test app)
 

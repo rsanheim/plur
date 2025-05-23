@@ -19,7 +19,7 @@ cp rux /usr/local/bin/  # Optional global install
 ```bash
 # Main rux usage
 rux                          # Auto-detect workers (cores-2)
-rux --workers 4              # Specific worker count (often optimal)
+rux -n 4                    # Specific worker count (often optimal)
 rux --dry-run               # Preview execution plan
 rux spec/specific_spec.rb    # Run specific files
 
@@ -55,7 +55,7 @@ rux                          # Uses environment variable
 - **docs/**: Project status and usage documentation
 
 ### Rux Implementation Details
-- **Language**: Go 1.21+ with urfave/cli/v2 framework
+- **Language**: Go 1.22+ with urfave/cli/v2 framework
 - **Concurrency**: Worker pool pattern using goroutines and sync.WaitGroup
 - **File Discovery**: Recursive search for `*_spec.rb` using filepath.WalkDir
 - **Output Strategy**: RSpec's dual formatters (`--format progress --format json`)
@@ -81,9 +81,9 @@ cd ../rux-ruby/
 ### Finding Optimal Performance
 ```bash
 # Test different worker counts
-rux --workers 1   # Sequential baseline
-rux --workers 4   # Often optimal (benchmark winner)  
-rux --workers 8   # High parallelism
+rux -n 1         # Sequential baseline
+rux -n 4         # Often optimal (benchmark winner)  
+rux -n 8         # High parallelism
 rux               # Auto-detect default
 ```
 
@@ -95,13 +95,13 @@ rux               # Auto-detect default
 # Manual verification
 cd rux-ruby/
 time bundle exec turbo_tests
-time ../rux/rux --workers 4
+time ../rux/rux -n 4
 ```
 
 ## Performance Characteristics
 
 Based on example-project benchmarks (24 spec files):
-- **rux --workers 4**: 9.04s (fastest)
+- **rux -n 4**: 9.04s (fastest)
 - **rux default**: 10.15s (+12% slower)
 - **turbo_tests**: 10.18s (+13% slower)
 

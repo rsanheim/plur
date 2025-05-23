@@ -6,7 +6,7 @@ puts "Setting up Rails app for parallel testing with rux..."
 # Build rux binary
 puts "Building rux binary..."
 Dir.chdir('rux') do
-  system('go build -o rux main.go runner.go') || abort("Failed to build rux")
+  system('go build -o rux main.go') || abort("Failed to build rux")
 end
 
 # Setup Rails app
@@ -19,11 +19,11 @@ Dir.chdir('test_app') do
   system('bundle exec rails db:create db:migrate') || abort("Failed to setup development database")
   
   puts "Setting up test databases with rux..."
-  system('../rux/rux db:create --workers 3') || abort("Failed to create test databases")
-  system('../rux/rux db:migrate --workers 3') || abort("Failed to migrate test databases")
+  system('../rux/rux db:create -n 3') || abort("Failed to create test databases")
+  system('../rux/rux db:migrate -n 3') || abort("Failed to migrate test databases")
   
   puts "Running tests to verify setup..."
-  system('../rux/rux --workers 3') || abort("Tests failed")
+  system('../rux/rux -n 3') || abort("Tests failed")
 end
 
 puts "Running integration tests..."
@@ -36,14 +36,14 @@ puts <<~SUCCESS
   The Rails app is ready for parallel testing. You can now:
 
   1. Run tests in parallel:
-     cd test_app && ../rux/rux --workers 3
+     cd test_app && ../rux/rux -n 3
 
   2. Setup databases:
-     cd test_app && ../rux/rux db:create --workers 3
-     cd test_app && ../rux/rux db:migrate --workers 3
+     cd test_app && ../rux/rux db:create -n 3
+     cd test_app && ../rux/rux db:migrate -n 3
 
   3. See what would run (dry-run):
-     cd test_app && ../rux/rux --dry-run --workers 3
+     cd test_app && ../rux/rux --dry-run -n 3
 
   4. Run integration tests:
      ruby test_rux_integration.rb
