@@ -12,6 +12,14 @@ jobs:
       tag: "1.21"
     steps:
       - checkout
+      - run:
+          name: List files
+          command: |
+            ls -la
+      - run:
+          command: pwd
+      - run:
+          command: ls ~/project/rux
       - go/with-cache:
           steps:
             - go/mod-download
