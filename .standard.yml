@@ -1,0 +1,8 @@
+fix: false
+parallel: true
+ignore:
+  - "parallel_tests/**/*"
+  - "rux-ruby/**/*"
+  - "rux/**/*"
+  - "test_app/**/*"
+  - "turbo_tests/**/*"
