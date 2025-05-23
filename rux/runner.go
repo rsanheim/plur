@@ -16,11 +16,15 @@ import (
 
 // TestResult represents the result of running a single spec file
 type TestResult struct {
-	SpecFile string
-	Success  bool
-	Output   string
-	Error    error
-	Duration time.Duration
+	SpecFile       string
+	Success        bool
+	Output         string
+	Error          error
+	Duration       time.Duration
+	JSONOutput     *RSpecJSONOutput
+	Failures       []FailureDetail
+	ExampleCount   int
+	FailureCount   int
 }
 
 // JobWithWorker represents a job assigned to a specific worker
@@ -98,27 +102,26 @@ func GetTestEnvNumber(workerIndex int) string {
 func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, outputMutex *sync.Mutex) TestResult {
 	start := time.Now()
 
-	args := []string{"bundle", "exec", "rspec", "--format", "progress", specFile}
-
-	var jsonFile string
-	if saveJSON {
-		// Create temp file for JSON output
-		tmpFile, err := os.CreateTemp("", "rux-results-*.json")
-		if err != nil {
-			return TestResult{
-				SpecFile: specFile,
-				Success:  false,
-				Output:   "",
-				Error:    fmt.Errorf("failed to create temp file: %v", err),
-				Duration: time.Since(start),
-			}
+	// Always create temp file for JSON output (we need it for failure reporting)
+	// Use project's tmp directory
+	tmpDir := filepath.Join(filepath.Dir(specFile), "..", "tmp")
+	os.MkdirAll(tmpDir, 0755) // Ensure tmp directory exists
+	
+	tmpFile, err := os.CreateTemp(tmpDir, "rux-results-*.json")
+	if err != nil {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  false,
+			Output:   "",
+			Error:    fmt.Errorf("failed to create temp file: %v", err),
+			Duration: time.Since(start),
 		}
-		jsonFile = tmpFile.Name()
-		tmpFile.Close()
-
-		// Add JSON output args
-		args = append(args, "--format", "json", "--out", jsonFile)
 	}
+	jsonFile := tmpFile.Name()
+	tmpFile.Close()
+
+	// Build args with both progress and JSON formatters
+	args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", jsonFile, specFile}
 
 	if dryRun {
 		return TestResult{
@@ -221,25 +224,53 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	// Wait for output streaming to complete
 	wg.Wait()
 
-	// Determine success
+	// Determine success based on exit code
 	success := err == nil
+	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
-		// RSpec failed tests return exit code 1, which is still a "successful" run
-		success = exitErr.ExitCode() <= 1
+		exitCode = exitErr.ExitCode()
+		// RSpec returns exit code 1 for test failures, which we still consider a "successful" run
+		// (meaning the test runner itself didn't crash)
+		success = exitCode <= 1
 	}
 
-	// Clean up JSON file if not saving
-	if saveJSON && jsonFile != "" {
-		defer os.Remove(jsonFile)
-		// TODO: Could read and process JSON here if needed
+	// Parse JSON output
+	var jsonOutput *RSpecJSONOutput
+	var failures []FailureDetail
+	var exampleCount, failureCount int
+
+	if jsonFile != "" && success {
+		jsonOutput, err = ParseRSpecJSON(jsonFile)
+		if err != nil {
+			// Log error but don't fail the whole test run
+			outputMutex.Lock()
+			fmt.Fprintf(os.Stderr, "[%s] Warning: Failed to parse JSON output: %v\n", specFile, err)
+			outputMutex.Unlock()
+		} else {
+			failures = ExtractFailures(jsonOutput.Examples)
+			exampleCount = jsonOutput.Summary.ExampleCount
+			failureCount = jsonOutput.Summary.FailureCount
+		}
 	}
+
+	// Clean up JSON file unless explicitly saving
+	if !saveJSON && jsonFile != "" {
+		os.Remove(jsonFile)
+	}
+
+	// Mark as unsuccessful if there were test failures
+	testsPassed := exitCode == 0
 
 	return TestResult{
-		SpecFile: specFile,
-		Success:  success,
-		Output:   outputBuilder.String(),
-		Error:    err,
-		Duration: time.Since(start),
+		SpecFile:     specFile,
+		Success:      testsPassed,
+		Output:       outputBuilder.String(),
+		Error:        err,
+		Duration:     time.Since(start),
+		JSONOutput:   jsonOutput,
+		Failures:     failures,
+		ExampleCount: exampleCount,
+		FailureCount: failureCount,
 	}
 }
 
@@ -364,32 +395,63 @@ func RunDatabaseTask(task string, workerCount int, dryRun bool) error {
 }
 
 // PrintResults displays a summary of test results
-func PrintResults(results []TestResult, wallTime time.Duration) {
+func PrintResults(results []TestResult, wallTime time.Duration) bool {
 	fmt.Println() // New line after progress dots
 
-	// Calculate total CPU time
+	// Collect all failures and calculate totals
+	var allFailures []FailureDetail
+	var totalExamples, totalFailures int
 	var totalCPUTime time.Duration
-	passed := 0
+	hasFailures := false
 
 	for _, result := range results {
 		totalCPUTime += result.Duration
-		if result.Success {
-			passed++
+		totalExamples += result.ExampleCount
+		totalFailures += result.FailureCount
+		
+		if len(result.Failures) > 0 {
+			allFailures = append(allFailures, result.Failures...)
+			hasFailures = true
 		}
-	}
-
-	fmt.Println("\n=== Summary ===")
-	fmt.Printf("Files: %d/%d passed\n", passed, len(results))
-	fmt.Printf("Wall time: %v\n", wallTime)
-	fmt.Printf("Total CPU time: %v\n", totalCPUTime)
-
-	// Show failed files if any
-	for _, result := range results {
+		
 		if !result.Success {
-			fmt.Printf("FAILED: %s\n", result.SpecFile)
-			if result.Error != nil {
-				fmt.Printf("  Error: %v\n", result.Error)
-			}
+			hasFailures = true
 		}
 	}
+
+	// Print failures if any
+	if len(allFailures) > 0 {
+		fmt.Println("\nFailures:\n")
+		
+		for i, failure := range allFailures {
+			fmt.Print(FormatFailure(i+1, failure))
+			fmt.Println() // Extra line between failures
+		}
+	}
+
+	// Print summary like RSpec does
+	fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n", 
+		wallTime.Seconds(), totalCPUTime.Seconds())
+	
+	if totalFailures > 0 {
+		fmt.Printf("%d examples, %d failures\n", totalExamples, totalFailures)
+	} else {
+		fmt.Printf("%d examples, 0 failures\n", totalExamples)
+	}
+
+	// Print failed examples summary
+	if len(allFailures) > 0 {
+		fmt.Println("\nFailed examples:\n")
+		fmt.Print(FormatFailedExamples(allFailures))
+	}
+
+	// Show any spec files that had errors running
+	fmt.Println()
+	for _, result := range results {
+		if result.Error != nil && result.Success == false {
+			fmt.Printf("ERROR running %s: %v\n", result.SpecFile, result.Error)
+		}
+	}
+
+	return hasFailures
 }
