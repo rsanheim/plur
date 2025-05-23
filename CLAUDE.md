@@ -11,8 +11,9 @@ This is a research repository for `rux`, a Go-based parallel test runner for Rub
 ### Building Rux
 ```bash
 cd rux/
-go build -o rux main.go
-cp rux /usr/local/bin/  # Optional global install
+go install .
+# This installs rux to $GOPATH/bin (usually ~/go/bin)
+# Make sure $GOPATH/bin is in your PATH
 ```
 
 ### Running Tests
