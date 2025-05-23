@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bytes"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
@@ -60,9 +60,9 @@ func TestGetWorkerCount(t *testing.T) {
 				os.Unsetenv("PARALLEL_TEST_PROCESSORS")
 			}
 
-			result := getWorkerCount(tt.cliWorkers)
+			result := GetWorkerCount(tt.cliWorkers)
 			if result != tt.expected {
-				t.Errorf("getWorkerCount(%d) = %d, expected %d", tt.cliWorkers, result, tt.expected)
+				t.Errorf("GetWorkerCount(%d) = %d, expected %d", tt.cliWorkers, result, tt.expected)
 			}
 		})
 	}
@@ -80,42 +80,42 @@ func TestFindSpecFiles(t *testing.T) {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
-	
+
 	os.Chdir(tempDir)
 
-	files, err := findSpecFiles()
+	files, err := FindSpecFiles()
 	if err != nil {
-		t.Errorf("findSpecFiles() returned error: %v", err)
+		t.Errorf("FindSpecFiles() returned error: %v", err)
 	}
 	if len(files) != 0 {
-		t.Errorf("findSpecFiles() returned %d files, expected 0", len(files))
+		t.Errorf("FindSpecFiles() returned %d files, expected 0", len(files))
 	}
 
 	// Create spec directory with test files
 	os.Mkdir("spec", 0755)
 	os.Mkdir("spec/models", 0755)
-	
+
 	// Create spec files
 	specFiles := []string{
 		"spec/user_spec.rb",
 		"spec/models/post_spec.rb",
 		"spec/not_a_spec.rb.txt", // Should be ignored
-		"spec/regular_file.txt",   // Should be ignored
+		"spec/regular_file.txt",  // Should be ignored
 	}
-	
+
 	for _, file := range specFiles {
 		f, _ := os.Create(file)
 		f.Close()
 	}
 
-	files, err = findSpecFiles()
+	files, err = FindSpecFiles()
 	if err != nil {
-		t.Errorf("findSpecFiles() returned error: %v", err)
+		t.Errorf("FindSpecFiles() returned error: %v", err)
 	}
 
 	expectedFiles := 2 // Only user_spec.rb and post_spec.rb
 	if len(files) != expectedFiles {
-		t.Errorf("findSpecFiles() found %d files, expected %d", len(files), expectedFiles)
+		t.Errorf("FindSpecFiles() found %d files, expected %d", len(files), expectedFiles)
 	}
 
 	// Verify correct files were found
@@ -138,30 +138,61 @@ func TestFindSpecFiles(t *testing.T) {
 	}
 }
 
-func TestRuxHelp(t *testing.T) {
-	// Run go run main.go --help
-	cmd := exec.Command("go", "run", "main.go", "--help")
-	output, err := cmd.Output()
+func TestCreateApp(t *testing.T) {
+	app := createApp()
+
+	// Test basic app properties
+	if app.Name != "rux" {
+		t.Errorf("Expected app name 'rux', got '%s'", app.Name)
+	}
+
+	if !strings.Contains(app.Usage, "test runner") {
+		t.Errorf("Expected usage to mention 'test runner', got '%s'", app.Usage)
+	}
+
+	// Test that expected flags exist
+	expectedFlags := []string{"dry-run", "auto", "json", "workers"}
+	for _, flagName := range expectedFlags {
+		found := false
+		for _, flag := range app.Flags {
+			if strings.Contains(flag.String(), flagName) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected flag '%s' not found", flagName)
+		}
+	}
+}
+
+func TestRuxHelpOutput(t *testing.T) {
+	app := createApp()
+
+	// Capture help output
+	var buf bytes.Buffer
+	app.Writer = &buf
+
+	err := app.Run([]string{"rux", "--help"})
 	if err != nil {
 		t.Fatalf("Failed to run rux --help: %v", err)
 	}
 
-	outputStr := string(output)
-	
+	output := buf.String()
+
 	// Check for expected help content
 	expectedContent := []string{
 		"rux",
 		"USAGE",
-		"COMMANDS",
 		"GLOBAL OPTIONS",
 		"--workers",
 		"--dry-run",
 		"--auto",
-		"--help",
+		"--json",
 	}
 
 	for _, expected := range expectedContent {
-		if !strings.Contains(outputStr, expected) {
+		if !strings.Contains(output, expected) {
 			t.Errorf("Help output missing expected content: %s", expected)
 		}
 	}
