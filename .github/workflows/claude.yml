@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run lint),Bash(npm run test),Bash(bundle install),Bash(bundle exec),View,GlobTool"
 
       - name: Run Claude Code
         id: claude
