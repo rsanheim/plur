@@ -13,6 +13,7 @@ jobs:
     steps:
       - checkout
       - go/with-cache:
+          key: go-cache-{{ checksum "go.mod" }}
           steps:
             - go/mod-download
             - go/test
