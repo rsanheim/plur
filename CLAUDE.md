@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a research repository for `rux`, a Go-based parallel test runner for Ruby/RSpec projects designed to outperform existing solutions like turbo_tests and parallel_tests. The project is production-ready with demonstrated 13% performance improvements.
 
+## Memories
+
+- Do not add Claude attribution to commit messages
+
 ## Core Commands
 
 ### Building Rux
