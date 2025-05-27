@@ -61,8 +61,11 @@ namespace :test do
       # Find all spec files except failing_examples_spec.rb
       spec_files = Dir.glob("spec/**/*_spec.rb").reject { |f| f.include?("failing_examples_spec.rb") }
       
+      # Use rux from PATH if available, otherwise use relative path
+      rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
+      
       # Run rux with the specific files
-      sh "../rux/rux #{spec_files.join(' ')}"
+      sh "#{rux_command} #{spec_files.join(' ')}"
     end
   end
 
