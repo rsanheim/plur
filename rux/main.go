@@ -29,8 +29,8 @@ func createApp() *cli.App {
 						Usage: "Show what would be executed without running",
 					},
 				},
-				Action: func(c *cli.Context) error {
-					return runDatabaseTask("db:setup", c)
+				Action: func(ctx *cli.Context) error {
+					return runDatabaseTask("db:setup", ctx)
 				},
 			},
 			{
@@ -47,8 +47,8 @@ func createApp() *cli.App {
 						Usage: "Show what would be executed without running",
 					},
 				},
-				Action: func(c *cli.Context) error {
-					return runDatabaseTask("db:create", c)
+				Action: func(ctx *cli.Context) error {
+					return runDatabaseTask("db:create", ctx)
 				},
 			},
 			{
@@ -65,8 +65,8 @@ func createApp() *cli.App {
 						Usage: "Show what would be executed without running",
 					},
 				},
-				Action: func(c *cli.Context) error {
-					return runDatabaseTask("db:migrate", c)
+				Action: func(ctx *cli.Context) error {
+					return runDatabaseTask("db:migrate", ctx)
 				},
 			},
 			{
@@ -83,8 +83,8 @@ func createApp() *cli.App {
 						Usage: "Show what would be executed without running",
 					},
 				},
-				Action: func(c *cli.Context) error {
-					return runDatabaseTask("db:test:prepare", c)
+				Action: func(ctx *cli.Context) error {
+					return runDatabaseTask("db:test:prepare", ctx)
 				},
 			},
 		},
@@ -107,14 +107,14 @@ func createApp() *cli.App {
 				Usage:   "Number of parallel workers (default: cores-2, env: PARALLEL_TEST_PROCESSORS)",
 			},
 		},
-		Action: func(c *cli.Context) error {
+		Action: func(ctx *cli.Context) error {
 			var specFiles []string
 			var err error
 
 			// Determine which spec files to run
-			if c.NArg() > 0 {
+			if ctx.NArg() > 0 {
 				// Use provided arguments as spec files
-				specFiles = c.Args().Slice()
+				specFiles = ctx.Args().Slice()
 			} else {
 				// Auto-discover spec files
 				specFiles, err = FindSpecFiles()
@@ -126,16 +126,16 @@ func createApp() *cli.App {
 				}
 			}
 
-			dryRun := c.Bool("dry-run")
+			dryRun := ctx.Bool("dry-run")
 
 			if dryRun {
-				if c.Bool("auto") {
+				if ctx.Bool("auto") {
 					fmt.Fprintln(os.Stderr, "[dry-run] bundle install")
 				}
 				fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(specFiles))
 				for _, file := range specFiles {
 					args := []string{"bundle", "exec", "rspec", "--format", "progress", file}
-					if c.Bool("json") {
+					if ctx.Bool("json") {
 						args = append(args, "--format", "json", "--out", "/tmp/results.json")
 					}
 					fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
@@ -144,7 +144,7 @@ func createApp() *cli.App {
 			}
 
 			// Run bundle install if --auto flag is set
-			if c.Bool("auto") {
+			if ctx.Bool("auto") {
 				fmt.Println("Installing dependencies...")
 				bundleCmd := exec.Command("bundle", "install")
 				bundleCmd.Stdout = os.Stdout
@@ -155,7 +155,7 @@ func createApp() *cli.App {
 				}
 			}
 
-			workerCount := GetWorkerCount(c.Int("n"))
+			workerCount := GetWorkerCount(ctx.Int("n"))
 			actualWorkers := workerCount
 			if len(specFiles) < workerCount {
 				actualWorkers = len(specFiles)
@@ -164,12 +164,15 @@ func createApp() *cli.App {
 			fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
 				len(specFiles), actualWorkers, runtime.NumCPU())
 
-			saveJSON := c.Bool("json")
+			saveJSON := ctx.Bool("json")
 			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, workerCount)
-			hasFailures := PrintResults(results, wallTime)
+
+			// Build summary and print results
+			summary := BuildTestSummary(results, wallTime)
+			PrintResults(summary)
 
 			// Exit with error if any tests failed
-			if hasFailures {
+			if !summary.Success {
 				os.Exit(1)
 			}
 
@@ -178,9 +181,9 @@ func createApp() *cli.App {
 	}
 }
 
-func runDatabaseTask(task string, c *cli.Context) error {
-	workerCount := GetWorkerCount(c.Int("n"))
-	dryRun := c.Bool("dry-run")
+func runDatabaseTask(task string, ctx *cli.Context) error {
+	workerCount := GetWorkerCount(ctx.Int("n"))
+	dryRun := ctx.Bool("dry-run")
 
 	return RunDatabaseTask(task, workerCount, dryRun)
 }
