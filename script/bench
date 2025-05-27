@@ -17,7 +17,7 @@ Examples:
 What it does:
   - Verifies project has spec directory and dependencies
   - Installs turbo_tests temporarily if not present
-  - Runs hyperfine benchmarks comparing turbo_tests vs rux variants
+  - Runs hyperfine benchmarks comparing turbo_tests vs rux (default to 8 workers)
   - Exports results to markdown and JSON
   - Cleans up temporary changes
 
@@ -69,22 +69,7 @@ SPEC_COUNT=$(find spec -name "*_spec.rb" | wc -l | tr -d ' ')
 echo "Found $SPEC_COUNT spec files in $(pwd)"
 echo ""
 
-# Setup turbo_tests if needed
-CLEANUP_TURBO=false
-if ! bundle list | grep -q turbo_tests; then
-    echo "turbo_tests not found in Gemfile, adding temporarily..."
-    echo "" >> Gemfile
-    echo "gem 'turbo_tests'" >> Gemfile
-    echo "Installing turbo_tests..."
-    bundle install
-    CLEANUP_TURBO=true
-    echo "turbo_tests setup complete"
-else
-    echo "turbo_tests already available"
-fi
-
-# Verify all commands work before benchmarking
-TURBO_CMD="bundle exec turbo_tests"
+TURBO_CMD="turbo_tests -n 8"
 echo ""
 echo "Verifying commands work..."
 echo "Testing turbo_tests..."
@@ -111,13 +96,10 @@ echo "===================="
 hyperfine \
     --warmup 1 \
     --runs 3 \
-    --ignore-failure \
     --export-markdown bench-results.md \
     --export-json bench-results.json \
     "$TURBO_CMD" \
-    "rux" \
-    "rux --workers 4" \
-    "rux --workers 8"
+    "rux -n 8"
 
 cat <<EOF
 
@@ -135,11 +117,4 @@ Quick Summary:
 ==============
 EOF
     cat bench-results.md
-fi
-
-# Cleanup turbo_tests if we added it
-if [ "$CLEANUP_TURBO" = true ]; then
-    echo ""
-    echo "Cleaning up temporarily added turbo_tests..."
-    git checkout Gemfile 2>/dev/null || sed -i '' '/turbo_tests/d' Gemfile
 fi
