@@ -58,10 +58,11 @@ jobs:
             rux --help
       - ruby/install-deps:
           app-dir: rux-ruby
+      - ruby/install-deps
       - run:
           name: Run Ruby tests with rux
           command: |
-            rake test:rux_ruby
+            bin/rake test:rux_ruby
       - run:
           name: Run benchmarks
           command: |
