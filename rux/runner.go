@@ -122,10 +122,10 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 
 	// Build args with both progress and JSON formatters
 	args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", jsonFile}
-	
+
 	// Always use --no-color for RSpec since we'll add our own colors
 	args = append(args, "--no-color")
-	
+
 	args = append(args, specFile)
 
 	if dryRun {
@@ -205,7 +205,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 					// Use strings.Builder for efficient string building
 					var result strings.Builder
 					result.Grow(len(line) * 2) // Pre-allocate for worst case (every char gets color codes)
-					
+
 					for _, char := range line {
 						switch char {
 						case '.':
@@ -259,17 +259,27 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 		success = exitCode <= 1
 	}
 
-	// Parse JSON output
+	// Parse JSON output - try regardless of exit code to get detailed error info
 	var jsonOutput *RSpecJSONOutput
 	var failures []FailureDetail
 	var exampleCount, failureCount int
 
-	if jsonFile != "" && success {
+	if jsonFile != "" {
 		jsonOutput, err = ParseRSpecJSON(jsonFile)
 		if err != nil {
-			// Log error but don't fail the whole test run
+			// Provide different error messages based on exit code
 			outputMutex.Lock()
-			fmt.Fprintf(os.Stderr, "[%s] Warning: Failed to parse JSON output: %v\n", specFile, err)
+			if exitCode > 1 {
+				// Command failed before RSpec could run (likely bundle exec failure)
+				if strings.Contains(outputBuilder.String(), "bundler:") || strings.Contains(outputBuilder.String(), "Bundler::") {
+					fmt.Fprintf(os.Stderr, "[%s] Bundle exec failed - try running 'bundle install' first\n", specFile)
+				} else {
+					fmt.Fprintf(os.Stderr, "[%s] Command failed with exit code %d: %v\n", specFile, exitCode, err)
+				}
+			} else {
+				// RSpec ran but JSON parsing failed
+				fmt.Fprintf(os.Stderr, "[%s] Warning: Failed to parse JSON output: %v\n", specFile, err)
+			}
 			outputMutex.Unlock()
 		} else {
 			failures = ExtractFailures(jsonOutput.Examples)
