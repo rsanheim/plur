@@ -1,0 +1,75 @@
+^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0mTEST_ENV_NUMBER: ''
+PARALLEL_TEST_GROUPS: ''
+^[[32m.^[[0m^[[31mF^[[0m^[[31mF^[[0m^[[32m.^[[0m^[[31mF^[[0m^[[31mF^[[0m^[[32m.^[[0m^[[31mF^[[0m^[[31mF^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m^[[32m.^[[0m
+
+Failures:
+
+  1) FailingExamples expectation failures fails with a simple expectation
+     ^[[31mFailure/Error: expect(1 + 1).to eq(3)^[[0m
+     ^[[31m^[[0m
+     ^[[31m  expected: 3^[[0m
+     ^[[31m       got: 2^[[0m
+     ^[[31m^[[0m
+     ^[[31m  (compared using ==)^[[0m
+     ^[[36m# ./spec/failing_examples_spec.rb:6:in 'block (3 levels) in <top (required)>'^[[0m
+
+  2) FailingExamples expectation failures fails with a string comparison
+     ^[[31mFailure/Error: expect('hello').to eq('goodbye')^[[0m
+     ^[[31m^[[0m
+     ^[[31m  expected: "goodbye"^[[0m
+     ^[[31m       got: "hello"^[[0m
+     ^[[31m^[[0m
+     ^[[31m  (compared using ==)^[[0m
+     ^[[36m# ./spec/failing_examples_spec.rb:10:in 'block (3 levels) in <top (required)>'^[[0m
+
+  3) FailingExamples errors and exceptions raises a NoMethodError
+     ^[[31mFailure/Error: nil.this_method_does_not_exist^[[0m
+     ^[[31m^[[0m
+     ^[[31mNoMethodError:^[[0m
+     ^[[31m  undefined method 'this_method_does_not_exist' for nil^[[0m
+     ^[[36m# ./spec/failing_examples_spec.rb:20:in 'block (3 levels) in <top (required)>'^[[0m
+
+  4) FailingExamples errors and exceptions raises a custom error
+     ^[[31mFailure/Error: raise StandardError, 'Something went wrong!'^[[0m
+     ^[[31m^[[0m
+     ^[[31mStandardError:^[[0m
+     ^[[31m  Something went wrong!^[[0m
+     ^[[36m# ./spec/failing_examples_spec.rb:24:in 'block (3 levels) in <top (required)>'^[[0m
+
+  5) FailingExamples array and hash failures fails on array contents
+     ^[[31mFailure/Error: expect([1, 2, 3]).to eq([1, 2, 4])^[[0m
+     ^[[31m^[[0m
+     ^[[31m  expected: [1, 2, 4]^[[0m
+     ^[[31m       got: [1, 2, 3]^[[0m
+     ^[[31m^[[0m
+     ^[[31m  (compared using ==)^[[0m
+     ^[[36m# ./spec/failing_examples_spec.rb:34:in 'block (3 levels) in <top (required)>'^[[0m
+
+  6) FailingExamples array and hash failures fails on hash contents
+     ^[[31mFailure/Error: expect({ a: 1, b: 2 }).to eq({ a: 1, b: 3 })^[[0m
+     ^[[31m^[[0m
+     ^[[31m  expected: {a: 1, b: 3}^[[0m
+     ^[[31m       got: {a: 1, b: 2}^[[0m
+     ^[[31m^[[0m
+     ^[[31m  (compared using ==)^[[0m
+     ^[[31m^[[0m
+     ^[[31m  Diff:^[[0m^[[0m
+     ^[[31m  ^[[0m^[[34m@@ -1,2 +1,2 @@^[[0m
+     ^[[31m  ^[[0m^[[0m :a => 1,^[[0m
+     ^[[31m  ^[[0m^[[31m-:b => 3,^[[0m
+     ^[[31m  ^[[0m^[[32m+:b => 2,^[[0m
+     ^[[31m  ^[[0m^[[0m
+     ^[[36m# ./spec/failing_examples_spec.rb:38:in 'block (3 levels) in <top (required)>'^[[0m
+
+Finished in 0.00987 seconds (files took 0.04344 seconds to load)
+^[[31m58 examples, 6 failures^[[0m
+
+Failed examples:
+
+^[[31mrspec ./spec/failing_examples_spec.rb:5^[[0m ^[[36m# FailingExamples expectation failures fails with a simple expectation^[[0m
+^[[31mrspec ./spec/failing_examples_spec.rb:9^[[0m ^[[36m# FailingExamples expectation failures fails with a string comparison^[[0m
+^[[31mrspec ./spec/failing_examples_spec.rb:19^[[0m ^[[36m# FailingExamples errors and exceptions raises a NoMethodError^[[0m
+^[[31mrspec ./spec/failing_examples_spec.rb:23^[[0m ^[[36m# FailingExamples errors and exceptions raises a custom error^[[0m
+^[[31mrspec ./spec/failing_examples_spec.rb:33^[[0m ^[[36m# FailingExamples array and hash failures fails on array contents^[[0m
+^[[31mrspec ./spec/failing_examples_spec.rb:37^[[0m ^[[36m# FailingExamples array and hash failures fails on hash contents^[[0m
+

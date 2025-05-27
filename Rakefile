@@ -10,6 +10,12 @@ end
 desc "Run all tests and linting"
 task default: ["test:all", "lint:all"]
 
+task install: [:build] do
+  Dir.chdir("rux") do
+    sh "go install ."
+  end
+end
+
 # ========================================
 # Test Tasks
 # ========================================

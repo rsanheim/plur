@@ -99,7 +99,7 @@ func GetTestEnvNumber(workerIndex int) string {
 }
 
 // RunSpecFile executes a single spec file and returns the result
-func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, outputMutex *sync.Mutex) TestResult {
+func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, colorOutput bool, outputMutex *sync.Mutex) TestResult {
 	start := time.Now()
 
 	// Always create temp file for JSON output (we need it for failure reporting)
@@ -121,7 +121,12 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	tmpFile.Close()
 
 	// Build args with both progress and JSON formatters
-	args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", jsonFile, specFile}
+	args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", jsonFile}
+	
+	// Always use --no-color for RSpec since we'll add our own colors
+	args = append(args, "--no-color")
+	
+	args = append(args, specFile)
 
 	if dryRun {
 		return TestResult{
@@ -195,8 +200,28 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 
 			outputMutex.Lock()
 			if isProgressLine {
-				// Progress dots - print without newline
-				fmt.Print(line)
+				// Progress dots - print with our own colors (inlined for performance)
+				if colorOutput {
+					// Use strings.Builder for efficient string building
+					var result strings.Builder
+					result.Grow(len(line) * 2) // Pre-allocate for worst case (every char gets color codes)
+					
+					for _, char := range line {
+						switch char {
+						case '.':
+							result.WriteString("\033[32m.\033[0m") // Green dot
+						case 'F':
+							result.WriteString("\033[31mF\033[0m") // Red F
+						case '*':
+							result.WriteString("\033[33m*\033[0m") // Yellow asterisk for pending
+						default:
+							result.WriteRune(char)
+						}
+					}
+					fmt.Print(result.String())
+				} else {
+					fmt.Print(line)
+				}
 			}
 			// Skip "Finished in..." and other RSpec output
 			outputMutex.Unlock()
@@ -274,7 +299,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 }
 
 // RunSpecsInParallel executes spec files in parallel using a worker pool
-func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorkers int) ([]TestResult, time.Duration) {
+func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int) ([]TestResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 	results := make(chan TestResult, len(specFiles))
@@ -296,7 +321,7 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorke
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				result := RunSpecFile(ctx, job.SpecFile, workerIndex, dryRun, saveJSON, &outputMutex)
+				result := RunSpecFile(ctx, job.SpecFile, workerIndex, dryRun, saveJSON, colorOutput, &outputMutex)
 				results <- result
 			}
 		}()
