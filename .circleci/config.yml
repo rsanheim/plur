@@ -56,8 +56,6 @@ jobs:
             sudo cp ~/workspace/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
             rux --help
-      - ruby/install-deps:
-          app-dir: rux-ruby
       - ruby/install-deps
       - run:
           name: Run Ruby tests with rux
