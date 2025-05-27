@@ -34,7 +34,7 @@ desc "Build the rux binary"
 task :build do
   Dir.chdir('rux') do
     puts "Building rux..."
-    sh "go build -o rux main.go runner.go"
+    sh "go build -o rux ."
     puts "Binary created at rux/rux"
   end
 end

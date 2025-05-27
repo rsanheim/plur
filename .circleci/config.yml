@@ -8,7 +8,7 @@ jobs:
   build-and-test-go:
     executor:
       name: go/default
-      tag: "1.21"
+      tag: "1.22"
     working_directory: ~/project/rux
     resource_class: medium
     steps:
@@ -30,12 +30,16 @@ jobs:
             - run:
                 name: Build rux
                 command: |
-                  go build -o rux main.go
+                  go build -o rux .
       - run:
-          name: Verify rux installation
+          name: Verify rux binary
           command: |
-            which rux
-            rux --help
+            ls -la rux
+            ./rux --help
+      - persist_to_workspace:
+          root: .
+          paths:
+            - rux
 
   test-ruby:
     docker:
@@ -45,11 +49,12 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: ~/go/bin
+          at: ~/workspace
       - run:
           name: Install rux from workspace
           command: |
-            sudo cp ~/go/bin/rux /usr/local/bin/
+            sudo cp ~/workspace/rux /usr/local/bin/
+            sudo chmod +x /usr/local/bin/rux
             rux --help
       - ruby/install-deps:
           app-dir: rux-ruby
@@ -57,7 +62,7 @@ jobs:
           name: Run Ruby tests with rux
           working_directory: rux-ruby
           command: |
-            rux --workers 2
+            rux -n 2
       - run:
           name: Run benchmarks
           command: |
@@ -71,11 +76,12 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: ~/go/bin
+          at: ~/workspace
       - run:
           name: Install rux from workspace
           command: |
-            sudo cp ~/go/bin/rux /usr/local/bin/
+            sudo cp ~/workspace/rux /usr/local/bin/
+            sudo chmod +x /usr/local/bin/rux
       - run:
           name: Setup test_app
           working_directory: test_app
@@ -86,7 +92,7 @@ jobs:
           name: Run test_app specs with rux
           working_directory: test_app
           command: |
-            rux --workers 2
+            rux -n 2
       - run:
           name: Test parallel_tests reference
           working_directory: parallel_tests
