@@ -93,12 +93,6 @@ jobs:
           working_directory: test_app
           command: |
             rux -n 2
-      - run:
-          name: Test parallel_tests reference
-          working_directory: references/parallel_tests
-          command: |
-            bundle install
-            bundle exec rspec
 
 workflows:
   test-all:

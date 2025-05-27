@@ -1,8 +1,7 @@
 fix: false
 parallel: true
 ignore:
-  - "references/parallel_tests/**/*"
-  - "references/turbo_tests/**/*"
+  - "references/**/*"
   - "rux-ruby/**/*"
   - "rux/**/*"
   - "test_app/**/*"
