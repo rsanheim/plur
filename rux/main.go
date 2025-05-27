@@ -20,8 +20,8 @@ func createApp() *cli.App {
 				Usage: "Setup test databases in parallel",
 				Flags: []cli.Flag{
 					&cli.IntFlag{
-						Name:    "workers",
-						Aliases: []string{"j"},
+						Name:    "n",
+						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
 					},
 					&cli.BoolFlag{
@@ -38,8 +38,8 @@ func createApp() *cli.App {
 				Usage: "Create test databases in parallel",
 				Flags: []cli.Flag{
 					&cli.IntFlag{
-						Name:    "workers",
-						Aliases: []string{"j"},
+						Name:    "n",
+						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
 					},
 					&cli.BoolFlag{
@@ -56,8 +56,8 @@ func createApp() *cli.App {
 				Usage: "Migrate test databases in parallel",
 				Flags: []cli.Flag{
 					&cli.IntFlag{
-						Name:    "workers",
-						Aliases: []string{"j"},
+						Name:    "n",
+						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
 					},
 					&cli.BoolFlag{
@@ -74,8 +74,8 @@ func createApp() *cli.App {
 				Usage: "Prepare test databases in parallel",
 				Flags: []cli.Flag{
 					&cli.IntFlag{
-						Name:    "workers",
-						Aliases: []string{"j"},
+						Name:    "n",
+						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
 					},
 					&cli.BoolFlag{
@@ -90,9 +90,8 @@ func createApp() *cli.App {
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:    "dry-run",
-				Aliases: []string{"n"},
-				Usage:   "Print what would be executed without running",
+				Name:  "dry-run",
+				Usage: "Print what would be executed without running",
 			},
 			&cli.BoolFlag{
 				Name:  "auto",
@@ -103,8 +102,8 @@ func createApp() *cli.App {
 				Usage: "Save detailed test results to JSON files",
 			},
 			&cli.IntFlag{
-				Name:    "workers",
-				Aliases: []string{"j"},
+				Name:    "n",
+				Aliases: []string{"workers"},
 				Usage:   "Number of parallel workers (default: cores-2, env: PARALLEL_TEST_PROCESSORS)",
 			},
 		},
@@ -156,7 +155,7 @@ func createApp() *cli.App {
 				}
 			}
 
-			workerCount := GetWorkerCount(c.Int("workers"))
+			workerCount := GetWorkerCount(c.Int("n"))
 			actualWorkers := workerCount
 			if len(specFiles) < workerCount {
 				actualWorkers = len(specFiles)
@@ -166,7 +165,7 @@ func createApp() *cli.App {
 				len(specFiles), actualWorkers, runtime.NumCPU())
 
 			saveJSON := c.Bool("json")
-			results, wallTime := RunTestsInParallel(specFiles, dryRun, saveJSON, workerCount)
+			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, workerCount)
 			hasFailures := PrintResults(results, wallTime)
 
 			// Exit with error if any tests failed
@@ -180,9 +179,9 @@ func createApp() *cli.App {
 }
 
 func runDatabaseTask(task string, c *cli.Context) error {
-	workerCount := GetWorkerCount(c.Int("workers"))
+	workerCount := GetWorkerCount(c.Int("n"))
 	dryRun := c.Bool("dry-run")
-	
+
 	return RunDatabaseTask(task, workerCount, dryRun)
 }
 

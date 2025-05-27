@@ -91,7 +91,7 @@ func TestRunDatabaseTaskDryRun(t *testing.T) {
 	if err != nil {
 		t.Errorf("RunDatabaseTask dry-run should not error: %v", err)
 	}
-	
+
 	// This test just verifies the function doesn't crash
 	// In a real test we'd capture stdout to verify the output
 }
@@ -111,11 +111,11 @@ func TestRunDatabaseTaskValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s_%d_workers", tt.task, tt.workerCount), func(t *testing.T) {
 			err := RunDatabaseTask(tt.task, tt.workerCount, tt.dryRun)
-			
+
 			if tt.shouldError && err == nil {
 				t.Errorf("Expected error for task %s with %d workers", tt.task, tt.workerCount)
 			}
-			
+
 			if !tt.shouldError && err != nil {
 				t.Errorf("Unexpected error for task %s with %d workers: %v", tt.task, tt.workerCount, err)
 			}
@@ -180,11 +180,11 @@ func TestGetTestEnvNumber(t *testing.T) {
 		workerIndex int
 		expected    string
 	}{
-		{0, ""},     // First worker gets empty string
-		{1, "2"},    // Second worker gets "2"
-		{2, "3"},    // Third worker gets "3"
-		{3, "4"},    // Fourth worker gets "4"
-		{10, "11"},  // Nth worker gets "N+1"
+		{0, ""},    // First worker gets empty string
+		{1, "2"},   // Second worker gets "2"
+		{2, "3"},   // Third worker gets "3"
+		{3, "4"},   // Fourth worker gets "4"
+		{10, "11"}, // Nth worker gets "N+1"
 	}
 
 	for _, tt := range tests {

@@ -11,21 +11,21 @@ import (
 
 // RSpecJSONOutput represents the root structure of RSpec JSON output
 type RSpecJSONOutput struct {
-	Version  string          `json:"version"`
-	Examples []RSpecExample  `json:"examples"`
-	Summary  RSpecSummary    `json:"summary"`
+	Version  string         `json:"version"`
+	Examples []RSpecExample `json:"examples"`
+	Summary  RSpecSummary   `json:"summary"`
 }
 
 // RSpecExample represents a single test example in the JSON output
 type RSpecExample struct {
-	ID              string              `json:"id"`
-	Description     string              `json:"description"`
-	FullDescription string              `json:"full_description"`
-	Status          string              `json:"status"`
-	FilePath        string              `json:"file_path"`
-	LineNumber      int                 `json:"line_number"`
-	RunTime         float64             `json:"run_time"`
-	Exception       *RSpecException     `json:"exception,omitempty"`
+	ID              string          `json:"id"`
+	Description     string          `json:"description"`
+	FullDescription string          `json:"full_description"`
+	Status          string          `json:"status"`
+	FilePath        string          `json:"file_path"`
+	LineNumber      int             `json:"line_number"`
+	RunTime         float64         `json:"run_time"`
+	Exception       *RSpecException `json:"exception,omitempty"`
 }
 
 // RSpecException represents failure information
@@ -37,11 +37,11 @@ type RSpecException struct {
 
 // RSpecSummary represents the summary statistics
 type RSpecSummary struct {
-	Duration       float64 `json:"duration"`
-	ExampleCount   int     `json:"example_count"`
-	FailureCount   int     `json:"failure_count"`
-	PendingCount   int     `json:"pending_count"`
-	ErrorsOutside  int     `json:"errors_outside_of_examples_count"`
+	Duration      float64 `json:"duration"`
+	ExampleCount  int     `json:"example_count"`
+	FailureCount  int     `json:"failure_count"`
+	PendingCount  int     `json:"pending_count"`
+	ErrorsOutside int     `json:"errors_outside_of_examples_count"`
 }
 
 // FailureDetail represents a formatted failure for display
@@ -97,6 +97,13 @@ func ExtractFailures(examples []RSpecExample) []FailureDetail {
 }
 
 // FormatFailure formats a single failure for display
+//
+// Manual string indentation is necessary here to match RSpec's exact output format.
+// RSpec uses specific indentation levels for different parts of the failure output:
+// - 2 spaces for the failure number and description
+// - 5 spaces for "Failure/Error:" label
+// - 7 spaces for error messages and expected/actual values
+// This precise formatting ensures compatibility with tools that parse RSpec output.
 func FormatFailure(index int, failure FailureDetail) string {
 	var sb strings.Builder
 
@@ -105,7 +112,7 @@ func FormatFailure(index int, failure FailureDetail) string {
 
 	// Error/Failure line
 	sb.WriteString("     Failure/Error: ")
-	
+
 	// Try to extract the failing line from the source file
 	failingLine := extractFailingLine(failure.FilePath, failure.LineNumber)
 	if failingLine != "" {
@@ -140,6 +147,11 @@ func FormatFailure(index int, failure FailureDetail) string {
 }
 
 // extractFailingLine reads the specified line from a file
+//
+// This manual extraction is necessary because RSpec's JSON output only provides
+// the line number where the test is defined, not the actual failing assertion.
+// We need to read the source file and find the likely failing line within the test body.
+// This is a heuristic approach that looks for common patterns like 'expect', 'raise', etc.
 func extractFailingLine(filePath string, lineNumber int) string {
 	// For RSpec failures, we want to extract the actual failing line from within the test
 	// The lineNumber points to the test definition, but the error is usually inside
@@ -153,21 +165,21 @@ func extractFailingLine(filePath string, lineNumber int) string {
 	currentLine := 1
 	var insideTest bool
 	var failingLine string
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		// If we're at the test definition line, start looking inside
 		if currentLine == lineNumber {
 			insideTest = true
 		}
-		
+
 		// If we're inside the test, look for expect() or raise statements
 		if insideTest && currentLine > lineNumber {
 			trimmed := strings.TrimSpace(line)
-			if strings.Contains(trimmed, "expect") || 
-			   strings.Contains(trimmed, "raise") || 
-			   strings.Contains(trimmed, ".") && !strings.HasPrefix(trimmed, "it") && !strings.HasPrefix(trimmed, "end") {
+			if strings.Contains(trimmed, "expect") ||
+				strings.Contains(trimmed, "raise") ||
+				strings.Contains(trimmed, ".") && !strings.HasPrefix(trimmed, "it") && !strings.HasPrefix(trimmed, "end") {
 				failingLine = trimmed
 				break
 			}
@@ -176,10 +188,10 @@ func extractFailingLine(filePath string, lineNumber int) string {
 				break
 			}
 		}
-		
+
 		currentLine++
 	}
-	
+
 	return failingLine
 }
 
