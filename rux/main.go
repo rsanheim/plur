@@ -166,10 +166,13 @@ func createApp() *cli.App {
 
 			saveJSON := c.Bool("json")
 			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, workerCount)
-			hasFailures := PrintResults(results, wallTime)
+
+			// Build summary and print results
+			summary := BuildTestSummary(results, wallTime)
+			PrintResults(summary)
 
 			// Exit with error if any tests failed
-			if hasFailures {
+			if summary.HasFailures {
 				os.Exit(1)
 			}
 

@@ -393,36 +393,54 @@ func RunDatabaseTask(task string, workerCount int, dryRun bool) error {
 	return nil
 }
 
-// PrintResults displays a summary of test results
-func PrintResults(results []TestResult, wallTime time.Duration) bool {
-	fmt.Println() // New line after progress dots
+// TestSummary represents the aggregated summary of all test results
+type TestSummary struct {
+	TotalExamples int
+	TotalFailures int
+	AllFailures   []FailureDetail
+	TotalCPUTime  time.Duration
+	WallTime      time.Duration
+	HasFailures   bool
+	ErroredFiles  []TestResult // Files that had errors running
+}
 
-	// Collect all failures and calculate totals
-	var allFailures []FailureDetail
-	var totalExamples, totalFailures int
-	var totalCPUTime time.Duration
-	hasFailures := false
+// BuildTestSummary collects and calculates summary data from test results
+func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary {
+	summary := TestSummary{
+		WallTime:     wallTime,
+		ErroredFiles: []TestResult{},
+	}
 
 	for _, result := range results {
-		totalCPUTime += result.Duration
-		totalExamples += result.ExampleCount
-		totalFailures += result.FailureCount
+		summary.TotalCPUTime += result.Duration
+		summary.TotalExamples += result.ExampleCount
+		summary.TotalFailures += result.FailureCount
 
 		if len(result.Failures) > 0 {
-			allFailures = append(allFailures, result.Failures...)
-			hasFailures = true
+			summary.AllFailures = append(summary.AllFailures, result.Failures...)
+			summary.HasFailures = true
 		}
 
 		if !result.Success {
-			hasFailures = true
+			summary.HasFailures = true
+			if result.Error != nil {
+				summary.ErroredFiles = append(summary.ErroredFiles, result)
+			}
 		}
 	}
 
+	return summary
+}
+
+// PrintResults displays a test summary
+func PrintResults(summary TestSummary) {
+	fmt.Println() // New line after progress dots
+
 	// Print failures if any
-	if len(allFailures) > 0 {
+	if len(summary.AllFailures) > 0 {
 		fmt.Println("\nFailures:")
 
-		for i, failure := range allFailures {
+		for i, failure := range summary.AllFailures {
 			fmt.Print(FormatFailure(i+1, failure))
 			fmt.Println() // Extra line between failures
 		}
@@ -430,27 +448,25 @@ func PrintResults(results []TestResult, wallTime time.Duration) bool {
 
 	// Print summary like RSpec does
 	fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
-		wallTime.Seconds(), totalCPUTime.Seconds())
+		summary.WallTime.Seconds(), summary.TotalCPUTime.Seconds())
 
-	if totalFailures > 0 {
-		fmt.Printf("%d examples, %d failures\n", totalExamples, totalFailures)
+	if summary.TotalFailures > 0 {
+		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
 	} else {
-		fmt.Printf("%d examples, 0 failures\n", totalExamples)
+		fmt.Printf("%d examples, 0 failures\n", summary.TotalExamples)
 	}
 
 	// Print failed examples summary
-	if len(allFailures) > 0 {
+	if len(summary.AllFailures) > 0 {
 		fmt.Println("\nFailed examples:")
-		fmt.Print(FormatFailedExamples(allFailures))
+		fmt.Print(FormatFailedExamples(summary.AllFailures))
 	}
 
 	// Show any spec files that had errors running
-	fmt.Println()
-	for _, result := range results {
-		if result.Error != nil && result.Success == false {
+	if len(summary.ErroredFiles) > 0 {
+		fmt.Println()
+		for _, result := range summary.ErroredFiles {
 			fmt.Printf("ERROR running %s: %v\n", result.SpecFile, result.Error)
 		}
 	}
-
-	return hasFailures
 }
