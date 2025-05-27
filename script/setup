@@ -5,29 +5,29 @@ puts "Setting up Rails app for parallel testing with rux..."
 
 # Build rux binary
 puts "Building rux binary..."
-Dir.chdir('rux') do
-  system('go build -o rux main.go') || abort("Failed to build rux")
+Dir.chdir("rux") do
+  system("go build -o rux main.go") || abort("Failed to build rux")
 end
 
 # Setup Rails app
 puts "Setting up Rails test app..."
-Dir.chdir('test_app') do
+Dir.chdir("test_app") do
   puts "Installing gems..."
-  system('bundle install') || abort("Failed to install gems")
-  
+  system("bundle install") || abort("Failed to install gems")
+
   puts "Setting up development database..."
-  system('bundle exec rails db:create db:migrate') || abort("Failed to setup development database")
-  
+  system("bundle exec rails db:create db:migrate") || abort("Failed to setup development database")
+
   puts "Setting up test databases with rux..."
-  system('../rux/rux db:create -n 3') || abort("Failed to create test databases")
-  system('../rux/rux db:migrate -n 3') || abort("Failed to migrate test databases")
-  
+  system("../rux/rux db:create -n 3") || abort("Failed to create test databases")
+  system("../rux/rux db:migrate -n 3") || abort("Failed to migrate test databases")
+
   puts "Running tests to verify setup..."
-  system('../rux/rux -n 3') || abort("Tests failed")
+  system("../rux/rux -n 3") || abort("Tests failed")
 end
 
 puts "Running integration tests..."
-system('ruby test_rux_integration.rb') || abort("Integration tests failed")
+system("ruby test_rux_integration.rb") || abort("Integration tests failed")
 
 puts <<~SUCCESS
 
