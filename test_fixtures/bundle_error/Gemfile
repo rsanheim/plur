@@ -1,0 +1,1 @@
+source 'https://rubygems.org'; gem 'rspec'; gem 'nonexistent_gem_999'
