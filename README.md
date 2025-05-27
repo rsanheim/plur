@@ -28,8 +28,8 @@ cd ../test_app && ../rux/rux -n 3
 - **RSpec test suite** demonstrating parallel execution
 
 ### Reference Implementations
-- **parallel_tests/**: Study of mature Ruby parallel runner
-- **turbo_tests/**: Analysis of fast RSpec runner with excellent output
+- **references/parallel_tests/**: Study of mature Ruby parallel runner
+- **references/turbo_tests/**: Analysis of fast RSpec runner with excellent output
 - **rux-ruby/**: Simple Ruby test project for development
 
 ### Testing Infrastructure
@@ -134,8 +134,9 @@ rux-meta/
 ├── test_app/              # Rails app for testing
 ├── script/                # Utility scripts
 ├── docs/                  # Documentation
-├── parallel_tests/        # Reference implementation
-├── turbo_tests/          # Reference implementation
+├── references/
+│   ├── parallel_tests/    # Reference implementation
+│   └── turbo_tests/       # Reference implementation
 └── rux-ruby/             # Simple Ruby test project
 ```
 

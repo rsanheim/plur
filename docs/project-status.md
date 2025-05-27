@@ -55,8 +55,9 @@ rux --auto                  # Auto-detect and show worker count
 │   └── project-status.md  # This file
 ├── rux-ruby/              # Test Ruby project (9 spec files)
 ├── example-project-*/         # External test project (24 spec files)
-├── parallel_tests/        # Reference implementation (Ruby)
-└── turbo_tests/           # Reference implementation (Ruby)
+├── references/
+│   ├── parallel_tests/    # Reference implementation (Ruby)
+│   └── turbo_tests/       # Reference implementation (Ruby)
 ```
 
 ## Testing Infrastructure
