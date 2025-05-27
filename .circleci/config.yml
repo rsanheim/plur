@@ -6,20 +6,22 @@ orbs:
 
 jobs:
   build-and-test-go:
-    working_directory: ~/project/rux/rux-meta
+    working_directory: ~/project/rux
+    resource_class: medium
     executor:
       name: go/default
       tag: "1.21"
     steps:
       - checkout
       - run:
-          name: List files
+          command: pwd
+      - run:
+          name: List files in current directory
           command: |
             ls -la
       - run:
-          command: pwd
-      - run:
-          command: ls ~/project/rux
+          name: List files in project directory
+          command: ls ~/project/
       - go/with-cache:
           steps:
             - go/mod-download
@@ -35,6 +37,7 @@ jobs:
             - rux
 
   test-ruby:
+    resource_class: medium
     docker:
       - image: cimg/ruby:3.4.0
     steps:
