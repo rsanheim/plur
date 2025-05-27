@@ -326,73 +326,6 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorke
 	return testResults, time.Since(start)
 }
 
-// RunDatabaseTask executes a Rails database task in parallel across test databases
-func RunDatabaseTask(task string, workerCount int, dryRun bool) error {
-	if dryRun {
-		fmt.Printf("[dry-run] Would run database task '%s' with %d workers\n", task, workerCount)
-		for i := 0; i < workerCount; i++ {
-			testEnvNumber := GetTestEnvNumber(i)
-			envStr := ""
-			if testEnvNumber != "" {
-				envStr = fmt.Sprintf("TEST_ENV_NUMBER=%s ", testEnvNumber)
-			}
-			fmt.Printf("[dry-run] Worker %d: %sRAILS_ENV=test bundle exec rake %s\n", i, envStr, task)
-		}
-		return nil
-	}
-
-	fmt.Printf("Running database task '%s' with %d workers...\n", task, workerCount)
-
-	// Set up parallel execution
-	ctx := context.Background()
-	results := make(chan error, workerCount)
-	var wg sync.WaitGroup
-
-	// Run the task in parallel for each test database
-	for i := 0; i < workerCount; i++ {
-		workerIndex := i
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			testEnvNumber := GetTestEnvNumber(workerIndex)
-			cmd := exec.CommandContext(ctx, "bundle", "exec", "rake", task)
-
-			// Set environment variables
-			cmd.Env = append(os.Environ(),
-				"TEST_ENV_NUMBER="+testEnvNumber,
-				"RAILS_ENV=test",
-				"PARALLEL_TEST_GROUPS="+fmt.Sprintf("%d", workerCount),
-			)
-
-			if err := cmd.Run(); err != nil {
-				results <- fmt.Errorf("worker %d failed: %v", workerIndex, err)
-			} else {
-				results <- nil
-			}
-		}()
-	}
-
-	// Wait for all workers to complete
-	wg.Wait()
-	close(results)
-
-	// Check for errors
-	var errors []string
-	for err := range results {
-		if err != nil {
-			errors = append(errors, err.Error())
-		}
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("database task failed:\n%s", strings.Join(errors, "\n"))
-	}
-
-	fmt.Printf("Database task '%s' completed successfully\n", task)
-	return nil
-}
-
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
 	TotalExamples int
@@ -401,6 +334,7 @@ type TestSummary struct {
 	TotalCPUTime  time.Duration
 	WallTime      time.Duration
 	HasFailures   bool
+	Success       bool         // True if no failures and no errors
 	ErroredFiles  []TestResult // Files that had errors running
 }
 
@@ -409,6 +343,7 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []TestResult{},
+		Success:      true, // Start assuming success
 	}
 
 	for _, result := range results {
@@ -419,10 +354,12 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 		if len(result.Failures) > 0 {
 			summary.AllFailures = append(summary.AllFailures, result.Failures...)
 			summary.HasFailures = true
+			summary.Success = false
 		}
 
 		if !result.Success {
 			summary.HasFailures = true
+			summary.Success = false
 			if result.Error != nil {
 				summary.ErroredFiles = append(summary.ErroredFiles, result)
 			}
@@ -435,6 +372,14 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary) {
 	fmt.Println() // New line after progress dots
+
+	// Simple case: all tests passed
+	if summary.Success {
+		fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
+			summary.WallTime.Seconds(), summary.TotalCPUTime.Seconds())
+		fmt.Printf("%d examples, 0 failures\n", summary.TotalExamples)
+		return
+	}
 
 	// Print failures if any
 	if len(summary.AllFailures) > 0 {
