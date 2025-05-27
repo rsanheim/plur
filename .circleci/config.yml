@@ -63,10 +63,10 @@ jobs:
           name: Run Ruby tests with rux
           command: |
             bin/rake test:rux_ruby
-      - run:
-          name: Run benchmarks
-          command: |
-            ./script/bench ./rux-ruby
+      # - run:
+      #     name: Run benchmarks
+      #     command: |
+      #       ./script/bench ./rux-ruby
 
   test-integration:
     docker:
