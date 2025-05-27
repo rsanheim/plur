@@ -9,7 +9,7 @@ A research repository for `rux`, a Go-based parallel test runner for Ruby/RSpec 
 ./script/setup
 
 # Or manually:
-cd rux && go build -o rux main.go
+cd rux && go build -o rux .
 cd ../test_app && ../rux/rux -n 3
 ```
 
@@ -76,6 +76,9 @@ Benchmarked on example-project project (24 spec files):
 ### Run All Tests
 ```bash
 rake                         # Go tests (lint + test)
+rake test:rux_ruby          # Run rux-ruby specs using rux (excluding failing examples)
+rake test:rux_ruby_turbo    # Run rux-ruby specs using turbo_tests (for comparison)
+rake build_and_test         # Build rux and run rux-ruby tests
 ruby test_rux_integration.rb # Ruby integration tests
 ```
 

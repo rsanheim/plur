@@ -60,9 +60,8 @@ jobs:
           app-dir: rux-ruby
       - run:
           name: Run Ruby tests with rux
-          working_directory: rux-ruby
           command: |
-            rux -n 2
+            rake test:rux_ruby
       - run:
           name: Run benchmarks
           command: |

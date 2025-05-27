@@ -5,9 +5,13 @@
 ```bash
 # Build from source
 cd rux/
-go build -o rux main.go
+go build -o rux .
 
-# Add to PATH (optional)
+# Or use go install for direct installation to $GOPATH/bin
+cd rux/
+go install .
+
+# Add to PATH (optional, if not using go install)
 cp rux /usr/local/bin/
 ```
 
@@ -20,13 +24,16 @@ cp rux /usr/local/bin/
 rux
 
 # Run with specific number of workers
-rux --workers 4
+rux -n 4
 rux --workers 8
 
 # See what would run without executing
 rux --dry-run
 
-# Show auto-detected worker count
+# Run specific spec files
+rux spec/models/user_spec.rb spec/models/post_spec.rb
+
+# Auto-install dependencies before running tests
 rux --auto
 ```
 
@@ -38,7 +45,7 @@ export PARALLEL_TEST_PROCESSORS=4
 rux
 
 # Override environment with CLI flag
-PARALLEL_TEST_PROCESSORS=8 rux --workers 4  # Uses 4 workers
+PARALLEL_TEST_PROCESSORS=8 rux -n 4  # Uses 4 workers
 ```
 
 ## Performance Tuning
@@ -54,10 +61,10 @@ PARALLEL_TEST_PROCESSORS=8 rux --workers 4  # Uses 4 workers
 
 ```bash
 # Test different worker counts
-rux --workers 1   # Baseline (sequential-ish)
-rux --workers 2   # Light parallelism
-rux --workers 4   # Often optimal
-rux --workers 8   # High parallelism
+rux -n 1          # Baseline (sequential-ish)
+rux -n 2          # Light parallelism
+rux -n 4          # Often optimal
+rux -n 8          # High parallelism
 rux               # Auto-detect (cores-2)
 ```
 
