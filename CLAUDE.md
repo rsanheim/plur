@@ -15,8 +15,9 @@ This is a research repository for `rux`, a Go-based parallel test runner for Rub
 ### Building Rux
 ```bash
 cd rux/
-go build -o rux main.go
-cp rux /usr/local/bin/  # Optional global install
+go install .
+# This installs rux to $GOPATH/bin (usually ~/go/bin)
+# Make sure $GOPATH/bin is in your PATH
 ```
 
 ### Running Tests
@@ -53,8 +54,8 @@ rux                          # Uses environment variable
 ### Project Structure
 - **rux/**: Main Go implementation (production binary)
 - **rux-ruby/**: Test Ruby project (9 spec files across nested dirs)
-- **parallel_tests/**: Reference Ruby implementation for study
-- **turbo_tests/**: Reference Ruby implementation for comparison
+- **references/parallel_tests/**: Reference Ruby implementation for study
+- **references/turbo_tests/**: Reference Ruby implementation for comparison
 - **script/**: Benchmarking and testing utilities
 - **docs/**: Project status and usage documentation
 
@@ -116,6 +117,6 @@ Worker count optimization is project-dependent - use benchmarking to find the sw
 The repository includes multiple test projects:
 - **rux-ruby/**: Custom project with diverse spec patterns
 - **Downloaded repos**: Use get-repo script for real-world testing
-- **Reference implementations**: parallel_tests and turbo_tests for comparison
+- **Reference implementations**: references/parallel_tests and references/turbo_tests for comparison
 
 All .git directories have been removed to focus on testing functionality rather than git operations.

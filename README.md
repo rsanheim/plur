@@ -9,7 +9,7 @@ A research repository for `rux`, a Go-based parallel test runner for Ruby/RSpec 
 ./script/setup
 
 # Or manually:
-cd rux && go build -o rux main.go
+cd rux && go build -o rux .
 cd ../test_app && ../rux/rux -n 3
 ```
 
@@ -28,8 +28,8 @@ cd ../test_app && ../rux/rux -n 3
 - **RSpec test suite** demonstrating parallel execution
 
 ### Reference Implementations
-- **parallel_tests/**: Study of mature Ruby parallel runner
-- **turbo_tests/**: Analysis of fast RSpec runner with excellent output
+- **references/parallel_tests/**: Study of mature Ruby parallel runner
+- **references/turbo_tests/**: Analysis of fast RSpec runner with excellent output
 - **rux-ruby/**: Simple Ruby test project for development
 
 ### Testing Infrastructure
@@ -76,6 +76,9 @@ Benchmarked on example-project project (24 spec files):
 ### Run All Tests
 ```bash
 rake                         # Go tests (lint + test)
+rake test:rux_ruby          # Run rux-ruby specs using rux (excluding failing examples)
+rake test:rux_ruby_turbo    # Run rux-ruby specs using turbo_tests (for comparison)
+rake build_and_test         # Build rux and run rux-ruby tests
 ruby test_rux_integration.rb # Ruby integration tests
 ```
 
@@ -131,8 +134,9 @@ rux-meta/
 ├── test_app/              # Rails app for testing
 ├── script/                # Utility scripts
 ├── docs/                  # Documentation
-├── parallel_tests/        # Reference implementation
-├── turbo_tests/          # Reference implementation
+├── references/
+│   ├── parallel_tests/    # Reference implementation
+│   └── turbo_tests/       # Reference implementation
 └── rux-ruby/             # Simple Ruby test project
 ```
 

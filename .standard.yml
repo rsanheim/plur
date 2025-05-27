@@ -1,0 +1,7 @@
+fix: false
+parallel: true
+ignore:
+  - "references/**/*"
+  - "rux-ruby/**/*"
+  - "rux/**/*"
+  - "test_app/**/*"
