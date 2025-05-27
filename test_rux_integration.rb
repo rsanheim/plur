@@ -39,7 +39,7 @@ class RuxIntegrationTest < Minitest::Test
   
   def test_database_creation_dry_run
     Dir.chdir(@test_app_dir) do
-      stdout, stderr, status = Open3.capture3(@rux_binary, 'db:create', '--dry-run', '--workers', '3')
+      stdout, stderr, status = Open3.capture3(@rux_binary, 'db:create', '--dry-run', '-n', '3')
       
       assert status.success?, "db:create --dry-run should succeed"
       assert_includes stdout, "[dry-run] Would run database task 'db:create' with 3 workers"
@@ -52,7 +52,7 @@ class RuxIntegrationTest < Minitest::Test
   def test_database_creation_and_migration
     Dir.chdir(@test_app_dir) do
       # Create databases
-      stdout, stderr, status = Open3.capture3(@rux_binary, 'db:create', '--workers', '3')
+      stdout, stderr, status = Open3.capture3(@rux_binary, 'db:create', '-n', '3')
       assert status.success?, "db:create should succeed: #{stderr}"
       
       # Check that databases were created
@@ -61,7 +61,7 @@ class RuxIntegrationTest < Minitest::Test
       assert File.exist?('storage/test3.sqlite3'), "test3.sqlite3 should exist"
       
       # Run migrations
-      stdout, stderr, status = Open3.capture3(@rux_binary, 'db:migrate', '--workers', '3')
+      stdout, stderr, status = Open3.capture3(@rux_binary, 'db:migrate', '-n', '3')
       assert status.success?, "db:migrate should succeed: #{stderr}"
     end
   end
@@ -69,27 +69,26 @@ class RuxIntegrationTest < Minitest::Test
   def test_parallel_test_execution
     Dir.chdir(@test_app_dir) do
       # Set up databases first
-      system(@rux_binary, 'db:create', '--workers', '3')
-      system(@rux_binary, 'db:migrate', '--workers', '3')
+      system(@rux_binary, 'db:create', '-n', '3')
+      system(@rux_binary, 'db:migrate', '-n', '3')
       
       # Run tests
-      stdout, stderr, status = Open3.capture3(@rux_binary, '--workers', '3')
+      stdout, stderr, status = Open3.capture3(@rux_binary, '-n', '3')
       
       assert status.success?, "parallel test execution should succeed: #{stderr}"
       assert_includes stdout, "spec files in parallel using"
-      assert_includes stdout, "=== Summary ==="
-      assert_includes stdout, "passed"
+      assert_includes stdout, "examples, 0 failures"
     end
   end
   
   def test_env_number_assignment
     Dir.chdir(@test_app_dir) do
       # Set up databases
-      system(@rux_binary, 'db:create', '--workers', '2')
-      system(@rux_binary, 'db:migrate', '--workers', '2')
+      system(@rux_binary, 'db:create', '-n', '2')
+      system(@rux_binary, 'db:migrate', '-n', '2')
       
       # Run tests and capture output (tests print TEST_ENV_NUMBER)
-      stdout, stderr, status = Open3.capture3(@rux_binary, '--workers', '2')
+      stdout, stderr, status = Open3.capture3(@rux_binary, '-n', '2')
       
       # The output is filtered through progress formatter, so we can't easily
       # check the environment variables in the output. But if the tests pass,
@@ -100,7 +99,7 @@ class RuxIntegrationTest < Minitest::Test
   
   def test_dry_run_test_execution
     Dir.chdir(@test_app_dir) do
-      stdout, stderr, status = Open3.capture3(@rux_binary, '--dry-run', '--workers', '2')
+      stdout, stderr, status = Open3.capture3(@rux_binary, '--dry-run', '-n', '2')
       
       assert status.success?, "dry-run should succeed"
       output = stdout + stderr

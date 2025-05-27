@@ -16,15 +16,15 @@ import (
 
 // TestResult represents the result of running a single spec file
 type TestResult struct {
-	SpecFile       string
-	Success        bool
-	Output         string
-	Error          error
-	Duration       time.Duration
-	JSONOutput     *RSpecJSONOutput
-	Failures       []FailureDetail
-	ExampleCount   int
-	FailureCount   int
+	SpecFile     string
+	Success      bool
+	Output       string
+	Error        error
+	Duration     time.Duration
+	JSONOutput   *RSpecJSONOutput
+	Failures     []FailureDetail
+	ExampleCount int
+	FailureCount int
 }
 
 // JobWithWorker represents a job assigned to a specific worker
@@ -106,7 +106,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	// Use project's tmp directory
 	tmpDir := filepath.Join(filepath.Dir(specFile), "..", "tmp")
 	os.MkdirAll(tmpDir, 0755) // Ensure tmp directory exists
-	
+
 	tmpFile, err := os.CreateTemp(tmpDir, "rux-results-*.json")
 	if err != nil {
 		return TestResult{
@@ -135,7 +135,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 
 	// Create command with context for timeout handling
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	
+
 	// Set up environment variables for parallel testing
 	testEnvNumber := GetTestEnvNumber(workerIndex)
 	cmd.Env = append(os.Environ(),
@@ -258,12 +258,11 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 		os.Remove(jsonFile)
 	}
 
-	// Mark as unsuccessful if there were test failures
-	testsPassed := exitCode == 0
+	success = exitCode == 0
 
 	return TestResult{
 		SpecFile:     specFile,
-		Success:      testsPassed,
+		Success:      success,
 		Output:       outputBuilder.String(),
 		Error:        err,
 		Duration:     time.Since(start),
@@ -274,8 +273,8 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	}
 }
 
-// RunTestsInParallel executes spec files in parallel using a worker pool
-func RunTestsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorkers int) ([]TestResult, time.Duration) {
+// RunSpecsInParallel executes spec files in parallel using a worker pool
+func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorkers int) ([]TestResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 	results := make(chan TestResult, len(specFiles))
@@ -285,7 +284,7 @@ func RunTestsInParallel(specFiles []string, dryRun bool, saveJSON bool, maxWorke
 
 	// Set PARALLEL_TEST_GROUPS environment variable
 	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", maxWorkers))
-	
+
 	// Create worker pool with limited workers
 	jobs := make(chan JobWithWorker, len(specFiles))
 	var wg sync.WaitGroup
@@ -343,7 +342,7 @@ func RunDatabaseTask(task string, workerCount int, dryRun bool) error {
 	}
 
 	fmt.Printf("Running database task '%s' with %d workers...\n", task, workerCount)
-	
+
 	// Set up parallel execution
 	ctx := context.Background()
 	results := make(chan error, workerCount)
@@ -355,17 +354,17 @@ func RunDatabaseTask(task string, workerCount int, dryRun bool) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			
+
 			testEnvNumber := GetTestEnvNumber(workerIndex)
 			cmd := exec.CommandContext(ctx, "bundle", "exec", "rake", task)
-			
+
 			// Set environment variables
 			cmd.Env = append(os.Environ(),
 				"TEST_ENV_NUMBER="+testEnvNumber,
 				"RAILS_ENV=test",
 				"PARALLEL_TEST_GROUPS="+fmt.Sprintf("%d", workerCount),
 			)
-			
+
 			if err := cmd.Run(); err != nil {
 				results <- fmt.Errorf("worker %d failed: %v", workerIndex, err)
 			} else {
@@ -408,12 +407,12 @@ func PrintResults(results []TestResult, wallTime time.Duration) bool {
 		totalCPUTime += result.Duration
 		totalExamples += result.ExampleCount
 		totalFailures += result.FailureCount
-		
+
 		if len(result.Failures) > 0 {
 			allFailures = append(allFailures, result.Failures...)
 			hasFailures = true
 		}
-		
+
 		if !result.Success {
 			hasFailures = true
 		}
@@ -421,8 +420,8 @@ func PrintResults(results []TestResult, wallTime time.Duration) bool {
 
 	// Print failures if any
 	if len(allFailures) > 0 {
-		fmt.Println("\nFailures:\n")
-		
+		fmt.Println("\nFailures:")
+
 		for i, failure := range allFailures {
 			fmt.Print(FormatFailure(i+1, failure))
 			fmt.Println() // Extra line between failures
@@ -430,9 +429,9 @@ func PrintResults(results []TestResult, wallTime time.Duration) bool {
 	}
 
 	// Print summary like RSpec does
-	fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n", 
+	fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
 		wallTime.Seconds(), totalCPUTime.Seconds())
-	
+
 	if totalFailures > 0 {
 		fmt.Printf("%d examples, %d failures\n", totalExamples, totalFailures)
 	} else {
@@ -441,7 +440,7 @@ func PrintResults(results []TestResult, wallTime time.Duration) bool {
 
 	// Print failed examples summary
 	if len(allFailures) > 0 {
-		fmt.Println("\nFailed examples:\n")
+		fmt.Println("\nFailed examples:")
 		fmt.Print(FormatFailedExamples(allFailures))
 	}
 
