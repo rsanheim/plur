@@ -6,13 +6,14 @@ orbs:
 
 jobs:
   build-and-test-go:
-    working_directory: ~/project/rux
-    resource_class: medium
     executor:
       name: go/default
       tag: "1.21"
+    working_directory: ~/project/rux
+    resource_class: medium
     steps:
-      - checkout
+      - checkout:
+          path: ~/project/
       - run:
           command: pwd
       - run:
@@ -37,9 +38,10 @@ jobs:
             - rux
 
   test-ruby:
-    resource_class: medium
     docker:
-      - image: cimg/ruby:3.4.0
+      - image: cimg/ruby:3.4.4
+    resource_class: medium
+    working_directory: ~/project/
     steps:
       - checkout
       - attach_workspace:
@@ -63,7 +65,9 @@ jobs:
 
   test-integration:
     docker:
-      - image: cimg/ruby:3.3.0
+      - image: cimg/ruby:3.4.4
+    resource_class: medium
+    working_directory: ~/project/
     steps:
       - checkout
       - attach_workspace:
