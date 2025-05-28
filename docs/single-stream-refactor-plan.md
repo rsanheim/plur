@@ -32,49 +32,42 @@
 
 ## Refactoring Steps
 
-### Step 1: Formatter Integration
-- [ ] Decide on formatter distribution method:
-  - **Option A (Recommended)**: Embed formatter as Go string constant, write to temp file at runtime
-  - **Option B**: Include formatter.rb file in binary, write to temp file at runtime
-  - **Option C**: Require users to install formatter gem (no temp file needed)
+### Step 1: Formatter Integration ✅
+- [x] Decide on formatter distribution method:
+  - **Option A (Implemented)**: Embed formatter as Go string constant, write to XDG cache
+  - Formatter cached at `~/.cache/rux/formatters/json_rows_formatter.rb`
 
-### Step 2: Update RunSpecFile Function
-- [ ] Remove JSON file creation logic
-- [ ] Update RSpec command to use custom formatter
-- [ ] Replace stdout scanner with JSON line parser
-- [ ] Generate progress output from JSON events
+### Step 2: Update RunSpecFile Function ✅
+- [x] Remove JSON file creation logic (in new implementation)
+- [x] Update RSpec command to use custom formatter
+- [x] Replace stdout scanner with JSON line parser
+- [x] Generate progress output from JSON events
 
-### Step 3: JSON Message Handling
-- [ ] Create Go structs for JSON message types:
-  ```go
-  type JSONMessage struct {
-      Type    string          `json:"type"`
-      Example *ExampleResult  `json:"example,omitempty"`
-      Group   *GroupInfo      `json:"group,omitempty"`
-      // ... other fields
-  }
-  ```
-- [ ] Implement streaming JSON parser
-- [ ] Map JSON events to progress indicators
+### Step 3: JSON Message Handling ✅
+- [x] Create Go structs for JSON message types (JSONMessage in json_message.go)
+- [x] Implement streaming JSON parser (ParseJSONMessage)
+- [x] Map JSON events to progress indicators
 
-### Step 4: Progress Output Generation
-- [ ] Remove current stdout progress handling
-- [ ] Generate dots/F's from JSON events:
-  - `example_passed` → green dot
-  - `example_failed` → red F
-  - `example_pending` → yellow *
-- [ ] Maintain colorization logic
+### Step 4: Progress Output Generation ✅
+- [x] Remove current stdout progress handling (in new implementation)
+- [x] Generate dots/F's from JSON events:
+  - `example_passed` → green dot ✅
+  - `example_failed` → red F ✅
+  - `example_pending` → yellow * ✅
+- [x] Maintain colorization logic
 
-### Step 5: Error Handling
-- [ ] Handle JSON parsing errors gracefully
-- [ ] Capture partial results if process crashes
-- [ ] Preserve stderr output for debugging
+### Step 5: Error Handling ✅
+- [x] Handle JSON parsing errors gracefully
+- [x] Capture partial results if process crashes
+- [x] Preserve stderr output for debugging
 
-### Step 6: Testing & Migration
-- [ ] Update integration tests
-- [ ] Add feature flag for gradual rollout?
-- [ ] Benchmark performance improvements
-- [ ] Document breaking changes (if any)
+### Step 6: Full Migration (IN PROGRESS)
+- [x] Add feature flag for gradual rollout (--streaming-json)
+- [x] Verify all integration tests pass
+- [ ] Remove dual formatter implementation entirely
+- [ ] Update dry-run output
+- [ ] Benchmark performance on larger codebases
+- [ ] Document as primary implementation
 
 ## Code Changes Overview
 
