@@ -28,7 +28,7 @@ RSpec.describe "single failure" do
     end
   end
 
-  fit "shows filtered backtrace same as rspec" do
+  it "shows filtered backtrace same as rspec" do
     chdir fixture_path("failing_specs") do
       rspec_out, rspec_err, rspec_status = run_rspec("spec/single_failure_spec.rb")
       expect(rspec_status.exitstatus).to eq(1)

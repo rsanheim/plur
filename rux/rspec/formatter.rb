@@ -126,8 +126,8 @@ module Rux
     def format_backtrace(backtrace)
       return [] unless backtrace
       
-      # Limit backtrace to first 10 lines for performance
-      backtrace.first(10)
+      # Use RSpec's built-in backtrace filtering
+      RSpec.configuration.backtrace_formatter.format_backtrace(backtrace)
     end
 
     def output_row(obj)
