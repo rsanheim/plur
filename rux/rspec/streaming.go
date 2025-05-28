@@ -1,4 +1,4 @@
-package main
+package rspec
 
 import (
 	"encoding/json"
@@ -6,43 +6,43 @@ import (
 	"strings"
 )
 
-// JSONMessage represents a single JSON message from the streaming formatter
-type JSONMessage struct {
-	Type            string         `json:"type"`
-	Count           int            `json:"count,omitempty"`
-	LoadTime        float64        `json:"load_time,omitempty"`
-	Description     string         `json:"description,omitempty"`
-	FullDescription string         `json:"full_description,omitempty"`
-	Location        string         `json:"location,omitempty"`
-	FilePath        string         `json:"file_path,omitempty"`
-	LineNumber      int            `json:"line_number,omitempty"`
-	PendingMessage  string         `json:"pending_message,omitempty"`
-	Exception       *JSONException `json:"exception,omitempty"`
-	Example         *JSONExample   `json:"example,omitempty"`
+// StreamingMessage represents a single JSON message from the streaming formatter
+type StreamingMessage struct {
+	Type            string              `json:"type"`
+	Count           int                 `json:"count,omitempty"`
+	LoadTime        float64             `json:"load_time,omitempty"`
+	Description     string              `json:"description,omitempty"`
+	FullDescription string              `json:"full_description,omitempty"`
+	Location        string              `json:"location,omitempty"`
+	FilePath        string              `json:"file_path,omitempty"`
+	LineNumber      int                 `json:"line_number,omitempty"`
+	PendingMessage  string              `json:"pending_message,omitempty"`
+	Exception       *StreamingException `json:"exception,omitempty"`
+	Example         *StreamingExample   `json:"example,omitempty"`
 }
 
-// JSONExample represents nested example data with runtime
-type JSONExample struct {
-	Description     string         `json:"description"`
-	FullDescription string         `json:"full_description"`
-	Location        string         `json:"location"`
-	FilePath        string         `json:"file_path"`
-	LineNumber      int            `json:"line_number"`
-	Status          string         `json:"status"`
-	RunTime         float64        `json:"run_time"`
-	PendingMessage  string         `json:"pending_message,omitempty"`
-	Exception       *JSONException `json:"exception,omitempty"`
+// StreamingExample represents nested example data with runtime
+type StreamingExample struct {
+	Description     string              `json:"description"`
+	FullDescription string              `json:"full_description"`
+	Location        string              `json:"location"`
+	FilePath        string              `json:"file_path"`
+	LineNumber      int                 `json:"line_number"`
+	Status          string              `json:"status"`
+	RunTime         float64             `json:"run_time"`
+	PendingMessage  string              `json:"pending_message,omitempty"`
+	Exception       *StreamingException `json:"exception,omitempty"`
 }
 
-// JSONException represents exception details in failed examples
-type JSONException struct {
+// StreamingException represents exception details in failed examples
+type StreamingException struct {
 	Class     string   `json:"class"`
 	Message   string   `json:"message"`
 	Backtrace []string `json:"backtrace"`
 }
 
-// ParseJSONMessage parses a JSON line from the streaming formatter
-func ParseJSONMessage(line string) (*JSONMessage, error) {
+// ParseStreamingMessage parses a JSON line from the streaming formatter
+func ParseStreamingMessage(line string) (*StreamingMessage, error) {
 	// Remove the separator prefix
 	separator := "RUX_JSON:"
 	if !strings.HasPrefix(line, separator) {
@@ -51,7 +51,7 @@ func ParseJSONMessage(line string) (*JSONMessage, error) {
 
 	jsonStr := strings.TrimPrefix(line, separator)
 
-	var msg JSONMessage
+	var msg StreamingMessage
 	if err := json.Unmarshal([]byte(jsonStr), &msg); err != nil {
 		return nil, err
 	}
@@ -65,11 +65,11 @@ type StreamingResults struct {
 	FailureCount int
 	PendingCount int
 	LoadTime     float64
-	Examples     []JSONMessage
+	Examples     []StreamingMessage
 }
 
 // AddExample adds an example result to the streaming results
-func (sr *StreamingResults) AddExample(msg JSONMessage) {
+func (sr *StreamingResults) AddExample(msg StreamingMessage) {
 	sr.Examples = append(sr.Examples, msg)
 
 	switch msg.Type {
@@ -84,12 +84,12 @@ func (sr *StreamingResults) AddExample(msg JSONMessage) {
 	}
 }
 
-// ConvertToRSpecJSON converts streaming results to the expected RSpecJSONOutput format
-func (sr *StreamingResults) ConvertToRSpecJSON() *RSpecJSONOutput {
-	output := &RSpecJSONOutput{
+// ConvertToJSONOutput converts streaming results to the expected JSONOutput format
+func (sr *StreamingResults) ConvertToJSONOutput() *JSONOutput {
+	output := &JSONOutput{
 		Version:  "3.12.0", // Use a default version
-		Examples: make([]RSpecExample, 0, len(sr.Examples)),
-		Summary: RSpecSummary{
+		Examples: make([]Example, 0, len(sr.Examples)),
+		Summary: Summary{
 			ExampleCount: sr.ExampleCount,
 			FailureCount: sr.FailureCount,
 			PendingCount: sr.PendingCount,
@@ -110,12 +110,12 @@ func (sr *StreamingResults) ConvertToRSpecJSON() *RSpecJSONOutput {
 		}
 
 		// Use example data from nested field if available, otherwise fall back to top-level fields
-		var exampleData *JSONExample
+		var exampleData *StreamingExample
 		if msg.Example != nil {
 			exampleData = msg.Example
 		} else {
 			// Fallback for backwards compatibility
-			exampleData = &JSONExample{
+			exampleData = &StreamingExample{
 				Description:     msg.Description,
 				FullDescription: msg.FullDescription,
 				FilePath:        msg.FilePath,
@@ -124,7 +124,7 @@ func (sr *StreamingResults) ConvertToRSpecJSON() *RSpecJSONOutput {
 			}
 		}
 
-		example := RSpecExample{
+		example := Example{
 			ID:              fmt.Sprintf("[%d:%d]", 1, exampleData.LineNumber), // Generate a simple ID
 			Description:     exampleData.Description,
 			FullDescription: exampleData.FullDescription,
@@ -139,7 +139,7 @@ func (sr *StreamingResults) ConvertToRSpecJSON() *RSpecJSONOutput {
 		case "example_failed":
 			example.Status = "failed"
 			if exampleData.Exception != nil {
-				example.Exception = &RSpecException{
+				example.Exception = &Exception{
 					Class:     exampleData.Exception.Class,
 					Message:   exampleData.Exception.Message,
 					Backtrace: exampleData.Exception.Backtrace,
@@ -147,7 +147,7 @@ func (sr *StreamingResults) ConvertToRSpecJSON() *RSpecJSONOutput {
 			}
 		case "example_pending":
 			example.Status = "pending"
-			// Note: RSpecExample doesn't have a PendingMessage field
+			// Note: Example doesn't have a PendingMessage field
 		}
 
 		output.Examples = append(output.Examples, example)

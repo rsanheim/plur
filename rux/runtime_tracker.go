@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/rsanheim/rux/rspec"
 )
 
 // customRuntimeDir stores the custom runtime directory if provided
@@ -35,7 +37,7 @@ func (rt *RuntimeTracker) AddRuntime(filePath string, runtime float64) {
 }
 
 // AddExample adds runtime from an RSpec example
-func (rt *RuntimeTracker) AddExample(example RSpecExample) {
+func (rt *RuntimeTracker) AddExample(example rspec.Example) {
 	if example.FilePath != "" && example.RunTime > 0 {
 		rt.AddRuntime(example.FilePath, example.RunTime)
 	}

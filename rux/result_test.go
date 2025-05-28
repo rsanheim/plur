@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/rsanheim/rux/rspec"
 )
 
 func TestBuildTestSummary(t *testing.T) {
@@ -15,7 +17,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
-			Failures:     []FailureDetail{},
+			Failures:     []rspec.FailureDetail{},
 		},
 		{
 			SpecFile:     "spec/controller_spec.rb",
@@ -23,7 +25,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 5,
 			FailureCount: 2,
 			Duration:     200 * time.Millisecond,
-			Failures: []FailureDetail{
+			Failures: []rspec.FailureDetail{
 				{
 					Description: "Controller GET /index returns 200",
 					Message:     "expected 200, got 404",

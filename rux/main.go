@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/rsanheim/rux/rspec"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
 )
@@ -191,9 +192,15 @@ func createApp() *cli.App {
 				fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(specFiles))
 
 				// Get formatter path for dry-run display
-				formatterPath, err := GetFormatterPath()
+				cacheDir, err := getRuxCacheDir()
+				var formatterPath string
 				if err != nil {
 					formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
+				} else {
+					formatterPath, err = rspec.GetFormatterPath(cacheDir)
+					if err != nil {
+						formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
+					}
 				}
 
 				// Show grouped execution in dry-run
@@ -206,26 +213,19 @@ func createApp() *cli.App {
 					runtimeData = make(map[string]float64)
 				}
 
-				if ShouldUseGrouping(len(specFiles), workerCount) {
-					var groups []FileGroup
-					if len(runtimeData) > 0 {
-						groups = GroupSpecFilesByRuntime(specFiles, workerCount, runtimeData)
-						fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
-					} else {
-						groups = GroupSpecFilesBySize(specFiles, workerCount)
-						fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
-					}
-					for i, group := range groups {
-						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
-						args = append(args, group.Files...)
-						fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
-					}
+				// Always use grouping
+				var groups []FileGroup
+				if len(runtimeData) > 0 {
+					groups = GroupSpecFilesByRuntime(specFiles, workerCount, runtimeData)
+					fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
 				} else {
-					fmt.Fprintf(os.Stderr, "[dry-run] Using single file per worker (no grouping needed)\n")
-					for _, file := range specFiles {
-						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color", file}
-						fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
-					}
+					groups = GroupSpecFilesBySize(specFiles, workerCount)
+					fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
+				}
+				for i, group := range groups {
+					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
+					args = append(args, group.Files...)
+					fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
 				}
 				return nil
 			}
@@ -253,8 +253,6 @@ func createApp() *cli.App {
 			fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
 				len(specFiles), actualWorkers, runtime.NumCPU())
 
-			saveJSON := ctx.Bool("json")
-
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
 
@@ -262,7 +260,7 @@ func createApp() *cli.App {
 			runtimeTracker := NewRuntimeTracker()
 
 			// Run specs in parallel with intelligent grouping
-			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount, runtimeTracker)
+			results, wallTime := RunSpecsInParallel(specFiles, dryRun, colorOutput, workerCount, runtimeTracker)
 
 			// Save runtime data
 			if err := runtimeTracker.SaveToFile(); err != nil {

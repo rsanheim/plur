@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"testing"
+
+	"github.com/rsanheim/rux/rspec"
 )
 
 func TestRuntimeTracker(t *testing.T) {
@@ -27,7 +29,7 @@ func TestRuntimeTracker(t *testing.T) {
 	t.Run("AddExample extracts runtime from RSpec example", func(t *testing.T) {
 		rt := NewRuntimeTracker()
 
-		example := RSpecExample{
+		example := rspec.Example{
 			FilePath: "spec/test_spec.rb",
 			RunTime:  0.123,
 		}

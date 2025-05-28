@@ -1,4 +1,4 @@
-package main
+package rspec
 
 import (
 	"strings"
@@ -118,7 +118,7 @@ rspec spec/calculator_spec.rb:20 # Calculator#subtract returns the difference
 }
 
 func TestExtractFailures(t *testing.T) {
-	examples := []RSpecExample{
+	examples := []Example{
 		{
 			ID:              "1",
 			Description:     "returns the sum",
@@ -134,7 +134,7 @@ func TestExtractFailures(t *testing.T) {
 			Status:          "failed",
 			FilePath:        "spec/calculator_spec.rb",
 			LineNumber:      20,
-			Exception: &RSpecException{
+			Exception: &Exception{
 				Class:     "RSpec::Expectations::ExpectationNotMetError",
 				Message:   "expected: 5\n     got: 3",
 				Backtrace: []string{"./spec/calculator_spec.rb:22:in `block'"},
