@@ -126,8 +126,14 @@ func createApp() *cli.App {
 
 			// Determine which spec files to run
 			if ctx.NArg() > 0 {
-				// Use provided arguments as spec files
-				specFiles = ctx.Args().Slice()
+				// Expand glob patterns from provided arguments
+				specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
+				if err != nil {
+					return fmt.Errorf("error expanding glob patterns: %v", err)
+				}
+				if len(specFiles) == 0 {
+					return fmt.Errorf("no spec files found matching provided patterns")
+				}
 			} else {
 				// Auto-discover spec files
 				specFiles, err = FindSpecFiles()
