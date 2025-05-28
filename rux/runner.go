@@ -106,49 +106,31 @@ var (
 
 // outputAggregator handles all output from workers to avoid lock contention
 func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
-	// Use buffered writer for better performance
-	stdout := bufio.NewWriterSize(os.Stdout, 8192)
-	defer stdout.Flush()
-
-	// Flush periodically to show progress
-	flushTicker := time.NewTicker(100 * time.Millisecond)
-	defer flushTicker.Stop()
-
-	for {
-		select {
-		case msg, ok := <-outputChan:
-			if !ok {
-				return
+	for msg := range outputChan {
+		switch msg.Type {
+		case "dot":
+			if colorOutput {
+				os.Stdout.Write(greenDot)
+			} else {
+				os.Stdout.Write(plainDot)
 			}
-			switch msg.Type {
-			case "dot":
-				if colorOutput {
-					stdout.Write(greenDot)
-				} else {
-					stdout.Write(plainDot)
-				}
-			case "failure":
-				if colorOutput {
-					stdout.Write(redF)
-				} else {
-					stdout.Write(plainF)
-				}
-			case "pending":
-				if colorOutput {
-					stdout.Write(yellowStar)
-				} else {
-					stdout.Write(plainStar)
-				}
-			case "stderr":
-				// stderr doesn't need buffering as it's less frequent
-				fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.SpecFile, msg.Content)
-			case "error":
-				// For JSON parse errors or other output
-				fmt.Fprintln(os.Stderr, msg.Content)
+		case "failure":
+			if colorOutput {
+				os.Stdout.Write(redF)
+			} else {
+				os.Stdout.Write(plainF)
 			}
-		case <-flushTicker.C:
-			// Periodic flush to show progress
-			stdout.Flush()
+		case "pending":
+			if colorOutput {
+				os.Stdout.Write(yellowStar)
+			} else {
+				os.Stdout.Write(plainStar)
+			}
+		case "stderr":
+			fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.SpecFile, msg.Content)
+		case "error":
+			// For JSON parse errors or other output
+			fmt.Fprintln(os.Stderr, msg.Content)
 		}
 	}
 }
