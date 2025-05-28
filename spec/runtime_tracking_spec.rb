@@ -17,7 +17,7 @@ RSpec.describe "Rux runtime tracking" do
   context "explicit runtime dir" do
     let(:temp_cache_dir) { Dir.mktmpdir }
 
-    it "uses the runtime-dir if provided" do
+    it "uses the runtime-dir option if provided" do
       Dir.chdir(test_project_path) do
         `#{rux_binary} -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
         expect($?.exitstatus).to eq(0)
