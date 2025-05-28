@@ -123,6 +123,10 @@ func createApp() *cli.App {
 				Name:  "trace",
 				Usage: "Enable performance tracing to analyze execution time",
 			},
+			&cli.StringFlag{
+				Name:  "runtime-dir",
+				Usage: "Directory to store runtime data (default: ~/.cache/rux/runtimes)",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
 			// Initialize tracing if enabled
@@ -131,6 +135,11 @@ func createApp() *cli.App {
 					return fmt.Errorf("failed to initialize tracer: %v", err)
 				}
 				defer CloseTracer()
+			}
+
+			// Set custom runtime directory if provided
+			if runtimeDir := ctx.String("runtime-dir"); runtimeDir != "" {
+				customRuntimeDir = runtimeDir
 			}
 
 			defer TraceFunc("main.total_execution")()
