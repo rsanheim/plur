@@ -34,9 +34,9 @@
 
 ### Step 1: Formatter Integration
 - [ ] Decide on formatter distribution method:
-  - **Option A (Recommended)**: Embed formatter as Go string constant
-  - **Option B**: Write formatter to temp file at runtime
-  - **Option C**: Require users to install formatter gem
+  - **Option A (Recommended)**: Embed formatter as Go string constant, write to temp file at runtime
+  - **Option B**: Include formatter.rb file in binary, write to temp file at runtime
+  - **Option C**: Require users to install formatter gem (no temp file needed)
 
 ### Step 2: Update RunSpecFile Function
 - [ ] Remove JSON file creation logic
@@ -84,9 +84,12 @@
 // Before
 args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", jsonFile}
 
-// After
-formatterPath := writeFormatterToTemp() // or embed directly
+// After (Options A or B - write temp file)
+formatterPath := writeFormatterToTemp() // writes embedded string to temp file
 args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+
+// Or Option C (gem installation)
+args := []string{"bundle", "exec", "rspec", "-r", "rux/json_rows_formatter", "--format", "Rux::JsonRowsFormatter"}
 ```
 
 ### New JSON Parsing Logic
@@ -133,6 +136,7 @@ for scanner.Scan() {
 - [ ] All existing integration tests pass
 - [ ] Real-time progress output maintained
 - [ ] Error messages appear immediately
+- [ ] Ability to add try a different, more performant formatter option fairly easily
 
 ## Next Actions
 

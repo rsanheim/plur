@@ -121,3 +121,26 @@ The repository includes multiple test projects:
 - **Reference implementations**: references/parallel_tests and references/turbo_tests for comparison
 
 All .git directories have been removed to focus on testing functionality rather than git operations.
+
+### Ruby Integration Tests
+
+The `spec/` directory contains Ruby RSpec tests that exercise rux from the outside:
+- **general_integration_spec.rb**: Core functionality tests (running specs, exit codes, worker counts)
+- **parallel_execution_spec.rb**: Tests parallel execution behavior
+- **error_handling_spec.rb**: Tests error scenarios and output
+- **colorized_output_spec.rb**: Tests ANSI color output
+- **performance_spec.rb**: Performance regression tests
+- **database_tasks_spec.rb**: Database preparation tests
+
+Key integration test for development:
+```ruby
+# Simple test that runs a single spec file with all passing tests
+it "exits with zero status when all tests pass" do
+  Dir.chdir(test_project_path) do
+    system("#{rux_binary} spec/calculator_spec.rb 2>&1", out: File::NULL)
+    expect($?.exitstatus).to eq(0)
+  end
+end
+```
+
+Use these integration tests as guideposts when making architectural changes to rux.

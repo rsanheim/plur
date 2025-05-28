@@ -118,6 +118,11 @@ func createApp() *cli.App {
 				Aliases: []string{"workers"},
 				Usage:   "Number of parallel workers (default: cores-2, env: PARALLEL_TEST_PROCESSORS)",
 			},
+			&cli.BoolFlag{
+				Name:  "streaming-json",
+				Usage: "Use streaming JSON formatter (experimental)",
+				Hidden: true, // Hide from help for now
+			},
 		},
 		Action: func(ctx *cli.Context) error {
 			var specFiles []string
@@ -178,8 +183,9 @@ func createApp() *cli.App {
 
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
+			useStreamingJSON := ctx.Bool("streaming-json")
 
-			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
+			results, wallTime := RunSpecsInParallelWithFormatter(specFiles, dryRun, saveJSON, colorOutput, workerCount, useStreamingJSON)
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)

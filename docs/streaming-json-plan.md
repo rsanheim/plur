@@ -127,7 +127,7 @@ For rux, the options are:
 **Option A: Embedded Formatter (Recommended)**
 - Embed formatter Ruby code as a Go string constant
 - Write to a temp file before running tests
-- Use `-r /tmp/rux_formatter.rb --format RuxFormatter`
+- Use `-r ./tmp/rux_formatter.rb --format RuxFormatter`
 - Pros: Self-contained, no external dependencies
 - Cons: Need to manage temp file lifecycle
 

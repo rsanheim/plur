@@ -308,8 +308,194 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	}
 }
 
+// RunSpecFileWithStreamingJSON executes a single spec file using the streaming JSON formatter
+func RunSpecFileWithStreamingJSON(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, colorOutput bool, outputMutex *sync.Mutex) TestResult {
+	start := time.Now()
+
+	// Get the formatter path from cache
+	formatterPath, err := GetFormatterPath()
+	if err != nil {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  false,
+			Output:   "",
+			Error:    fmt.Errorf("failed to get formatter path: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	// Build args with streaming JSON formatter
+	args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+
+	// Always use --no-color for RSpec since we'll handle colors ourselves
+	args = append(args, "--no-color")
+	args = append(args, specFile)
+
+	if dryRun {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  true,
+			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
+			Error:    nil,
+			Duration: time.Since(start),
+		}
+	}
+
+	// Create command with context for timeout handling
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+
+	// Set up environment variables for parallel testing
+	testEnvNumber := GetTestEnvNumber(workerIndex)
+	cmd.Env = append(os.Environ(),
+		"TEST_ENV_NUMBER="+testEnvNumber,
+		"PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"),
+		"RUX_FORMATTER_SEPARATOR=RUX_JSON:",
+	)
+
+	// Set up stdout and stderr pipes
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  false,
+			Output:   "",
+			Error:    fmt.Errorf("failed to create stdout pipe: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  false,
+			Output:   "",
+			Error:    fmt.Errorf("failed to create stderr pipe: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return TestResult{
+			SpecFile: specFile,
+			Success:  false,
+			Output:   "",
+			Error:    fmt.Errorf("failed to start command: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	var outputBuilder strings.Builder
+	var wg sync.WaitGroup
+	var jsonOutput *RSpecJSONOutput
+	var failures []FailureDetail
+	var exampleCount, failureCount int
+
+	// Stream stdout and parse JSON messages in real-time
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			
+			if strings.HasPrefix(line, "RUX_JSON:") {
+				// Parse JSON message
+				jsonStr := strings.TrimPrefix(line, "RUX_JSON:")
+				
+				// For now, just print progress dots based on the JSON type
+				// TODO: Parse JSON and generate appropriate output
+				if strings.Contains(jsonStr, `"type":"example_passed"`) {
+					outputMutex.Lock()
+					if colorOutput {
+						fmt.Print("\033[32m.\033[0m") // Green dot
+					} else {
+						fmt.Print(".")
+					}
+					outputMutex.Unlock()
+				} else if strings.Contains(jsonStr, `"type":"example_failed"`) {
+					outputMutex.Lock()
+					if colorOutput {
+						fmt.Print("\033[31mF\033[0m") // Red F
+					} else {
+						fmt.Print("F")
+					}
+					outputMutex.Unlock()
+				} else if strings.Contains(jsonStr, `"type":"example_pending"`) {
+					outputMutex.Lock()
+					if colorOutput {
+						fmt.Print("\033[33m*\033[0m") // Yellow asterisk
+					} else {
+						fmt.Print("*")
+					}
+					outputMutex.Unlock()
+				}
+				// TODO: Accumulate JSON for final results
+			} else {
+				// Non-JSON output (warnings, errors, etc.)
+				outputBuilder.WriteString(line + "\n")
+			}
+		}
+	}()
+
+	// Stream stderr in real-time
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			outputBuilder.WriteString("STDERR: " + line + "\n")
+			outputMutex.Lock()
+			fmt.Fprintf(os.Stderr, "[%s] %s\n", specFile, line)
+			outputMutex.Unlock()
+		}
+	}()
+
+	// Wait for command to complete
+	err = cmd.Wait()
+
+	// Wait for output streaming to complete
+	wg.Wait()
+
+	// Determine success based on exit code
+	success := err == nil
+	exitCode := 0
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		exitCode = exitErr.ExitCode()
+		success = exitCode <= 1
+	}
+
+	// TODO: Build jsonOutput from accumulated JSON messages
+	// For now, we'll leave these empty
+	// jsonOutput = ...
+	// failures = ...
+	// exampleCount = ...
+	// failureCount = ...
+
+	success = exitCode == 0
+
+	return TestResult{
+		SpecFile:     specFile,
+		Success:      success,
+		Output:       outputBuilder.String(),
+		Error:        err,
+		Duration:     time.Since(start),
+		JSONOutput:   jsonOutput,
+		Failures:     failures,
+		ExampleCount: exampleCount,
+		FailureCount: failureCount,
+	}
+}
+
 // RunSpecsInParallel executes spec files in parallel using a worker pool
 func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int) ([]TestResult, time.Duration) {
+	return RunSpecsInParallelWithFormatter(specFiles, dryRun, saveJSON, colorOutput, maxWorkers, false)
+}
+
+// RunSpecsInParallelWithFormatter executes spec files in parallel with optional streaming formatter
+func RunSpecsInParallelWithFormatter(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int, useStreamingJSON bool) ([]TestResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 	results := make(chan TestResult, len(specFiles))
