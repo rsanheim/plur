@@ -3,19 +3,21 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"github.com/rsanheim/rux/rspec"
 )
 
 func TestFormatFailure(t *testing.T) {
 	tests := []struct {
 		name     string
 		index    int
-		failure  FailureDetail
+		failure  rspec.FailureDetail
 		expected []string // Parts that should be in the output
 	}{
 		{
 			name:  "formats RSpec expectation failure",
 			index: 1,
-			failure: FailureDetail{
+			failure: rspec.FailureDetail{
 				Description: "Calculator#add returns the sum of two numbers",
 				FilePath:    "spec/calculator_spec.rb",
 				LineNumber:  10,
@@ -35,7 +37,7 @@ func TestFormatFailure(t *testing.T) {
 		{
 			name:  "formats standard error",
 			index: 2,
-			failure: FailureDetail{
+			failure: rspec.FailureDetail{
 				Description: "User validation requires email",
 				FilePath:    "spec/models/user_spec.rb",
 				LineNumber:  25,
@@ -55,7 +57,7 @@ func TestFormatFailure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := FormatFailure(tt.index, tt.failure)
+			result := rspec.FormatFailure(tt.index, tt.failure)
 
 			for _, expected := range tt.expected {
 				if !strings.Contains(result, expected) {
@@ -94,7 +96,7 @@ func TestFormatFailure(t *testing.T) {
 }
 
 func TestFormatFailedExamples(t *testing.T) {
-	failures := []FailureDetail{
+	failures := []rspec.FailureDetail{
 		{
 			Description: "Calculator#add returns the sum",
 			FilePath:    "spec/calculator_spec.rb",
@@ -111,14 +113,14 @@ func TestFormatFailedExamples(t *testing.T) {
 rspec spec/calculator_spec.rb:20 # Calculator#subtract returns the difference
 `
 
-	result := FormatFailedExamples(failures)
+	result := rspec.FormatFailedExamples(failures)
 	if result != expected {
 		t.Errorf("FormatFailedExamples() = %q, want %q", result, expected)
 	}
 }
 
 func TestExtractFailures(t *testing.T) {
-	examples := []RSpecExample{
+	examples := []rspec.Example{
 		{
 			ID:              "1",
 			Description:     "returns the sum",
@@ -134,7 +136,7 @@ func TestExtractFailures(t *testing.T) {
 			Status:          "failed",
 			FilePath:        "spec/calculator_spec.rb",
 			LineNumber:      20,
-			Exception: &RSpecException{
+			Exception: &rspec.Exception{
 				Class:     "RSpec::Expectations::ExpectationNotMetError",
 				Message:   "expected: 5\n     got: 3",
 				Backtrace: []string{"./spec/calculator_spec.rb:22:in `block'"},
@@ -150,7 +152,7 @@ func TestExtractFailures(t *testing.T) {
 		},
 	}
 
-	failures := ExtractFailures(examples)
+	failures := rspec.ExtractFailures(examples)
 
 	if len(failures) != 1 {
 		t.Fatalf("ExtractFailures() returned %d failures, want 1", len(failures))

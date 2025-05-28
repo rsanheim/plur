@@ -54,8 +54,8 @@ namespace :test do
       end
 
       # Ensure we're in the right directory and can find embedded files
-      unless File.exist?("lib/rux/json_rows_formatter.rb")
-        raise "Cannot find lib/rux/json_rows_formatter.rb - are we in the right directory?"
+      unless File.exist?("rspec/formatter.rb")
+        raise "Cannot find rspec/formatter.rb - are we in the right directory?"
       end
 
       # Use standard output format (dots) unless verbose is requested
