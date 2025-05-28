@@ -17,24 +17,28 @@ After implementing and testing both approaches side-by-side, we're fully committ
 - [x] Verify feature parity with integration tests
 - [x] Confirm error reporting works correctly
 
-### Phase 2: Full Cutover (Current)
-- [ ] Remove old `RunSpecFile` function
-- [ ] Rename `RunSpecFileWithStreamingJSON` → `RunSpecFile`
-- [ ] Remove `--streaming-json` flag
-- [ ] Remove `RunSpecsInParallelWithFormatter` wrapper
-- [ ] Update dry-run to show correct formatter commands
-- [ ] Clean up unused JSON file handling code
+### Phase 2: Full Cutover ✅
+- [x] Remove old `RunSpecFile` function
+- [x] Rename `RunSpecFileWithStreamingJSON` → `RunSpecFile`
+- [x] Remove `--streaming-json` flag
+- [x] Remove `RunSpecsInParallelWithFormatter` wrapper
+- [x] Update dry-run to show correct formatter commands
+- [x] Clean up unused JSON file handling code
 
-### Phase 3: Optimization
+### Phase 3: Optimization (Next)
 - [ ] Profile formatter caching overhead
 - [ ] Consider embedding formatter differently (go:embed vs string)
 - [ ] Optimize JSON parsing (pre-allocate buffers?)
 - [ ] Remove mutex locking where possible
+- [ ] Implement --json flag to save results to files
+- [ ] Fix integration tests expecting old error formats
 
 ### Phase 4: Documentation
 - [ ] Update README with new architecture
 - [ ] Document formatter specification
 - [ ] Add performance tuning guide
+- [ ] Document breaking changes and migration path
+- [ ] Add troubleshooting guide for common issues
 
 ## Code Changes
 
@@ -109,6 +113,34 @@ Next benchmark targets:
 3. **Unknown Edge Cases**: Some RSpec plugins might not work
    - Mitigation: Test with common gems (simplecov, etc.)
 
-## Decision: Proceed with Full Migration
+4. **Error Scenarios**: Need to handle various failure modes
+   - Test with syntax errors in spec files
+   - Test with missing gems/dependencies
+   - Test with RSpec configuration errors
 
-The streaming JSON formatter is working correctly and the dual formatter approach has no advantages. Let's remove the complexity and commit to the better architecture.
+## Success Criteria
+
+- [ ] CPU usage matches turbo_tests (within 10%)
+- [ ] No visible pausing during parallel execution
+- [x] All existing integration tests pass (except 2 expecting old error format)
+- [x] Real-time progress output maintained
+- [x] Error messages appear immediately
+- [x] Ability to add different formatter options easily
+
+## Implementation Details
+
+### Formatter Distribution
+- Implemented as Go string constant embedded in binary
+- Cached at `~/.cache/rux/formatters/json_rows_formatter.rb`
+- Written once per user, reused across projects
+
+### JSON Streaming Format
+Each line is prefixed with `RUX_JSON:` followed by a JSON object:
+- `{"type":"start","count":58,"load_time":0.123}`
+- `{"type":"example_passed","description":"...","location":"..."}`
+- `{"type":"example_failed","description":"...","exception":{...}}`
+- `{"type":"close"}`
+
+## Decision: Proceed with Full Migration ✅
+
+The streaming JSON formatter is working correctly and the dual formatter approach has no advantages. We've successfully removed the complexity and committed to the better architecture. The migration is complete as of commit f244ea087.
