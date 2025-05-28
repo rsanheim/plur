@@ -2,87 +2,18 @@
 
 set -e
 
-show_help() {
-    cat <<'EOF'
-Usage: bench [options] [project-path]
-
-Benchmarks rux against turbo_tests using hyperfine for performance comparison.
-
-Options:
-  -h, --help     Show this help message
-  -n <num>       Number of worker processes (default: 8)
-  --default      Run benchmarks on default projects (rux-ruby and references/example-project)
-  --preflight    Run preflight checks (verify tools, install dependencies)
-
-Examples:
-  bench                        # Same as --default with 8 workers
-  bench -n 4                   # Benchmark default projects with 4 workers
-  bench ./rux-ruby             # Benchmark specific project with 8 workers
-  bench -n 16 ./project        # Benchmark project with 16 workers
-  bench --preflight            # Run preflight checks for default projects
-  bench --preflight ./project  # Run preflight checks for specific project
-
-What it does:
-  - Runs hyperfine benchmarks comparing turbo_tests vs rux
-  - Exports results to ./results directory with timestamps
-  - Shows performance comparison
-
-Requirements:
-  - hyperfine (brew install hyperfine)
-  - rux binary in PATH
-  - Ruby project with spec directory
-  - Run with --preflight to verify requirements
-
-Output:
-  Creates timestamped results in ./results/
-  - bench-<project>-<timestamp>.md (markdown table)
-  - bench-<project>-<timestamp>.json (detailed data)
-EOF
-}
-
 # Default values
 ORIGINAL_DIR=$(pwd)
 RESULTS_DIR="$ORIGINAL_DIR/results"
 WORKERS=8
-DEFAULT_MODE=false
-PROJECT_PATH=""
-
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -h|--help)
-            show_help
-            exit 0
-            ;;
-        -n)
-            WORKERS="$2"
-            shift 2
-            ;;
-        --preflight)
-            shift
-            exec ./script/bench-preflight "$@"
-            ;;
-        --default)
-            DEFAULT_MODE=true
-            shift
-            ;;
-        *)
-            if [ -z "$PROJECT_PATH" ]; then
-                PROJECT_PATH="$1"
-            fi
-            shift
-            ;;
-    esac
-done
-
-if [ -z "$PROJECT_PATH" ] && [ "$DEFAULT_MODE" = false ]; then
-    DEFAULT_MODE=true
-fi
 
 die() {
     echo "Error: $1"
     exit 1
 }
+
+# Get current git SHA
+GIT_SHA=$(git rev-parse --short HEAD || echo "nogit")
 
 # Function to benchmark a single project
 benchmark_project() {
@@ -99,9 +30,8 @@ benchmark_project() {
     # Generate timestamp
     TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
     
-    # Output files in results directory
-    MD_FILE="$RESULTS_DIR/bench-${project_name}-${TIMESTAMP}.md"
-    JSON_FILE="$RESULTS_DIR/bench-${project_name}-${TIMESTAMP}.json"
+    # Output file in results directory
+    JSON_FILE="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-${project_name}.json"
     
     # Run benchmarks
     echo "Running benchmarks with $WORKERS workers..."
@@ -110,7 +40,6 @@ benchmark_project() {
     hyperfine \
         --warmup 2 \
         --runs 3 \
-        --export-markdown "$MD_FILE" \
         --export-json "$JSON_FILE" \
         "turbo_tests -n $WORKERS" \
         "rux -n $WORKERS"
@@ -118,32 +47,19 @@ benchmark_project() {
     # Show results location
     echo ""
     echo "Results saved to:"
-    echo "  - $MD_FILE"
     echo "  - $JSON_FILE"
-    
-    # Show quick summary
-    if [ -f "$MD_FILE" ]; then
-        echo ""
-        echo "Quick Summary:"
-        echo "=============="
-        cat "$MD_FILE"
-    fi
     
     popd > /dev/null
 }
 
+# Create results directory
+mkdir -p "$RESULTS_DIR"
 
-if [ "$DEFAULT_MODE" = true ]; then
-    echo "Running default benchmarks (rux-ruby and references/example-project)"
-    
-    benchmark_project "./rux-ruby"
-    benchmark_project "./references/example-project"
-    
-    echo ""
-    echo "All benchmarks complete!"
-    echo "View latest results:"
-    echo "  cat results/bench-rux-ruby-latest.md"
-    echo "  cat results/bench-example-project-latest.md"
-else
-    benchmark_project "$PROJECT_PATH"
-fi
+# Always run default benchmarks
+echo "Running benchmarks for rux-ruby and example-project"
+
+benchmark_project "./rux-ruby"
+benchmark_project "./references/example-project"
+
+echo ""
+echo "All benchmarks complete!"

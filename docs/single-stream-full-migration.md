@@ -25,24 +25,12 @@ After implementing and testing both approaches side-by-side, we're fully committ
 - [x] Update dry-run to show correct formatter commands
 - [x] Clean up unused JSON file handling code
 
-### Phase 2.9: simplify benchmark scripts
-HI CLAUDE!!! I've simplified our benchmark scripts a bit to be simpler.  Please simplify further based on the examples below. Do not add any new features:
-
-Running `script/bench` should export to the following files (note: just JSON)
-
-```
-results/20250528-${time}-${short_sha}-rux-ruby.json
-results/20250528-${time}-${short_sha}-example-project.json
-```
-
-`script/bench-checkpoint` can run `script/bench`, combines the JSON files, and uses that to generate a markdown summary with the differences. Include a link to the github commit in the markdown.  do not create symlinks. do not add features or over complicate.
-
-`script/bench-checkpoint` should output to the following files:
-
-```
-results/20250528-${time}-${short_sha}-summary.json
-results/20250528-${time}-${short_sha}-summary.md
-```
+### Phase 2.9: simplify benchmark scripts ✅
+- [x] Simplified `script/bench` to output only JSON files with naming pattern `YYYYMMDD-HHMMSS-SHA-project.json`
+- [x] Updated `script/bench-checkpoint` to run bench, combine JSON results, and generate markdown summary
+- [x] Removed all symlinks, help flags, and extra features from both scripts
+- [x] Added GitHub commit link in markdown summary
+- [x] Outputs follow requested naming pattern for summary files
 
 ### Phase 3: Optimization (Next)
 - [ ] Profile formatter caching overhead
