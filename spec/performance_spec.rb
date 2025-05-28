@@ -20,7 +20,7 @@ RSpec.describe "Rux performance" do
 
         # Run with multiple workers (default)
         parallel_time = Benchmark.realtime do
-          system("#{rux_binary}", out: File::NULL, err: File::NULL)
+          system(rux_binary, out: File::NULL, err: File::NULL)
         end
 
         # Parallel should be faster (allowing some margin for overhead)
