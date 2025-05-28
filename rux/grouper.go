@@ -104,7 +104,7 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 	// Get runtime for each file
 	filesWithRuntimes := make([]fileWithRuntime, 0, len(specFiles))
 	totalRuntime := 0.0
-	
+
 	for _, file := range specFiles {
 		runtime, ok := runtimeData[file]
 		if !ok {

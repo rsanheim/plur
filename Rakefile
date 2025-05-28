@@ -162,13 +162,13 @@ end
 # Build Tasks
 # ========================================
 desc "Build the rux Go binary"
-task :build do
-  Dir.chdir("rux") do
-    puts "Building rux..."
-    sh "go build -o rux ."
-    puts "Binary created at rux/rux"
-  end
-end
+task build: :build_release
+#   Dir.chdir("rux") do
+#     puts "Building rux..."
+#     sh "go build -o rux ."
+#     puts "Binary created at rux/rux"
+#   end
+# end
 
 desc "Build the rux Go binary with version information"
 task :build_release do
@@ -176,10 +176,10 @@ task :build_release do
     # Read version from VERSION file or use environment variable
     base_version = if ENV["VERSION"]
       ENV["VERSION"]
-    elsif File.exist?("../VERSION")
-      File.read("../VERSION").strip
+    elsif File.exist?("VERSION")
+      File.read("VERSION").strip
     else
-      "0.6.0"
+      raise "No version found - set via VERSION env var or VERSION file"
     end
 
     # Ensure version starts with 'v'

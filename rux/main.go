@@ -194,14 +194,14 @@ func createApp() *cli.App {
 
 				// Show grouped execution in dry-run
 				workerCount := GetWorkerCount(ctx.Int("n"))
-				
+
 				// Load runtime data if available
 				runtimeData, err := LoadRuntimeData()
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
 					runtimeData = make(map[string]float64)
 				}
-				
+
 				if ShouldUseGrouping(len(specFiles), workerCount) {
 					var groups []FileGroup
 					if len(runtimeData) > 0 {

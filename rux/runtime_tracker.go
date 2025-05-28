@@ -80,7 +80,7 @@ func LoadRuntimeData() (map[string]float64, error) {
 	}
 
 	runtimeFile := filepath.Join(cacheDir, "runtime.json")
-	
+
 	// Check if file exists
 	if _, err := os.Stat(runtimeFile); os.IsNotExist(err) {
 		// No runtime data yet, return empty map

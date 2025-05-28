@@ -338,7 +338,7 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 			fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
 			runtimeData = make(map[string]float64)
 		}
-		
+
 		// Group files using runtime data if available, otherwise by size
 		var groups []FileGroup
 		if len(runtimeData) > 0 {
