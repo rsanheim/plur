@@ -46,11 +46,13 @@ After implementing and testing both approaches side-by-side, we're fully committ
   - After: sync.Once ensures single computation
   - Impact: Reduces syscalls in hot path
 
-#### Analyze 'mise' impact ✅
-- [x] Analyzed Ruby version manager impact - mise adds ~31ms startup overhead per process
-- [x] Real issue identified: rux was spawning one process per file vs turbo_tests grouping files
-- [x] Implemented intelligent file grouping algorithm (similar to ParallelTests)
-- [x] Result: **2.3x faster than turbo_tests** for small suites (195ms vs 454ms)
+#### ~~Analyze 'mise' impact~~ → File Grouping Victory! ✅
+- [x] Started by analyzing mise (Ruby version manager) impact - only ~31ms overhead
+- [x] Realized: "Duh, mise is written in Rust - it's not the bottleneck!"
+- [x] **Real issue found**: rux was spawning one process per file (naive approach)
+- [x] **Solution**: Implemented intelligent file grouping like turbo_tests/parallel_tests
+- [x] **Result**: 🚀 **2.3x faster than turbo_tests** for small suites (195ms vs 454ms)
+- [x] Lesson learned: Sometimes the obvious optimization is the right one!
 
 #### Remaining Optimizations:
 - [ ] Optimize JSON parsing (pre-allocate buffers, faster detection)

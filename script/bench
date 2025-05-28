@@ -45,6 +45,7 @@ benchmark_project() {
     local project_path=$1
     local project_name=$(basename "$project_path")
     
+    echo ""
     echo "=== Benchmarking $project_name ==="
     
     pushd "$project_path" > /dev/null || die "Could not change to project directory: $project_path"

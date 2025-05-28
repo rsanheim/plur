@@ -5,11 +5,30 @@ set -e
 # Default values
 ORIGINAL_DIR=$(pwd)
 RESULTS_DIR="$ORIGINAL_DIR/results"
+WORKERS=8
 
 die() {
     echo "Error: $1"
     exit 1
 }
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --trace)
+            ENABLE_TRACE=true
+            shift
+            ;;
+        -n|--workers)
+            WORKERS="$2"
+            shift 2
+            ;;
+        *)
+            # If not a flag, it's a project path
+            break
+            ;;
+    esac
+done
 
 # Get git info
 GIT_SHA=$(git rev-parse --short HEAD || die "Not in a git repository")
@@ -20,6 +39,7 @@ echo "Benchmark Checkpoint"
 echo "==================="
 echo "Commit: $GIT_SHA"
 echo "Time: $TIMESTAMP"
+echo "Workers: $WORKERS"
 echo ""
 
 # Create results directory
@@ -27,7 +47,7 @@ mkdir -p "$RESULTS_DIR"
 
 # Run benchmarks with consistent timestamp
 export BENCH_TIMESTAMP="$TIMESTAMP"
-./script/bench
+./script/bench -n $WORKERS
 
 # Find the JSON files that were just created
 RUX_RUBY_JSON=$(ls -t "$RESULTS_DIR"/*-${GIT_SHA}-rux-ruby.json 2>/dev/null | head -1)
