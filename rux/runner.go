@@ -94,33 +94,61 @@ const (
 	colorReset  = "\033[0m"
 )
 
+// Pre-compiled output strings to avoid repeated concatenation
+var (
+	greenDot    = []byte(colorGreen + "." + colorReset)
+	redF        = []byte(colorRed + "F" + colorReset)
+	yellowStar  = []byte(colorYellow + "*" + colorReset)
+	plainDot    = []byte(".")
+	plainF      = []byte("F")
+	plainStar   = []byte("*")
+)
+
 // outputAggregator handles all output from workers to avoid lock contention
 func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
-	for msg := range outputChan {
-		switch msg.Type {
-		case "dot":
-			if colorOutput {
-				fmt.Print(colorGreen + "." + colorReset)
-			} else {
-				fmt.Print(".")
+	// Use buffered writer for better performance
+	stdout := bufio.NewWriterSize(os.Stdout, 8192)
+	defer stdout.Flush()
+
+	// Flush periodically to show progress
+	flushTicker := time.NewTicker(100 * time.Millisecond)
+	defer flushTicker.Stop()
+
+	for {
+		select {
+		case msg, ok := <-outputChan:
+			if !ok {
+				return
 			}
-		case "failure":
-			if colorOutput {
-				fmt.Print(colorRed + "F" + colorReset)
-			} else {
-				fmt.Print("F")
+			switch msg.Type {
+			case "dot":
+				if colorOutput {
+					stdout.Write(greenDot)
+				} else {
+					stdout.Write(plainDot)
+				}
+			case "failure":
+				if colorOutput {
+					stdout.Write(redF)
+				} else {
+					stdout.Write(plainF)
+				}
+			case "pending":
+				if colorOutput {
+					stdout.Write(yellowStar)
+				} else {
+					stdout.Write(plainStar)
+				}
+			case "stderr":
+				// stderr doesn't need buffering as it's less frequent
+				fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.SpecFile, msg.Content)
+			case "error":
+				// For JSON parse errors or other output
+				fmt.Fprintln(os.Stderr, msg.Content)
 			}
-		case "pending":
-			if colorOutput {
-				fmt.Print(colorYellow + "*" + colorReset)
-			} else {
-				fmt.Print("*")
-			}
-		case "stderr":
-			fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.SpecFile, msg.Content)
-		case "error":
-			// For JSON parse errors or other output
-			fmt.Fprintln(os.Stderr, msg.Content)
+		case <-flushTicker.C:
+			// Periodic flush to show progress
+			stdout.Flush()
 		}
 	}
 }
