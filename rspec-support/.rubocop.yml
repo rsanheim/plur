@@ -1,0 +1,54 @@
+inherit_from:
+  - ../common_rubocop_config.yml
+  - .rubocop_todo.yml
+
+AllCops:
+  NewCops:
+    enable
+  SuggestExtensions: false
+  TargetRubyVersion: 2.4
+
+Layout/EmptyLineAfterMagicComment:
+  Enabled: true
+
+Lint/AssignmentInCondition:
+  Exclude:
+    # The pattern makes sense here
+    - 'lib/rspec/support/mutex.rb'
+
+# Revisit in RSpec 4
+Lint/TripleQuotes:
+  Enabled: false
+
+# Over time we'd like to get this down, but this is what we're at now.
+Metrics/AbcSize:
+  Max: 28
+
+# Over time we'd like to get this down, but this is what we're at now.
+Metrics/BlockLength:
+  Max: 86
+  Exclude:
+    - spec/**/*
+
+Metrics/ModuleLength:
+  Exclude:
+    - spec/rspec/support/method_signature_verifier_spec.rb
+
+# Over time we'd like to get this down, but this is what we're at now.
+Metrics/PerceivedComplexity:
+  Max: 10
+
+Security/MarshalLoad:
+  Exclude:
+    - 'lib/rspec/support/spec/in_sub_process.rb'
+
+Style/EvalWithLocation:
+  Exclude:
+    # eval is only used here to check syntax
+    - 'lib/rspec/support/ruby_features.rb'
+    - 'benchmarks/skip_frames_for_caller_filter.rb'
+    - 'spec/rspec/support/method_signature_verifier_spec.rb'
+
+# Revisit in RSpec 4
+Style/RedundantStringEscape:
+  Enabled: false
