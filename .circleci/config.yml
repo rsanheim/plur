@@ -13,23 +13,21 @@ jobs:
     resource_class: medium
     steps:
       - checkout
-      - go/with-cache:
-          steps:
-            - run:
-                name: Download Go modules
-                command: |
-                  cd rux
-                  go mod download
-            - run:
-                name: Run Go tests
-                command: |
-                  cd rux
-                  go test -v ./...
-            - run:
-                name: Build rux
-                command: |
-                  cd rux
-                  go build -o rux .
+      - run:
+          name: Download Go modules
+          command: |
+            cd rux
+            go mod download
+      - run:
+          name: Run Go tests
+          command: |
+            cd rux
+            go test -v ./...
+      - run:
+          name: Build rux
+          command: |
+            cd rux
+            go build -o rux .
       - run:
           name: Verify rux binary
           command: |
