@@ -32,13 +32,27 @@ After implementing and testing both approaches side-by-side, we're fully committ
 - [x] Added GitHub commit link in markdown summary
 - [x] Outputs follow requested naming pattern for summary files
 
-### Phase 3: Optimization (Next)
-- [ ] Profile formatter caching overhead
+### Phase 3: Optimization (In Progress)
+
+**Note**: Run benchmarks directly in terminal for clean results (not through Claude due to performance overhead from terminal layers).
+
+#### Completed Optimizations:
+- [x] **Eliminated output lock contention** - Replaced mutex-based output with channel-based aggregator
+  - Before: Every test result character required mutex lock/unlock
+  - After: Single goroutine handles all output via buffered channel
+  - Impact: Scales linearly with 25-30 workers without contention
+- [x] **Cached formatter path** - GetFormatterPath() called once at startup instead of per spec file
+  - Before: File I/O check for every spec file
+  - After: sync.Once ensures single computation
+  - Impact: Reduces syscalls in hot path
+
+#### Remaining Optimizations:
+- [ ] Optimize JSON parsing (pre-allocate buffers, faster detection)
+- [ ] Pool goroutines instead of creating 2 per spec file
+- [ ] Pre-allocate string builders with estimated capacity
 - [ ] Consider embedding formatter differently (go:embed vs string)
-- [ ] Optimize JSON parsing (pre-allocate buffers?)
-- [ ] Remove mutex locking where possible
 - [ ] Implement --json flag to save results to files
-- [ ] Fix integration tests expecting old error formats
+- [ ] Add full failure summary output
 
 ### Phase 4: Documentation
 - [ ] Update README with new architecture

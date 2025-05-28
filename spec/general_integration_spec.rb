@@ -33,8 +33,9 @@ RSpec.describe "Rux general integration" do
     end
 
     it "exits with non-zero status when tests fail" do
-      Dir.chdir(test_project_path) do
-        system("#{rux_binary} spec/failing_examples_spec.rb 2>&1", out: File::NULL)
+      failing_specs_path = File.join(__dir__, "..", "test_fixtures", "failing_specs")
+      Dir.chdir(failing_specs_path) do
+        system("#{rux_binary} spec/expectation_failures_spec.rb 2>&1", out: File::NULL)
         expect($?.exitstatus).to eq(1)
       end
     end

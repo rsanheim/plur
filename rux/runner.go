@@ -14,6 +14,13 @@ import (
 	"time"
 )
 
+// Global cached formatter path
+var (
+	cachedFormatterPath string
+	formatterPathOnce   sync.Once
+	formatterPathErr    error
+)
+
 // TestResult represents the result of running a single spec file
 type TestResult struct {
 	SpecFile     string
@@ -31,6 +38,14 @@ type TestResult struct {
 type JobWithWorker struct {
 	SpecFile    string
 	WorkerIndex int
+}
+
+// OutputMessage represents a message to be output
+type OutputMessage struct {
+	WorkerID int
+	Type     string // "dot", "failure", "pending", "error", "stderr"
+	Content  string // For error messages
+	SpecFile string // For stderr messages
 }
 
 // FindSpecFiles discovers all spec files in the spec directory
@@ -98,12 +113,51 @@ func GetTestEnvNumber(workerIndex int) string {
 	return fmt.Sprintf("%d", workerIndex+1)
 }
 
+// getCachedFormatterPath returns the formatter path, computing it only once
+func getCachedFormatterPath() (string, error) {
+	formatterPathOnce.Do(func() {
+		cachedFormatterPath, formatterPathErr = GetFormatterPath()
+	})
+	return cachedFormatterPath, formatterPathErr
+}
+
+// outputAggregator handles all output from workers to avoid lock contention
+func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
+	for msg := range outputChan {
+		switch msg.Type {
+		case "dot":
+			if colorOutput {
+				fmt.Print("\033[32m.\033[0m") // Green dot
+			} else {
+				fmt.Print(".")
+			}
+		case "failure":
+			if colorOutput {
+				fmt.Print("\033[31mF\033[0m") // Red F
+			} else {
+				fmt.Print("F")
+			}
+		case "pending":
+			if colorOutput {
+				fmt.Print("\033[33m*\033[0m") // Yellow asterisk
+			} else {
+				fmt.Print("*")
+			}
+		case "stderr":
+			fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.SpecFile, msg.Content)
+		case "error":
+			// For JSON parse errors or other output
+			fmt.Fprintln(os.Stderr, msg.Content)
+		}
+	}
+}
+
 // RunSpecFile executes a single spec file using the streaming JSON formatter
-func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, colorOutput bool, outputMutex *sync.Mutex) TestResult {
+func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, outputChan chan<- OutputMessage) TestResult {
 	start := time.Now()
 
-	// Get the formatter path from cache
-	formatterPath, err := GetFormatterPath()
+	// Get the cached formatter path (computed only once)
+	formatterPath, err := getCachedFormatterPath()
 	if err != nil {
 		return TestResult{
 			SpecFile: specFile,
@@ -196,31 +250,22 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 					streamingResults.LoadTime = msg.LoadTime
 				case "example_passed":
 					streamingResults.AddExample(*msg)
-					outputMutex.Lock()
-					if colorOutput {
-						fmt.Print("\033[32m.\033[0m") // Green dot
-					} else {
-						fmt.Print(".")
+					outputChan <- OutputMessage{
+						WorkerID: workerIndex,
+						Type:     "dot",
 					}
-					outputMutex.Unlock()
 				case "example_failed":
 					streamingResults.AddExample(*msg)
-					outputMutex.Lock()
-					if colorOutput {
-						fmt.Print("\033[31mF\033[0m") // Red F
-					} else {
-						fmt.Print("F")
+					outputChan <- OutputMessage{
+						WorkerID: workerIndex,
+						Type:     "failure",
 					}
-					outputMutex.Unlock()
 				case "example_pending":
 					streamingResults.AddExample(*msg)
-					outputMutex.Lock()
-					if colorOutput {
-						fmt.Print("\033[33m*\033[0m") // Yellow asterisk
-					} else {
-						fmt.Print("*")
+					outputChan <- OutputMessage{
+						WorkerID: workerIndex,
+						Type:     "pending",
 					}
-					outputMutex.Unlock()
 				case "close":
 					// End of test run
 				}
@@ -242,9 +287,12 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 		for scanner.Scan() {
 			line := scanner.Text()
 			outputBuilder.WriteString("STDERR: " + line + "\n")
-			outputMutex.Lock()
-			fmt.Fprintf(os.Stderr, "[%s] %s\n", specFile, line)
-			outputMutex.Unlock()
+			outputChan <- OutputMessage{
+				WorkerID: workerIndex,
+				Type:     "stderr",
+				Content:  line,
+				SpecFile: specFile,
+			}
 		}
 	}()
 
@@ -287,8 +335,16 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 	ctx := context.Background()
 	results := make(chan TestResult, len(specFiles))
 
-	// Mutex to synchronize output from multiple processes
-	var outputMutex sync.Mutex
+	// Create buffered channel for output messages
+	outputChan := make(chan OutputMessage, maxWorkers*10)
+
+	// Start output aggregator goroutine
+	var outputWg sync.WaitGroup
+	outputWg.Add(1)
+	go func() {
+		defer outputWg.Done()
+		outputAggregator(outputChan, colorOutput)
+	}()
 
 	// Set PARALLEL_TEST_GROUPS environment variable
 	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", maxWorkers))
@@ -304,7 +360,7 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				result := RunSpecFile(ctx, job.SpecFile, workerIndex, dryRun, saveJSON, colorOutput, &outputMutex)
+				result := RunSpecFile(ctx, job.SpecFile, workerIndex, dryRun, saveJSON, outputChan)
 				results <- result
 			}
 		}()
@@ -324,6 +380,10 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 	// Wait for all workers to complete
 	wg.Wait()
 	close(results)
+
+	// Close output channel and wait for aggregator to finish
+	close(outputChan)
+	outputWg.Wait()
 
 	// Collect results
 	var testResults []TestResult

@@ -56,7 +56,7 @@ RSpec.describe "Rux error handling" do
           expect($?.exitstatus).not_to eq(0)
 
           # Should show helpful error message, not raw JSON error
-          expect(output).to include("likely failed to start").or include("may have failed").or include("exit code")
+          expect(output).to include("exit status")
 
           # Most importantly, should NOT show raw JSON parsing error
           expect(output).not_to include("failed to parse JSON: unexpected end of JSON input")
