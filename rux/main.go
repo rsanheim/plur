@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -123,6 +124,10 @@ func createApp() *cli.App {
 				Name:  "trace",
 				Usage: "Enable performance tracing to analyze execution time",
 			},
+			&cli.StringFlag{
+				Name:  "runtime-dir",
+				Usage: "Directory to save runtime data (creates runtime.json)",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
 			// Initialize tracing if enabled
@@ -189,9 +194,23 @@ func createApp() *cli.App {
 
 				// Show grouped execution in dry-run
 				workerCount := GetWorkerCount(ctx.Int("n"))
+
+				// Load runtime data if available
+				runtimeData, err := LoadRuntimeData()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
+					runtimeData = make(map[string]float64)
+				}
+
 				if ShouldUseGrouping(len(specFiles), workerCount) {
-					groups := GroupSpecFilesBySize(specFiles, workerCount)
-					fmt.Fprintf(os.Stderr, "[dry-run] Using grouped execution: %d groups\n", len(groups))
+					var groups []FileGroup
+					if len(runtimeData) > 0 {
+						groups = GroupSpecFilesByRuntime(specFiles, workerCount, runtimeData)
+						fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
+					} else {
+						groups = GroupSpecFilesBySize(specFiles, workerCount)
+						fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
+					}
 					for i, group := range groups {
 						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
 						args = append(args, group.Files...)
@@ -235,8 +254,29 @@ func createApp() *cli.App {
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
 
+			// Always initialize runtime tracker
+			runtimeTracker := NewRuntimeTracker()
+
+			// Determine runtime directory (use default if not specified)
+			runtimeDir := ctx.String("runtime-dir")
+			if runtimeDir == "" {
+				// Use default rux cache directory
+				cacheDir, err := getRuxCacheDir()
+				if err != nil {
+					return err
+				}
+				runtimeDir = cacheDir
+			}
+
 			// Run specs in parallel with intelligent grouping
-			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
+			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount, runtimeTracker)
+
+			// Save runtime data
+			if err := runtimeTracker.SaveToFile(runtimeDir); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", filepath.Join(runtimeDir, "runtime.json"))
+			}
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)
