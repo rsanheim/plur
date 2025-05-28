@@ -155,8 +155,17 @@ end
 desc "Build the rux Go binary with version information"
 task :build_release do
   Dir.chdir("rux") do
-    # Get version components
-    version = ENV["VERSION"] || "v0.5.0"
+    # Read version from VERSION file or use environment variable
+    base_version = if ENV["VERSION"]
+      ENV["VERSION"]
+    elsif File.exist?("../VERSION")
+      File.read("../VERSION").strip
+    else
+      "0.6.0"
+    end
+
+    # Ensure version starts with 'v'
+    version = base_version.start_with?("v") ? base_version : "v#{base_version}"
 
     # Get git commit (short hash)
     commit = `git rev-parse --short HEAD`.chomp
@@ -164,7 +173,7 @@ task :build_release do
     # Get current timestamp in Go pseudo-version format (YYYYMMDD-HHMM)
     timestamp = Time.now.utc.strftime("%Y%m%d-%H%M")
 
-    # Build pseudo-version: v0.5.0-TIMESTAMP-GITREF
+    # Build pseudo-version: v0.6.0-TIMESTAMP-GITREF
     full_version = "#{version}-#{timestamp}-#{commit}"
 
     # Get build date

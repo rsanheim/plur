@@ -19,15 +19,15 @@ cd rux/
 go build .
 
 # Release build with version info (recommended)
-rake build_release              # Uses default v0.5.0
-VERSION=v1.0.0 rake build_release  # Custom version
+rake build_release              # Uses version from VERSION file (currently 0.6.0)
+VERSION=v1.0.0 rake build_release  # Override with custom version
 
 # Install to $GOPATH/bin
 rake install
 
 # Check version
 rux --version
-# Output: v0.5.0-20250528-0822-3993bb087
+# Output: v0.6.0-20250528-0822-3993bb087
 ```
 
 ### Running Tests
