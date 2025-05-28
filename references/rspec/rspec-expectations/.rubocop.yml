@@ -1,0 +1,111 @@
+inherit_from:
+  - ../common_rubocop_config.yml
+  - .rubocop_todo.yml
+
+AllCops:
+  DisplayCopNames: true
+  Exclude:
+    - bin/*
+    - tmp/**/*
+  NewCops:
+    enable
+  SuggestExtensions: false
+  TargetRubyVersion: 2.4
+
+Layout/AccessModifierIndentation:
+  Exclude:
+    - 'lib/rspec/expectations/syntax.rb' # Too much diff to fix
+
+# Over time we'd like to get this down, but this is what we're at now.
+Layout/LineLength:
+  Max: 186
+
+# Offense count: 7
+Layout/ParameterAlignment:
+  Enabled: false
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Exclude:
+    - 'spec/rspec/matchers/built_in/contain_exactly_spec.rb'
+
+Lint/AmbiguousBlockAssociation:
+  Exclude:
+    - spec/**/*
+
+Lint/ConstantDefinitionInBlock:
+  Exclude:
+    - spec/**/*
+
+Lint/EmptyBlock:
+  Exclude:
+    - benchmarks/*
+    - spec/**/*
+
+Lint/EmptyClass:
+  Exclude:
+    - benchmarks/**/*
+    - lib/rspec/expectations/syntax.rb
+    - lib/rspec/matchers/matcher_protocol.rb
+    - spec/rspec/matchers/description_generation_spec.rb
+
+Metrics/AbcSize:
+  Max: 27
+
+# Offense count: 2
+# Configuration parameters: CountComments, ExcludedMethods.
+Metrics/BlockLength:
+  Max: 96
+  Exclude:
+    - spec/**/*
+
+# Offense count: 1
+# Configuration parameters: CountComments.
+Metrics/ModuleLength:
+  Max: 239
+  Exclude:
+    - spec/**/*
+
+# Offense count: 4
+Metrics/PerceivedComplexity:
+  Max: 14
+
+# Offense count: 1
+Style/BlockComments:
+  Enabled: false
+
+Style/ClassAndModuleChildren:
+  Exclude:
+    - spec/**/*
+
+Style/EvalWithLocation:
+  Exclude:
+    - spec/rspec/matchers/built_in/respond_to_spec.rb
+
+Style/MultilineBlockChain:
+  Exclude:
+    - spec/**/*
+
+Style/PercentLiteralDelimiters:
+  PreferredDelimiters:
+    default: []
+    '%r':   '||'
+
+# We have some situations where we need to use `raise ExceptionClass.new(argument)`.
+Style/RaiseArgs:
+  Enabled: false
+
+Style/RescueModifier:
+  Exclude:
+    - spec/**/*
+    - benchmarks/**/*
+
+Style/Semicolon:
+  Enabled: false
+
+Style/SingleLineMethods:
+  Exclude:
+    - spec/**/*
+    - benchmarks/**/*
+
+Style/WordArray:
+  Enabled: false

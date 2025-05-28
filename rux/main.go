@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/term"
 )
 
 func createApp() *cli.App {
@@ -101,6 +102,17 @@ func createApp() *cli.App {
 				Name:  "json",
 				Usage: "Save detailed test results to JSON files",
 			},
+			&cli.BoolFlag{
+				Name:    "color",
+				Aliases: []string{"colour"},
+				Usage:   "Force colorized output (default: auto-detect TTY)",
+				Value:   true,
+			},
+			&cli.BoolFlag{
+				Name:    "no-color",
+				Aliases: []string{"no-colour"},
+				Usage:   "Disable colorized output",
+			},
 			&cli.IntFlag{
 				Name:    "n",
 				Aliases: []string{"workers"},
@@ -132,12 +144,10 @@ func createApp() *cli.App {
 				if ctx.Bool("auto") {
 					fmt.Fprintln(os.Stderr, "[dry-run] bundle install")
 				}
+
 				fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(specFiles))
 				for _, file := range specFiles {
-					args := []string{"bundle", "exec", "rspec", "--format", "progress", file}
-					if ctx.Bool("json") {
-						args = append(args, "--format", "json", "--out", "/tmp/results.json")
-					}
+					args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", "/tmp/results.json", "--no-color", file}
 					fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
 				}
 				return nil
@@ -165,7 +175,11 @@ func createApp() *cli.App {
 				len(specFiles), actualWorkers, runtime.NumCPU())
 
 			saveJSON := ctx.Bool("json")
-			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, workerCount)
+
+			// Determine color output settings
+			colorOutput := shouldUseColor(ctx)
+
+			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)
@@ -186,6 +200,26 @@ func runDatabaseTask(task string, ctx *cli.Context) error {
 	dryRun := ctx.Bool("dry-run")
 
 	return RunDatabaseTask(task, workerCount, dryRun)
+}
+
+// shouldUseColor determines if colorized output should be used
+func shouldUseColor(ctx *cli.Context) bool {
+	// If --no-color or --no-colour is set, disable color
+	if ctx.Bool("no-color") {
+		return false
+	}
+
+	// If --color or --colour is set, enable color
+	if ctx.Bool("color") {
+		return true
+	}
+
+	// Auto-detect: use color if output is a TTY and FORCE_COLOR is set or TTY is detected
+	if os.Getenv("FORCE_COLOR") != "" {
+		return true
+	}
+
+	return term.IsTerminal(int(os.Stdout.Fd()))
 }
 
 func main() {

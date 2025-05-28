@@ -53,7 +53,8 @@ rux                          # Uses environment variable
 
 ### Project Structure
 - **rux/**: Main Go implementation (production binary)
-- **rux-ruby/**: Test Ruby project (9 spec files across nested dirs)
+- **rux-ruby/**: Example Ruby project (9 spec files across nested dirs)
+- **test_app**: Example Rails app for integration tests
 - **references/parallel_tests/**: Reference Ruby implementation for study
 - **references/turbo_tests/**: Reference Ruby implementation for comparison
 - **script/**: Benchmarking and testing utilities

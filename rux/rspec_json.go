@@ -67,8 +67,17 @@ func ParseRSpecJSON(filename string) (*RSpecJSONOutput, error) {
 		return nil, fmt.Errorf("failed to read JSON file: %v", err)
 	}
 
+	// Check if file is empty or contains only whitespace
+	if len(strings.TrimSpace(string(data))) == 0 {
+		return nil, fmt.Errorf("JSON file is empty - RSpec likely failed to start (check for missing gems or bundle install needed)")
+	}
+
 	var output RSpecJSONOutput
 	if err := json.Unmarshal(data, &output); err != nil {
+		// Provide more helpful error for common case of malformed JSON due to early RSpec failure
+		if strings.Contains(err.Error(), "unexpected end of JSON input") {
+			return nil, fmt.Errorf("JSON file is incomplete - RSpec may have failed before generating output (check for missing gems or run 'bundle install')")
+		}
 		return nil, fmt.Errorf("failed to parse JSON: %v", err)
 	}
 
