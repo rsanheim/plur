@@ -20,10 +20,10 @@ RSpec.describe "Rux performance" do
 
         # Both should complete successfully
         expect($?.exitstatus).to eq(0)
-        
+
         # Should use grouped execution when appropriate
         expect(single_output).to include("Using grouped execution: 11 files across 1 workers")
-        
+
         # Verify all examples run in both cases
         expect(single_output).to match(/\d+ examples, 0 failures/)
         expect(default_output).to match(/\d+ examples, 0 failures/)
