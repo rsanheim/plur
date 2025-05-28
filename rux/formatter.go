@@ -13,16 +13,16 @@ import (
 var jsonRowsFormatterCode string
 
 // GetFormatterPath returns the path to the JSON rows formatter,
-// creating it in the XDG cache directory if it doesn't exist
+// creating it in the cache directory if it doesn't exist
 func GetFormatterPath() (string, error) {
-	// Get XDG cache directory (~/.cache on Linux/Mac)
-	cacheDir, err := os.UserCacheDir()
+	// Get rux cache directory (~/.cache/rux)
+	cacheDir, err := getRuxCacheDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get cache directory: %w", err)
 	}
 
 	// Create the rux formatters directory
-	formattersDir := filepath.Join(cacheDir, "rux", "formatters")
+	formattersDir := filepath.Join(cacheDir, "formatters")
 	if err := os.MkdirAll(formattersDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create formatters directory: %w", err)
 	}

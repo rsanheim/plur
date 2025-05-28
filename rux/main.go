@@ -246,12 +246,12 @@ func createApp() *cli.App {
 			// Determine runtime directory (use default if not specified)
 			runtimeDir := ctx.String("runtime-dir")
 			if runtimeDir == "" {
-				// Always use ~/.cache/rux as default
-				homeDir, err := os.UserHomeDir()
+				// Use default rux cache directory
+				cacheDir, err := getRuxCacheDir()
 				if err != nil {
-					return fmt.Errorf("failed to get home directory: %v", err)
+					return err
 				}
-				runtimeDir = filepath.Join(homeDir, ".cache", "rux")
+				runtimeDir = cacheDir
 			}
 
 			// Run specs in parallel with intelligent grouping
