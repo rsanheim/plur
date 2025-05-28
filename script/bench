@@ -11,9 +11,50 @@ RUNS=3
 TIMESTAMP=${BENCH_TIMESTAMP:-$(date -u +"%Y%m%d-%H%M%S")}
 ENABLE_TRACE=false
 
+# Help function
+show_help() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+Benchmark rux vs turbo_tests performance on Ruby projects.
+
+OPTIONS:
+    -p, --project PATH     Path to Ruby project to benchmark (can be used multiple times)
+    -n, --workers NUM      Number of workers to use (default: $WORKERS)
+    --warmup NUM           Number of warmup runs (default: $WARMUP)
+    --runs NUM             Number of benchmark runs (default: $RUNS)
+    --trace                Enable rux tracing for performance analysis
+    -h, --help             Show this help message
+
+EXAMPLES:
+    # Benchmark default projects (rux-ruby and example-project)
+    $0
+
+    # Benchmark a specific project with 4 workers
+    $0 -p ./references/example-project -n 4
+
+    # Benchmark multiple projects
+    $0 -p ./project1 -p ./project2 -n 8
+
+    # Enable tracing for performance analysis
+    $0 -p ./references/example-project --trace
+
+ENVIRONMENT:
+    BENCH_TIMESTAMP        Override the timestamp used for output files
+
+OUTPUT:
+    Results are saved to: $RESULTS_DIR/
+EOF
+    exit 0
+}
+
 # Parse command line arguments
+PROJECT_PATHS=()
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -h|--help)
+            show_help
+            ;;
         --trace)
             ENABLE_TRACE=true
             shift
@@ -22,9 +63,22 @@ while [[ $# -gt 0 ]]; do
             WORKERS="$2"
             shift 2
             ;;
+        --warmup)
+            WARMUP="$2"
+            shift 2
+            ;;
+        --runs)
+            RUNS="$2"
+            shift 2
+            ;;
+        -p|--project)
+            PROJECT_PATHS+=("$2")
+            shift 2
+            ;;
         *)
-            # If not a flag, it's a project path
-            break
+            echo "Error: Unknown option: $1"
+            echo "Use -h or --help for usage information"
+            exit 1
             ;;
     esac
 done
@@ -134,9 +188,9 @@ benchmark_project() {
 mkdir -p "$RESULTS_DIR"
 
 # Check if custom project paths were provided
-if [ $# -gt 0 ]; then
+if [ ${#PROJECT_PATHS[@]} -gt 0 ]; then
     # Benchmark custom projects
-    for project in "$@"; do
+    for project in "${PROJECT_PATHS[@]}"; do
         if [ -d "$project" ]; then
             benchmark_project "$project"
         else

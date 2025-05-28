@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -47,20 +46,19 @@ func TestRuntimeTracker(t *testing.T) {
 		rt.AddRuntime("spec/bar_spec.rb", 2.0)
 
 		// Create temp directory for test
-		tmpDir, err := os.MkdirTemp("", "rux-runtime-test")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer os.RemoveAll(tmpDir)
-
-		// Save runtime data
-		err = rt.SaveToFile(tmpDir)
+		// Save runtime data (it will use project-specific path)
+		err := rt.SaveToFile()
 		if err != nil {
 			t.Errorf("Failed to save runtime data: %v", err)
 		}
 
-		// Check file exists
-		runtimeFile := filepath.Join(tmpDir, "runtime.json")
+		// Get the runtime file path and check it exists
+		runtimeFile, err := GetRuntimeFilePath()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(runtimeFile) // Clean up after test
+
 		if _, err := os.Stat(runtimeFile); os.IsNotExist(err) {
 			t.Error("runtime.json was not created")
 		}

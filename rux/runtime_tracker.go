@@ -1,11 +1,16 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"sync"
 )
+
+// customRuntimeDir stores the custom runtime directory if provided
+var customRuntimeDir string
 
 // RuntimeTracker accumulates runtime data for spec files
 type RuntimeTracker struct {
@@ -36,18 +41,18 @@ func (rt *RuntimeTracker) AddExample(example RSpecExample) {
 	}
 }
 
-// SaveToFile writes the runtime data to a JSON file
-func (rt *RuntimeTracker) SaveToFile(dir string) error {
+// SaveToFile writes the runtime data to a project-specific JSON file
+func (rt *RuntimeTracker) SaveToFile() error {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
 
-	// Ensure directory exists
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	// Get the project-specific runtime file path
+	runtimeFile, err := getRuntimeFilePath()
+	if err != nil {
 		return err
 	}
 
-	// Write runtime data to runtime.json
-	runtimeFile := filepath.Join(dir, "runtime.json")
+	// Create the file
 	file, err := os.Create(runtimeFile)
 	if err != nil {
 		return err
@@ -57,6 +62,11 @@ func (rt *RuntimeTracker) SaveToFile(dir string) error {
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(rt.runtimes)
+}
+
+// GetRuntimeFilePath returns the runtime file path (exported for messages)
+func GetRuntimeFilePath() (string, error) {
+	return getRuntimeFilePath()
 }
 
 // GetRuntimes returns a copy of the runtime data
@@ -72,14 +82,61 @@ func (rt *RuntimeTracker) GetRuntimes() map[string]float64 {
 	return result
 }
 
+// getProjectHash generates a hash of the current working directory
+func getProjectHash() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	// Get absolute path to ensure consistency
+	absPath, err := filepath.Abs(cwd)
+	if err != nil {
+		return "", err
+	}
+
+	// Generate SHA-256 hash of the absolute path
+	hash := sha256.Sum256([]byte(absPath))
+	// Use first 8 characters of hex for readability
+	return hex.EncodeToString(hash[:])[:8], nil
+}
+
+// getRuntimeFilePath returns the project-specific runtime file path
+func getRuntimeFilePath() (string, error) {
+	var runtimesDir string
+
+	if customRuntimeDir != "" {
+		// Use the custom runtime directory
+		runtimesDir = customRuntimeDir
+	} else {
+		// Use the default cache directory
+		cacheDir, err := getRuxCacheDir()
+		if err != nil {
+			return "", err
+		}
+		runtimesDir = filepath.Join(cacheDir, "runtimes")
+	}
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(runtimesDir, 0755); err != nil {
+		return "", err
+	}
+
+	// Get project hash for filename
+	projectHash, err := getProjectHash()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(runtimesDir, projectHash+".json"), nil
+}
+
 // LoadRuntimeData loads runtime data from the cache directory
 func LoadRuntimeData() (map[string]float64, error) {
-	cacheDir, err := getRuxCacheDir()
+	runtimeFile, err := getRuntimeFilePath()
 	if err != nil {
 		return nil, err
 	}
-
-	runtimeFile := filepath.Join(cacheDir, "runtime.json")
 
 	// Check if file exists
 	if _, err := os.Stat(runtimeFile); os.IsNotExist(err) {

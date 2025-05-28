@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -126,7 +125,7 @@ func createApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:  "runtime-dir",
-				Usage: "Directory to save runtime data (creates runtime.json)",
+				Usage: "Directory to store runtime data (default: ~/.cache/rux/runtimes)",
 			},
 		},
 		Action: func(ctx *cli.Context) error {
@@ -136,6 +135,11 @@ func createApp() *cli.App {
 					return fmt.Errorf("failed to initialize tracer: %v", err)
 				}
 				defer CloseTracer()
+			}
+
+			// Set custom runtime directory if provided
+			if runtimeDir := ctx.String("runtime-dir"); runtimeDir != "" {
+				customRuntimeDir = runtimeDir
 			}
 
 			defer TraceFunc("main.total_execution")()
@@ -257,25 +261,16 @@ func createApp() *cli.App {
 			// Always initialize runtime tracker
 			runtimeTracker := NewRuntimeTracker()
 
-			// Determine runtime directory (use default if not specified)
-			runtimeDir := ctx.String("runtime-dir")
-			if runtimeDir == "" {
-				// Use default rux cache directory
-				cacheDir, err := getRuxCacheDir()
-				if err != nil {
-					return err
-				}
-				runtimeDir = cacheDir
-			}
-
 			// Run specs in parallel with intelligent grouping
 			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount, runtimeTracker)
 
 			// Save runtime data
-			if err := runtimeTracker.SaveToFile(runtimeDir); err != nil {
+			if err := runtimeTracker.SaveToFile(); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 			} else {
-				fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", filepath.Join(runtimeDir, "runtime.json"))
+				if runtimePath, err := GetRuntimeFilePath(); err == nil {
+					fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", runtimePath)
+				}
 			}
 
 			// Build summary and print results
