@@ -38,6 +38,7 @@ RSpec process → JsonRowsFormatter → stdout (line-by-line JSON) → parse in 
   - Understand the JSON message format
   - Understand how it hooks into RSpec events
 
+* [ ] analyze `git status` - lets get to a clean state before starting
 * [ ] Add the meta-rspec gem (git@github.com:rspec/rspec.git) as another 'reference' repo, so we can research its context as necessary. Add it as a git subtree underneath references/rspec
 - [ ] Create a JsonRowsFormatter in ruby (basically emulate TurboTests formatter for now)
 * [ ] Add some specs for the formatter in isolation
