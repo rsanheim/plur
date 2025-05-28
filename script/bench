@@ -18,6 +18,10 @@ while [[ $# -gt 0 ]]; do
             ENABLE_TRACE=true
             shift
             ;;
+        -n|--workers)
+            WORKERS="$2"
+            shift 2
+            ;;
         *)
             # If not a flag, it's a project path
             break
