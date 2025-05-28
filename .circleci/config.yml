@@ -13,6 +13,13 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Debug - Show directory structure
+          command: |
+            pwd
+            ls -la
+            ls -la rux/
+            ls -la rux/lib/rux/ || echo "rux/lib/rux not found"
+      - run:
           name: Install Go
           command: |
             wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz
