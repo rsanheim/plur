@@ -13,8 +13,9 @@ import (
 
 func createApp() *cli.App {
 	return &cli.App{
-		Name:  "rux",
-		Usage: "A fast Go-based test runner for Ruby/RSpec",
+		Name:    "rux",
+		Usage:   "A fast Go-based test runner for Ruby/RSpec",
+		Version: GetVersionInfo(),
 		Commands: []*cli.Command{
 			{
 				Name:  "db:setup",
@@ -139,6 +140,9 @@ func createApp() *cli.App {
 			}
 
 			dryRun := ctx.Bool("dry-run")
+
+			// Print version as first line (for both dry-run and normal)
+			fmt.Printf("rux version %s\n", GetVersionInfo())
 
 			if dryRun {
 				if ctx.Bool("auto") {

@@ -10,9 +10,10 @@ end
 desc "Run all tests and linting"
 task default: ["test:all", "lint:all"]
 
-task install: [:build] do
+task install: [:build_release] do
   Dir.chdir("rux") do
-    sh "go install ."
+    # Copy the built binary to GOPATH/bin
+    sh "cp rux $(go env GOPATH)/bin/"
   end
 end
 
@@ -139,6 +140,38 @@ task :build do
     puts "Building rux..."
     sh "go build -o rux ."
     puts "Binary created at rux/rux"
+  end
+end
+
+desc "Build the rux Go binary with version information"
+task :build_release do
+  Dir.chdir("rux") do
+    # Get version components
+    version = ENV["VERSION"] || "v0.5.0"
+
+    # Get git commit (short hash)
+    commit = `git rev-parse --short HEAD`.chomp
+
+    # Get current timestamp in Go pseudo-version format (YYYYMMDD-HHMM)
+    timestamp = Time.now.utc.strftime("%Y%m%d-%H%M")
+
+    # Build pseudo-version: v0.5.0-TIMESTAMP-GITREF
+    full_version = "#{version}-#{timestamp}-#{commit}"
+
+    # Get build date
+    date = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # Build with ldflags to embed version info
+    ldflags = [
+      "-X main.version=#{full_version}",
+      "-X main.commit=#{commit}",
+      "-X 'main.date=#{date}'",
+      "-X main.builtBy=rake"
+    ].join(" ")
+
+    puts "Building rux with version: #{full_version}"
+    sh %(go build -ldflags "#{ldflags}" -o rux .)
+    puts "Binary created at rux/rux with version: #{full_version}"
   end
 end
 

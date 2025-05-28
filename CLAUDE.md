@@ -14,10 +14,20 @@ This is a research repository for `rux`, a Go-based parallel test runner for Rub
 
 ### Building Rux
 ```bash
+# Development build (with automatic version detection)
 cd rux/
-go install .
-# This installs rux to $GOPATH/bin (usually ~/go/bin)
-# Make sure $GOPATH/bin is in your PATH
+go build .
+
+# Release build with version info (recommended)
+rake build_release              # Uses default v0.5.0
+VERSION=v1.0.0 rake build_release  # Custom version
+
+# Install to $GOPATH/bin
+rake install
+
+# Check version
+rux --version
+# Output: v0.5.0-20250528-0822-3993bb087
 ```
 
 ### Running Tests
