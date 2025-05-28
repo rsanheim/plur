@@ -87,7 +87,6 @@ RSpec.describe "Rux performance" do
     end
   end
 
-
   describe "worker optimization" do
     it "chooses reasonable default worker count" do
       Dir.chdir(test_project_path) do
