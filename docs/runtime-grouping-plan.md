@@ -86,18 +86,9 @@ This should make rux competitive with turbo_tests even for large, complex test s
    - Tests cover data collection, persistence, and grouping algorithms
    - Ensures proper fallback when runtime data is unavailable
 
-### Usage
+### FOLLOW UP
 
-No configuration needed - runtime tracking is automatic:
-
-```bash
-# First run uses size-based grouping
-rux -n 4
-# Output: Using size-based grouped execution: 11 files across 4 workers
-
-# Subsequent runs use runtime data
-rux -n 4
-# Output: Using runtime-based grouped execution: 11 files across 4 workers
-```
-
-Runtime data is stored in `~/.cache/rux/runtime.json` and persists across runs.
+* change the filename to be per-project -- I think using a hash of the project directory is a good idea
+* consolidate where we build the runtime file path - we have it in two places
+* update any related specs
+* lint, run build, etc.
