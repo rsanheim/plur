@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
@@ -123,6 +124,11 @@ func createApp() *cli.App {
 				Name:  "trace",
 				Usage: "Enable performance tracing to analyze execution time",
 			},
+			&cli.BoolFlag{
+				Name:  "group",
+				Usage: "Use intelligent file grouping to reduce process overhead (experimental)",
+				Value: true, // Default to true for better performance
+			},
 		},
 		Action: func(ctx *cli.Context) error {
 			// Initialize tracing if enabled
@@ -222,7 +228,15 @@ func createApp() *cli.App {
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
 
-			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
+			// Use grouped or regular execution based on flag
+			var results []TestResult
+			var wallTime time.Duration
+			
+			if ctx.Bool("group") {
+				results, wallTime = RunSpecsInParallelGrouped(specFiles, dryRun, saveJSON, colorOutput, workerCount)
+			} else {
+				results, wallTime = RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
+			}
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)

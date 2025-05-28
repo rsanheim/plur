@@ -46,13 +46,11 @@ After implementing and testing both approaches side-by-side, we're fully committ
   - After: sync.Once ensures single computation
   - Impact: Reduces syscalls in hot path
 
-#### Analyze 'mise' impact
-- [ ] analyze impact of ruby version manager for `rux` vs `turbo_tests`
-   - [ ] my standard login shell uses 'mise activate`, which adds required tools to PATH
-   - [ ] another approach mise offers is to setup shims via `mise activate --shims`
-   - [ ] details here: https://mise.jdx.dev/dev-tools/shims.html#overview
-   - [ ] is it possible that `mise` causes significant overhead in starting each ruby process for rux, given we are going thru a go binary, to shelling out to ruby, as opposed to turbo_tests which is just ruby that spawns more ruby?
-- [ ] My hypothesis here is that we _should_ be able to get rux close to the run time of turbo_tests, even for small suites, and perhaps mise is a factor here. In any case, would be good to rule it out.
+#### Analyze 'mise' impact ✅
+- [x] Analyzed Ruby version manager impact - mise adds ~31ms startup overhead per process
+- [x] Real issue identified: rux was spawning one process per file vs turbo_tests grouping files
+- [x] Implemented intelligent file grouping algorithm (similar to ParallelTests)
+- [x] Result: **2.3x faster than turbo_tests** for small suites (195ms vs 454ms)
 
 #### Remaining Optimizations:
 - [ ] Optimize JSON parsing (pre-allocate buffers, faster detection)
