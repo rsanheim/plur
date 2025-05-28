@@ -3,7 +3,13 @@ require "rake"
 begin
   require "bundler"
   require "standard/rake" if Gem::Specification.find_all_by_name("standard").any?
+  require "rspec/core/rake_task" if Gem::Specification.find_all_by_name("rspec").any?
 rescue LoadError
+end
+
+# Define RSpec task if available
+if defined?(RSpec)
+  RSpec::Core::RakeTask.new(:spec)
 end
 
 # Default task runs all checks
@@ -27,8 +33,8 @@ end
 #     go install gotest.tools/gotestsum@latest
 # ========================================
 namespace :test do
-  desc "Run all tests (Go and Ruby)"
-  task all: [:go, :ruby]
+  desc "Run all tests (Go, Ruby, and Integration)"
+  task all: [:go, :ruby, :integration]
 
   desc "Run Go tests"
   task :go do
@@ -84,6 +90,9 @@ namespace :test do
       sh rux_command.to_s
     end
   end
+
+  desc "Run integration tests in root spec directory"
+  task integration: [:build, :spec]
 end
 
 # ========================================

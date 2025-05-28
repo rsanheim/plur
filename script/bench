@@ -18,6 +18,9 @@ die() {
 # Get current git SHA
 GIT_SHA=$(git rev-parse --short HEAD || echo "nogit")
 
+# Get rux version
+RUX_VERSION=$("$ORIGINAL_DIR/rux/rux" --version 2>/dev/null || echo "rux version unknown")
+
 # Function to benchmark a single project
 benchmark_project() {
     local project_path=$1
@@ -35,6 +38,7 @@ benchmark_project() {
     
     # Run benchmarks
     echo "Running benchmarks with $WORKERS workers, $WARMUP warmup runs, $RUNS runs"
+    echo "Rux version: $RUX_VERSION"
     echo "===================="
     
     hyperfine \
@@ -43,6 +47,20 @@ benchmark_project() {
         --export-json "$JSON_FILE" \
         "turbo_tests -n $WORKERS" \
         "rux -n $WORKERS"
+    
+    # Add version info to JSON file
+    if [ -f "$JSON_FILE" ]; then
+        # Use jq to add version info if available, otherwise append as comment
+        if command -v jq >/dev/null 2>&1; then
+            mv "$JSON_FILE" "$JSON_FILE.tmp"
+            jq --arg version "$RUX_VERSION" '. + {rux_version: $version}' "$JSON_FILE.tmp" > "$JSON_FILE"
+            rm "$JSON_FILE.tmp"
+        else
+            # Append version as JSON comment (non-standard but preserves info)
+            echo "" >> "$JSON_FILE"
+            echo "// rux_version: $RUX_VERSION" >> "$JSON_FILE"
+        fi
+    fi
     
     # Show results location
     echo ""

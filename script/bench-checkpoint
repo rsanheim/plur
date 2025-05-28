@@ -41,11 +41,15 @@ fi
 SUMMARY_JSON="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-summary.json"
 SUMMARY_MD="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-summary.md"
 
+# Extract rux version from one of the JSON files (they should all have the same version)
+RUX_VERSION=$(jq -r '.rux_version // "unknown"' "$RUX_RUBY_JSON" 2>/dev/null || echo "unknown")
+
 # Create combined JSON
 cat > "$SUMMARY_JSON" <<EOF
 {
   "commit": "$GIT_SHA_LONG",
   "timestamp": "$TIMESTAMP",
+  "rux_version": "$RUX_VERSION",
   "rux_ruby": $(cat "$RUX_RUBY_JSON"),
   "example-project": $(cat "$DX_JSON")
 }
@@ -74,6 +78,8 @@ puts "# Benchmark Summary"
 puts ""
 puts "- **Date**: '"$TIMESTAMP"' UTC"
 puts "- **Commit**: ['"$GIT_SHA"'](https://github.com/anthropics/rux-meta/commit/#{commit})"
+rux_version = data["rux_version"] || "unknown"
+puts "- **Rux Version**: #{rux_version}"
 puts ""
 puts "## Results"
 puts ""
