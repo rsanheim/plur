@@ -77,7 +77,7 @@ func PrintResults(summary TestSummary) {
 		summary.WallTime.Seconds(), summary.TotalCPUTime.Seconds())
 
 	if summary.TotalFailures > 0 {
-		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
+		fmt.Printf("%d examples, %s\n", summary.TotalExamples, pluralize(summary.TotalFailures, "1 failure", fmt.Sprintf("%d failures", summary.TotalFailures)))
 	} else {
 		fmt.Printf("%d examples, 0 failures\n", summary.TotalExamples)
 	}

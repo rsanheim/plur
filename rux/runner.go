@@ -96,12 +96,12 @@ const (
 
 // Pre-compiled output strings to avoid repeated concatenation
 var (
-	greenDot    = []byte(colorGreen + "." + colorReset)
-	redF        = []byte(colorRed + "F" + colorReset)
-	yellowStar  = []byte(colorYellow + "*" + colorReset)
-	plainDot    = []byte(".")
-	plainF      = []byte("F")
-	plainStar   = []byte("*")
+	greenDot   = []byte(colorGreen + "." + colorReset)
+	redF       = []byte(colorRed + "F" + colorReset)
+	yellowStar = []byte(colorYellow + "*" + colorReset)
+	plainDot   = []byte(".")
+	plainF     = []byte("F")
+	plainStar  = []byte("*")
 )
 
 // outputAggregator handles all output from workers to avoid lock contention
@@ -341,10 +341,10 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWo
 	// Group files using runtime data if available, otherwise by size
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(specFiles), pluralize(len(specFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesByRuntime(specFiles, maxWorkers, runtimeData)
 	} else {
-		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(specFiles), pluralize(len(specFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesBySize(specFiles, maxWorkers)
 	}
 

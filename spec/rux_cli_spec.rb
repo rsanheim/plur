@@ -2,18 +2,7 @@ require "spec_helper"
 require "open3"
 
 RSpec.describe "Rux CLI behavior" do
-  let(:rux_binary) { File.join(__dir__, "..", "rux", "rux") }
   let(:rux_ruby_dir) { File.join(__dir__, "..", "rux-ruby") }
-
-  before(:all) do
-    # Build rux binary if needed
-    rux_dir = File.join(__dir__, "..", "rux")
-    unless File.exist?(File.join(rux_dir, "rux"))
-      Dir.chdir(rux_dir) do
-        system("go build -o rux", err: File::NULL)
-      end
-    end
-  end
 
   describe "dry-run functionality" do
     it "runs dry-run with no arguments" do
