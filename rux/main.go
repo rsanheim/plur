@@ -146,13 +146,13 @@ func createApp() *cli.App {
 				}
 
 				fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(specFiles))
-				
+
 				// Get formatter path for dry-run display
 				formatterPath, err := GetFormatterPath()
 				if err != nil {
 					formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
 				}
-				
+
 				for _, file := range specFiles {
 					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color", file}
 					fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))

@@ -187,7 +187,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
-			
+
 			msg, err := ParseJSONMessage(line)
 			if msg != nil {
 				// Handle different message types

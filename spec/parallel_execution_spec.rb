@@ -1,9 +1,9 @@
-require 'spec_helper'
-require 'tmpdir'
-require 'fileutils'
+require "spec_helper"
+require "tmpdir"
+require "fileutils"
 
 RSpec.describe "Rux parallel execution" do
-  let(:rux_binary) { File.join(__dir__, '..', 'rux', 'rux') }
+  let(:rux_binary) { File.join(__dir__, "..", "rux", "rux") }
 
   before do
     expect(File.exist?(rux_binary)).to be(true)
@@ -15,7 +15,7 @@ RSpec.describe "Rux parallel execution" do
         # Create spec directory
         spec_dir = File.join(tmpdir, "spec")
         FileUtils.mkdir_p(spec_dir)
-        
+
         # Create multiple spec files that verify TEST_ENV_NUMBER is set
         3.times do |i|
           spec_path = File.join(spec_dir, "env_test_#{i}_spec.rb")
@@ -38,9 +38,9 @@ RSpec.describe "Rux parallel execution" do
 
         Dir.chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
-          
+
           output = `#{rux_binary} -n 3 2>&1`
-          
+
           # With 3 workers and 3 spec files, each should run with different TEST_ENV_NUMBER
           # Just verify it runs successfully
           expect(output).to include("3 examples, 0 failures")
@@ -53,7 +53,7 @@ RSpec.describe "Rux parallel execution" do
       Dir.mktmpdir do |tmpdir|
         spec_dir = File.join(tmpdir, "spec")
         FileUtils.mkdir_p(spec_dir)
-        
+
         # Create 4 spec files to ensure we can use 4 workers
         4.times do |i|
           spec_path = File.join(spec_dir, "groups_test_#{i}_spec.rb")
@@ -74,9 +74,9 @@ RSpec.describe "Rux parallel execution" do
 
         Dir.chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
-          
+
           output = `#{rux_binary} -n 4 2>&1`
-          
+
           # Now it should actually use 4 workers
           expect(output).to include("using 4 workers")
           expect(output).to include("4 examples, 0 failures")
@@ -90,7 +90,7 @@ RSpec.describe "Rux parallel execution" do
       Dir.mktmpdir do |tmpdir|
         spec_dir = File.join(tmpdir, "spec")
         FileUtils.mkdir_p(spec_dir)
-        
+
         # Create multiple specs
         5.times do |i|
           spec_path = File.join(spec_dir, "output_test_#{i}_spec.rb")
@@ -112,12 +112,12 @@ RSpec.describe "Rux parallel execution" do
 
         Dir.chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
-          
+
           output = `#{rux_binary} -n 3 2>&1`
-          
+
           # Should see organized output with all tests passing
           expect(output).to include("15 examples, 0 failures")
-          
+
           # Progress dots should appear on one line (not interleaved)
           progress_lines = output.split("\n").select { |l| l =~ /^\e?\[?3?2?m?\.\e?\[?0?m?/ || l =~ /^\.+$/ }
           expect(progress_lines.size).to be <= 2 # At most "Running..." line and one progress line
@@ -131,7 +131,7 @@ RSpec.describe "Rux parallel execution" do
       Dir.mktmpdir do |tmpdir|
         spec_dir = File.join(tmpdir, "spec")
         FileUtils.mkdir_p(spec_dir)
-        
+
         # Create multiple spec files with mix of passing and failing tests
         5.times do |i|
           spec_path = File.join(spec_dir, "progress_test_#{i}_spec.rb")
@@ -155,13 +155,13 @@ RSpec.describe "Rux parallel execution" do
 
         Dir.chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
-          
+
           output = `#{rux_binary} --color 2>&1`
-          
+
           # Should see progress dots and F's with colors
           expect(output).to match(/\e\[32m\.\e\[0m/) # Green dots
           expect(output).to match(/\e\[31mF\e\[0m/) # Red F's
-          
+
           # Should see summary
           expect(output).to include("7 examples, 2 failures")
         end
@@ -174,7 +174,7 @@ RSpec.describe "Rux parallel execution" do
       Dir.mktmpdir do |tmpdir|
         spec_dir = File.join(tmpdir, "spec")
         FileUtils.mkdir_p(spec_dir)
-        
+
         # Create specs with different types of failures
         spec1_path = File.join(spec_dir, "failure_1_spec.rb")
         File.write(spec1_path, <<~RUBY)
@@ -201,19 +201,19 @@ RSpec.describe "Rux parallel execution" do
 
         Dir.chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
-          
+
           output = `#{rux_binary} -n 2 2>&1`
-          
+
           # Should show both failures
           expect(output).to include("failure 1")
           expect(output).to include("has expectation failure")
           expect(output).to include("expected: 3")
           expect(output).to include("got: 2")
-          
+
           expect(output).to include("failure 2")
           expect(output).to include("raises an error")
           expect(output).to include("Something went wrong")
-          
+
           # Should show failed examples list
           expect(output).to include("Failed examples:")
           expect(output).to include("rspec ./spec/failure_1_spec.rb")

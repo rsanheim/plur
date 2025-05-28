@@ -8,6 +8,7 @@ import (
 )
 
 // Embed the formatter Ruby code directly into the binary
+//
 //go:embed lib/rux/json_rows_formatter.rb
 var jsonRowsFormatterCode string
 
