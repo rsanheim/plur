@@ -14,6 +14,35 @@ RSpec.describe "Rux runtime tracking" do
     end
   end
 
+  context "explicit runtime dir" do
+    let(:temp_cache_dir) { Dir.mktmpdir }
+
+    it "uses the runtime-dir if provided" do
+      Dir.chdir(test_project_path) do
+        `#{rux_binary} -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
+        expect($?.exitstatus).to eq(0)
+
+        expect(File.exist?(temp_cache_dir)).to be true
+        matches = Dir.glob(File.join(temp_cache_dir, "*.json"))
+        expect(matches.size).to eq(1)
+        expect(matches.first).to match(%r{#{temp_cache_dir}/[a-f0-9]{8}\.json$})
+      end
+    end
+
+    it "uses a default of ~/.cache/rux/runtimes" do
+      Dir.chdir(test_project_path) do
+        `#{rux_binary} -n 2 2>&1`
+        expect($?.exitstatus).to eq(0)
+
+        runtime_dir = File.join(ENV["HOME"], ".cache", "rux", "runtimes")
+        expect(File.exist?(runtime_dir)).to be true
+        matches = Dir.glob(File.join(runtime_dir, "*.json"))
+        expect(matches.size).to eq(1)
+        expect(matches.first).to match(%r{\.cache/rux/runtimes/[a-f0-9]{8}\.json$})
+      end
+    end
+  end
+
   context "runtime data collection" do
     let(:temp_cache_dir) { Dir.mktmpdir }
 
