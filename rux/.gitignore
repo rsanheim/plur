@@ -18,4 +18,4 @@ vendor/
 go.work
 
 # Built binary
-rux
+/rux
