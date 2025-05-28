@@ -9,6 +9,21 @@ WORKERS=8
 WARMUP=2
 RUNS=3
 TIMESTAMP=${BENCH_TIMESTAMP:-$(date -u +"%Y%m%d-%H%M%S")}
+ENABLE_TRACE=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --trace)
+            ENABLE_TRACE=true
+            shift
+            ;;
+        *)
+            # If not a flag, it's a project path
+            break
+            ;;
+    esac
+done
 
 die() {
     echo "Error: $1"
@@ -39,14 +54,23 @@ benchmark_project() {
     # Run benchmarks
     echo "Running benchmarks with $WORKERS workers, $WARMUP warmup runs, $RUNS runs"
     echo "Rux version: $RUX_VERSION"
+    if [ "$ENABLE_TRACE" = true ]; then
+        echo "Tracing: ENABLED"
+    fi
     echo "===================="
+    
+    # Build rux command with optional trace flag
+    RUX_CMD="$ORIGINAL_DIR/rux/rux -n $WORKERS"
+    if [ "$ENABLE_TRACE" = true ]; then
+        RUX_CMD="$RUX_CMD --trace"
+    fi
     
     hyperfine \
         --warmup $WARMUP \
         --runs $RUNS \
         --export-json "$JSON_FILE" \
         "turbo_tests -n $WORKERS" \
-        "rux -n $WORKERS"
+        "$RUX_CMD"
     
     # Add version info to JSON file
     if [ -f "$JSON_FILE" ]; then
@@ -67,17 +91,63 @@ benchmark_project() {
     echo "Results saved to:"
     echo "  - $JSON_FILE"
     
+    # Analyze trace files if tracing was enabled
+    if [ "$ENABLE_TRACE" = true ]; then
+        echo ""
+        echo "Analyzing trace files..."
+        
+        # Find the most recent trace files (from the last run)
+        TRACE_DIR="$ORIGINAL_DIR/tmp/rux-traces"
+        if [ -d "$TRACE_DIR" ]; then
+            # Get the 3 most recent trace files (matching the number of runs)
+            RECENT_TRACES=$(ls -t "$TRACE_DIR"/rux-trace-*.json 2>/dev/null | head -$RUNS)
+            
+            if [ -n "$RECENT_TRACES" ]; then
+                echo "Found trace files:"
+                for trace in $RECENT_TRACES; do
+                    echo "  - $(basename $trace)"
+                    
+                    # Run trace analysis
+                    if [ -f "$ORIGINAL_DIR/rux/analyze_trace.rb" ]; then
+                        echo "    Analysis:"
+                        ruby "$ORIGINAL_DIR/rux/analyze_trace.rb" "$trace" | grep -E "(Rux overhead:|Total execution time:|Longest spec file:)" | sed 's/^/    /'
+                    fi
+                done
+                
+                # Save trace file paths to results
+                TRACE_LIST_FILE="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-${project_name}-traces.txt"
+                echo "$RECENT_TRACES" > "$TRACE_LIST_FILE"
+                echo "  - $TRACE_LIST_FILE"
+            fi
+        fi
+    fi
+    
     popd > /dev/null
 }
 
 # Create results directory
 mkdir -p "$RESULTS_DIR"
 
-# Always run default benchmarks
-echo "Running benchmarks for rux-ruby and example-project"
-
-benchmark_project "./rux-ruby"
-benchmark_project "./references/example-project"
+# Check if custom project paths were provided
+if [ $# -gt 0 ]; then
+    # Benchmark custom projects
+    for project in "$@"; do
+        if [ -d "$project" ]; then
+            benchmark_project "$project"
+        else
+            echo "Warning: Directory not found: $project"
+        fi
+    done
+else
+    # Run default benchmarks
+    echo "Running benchmarks for rux-ruby and example-project"
+    
+    benchmark_project "./rux-ruby"
+    benchmark_project "./references/example-project"
+fi
 
 echo ""
 echo "All benchmarks complete!"
+if [ "$ENABLE_TRACE" = true ]; then
+    echo "Trace files saved to: $ORIGINAL_DIR/tmp/rux-traces/"
+fi

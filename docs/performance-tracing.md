@@ -14,9 +14,9 @@ rux --trace -n 4            # Run with 4 workers
 rux --trace spec/unit/*_spec.rb  # Trace specific files
 ```
 
-Trace files are written to your system's temp directory:
+Trace files are written to the repository's tmp directory:
 ```
-Tracing enabled, writing to: /tmp/rux-traces/rux-trace-20250528-044523.json
+Tracing enabled, writing to: /path/to/rux-meta/tmp/rux-traces/rux-trace-20250528-044523.json
 ```
 
 ## Analyzing Traces
@@ -44,6 +44,14 @@ The following operations are traced:
 - **run_spec_file**: Total time to run each spec file
 - **run_specs_parallel**: Overall parallel execution time
 - **main.total_execution**: Complete execution time
+
+## Tracing Implementation
+
+The tracing system uses an asynchronous writer to ensure minimal impact on runtime performance:
+- Events are sent to a buffered channel (capacity: 1000)
+- A background goroutine handles JSON marshaling and file I/O
+- Non-blocking sends ensure tracing never slows down execution
+- Overhead is typically <1% even with tracing enabled
 
 ## Performance Insights
 

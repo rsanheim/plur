@@ -49,11 +49,11 @@ rux                          # Uses environment variable
 # Enable tracing to analyze performance
 rux --trace -n 4
 
-# Trace files are written to temp directory
-# Output: "Tracing enabled, writing to: /tmp/rux-traces/rux-trace-TIMESTAMP.json"
+# Trace files are written to repo tmp directory
+# Output: "Tracing enabled, writing to: ./tmp/rux-traces/rux-trace-TIMESTAMP.json"
 
 # Analyze trace results
-ruby rux/analyze_trace.rb -v /tmp/rux-traces/rux-trace-*.json
+ruby rux/analyze_trace.rb -v ./tmp/rux-traces/rux-trace-*.json
 
 # Key metrics traced:
 # - Process spawn time (~1ms per process)
@@ -68,7 +68,11 @@ ruby rux/analyze_trace.rb -v /tmp/rux-traces/rux-trace-*.json
 ./script/bench ./rux-ruby
 ./script/bench /path/to/any/ruby/project
 
+# Run benchmarks with tracing enabled
+./script/bench --trace ./rux-ruby
+
 # Results: bench-results.md and bench-results.json
+# Trace analysis is included when --trace is used
 ```
 
 ### Repository Testing
