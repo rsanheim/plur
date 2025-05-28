@@ -194,9 +194,23 @@ func createApp() *cli.App {
 
 				// Show grouped execution in dry-run
 				workerCount := GetWorkerCount(ctx.Int("n"))
+				
+				// Load runtime data if available
+				runtimeData, err := LoadRuntimeData()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
+					runtimeData = make(map[string]float64)
+				}
+				
 				if ShouldUseGrouping(len(specFiles), workerCount) {
-					groups := GroupSpecFilesBySize(specFiles, workerCount)
-					fmt.Fprintf(os.Stderr, "[dry-run] Using grouped execution: %d groups\n", len(groups))
+					var groups []FileGroup
+					if len(runtimeData) > 0 {
+						groups = GroupSpecFilesByRuntime(specFiles, workerCount, runtimeData)
+						fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
+					} else {
+						groups = GroupSpecFilesBySize(specFiles, workerCount)
+						fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
+					}
 					for i, group := range groups {
 						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
 						args = append(args, group.Files...)

@@ -332,9 +332,22 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 	useGrouping := ShouldUseGrouping(len(specFiles), maxWorkers)
 
 	if useGrouping {
-		fmt.Fprintf(os.Stderr, "Using grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
-		// Group files by size
-		groups := GroupSpecFilesBySize(specFiles, maxWorkers)
+		// Load runtime data if available
+		runtimeData, err := LoadRuntimeData()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
+			runtimeData = make(map[string]float64)
+		}
+		
+		// Group files using runtime data if available, otherwise by size
+		var groups []FileGroup
+		if len(runtimeData) > 0 {
+			fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+			groups = GroupSpecFilesByRuntime(specFiles, maxWorkers, runtimeData)
+		} else {
+			fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+			groups = GroupSpecFilesBySize(specFiles, maxWorkers)
+		}
 
 		results := make(chan TestResult, len(groups))
 

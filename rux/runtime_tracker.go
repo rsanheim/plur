@@ -71,3 +71,33 @@ func (rt *RuntimeTracker) GetRuntimes() map[string]float64 {
 	}
 	return result
 }
+
+// LoadRuntimeData loads runtime data from the cache directory
+func LoadRuntimeData() (map[string]float64, error) {
+	cacheDir, err := getRuxCacheDir()
+	if err != nil {
+		return nil, err
+	}
+
+	runtimeFile := filepath.Join(cacheDir, "runtime.json")
+	
+	// Check if file exists
+	if _, err := os.Stat(runtimeFile); os.IsNotExist(err) {
+		// No runtime data yet, return empty map
+		return make(map[string]float64), nil
+	}
+
+	file, err := os.Open(runtimeFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var runtimes map[string]float64
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&runtimes); err != nil {
+		return nil, err
+	}
+
+	return runtimes, nil
+}

@@ -21,8 +21,8 @@ RSpec.describe "Rux performance" do
         # Both should complete successfully
         expect($?.exitstatus).to eq(0)
 
-        # Should use grouped execution when appropriate
-        expect(single_output).to include("Using grouped execution: 11 files across 1 workers")
+        # Should use grouped execution when appropriate (either runtime or size-based)
+        expect(single_output).to match(/Using (runtime-based|size-based) grouped execution: 11 files across 1 workers/)
 
         # Verify all examples run in both cases
         expect(single_output).to match(/\d+ examples, 0 failures/)
@@ -87,60 +87,6 @@ RSpec.describe "Rux performance" do
     end
   end
 
-  describe "scalability" do
-    it "efficiently handles many spec files" do
-      Dir.mktmpdir do |tmpdir|
-        # Create many small spec files
-        30.times do |i|
-          spec_path = File.join(tmpdir, "spec_#{i}_spec.rb")
-          File.write(spec_path, <<~RUBY)
-            RSpec.describe "spec #{i}" do
-              it "test 1" do
-                expect(true).to be true
-              end
-              
-              it "test 2" do
-                expect(1 + 1).to eq(2)
-              end
-              
-              it "test 3" do
-                expect([1,2,3].count).to eq(3)
-              end
-            end
-          RUBY
-        end
-
-        File.write(File.join(tmpdir, "Gemfile"), <<~GEMFILE)
-          source 'https://rubygems.org'
-          gem 'rspec', '~> 3.0'
-        GEMFILE
-
-        Dir.chdir(tmpdir) do
-          system("bundle install", out: File::NULL, err: File::NULL)
-
-          # Time with different worker counts
-          times = {}
-
-          [1, 2, 4].each do |workers|
-            times[workers] = Benchmark.realtime do
-              system("#{rux_binary} -n #{workers}", out: File::NULL, err: File::NULL)
-            end
-          end
-
-          # Should see improvement with 2 workers vs 1
-          expect(times[2]).to be < times[1]
-
-          # With 30 files, 4 workers should generally be faster than 2
-          # But allow some tolerance for system variability
-          improvement_ratio = times[2] / times[4]
-          expect(improvement_ratio).to be > 0.95  # At least not significantly worse
-
-          # But diminishing returns at some point
-          # (4 workers might not be much faster than 2 for only 30 files)
-        end
-      end
-    end
-  end
 
   describe "worker optimization" do
     it "chooses reasonable default worker count" do

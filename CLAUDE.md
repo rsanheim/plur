@@ -42,6 +42,12 @@ rux --trace                  # Enable performance tracing
 # Environment configuration
 export PARALLEL_TEST_PROCESSORS=4
 rux                          # Uses environment variable
+
+# Runtime tracking (automatic)
+rux                          # First run: size-based grouping
+                            # Saves runtime data to ~/.cache/rux/runtime.json
+rux                          # Subsequent runs: runtime-based grouping
+                            # Uses saved runtime data for optimal distribution
 ```
 
 ### Performance Tracing
@@ -106,6 +112,8 @@ ruby rux/analyze_trace.rb -v ./tmp/rux-traces/rux-trace-*.json
 - Implements worker pool to prevent system overload
 - Compatible with `PARALLEL_TEST_PROCESSORS` environment variable
 - Shows wall time vs CPU time for accurate parallel performance metrics
+- **Runtime-based test distribution**: Automatically tracks and uses test execution times for optimal load balancing
+- **Channel-based output aggregation**: Eliminates lock contention for high worker counts (25-30+)
 
 ## Development Workflow
 

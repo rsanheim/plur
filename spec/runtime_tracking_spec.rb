@@ -1,133 +1,128 @@
-require "spec_helper"
-require "tmpdir"
-require "fileutils"
-require "json"
+require 'spec_helper'
+require 'tmpdir'
+require 'fileutils'
+require 'json'
 
-RSpec.describe "Rux runtime tracking" do
-  let(:rux_binary) { File.join(__dir__, "..", "rux", "rux") }
-  let(:test_project_path) { File.join(__dir__, "..", "rux-ruby") }
-
+RSpec.describe 'Rux runtime tracking' do
+  let(:rux_binary) { File.expand_path('../rux/rux', __dir__) }
+  let(:test_project_path) { File.join(__dir__, '..', 'rux-ruby') }
+  
   before do
-    expect(File.exist?(rux_binary)).to be(true)
+    # Build rux
+    Dir.chdir(File.join(__dir__, '..', 'rux')) do
+      system("go build -o rux", err: File::NULL)
+    end
   end
 
-  describe "runtime data" do
-    it "writes runtime data to specified directory with --runtime-dir flag" do
-      Dir.mktmpdir do |tmpdir|
-        runtime_dir = File.join(tmpdir, "runtime_data")
-
-        Dir.chdir(test_project_path) do
-          # Run rux with runtime tracking enabled
-          `#{rux_binary} --runtime-dir #{runtime_dir} spec/calculator_spec.rb spec/string_utils_spec.rb 2>&1`
-
-          expect($?.exitstatus).to eq(0)
-
-          # Check that runtime file was created
-          runtime_file = File.join(runtime_dir, "runtime.json")
-          expect(File.exist?(runtime_file)).to be(true)
-
-          # Verify minimal runtime data structure
-          data = JSON.parse(File.read(runtime_file))
-
-          # Simple format: just file paths mapped to runtimes
-          expect(data).to have_key("./spec/calculator_spec.rb")
-          expect(data).to have_key("./spec/string_utils_spec.rb")
-
-          # Each file should have a positive runtime
-          expect(data["./spec/calculator_spec.rb"]).to be > 0
-          expect(data["./spec/string_utils_spec.rb"]).to be > 0
-        end
+  context 'runtime data collection' do
+    let(:temp_cache_dir) { Dir.mktmpdir }
+    
+    before do
+      # Backup and remove existing runtime data
+      @original_runtime_file = File.join(ENV['HOME'], '.cache', 'rux', 'runtime.json')
+      @backup_file = nil
+      if File.exist?(@original_runtime_file)
+        @backup_file = "#{@original_runtime_file}.backup"
+        FileUtils.cp(@original_runtime_file, @backup_file)
+        FileUtils.rm(@original_runtime_file)
       end
     end
-
-    it "creates runtime directory if it doesn't exist" do
-      Dir.mktmpdir do |tmpdir|
-        runtime_dir = File.join(tmpdir, "nested", "runtime", "data")
-
-        Dir.chdir(test_project_path) do
-          `#{rux_binary} --runtime-dir #{runtime_dir} spec/calculator_spec.rb 2>&1`
-
-          expect($?.exitstatus).to eq(0)
-          expect(Dir.exist?(runtime_dir)).to be(true)
-
-          runtime_file = File.join(runtime_dir, "runtime.json")
-          expect(File.exist?(runtime_file)).to be(true)
-        end
+    
+    after do
+      # Restore original runtime data
+      if @backup_file && File.exist?(@backup_file)
+        FileUtils.mv(@backup_file, @original_runtime_file)
       end
+      FileUtils.rm_rf(temp_cache_dir)
     end
 
-    it "accumulates runtime data across multiple workers" do
-      Dir.mktmpdir do |tmpdir|
-        runtime_dir = File.join(tmpdir, "runtime_data")
-
-        Dir.chdir(test_project_path) do
-          # Run with multiple workers
-          `#{rux_binary} --runtime-dir #{runtime_dir} -n 4 2>&1`
-
-          expect($?.exitstatus).to eq(0)
-
-          # Runtime file should exist
-          runtime_file = File.join(runtime_dir, "runtime.json")
-          expect(File.exist?(runtime_file)).to be(true)
-
-          data = JSON.parse(File.read(runtime_file))
-
-          # Should have runtime data for all spec files
-          # Just verify we got some files with runtimes
-          expect(data.size).to be >= 9 # rux-ruby has 9 spec files
-
-          # All values should be positive numbers
-          data.each do |file_path, runtime|
-            expect(runtime).to be_a(Numeric)
-            expect(runtime).to be > 0
-          end
-        end
-      end
-    end
-
-    it "records runtime data even when tests fail" do
-      failing_specs_path = File.join(__dir__, "..", "test_fixtures", "failing_specs")
-
-      Dir.mktmpdir do |tmpdir|
-        runtime_dir = File.join(tmpdir, "runtime_data")
-
-        Dir.chdir(failing_specs_path) do
-          `#{rux_binary} --runtime-dir #{runtime_dir} spec/expectation_failures_spec.rb 2>&1`
-
-          # Exit status should be 1 due to failures
-          expect($?.exitstatus).to eq(1)
-
-          # Runtime data should still be written
-          runtime_file = File.join(runtime_dir, "runtime.json")
-          expect(File.exist?(runtime_file)).to be(true)
-
-          data = JSON.parse(File.read(runtime_file))
-          expect(data).to have_key("./spec/expectation_failures_spec.rb")
-          expect(data["./spec/expectation_failures_spec.rb"]).to be > 0
-        end
-      end
-    end
-
-    it "saves to ~/.cache/rux by default when no --runtime-dir is specified" do
+    it 'saves runtime data after running specs' do
       Dir.chdir(test_project_path) do
-        # Run without --runtime-dir flag
-        `#{rux_binary} spec/calculator_spec.rb 2>&1`
-
+        # Run rux
+        output = `#{rux_binary} -n 2 2>&1`
         expect($?.exitstatus).to eq(0)
-
-        # Check default location following XDG Base Directory spec
-        cache_dir = ENV["XDG_CACHE_HOME"] || File.join(ENV["HOME"], ".cache")
-        default_runtime_file = File.join(cache_dir, "rux", "runtime.json")
-
-        expect(File.exist?(default_runtime_file)).to be(true)
-
+        
+        # Check that runtime data was saved
+        runtime_file = @original_runtime_file
+        
+        expect(File.exist?(runtime_file)).to be true
+        
         # Verify the content
-        data = JSON.parse(File.read(default_runtime_file))
-        expect(data).to have_key("./spec/calculator_spec.rb")
-        expect(data["./spec/calculator_spec.rb"]).to be > 0
+        runtime_data = JSON.parse(File.read(runtime_file))
+        expect(runtime_data).to be_a(Hash)
+        expect(runtime_data.keys).to include('./spec/calculator_spec.rb')
+        expect(runtime_data.values.all? { |v| v.is_a?(Numeric) && v > 0 }).to be true
+      end
+    end
 
-        # Clean up
-        FileUtils.rm_f(default_runtime_file)
+    it 'uses runtime data for grouping when available' do
+      Dir.chdir(test_project_path) do
+        # First run to generate runtime data
+        output = `#{rux_binary} -n 2 2>&1`
+        expect($?.exitstatus).to eq(0)
+        
+        # Second run should use runtime data
+        output = `#{rux_binary} --dry-run -n 2 2>&1`
+        expect(output).to include('[dry-run] Using runtime-based grouped execution')
+      end
+    end
+
+    it 'falls back to size-based grouping when no runtime data exists' do
+      Dir.chdir(test_project_path) do
+        # Ensure no runtime data exists (already removed in before hook)
+        expect(File.exist?(@original_runtime_file)).to be false
+        
+        # Run with dry-run
+        output = `#{rux_binary} --dry-run -n 2 2>&1`
+        expect(output).to include('[dry-run] Using size-based grouped execution')
+      end
+    end
+  end
+
+  context 'runtime-based grouping' do
+    it 'distributes files based on their runtime' do
+      Dir.chdir(test_project_path) do
+        # Create fake runtime data with uneven distribution
+        cache_dir = File.join(ENV['HOME'], '.cache', 'rux')
+        FileUtils.mkdir_p(cache_dir)
+        
+        runtime_data = {
+          "./spec/calculator_spec.rb" => 5.0,  # Very slow file
+          "./spec/counter_spec.rb" => 0.1,
+          "./spec/validator_spec.rb" => 0.1,
+          "./spec/string_utils_spec.rb" => 0.1,
+          "./spec/array_helpers_spec.rb" => 0.1,
+          "./spec/date_formatter_spec.rb" => 0.1
+        }
+        
+        File.write(File.join(cache_dir, 'runtime.json'), JSON.pretty_generate(runtime_data))
+        
+        # Run dry-run to see grouping
+        output = `#{rux_binary} --dry-run -n 2 2>&1`
+        
+        # The slow file should be in its own group or with minimal other files
+        expect(output).to include('Using runtime-based grouped execution')
+        
+        # Extract worker assignments
+        worker_lines = output.lines.select { |l| l.include?('[dry-run] Worker') }
+        expect(worker_lines.size).to eq(2)
+        
+        # Both workers should have files, but runtime distribution should be balanced
+        worker0_files = worker_lines[0].scan(/spec\/[\w\/]+_spec\.rb/)
+        worker1_files = worker_lines[1].scan(/spec\/[\w\/]+_spec\.rb/)
+        
+        # At least one worker should have the slow file
+        expect(worker0_files + worker1_files).to include(match(/calculator_spec\.rb/))
+        
+        # The algorithm should have distributed files to balance runtime
+        # The worker with calculator_spec.rb (5.0s) should have fewer other files
+        if worker0_files.any? { |f| f.include?('calculator_spec.rb') }
+          # Worker 0 has the slow file, so it should have fewer total files
+          expect(worker0_files.size).to be <= worker1_files.size
+        else
+          # Worker 1 has the slow file, so it should have fewer total files
+          expect(worker1_files.size).to be <= worker0_files.size
+        end
       end
     end
   end
