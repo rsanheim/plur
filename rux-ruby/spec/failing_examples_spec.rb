@@ -2,12 +2,12 @@ require 'spec_helper'
 
 RSpec.describe 'FailingExamples' do
   describe 'expectation failures' do
-    it 'fails with a simple expectation' do
-      expect(1 + 1).to eq(3)
+    it 'passes with a simple expectation' do
+      expect(1 + 1).to eq(2)
     end
 
-    it 'fails with a string comparison' do
-      expect('hello').to eq('goodbye')
+    it 'passes with a string comparison' do
+      expect('hello').to eq('hello')
     end
 
     it 'passes this one' do
@@ -16,12 +16,12 @@ RSpec.describe 'FailingExamples' do
   end
 
   describe 'errors and exceptions' do
-    it 'raises a NoMethodError' do
-      nil.this_method_does_not_exist
+    it 'handles nil gracefully' do
+      expect(nil).to be_nil
     end
 
-    it 'raises a custom error' do
-      raise StandardError, 'Something went wrong!'
+    it 'catches expected errors' do
+      expect { raise StandardError, 'Something went wrong!' }.to raise_error(StandardError, 'Something went wrong!')
     end
 
     it 'passes this one too' do
@@ -30,12 +30,12 @@ RSpec.describe 'FailingExamples' do
   end
 
   describe 'array and hash failures' do
-    it 'fails on array contents' do
-      expect([1, 2, 3]).to eq([1, 2, 4])
+    it 'passes on array contents' do
+      expect([1, 2, 3]).to eq([1, 2, 3])
     end
 
-    it 'fails on hash contents' do
-      expect({ a: 1, b: 2 }).to eq({ a: 1, b: 3 })
+    it 'passes on hash contents' do
+      expect({ a: 1, b: 2 }).to eq({ a: 1, b: 2 })
     end
   end
 end

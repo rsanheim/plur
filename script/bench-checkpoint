@@ -1,0 +1,144 @@
+#!/bin/bash
+
+set -e
+
+# Default values
+ORIGINAL_DIR=$(pwd)
+RESULTS_DIR="$ORIGINAL_DIR/results"
+WORKERS=8
+
+die() {
+    echo "Error: $1"
+    exit 1
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --trace)
+            ENABLE_TRACE=true
+            shift
+            ;;
+        -n|--workers)
+            WORKERS="$2"
+            shift 2
+            ;;
+        *)
+            # If not a flag, it's a project path
+            break
+            ;;
+    esac
+done
+
+# Get git info
+GIT_SHA=$(git rev-parse --short HEAD || die "Not in a git repository")
+GIT_SHA_LONG=$(git rev-parse HEAD)
+TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+
+echo "Benchmark Checkpoint"
+echo "==================="
+echo "Commit: $GIT_SHA"
+echo "Time: $TIMESTAMP"
+echo "Workers: $WORKERS"
+echo ""
+
+# Create results directory
+mkdir -p "$RESULTS_DIR"
+
+# Run benchmarks with consistent timestamp
+export BENCH_TIMESTAMP="$TIMESTAMP"
+./script/bench -n $WORKERS
+
+# Find the JSON files that were just created
+RUX_RUBY_JSON=$(ls -t "$RESULTS_DIR"/*-${GIT_SHA}-rux-ruby.json 2>/dev/null | head -1)
+DX_JSON=$(ls -t "$RESULTS_DIR"/*-${GIT_SHA}-example-project.json 2>/dev/null | head -1)
+
+if [ -z "$RUX_RUBY_JSON" ] || [ -z "$DX_JSON" ]; then
+    die "Could not find benchmark results"
+fi
+
+# Create summary JSON by combining both results
+SUMMARY_JSON="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-summary.json"
+SUMMARY_MD="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-summary.md"
+
+# Extract rux version from one of the JSON files (they should all have the same version)
+RUX_VERSION=$(jq -r '.rux_version // "unknown"' "$RUX_RUBY_JSON" 2>/dev/null || echo "unknown")
+
+# Create combined JSON
+cat > "$SUMMARY_JSON" <<EOF
+{
+  "commit": "$GIT_SHA_LONG",
+  "timestamp": "$TIMESTAMP",
+  "rux_version": "$RUX_VERSION",
+  "rux_ruby": $(cat "$RUX_RUBY_JSON"),
+  "example-project": $(cat "$DX_JSON")
+}
+EOF
+
+# Generate markdown summary using Ruby
+ruby -e '
+require "json"
+
+data = JSON.parse(File.read("'$SUMMARY_JSON'"))
+commit = data["commit"]
+timestamp = data["timestamp"]
+
+def extract_times(data)
+  turbo = data["results"].find { |r| r["command"].include?("turbo_tests") }
+  rux = data["results"].find { |r| r["command"].include?("rux") }
+  [turbo["mean"], rux["mean"], turbo["stddev"], rux["stddev"]]
+end
+
+def format_time(seconds)
+  "%.3fs" % seconds
+end
+
+# Write markdown report
+puts "# Benchmark Summary"
+puts ""
+puts "- **Date**: '"$TIMESTAMP"' UTC"
+puts "- **Commit**: ['"$GIT_SHA"'](https://github.com/anthropics/rux-meta/commit/#{commit})"
+rux_version = data["rux_version"] || "unknown"
+puts "- **Rux Version**: #{rux_version}"
+puts ""
+puts "## Results"
+puts ""
+
+# rux-ruby results
+turbo_mean, rux_mean, turbo_stddev, rux_stddev = extract_times(data["rux_ruby"])
+diff_percent = ((rux_mean - turbo_mean) / turbo_mean * 100).round(1)
+status = diff_percent > 0 ? "slower" : "faster"
+
+puts "### rux-ruby"
+puts ""
+puts "| Tool | Time | Stddev |"
+puts "|------|------|--------|"
+puts "| turbo_tests | #{format_time(turbo_mean)} | ±#{format_time(turbo_stddev)} |"
+puts "| rux | #{format_time(rux_mean)} | ±#{format_time(rux_stddev)} |"
+puts ""
+puts "**rux is #{diff_percent.abs}% #{status} than turbo_tests**"
+puts ""
+
+# example-project results
+turbo_mean, rux_mean, turbo_stddev, rux_stddev = extract_times(data["example-project"])
+diff_percent = ((rux_mean - turbo_mean) / turbo_mean * 100).round(1)
+status = diff_percent > 0 ? "slower" : "faster"
+
+puts "### example-project"
+puts ""
+puts "| Tool | Time | Stddev |"
+puts "|------|------|--------|"
+puts "| turbo_tests | #{format_time(turbo_mean)} | ±#{format_time(turbo_stddev)} |"
+puts "| rux | #{format_time(rux_mean)} | ±#{format_time(rux_stddev)} |"
+puts ""
+puts "**rux is #{diff_percent.abs}% #{status} than turbo_tests**"
+' > "$SUMMARY_MD"
+
+echo ""
+echo "=== Checkpoint created ==="
+echo "Summary files:"
+echo "  - $SUMMARY_JSON"
+echo "  - $SUMMARY_MD"
+echo ""
+echo "View summary:"
+echo "  cat $SUMMARY_MD"

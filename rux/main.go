@@ -13,8 +13,9 @@ import (
 
 func createApp() *cli.App {
 	return &cli.App{
-		Name:  "rux",
-		Usage: "A fast Go-based test runner for Ruby/RSpec",
+		Name:    "rux",
+		Usage:   "A fast Go-based test runner for Ruby/RSpec",
+		Version: GetVersionInfo(),
 		Commands: []*cli.Command{
 			{
 				Name:  "db:setup",
@@ -118,27 +119,60 @@ func createApp() *cli.App {
 				Aliases: []string{"workers"},
 				Usage:   "Number of parallel workers (default: cores-2, env: PARALLEL_TEST_PROCESSORS)",
 			},
+			&cli.BoolFlag{
+				Name:  "trace",
+				Usage: "Enable performance tracing to analyze execution time",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
+			// Initialize tracing if enabled
+			if ctx.Bool("trace") {
+				if err := InitTracer(true); err != nil {
+					return fmt.Errorf("failed to initialize tracer: %v", err)
+				}
+				defer CloseTracer()
+			}
+
+			defer TraceFunc("main.total_execution")()
+
 			var specFiles []string
 			var err error
 
 			// Determine which spec files to run
-			if ctx.NArg() > 0 {
-				// Use provided arguments as spec files
-				specFiles = ctx.Args().Slice()
-			} else {
-				// Auto-discover spec files
-				specFiles, err = FindSpecFiles()
-				if err != nil {
-					return fmt.Errorf("error finding spec files: %v", err)
+			func() {
+				defer TraceFunc("file_discovery")()
+
+				if ctx.NArg() > 0 {
+					// Expand glob patterns from provided arguments
+					specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
+					if err != nil {
+						return
+					}
+					if len(specFiles) == 0 {
+						err = fmt.Errorf("no spec files found matching provided patterns")
+						return
+					}
+				} else {
+					// Auto-discover spec files
+					specFiles, err = FindSpecFiles()
+					if err != nil {
+						return
+					}
+					if len(specFiles) == 0 {
+						err = fmt.Errorf("no spec files found")
+						return
+					}
 				}
-				if len(specFiles) == 0 {
-					return fmt.Errorf("no spec files found")
-				}
+			}()
+
+			if err != nil {
+				return err
 			}
 
 			dryRun := ctx.Bool("dry-run")
+
+			// Print version as first line (for both dry-run and normal)
+			fmt.Printf("rux version %s\n", GetVersionInfo())
 
 			if dryRun {
 				if ctx.Bool("auto") {
@@ -146,15 +180,37 @@ func createApp() *cli.App {
 				}
 
 				fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(specFiles))
-				for _, file := range specFiles {
-					args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", "/tmp/results.json", "--no-color", file}
-					fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
+
+				// Get formatter path for dry-run display
+				formatterPath, err := GetFormatterPath()
+				if err != nil {
+					formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
+				}
+
+				// Show grouped execution in dry-run
+				workerCount := GetWorkerCount(ctx.Int("n"))
+				if ShouldUseGrouping(len(specFiles), workerCount) {
+					groups := GroupSpecFilesBySize(specFiles, workerCount)
+					fmt.Fprintf(os.Stderr, "[dry-run] Using grouped execution: %d groups\n", len(groups))
+					for i, group := range groups {
+						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
+						args = append(args, group.Files...)
+						fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
+					}
+				} else {
+					fmt.Fprintf(os.Stderr, "[dry-run] Using single file per worker (no grouping needed)\n")
+					for _, file := range specFiles {
+						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color", file}
+						fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
+					}
 				}
 				return nil
 			}
 
 			// Run bundle install if --auto flag is set
 			if ctx.Bool("auto") {
+				defer TraceFunc("bundle_install")()
+
 				fmt.Println("Installing dependencies...")
 				bundleCmd := exec.Command("bundle", "install")
 				bundleCmd.Stdout = os.Stdout
@@ -179,6 +235,7 @@ func createApp() *cli.App {
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
 
+			// Run specs in parallel with intelligent grouping
 			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
 
 			// Build summary and print results

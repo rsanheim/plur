@@ -6,40 +6,43 @@ orbs:
 
 jobs:
   build-and-test-go:
-    executor:
-      name: go/default
-      tag: "1.22"
-    working_directory: ~/project/rux
+    docker:
+      - image: cimg/ruby:3.4.4
+    working_directory: ~/project
     resource_class: medium
     steps:
-      - checkout:
-          path: ~/project/
+      - checkout
       - run:
-          command: pwd
-      - run:
-          name: List files in current directory
+          name: Debug - Show directory structure
           command: |
+            pwd
             ls -la
+            ls -la rux/
+            ls -la rux/lib/rux/ || echo "rux/lib/rux not found"
       - run:
-          name: List files in project directory
-          command: ls ~/project/
-      - go/with-cache:
-          steps:
-            - go/mod-download
-            - go/test
-            - run:
-                name: Build rux
-                command: |
-                  go build -o rux .
+          name: Install Go
+          command: |
+            wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz
+            echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
+            source $BASH_ENV
+            go version
+      - ruby/install-deps
+      - run:
+          name: Run Go tests
+          command: rake test:go
+      - run:
+          name: Build rux
+          command: rake build
       - run:
           name: Verify rux binary
           command: |
-            ls -la rux
-            ./rux --help
+            ./rux/rux --version
+            ./rux/rux --help
       - persist_to_workspace:
           root: .
           paths:
-            - rux
+            - rux/rux
 
   test-ruby:
     docker:
@@ -53,7 +56,7 @@ jobs:
       - run:
           name: Install rux from workspace
           command: |
-            sudo cp ~/workspace/rux /usr/local/bin/
+            sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
             rux --help
       - ruby/install-deps
@@ -78,7 +81,7 @@ jobs:
       - run:
           name: Install rux from workspace
           command: |
-            sudo cp ~/workspace/rux /usr/local/bin/
+            sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
       - run:
           name: Setup test_app

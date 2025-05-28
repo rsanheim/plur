@@ -14,10 +14,20 @@ This is a research repository for `rux`, a Go-based parallel test runner for Rub
 
 ### Building Rux
 ```bash
+# Development build (with automatic version detection)
 cd rux/
-go install .
-# This installs rux to $GOPATH/bin (usually ~/go/bin)
-# Make sure $GOPATH/bin is in your PATH
+go build .
+
+# Release build with version info (recommended)
+rake build_release              # Uses version from VERSION file (currently 0.6.0)
+VERSION=v1.0.0 rake build_release  # Override with custom version
+
+# Install to $GOPATH/bin
+rake install
+
+# Check version
+rux --version
+# Output: v0.6.0-20250528-0822-3993bb087
 ```
 
 ### Running Tests
@@ -27,10 +37,29 @@ rux                          # Auto-detect workers (cores-2)
 rux -n 4                    # Specific worker count (often optimal)
 rux --dry-run               # Preview execution plan
 rux spec/specific_spec.rb    # Run specific files
+rux --trace                  # Enable performance tracing
 
 # Environment configuration
 export PARALLEL_TEST_PROCESSORS=4
 rux                          # Uses environment variable
+```
+
+### Performance Tracing
+```bash
+# Enable tracing to analyze performance
+rux --trace -n 4
+
+# Trace files are written to repo tmp directory
+# Output: "Tracing enabled, writing to: ./tmp/rux-traces/rux-trace-TIMESTAMP.json"
+
+# Analyze trace results
+ruby rux/analyze_trace.rb -v ./tmp/rux-traces/rux-trace-*.json
+
+# Key metrics traced:
+# - Process spawn time (~1ms per process)
+# - Ruby startup time (~190ms from spawn to first output)
+# - RSpec load time (~45ms as reported by RSpec)
+# - Total overhead (typically <10ms or <1% for large test suites)
 ```
 
 ### Performance Benchmarking
@@ -39,7 +68,11 @@ rux                          # Uses environment variable
 ./script/bench ./rux-ruby
 ./script/bench /path/to/any/ruby/project
 
+# Run benchmarks with tracing enabled
+./script/bench --trace ./rux-ruby
+
 # Results: bench-results.md and bench-results.json
+# Trace analysis is included when --trace is used
 ```
 
 ### Repository Testing
@@ -121,3 +154,26 @@ The repository includes multiple test projects:
 - **Reference implementations**: references/parallel_tests and references/turbo_tests for comparison
 
 All .git directories have been removed to focus on testing functionality rather than git operations.
+
+### Ruby Integration Tests
+
+The `spec/` directory contains Ruby RSpec tests that exercise rux from the outside:
+- **general_integration_spec.rb**: Core functionality tests (running specs, exit codes, worker counts)
+- **parallel_execution_spec.rb**: Tests parallel execution behavior
+- **error_handling_spec.rb**: Tests error scenarios and output
+- **colorized_output_spec.rb**: Tests ANSI color output
+- **performance_spec.rb**: Performance regression tests
+- **database_tasks_spec.rb**: Database preparation tests
+
+Key integration test for development:
+```ruby
+# Simple test that runs a single spec file with all passing tests
+it "exits with zero status when all tests pass" do
+  Dir.chdir(test_project_path) do
+    system("#{rux_binary} spec/calculator_spec.rb 2>&1", out: File::NULL)
+    expect($?.exitstatus).to eq(0)
+  end
+end
+```
+
+Use these integration tests as guideposts when making architectural changes to rux.

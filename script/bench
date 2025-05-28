@@ -2,119 +2,157 @@
 
 set -e
 
-# Check if path provided
-if [ $# -eq 0 ]; then
-    cat <<'EOF'
-Usage: bench <project-path>
+# Default values
+ORIGINAL_DIR=$(pwd)
+RESULTS_DIR="$ORIGINAL_DIR/results"
+WORKERS=8
+WARMUP=2
+RUNS=3
+TIMESTAMP=${BENCH_TIMESTAMP:-$(date -u +"%Y%m%d-%H%M%S")}
+ENABLE_TRACE=false
 
-Benchmarks rux against turbo_tests using hyperfine for performance comparison.
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --trace)
+            ENABLE_TRACE=true
+            shift
+            ;;
+        -n|--workers)
+            WORKERS="$2"
+            shift 2
+            ;;
+        *)
+            # If not a flag, it's a project path
+            break
+            ;;
+    esac
+done
 
-Examples:
-  bench ./rux-ruby
-  bench ./example-project-1234567890
-  bench /path/to/ruby/project
-
-What it does:
-  - Verifies project has spec directory and dependencies
-  - Installs turbo_tests temporarily if not present
-  - Runs hyperfine benchmarks comparing turbo_tests vs rux (default to 8 workers)
-  - Exports results to markdown and JSON
-  - Cleans up temporary changes
-
-Requirements:
-  - hyperfine (brew install hyperfine)
-  - rux binary in PATH
-  - Ruby project with spec directory
-
-Output:
-  Creates bench-results.md and bench-results.json in the project directory
-EOF
+die() {
+    echo "Error: $1"
     exit 1
-fi
+}
 
-PROJECT_PATH="$1"
+# Get current git SHA
+GIT_SHA=$(git rev-parse --short HEAD || echo "nogit")
 
-# Verify project path exists
-if [ ! -d "$PROJECT_PATH" ]; then
-    echo "Error: Project path '$PROJECT_PATH' does not exist"
-    exit 1
-fi
+# Get rux version
+RUX_VERSION=$("$ORIGINAL_DIR/rux/rux" --version 2>/dev/null || echo "rux version unknown")
 
-# Verify project has spec directory
-if [ ! -d "$PROJECT_PATH/spec" ]; then
-    echo "Error: No spec directory found in '$PROJECT_PATH'"
-    exit 1
-fi
+# Function to benchmark a single project
+benchmark_project() {
+    local project_path=$1
+    local project_name=$(basename "$project_path")
+    
+    echo ""
+    echo "=== Benchmarking $project_name ==="
+    
+    pushd "$project_path" > /dev/null || die "Could not change to project directory: $project_path"
+    
+    SPEC_COUNT=$(find spec -name "*_spec.rb" 2>/dev/null | wc -l | tr -d ' ')
+    echo "Found $SPEC_COUNT spec files"
+    
+    # Output file in results directory
+    JSON_FILE="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-${project_name}.json"
+    
+    # Run benchmarks
+    echo "Running benchmarks with $WORKERS workers, $WARMUP warmup runs, $RUNS runs"
+    echo "Rux version: $RUX_VERSION"
+    if [ "$ENABLE_TRACE" = true ]; then
+        echo "Tracing: ENABLED"
+    fi
+    echo "===================="
+    
+    # Build rux command with optional trace flag
+    RUX_CMD="$ORIGINAL_DIR/rux/rux -n $WORKERS"
+    if [ "$ENABLE_TRACE" = true ]; then
+        RUX_CMD="$RUX_CMD --trace"
+    fi
+    
+    hyperfine \
+        --warmup $WARMUP \
+        --runs $RUNS \
+        --export-json "$JSON_FILE" \
+        "turbo_tests -n $WORKERS" \
+        "$RUX_CMD"
+    
+    # Add version info to JSON file
+    if [ -f "$JSON_FILE" ]; then
+        # Use jq to add version info if available, otherwise append as comment
+        if command -v jq >/dev/null 2>&1; then
+            mv "$JSON_FILE" "$JSON_FILE.tmp"
+            jq --arg version "$RUX_VERSION" '. + {rux_version: $version}' "$JSON_FILE.tmp" > "$JSON_FILE"
+            rm "$JSON_FILE.tmp"
+        else
+            # Append version as JSON comment (non-standard but preserves info)
+            echo "" >> "$JSON_FILE"
+            echo "// rux_version: $RUX_VERSION" >> "$JSON_FILE"
+        fi
+    fi
+    
+    # Show results location
+    echo ""
+    echo "Results saved to:"
+    echo "  - $JSON_FILE"
+    
+    # Analyze trace files if tracing was enabled
+    if [ "$ENABLE_TRACE" = true ]; then
+        echo ""
+        echo "Analyzing trace files..."
+        
+        # Find the most recent trace files (from the last run)
+        TRACE_DIR="$ORIGINAL_DIR/tmp/rux-traces"
+        if [ -d "$TRACE_DIR" ]; then
+            # Get the 3 most recent trace files (matching the number of runs)
+            RECENT_TRACES=$(ls -t "$TRACE_DIR"/rux-trace-*.json 2>/dev/null | head -$RUNS)
+            
+            if [ -n "$RECENT_TRACES" ]; then
+                echo "Found trace files:"
+                for trace in $RECENT_TRACES; do
+                    echo "  - $(basename $trace)"
+                    
+                    # Run trace analysis
+                    if [ -f "$ORIGINAL_DIR/rux/analyze_trace.rb" ]; then
+                        echo "    Analysis:"
+                        ruby "$ORIGINAL_DIR/rux/analyze_trace.rb" "$trace" | grep -E "(Rux overhead:|Total execution time:|Longest spec file:)" | sed 's/^/    /'
+                    fi
+                done
+                
+                # Save trace file paths to results
+                TRACE_LIST_FILE="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-${project_name}-traces.txt"
+                echo "$RECENT_TRACES" > "$TRACE_LIST_FILE"
+                echo "  - $TRACE_LIST_FILE"
+            fi
+        fi
+    fi
+    
+    popd > /dev/null
+}
 
-# Check for required tools
-if ! command -v hyperfine &> /dev/null; then
-    echo "Error: hyperfine not found. Install with: brew install hyperfine"
-    exit 1
-fi
+# Create results directory
+mkdir -p "$RESULTS_DIR"
 
-if ! command -v rux &> /dev/null; then
-    echo "Error: rux not found. Make sure it's installed and in PATH"
-    exit 1
-fi
-
-# Change to project directory
-cd "$PROJECT_PATH"
-
-# Ensure dependencies are installed
-echo "Installing dependencies..."
-bundle install
-
-# Count specs for context
-SPEC_COUNT=$(find spec -name "*_spec.rb" | wc -l | tr -d ' ')
-echo "Found $SPEC_COUNT spec files in $(pwd)"
-echo ""
-
-TURBO_CMD="turbo_tests -n 8"
-echo ""
-echo "Verifying commands work..."
-echo "Testing turbo_tests..."
-if $TURBO_CMD --help > /dev/null 2>&1; then
-    echo "✓ turbo_tests ready"
+# Check if custom project paths were provided
+if [ $# -gt 0 ]; then
+    # Benchmark custom projects
+    for project in "$@"; do
+        if [ -d "$project" ]; then
+            benchmark_project "$project"
+        else
+            echo "Warning: Directory not found: $project"
+        fi
+    done
 else
-    echo "✗ turbo_tests failed"
-    exit 1
+    # Run default benchmarks
+    echo "Running benchmarks for rux-ruby and example-project"
+    
+    benchmark_project "./rux-ruby"
+    benchmark_project "./references/example-project"
 fi
 
-echo "Testing rux..."
-if rux --help > /dev/null 2>&1; then
-    echo "✓ rux ready"
-else
-    echo "✗ rux failed"
-    exit 1
-fi
 echo ""
-
-# Run benchmarks
-echo "Running benchmarks..."
-echo "===================="
-
-hyperfine \
-    --warmup 1 \
-    --runs 3 \
-    --export-markdown bench-results.md \
-    --export-json bench-results.json \
-    "$TURBO_CMD" \
-    "rux -n 8"
-
-cat <<EOF
-
-Benchmark complete!
-Results saved to:
-  - bench-results.md (markdown table)
-  - bench-results.json (detailed data)
-
-EOF
-
-# Show quick summary
-if [ -f bench-results.md ]; then
-    cat <<EOF
-Quick Summary:
-==============
-EOF
-    cat bench-results.md
+echo "All benchmarks complete!"
+if [ "$ENABLE_TRACE" = true ]; then
+    echo "Trace files saved to: $ORIGINAL_DIR/tmp/rux-traces/"
 fi

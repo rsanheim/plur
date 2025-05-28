@@ -1,18 +1,26 @@
 require "rake"
+require "fileutils"
 
 begin
   require "bundler"
   require "standard/rake" if Gem::Specification.find_all_by_name("standard").any?
+  require "rspec/core/rake_task" if Gem::Specification.find_all_by_name("rspec").any?
 rescue LoadError
+end
+
+# Define RSpec task if available
+if defined?(RSpec)
+  RSpec::Core::RakeTask.new(:spec)
 end
 
 # Default task runs all checks
 desc "Run all tests and linting"
 task default: ["test:all", "lint:all"]
 
-task install: [:build] do
+task install: [:build_release] do
   Dir.chdir("rux") do
-    sh "go install ."
+    # Copy the built binary to GOPATH/bin
+    sh "cp rux $(go env GOPATH)/bin/"
   end
 end
 
@@ -26,13 +34,30 @@ end
 #     go install gotest.tools/gotestsum@latest
 # ========================================
 namespace :test do
-  desc "Run all tests (Go and Ruby)"
-  task all: [:go, :ruby]
+  desc "Run all tests (Go, Ruby, and Integration)"
+  task all: [:go, :ruby, :integration]
 
   desc "Run Go tests"
   task :go do
     Dir.chdir("rux") do
       puts "Running Go tests..."
+      
+      # Download dependencies first
+      puts "Downloading Go dependencies..."
+      sh "go mod download"
+      
+      # Clean up tmp directory first to avoid test artifacts
+      if Dir.exist?("tmp")
+        puts "Cleaning up tmp directory..."
+        FileUtils.rm_rf("tmp")
+        FileUtils.mkdir_p("tmp")
+      end
+      
+      # Ensure we're in the right directory and can find embedded files
+      unless File.exist?("lib/rux/json_rows_formatter.rb")
+        raise "Cannot find lib/rux/json_rows_formatter.rb - are we in the right directory?"
+      end
+      
       # Use standard output format (dots) unless verbose is requested
       if ENV["VERBOSE"]
         sh "go test -v ./..."
@@ -83,6 +108,9 @@ namespace :test do
       sh rux_command.to_s
     end
   end
+
+  desc "Run integration tests in root spec directory"
+  task integration: [:build, :spec]
 end
 
 # ========================================
@@ -139,6 +167,47 @@ task :build do
     puts "Building rux..."
     sh "go build -o rux ."
     puts "Binary created at rux/rux"
+  end
+end
+
+desc "Build the rux Go binary with version information"
+task :build_release do
+  Dir.chdir("rux") do
+    # Read version from VERSION file or use environment variable
+    base_version = if ENV["VERSION"]
+      ENV["VERSION"]
+    elsif File.exist?("../VERSION")
+      File.read("../VERSION").strip
+    else
+      "0.6.0"
+    end
+
+    # Ensure version starts with 'v'
+    version = base_version.start_with?("v") ? base_version : "v#{base_version}"
+
+    # Get git commit (short hash)
+    commit = `git rev-parse --short HEAD`.chomp
+
+    # Get current timestamp in Go pseudo-version format (YYYYMMDD-HHMM)
+    timestamp = Time.now.utc.strftime("%Y%m%d-%H%M")
+
+    # Build pseudo-version: v0.6.0-TIMESTAMP-GITREF
+    full_version = "#{version}-#{timestamp}-#{commit}"
+
+    # Get build date
+    date = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # Build with ldflags to embed version info
+    ldflags = [
+      "-X main.version=#{full_version}",
+      "-X main.commit=#{commit}",
+      "-X 'main.date=#{date}'",
+      "-X main.builtBy=rake"
+    ].join(" ")
+
+    puts "Building rux with version: #{full_version}"
+    sh %(go build -ldflags "#{ldflags}" -o rux .)
+    puts "Binary created at rux/rux with version: #{full_version}"
   end
 end
 

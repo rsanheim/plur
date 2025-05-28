@@ -1,8 +1,8 @@
-require 'spec_helper'
-require 'tmpdir'
+require "spec_helper"
+require "tmpdir"
 
 RSpec.describe "Rux error handling" do
-  let(:rux_binary) { File.join(__dir__, '..', 'rux', 'rux') }
+  let(:rux_binary) { File.join(__dir__, "..", "rux", "rux") }
 
   before do
     expect(File.exist?(rux_binary)).to be(true)
@@ -29,7 +29,7 @@ RSpec.describe "Rux error handling" do
           # Simulate RSpec failing before it can generate JSON
           exit(127)
         RUBY
-        File.chmod(0755, wrapper_path)
+        File.chmod(0o755, wrapper_path)
 
         # Create a simple spec file
         spec_path = File.join(tmpdir, "test_spec.rb")
@@ -51,13 +51,13 @@ RSpec.describe "Rux error handling" do
         # Run rux and capture output
         Dir.chdir(tmpdir) do
           output = `PATH=#{tmpdir}:$PATH #{rux_binary} test_spec.rb 2>&1`
-          
+
           # Should show that something went wrong
           expect($?.exitstatus).not_to eq(0)
-          
+
           # Should show helpful error message, not raw JSON error
-          expect(output).to include("likely failed to start").or include("may have failed").or include("exit code")
-          
+          expect(output).to include("exit status")
+
           # Most importantly, should NOT show raw JSON parsing error
           expect(output).not_to include("failed to parse JSON: unexpected end of JSON input")
         end
@@ -89,13 +89,13 @@ RSpec.describe "Rux error handling" do
         # Install gems first
         Dir.chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
-          
+
           output = `#{rux_binary} crash_spec.rb 2>&1`
-          
+
           # For this case, we expect either success (if RSpec handles the exit gracefully)
           # or a warning about JSON parsing (not a fatal error)
           expect(output).to include("Running 1 spec files")
-          
+
           # Should not crash rux itself
           expect(output).to include("Finished in")
         end
@@ -108,7 +108,7 @@ RSpec.describe "Rux error handling" do
       Dir.mktmpdir do |tmpdir|
         Dir.chdir(tmpdir) do
           output = `#{rux_binary} 2>&1`
-          
+
           # Should handle gracefully and show appropriate message
           expect(output).to include("no spec files found").or include("ERROR")
         end
