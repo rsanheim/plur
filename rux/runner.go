@@ -388,9 +388,7 @@ func RunSpecFileWithStreamingJSON(ctx context.Context, specFile string, workerIn
 
 	var outputBuilder strings.Builder
 	var wg sync.WaitGroup
-	var jsonOutput *RSpecJSONOutput
-	var failures []FailureDetail
-	var exampleCount, failureCount int
+	streamingResults := &StreamingResults{}
 
 	// Stream stdout and parse JSON messages in real-time
 	wg.Add(1)
@@ -400,13 +398,14 @@ func RunSpecFileWithStreamingJSON(ctx context.Context, specFile string, workerIn
 		for scanner.Scan() {
 			line := scanner.Text()
 			
-			if strings.HasPrefix(line, "RUX_JSON:") {
-				// Parse JSON message
-				jsonStr := strings.TrimPrefix(line, "RUX_JSON:")
-				
-				// For now, just print progress dots based on the JSON type
-				// TODO: Parse JSON and generate appropriate output
-				if strings.Contains(jsonStr, `"type":"example_passed"`) {
+			msg, err := ParseJSONMessage(line)
+			if msg != nil {
+				// Handle different message types
+				switch msg.Type {
+				case "start":
+					streamingResults.LoadTime = msg.LoadTime
+				case "example_passed":
+					streamingResults.AddExample(*msg)
 					outputMutex.Lock()
 					if colorOutput {
 						fmt.Print("\033[32m.\033[0m") // Green dot
@@ -414,7 +413,8 @@ func RunSpecFileWithStreamingJSON(ctx context.Context, specFile string, workerIn
 						fmt.Print(".")
 					}
 					outputMutex.Unlock()
-				} else if strings.Contains(jsonStr, `"type":"example_failed"`) {
+				case "example_failed":
+					streamingResults.AddExample(*msg)
 					outputMutex.Lock()
 					if colorOutput {
 						fmt.Print("\033[31mF\033[0m") // Red F
@@ -422,7 +422,8 @@ func RunSpecFileWithStreamingJSON(ctx context.Context, specFile string, workerIn
 						fmt.Print("F")
 					}
 					outputMutex.Unlock()
-				} else if strings.Contains(jsonStr, `"type":"example_pending"`) {
+				case "example_pending":
+					streamingResults.AddExample(*msg)
 					outputMutex.Lock()
 					if colorOutput {
 						fmt.Print("\033[33m*\033[0m") // Yellow asterisk
@@ -430,8 +431,12 @@ func RunSpecFileWithStreamingJSON(ctx context.Context, specFile string, workerIn
 						fmt.Print("*")
 					}
 					outputMutex.Unlock()
+				case "close":
+					// End of test run
 				}
-				// TODO: Accumulate JSON for final results
+			} else if err != nil {
+				// JSON parsing error - log it
+				outputBuilder.WriteString(fmt.Sprintf("JSON parse error: %v for line: %s\n", err, line))
 			} else {
 				// Non-JSON output (warnings, errors, etc.)
 				outputBuilder.WriteString(line + "\n")
@@ -467,12 +472,9 @@ func RunSpecFileWithStreamingJSON(ctx context.Context, specFile string, workerIn
 		success = exitCode <= 1
 	}
 
-	// TODO: Build jsonOutput from accumulated JSON messages
-	// For now, we'll leave these empty
-	// jsonOutput = ...
-	// failures = ...
-	// exampleCount = ...
-	// failureCount = ...
+	// Convert streaming results to RSpec JSON format
+	jsonOutput := streamingResults.ConvertToRSpecJSON()
+	failures := ExtractFailures(jsonOutput.Examples)
 
 	success = exitCode == 0
 
@@ -484,8 +486,8 @@ func RunSpecFileWithStreamingJSON(ctx context.Context, specFile string, workerIn
 		Duration:     time.Since(start),
 		JSONOutput:   jsonOutput,
 		Failures:     failures,
-		ExampleCount: exampleCount,
-		FailureCount: failureCount,
+		ExampleCount: streamingResults.ExampleCount,
+		FailureCount: streamingResults.FailureCount,
 	}
 }
 
