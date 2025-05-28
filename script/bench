@@ -115,10 +115,6 @@ benchmark_project() {
         "turbo_tests -n $WORKERS" \
         "rux -n $WORKERS"
     
-    # Create latest symlinks for this project
-    ln -sf "bench-${project_name}-${TIMESTAMP}.md" "$RESULTS_DIR/bench-${project_name}-latest.md"
-    ln -sf "bench-${project_name}-${TIMESTAMP}.json" "$RESULTS_DIR/bench-${project_name}-latest.json"
-    
     # Show results location
     echo ""
     echo "Results saved to:"

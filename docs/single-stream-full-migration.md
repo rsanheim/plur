@@ -25,6 +25,25 @@ After implementing and testing both approaches side-by-side, we're fully committ
 - [x] Update dry-run to show correct formatter commands
 - [x] Clean up unused JSON file handling code
 
+### Phase 2.9: simplify benchmark scripts
+HI CLAUDE!!! I've simplified our benchmark scripts a bit to be simpler.  Please simplify further based on the examples below. Do not add any new features:
+
+Running `script/bench` should export to the following files (note: just JSON)
+
+```
+results/20250528-${time}-${short_sha}-rux-ruby.json
+results/20250528-${time}-${short_sha}-example-project.json
+```
+
+`script/bench-checkpoint` can run `script/bench`, combines the JSON files, and uses that to generate a markdown summary with the differences. Include a link to the github commit in the markdown.  do not create symlinks. do not add features or over complicate.
+
+`script/bench-checkpoint` should output to the following files:
+
+```
+results/20250528-${time}-${short_sha}-summary.json
+results/20250528-${time}-${short_sha}-summary.md
+```
+
 ### Phase 3: Optimization (Next)
 - [ ] Profile formatter caching overhead
 - [ ] Consider embedding formatter differently (go:embed vs string)
