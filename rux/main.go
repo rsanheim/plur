@@ -240,23 +240,28 @@ func createApp() *cli.App {
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
 
-			// Initialize runtime tracker if runtime-dir is specified
-			var runtimeTracker *RuntimeTracker
+			// Always initialize runtime tracker
+			runtimeTracker := NewRuntimeTracker()
+
+			// Determine runtime directory (use default if not specified)
 			runtimeDir := ctx.String("runtime-dir")
-			if runtimeDir != "" {
-				runtimeTracker = NewRuntimeTracker()
+			if runtimeDir == "" {
+				// Always use ~/.cache/rux as default
+				homeDir, err := os.UserHomeDir()
+				if err != nil {
+					return fmt.Errorf("failed to get home directory: %v", err)
+				}
+				runtimeDir = filepath.Join(homeDir, ".cache", "rux")
 			}
 
 			// Run specs in parallel with intelligent grouping
 			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount, runtimeTracker)
 
-			// Save runtime data if tracker was initialized
-			if runtimeTracker != nil {
-				if err := runtimeTracker.SaveToFile(runtimeDir); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
-				} else {
-					fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", filepath.Join(runtimeDir, "runtime.json"))
-				}
+			// Save runtime data
+			if err := runtimeTracker.SaveToFile(runtimeDir); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", filepath.Join(runtimeDir, "runtime.json"))
 			}
 
 			// Build summary and print results

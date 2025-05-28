@@ -24,7 +24,7 @@ func NewRuntimeTracker() *RuntimeTracker {
 func (rt *RuntimeTracker) AddRuntime(filePath string, runtime float64) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
-	
+
 	// Accumulate runtimes for the same file
 	rt.runtimes[filePath] += runtime
 }
@@ -40,12 +40,12 @@ func (rt *RuntimeTracker) AddExample(example RSpecExample) {
 func (rt *RuntimeTracker) SaveToFile(dir string) error {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
-	
+
 	// Ensure directory exists
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	
+
 	// Write runtime data to runtime.json
 	runtimeFile := filepath.Join(dir, "runtime.json")
 	file, err := os.Create(runtimeFile)
@@ -53,7 +53,7 @@ func (rt *RuntimeTracker) SaveToFile(dir string) error {
 		return err
 	}
 	defer file.Close()
-	
+
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(rt.runtimes)
@@ -63,7 +63,7 @@ func (rt *RuntimeTracker) SaveToFile(dir string) error {
 func (rt *RuntimeTracker) GetRuntimes() map[string]float64 {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
-	
+
 	// Return a copy to avoid concurrent access issues
 	result := make(map[string]float64)
 	for k, v := range rt.runtimes {

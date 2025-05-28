@@ -15,8 +15,6 @@ var jsonRowsFormatterCode string
 // GetFormatterPath returns the path to the JSON rows formatter,
 // creating it in the XDG cache directory if it doesn't exist
 func GetFormatterPath() (string, error) {
-	defer TraceFunc("formatter.get_path")()
-
 	// Get XDG cache directory (~/.cache on Linux/Mac)
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
@@ -41,11 +39,7 @@ func GetFormatterPath() (string, error) {
 	}
 
 	// Write the formatter to the cache directory
-	func() {
-		defer TraceFunc("formatter.write_file")()
-		err = os.WriteFile(formatterPath, []byte(jsonRowsFormatterCode), 0644)
-	}()
-	if err != nil {
+	if err = os.WriteFile(formatterPath, []byte(jsonRowsFormatterCode), 0644); err != nil {
 		return "", fmt.Errorf("failed to write formatter file: %w", err)
 	}
 

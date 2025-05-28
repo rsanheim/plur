@@ -41,23 +41,23 @@ namespace :test do
   task :go do
     Dir.chdir("rux") do
       puts "Running Go tests..."
-      
+
       # Download dependencies first
       puts "Downloading Go dependencies..."
       sh "go mod download"
-      
+
       # Clean up tmp directory first to avoid test artifacts
       if Dir.exist?("tmp")
         puts "Cleaning up tmp directory..."
         FileUtils.rm_rf("tmp")
         FileUtils.mkdir_p("tmp")
       end
-      
+
       # Ensure we're in the right directory and can find embedded files
       unless File.exist?("lib/rux/json_rows_formatter.rb")
         raise "Cannot find lib/rux/json_rows_formatter.rb - are we in the right directory?"
       end
-      
+
       # Use standard output format (dots) unless verbose is requested
       if ENV["VERBOSE"]
         sh "go test -v ./..."
