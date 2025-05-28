@@ -281,10 +281,16 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 
 // RunSpecFile executes a single spec file using the streaming JSON formatter
 func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, outputChan chan<- OutputMessage) TestResult {
+	defer TraceFuncWithWorker("run_spec_file", workerIndex, specFile)()
 	start := time.Now()
 
 	// Get the cached formatter path (computed only once)
-	formatterPath, err := getCachedFormatterPath()
+	var formatterPath string
+	var err error
+	func() {
+		defer TraceFuncWithWorker("get_formatter_path", workerIndex, specFile)()
+		formatterPath, err = getCachedFormatterPath()
+	}()
 	if err != nil {
 		return TestResult{
 			SpecFile: specFile,
@@ -347,7 +353,11 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	}
 
 	// Start the command
-	if err := cmd.Start(); err != nil {
+	func() {
+		defer TraceFuncWithWorker("process_spawn", workerIndex, specFile)()
+		err = cmd.Start()
+	}()
+	if err != nil {
 		return TestResult{
 			SpecFile: specFile,
 			Success:  false,
@@ -366,8 +376,20 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	go func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
+		
+		firstOutput := true
 		for scanner.Scan() {
 			line := scanner.Text()
+			
+			if firstOutput {
+				// Trace time to first output
+				firstOutput = false
+				TraceFuncWithMetadata("ruby_first_output", map[string]interface{}{
+					"worker_id": workerIndex,
+					"spec_file": specFile,
+					"time_since_spawn": time.Since(start).Seconds() * 1000,
+				})()
+			}
 
 			msg, err := ParseJSONMessage(line)
 			if msg != nil {
@@ -375,6 +397,12 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 				switch msg.Type {
 				case "start":
 					streamingResults.LoadTime = msg.LoadTime
+					TraceFuncWithMetadata("rspec_loaded", map[string]interface{}{
+						"worker_id": workerIndex,
+						"spec_file": specFile,
+						"load_time": msg.LoadTime,
+						"time_since_spawn": time.Since(start).Seconds() * 1000,
+					})()
 				case "example_passed":
 					streamingResults.AddExample(*msg)
 					outputChan <- OutputMessage{
@@ -458,6 +486,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 
 // RunSpecsInParallel executes spec files in parallel using a worker pool
 func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int) ([]TestResult, time.Duration) {
+	defer TraceFunc("run_specs_parallel")()
 	start := time.Now()
 	ctx := context.Background()
 	results := make(chan TestResult, len(specFiles))
@@ -481,17 +510,24 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
-	for i := 0; i < maxWorkers; i++ {
-		workerIndex := i
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for job := range jobs {
-				result := RunSpecFile(ctx, job.SpecFile, workerIndex, dryRun, saveJSON, outputChan)
-				results <- result
-			}
-		}()
-	}
+	func() {
+		defer TraceFuncWithMetadata("worker_pool_init", map[string]interface{}{
+			"worker_count": maxWorkers,
+			"spec_count":   len(specFiles),
+		})()
+		
+		for i := 0; i < maxWorkers; i++ {
+			workerIndex := i
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for job := range jobs {
+					result := RunSpecFile(ctx, job.SpecFile, workerIndex, dryRun, saveJSON, outputChan)
+					results <- result
+				}
+			}()
+		}
+	}()
 
 	// Send jobs to workers
 	go func() {

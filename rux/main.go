@@ -119,30 +119,54 @@ func createApp() *cli.App {
 				Aliases: []string{"workers"},
 				Usage:   "Number of parallel workers (default: cores-2, env: PARALLEL_TEST_PROCESSORS)",
 			},
+			&cli.BoolFlag{
+				Name:  "trace",
+				Usage: "Enable performance tracing to analyze execution time",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
+			// Initialize tracing if enabled
+			if ctx.Bool("trace") {
+				if err := InitTracer(true); err != nil {
+					return fmt.Errorf("failed to initialize tracer: %v", err)
+				}
+				defer CloseTracer()
+			}
+
+			defer TraceFunc("main.total_execution")()
+
 			var specFiles []string
 			var err error
 
 			// Determine which spec files to run
-			if ctx.NArg() > 0 {
-				// Expand glob patterns from provided arguments
-				specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
-				if err != nil {
-					return fmt.Errorf("error expanding glob patterns: %v", err)
+			func() {
+				defer TraceFunc("file_discovery")()
+				
+				if ctx.NArg() > 0 {
+					// Expand glob patterns from provided arguments
+					specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
+					if err != nil {
+						return
+					}
+					if len(specFiles) == 0 {
+						err = fmt.Errorf("no spec files found matching provided patterns")
+						return
+					}
+				} else {
+					// Auto-discover spec files
+					specFiles, err = FindSpecFiles()
+					if err != nil {
+						return
+					}
+					if len(specFiles) == 0 {
+						err = fmt.Errorf("no spec files found")
+						return
+					}
 				}
-				if len(specFiles) == 0 {
-					return fmt.Errorf("no spec files found matching provided patterns")
-				}
-			} else {
-				// Auto-discover spec files
-				specFiles, err = FindSpecFiles()
-				if err != nil {
-					return fmt.Errorf("error finding spec files: %v", err)
-				}
-				if len(specFiles) == 0 {
-					return fmt.Errorf("no spec files found")
-				}
+			}()
+			
+			if err != nil {
+				return err
 			}
 
 			dryRun := ctx.Bool("dry-run")
@@ -172,6 +196,8 @@ func createApp() *cli.App {
 
 			// Run bundle install if --auto flag is set
 			if ctx.Bool("auto") {
+				defer TraceFunc("bundle_install")()
+				
 				fmt.Println("Installing dependencies...")
 				bundleCmd := exec.Command("bundle", "install")
 				bundleCmd.Stdout = os.Stdout

@@ -37,10 +37,29 @@ rux                          # Auto-detect workers (cores-2)
 rux -n 4                    # Specific worker count (often optimal)
 rux --dry-run               # Preview execution plan
 rux spec/specific_spec.rb    # Run specific files
+rux --trace                  # Enable performance tracing
 
 # Environment configuration
 export PARALLEL_TEST_PROCESSORS=4
 rux                          # Uses environment variable
+```
+
+### Performance Tracing
+```bash
+# Enable tracing to analyze performance
+rux --trace -n 4
+
+# Trace files are written to temp directory
+# Output: "Tracing enabled, writing to: /tmp/rux-traces/rux-trace-TIMESTAMP.json"
+
+# Analyze trace results
+ruby rux/analyze_trace.rb -v /tmp/rux-traces/rux-trace-*.json
+
+# Key metrics traced:
+# - Process spawn time (~1ms per process)
+# - Ruby startup time (~190ms from spawn to first output)
+# - RSpec load time (~45ms as reported by RSpec)
+# - Total overhead (typically <10ms or <1% for large test suites)
 ```
 
 ### Performance Benchmarking
