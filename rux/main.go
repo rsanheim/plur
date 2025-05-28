@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/rsanheim/rux/rspec"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
 )
@@ -191,9 +192,15 @@ func createApp() *cli.App {
 				fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(specFiles))
 
 				// Get formatter path for dry-run display
-				formatterPath, err := GetFormatterPath()
+				cacheDir, err := getRuxCacheDir()
+				var formatterPath string
 				if err != nil {
 					formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
+				} else {
+					formatterPath, err = rspec.GetFormatterPath(cacheDir)
+					if err != nil {
+						formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
+					}
 				}
 
 				// Show grouped execution in dry-run

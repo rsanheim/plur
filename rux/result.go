@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/rsanheim/rux/rspec"
 )
 
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
 	TotalExamples int
 	TotalFailures int
-	AllFailures   []FailureDetail
+	AllFailures   []rspec.FailureDetail
 	TotalCPUTime  time.Duration
 	WallTime      time.Duration
 	HasFailures   bool
@@ -65,7 +67,7 @@ func PrintResults(summary TestSummary) {
 		fmt.Println("\nFailures:")
 
 		for i, failure := range summary.AllFailures {
-			fmt.Print(FormatFailure(i+1, failure))
+			fmt.Print(rspec.FormatFailure(i+1, failure))
 			fmt.Println() // Extra line between failures
 		}
 	}
@@ -83,7 +85,7 @@ func PrintResults(summary TestSummary) {
 	// Print failed examples summary
 	if len(summary.AllFailures) > 0 {
 		fmt.Println("\nFailed examples:")
-		fmt.Print(FormatFailedExamples(summary.AllFailures))
+		fmt.Print(rspec.FormatFailedExamples(summary.AllFailures))
 	}
 
 	// Show any spec files that had errors running

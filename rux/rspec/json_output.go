@@ -1,4 +1,4 @@
-package main
+package rspec
 
 import (
 	"bufio"
@@ -9,34 +9,34 @@ import (
 	"strings"
 )
 
-// RSpecJSONOutput represents the root structure of RSpec JSON output
-type RSpecJSONOutput struct {
-	Version  string         `json:"version"`
-	Examples []RSpecExample `json:"examples"`
-	Summary  RSpecSummary   `json:"summary"`
+// JSONOutput represents the root structure of RSpec JSON output
+type JSONOutput struct {
+	Version  string    `json:"version"`
+	Examples []Example `json:"examples"`
+	Summary  Summary   `json:"summary"`
 }
 
-// RSpecExample represents a single test example in the JSON output
-type RSpecExample struct {
-	ID              string          `json:"id"`
-	Description     string          `json:"description"`
-	FullDescription string          `json:"full_description"`
-	Status          string          `json:"status"`
-	FilePath        string          `json:"file_path"`
-	LineNumber      int             `json:"line_number"`
-	RunTime         float64         `json:"run_time"`
-	Exception       *RSpecException `json:"exception,omitempty"`
+// Example represents a single test example in the JSON output
+type Example struct {
+	ID              string     `json:"id"`
+	Description     string     `json:"description"`
+	FullDescription string     `json:"full_description"`
+	Status          string     `json:"status"`
+	FilePath        string     `json:"file_path"`
+	LineNumber      int        `json:"line_number"`
+	RunTime         float64    `json:"run_time"`
+	Exception       *Exception `json:"exception,omitempty"`
 }
 
-// RSpecException represents failure information
-type RSpecException struct {
+// Exception represents failure information
+type Exception struct {
 	Class     string   `json:"class"`
 	Message   string   `json:"message"`
 	Backtrace []string `json:"backtrace"`
 }
 
-// RSpecSummary represents the summary statistics
-type RSpecSummary struct {
+// Summary represents the summary statistics
+type Summary struct {
 	Duration      float64 `json:"duration"`
 	ExampleCount  int     `json:"example_count"`
 	FailureCount  int     `json:"failure_count"`
@@ -54,8 +54,8 @@ type FailureDetail struct {
 	Backtrace   []string
 }
 
-// ParseRSpecJSON reads and parses RSpec JSON output from a file
-func ParseRSpecJSON(filename string) (*RSpecJSONOutput, error) {
+// ParseJSONOutput reads and parses RSpec JSON output from a file
+func ParseJSONOutput(filename string) (*JSONOutput, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open JSON file: %v", err)
@@ -72,7 +72,7 @@ func ParseRSpecJSON(filename string) (*RSpecJSONOutput, error) {
 		return nil, fmt.Errorf("JSON file is empty - RSpec likely failed to start (check for missing gems or bundle install needed)")
 	}
 
-	var output RSpecJSONOutput
+	var output JSONOutput
 	if err := json.Unmarshal(data, &output); err != nil {
 		// Provide more helpful error for common case of malformed JSON due to early RSpec failure
 		if strings.Contains(err.Error(), "unexpected end of JSON input") {
@@ -85,7 +85,7 @@ func ParseRSpecJSON(filename string) (*RSpecJSONOutput, error) {
 }
 
 // ExtractFailures extracts failure details from RSpec examples
-func ExtractFailures(examples []RSpecExample) []FailureDetail {
+func ExtractFailures(examples []Example) []FailureDetail {
 	var failures []FailureDetail
 
 	for _, example := range examples {

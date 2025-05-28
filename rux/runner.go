@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rsanheim/rux/rspec"
 )
 
 // Global cached formatter path
@@ -27,8 +29,8 @@ type TestResult struct {
 	Output       string
 	Error        error
 	Duration     time.Duration
-	JSONOutput   *RSpecJSONOutput
-	Failures     []FailureDetail
+	JSONOutput   *rspec.JSONOutput
+	Failures     []rspec.FailureDetail
 	ExampleCount int
 	FailureCount int
 }
@@ -80,7 +82,12 @@ func GetTestEnvNumber(workerIndex int) string {
 // getCachedFormatterPath returns the formatter path, computing it only once
 func getCachedFormatterPath() (string, error) {
 	formatterPathOnce.Do(func() {
-		cachedFormatterPath, formatterPathErr = GetFormatterPath()
+		cacheDir, err := getRuxCacheDir()
+		if err != nil {
+			formatterPathErr = err
+			return
+		}
+		cachedFormatterPath, formatterPathErr = rspec.GetFormatterPath(cacheDir)
 	})
 	return cachedFormatterPath, formatterPathErr
 }
@@ -207,7 +214,7 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 
 	var outputBuilder strings.Builder
 	var wg sync.WaitGroup
-	streamingResults := &StreamingResults{}
+	streamingResults := &rspec.StreamingResults{}
 
 	// Stream stdout and parse JSON messages in real-time
 	wg.Add(1)
@@ -229,7 +236,7 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 				})()
 			}
 
-			msg, err := ParseJSONMessage(line)
+			msg, err := rspec.ParseStreamingMessage(line)
 			if msg != nil {
 				// Handle different message types
 				switch msg.Type {
@@ -304,8 +311,8 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 	}
 
 	// Convert streaming results to RSpec JSON format
-	jsonOutput := streamingResults.ConvertToRSpecJSON()
-	failures := ExtractFailures(jsonOutput.Examples)
+	jsonOutput := streamingResults.ConvertToJSONOutput()
+	failures := rspec.ExtractFailures(jsonOutput.Examples)
 
 	success = exitCode == 0
 
