@@ -38,10 +38,10 @@ RSpec process → JsonRowsFormatter → stdout (line-by-line JSON) → parse in 
   - Understand the JSON message format
   - Understand how it hooks into RSpec events
 
-- [ ] Create a Go-compatible JSON message format specification
-  - Define message types (example_passed, example_failed, example_pending, etc.)
-  - Define message structure
-  - Ensure compatibility with existing failure extraction logic
+* [ ] Add the meta-rspec gem (git@github.com:rspec/rspec.git) as another 'reference' repo, so we can research its context as necessary. Add it as a git subtree underneath references/rspec
+- [ ] Create a JsonRowsFormatter in ruby (basically emulate TurboTests formatter for now)
+* [ ] Add some specs for the formatter in isolation
+* [ ] Pause and analyze how to best refactor to a "single stream" per rspec rux - we probably want to update this plan at that point
 
 #### JSON Message Format (from turbo_tests)
 
