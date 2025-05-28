@@ -2,119 +2,173 @@
 
 set -e
 
-# Check if path provided
-if [ $# -eq 0 ]; then
+show_help() {
     cat <<'EOF'
-Usage: bench <project-path>
+Usage: bench [options] [project-path]
 
 Benchmarks rux against turbo_tests using hyperfine for performance comparison.
 
+Options:
+  -h, --help     Show this help message
+  -n <num>       Number of worker processes (default: 8)
+  --default      Run benchmarks on default projects (rux-ruby and references/example-project)
+  --preflight    Run preflight checks (verify tools, install dependencies)
+
 Examples:
-  bench ./rux-ruby
-  bench ./example-project-1234567890
-  bench /path/to/ruby/project
+  bench                        # Same as --default with 8 workers
+  bench -n 4                   # Benchmark default projects with 4 workers
+  bench ./rux-ruby             # Benchmark specific project with 8 workers
+  bench -n 16 ./project        # Benchmark project with 16 workers
+  bench --preflight            # Run preflight checks for default projects
+  bench --preflight ./project  # Run preflight checks for specific project
 
 What it does:
-  - Verifies project has spec directory and dependencies
-  - Installs turbo_tests temporarily if not present
-  - Runs hyperfine benchmarks comparing turbo_tests vs rux (default to 8 workers)
-  - Exports results to markdown and JSON
-  - Cleans up temporary changes
+  - Runs hyperfine benchmarks comparing turbo_tests vs rux
+  - Exports results to ./results directory with timestamps
+  - Shows performance comparison
 
 Requirements:
   - hyperfine (brew install hyperfine)
   - rux binary in PATH
   - Ruby project with spec directory
+  - Run with --preflight to verify requirements
 
 Output:
-  Creates bench-results.md and bench-results.json in the project directory
+  Creates timestamped results in ./results/
+  - bench-<project>-<timestamp>.md (markdown table)
+  - bench-<project>-<timestamp>.json (detailed data)
 EOF
-    exit 1
+}
+
+# Default values
+WORKERS=8
+DEFAULT_MODE=false
+PROJECT_PATH=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -n)
+            WORKERS="$2"
+            shift 2
+            ;;
+        --preflight)
+            shift
+            exec ./script/bench-preflight "$@"
+            ;;
+        --default)
+            DEFAULT_MODE=true
+            shift
+            ;;
+        *)
+            if [ -z "$PROJECT_PATH" ]; then
+                PROJECT_PATH="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# If no arguments provided, default mode
+if [ -z "$PROJECT_PATH" ] && [ "$DEFAULT_MODE" = false ]; then
+    DEFAULT_MODE=true
 fi
 
-PROJECT_PATH="$1"
 
-# Verify project path exists
-if [ ! -d "$PROJECT_PATH" ]; then
-    echo "Error: Project path '$PROJECT_PATH' does not exist"
-    exit 1
-fi
+# Function to benchmark a single project
+benchmark_project() {
+    local project_path=$1
+    local project_name=$(basename "$project_path")
+    
+    # Verify project path exists
+    if [ ! -d "$project_path" ]; then
+        echo "Error: Project path '$project_path' does not exist"
+        echo "Run './script/bench --preflight' to verify setup"
+        return 1
+    fi
+    
+    # Verify project has spec directory
+    if [ ! -d "$project_path/spec" ]; then
+        echo "Error: No spec directory found in '$project_path'"
+        return 1
+    fi
+    
+    echo "=== Benchmarking $project_name ==="
+    
+    # Change to project directory
+    cd "$project_path"
+    
+    # Count specs for context
+    SPEC_COUNT=$(find spec -name "*_spec.rb" 2>/dev/null | wc -l | tr -d ' ')
+    echo "Found $SPEC_COUNT spec files"
+    
+    # Create results directory
+    RESULTS_DIR="$ORIGINAL_DIR/results"
+    mkdir -p "$RESULTS_DIR"
+    
+    # Generate timestamp
+    TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+    
+    # Output files in results directory
+    MD_FILE="$RESULTS_DIR/bench-${project_name}-${TIMESTAMP}.md"
+    JSON_FILE="$RESULTS_DIR/bench-${project_name}-${TIMESTAMP}.json"
+    
+    # Run benchmarks
+    echo "Running benchmarks with $WORKERS workers..."
+    echo "===================="
+    
+    hyperfine \
+        --warmup 1 \
+        --runs 3 \
+        --export-markdown "$MD_FILE" \
+        --export-json "$JSON_FILE" \
+        "turbo_tests -n $WORKERS" \
+        "rux -n $WORKERS"
+    
+    # Create latest symlinks for this project
+    ln -sf "bench-${project_name}-${TIMESTAMP}.md" "$RESULTS_DIR/bench-${project_name}-latest.md"
+    ln -sf "bench-${project_name}-${TIMESTAMP}.json" "$RESULTS_DIR/bench-${project_name}-latest.json"
+    
+    # Show results location
+    echo ""
+    echo "Results saved to:"
+    echo "  - $MD_FILE"
+    echo "  - $JSON_FILE"
+    
+    # Show quick summary
+    if [ -f "$MD_FILE" ]; then
+        echo ""
+        echo "Quick Summary:"
+        echo "=============="
+        cat "$MD_FILE"
+    fi
+    
+    # Return to original directory
+    cd "$ORIGINAL_DIR"
+}
 
-# Verify project has spec directory
-if [ ! -d "$PROJECT_PATH/spec" ]; then
-    echo "Error: No spec directory found in '$PROJECT_PATH'"
-    exit 1
-fi
+# Main execution
+ORIGINAL_DIR=$(pwd)
 
-# Check for required tools
-if ! command -v hyperfine &> /dev/null; then
-    echo "Error: hyperfine not found. Install with: brew install hyperfine"
-    exit 1
-fi
-
-if ! command -v rux &> /dev/null; then
-    echo "Error: rux not found. Make sure it's installed and in PATH"
-    exit 1
-fi
-
-# Change to project directory
-cd "$PROJECT_PATH"
-
-# Ensure dependencies are installed
-echo "Installing dependencies..."
-bundle install
-
-# Count specs for context
-SPEC_COUNT=$(find spec -name "*_spec.rb" | wc -l | tr -d ' ')
-echo "Found $SPEC_COUNT spec files in $(pwd)"
-echo ""
-
-TURBO_CMD="turbo_tests -n 8"
-echo ""
-echo "Verifying commands work..."
-echo "Testing turbo_tests..."
-if $TURBO_CMD --help > /dev/null 2>&1; then
-    echo "✓ turbo_tests ready"
+if [ "$DEFAULT_MODE" = true ]; then
+    echo "Running default benchmarks (rux-ruby and references/example-project)"
+    
+    # Benchmark rux-ruby
+    benchmark_project "./rux-ruby"
+    
+    # Benchmark references/example-project
+    benchmark_project "./references/example-project"
+    
+    echo ""
+    echo "All benchmarks complete!"
+    echo "View latest results:"
+    echo "  cat results/bench-rux-ruby-latest.md"
+    echo "  cat results/bench-example-project-latest.md"
 else
-    echo "✗ turbo_tests failed"
-    exit 1
-fi
-
-echo "Testing rux..."
-if rux --help > /dev/null 2>&1; then
-    echo "✓ rux ready"
-else
-    echo "✗ rux failed"
-    exit 1
-fi
-echo ""
-
-# Run benchmarks
-echo "Running benchmarks..."
-echo "===================="
-
-hyperfine \
-    --warmup 1 \
-    --runs 3 \
-    --export-markdown bench-results.md \
-    --export-json bench-results.json \
-    "$TURBO_CMD" \
-    "rux -n 8"
-
-cat <<EOF
-
-Benchmark complete!
-Results saved to:
-  - bench-results.md (markdown table)
-  - bench-results.json (detailed data)
-
-EOF
-
-# Show quick summary
-if [ -f bench-results.md ]; then
-    cat <<EOF
-Quick Summary:
-==============
-EOF
-    cat bench-results.md
+    # Benchmark single project
+    benchmark_project "$PROJECT_PATH"
 fi
