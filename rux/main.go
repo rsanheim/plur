@@ -213,26 +213,19 @@ func createApp() *cli.App {
 					runtimeData = make(map[string]float64)
 				}
 
-				if ShouldUseGrouping(len(specFiles), workerCount) {
-					var groups []FileGroup
-					if len(runtimeData) > 0 {
-						groups = GroupSpecFilesByRuntime(specFiles, workerCount, runtimeData)
-						fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
-					} else {
-						groups = GroupSpecFilesBySize(specFiles, workerCount)
-						fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
-					}
-					for i, group := range groups {
-						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
-						args = append(args, group.Files...)
-						fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
-					}
+				// Always use grouping
+				var groups []FileGroup
+				if len(runtimeData) > 0 {
+					groups = GroupSpecFilesByRuntime(specFiles, workerCount, runtimeData)
+					fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
 				} else {
-					fmt.Fprintf(os.Stderr, "[dry-run] Using single file per worker (no grouping needed)\n")
-					for _, file := range specFiles {
-						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color", file}
-						fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
-					}
+					groups = GroupSpecFilesBySize(specFiles, workerCount)
+					fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
+				}
+				for i, group := range groups {
+					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
+					args = append(args, group.Files...)
+					fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
 				}
 				return nil
 			}

@@ -76,22 +76,6 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 	return nonEmptyGroups
 }
 
-// ShouldUseGrouping determines if we should group files or use one-file-per-process
-func ShouldUseGrouping(numFiles, numWorkers int) bool {
-	// If we have more workers than files, no need to group
-	if numWorkers >= numFiles {
-		return false
-	}
-
-	// For small test suites, grouping helps reduce overhead
-	// For large test suites, one-file-per-process might be better for granular parallelism
-	// This is a tunable heuristic
-	avgFilesPerWorker := float64(numFiles) / float64(numWorkers)
-
-	// Group if we'd average more than 2 files per worker
-	// This balances overhead reduction vs parallelism
-	return avgFilesPerWorker > 2.0
-}
 
 // GroupSpecFilesByRuntime distributes spec files based on their historical runtime
 func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map[string]float64) []FileGroup {

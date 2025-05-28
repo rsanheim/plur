@@ -35,11 +35,6 @@ type TestResult struct {
 	FailureCount int
 }
 
-// JobWithWorker represents a job assigned to a specific worker
-type JobWithWorker struct {
-	SpecFile    string
-	WorkerIndex int
-}
 
 // OutputMessage represents a message to be output
 type OutputMessage struct {
@@ -334,11 +329,6 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 	defer TraceFunc("run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
-
-	// Decide whether to use grouping
-	useGrouping := ShouldUseGrouping(len(specFiles), maxWorkers)
-
-	if useGrouping {
 		// Load runtime data if available
 		runtimeData, err := LoadRuntimeData()
 		if err != nil {
@@ -403,89 +393,9 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 			}
 		}
 
-		// Ensure newline after dots
-		fmt.Println()
+	// Ensure newline after dots
+	fmt.Println()
 
-		return allResults, time.Since(start)
-	} else {
-		// Fall back to one-file-per-process for large suites
-		// or when we have more workers than files
-		return runSpecsInParallelSingle(specFiles, dryRun, saveJSON, colorOutput, maxWorkers, runtimeTracker, ctx, start)
-	}
+	return allResults, time.Since(start)
 }
 
-// runSpecsInParallelSingle runs specs with one file per process (original mode)
-func runSpecsInParallelSingle(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int, runtimeTracker *RuntimeTracker, ctx context.Context, start time.Time) ([]TestResult, time.Duration) {
-	results := make(chan TestResult, len(specFiles))
-
-	// Create buffered channel for output messages
-	outputChan := make(chan OutputMessage, maxWorkers*10)
-
-	// Start output aggregator goroutine
-	var outputWg sync.WaitGroup
-	outputWg.Add(1)
-	go func() {
-		defer outputWg.Done()
-		outputAggregator(outputChan, colorOutput)
-	}()
-
-	// Set PARALLEL_TEST_GROUPS environment variable
-	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", maxWorkers))
-
-	// Create worker pool with limited workers
-	jobs := make(chan JobWithWorker, len(specFiles))
-	var wg sync.WaitGroup
-
-	// Start worker goroutines
-	func() {
-		defer TraceFuncWithMetadata("worker_pool_init", map[string]interface{}{
-			"worker_count": maxWorkers,
-			"spec_count":   len(specFiles),
-		})()
-
-		for i := 0; i < maxWorkers; i++ {
-			workerIndex := i
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for job := range jobs {
-					result := RunSpecFile(ctx, []string{job.SpecFile}, workerIndex, dryRun, saveJSON, outputChan)
-					results <- result
-				}
-			}()
-		}
-	}()
-
-	// Send jobs to workers
-	go func() {
-		for i, specFile := range specFiles {
-			jobs <- JobWithWorker{
-				SpecFile:    specFile,
-				WorkerIndex: i % maxWorkers, // Distribute files across workers
-			}
-		}
-		close(jobs)
-	}()
-
-	// Wait for all workers to complete
-	wg.Wait()
-	close(results)
-
-	// Close output channel and wait for aggregator to finish
-	close(outputChan)
-	outputWg.Wait()
-
-	// Collect results
-	var testResults []TestResult
-	for result := range results {
-		testResults = append(testResults, result)
-		// Track runtime data if tracker is available
-		if runtimeTracker != nil && result.JSONOutput != nil {
-			for _, example := range result.JSONOutput.Examples {
-				runtimeTracker.AddExample(example)
-			}
-		}
-	}
-
-	return testResults, time.Since(start)
-}
