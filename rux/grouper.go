@@ -76,7 +76,6 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 	return nonEmptyGroups
 }
 
-
 // GroupSpecFilesByRuntime distributes spec files based on their historical runtime
 func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map[string]float64) []FileGroup {
 	// Create a struct to hold file and its runtime

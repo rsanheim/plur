@@ -35,7 +35,6 @@ type TestResult struct {
 	FailureCount int
 }
 
-
 // OutputMessage represents a message to be output
 type OutputMessage struct {
 	WorkerID int
@@ -391,4 +390,3 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWo
 
 	return allResults, time.Since(start)
 }
-
