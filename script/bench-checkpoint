@@ -25,7 +25,8 @@ echo ""
 # Create results directory
 mkdir -p "$RESULTS_DIR"
 
-# Run benchmarks
+# Run benchmarks with consistent timestamp
+export BENCH_TIMESTAMP="$TIMESTAMP"
 ./script/bench
 
 # Find the JSON files that were just created
@@ -71,8 +72,8 @@ end
 # Write markdown report
 puts "# Benchmark Summary"
 puts ""
-puts "- **Date**: '$(date -u +"%Y-%m-%d %H:%M:%S")' UTC"
-puts "- **Commit**: ['$GIT_SHA'](https://github.com/anthropics/rux-meta/commit/#{commit})"
+puts "- **Date**: '"$TIMESTAMP"' UTC"
+puts "- **Commit**: ['"$GIT_SHA"'](https://github.com/anthropics/rux-meta/commit/#{commit})"
 puts ""
 puts "## Results"
 puts ""

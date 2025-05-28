@@ -6,6 +6,9 @@ set -e
 ORIGINAL_DIR=$(pwd)
 RESULTS_DIR="$ORIGINAL_DIR/results"
 WORKERS=8
+WARMUP=2
+RUNS=3
+TIMESTAMP=${BENCH_TIMESTAMP:-$(date -u +"%Y%m%d-%H%M%S")}
 
 die() {
     echo "Error: $1"
@@ -27,19 +30,16 @@ benchmark_project() {
     SPEC_COUNT=$(find spec -name "*_spec.rb" 2>/dev/null | wc -l | tr -d ' ')
     echo "Found $SPEC_COUNT spec files"
     
-    # Generate timestamp
-    TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
-    
     # Output file in results directory
     JSON_FILE="$RESULTS_DIR/${TIMESTAMP}-${GIT_SHA}-${project_name}.json"
     
     # Run benchmarks
-    echo "Running benchmarks with $WORKERS workers..."
+    echo "Running benchmarks with $WORKERS workers, $WARMUP warmup runs, $RUNS runs"
     echo "===================="
     
     hyperfine \
-        --warmup 2 \
-        --runs 3 \
+        --warmup $WARMUP \
+        --runs $RUNS \
         --export-json "$JSON_FILE" \
         "turbo_tests -n $WORKERS" \
         "rux -n $WORKERS"
