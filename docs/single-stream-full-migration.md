@@ -47,6 +47,8 @@ After implementing and testing both approaches side-by-side, we're fully committ
   - Impact: Reduces syscalls in hot path
 
 #### Remaining Optimizations:
+- [ ] analyze impact of ruby version manager for `rux` vs `turbo_tests`
+   - [ ] is it possible that `mise` causes a great overhead in starting each ruby process for rux, given we are going thru a go binary, to shelling out to ruby, as opposed to turbo_tests which is just ruby that spawns more ruby?
 - [ ] Optimize JSON parsing (pre-allocate buffers, faster detection)
 - [ ] Pool goroutines instead of creating 2 per spec file
 - [ ] Pre-allocate string builders with estimated capacity
