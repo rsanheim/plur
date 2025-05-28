@@ -118,11 +118,6 @@ func createApp() *cli.App {
 				Aliases: []string{"workers"},
 				Usage:   "Number of parallel workers (default: cores-2, env: PARALLEL_TEST_PROCESSORS)",
 			},
-			&cli.BoolFlag{
-				Name:  "streaming-json",
-				Usage: "Use streaming JSON formatter (experimental)",
-				Hidden: true, // Hide from help for now
-			},
 		},
 		Action: func(ctx *cli.Context) error {
 			var specFiles []string
@@ -151,8 +146,15 @@ func createApp() *cli.App {
 				}
 
 				fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(specFiles))
+				
+				// Get formatter path for dry-run display
+				formatterPath, err := GetFormatterPath()
+				if err != nil {
+					formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
+				}
+				
 				for _, file := range specFiles {
-					args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", "/tmp/results.json", "--no-color", file}
+					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color", file}
 					fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
 				}
 				return nil
@@ -183,9 +185,8 @@ func createApp() *cli.App {
 
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
-			useStreamingJSON := ctx.Bool("streaming-json")
 
-			results, wallTime := RunSpecsInParallelWithFormatter(specFiles, dryRun, saveJSON, colorOutput, workerCount, useStreamingJSON)
+			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)
