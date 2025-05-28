@@ -38,11 +38,14 @@ RSpec process → JsonRowsFormatter → stdout (line-by-line JSON) → parse in 
   - Understand the JSON message format
   - Understand how it hooks into RSpec events
 
-* [ ] analyze `git status` - lets get to a clean state before starting
-* [ ] Add the meta-rspec gem (git@github.com:rspec/rspec.git) as another 'reference' repo, so we can research its context as necessary. Add it as a git subtree underneath references/rspec
-- [ ] Create a JsonRowsFormatter in ruby (basically emulate TurboTests formatter for now)
-* [ ] Add some specs for the formatter in isolation
-* [ ] Pause and analyze how to best refactor to a "single stream" per rspec rux - we probably want to update this plan at that point
+* [x] analyze `git status` - lets get to a clean state before starting
+* [x] Add the meta-rspec gem (git@github.com:rspec/rspec.git) as another 'reference' repo, so we can research its context as necessary. Add it as a git subtree underneath references/rspec
+- [x] Create a JsonRowsFormatter in ruby (basically emulate TurboTests formatter for now)
+  - Created at `rux/lib/rux/json_rows_formatter.rb`
+* [x] Add some specs for the formatter in isolation
+  - Created at `rux/spec/json_rows_formatter_spec.rb`
+* [x] Pause and analyze how to best refactor to a "single stream" per rspec rux - we probably want to update this plan at that point
+  - See detailed refactoring plan in `docs/single-stream-refactor-plan.md`
 
 #### JSON Message Format (from turbo_tests)
 
