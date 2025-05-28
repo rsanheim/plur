@@ -39,15 +39,38 @@ RSpec.describe "Rux output performance" do
     end
 
     it "handles mixed output types correctly" do
-      Dir.chdir(test_project_path) do
-        # Run specs that include failures
-        output = `#{rux_binary} spec/failing_examples_spec.rb -n 2 2>&1`
+      # Create a temporary spec file with actual failures
+      Dir.mktmpdir do |tmpdir|
+        File.write(File.join(tmpdir, "mixed_spec.rb"), <<~RUBY)
+          RSpec.describe 'Mixed' do
+            it 'passes' do
+              expect(1).to eq(1)
+            end
+            
+            it 'fails' do
+              expect(1).to eq(2)
+            end
+            
+            it 'also passes' do
+              expect(true).to be true
+            end
+            
+            it 'also fails' do
+              expect(false).to be true
+            end
+          end
+        RUBY
+        
+        Dir.chdir(tmpdir) do
+          # Run specs that include failures
+          output = `#{rux_binary} -n 2 mixed_spec.rb 2>&1`
 
-        # Should show both dots and F's
-        expect(output).to match(/[.F]+/)
+          # Should show both dots and F's
+          expect(output).to match(/[.F]+/)
 
-        # Should still complete successfully (exit 1 for failures)
-        expect($?.exitstatus).to eq(1)
+          # Should still complete successfully (exit 1 for failures)
+          expect($?.exitstatus).to eq(1)
+        end
       end
     end
   end

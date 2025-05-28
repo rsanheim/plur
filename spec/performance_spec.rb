@@ -127,7 +127,7 @@ RSpec.describe "Rux performance" do
 
           # Should see improvement with 2 workers vs 1
           expect(times[2]).to be < times[1]
-          
+
           # With 30 files, 4 workers should generally be faster than 2
           # But allow some tolerance for system variability
           improvement_ratio = times[2] / times[4]

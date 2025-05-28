@@ -16,7 +16,7 @@ var jsonRowsFormatterCode string
 // creating it in the XDG cache directory if it doesn't exist
 func GetFormatterPath() (string, error) {
 	defer TraceFunc("formatter.get_path")()
-	
+
 	// Get XDG cache directory (~/.cache on Linux/Mac)
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {

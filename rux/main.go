@@ -141,7 +141,7 @@ func createApp() *cli.App {
 			// Determine which spec files to run
 			func() {
 				defer TraceFunc("file_discovery")()
-				
+
 				if ctx.NArg() > 0 {
 					// Expand glob patterns from provided arguments
 					specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
@@ -164,7 +164,7 @@ func createApp() *cli.App {
 					}
 				}
 			}()
-			
+
 			if err != nil {
 				return err
 			}
@@ -197,7 +197,7 @@ func createApp() *cli.App {
 			// Run bundle install if --auto flag is set
 			if ctx.Bool("auto") {
 				defer TraceFunc("bundle_install")()
-				
+
 				fmt.Println("Installing dependencies...")
 				bundleCmd := exec.Command("bundle", "install")
 				bundleCmd.Stdout = os.Stdout

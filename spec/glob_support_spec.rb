@@ -1,5 +1,5 @@
-require 'spec_helper'
-require 'open3'
+require "spec_helper"
+require "open3"
 
 RSpec.describe "rux glob pattern support" do
   let(:rux_binary) { File.expand_path("../rux/rux", __dir__) }
@@ -13,8 +13,8 @@ RSpec.describe "rux glob pattern support" do
   context "with glob patterns" do
     it "expands simple glob patterns with *" do
       Dir.chdir(test_project_path) do
-        output, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/*_spec.rb")
-        
+        _, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/*_spec.rb")
+
         expect(status).to be_success
         expect(stderr).to include("[dry-run] Found 9 spec files")
         expect(stderr).to include("spec/array_helpers_spec.rb")
@@ -32,8 +32,8 @@ RSpec.describe "rux glob pattern support" do
         # Note: Without quotes, this relies on shell expansion
         # The shell must have globstar enabled (bash: shopt -s globstar, zsh: default on)
         # For consistent testing, we'll use bash with globstar
-        output, stderr, status = Open3.capture3("bash", "-c", "shopt -s globstar; #{rux_binary} --dry-run spec/**/*_spec.rb")
-        
+        _, stderr, status = Open3.capture3("bash", "-c", "shopt -s globstar; #{rux_binary} --dry-run spec/**/*_spec.rb")
+
         expect(status).to be_success
         expect(stderr).to include("[dry-run] Found 11 spec files")
         expect(stderr).to include("spec/array_helpers_spec.rb")
@@ -45,8 +45,8 @@ RSpec.describe "rux glob pattern support" do
     it "handles quoted recursive glob patterns with ** (preventing shell expansion)" do
       Dir.chdir(test_project_path) do
         # Using single quotes prevents shell expansion, so rux handles the glob
-        output, stderr, status = Open3.capture3("#{rux_binary} --dry-run 'spec/**/*_spec.rb'")
-        
+        _, stderr, status = Open3.capture3("#{rux_binary} --dry-run 'spec/**/*_spec.rb'")
+
         expect(status).to be_success
         expect(stderr).to include("[dry-run] Found 11 spec files")
         expect(stderr).to include("spec/array_helpers_spec.rb")
@@ -57,8 +57,8 @@ RSpec.describe "rux glob pattern support" do
 
     it "expands multiple glob patterns" do
       Dir.chdir(test_project_path) do
-        output, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/models/*_spec.rb spec/services/*_spec.rb")
-        
+        _, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/models/*_spec.rb spec/services/*_spec.rb")
+
         expect(status).to be_success
         expect(stderr).to include("[dry-run] Found 2 spec files")
         expect(stderr).to include("spec/models/user_spec.rb")
@@ -68,8 +68,8 @@ RSpec.describe "rux glob pattern support" do
 
     it "handles character class patterns with []" do
       Dir.chdir(test_project_path) do
-        output, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/[cs]*_spec.rb")
-        
+        _, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/[cs]*_spec.rb")
+
         expect(status).to be_success
         expect(stderr).to include("[dry-run] Found 3 spec files")
         expect(stderr).to include("spec/calculator_spec.rb")
@@ -80,8 +80,8 @@ RSpec.describe "rux glob pattern support" do
 
     it "handles specific file paths without globs" do
       Dir.chdir(test_project_path) do
-        output, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/calculator_spec.rb spec/counter_spec.rb")
-        
+        _, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/calculator_spec.rb spec/counter_spec.rb")
+
         expect(status).to be_success
         expect(stderr).to include("[dry-run] Found 2 spec files")
         expect(stderr).to include("spec/calculator_spec.rb")
@@ -93,10 +93,10 @@ RSpec.describe "rux glob pattern support" do
       Dir.chdir(test_project_path) do
         # Create a temporary non-spec file (doesn't end with _spec.rb)
         File.write("spec/helper.rb", "# helper file")
-        
+
         begin
           output, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/helper.rb")
-          
+
           expect(status).not_to be_success  # Fails when no spec files found
           expect(stderr).to include("Warning: spec/helper.rb does not end with _spec.rb")
           expect(output + stderr).to include("Error: no spec files found matching provided patterns")
@@ -108,8 +108,8 @@ RSpec.describe "rux glob pattern support" do
 
     it "returns error for non-existent files" do
       Dir.chdir(test_project_path) do
-        output, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/nonexistent_spec.rb 2>&1")
-        
+        output, _, status = Open3.capture3("#{rux_binary} --dry-run spec/nonexistent_spec.rb 2>&1")
+
         expect(status).not_to be_success
         expect(output).to include("file not found: spec/nonexistent_spec.rb")
       end
@@ -117,8 +117,8 @@ RSpec.describe "rux glob pattern support" do
 
     it "returns error when no files match glob pattern" do
       Dir.chdir(test_project_path) do
-        output, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/xyz*_spec.rb 2>&1")
-        
+        output, _, status = Open3.capture3("#{rux_binary} --dry-run spec/xyz*_spec.rb 2>&1")
+
         expect(status).not_to be_success
         expect(output).to include("no spec files found matching provided patterns")
       end
@@ -128,8 +128,8 @@ RSpec.describe "rux glob pattern support" do
   context "without arguments (auto-discovery)" do
     it "finds all spec files recursively" do
       Dir.chdir(test_project_path) do
-        output, stderr, status = Open3.capture3("#{rux_binary} --dry-run")
-        
+        _, stderr, status = Open3.capture3("#{rux_binary} --dry-run")
+
         expect(status).to be_success
         expect(stderr).to include("[dry-run] Found 11 spec files")
         expect(stderr).to include("spec/array_helpers_spec.rb")

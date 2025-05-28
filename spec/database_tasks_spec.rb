@@ -25,6 +25,11 @@ RSpec.describe "Rux database tasks" do
     it "shows completion message when running actual task" do
       # Use a simple Rakefile in a temp dir to avoid actually running db:setup on test_app
       Dir.mktmpdir do |tmpdir|
+        File.write(File.join(tmpdir, "Gemfile"), <<~RUBY)
+          source "https://rubygems.org"
+          gem "rake"
+        RUBY
+        
         File.write(File.join(tmpdir, "Rakefile"), <<~RUBY)
           task "db:setup" do
             puts "DB setup for \#{ENV['TEST_ENV_NUMBER'] || '1'}"
@@ -32,6 +37,9 @@ RSpec.describe "Rux database tasks" do
         RUBY
 
         Dir.chdir(tmpdir) do
+          # First install dependencies
+          system("bundle install --quiet", out: File::NULL, err: File::NULL)
+          
           output = `#{rux_binary} db:setup -n 2 2>&1`
 
           expect(output).to include("Running database task 'db:setup' with 2 workers...")

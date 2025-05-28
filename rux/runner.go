@@ -98,7 +98,7 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 				if err != nil {
 					return nil, fmt.Errorf("error expanding glob pattern %q: %v", pattern, err)
 				}
-				
+
 				for _, match := range matches {
 					if !seenFiles[match] {
 						allFiles = append(allFiles, match)
@@ -111,7 +111,7 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 				if err != nil {
 					return nil, fmt.Errorf("error expanding glob pattern %q: %v", pattern, err)
 				}
-				
+
 				// Filter to only include _spec.rb files
 				for _, match := range matches {
 					if strings.HasSuffix(match, "_spec.rb") && !seenFiles[match] {
@@ -147,28 +147,28 @@ func expandDoubleStarGlob(pattern string) ([]string, error) {
 		// Multiple ** not supported
 		return nil, fmt.Errorf("multiple ** in pattern not supported: %s", pattern)
 	}
-	
+
 	prefix := strings.TrimSuffix(parts[0], "/")
 	suffix := strings.TrimPrefix(parts[1], "/")
-	
+
 	// If prefix is empty, start from current directory
 	if prefix == "" {
 		prefix = "."
 	}
-	
+
 	var matches []string
-	
+
 	// Walk the directory tree starting from prefix
 	err := filepath.WalkDir(prefix, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil // Skip errors
 		}
-		
+
 		// Skip directories unless suffix is empty
 		if d.IsDir() && suffix != "" {
 			return nil
 		}
-		
+
 		// Check if the path matches the suffix pattern
 		if suffix != "" {
 			// Get the relative path from the prefix
@@ -176,13 +176,13 @@ func expandDoubleStarGlob(pattern string) ([]string, error) {
 			if err != nil {
 				return nil
 			}
-			
+
 			// Check if the relative path matches the suffix pattern
 			_, err = filepath.Match(suffix, relPath)
 			if err != nil {
 				return nil
 			}
-			
+
 			// Also check if any parent directory + suffix matches
 			// This handles cases like spec/**/models/*_spec.rb
 			pathParts := strings.Split(relPath, string(filepath.Separator))
@@ -199,14 +199,14 @@ func expandDoubleStarGlob(pattern string) ([]string, error) {
 			// No suffix, just match all _spec.rb files
 			matches = append(matches, path)
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return matches, nil
 }
 
@@ -376,17 +376,17 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	go func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
-		
+
 		firstOutput := true
 		for scanner.Scan() {
 			line := scanner.Text()
-			
+
 			if firstOutput {
 				// Trace time to first output
 				firstOutput = false
 				TraceFuncWithMetadata("ruby_first_output", map[string]interface{}{
-					"worker_id": workerIndex,
-					"spec_file": specFile,
+					"worker_id":        workerIndex,
+					"spec_file":        specFile,
 					"time_since_spawn": time.Since(start).Seconds() * 1000,
 				})()
 			}
@@ -398,9 +398,9 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 				case "start":
 					streamingResults.LoadTime = msg.LoadTime
 					TraceFuncWithMetadata("rspec_loaded", map[string]interface{}{
-						"worker_id": workerIndex,
-						"spec_file": specFile,
-						"load_time": msg.LoadTime,
+						"worker_id":        workerIndex,
+						"spec_file":        specFile,
+						"load_time":        msg.LoadTime,
 						"time_since_spawn": time.Since(start).Seconds() * 1000,
 					})()
 				case "example_passed":
@@ -515,7 +515,7 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 			"worker_count": maxWorkers,
 			"spec_count":   len(specFiles),
 		})()
-		
+
 		for i := 0; i < maxWorkers; i++ {
 			workerIndex := i
 			wg.Add(1)

@@ -11,21 +11,21 @@ import (
 
 // TraceEvent represents a single trace event
 type TraceEvent struct {
-	Name      string    `json:"name"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Duration  float64   `json:"duration_ms"`
-	WorkerID  int       `json:"worker_id,omitempty"`
-	SpecFile  string    `json:"spec_file,omitempty"`
+	Name      string                 `json:"name"`
+	StartTime time.Time              `json:"start_time"`
+	EndTime   time.Time              `json:"end_time"`
+	Duration  float64                `json:"duration_ms"`
+	WorkerID  int                    `json:"worker_id,omitempty"`
+	SpecFile  string                 `json:"spec_file,omitempty"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Tracer manages trace events
 type Tracer struct {
-	enabled bool
-	events  []TraceEvent
-	mu      sync.Mutex
-	file    *os.File
+	enabled   bool
+	events    []TraceEvent
+	mu        sync.Mutex
+	file      *os.File
 	eventChan chan TraceEvent
 	done      chan bool
 	wg        sync.WaitGroup
@@ -44,7 +44,7 @@ func InitTracer(enabled bool) error {
 	// Try to find repo root by looking for Rakefile (rux-meta root marker)
 	repoRoot := "."
 	currentDir, _ := os.Getwd()
-	
+
 	// Walk up directory tree looking for Rakefile
 	for dir := currentDir; dir != "/" && dir != ""; dir = filepath.Dir(dir) {
 		if _, err := os.Stat(filepath.Join(dir, "Rakefile")); err == nil {
@@ -52,7 +52,7 @@ func InitTracer(enabled bool) error {
 			break
 		}
 	}
-	
+
 	traceDir := filepath.Join(repoRoot, "tmp", "rux-traces")
 	if err := os.MkdirAll(traceDir, 0755); err != nil {
 		return fmt.Errorf("failed to create trace directory: %v", err)
@@ -60,7 +60,7 @@ func InitTracer(enabled bool) error {
 
 	timestamp := time.Now().Format("20060102-150405")
 	traceFile := filepath.Join(traceDir, fmt.Sprintf("rux-trace-%s.json", timestamp))
-	
+
 	file, err := os.Create(traceFile)
 	if err != nil {
 		return fmt.Errorf("failed to create trace file: %v", err)
@@ -69,7 +69,7 @@ func InitTracer(enabled bool) error {
 	globalTracer.file = file
 	globalTracer.eventChan = make(chan TraceEvent, 1000) // Buffered channel
 	globalTracer.done = make(chan bool)
-	
+
 	// Write opening bracket for JSON array
 	if _, err := file.WriteString("[\n"); err != nil {
 		return err
@@ -86,7 +86,7 @@ func InitTracer(enabled bool) error {
 // asyncWriter writes trace events asynchronously
 func (t *Tracer) asyncWriter() {
 	defer t.wg.Done()
-	
+
 	firstEvent := true
 	for {
 		select {
@@ -96,16 +96,16 @@ func (t *Tracer) asyncWriter() {
 			if err != nil {
 				continue
 			}
-			
+
 			// If not the first event, add a comma
 			if !firstEvent {
 				t.file.WriteString(",\n")
 			}
 			firstEvent = false
-			
+
 			// Write event
 			t.file.Write(data)
-			
+
 		case <-t.done:
 			// Drain any remaining events
 			for len(t.eventChan) > 0 {
@@ -130,7 +130,7 @@ func CloseTracer() error {
 
 	// Signal the writer to stop
 	close(globalTracer.done)
-	
+
 	// Wait for writer to finish
 	globalTracer.wg.Wait()
 
@@ -151,18 +151,18 @@ func TraceFunc(name string) func() {
 	}
 
 	start := time.Now()
-	
+
 	return func() {
 		end := time.Now()
 		duration := end.Sub(start).Seconds() * 1000 // Convert to milliseconds
-		
+
 		event := TraceEvent{
 			Name:      name,
 			StartTime: start,
 			EndTime:   end,
 			Duration:  duration,
 		}
-		
+
 		globalTracer.recordEvent(event)
 	}
 }
@@ -174,11 +174,11 @@ func TraceFuncWithWorker(name string, workerID int, specFile string) func() {
 	}
 
 	start := time.Now()
-	
+
 	return func() {
 		end := time.Now()
 		duration := end.Sub(start).Seconds() * 1000 // Convert to milliseconds
-		
+
 		event := TraceEvent{
 			Name:      name,
 			StartTime: start,
@@ -187,7 +187,7 @@ func TraceFuncWithWorker(name string, workerID int, specFile string) func() {
 			WorkerID:  workerID,
 			SpecFile:  specFile,
 		}
-		
+
 		globalTracer.recordEvent(event)
 	}
 }
@@ -199,11 +199,11 @@ func TraceFuncWithMetadata(name string, metadata map[string]interface{}) func() 
 	}
 
 	start := time.Now()
-	
+
 	return func() {
 		end := time.Now()
 		duration := end.Sub(start).Seconds() * 1000 // Convert to milliseconds
-		
+
 		event := TraceEvent{
 			Name:      name,
 			StartTime: start,
@@ -211,7 +211,7 @@ func TraceFuncWithMetadata(name string, metadata map[string]interface{}) func() 
 			Duration:  duration,
 			Metadata:  metadata,
 		}
-		
+
 		globalTracer.recordEvent(event)
 	}
 }
