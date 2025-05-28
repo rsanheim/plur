@@ -1,0 +1,135 @@
+#!/bin/bash
+
+set -e
+
+# Check for required tools
+echo "Checking requirements..."
+if ! command -v hyperfine &> /dev/null; then
+    echo "✗ hyperfine not found. Install with: brew install hyperfine"
+    exit 1
+else
+    echo "✓ hyperfine found"
+fi
+
+if ! command -v rux &> /dev/null; then
+    echo "✗ rux not found. Make sure it's installed and in PATH"
+    exit 1
+else
+    echo "✓ rux found"
+fi
+
+if ! command -v bundle &> /dev/null; then
+    echo "✗ bundle not found. Install Ruby and Bundler"
+    exit 1
+else
+    echo "✓ bundle found"
+fi
+
+if ! command -v turbo_tests &> /dev/null; then
+    echo "✗ turbo_tests not found. Installing..."
+    gem install turbo_tests
+    if command -v turbo_tests &> /dev/null; then
+        echo "✓ turbo_tests installed successfully"
+    else
+        echo "✗ turbo_tests installation failed"
+        exit 1
+    fi
+else
+    echo "✓ turbo_tests found"
+fi
+
+# Function to verify a single project
+verify_project() {
+    local project_path=$1
+    local project_name=$(basename "$project_path")
+    
+    # Verify project path exists
+    if [ ! -d "$project_path" ]; then
+        echo "✗ Project path '$project_path' does not exist"
+        return 1
+    fi
+    
+    # Verify project has spec directory
+    if [ ! -d "$project_path/spec" ]; then
+        echo "✗ No spec directory found in '$project_path'"
+        return 1
+    fi
+    
+    echo ""
+    echo "Verifying $project_name..."
+    echo "========================"
+    
+    # Save current directory
+    local original_dir=$(pwd)
+    
+    # Change to project directory
+    cd "$project_path"
+    
+    # Ensure dependencies are installed
+    echo "Installing dependencies..."
+    bundle install
+    
+    # Count specs for context
+    SPEC_COUNT=$(find spec -name "*_spec.rb" | wc -l | tr -d ' ')
+    echo "Found $SPEC_COUNT spec files"
+    
+    # Verify turbo_tests
+    echo ""
+    echo "Testing turbo_tests..."
+    if turbo_tests --help > /dev/null 2>&1; then
+        echo "✓ turbo_tests ready"
+    else
+        echo "✗ turbo_tests failed"
+        cd "$original_dir"
+        return 1
+    fi
+    
+    # Verify rux
+    echo "Testing rux..."
+    if rux --help > /dev/null 2>&1; then
+        echo "✓ rux ready"
+    else
+        echo "✗ rux failed"
+        cd "$original_dir"
+        return 1
+    fi
+    
+    # Run a quick test
+    echo ""
+    echo "Running quick test..."
+    if timeout 10 turbo_tests -n 2 > /dev/null 2>&1; then
+        echo "✓ turbo_tests runs successfully"
+    else
+        echo "✗ turbo_tests test run failed"
+    fi
+    
+    if timeout 10 rux -n 2 > /dev/null 2>&1; then
+        echo "✓ rux runs successfully"
+    else
+        echo "✗ rux test run failed"
+    fi
+    
+    cd "$original_dir"
+    echo "✓ $project_name verified"
+}
+
+# Main execution
+echo "Benchmark Preflight Checks"
+echo "========================="
+echo ""
+
+# Check if specific project provided
+if [ $# -gt 0 ]; then
+    # Verify specific project
+    verify_project "$1"
+else
+    # Verify default projects
+    echo "Verifying default projects..."
+    verify_project "./rux-ruby"
+    echo ""
+    verify_project "./references/example-project"
+fi
+
+echo ""
+echo "All preflight checks passed! ✓"
+echo "You can now run: ./script/bench"
