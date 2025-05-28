@@ -88,7 +88,8 @@ RSpec.describe "Rux general integration" do
         output = `#{rux_binary} --dry-run 2>&1`
 
         expect(output).to include("[dry-run] Found 11 spec files")
-        expect(output).to include("[dry-run] bundle exec rspec")
+        expect(output).to include("[dry-run] Worker")
+        expect(output).to include("bundle exec rspec")
         expect(output).not_to include("Finished in")
         expect(output).not_to include("examples, ")
       end

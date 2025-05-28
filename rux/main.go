@@ -253,8 +253,6 @@ func createApp() *cli.App {
 			fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
 				len(specFiles), actualWorkers, runtime.NumCPU())
 
-			saveJSON := ctx.Bool("json")
-
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
 
@@ -262,7 +260,7 @@ func createApp() *cli.App {
 			runtimeTracker := NewRuntimeTracker()
 
 			// Run specs in parallel with intelligent grouping
-			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount, runtimeTracker)
+			results, wallTime := RunSpecsInParallel(specFiles, dryRun, colorOutput, workerCount, runtimeTracker)
 
 			// Save runtime data
 			if err := runtimeTracker.SaveToFile(); err != nil {

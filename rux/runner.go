@@ -87,25 +87,33 @@ func getCachedFormatterPath() (string, error) {
 	return cachedFormatterPath, formatterPathErr
 }
 
+// ANSI color codes
+const (
+	colorGreen  = "\033[32m"
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorReset  = "\033[0m"
+)
+
 // outputAggregator handles all output from workers to avoid lock contention
 func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 	for msg := range outputChan {
 		switch msg.Type {
 		case "dot":
 			if colorOutput {
-				fmt.Print("\033[32m.\033[0m") // Green dot
+				fmt.Print(colorGreen + "." + colorReset)
 			} else {
 				fmt.Print(".")
 			}
 		case "failure":
 			if colorOutput {
-				fmt.Print("\033[31mF\033[0m") // Red F
+				fmt.Print(colorRed + "F" + colorReset)
 			} else {
 				fmt.Print("F")
 			}
 		case "pending":
 			if colorOutput {
-				fmt.Print("\033[33m*\033[0m") // Yellow asterisk
+				fmt.Print(colorYellow + "*" + colorReset)
 			} else {
 				fmt.Print("*")
 			}
@@ -118,8 +126,19 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 	}
 }
 
+// errorResult creates a TestResult for error cases
+func errorResult(specFiles []string, err error, start time.Time) TestResult {
+	return TestResult{
+		SpecFile: strings.Join(specFiles, ","),
+		Success:  false,
+		Output:   "",
+		Error:    err,
+		Duration: time.Since(start),
+	}
+}
+
 // RunSpecFile executes multiple spec files in a single RSpec process
-func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRun bool, saveJSON bool, outputChan chan<- OutputMessage) TestResult {
+func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
 	defer TraceFuncWithWorker("run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
@@ -131,13 +150,7 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 		formatterPath, err = getCachedFormatterPath()
 	}()
 	if err != nil {
-		return TestResult{
-			SpecFile: strings.Join(specFiles, ","),
-			Success:  false,
-			Output:   "",
-			Error:    fmt.Errorf("failed to get formatter path: %v", err),
-			Duration: time.Since(start),
-		}
+		return errorResult(specFiles, fmt.Errorf("failed to get formatter path: %v", err), start)
 	}
 
 	// Build args with streaming JSON formatter
@@ -172,24 +185,12 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return TestResult{
-			SpecFile: strings.Join(specFiles, ","),
-			Success:  false,
-			Output:   "",
-			Error:    fmt.Errorf("failed to create stdout pipe: %v", err),
-			Duration: time.Since(start),
-		}
+		return errorResult(specFiles, fmt.Errorf("failed to create stdout pipe: %v", err), start)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return TestResult{
-			SpecFile: strings.Join(specFiles, ","),
-			Success:  false,
-			Output:   "",
-			Error:    fmt.Errorf("failed to create stderr pipe: %v", err),
-			Duration: time.Since(start),
-		}
+		return errorResult(specFiles, fmt.Errorf("failed to create stderr pipe: %v", err), start)
 	}
 
 	// Start the command
@@ -198,13 +199,7 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 		err = cmd.Start()
 	}()
 	if err != nil {
-		return TestResult{
-			SpecFile: strings.Join(specFiles, ","),
-			Success:  false,
-			Output:   "",
-			Error:    fmt.Errorf("failed to start command: %v", err),
-			Duration: time.Since(start),
-		}
+		return errorResult(specFiles, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
 	var outputBuilder strings.Builder
@@ -298,18 +293,15 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 	wg.Wait()
 
 	// Determine success based on exit code
-	success := err == nil
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
-		success = exitCode <= 1
 	}
+	success := exitCode == 0
 
 	// Convert streaming results to RSpec JSON format
 	jsonOutput := streamingResults.ConvertToJSONOutput()
 	failures := rspec.ExtractFailures(jsonOutput.Examples)
-
-	success = exitCode == 0
 
 	return TestResult{
 		SpecFile:     strings.Join(specFiles, " "),
@@ -325,73 +317,74 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
+func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWorkers int, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
 	defer TraceFunc("run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
-		// Load runtime data if available
-		runtimeData, err := LoadRuntimeData()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
-			runtimeData = make(map[string]float64)
-		}
 
-		// Group files using runtime data if available, otherwise by size
-		var groups []FileGroup
-		if len(runtimeData) > 0 {
-			fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
-			groups = GroupSpecFilesByRuntime(specFiles, maxWorkers, runtimeData)
-		} else {
-			fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
-			groups = GroupSpecFilesBySize(specFiles, maxWorkers)
-		}
+	// Load runtime data if available
+	runtimeData, err := LoadRuntimeData()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
+		runtimeData = make(map[string]float64)
+	}
 
-		results := make(chan TestResult, len(groups))
+	// Group files using runtime data if available, otherwise by size
+	var groups []FileGroup
+	if len(runtimeData) > 0 {
+		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+		groups = GroupSpecFilesByRuntime(specFiles, maxWorkers, runtimeData)
+	} else {
+		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+		groups = GroupSpecFilesBySize(specFiles, maxWorkers)
+	}
 
-		// Create buffered channel for output messages
-		outputChan := make(chan OutputMessage, maxWorkers*10)
+	results := make(chan TestResult, len(groups))
 
-		// Start output aggregator goroutine
-		var outputWg sync.WaitGroup
-		outputWg.Add(1)
-		go func() {
-			defer outputWg.Done()
-			outputAggregator(outputChan, colorOutput)
-		}()
+	// Create buffered channel for output messages
+	outputChan := make(chan OutputMessage, maxWorkers*10)
 
-		// Set PARALLEL_TEST_GROUPS environment variable
-		os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(groups)))
+	// Start output aggregator goroutine
+	var outputWg sync.WaitGroup
+	outputWg.Add(1)
+	go func() {
+		defer outputWg.Done()
+		outputAggregator(outputChan, colorOutput)
+	}()
 
-		// Run each group in parallel
-		var wg sync.WaitGroup
-		for i, group := range groups {
-			wg.Add(1)
-			go func(workerIndex int, files []string) {
-				defer wg.Done()
-				result := RunSpecFile(ctx, files, workerIndex, dryRun, saveJSON, outputChan)
-				results <- result
-			}(i, group.Files)
-		}
+	// Set PARALLEL_TEST_GROUPS environment variable
+	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(groups)))
 
-		// Wait for all groups to complete
-		wg.Wait()
-		close(results)
+	// Run each group in parallel
+	var wg sync.WaitGroup
+	for i, group := range groups {
+		wg.Add(1)
+		go func(workerIndex int, files []string) {
+			defer wg.Done()
+			result := RunSpecFile(ctx, files, workerIndex, dryRun, outputChan)
+			results <- result
+		}(i, group.Files)
+	}
 
-		// Close output channel and wait for aggregator to finish
-		close(outputChan)
-		outputWg.Wait()
+	// Wait for all groups to complete
+	wg.Wait()
+	close(results)
 
-		// Collect results
-		var allResults []TestResult
-		for result := range results {
-			allResults = append(allResults, result)
-			// Track runtime data if tracker is available
-			if runtimeTracker != nil && result.JSONOutput != nil {
-				for _, example := range result.JSONOutput.Examples {
-					runtimeTracker.AddExample(example)
-				}
+	// Close output channel and wait for aggregator to finish
+	close(outputChan)
+	outputWg.Wait()
+
+	// Collect results
+	var allResults []TestResult
+	for result := range results {
+		allResults = append(allResults, result)
+		// Track runtime data if tracker is available
+		if runtimeTracker != nil && result.JSONOutput != nil {
+			for _, example := range result.JSONOutput.Examples {
+				runtimeTracker.AddExample(example)
 			}
 		}
+	}
 
 	// Ensure newline after dots
 	fmt.Println()
