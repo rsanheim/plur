@@ -14,30 +14,25 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Download Go modules
+          name: Install Ruby for rake
           command: |
-            cd rux
-            go mod download
+            sudo apt-get update
+            sudo apt-get install -y ruby rake
       - run:
           name: Run Go tests
-          command: |
-            cd rux
-            go test -v ./...
+          command: rake test:go
       - run:
           name: Build rux
-          command: |
-            cd rux
-            go build -o rux .
+          command: rake build
       - run:
           name: Verify rux binary
           command: |
-            cd rux
-            ls -la rux
-            ./rux --help
+            ./rux/rux --version
+            ./rux/rux --help
       - persist_to_workspace:
-          root: rux
+          root: .
           paths:
-            - rux
+            - rux/rux
 
   test-ruby:
     docker:
@@ -51,7 +46,7 @@ jobs:
       - run:
           name: Install rux from workspace
           command: |
-            sudo cp ~/workspace/rux /usr/local/bin/
+            sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
             rux --help
       - ruby/install-deps
@@ -76,7 +71,7 @@ jobs:
       - run:
           name: Install rux from workspace
           command: |
-            sudo cp ~/workspace/rux /usr/local/bin/
+            sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
       - run:
           name: Setup test_app
