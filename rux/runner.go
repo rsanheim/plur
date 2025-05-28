@@ -486,7 +486,7 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int) ([]TestResult, time.Duration) {
+func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
 	defer TraceFunc("run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
@@ -538,6 +538,12 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 		var allResults []TestResult
 		for result := range results {
 			allResults = append(allResults, result)
+			// Track runtime data if tracker is available
+			if runtimeTracker != nil && result.JSONOutput != nil {
+				for _, example := range result.JSONOutput.Examples {
+					runtimeTracker.AddExample(example)
+				}
+			}
 		}
 
 		// Ensure newline after dots
@@ -547,12 +553,12 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 	} else {
 		// Fall back to one-file-per-process for large suites
 		// or when we have more workers than files
-		return runSpecsInParallelSingle(specFiles, dryRun, saveJSON, colorOutput, maxWorkers, ctx, start)
+		return runSpecsInParallelSingle(specFiles, dryRun, saveJSON, colorOutput, maxWorkers, runtimeTracker, ctx, start)
 	}
 }
 
 // runSpecsInParallelSingle runs specs with one file per process (original mode)
-func runSpecsInParallelSingle(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int, ctx context.Context, start time.Time) ([]TestResult, time.Duration) {
+func runSpecsInParallelSingle(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int, runtimeTracker *RuntimeTracker, ctx context.Context, start time.Time) ([]TestResult, time.Duration) {
 	results := make(chan TestResult, len(specFiles))
 
 	// Create buffered channel for output messages
@@ -616,6 +622,12 @@ func runSpecsInParallelSingle(specFiles []string, dryRun bool, saveJSON bool, co
 	var testResults []TestResult
 	for result := range results {
 		testResults = append(testResults, result)
+		// Track runtime data if tracker is available
+		if runtimeTracker != nil && result.JSONOutput != nil {
+			for _, example := range result.JSONOutput.Examples {
+				runtimeTracker.AddExample(example)
+			}
+		}
 	}
 
 	return testResults, time.Since(start)

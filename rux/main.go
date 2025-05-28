@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -123,6 +124,10 @@ func createApp() *cli.App {
 				Name:  "trace",
 				Usage: "Enable performance tracing to analyze execution time",
 			},
+			&cli.StringFlag{
+				Name:  "runtime-dir",
+				Usage: "Directory to save runtime data (creates runtime.json)",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
 			// Initialize tracing if enabled
@@ -235,8 +240,24 @@ func createApp() *cli.App {
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
 
+			// Initialize runtime tracker if runtime-dir is specified
+			var runtimeTracker *RuntimeTracker
+			runtimeDir := ctx.String("runtime-dir")
+			if runtimeDir != "" {
+				runtimeTracker = NewRuntimeTracker()
+			}
+
 			// Run specs in parallel with intelligent grouping
-			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
+			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount, runtimeTracker)
+
+			// Save runtime data if tracker was initialized
+			if runtimeTracker != nil {
+				if err := runtimeTracker.SaveToFile(runtimeDir); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
+				} else {
+					fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", filepath.Join(runtimeDir, "runtime.json"))
+				}
+			}
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)
