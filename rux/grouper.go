@@ -7,9 +7,9 @@ import (
 
 // FileGroup represents a group of spec files that will run in one process
 type FileGroup struct {
-	Files      []string
-	TotalSize  int64
-	WorkerID   int
+	Files     []string
+	TotalSize int64
+	WorkerID  int
 }
 
 // GroupSpecFilesBySize distributes spec files into groups to minimize total processes
@@ -20,7 +20,7 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 		path string
 		size int64
 	}
-	
+
 	filesWithSizes := make([]fileWithSize, 0, len(specFiles))
 	for _, file := range specFiles {
 		info, err := os.Stat(file)
@@ -31,12 +31,12 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 		}
 		filesWithSizes = append(filesWithSizes, fileWithSize{file, info.Size()})
 	}
-	
+
 	// Sort by size descending (largest first)
 	sort.Slice(filesWithSizes, func(i, j int) bool {
 		return filesWithSizes[i].size > filesWithSizes[j].size
 	})
-	
+
 	// Initialize groups
 	groups := make([]FileGroup, numWorkers)
 	for i := range groups {
@@ -46,7 +46,7 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 			WorkerID:  i,
 		}
 	}
-	
+
 	// Distribute files using "smallest group first" algorithm
 	// This ensures balanced distribution
 	for _, file := range filesWithSizes {
@@ -59,12 +59,12 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 				minSize = groups[i].TotalSize
 			}
 		}
-		
+
 		// Add file to smallest group
 		groups[minIdx].Files = append(groups[minIdx].Files, file.path)
 		groups[minIdx].TotalSize += file.size
 	}
-	
+
 	// Remove empty groups (when we have more workers than files)
 	nonEmptyGroups := make([]FileGroup, 0)
 	for _, group := range groups {
@@ -72,7 +72,7 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 			nonEmptyGroups = append(nonEmptyGroups, group)
 		}
 	}
-	
+
 	return nonEmptyGroups
 }
 
@@ -82,12 +82,12 @@ func ShouldUseGrouping(numFiles, numWorkers int) bool {
 	if numWorkers >= numFiles {
 		return false
 	}
-	
+
 	// For small test suites, grouping helps reduce overhead
 	// For large test suites, one-file-per-process might be better for granular parallelism
 	// This is a tunable heuristic
 	avgFilesPerWorker := float64(numFiles) / float64(numWorkers)
-	
+
 	// Group if we'd average more than 2 files per worker
 	// This balances overhead reduction vs parallelism
 	return avgFilesPerWorker > 2.0

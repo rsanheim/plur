@@ -60,7 +60,7 @@ RSpec.describe "Rux output performance" do
             end
           end
         RUBY
-        
+
         Dir.chdir(tmpdir) do
           # Run specs that include failures
           output = `#{rux_binary} -n 2 mixed_spec.rb 2>&1`

@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
@@ -124,11 +123,6 @@ func createApp() *cli.App {
 				Name:  "trace",
 				Usage: "Enable performance tracing to analyze execution time",
 			},
-			&cli.BoolFlag{
-				Name:  "group",
-				Usage: "Use intelligent file grouping to reduce process overhead (experimental)",
-				Value: true, // Default to true for better performance
-			},
 		},
 		Action: func(ctx *cli.Context) error {
 			// Initialize tracing if enabled
@@ -193,9 +187,22 @@ func createApp() *cli.App {
 					formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
 				}
 
-				for _, file := range specFiles {
-					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color", file}
-					fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
+				// Show grouped execution in dry-run
+				workerCount := GetWorkerCount(ctx.Int("n"))
+				if ShouldUseGrouping(len(specFiles), workerCount) {
+					groups := GroupSpecFilesBySize(specFiles, workerCount)
+					fmt.Fprintf(os.Stderr, "[dry-run] Using grouped execution: %d groups\n", len(groups))
+					for i, group := range groups {
+						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
+						args = append(args, group.Files...)
+						fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
+					}
+				} else {
+					fmt.Fprintf(os.Stderr, "[dry-run] Using single file per worker (no grouping needed)\n")
+					for _, file := range specFiles {
+						args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color", file}
+						fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(args, " "))
+					}
 				}
 				return nil
 			}
@@ -228,15 +235,8 @@ func createApp() *cli.App {
 			// Determine color output settings
 			colorOutput := shouldUseColor(ctx)
 
-			// Use grouped or regular execution based on flag
-			var results []TestResult
-			var wallTime time.Duration
-			
-			if ctx.Bool("group") {
-				results, wallTime = RunSpecsInParallelGrouped(specFiles, dryRun, saveJSON, colorOutput, workerCount)
-			} else {
-				results, wallTime = RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
-			}
+			// Run specs in parallel with intelligent grouping
+			results, wallTime := RunSpecsInParallel(specFiles, dryRun, saveJSON, colorOutput, workerCount)
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)

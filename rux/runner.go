@@ -279,21 +279,21 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 	}
 }
 
-// RunSpecFile executes a single spec file using the streaming JSON formatter
-func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun bool, saveJSON bool, outputChan chan<- OutputMessage) TestResult {
-	defer TraceFuncWithWorker("run_spec_file", workerIndex, specFile)()
+// RunSpecFile executes multiple spec files in a single RSpec process
+func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRun bool, saveJSON bool, outputChan chan<- OutputMessage) TestResult {
+	defer TraceFuncWithWorker("run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
 	// Get the cached formatter path (computed only once)
 	var formatterPath string
 	var err error
 	func() {
-		defer TraceFuncWithWorker("get_formatter_path", workerIndex, specFile)()
+		defer TraceFuncWithWorker("get_formatter_path", workerIndex, "grouped")()
 		formatterPath, err = getCachedFormatterPath()
 	}()
 	if err != nil {
 		return TestResult{
-			SpecFile: specFile,
+			SpecFile: strings.Join(specFiles, ","),
 			Success:  false,
 			Output:   "",
 			Error:    fmt.Errorf("failed to get formatter path: %v", err),
@@ -306,11 +306,12 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 
 	// Always use --no-color for RSpec since we'll handle colors ourselves
 	args = append(args, "--no-color")
-	args = append(args, specFile)
+	// Add all spec files
+	args = append(args, specFiles...)
 
 	if dryRun {
 		return TestResult{
-			SpecFile: specFile,
+			SpecFile: strings.Join(specFiles, " "),
 			Success:  true,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
 			Error:    nil,
@@ -333,7 +334,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return TestResult{
-			SpecFile: specFile,
+			SpecFile: strings.Join(specFiles, ","),
 			Success:  false,
 			Output:   "",
 			Error:    fmt.Errorf("failed to create stdout pipe: %v", err),
@@ -344,7 +345,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return TestResult{
-			SpecFile: specFile,
+			SpecFile: strings.Join(specFiles, ","),
 			Success:  false,
 			Output:   "",
 			Error:    fmt.Errorf("failed to create stderr pipe: %v", err),
@@ -354,12 +355,12 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 
 	// Start the command
 	func() {
-		defer TraceFuncWithWorker("process_spawn", workerIndex, specFile)()
+		defer TraceFuncWithWorker("process_spawn", workerIndex, fmt.Sprintf("%d files", len(specFiles)))()
 		err = cmd.Start()
 	}()
 	if err != nil {
 		return TestResult{
-			SpecFile: specFile,
+			SpecFile: strings.Join(specFiles, ","),
 			Success:  false,
 			Output:   "",
 			Error:    fmt.Errorf("failed to start command: %v", err),
@@ -386,7 +387,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 				firstOutput = false
 				TraceFuncWithMetadata("ruby_first_output", map[string]interface{}{
 					"worker_id":        workerIndex,
-					"spec_file":        specFile,
+					"spec_files":       len(specFiles),
 					"time_since_spawn": time.Since(start).Seconds() * 1000,
 				})()
 			}
@@ -399,7 +400,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 					streamingResults.LoadTime = msg.LoadTime
 					TraceFuncWithMetadata("rspec_loaded", map[string]interface{}{
 						"worker_id":        workerIndex,
-						"spec_file":        specFile,
+						"spec_files":       len(specFiles),
 						"load_time":        msg.LoadTime,
 						"time_since_spawn": time.Since(start).Seconds() * 1000,
 					})()
@@ -446,7 +447,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 				WorkerID: workerIndex,
 				Type:     "stderr",
 				Content:  line,
-				SpecFile: specFile,
+				SpecFile: strings.Join(specFiles, ","),
 			}
 		}
 	}()
@@ -472,7 +473,7 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	success = exitCode == 0
 
 	return TestResult{
-		SpecFile:     specFile,
+		SpecFile:     strings.Join(specFiles, " "),
 		Success:      success,
 		Output:       outputBuilder.String(),
 		Error:        err,
@@ -484,11 +485,74 @@ func RunSpecFile(ctx context.Context, specFile string, workerIndex int, dryRun b
 	}
 }
 
-// RunSpecsInParallel executes spec files in parallel using a worker pool
+// RunSpecsInParallel executes spec files in parallel using intelligent grouping
 func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int) ([]TestResult, time.Duration) {
-	defer TraceFunc("run_specs_parallel")()
+	defer TraceFunc("run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
+
+	// Decide whether to use grouping
+	useGrouping := ShouldUseGrouping(len(specFiles), maxWorkers)
+
+	if useGrouping {
+		fmt.Fprintf(os.Stderr, "Using grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+		// Group files by size
+		groups := GroupSpecFilesBySize(specFiles, maxWorkers)
+
+		results := make(chan TestResult, len(groups))
+
+		// Create buffered channel for output messages
+		outputChan := make(chan OutputMessage, maxWorkers*10)
+
+		// Start output aggregator goroutine
+		var outputWg sync.WaitGroup
+		outputWg.Add(1)
+		go func() {
+			defer outputWg.Done()
+			outputAggregator(outputChan, colorOutput)
+		}()
+
+		// Set PARALLEL_TEST_GROUPS environment variable
+		os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(groups)))
+
+		// Run each group in parallel
+		var wg sync.WaitGroup
+		for i, group := range groups {
+			wg.Add(1)
+			go func(workerIndex int, files []string) {
+				defer wg.Done()
+				result := RunSpecFile(ctx, files, workerIndex, dryRun, saveJSON, outputChan)
+				results <- result
+			}(i, group.Files)
+		}
+
+		// Wait for all groups to complete
+		wg.Wait()
+		close(results)
+
+		// Close output channel and wait for aggregator to finish
+		close(outputChan)
+		outputWg.Wait()
+
+		// Collect results
+		var allResults []TestResult
+		for result := range results {
+			allResults = append(allResults, result)
+		}
+
+		// Ensure newline after dots
+		fmt.Println()
+
+		return allResults, time.Since(start)
+	} else {
+		// Fall back to one-file-per-process for large suites
+		// or when we have more workers than files
+		return runSpecsInParallelSingle(specFiles, dryRun, saveJSON, colorOutput, maxWorkers, ctx, start)
+	}
+}
+
+// runSpecsInParallelSingle runs specs with one file per process (original mode)
+func runSpecsInParallelSingle(specFiles []string, dryRun bool, saveJSON bool, colorOutput bool, maxWorkers int, ctx context.Context, start time.Time) ([]TestResult, time.Duration) {
 	results := make(chan TestResult, len(specFiles))
 
 	// Create buffered channel for output messages
@@ -522,7 +586,7 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, saveJSON bool, colorOut
 			go func() {
 				defer wg.Done()
 				for job := range jobs {
-					result := RunSpecFile(ctx, job.SpecFile, workerIndex, dryRun, saveJSON, outputChan)
+					result := RunSpecFile(ctx, []string{job.SpecFile}, workerIndex, dryRun, saveJSON, outputChan)
 					results <- result
 				}
 			}()

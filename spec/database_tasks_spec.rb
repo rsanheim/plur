@@ -29,7 +29,7 @@ RSpec.describe "Rux database tasks" do
           source "https://rubygems.org"
           gem "rake"
         RUBY
-        
+
         File.write(File.join(tmpdir, "Rakefile"), <<~RUBY)
           task "db:setup" do
             puts "DB setup for \#{ENV['TEST_ENV_NUMBER'] || '1'}"
@@ -39,7 +39,7 @@ RSpec.describe "Rux database tasks" do
         Dir.chdir(tmpdir) do
           # First install dependencies
           system("bundle install --quiet", out: File::NULL, err: File::NULL)
-          
+
           output = `#{rux_binary} db:setup -n 2 2>&1`
 
           expect(output).to include("Running database task 'db:setup' with 2 workers...")
