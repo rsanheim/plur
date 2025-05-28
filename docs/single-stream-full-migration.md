@@ -54,13 +54,19 @@ After implementing and testing both approaches side-by-side, we're fully committ
 - [x] **Result**: 🚀 **2.3x faster than turbo_tests** for small suites (195ms vs 454ms)
 - [x] Lesson learned: Sometimes the obvious optimization is the right one!
 
-#### Remaining Optimizations:
-- [ ] Optimize JSON parsing (pre-allocate buffers, faster detection)
-- [ ] Pool goroutines instead of creating 2 per spec file
-- [ ] Pre-allocate string builders with estimated capacity
-- [ ] Consider embedding formatter differently (go:embed vs string)
-- [ ] Implement --json flag to save results to files
-- [ ] Add full failure summary output
+#### High Priority Optimizations:
+- [ ] **Runtime-based file grouping** (addresses failing scalability test)
+  - [ ] Track runtime of each spec file during execution
+  - [ ] Save to `~/.cache/rux/runtimes/project-name.log` in format: `path/to/spec.rb:seconds`
+  - [ ] Use runtime data for intelligent grouping (slow tests in different groups)
+  - [ ] Fall back to file-size grouping when no runtime data exists
+  - [ ] Update after each run to adapt to changing test suites
+- [ ] **Full failure summary output** (pending test expects this)
+
+#### Lower Priority Optimizations:
+- [ ] JSON parsing optimization (pre-allocate buffers)
+- [ ] Goroutine pooling (reduce overhead for large suites)
+- [ ] Implement --json flag to save detailed results
 
 ### Phase 4: Documentation
 - [ ] Update README with new architecture
