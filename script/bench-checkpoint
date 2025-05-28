@@ -97,7 +97,7 @@ end
 puts "# Benchmark Summary"
 puts ""
 puts "- **Date**: '"$TIMESTAMP"' UTC"
-puts "- **Commit**: ['"$GIT_SHA"'](https://github.com/anthropics/rux-meta/commit/#{commit})"
+puts "- **Commit**: ['"$GIT_SHA"'](https://github.com/rsanheim/rux-meta/commit/#{commit})"
 rux_version = data["rux_version"] || "unknown"
 puts "- **Rux Version**: #{rux_version}"
 puts ""
