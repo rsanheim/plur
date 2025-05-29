@@ -162,7 +162,6 @@ RSpec.describe "Rux parallel execution" do
           expect(output).to match(/\e\[32m\.\e\[0m/) # Green dots
           expect(output).to match(/\e\[31mF\e\[0m/) # Red F's
 
-          puts output
           # Should see summary
           expect(output).to include("7 examples, 2 failures")
         end
