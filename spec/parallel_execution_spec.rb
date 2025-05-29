@@ -168,5 +168,4 @@ RSpec.describe "Rux parallel execution" do
       end
     end
   end
-
 end

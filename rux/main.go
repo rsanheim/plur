@@ -329,15 +329,15 @@ func reorderArgs(args []string) []string {
 	cmd := args[0]
 	var flags []string
 	var positional []string
-	
+
 	// Skip the command name and process remaining args
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
-		
+
 		// Check if it's a flag (starts with - or --)
 		if strings.HasPrefix(arg, "-") {
 			flags = append(flags, arg)
-			
+
 			// Check if this flag takes a value (not a boolean flag)
 			// For now, we'll handle known flags that take values
 			if (arg == "-n" || arg == "--workers" || arg == "--runtime-dir") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
@@ -348,12 +348,12 @@ func reorderArgs(args []string) []string {
 			positional = append(positional, arg)
 		}
 	}
-	
+
 	// Reconstruct args with flags before positional args
 	result := []string{cmd}
 	result = append(result, flags...)
 	result = append(result, positional...)
-	
+
 	return result
 }
 

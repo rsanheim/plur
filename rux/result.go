@@ -30,7 +30,7 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 		ErroredFiles: []TestResult{},
 		Success:      true, // Start assuming success
 	}
-	
+
 	// Track if we're in single-file mode (single worker)
 	singleWorkerMode := len(results) == 1
 

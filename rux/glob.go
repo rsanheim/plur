@@ -85,7 +85,7 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 			if err != nil {
 				return nil, fmt.Errorf("file not found: %s", pattern)
 			}
-			
+
 			if fileInfo.IsDir() {
 				// If it's a directory, expand to find all _spec.rb files within it
 				dirPattern := filepath.Join(pattern, "**", "*_spec.rb")
@@ -93,7 +93,7 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 				if err != nil {
 					return nil, fmt.Errorf("error expanding directory %q: %v", pattern, err)
 				}
-				
+
 				for _, match := range matches {
 					if !seenFiles[match] {
 						allFiles = append(allFiles, match)

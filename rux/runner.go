@@ -33,7 +33,7 @@ type TestResult struct {
 	Failures     []rspec.FailureDetail
 	ExampleCount int
 	FailureCount int
-	
+
 	// Formatted output from RSpec
 	FormattedFailures string
 	FormattedSummary  string
@@ -245,6 +245,11 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 			}
 
 			msg, err := rspec.ParseStreamingMessage(line)
+
+			if os.Getenv("RUX_DEBUG") == "1" {
+				dump(msg)
+			}
+
 			if msg != nil {
 				// Handle different message types
 				switch msg.Type {
@@ -326,15 +331,15 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 	failures := rspec.ExtractFailures(jsonOutput.Examples)
 
 	return TestResult{
-		SpecFile:     strings.Join(specFiles, " "),
-		Success:      success,
-		Output:       outputBuilder.String(),
-		Error:        err,
-		Duration:     time.Since(start),
-		JSONOutput:   jsonOutput,
-		Failures:     failures,
-		ExampleCount: streamingResults.ExampleCount,
-		FailureCount: streamingResults.FailureCount,
+		SpecFile:          strings.Join(specFiles, " "),
+		Success:           success,
+		Output:            outputBuilder.String(),
+		Error:             err,
+		Duration:          time.Since(start),
+		JSONOutput:        jsonOutput,
+		Failures:          failures,
+		ExampleCount:      streamingResults.ExampleCount,
+		FailureCount:      streamingResults.FailureCount,
 		FormattedFailures: streamingResults.FormattedFailures,
 		FormattedSummary:  streamingResults.FormattedSummary,
 	}

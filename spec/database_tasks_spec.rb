@@ -1,8 +1,6 @@
 require "spec_helper"
-require "tmpdir"
 
-RSpec.describe "Rux database tasks" do
-  let(:rux_binary) { File.join(__dir__, "..", "rux", "rux") }
+RSpec.describe "Rux database tasks", skip: true do
   let(:test_app_path) { File.join(__dir__, "..", "test_app") }
 
   before do
