@@ -80,17 +80,32 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 				}
 			}
 		} else {
-			// Not a glob pattern, check if it's a valid spec file
-			if _, err := os.Stat(pattern); err == nil {
-				if strings.HasSuffix(pattern, "_spec.rb") && !seenFiles[pattern] {
-					allFiles = append(allFiles, pattern)
-					seenFiles[pattern] = true
-				} else if !strings.HasSuffix(pattern, "_spec.rb") {
-					// Warn about non-spec files
-					fmt.Fprintf(os.Stderr, "Warning: %s does not end with _spec.rb\n", pattern)
-				}
-			} else {
+			// Not a glob pattern, check if it's a valid file or directory
+			fileInfo, err := os.Stat(pattern)
+			if err != nil {
 				return nil, fmt.Errorf("file not found: %s", pattern)
+			}
+
+			if fileInfo.IsDir() {
+				// If it's a directory, expand to find all _spec.rb files within it
+				dirPattern := filepath.Join(pattern, "**", "*_spec.rb")
+				matches, err := expandDoubleStarGlob(dirPattern)
+				if err != nil {
+					return nil, fmt.Errorf("error expanding directory %q: %v", pattern, err)
+				}
+
+				for _, match := range matches {
+					if !seenFiles[match] {
+						allFiles = append(allFiles, match)
+						seenFiles[match] = true
+					}
+				}
+			} else if strings.HasSuffix(pattern, "_spec.rb") && !seenFiles[pattern] {
+				allFiles = append(allFiles, pattern)
+				seenFiles[pattern] = true
+			} else {
+				// Warn about non-spec files
+				fmt.Fprintf(os.Stderr, "Warning: %s does not end with _spec.rb\n", pattern)
 			}
 		}
 	}

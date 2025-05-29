@@ -10,6 +10,7 @@ WARMUP=2
 RUNS=5
 TIMESTAMP=${BENCH_TIMESTAMP:-$(date -u +"%Y%m%d-%H%M%S")}
 ENABLE_TRACE=false
+SAVE_RESULTS=true
 
 # Help function
 show_help() {
@@ -21,6 +22,7 @@ Benchmark rux vs turbo_tests performance on Ruby projects.
 OPTIONS:
     -p, --project PATH     Path to Ruby project to benchmark (can be used multiple times)
     -n, --workers NUM      Number of workers to use (default: $WORKERS)
+    --no-results           Don't save results to file
     --warmup NUM           Number of warmup runs (default: $WARMUP)
     --runs NUM             Number of benchmark runs (default: $RUNS)
     --trace                Enable rux tracing for performance analysis
@@ -75,6 +77,10 @@ while [[ $# -gt 0 ]]; do
             PROJECT_PATHS+=("$2")
             shift 2
             ;;
+        --no-results)
+            SAVE_RESULTS=false
+            shift
+            ;;
         *)
             echo "Error: Unknown option: $1"
             echo "Use -h or --help for usage information"
@@ -124,12 +130,20 @@ benchmark_project() {
         RUX_CMD="$RUX_CMD --trace"
     fi
     
+    if [ "$SAVE_RESULTS" = true ]; then
     hyperfine \
         --warmup $WARMUP \
         --runs $RUNS \
         --export-json "$JSON_FILE" \
-        "turbo_tests -n $WORKERS" \
-        "$RUX_CMD"
+            "turbo_tests -n $WORKERS" \
+            "$RUX_CMD"
+    else
+        hyperfine \
+            --warmup $WARMUP \
+            --runs $RUNS \
+            "turbo_tests -n $WORKERS" \
+            "$RUX_CMD"
+    fi
     
     # Add version info to JSON file
     if [ -f "$JSON_FILE" ]; then
@@ -145,11 +159,12 @@ benchmark_project() {
         fi
     fi
     
-    # Show results location
-    echo ""
-    echo "Results saved to:"
-    echo "  - $JSON_FILE"
-    
+    if [ "$SAVE_RESULTS" = true ]; then
+        echo ""
+        echo "Results saved to:"
+        echo "  - $JSON_FILE"
+    fi
+
     # Analyze trace files if tracing was enabled
     if [ "$ENABLE_TRACE" = true ]; then
         echo ""

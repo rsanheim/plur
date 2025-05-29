@@ -223,7 +223,13 @@ func createApp() *cli.App {
 					fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
 				}
 				for i, group := range groups {
-					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
+					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+					// Add color flags based on preference
+					if !shouldUseColor(ctx) {
+						args = append(args, "--no-color")
+					} else {
+						args = append(args, "--force-color", "--tty")
+					}
 					args = append(args, group.Files...)
 					fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
 				}
@@ -273,7 +279,7 @@ func createApp() *cli.App {
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)
-			PrintResults(summary)
+			PrintResults(summary, colorOutput)
 
 			// Exit with error if any tests failed
 			if !summary.Success {
@@ -312,9 +318,50 @@ func shouldUseColor(ctx *cli.Context) bool {
 	return term.IsTerminal(int(os.Stdout.Fd()))
 }
 
+// reorderArgs moves flags before positional arguments to work around urfave/cli v2 limitation
+// This allows both `rux --no-color spec/` and `rux spec/ --no-color` to work
+func reorderArgs(args []string) []string {
+	if len(args) <= 1 {
+		return args
+	}
+
+	// Separate the command name, flags, and positional args
+	cmd := args[0]
+	var flags []string
+	var positional []string
+
+	// Skip the command name and process remaining args
+	for i := 1; i < len(args); i++ {
+		arg := args[i]
+
+		// Check if it's a flag (starts with - or --)
+		if strings.HasPrefix(arg, "-") {
+			flags = append(flags, arg)
+
+			// Check if this flag takes a value (not a boolean flag)
+			// For now, we'll handle known flags that take values
+			if (arg == "-n" || arg == "--workers" || arg == "--runtime-dir") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				i++
+				flags = append(flags, args[i])
+			}
+		} else {
+			positional = append(positional, arg)
+		}
+	}
+
+	// Reconstruct args with flags before positional args
+	result := []string{cmd}
+	result = append(result, flags...)
+	result = append(result, positional...)
+
+	return result
+}
+
 func main() {
 	app := createApp()
-	if err := app.Run(os.Args); err != nil {
+	// Reorder arguments to put flags before positional args
+	args := reorderArgs(os.Args)
+	if err := app.Run(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

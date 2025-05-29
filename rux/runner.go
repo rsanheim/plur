@@ -33,6 +33,10 @@ type TestResult struct {
 	Failures     []rspec.FailureDetail
 	ExampleCount int
 	FailureCount int
+
+	// Formatted output from RSpec
+	FormattedFailures string
+	FormattedSummary  string
 }
 
 // OutputMessage represents a message to be output
@@ -96,12 +100,12 @@ const (
 
 // Pre-compiled output strings to avoid repeated concatenation
 var (
-	greenDot    = []byte(colorGreen + "." + colorReset)
-	redF        = []byte(colorRed + "F" + colorReset)
-	yellowStar  = []byte(colorYellow + "*" + colorReset)
-	plainDot    = []byte(".")
-	plainF      = []byte("F")
-	plainStar   = []byte("*")
+	greenDot   = []byte(colorGreen + "." + colorReset)
+	redF       = []byte(colorRed + "F" + colorReset)
+	yellowStar = []byte(colorYellow + "*" + colorReset)
+	plainDot   = []byte(".")
+	plainF     = []byte("F")
+	plainStar  = []byte("*")
 )
 
 // outputAggregator handles all output from workers to avoid lock contention
@@ -147,7 +151,7 @@ func errorResult(specFiles []string, err error, start time.Time) TestResult {
 }
 
 // RunSpecFile executes multiple spec files in a single RSpec process
-func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
+func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, outputChan chan<- OutputMessage) TestResult {
 	defer TraceFuncWithWorker("run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
@@ -165,8 +169,13 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 	// Build args with streaming JSON formatter
 	args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
 
-	// Always use --no-color for RSpec since we'll handle colors ourselves
-	args = append(args, "--no-color")
+	// Add color flags based on preference
+	if !colorOutput {
+		args = append(args, "--no-color")
+	} else {
+		// Force color output even when not a TTY (since we're piping)
+		args = append(args, "--force-color", "--tty")
+	}
 	// Add all spec files
 	args = append(args, specFiles...)
 
@@ -236,6 +245,11 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 			}
 
 			msg, err := rspec.ParseStreamingMessage(line)
+
+			if os.Getenv("RUX_DEBUG") == "1" {
+				dump(msg)
+			}
+
 			if msg != nil {
 				// Handle different message types
 				switch msg.Type {
@@ -265,6 +279,10 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 						WorkerID: workerIndex,
 						Type:     "pending",
 					}
+				case "dump_failures":
+					streamingResults.FormattedFailures = msg.FormattedOutput
+				case "dump_summary":
+					streamingResults.FormattedSummary = msg.FormattedOutput
 				case "close":
 					// End of test run
 				}
@@ -313,15 +331,17 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 	failures := rspec.ExtractFailures(jsonOutput.Examples)
 
 	return TestResult{
-		SpecFile:     strings.Join(specFiles, " "),
-		Success:      success,
-		Output:       outputBuilder.String(),
-		Error:        err,
-		Duration:     time.Since(start),
-		JSONOutput:   jsonOutput,
-		Failures:     failures,
-		ExampleCount: streamingResults.ExampleCount,
-		FailureCount: streamingResults.FailureCount,
+		SpecFile:          strings.Join(specFiles, " "),
+		Success:           success,
+		Output:            outputBuilder.String(),
+		Error:             err,
+		Duration:          time.Since(start),
+		JSONOutput:        jsonOutput,
+		Failures:          failures,
+		ExampleCount:      streamingResults.ExampleCount,
+		FailureCount:      streamingResults.FailureCount,
+		FormattedFailures: streamingResults.FormattedFailures,
+		FormattedSummary:  streamingResults.FormattedSummary,
 	}
 }
 
@@ -341,10 +361,10 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWo
 	// Group files using runtime data if available, otherwise by size
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(specFiles), pluralize(len(specFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesByRuntime(specFiles, maxWorkers, runtimeData)
 	} else {
-		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d files across %d workers\n", len(specFiles), maxWorkers)
+		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(specFiles), pluralize(len(specFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesBySize(specFiles, maxWorkers)
 	}
 
@@ -370,7 +390,7 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWo
 		wg.Add(1)
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
-			result := RunSpecFile(ctx, files, workerIndex, dryRun, outputChan)
+			result := RunSpecFile(ctx, files, workerIndex, dryRun, colorOutput, outputChan)
 			results <- result
 		}(i, group.Files)
 	}
