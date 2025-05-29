@@ -19,7 +19,9 @@ module Rux
       :example_group_started,
       :example_group_finished,
       :message,
-      :seed
+      :seed,
+      :dump_failures,
+      :dump_summary
     )
 
     attr_reader :output
@@ -94,6 +96,32 @@ module Rux
       output_row(
         type: :message,
         message: notification.message
+      )
+    end
+
+    def dump_failures(notification)
+      # Don't output anything if there are no failures
+      return if notification.failure_notifications.empty?
+      
+      # Capture the fully formatted failures with colors
+      output_row(
+        type: :dump_failures,
+        formatted_output: notification.fully_formatted_failed_examples
+      )
+    end
+
+    def dump_summary(summary)
+      # Capture the fully formatted summary with colors
+      output_row(
+        type: :dump_summary,
+        formatted_output: summary.fully_formatted,
+        totals_line: summary.totals_line,
+        colorized_totals_line: summary.colorized_totals_line,
+        example_count: summary.example_count,
+        failure_count: summary.failure_count,
+        pending_count: summary.pending_count,
+        duration: summary.duration,
+        load_time: summary.load_time
       )
     end
 

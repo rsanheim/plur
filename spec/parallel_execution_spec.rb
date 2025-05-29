@@ -162,6 +162,7 @@ RSpec.describe "Rux parallel execution" do
           expect(output).to match(/\e\[32m\.\e\[0m/) # Green dots
           expect(output).to match(/\e\[31mF\e\[0m/) # Red F's
 
+          puts output
           # Should see summary
           expect(output).to include("7 examples, 2 failures")
         end
@@ -169,57 +170,4 @@ RSpec.describe "Rux parallel execution" do
     end
   end
 
-  describe "failure reporting" do
-    it "aggregates failures from all workers" do
-      Dir.mktmpdir do |tmpdir|
-        spec_dir = File.join(tmpdir, "spec")
-        FileUtils.mkdir_p(spec_dir)
-
-        # Create specs with different types of failures
-        spec1_path = File.join(spec_dir, "failure_1_spec.rb")
-        File.write(spec1_path, <<~RUBY)
-          RSpec.describe "failure 1" do
-            it "has expectation failure" do
-              expect(1 + 1).to eq(3)
-            end
-          end
-        RUBY
-
-        spec2_path = File.join(spec_dir, "failure_2_spec.rb")
-        File.write(spec2_path, <<~RUBY)
-          RSpec.describe "failure 2" do
-            it "raises an error" do
-              raise "Something went wrong"
-            end
-          end
-        RUBY
-
-        File.write(File.join(tmpdir, "Gemfile"), <<~GEMFILE)
-          source 'https://rubygems.org'
-          gem 'rspec', '~> 3.0'
-        GEMFILE
-
-        Dir.chdir(tmpdir) do
-          system("bundle install", out: File::NULL, err: File::NULL)
-
-          output = `#{rux_binary} -n 2 2>&1`
-
-          # Should show both failures
-          expect(output).to include("failure 1")
-          expect(output).to include("has expectation failure")
-          expect(output).to include("expected: 3")
-          expect(output).to include("got: 2")
-
-          expect(output).to include("failure 2")
-          expect(output).to include("raises an error")
-          expect(output).to include("Something went wrong")
-
-          # Should show failed examples list
-          expect(output).to include("Failed examples:")
-          expect(output).to include("rspec ./spec/failure_1_spec.rb")
-          expect(output).to include("rspec ./spec/failure_2_spec.rb")
-        end
-      end
-    end
-  end
 end

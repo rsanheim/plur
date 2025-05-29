@@ -223,7 +223,13 @@ func createApp() *cli.App {
 					fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
 				}
 				for i, group := range groups {
-					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color"}
+					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+					// Add color flags based on preference
+					if !shouldUseColor(ctx) {
+						args = append(args, "--no-color")
+					} else {
+						args = append(args, "--force-color", "--tty")
+					}
 					args = append(args, group.Files...)
 					fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
 				}
@@ -273,7 +279,7 @@ func createApp() *cli.App {
 
 			// Build summary and print results
 			summary := BuildTestSummary(results, wallTime)
-			PrintResults(summary)
+			PrintResults(summary, colorOutput)
 
 			// Exit with error if any tests failed
 			if !summary.Success {

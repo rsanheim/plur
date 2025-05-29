@@ -19,6 +19,15 @@ type StreamingMessage struct {
 	PendingMessage  string              `json:"pending_message,omitempty"`
 	Exception       *StreamingException `json:"exception,omitempty"`
 	Example         *StreamingExample   `json:"example,omitempty"`
+	
+	// Fields for dump_failures and dump_summary messages
+	FormattedOutput      string  `json:"formatted_output,omitempty"`
+	TotalsLine          string  `json:"totals_line,omitempty"`
+	ColorizedTotalsLine string  `json:"colorized_totals_line,omitempty"`
+	ExampleCount        int     `json:"example_count,omitempty"`
+	FailureCount        int     `json:"failure_count,omitempty"`
+	PendingCount        int     `json:"pending_count,omitempty"`
+	Duration            float64 `json:"duration,omitempty"`
 }
 
 // StreamingExample represents nested example data with runtime
@@ -66,6 +75,10 @@ type StreamingResults struct {
 	PendingCount int
 	LoadTime     float64
 	Examples     []StreamingMessage
+	
+	// Formatted output from RSpec
+	FormattedFailures string
+	FormattedSummary  string
 }
 
 // AddExample adds an example result to the streaming results

@@ -30,15 +30,24 @@ RSpec.describe "single failure" do
 
   it "shows filtered backtrace same as rspec" do
     chdir fixture_path("failing_specs") do
-      rspec_out, rspec_err, rspec_status = run_rspec("spec/single_failure_spec.rb")
+      rspec_out, rspec_err, rspec_status = run_rspec("spec/single_failure_spec.rb", "--tty", "--force-color")
       expect(rspec_status.exitstatus).to eq(1)
 
-      backtrace_line = rspec_out.split("\n").find { |line| line.include?("# ./spec/single_failure_spec.rb") }
+      backtrace_line = rspec_out.split("\n").find { |line| line.include?("./spec/single_failure_spec.rb:6") } # remove color codes
 
       stdout, stderr, status = run_rux("spec/single_failure_spec.rb")
       expect(status.exitstatus).to eq(1)
       expect(stdout).to include(backtrace_line)
     end
+  end
+
+  # Replace
+  #   Finished in 0.00761 seconds (files took 0.04367 seconds to load)\n
+  # with
+  #   Finished in [fake-time] seconds (files took [fake-time] seconds to load)
+  def make_summary_line_consistent(str)
+    str.gsub(/Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/, 
+             "Finished in [fake-time] seconds (files took [fake-time] seconds to load)")
   end
 
   it "matches rspec colorized output" do
@@ -49,11 +58,11 @@ RSpec.describe "single failure" do
       stdout, stderr, status = run_rux("spec/single_failure_spec.rb")
       expect(status.exitstatus).to eq(1)
 
-      stdout_lines = stdout.split("\n")
-      pp stdout_lines[0..2]
-      stdout_without_preamble = stdout_lines[2..-1].join("\n")
+      stdout_lines = make_summary_line_consistent(stdout).lines
+      stdout_without_preamble = stdout_lines[2..-1]
+      rspec_stdout_lines = make_summary_line_consistent(rspec_out).lines
 
-      expect(stdout_without_preamble).to eq(rspec_out)
+      expect(stdout_without_preamble).to eq(rspec_stdout_lines)
     end
   end
 end
