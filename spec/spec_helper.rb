@@ -1,8 +1,10 @@
-require "open3"
 require "fileutils"
+require "open3"
 require "pathname"
 require "super_diff/rspec"
 require "tmpdir"
+
+ROOT_PATH = Pathname.new(__dir__).parent
 
 RSpec.configure do |config|
   def chdir(path)
