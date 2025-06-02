@@ -75,6 +75,15 @@ Returns: VerifyResult object with:
 - `command_executed?`: Whether the command was actually run (false in playback mode)
 - `error_message`: Human-readable error description
 
+#### `StayGold.verify!(options = {}, &block)`
+Same as `verify` but automatically raises an error if verification fails. More convenient for most test cases where you just want the test to fail on mismatch.
+
+Options: Same as `verify`
+
+Returns: VerifyResult object (only if verification succeeds)
+
+Raises: RSpec::Expectations::ExpectationNotMetError with detailed diff information if verification fails
+
 Examples:
 ```ruby
 # Strict verification (default)
@@ -94,6 +103,19 @@ result = StayGold.verify(cassette: "version",
                           recorded["stdout"].start_with?("ruby")
                         }) do
   Open3.capture3("ruby --version")
+end
+
+# Using verify! for automatic test failure
+StayGold.verify!(cassette: "echo_test") do
+  Open3.capture3("echo hello")  # Raises error if output doesn't match
+end
+
+# Custom matcher with verify!
+StayGold.verify!(cassette: "version", 
+                matcher: ->(recorded, actual) { 
+                  recorded["stdout"].start_with?("ruby")
+                }) do
+  Open3.capture3("ruby --version")  # Raises error if matcher returns false
 end
 ```
 
