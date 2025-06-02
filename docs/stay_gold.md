@@ -242,3 +242,57 @@ Key concepts to borrow:
 3. **Performance tests**: Compare execution times across versions
 4. **Cross-platform**: Test Unix vs Windows output differences
 5. **Documentation**: Cassettes show expected output for different scenarios
+
+## Current Implementation Status
+
+### What's Working
+- ✅ Basic recording and playback via `use_cassette`
+- ✅ Separate record/verify APIs for explicit control
+- ✅ Auto-generated cassette names from RSpec context
+- ✅ Multiple verification modes (strict, playback, custom matchers)
+- ✅ VCR-compatible record modes (:once, :all, :none, :new_episodes)
+- ✅ Comprehensive test coverage (31 specs, 100% passing)
+
+### Known Limitations
+- 🚧 Only intercepts `Open3.capture3` (not system, backticks, etc.)
+- 🚧 No thread safety (uses singleton method definitions)
+- 🚧 No sensitive data filtering
+- 🚧 No binary output handling
+- 🚧 Simplified :new_episodes mode (just appends)
+- 🚧 No command argument matching
+
+### Recommended Usage for Rux
+
+```ruby
+# Basic output testing
+it "shows version" do
+  output = StayGold.use_cassette("rux_version") do
+    stdout, _, _ = Open3.capture3("rux --version")
+    stdout
+  end
+  expect(output).to match(/rux v\d+\.\d+\.\d+/)
+end
+
+# Performance regression testing
+it "completes within time limit" do
+  start = Time.now
+  StayGold.use_cassette("rux_performance") do
+    Open3.capture3("rux spec/fixtures/sample_specs")
+  end
+  duration = Time.now - start
+  
+  # First run records actual time
+  # Subsequent runs are instant (playback)
+  expect(duration).to be < 0.1 # Ensures cassette was used
+end
+
+# Error output testing
+it "shows helpful error for missing files" do
+  _, stderr, status = StayGold.use_cassette("rux_missing_file") do
+    Open3.capture3("rux spec/does_not_exist.rb")
+  end
+  
+  expect(stderr).to include("No spec files found")
+  expect(status).not_to eq(0)
+end
+```
