@@ -3,9 +3,13 @@ require 'fileutils'
 require 'open3'
 require 'pathname'
 require 'ostruct'
+require 'rspec/mocks'
 
 module StayGold
   class CassetteNotFoundError < StandardError; end
+  
+  # Include RSpec mocks methods
+  extend RSpec::Mocks::ExampleMethods
   
   class Result
     attr_reader :commands, :cassette_path
@@ -84,15 +88,41 @@ module StayGold
   end
 
   class Command
-    attr_reader :args
+    attr_reader :args, :stdout, :stderr, :status, :recorded_at
 
-    def initialize(method_class:, args:)
+    def initialize(method_class:, args:, stdout: nil, stderr: nil, status: nil, recorded_at: nil)
       @method_class = method_class
       @args = args
+      @stdout = stdout
+      @stderr = stderr
+      @status = status
+      @recorded_at = recorded_at
     end
 
     def class
       @method_class
+    end
+    
+    # Convert to hash for YAML serialization
+    def to_h
+      {
+        "stdout" => @stdout,
+        "stderr" => @stderr,
+        "status" => @status,
+        "recorded_at" => @recorded_at
+      }
+    end
+    
+    # Create from hash (for loading from YAML)
+    def self.from_h(data)
+      new(
+        method_class: Open3::Capture3,
+        args: [], # Args not stored in legacy format, but not needed for replay
+        stdout: data["stdout"],
+        stderr: data["stderr"], 
+        status: data["status"],
+        recorded_at: data["recorded_at"]
+      )
     end
   end
 
@@ -103,11 +133,10 @@ module StayGold
       commands = []
       cassette_path = build_cassette_path(record_as)
       
-      # Temporarily override Open3.capture3
-      original_capture3 = Open3.method(:capture3)
-      
-      Open3.define_singleton_method(:capture3) do |*args|
-        stdout, stderr, status = original_capture3.call(*args)
+      # Use RSpec's and_wrap_original to intercept calls
+      allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
+        # Execute the real command
+        stdout, stderr, status = original_method.call(*args)
         
         # Parse command args
         cmd_args = if args.length == 1 && args.first.is_a?(String)
@@ -116,34 +145,30 @@ module StayGold
           args
         end
         
-        # Record the command
+        # Create command with interaction data
         command = Command.new(
           method_class: Open3::Capture3,
-          args: cmd_args
+          args: cmd_args,
+          stdout: stdout,
+          stderr: stderr,
+          status: status.exitstatus,
+          recorded_at: Time.now.iso8601
         )
         commands << command
         
-        # Save to cassette
-        cassette_data = {
-          "stdout" => stdout,
-          "stderr" => stderr,
-          "status" => status.exitstatus,
-          "recorded_at" => Time.now.iso8601
-        }
-        
-        FileUtils.mkdir_p(File.dirname(cassette_path))
-        File.write(cassette_path, cassette_data.to_yaml)
-        
-        # Store output for later access
+        # Store output for later access (last one wins)
         StayGold.last_output = stdout
         
+        # Return original result
         [stdout, stderr, status]
       end
       
       yield
       
-      # Restore original method
-      Open3.define_singleton_method(:capture3, original_capture3)
+      # Save commands to cassette as array
+      FileUtils.mkdir_p(File.dirname(cassette_path))
+      cassette_data = commands.map(&:to_h)
+      File.write(cassette_path, cassette_data.to_yaml)
       
       Result.new(commands: commands, cassette_path: Pathname.new(cassette_path))
     end
@@ -189,47 +214,51 @@ module StayGold
         raise CassetteNotFoundError, "Cassette not found: #{cassette_path}"
       end
       
-      recorded_data = YAML.load_file(cassette_path)
+      recordings_data = YAML.load_file(cassette_path)
+      
+      # Convert hash data to Command objects
+      unless recordings_data.is_a?(Array)
+        raise CassetteNotFoundError, "Invalid cassette format: expected array"
+      end
+      
+      # For verify, we only handle single command verification for now
+      # Use the first command
+      if recordings_data.empty?
+        raise CassetteNotFoundError, "No commands found in cassette"
+      end
+      
+      command = Command.from_h(recordings_data.first)
       
       if mode == :playback
         # Playback mode: return recorded output without running command
-        actual_stdout = recorded_data["stdout"]
-        actual_stderr = recorded_data["stderr"]
-        actual_status = OpenStruct.new(exitstatus: recorded_data["status"])
+        actual_stdout = command.stdout
+        actual_stderr = command.stderr
+        actual_status = OpenStruct.new(exitstatus: command.status)
         
-        # Override Open3.capture3 to return recorded data
-        original_capture3 = Open3.method(:capture3)
-        
-        Open3.define_singleton_method(:capture3) do |*args|
-          [actual_stdout, actual_stderr, actual_status]
-        end
+        # Use RSpec to stub Open3.capture3
+        allow(Open3).to receive(:capture3).and_return([actual_stdout, actual_stderr, actual_status])
         
         yield
-        
-        # Restore original method
-        Open3.define_singleton_method(:capture3, original_capture3)
         
         # In playback mode, always verified
         VerifyResult.new(
           verified: true,
           cassette_path: Pathname.new(cassette_path),
-          expected_output: recorded_data["stdout"],
+          expected_output: command.stdout,
           actual_output: actual_stdout,
-          expected_stderr: recorded_data["stderr"],
+          expected_stderr: command.stderr,
           actual_stderr: actual_stderr,
-          expected_status: recorded_data["status"],
-          actual_status: recorded_data["status"],
+          expected_status: command.status,
+          actual_status: command.status,
           command_executed: false
         )
       elsif matcher
         # Custom matcher verification
         actual_data = {}
         
-        # Temporarily override Open3.capture3
-        original_capture3 = Open3.method(:capture3)
-        
-        Open3.define_singleton_method(:capture3) do |*args|
-          stdout, stderr, status = original_capture3.call(*args)
+        # Use RSpec's and_wrap_original to capture actual output
+        allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
+          stdout, stderr, status = original_method.call(*args)
           actual_data["stdout"] = stdout
           actual_data["stderr"] = stderr
           actual_data["status"] = status.exitstatus
@@ -238,20 +267,18 @@ module StayGold
         
         yield
         
-        # Restore original method
-        Open3.define_singleton_method(:capture3, original_capture3)
-        
-        # Call custom matcher
+        # Call custom matcher - convert command back to hash format for matcher
+        recorded_data = command.to_h
         verified = matcher.call(recorded_data, actual_data)
         
         VerifyResult.new(
           verified: verified,
           cassette_path: Pathname.new(cassette_path),
-          expected_output: recorded_data["stdout"],
+          expected_output: command.stdout,
           actual_output: actual_data["stdout"],
-          expected_stderr: recorded_data["stderr"],
+          expected_stderr: command.stderr,
           actual_stderr: actual_data["stderr"],
-          expected_status: recorded_data["status"],
+          expected_status: command.status,
           actual_status: actual_data["status"]
         )
       else
@@ -260,78 +287,91 @@ module StayGold
         actual_stderr = nil
         actual_status = nil
         
-        # Temporarily override Open3.capture3
-        original_capture3 = Open3.method(:capture3)
-        
-        Open3.define_singleton_method(:capture3) do |*args|
-          actual_stdout, actual_stderr, actual_status = original_capture3.call(*args)
+        # Use RSpec's and_wrap_original to capture actual output
+        allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
+          actual_stdout, actual_stderr, actual_status = original_method.call(*args)
           [actual_stdout, actual_stderr, actual_status]
         end
         
         yield
         
-        # Restore original method
-        Open3.define_singleton_method(:capture3, original_capture3)
-        
         # Compare outputs
         actual_exit_status = actual_status ? actual_status.exitstatus : nil
         verified = (
-          recorded_data["stdout"] == actual_stdout &&
-          recorded_data["stderr"] == actual_stderr &&
-          recorded_data["status"] == actual_exit_status
+          command.stdout == actual_stdout &&
+          command.stderr == actual_stderr &&
+          command.status == actual_exit_status
         )
         
         VerifyResult.new(
           verified: verified,
           cassette_path: Pathname.new(cassette_path),
-          expected_output: recorded_data["stdout"],
+          expected_output: command.stdout,
           actual_output: actual_stdout,
-          expected_stderr: recorded_data["stderr"],
+          expected_stderr: command.stderr,
           actual_stderr: actual_stderr,
-          expected_status: recorded_data["status"],
+          expected_status: command.status,
           actual_status: actual_exit_status
         )
       end
+    end
+    
+    def verify!(cassette: nil, mode: :strict, matcher: nil, &block)
+      result = verify(cassette: cassette, mode: mode, matcher: matcher, &block)
+      
+      unless result.verified?
+        error_message = "StayGold verification failed!\n"
+        error_message += "Cassette: #{result.cassette_path}\n"
+        error_message += "Expected output:\n#{result.expected_output}\n"
+        error_message += "Actual output:\n#{result.actual_output}\n"
+        
+        if result.diff && !result.diff.empty?
+          error_message += "Diff:\n#{result.diff}\n"
+        end
+        
+        if result.stderr_diff && !result.stderr_diff.empty?
+          error_message += "Stderr diff:\n#{result.stderr_diff}\n"
+        end
+        
+        # Raise RSpec's expectation failure for proper integration
+        raise RSpec::Expectations::ExpectationNotMetError, error_message
+      end
+      
+      result
     end
 
     private
     
     def replay_cassette(cassette_path, &block)
-      recorded_data = YAML.load_file(cassette_path)
+      recordings_data = YAML.load_file(cassette_path)
       
-      # Support both single recording and array of recordings
-      recordings = recorded_data.is_a?(Array) ? recorded_data : [recorded_data]
-      current_recording_index = 0
+      # Cassettes are always arrays now
+      unless recordings_data.is_a?(Array)
+        raise CassetteNotFoundError, "Invalid cassette format: expected array"
+      end
       
-      # Store the block's return value
-      block_return_value = nil
+      # Convert hash data to Command objects
+      commands = recordings_data.map { |data| Command.from_h(data) }
+      current_command_index = 0
       
-      # Override Open3.capture3 to return recorded data
-      original_capture3 = Open3.method(:capture3)
-      
-      Open3.define_singleton_method(:capture3) do |*args|
-        if current_recording_index < recordings.size
-          recording = recordings[current_recording_index]
-          current_recording_index += 1
+      # Use RSpec to stub Open3.capture3 to return recorded data
+      allow(Open3).to receive(:capture3) do |*args|
+        if current_command_index < commands.size
+          command = commands[current_command_index]
+          current_command_index += 1
           
-          stdout = recording["stdout"]
-          stderr = recording["stderr"]
-          status = OpenStruct.new(exitstatus: recording["status"])
+          recorded_stdout = command.stdout
+          recorded_stderr = command.stderr
+          recorded_status = OpenStruct.new(exitstatus: command.status)
           
-          [stdout, stderr, status]
+          [recorded_stdout, recorded_stderr, recorded_status]
         else
-          # If we run out of recordings, call the original
-          original_capture3.call(*args)
+          # If we run out of recordings, raise an error
+          raise CassetteNotFoundError, "No more recordings available for replay"
         end
       end
       
-      begin
-        # Execute the block and capture its return value
-        block_return_value = yield
-      ensure
-        # Restore original method
-        Open3.define_singleton_method(:capture3, original_capture3)
-      end
+      block_return_value = yield
       
       # Return stdout, stderr, status if the block returned capture3 results
       # Otherwise return the block's return value
@@ -339,7 +379,7 @@ module StayGold
          block_return_value[0].is_a?(String) && block_return_value[1].is_a?(String)
         # Convert status to integer for consistency
         stdout, stderr, status = block_return_value
-        status_int = status.is_a?(OpenStruct) ? status.exitstatus : status.exitstatus
+        status_int = status.respond_to?(:exitstatus) ? status.exitstatus : status
         [stdout, stderr, status_int]
       else
         block_return_value
@@ -347,44 +387,47 @@ module StayGold
     end
     
     def record_and_save_cassette(cassette_path, &block)
-      stdout = nil
-      stderr = nil
-      status = nil
-      block_return_value = nil
+      commands = []
       
-      # Override Open3.capture3 to capture output
-      original_capture3 = Open3.method(:capture3)
-      
-      Open3.define_singleton_method(:capture3) do |*args|
-        stdout, stderr, status = original_capture3.call(*args)
+      # Use RSpec's and_wrap_original to record and save
+      allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
+        # Execute the real command
+        stdout, stderr, status = original_method.call(*args)
+        
+        # Parse command args
+        cmd_args = if args.length == 1 && args.first.is_a?(String)
+          args.first.split(' ')
+        else
+          args
+        end
+        
+        # Create command with interaction data
+        command = Command.new(
+          method_class: Open3::Capture3,
+          args: cmd_args,
+          stdout: stdout,
+          stderr: stderr,
+          status: status.exitstatus,
+          recorded_at: Time.now.iso8601
+        )
+        commands << command
+        
+        # Return original result
         [stdout, stderr, status]
       end
       
-      begin
-        block_return_value = yield
-      ensure
-        # Restore original method
-        Open3.define_singleton_method(:capture3, original_capture3)
-      end
+      block_return_value = yield
       
-      # Save to cassette if capture3 was called
-      if stdout && stderr && status
-        cassette_data = {
-          "stdout" => stdout,
-          "stderr" => stderr,
-          "status" => status.exitstatus,
-          "recorded_at" => Time.now.iso8601
-        }
-        
-        FileUtils.mkdir_p(File.dirname(cassette_path))
-        File.write(cassette_path, cassette_data.to_yaml)
-      end
+      # Save commands to cassette as array
+      FileUtils.mkdir_p(File.dirname(cassette_path))
+      cassette_data = commands.map(&:to_h)
+      File.write(cassette_path, cassette_data.to_yaml)
       
       # Return appropriate value
       if block_return_value.is_a?(Array) && block_return_value.size == 3
         # Return stdout, stderr, status as integers
         stdout, stderr, status = block_return_value
-        [stdout, stderr, status.exitstatus]
+        [stdout, stderr, status.respond_to?(:exitstatus) ? status.exitstatus : status]
       else
         block_return_value
       end
@@ -394,41 +437,46 @@ module StayGold
       # For new_episodes mode, we'd need to track which commands have been seen
       # For now, simplified implementation that just appends
       existing_recordings = if File.exist?(cassette_path)
-        data = YAML.load_file(cassette_path)
-        data.is_a?(Array) ? data : [data]
+        YAML.load_file(cassette_path) || []
       else
         []
       end
       
-      new_recordings = []
+      new_commands = []
       
-      # Override Open3.capture3
-      original_capture3 = Open3.method(:capture3)
-      
-      Open3.define_singleton_method(:capture3) do |*args|
-        stdout, stderr, status = original_capture3.call(*args)
+      # Use RSpec's and_wrap_original to record new episodes
+      allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
+        # Execute the real command
+        stdout, stderr, status = original_method.call(*args)
         
-        # Record this interaction
-        new_recordings << {
-          "stdout" => stdout,
-          "stderr" => stderr,  
-          "status" => status.exitstatus,
-          "recorded_at" => Time.now.iso8601
-        }
+        # Parse command args
+        cmd_args = if args.length == 1 && args.first.is_a?(String)
+          args.first.split(' ')
+        else
+          args
+        end
         
+        # Create command with interaction data
+        command = Command.new(
+          method_class: Open3::Capture3,
+          args: cmd_args,
+          stdout: stdout,
+          stderr: stderr,
+          status: status.exitstatus,
+          recorded_at: Time.now.iso8601
+        )
+        new_commands << command
+        
+        # Return original result
         [stdout, stderr, status]
       end
       
-      begin
-        result = yield
-      ensure
-        # Restore original method
-        Open3.define_singleton_method(:capture3, original_capture3)
-      end
+      result = yield
       
       # Save all recordings (existing + new)
-      if new_recordings.any?
-        all_recordings = existing_recordings + new_recordings
+      if new_commands.any?
+        new_command_data = new_commands.map(&:to_h)
+        all_recordings = existing_recordings + new_command_data
         FileUtils.mkdir_p(File.dirname(cassette_path))
         File.write(cassette_path, all_recordings.to_yaml)
       end
@@ -436,7 +484,7 @@ module StayGold
       # Return appropriate value
       if result.is_a?(Array) && result.size == 3
         stdout, stderr, status = result
-        [stdout, stderr, status.exitstatus]
+        [stdout, stderr, status.respond_to?(:exitstatus) ? status.exitstatus : status]
       else
         result
       end
