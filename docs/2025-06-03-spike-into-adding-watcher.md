@@ -22,7 +22,8 @@
 
 ### Immediate Next Steps:
 1. **lib → spec mapping**: Watch `lib/foo.rb` → run `spec/foo_spec.rb`
-2. **Debouncing**: Handle rapid file changes gracefully
+1. **Basic rails app mappings**: Watch `app/models/foo.rb` → run `spec/models/foo_spec.rb`
+2. **Debouncing**: Handle rapid file changes gracefully - assume a sane default debounce time, but allow config
 3. **spec_helper.rb handling**: Run all specs when spec_helper changes
 4. **Smart file filtering**: Ignore .gitignore'd files, tmp/, log/, etc.
 
