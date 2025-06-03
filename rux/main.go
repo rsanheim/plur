@@ -26,6 +26,11 @@ func createApp() *cli.App {
 						Name:  "timeout",
 						Usage: "Exit after specified seconds (default: run until Ctrl-C)",
 					},
+					&cli.IntFlag{
+						Name:  "debounce",
+						Usage: "Debounce delay in milliseconds (default: 100)",
+						Value: 100,
+					},
 				},
 				Action: func(ctx *cli.Context) error {
 					return runWatch(ctx)
@@ -36,6 +41,14 @@ func createApp() *cli.App {
 				Usage: "Show diagnostic information about rux installation",
 				Action: func(ctx *cli.Context) error {
 					return runDoctor(ctx)
+				},
+			},
+			{
+				Name:      "dev:file_mapper",
+				Usage:     "Test file mapping - shows which specs would run for given files",
+				ArgsUsage: "[files...]",
+				Action: func(ctx *cli.Context) error {
+					return runFileMapper(ctx)
 				},
 			},
 			{
