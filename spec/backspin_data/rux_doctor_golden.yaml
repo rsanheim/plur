@@ -3,9 +3,9 @@
     Rux Doctor
     ==========
 
-    Rux Version:     v0.6.2-20250603-0616-0668ca811
-    Build Date:      2025-06-03 06:16:08 UTC
-    Git Commit:      0668ca811
+    Rux Version:     v0.6.2-20250603-0751-c1d8a7d5e
+    Build Date:      2025-06-03 07:51:56 UTC
+    Git Commit:      c1d8a7d5e
     Built By:        rake
 
     Operating System: darwin
@@ -27,7 +27,7 @@
 
     File Watcher:
       Status:         Available
-      Binary Path:    /Users/rsanheim/Downloads/aarch64-apple-darwin/watcher
+      Binary Path:    /Users/rsanheim/.cache/rux/bin/watcher-aarch64-apple-darwin
       Version:        Binary exists (no version info available)
       Platform:       darwin/arm64
 
@@ -43,4 +43,4 @@
       GOPATH:                   (not set)
   stderr: ''
   status: 0
-  recorded_at: '2025-06-03T01:17:51-05:00'
+  recorded_at: '2025-06-03T02:52:05-05:00'

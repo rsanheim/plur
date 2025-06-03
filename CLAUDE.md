@@ -36,7 +36,7 @@ rux watch                # Auto-run tests on file changes (experimental)
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root
 - **"go: inconsistent vendoring"** → `cd rux && go mod vendor`
-- **"watcher binary not found"** → Currently hardcoded to ~/Downloads/aarch64-apple-darwin/watcher
+- **"watcher binary not found"** → Binary is embedded and extracted to ~/.cache/rux/bin/
 - **Tests fail in rake but pass alone** → Use `bin/rake` not `rake`
 
 ### Project Structure
