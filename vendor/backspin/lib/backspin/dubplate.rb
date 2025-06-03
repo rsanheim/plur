@@ -64,7 +64,7 @@ module Backspin
     private
 
     def load_from_file
-      data = YAML.load_file(@path)
+      data = YAML.load_file(@path.to_s)
       
       unless data.is_a?(Array)
         raise DubplateFormatError, "Invalid dubplate format: expected array but got #{data.class}"

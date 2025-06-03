@@ -17,11 +17,16 @@ module Backspin
   # Configuration for Backspin
   class Configuration
     attr_accessor :scrub_credentials
+    # The directory where backspin will store its files - defaults to spec/backspin
+    attr_accessor :backspin_dir 
+    # Regex patterns to scrub from saved output
     attr_reader :credential_patterns
+
 
     def initialize
       @scrub_credentials = true
       @credential_patterns = default_credential_patterns
+      @backspin_dir = Pathname(Dir.pwd).join("spec", "backspin")
     end
 
     def add_credential_pattern(pattern)
@@ -569,14 +574,15 @@ module Backspin
     end
 
     def build_dubplate_path(name)
-      dubplate_dir = File.join(Dir.pwd, "tmp", "backspin")
+      backspin_dir = configuration.backspin_dir
+      backspin_dir.mkpath
 
       # For verify, we still support auto-naming
       if name.nil? || name.empty?
         name = RSpecMetadata.dubplate_name_from_example
       end
 
-      File.join(dubplate_dir, "#{name}.yaml")
+      File.join(backspin_dir, "#{name}.yaml")
     end
   end
 end
