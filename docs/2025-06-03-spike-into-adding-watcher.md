@@ -1,6 +1,6 @@
 # Spike: add e-dant/watcher to rux
 
-Okay, the crown jewel of Rux: I would like to emulate what [guard](https://github.com/guard/guard) does for ruby/rails projects, but I want it be a single command to run in _any_ ruby project. No messing with Gemfiles. No messing with configs. Very performant and fast (uses OS file system events via https://github.com/e-dant/watcher). 
+Okay, the final cherry on the top of Rux: I want to replace [guard](https://github.com/guard/guard) for the Ruby ecosystem. I want it be a single command to you can run in _any_ ruby project, and you have a FS based, fast test runner with zero config and zero futzing. No messing with Gemfiles. No creating Guardfiles. Very performant and fast (uses OS file system events via https://github.com/e-dant/watcher). 
 
 Assuming someone installs rux and runs the following in any ruby project:
 
@@ -34,5 +34,7 @@ Rux will:
 
 ### Future
 * auto-discovery of files to watch, and generate a baseline config based on that
-* rails support
 * look for a Guardfile, and if its defined, we would use it as a template for creating a .rux-config file with the same mappings
+* build in basic rails support based on that
+* support for running other tests - Go to start ?
+* support for running other commands? That seems a big stretch, and requires much more config and thought.
