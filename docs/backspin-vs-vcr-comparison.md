@@ -1,14 +1,14 @@
-# StayGold vs VCR: A Comparison
+# Backspin vs VCR: A Comparison
 
 ## Overview
 
-StayGold is a CLI testing library inspired by VCR's cassette-based recording and playback approach. While VCR focuses on HTTP interactions, StayGold adapts these concepts for command-line interface testing.
+Backspin is a CLI testing library inspired by VCR's cassette-based recording and playback approach. While VCR focuses on HTTP interactions, Backspin adapts these concepts for command-line interface testing.
 
 ## Core Concepts Borrowed from VCR
 
 ### 1. Cassette-Based Recording
 **VCR**: Records HTTP interactions to YAML/JSON files called "cassettes"
-**StayGold**: Records CLI command outputs to YAML files using the same "cassette" terminology
+**Backspin**: Records CLI command outputs to YAML files using the same "cassette" terminology
 
 ### 2. Record and Playback Pattern
 **VCR**: 
@@ -18,13 +18,13 @@ VCR.use_cassette("api_call") do
 end
 ```
 
-**StayGold**:
+**Backspin**:
 ```ruby
-StayGold.record(record_as: "command_output") do
+Backspin.record("command_output") do
   Open3.capture3("echo hello")
 end
 
-StayGold.verify(cassette: "command_output") do
+Backspin.verify(cassette: "command_output") do
   Open3.capture3("echo hello")
 end
 ```
@@ -39,14 +39,14 @@ Both provide mechanisms to verify that actual output matches recorded output.
 
 ### 1. Domain Focus
 - **VCR**: HTTP requests and responses
-- **StayGold**: CLI commands (stdout, stderr, exit status)
+- **Backspin**: CLI commands (stdout, stderr, exit status)
 
 ### 2. Recording Target
 **VCR** records:
 - Request (method, URI, headers, body)
 - Response (status, headers, body)
 
-**StayGold** records:
+**Backspin** records:
 - Command arguments
 - stdout output
 - stderr output
@@ -55,7 +55,7 @@ Both provide mechanisms to verify that actual output matches recorded output.
 
 ### 3. Method Interception
 - **VCR**: Hooks into HTTP libraries (WebMock, Faraday, etc.)
-- **StayGold**: Overrides `Open3.capture3` method
+- **Backspin**: Overrides `Open3.capture3` method
 
 ### 4. API Design
 
@@ -66,15 +66,15 @@ VCR.use_cassette("cassette_name", record: :once) do
 end
 ```
 
-**StayGold's separate record/verify API**:
+**Backspin's separate record/verify API**:
 ```ruby
 # Recording
-StayGold.record(record_as: "name") do
+Backspin.record("name") do
   # CLI commands
 end
 
 # Verification
-StayGold.verify(cassette: "name", mode: :strict) do
+Backspin.verify(cassette: "name", mode: :strict) do
   # CLI commands
 end
 ```
@@ -87,7 +87,7 @@ end
 - `:none` - Never record
 - `:all` - Always re-record
 
-**StayGold Verification Modes**:
+**Backspin Verification Modes**:
 - `:strict` - Exact match of stdout, stderr, and status
 - `:playback` - Return recorded data without executing
 - Custom matcher support via blocks
@@ -95,18 +95,18 @@ end
 ### 6. Request Matching vs Output Verification
 
 **VCR**: Matches requests by multiple criteria (method, URI, headers, body)
-**StayGold**: Verifies complete output equality or custom matchers
+**Backspin**: Verifies complete output equality or custom matchers
 
 ### 7. Auto-naming from Test Context
 
 Both support automatic cassette naming from RSpec context:
 - **VCR**: Infers from test description
-- **StayGold**: Builds path from RSpec example group hierarchy
+- **Backspin**: Builds path from RSpec example group hierarchy
 
 ### 8. Sensitive Data Handling
 
 **VCR**: Built-in `filter_sensitive_data` configuration
-**StayGold**: No built-in filtering (would need custom implementation)
+**Backspin**: No built-in filtering (would need custom implementation)
 
 ## What Makes Sense for CLI Testing
 
@@ -114,7 +114,7 @@ Both support automatic cassette naming from RSpec context:
 CLI commands have simpler output structure (stdout/stderr/status) compared to HTTP's request/response with headers, cookies, etc.
 
 ### 2. Direct Method Override
-StayGold's approach of overriding `Open3.capture3` is simpler than VCR's need to hook into various HTTP libraries.
+Backspin's approach of overriding `Open3.capture3` is simpler than VCR's need to hook into various HTTP libraries.
 
 ### 3. Separate Record/Verify
 For CLI testing, separating recording and verification makes sense because:
@@ -122,16 +122,16 @@ For CLI testing, separating recording and verification makes sense because:
 - CLI outputs might need different verification strategies (exact match vs pattern match)
 
 ### 4. Playback Mode
-StayGold's playback mode is particularly useful for:
+Backspin's playback mode is particularly useful for:
 - Testing code that depends on CLI output without running actual commands
 - Speeding up tests by avoiding repeated command execution
 
 ### 5. Exit Status Tracking
-Critical for CLI testing but irrelevant for HTTP - StayGold properly tracks and verifies exit codes.
+Critical for CLI testing but irrelevant for HTTP - Backspin properly tracks and verifies exit codes.
 
 ## Future Considerations
 
-### From VCR that could benefit StayGold:
+### From VCR that could benefit Backspin:
 1. **Recording modes** - Implement `:once`, `:new_episodes`, `:all`
 2. **Sensitive data filtering** - Add configuration for filtering passwords, tokens
 3. **Multiple command matching** - Support for matching commands by different criteria
@@ -146,4 +146,4 @@ Critical for CLI testing but irrelevant for HTTP - StayGold properly tracks and 
 
 ## Conclusion
 
-StayGold successfully adapts VCR's proven cassette-based approach to CLI testing while simplifying the API for the command-line domain. The separation of recording and verification, combined with flexible matching strategies, makes it well-suited for testing command-line tools and scripts.
+Backspin successfully adapts VCR's proven cassette-based approach to CLI testing while simplifying the API for the command-line domain. The separation of recording and verification, combined with flexible matching strategies, makes it well-suited for testing command-line tools and scripts.

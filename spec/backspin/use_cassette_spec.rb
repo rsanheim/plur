@@ -1,12 +1,12 @@
-require "stay_gold"
+require "backspin"
 
-RSpec.describe "StayGold.use_cassette" do
-  let(:cassette_dir) { ROOT_PATH.join("tmp", "stay_gold") }
+RSpec.describe "Backspin.use_cassette" do
+  let(:cassette_dir) { ROOT_PATH.join("tmp", "backspin") }
   
   describe "VCR-style unified API" do
     it "records on first run, replays on subsequent runs" do
       # First run - should record
-      first_result = StayGold.use_cassette("unified_test") do
+      first_result = Backspin.use_cassette("unified_test") do
         Open3.capture3("echo hello from use_cassette")
       end
       
@@ -14,7 +14,7 @@ RSpec.describe "StayGold.use_cassette" do
       expect(cassette_dir.join("unified_test.yaml")).to exist
       
       # Second run - should replay without executing
-      second_result = StayGold.use_cassette("unified_test") do
+      second_result = Backspin.use_cassette("unified_test") do
         Open3.capture3("echo this should not run")
       end
       
@@ -23,7 +23,7 @@ RSpec.describe "StayGold.use_cassette" do
     end
     
     it "supports auto-generated cassette names" do
-      result = StayGold.use_cassette do
+      result = Backspin.use_cassette do
         Open3.capture3("echo auto-named")
       end
       
@@ -38,24 +38,24 @@ RSpec.describe "StayGold.use_cassette" do
     
     it "supports record modes" do
       # Record initially
-      StayGold.use_cassette("modes_test") do
+      Backspin.use_cassette("modes_test") do
         Open3.capture3("echo first")
       end
       
       # :once mode (default) - use existing cassette
-      result = StayGold.use_cassette("modes_test", record: :once) do
+      result = Backspin.use_cassette("modes_test", record: :once) do
         Open3.capture3("echo second")
       end
       expect(result[0]).to eq("first\n")
       
       # :all mode - always re-record
-      result = StayGold.use_cassette("modes_test", record: :all) do
+      result = Backspin.use_cassette("modes_test", record: :all) do
         Open3.capture3("echo third")
       end
       expect(result[0]).to eq("third\n")
       
       # Verify it was re-recorded
-      result = StayGold.use_cassette("modes_test") do
+      result = Backspin.use_cassette("modes_test") do
         Open3.capture3("echo fourth")
       end
       expect(result[0]).to eq("third\n")
@@ -66,15 +66,15 @@ RSpec.describe "StayGold.use_cassette" do
       FileUtils.rm_f(cassette_dir.join("none_mode_test.yaml"))
       
       expect {
-        StayGold.use_cassette("none_mode_test", record: :none) do
+        Backspin.use_cassette("none_mode_test", record: :none) do
           Open3.capture3("echo test")
         end
-      }.to raise_error(StayGold::CassetteNotFoundError)
+      }.to raise_error(Backspin::CassetteNotFoundError)
     end
     
     it "supports :new_episodes mode - appends new recordings" do
       # Record initial command
-      StayGold.use_cassette("episodes_test", record: :new_episodes) do
+      Backspin.use_cassette("episodes_test", record: :new_episodes) do
         Open3.capture3("echo episode1")
       end
       
@@ -91,7 +91,7 @@ RSpec.describe "StayGold.use_cassette" do
     end
     
     it "returns stdout, stderr, and status like capture3" do
-      stdout, stderr, status = StayGold.use_cassette("full_output_test") do
+      stdout, stderr, status = Backspin.use_cassette("full_output_test") do
         Open3.capture3("sh -c 'echo stdout; echo stderr >&2; exit 42'")
       end
       
@@ -101,7 +101,7 @@ RSpec.describe "StayGold.use_cassette" do
     end
     
     it "supports options hash" do
-      result = StayGold.use_cassette("options_test", 
+      result = Backspin.use_cassette("options_test", 
                                      record: :all,
                                      erb: true,
                                      preserve_exact_body_bytes: true) do
@@ -114,7 +114,7 @@ RSpec.describe "StayGold.use_cassette" do
   
   describe "block return values" do
     it "returns the value from the block" do
-      result = StayGold.use_cassette("return_value_test") do
+      result = Backspin.use_cassette("return_value_test") do
         stdout, stderr, status = Open3.capture3("echo test")
         "custom return: #{stdout.strip}"
       end
@@ -126,7 +126,7 @@ RSpec.describe "StayGold.use_cassette" do
   describe "error handling" do
     it "preserves exceptions from the block" do
       expect {
-        StayGold.use_cassette("exception_test") do
+        Backspin.use_cassette("exception_test") do
           raise "Something went wrong"
         end
       }.to raise_error("Something went wrong")

@@ -1,15 +1,15 @@
 require 'spec_helper'
-require 'stay_gold'
+require 'backspin'
 
-RSpec.describe "StayGold multi-command support" do
-  let(:staygold_path) { ROOT_PATH.join("tmp", "stay_gold") }
+RSpec.describe "Backspin multi-command support" do
+  let(:backspin_path) { ROOT_PATH.join("tmp", "backspin") }
 
   context "recording multiple commands" do
     it "records and replays multiple commands in sequence" do
       cassette_name = "multi_command_test"
       
       # First run: record multiple commands
-      StayGold.use_cassette(cassette_name) do
+      Backspin.use_cassette(cassette_name) do
         stdout1, stderr1, status1 = Open3.capture3("echo command1")
         expect(stdout1).to eq("command1\n")
         
@@ -21,7 +21,7 @@ RSpec.describe "StayGold multi-command support" do
       end
       
       # Verify cassette was created with array
-      cassette_path = staygold_path.join("#{cassette_name}.yaml")
+      cassette_path = backspin_path.join("#{cassette_name}.yaml")
       expect(cassette_path).to exist
       
       cassette_data = YAML.load_file(cassette_path)
@@ -31,7 +31,7 @@ RSpec.describe "StayGold multi-command support" do
       
       # Second run: replay from cassette
       replay_outputs = []
-      StayGold.use_cassette(cassette_name) do
+      Backspin.use_cassette(cassette_name) do
         stdout1, stderr1, status1 = Open3.capture3("echo command1")
         replay_outputs << stdout1
         
@@ -48,7 +48,7 @@ RSpec.describe "StayGold multi-command support" do
     it "handles mixed commands with different outputs" do
       cassette_name = "mixed_commands"
       
-      StayGold.use_cassette(cassette_name) do
+      Backspin.use_cassette(cassette_name) do
         # Different commands with different outputs
         stdout1, stderr1, status1 = Open3.capture3("echo success")
         expect(stdout1).to eq("success\n")
@@ -65,7 +65,7 @@ RSpec.describe "StayGold multi-command support" do
       end
       
       # Verify cassette structure
-      cassette_path = staygold_path.join("#{cassette_name}.yaml")
+      cassette_path = backspin_path.join("#{cassette_name}.yaml")
       cassette_data = YAML.load_file(cassette_path)
       expect(cassette_data).to be_a(Array)
       expect(cassette_data.size).to eq(3)
@@ -83,39 +83,39 @@ RSpec.describe "StayGold multi-command support" do
       cassette_name = "insufficient_recordings"
       
       # Record only 2 commands
-      StayGold.use_cassette(cassette_name) do
+      Backspin.use_cassette(cassette_name) do
         Open3.capture3("echo first")
         Open3.capture3("echo second")
       end
       
       # Try to replay 3 commands - should fail on the third
       expect {
-        StayGold.use_cassette(cassette_name) do
+        Backspin.use_cassette(cassette_name) do
           Open3.capture3("echo first")
           Open3.capture3("echo second")  
           Open3.capture3("echo third")  # This should fail
         end
-      }.to raise_error(StayGold::CassetteNotFoundError, /No more recordings available/)
+      }.to raise_error(Backspin::CassetteNotFoundError, /No more recordings available/)
     end
     
     it "saves single commands as arrays for consistency" do
       cassette_name = "single_command_array"
       
       # Record single command (should save as array)
-      StayGold.use_cassette(cassette_name) do
+      Backspin.use_cassette(cassette_name) do
         stdout, stderr, status = Open3.capture3("echo single")
         expect(stdout).to eq("single\n")
       end
       
       # Verify cassette is array even for single command
-      cassette_path = staygold_path.join("#{cassette_name}.yaml")
+      cassette_path = backspin_path.join("#{cassette_name}.yaml")
       cassette_data = YAML.load_file(cassette_path)
       expect(cassette_data).to be_a(Array)
       expect(cassette_data.size).to eq(1)
       expect(cassette_data.first["stdout"]).to eq("single\n")
       
       # Should still replay correctly
-      StayGold.use_cassette(cassette_name) do
+      Backspin.use_cassette(cassette_name) do
         stdout, stderr, status = Open3.capture3("echo single")
         expect(stdout).to eq("single\n")
       end

@@ -1,8 +1,8 @@
-# StayGold Analysis: Design, Maintainability, and Utility
+# Backspin Analysis: Design, Maintainability, and Utility
 
 ## Current State
 
-StayGold is now a functional CLI characterization testing library with ~500 lines of implementation and ~450 lines of tests. It successfully borrows VCR's cassette metaphor while adapting it for CLI testing needs.
+Backspin is now a functional CLI characterization testing library with ~500 lines of implementation and ~450 lines of tests. It successfully borrows VCR's cassette metaphor while adapting it for CLI testing needs.
 
 ## Design Strengths
 
@@ -14,7 +14,7 @@ StayGold is now a functional CLI characterization testing library with ~500 line
 ### 2. **Simple, Clear Abstractions**
 - Cassettes are just YAML files with stdout/stderr/status
 - No complex configuration or setup required
-- Works immediately with `require 'stay_gold'`
+- Works immediately with `require 'backspin'`
 
 ### 3. **Smart Defaults**
 - Auto-generates cassette names from RSpec context
@@ -79,7 +79,7 @@ StayGold is now a functional CLI characterization testing library with ~500 line
 
 ## Broader Utility
 
-StayGold could be useful for:
+Backspin could be useful for:
 - **Any CLI tool testing**: Not just Ruby tools
 - **Documentation**: Cassettes serve as examples
 - **Integration testing**: Verify tool interactions
@@ -99,7 +99,7 @@ Open3.popen3("rux")
 
 ### 2. **Configuration System**
 ```ruby
-StayGold.configure do |config|
+Backspin.configure do |config|
   config.cassette_library_dir = "spec/cassettes"
   config.default_cassette_options = { record: :once }
   config.preserve_exact_body_bytes = true
@@ -115,13 +115,13 @@ end
 ### 4. **Rux-Specific Features**
 ```ruby
 # Timing assertions
-StayGold.use_cassette("rux_performance") do |cassette|
+Backspin.use_cassette("rux_performance") do |cassette|
   result = Open3.capture3("rux")
   expect(cassette.duration).to be < 1.0
 end
 
 # ANSI color stripping
-StayGold.use_cassette("rux_output", strip_ansi: true) do
+Backspin.use_cassette("rux_output", strip_ansi: true) do
   # Compare output without color codes
 end
 ```
@@ -129,12 +129,12 @@ end
 ## Recommendations
 
 ### For Rux Testing (Immediate):
-1. Start using StayGold for key output tests
+1. Start using Backspin for key output tests
 2. Focus on `use_cassette` API for simplicity
 3. Create cassettes for version output, help text, error messages
 4. Use custom matchers for timing-sensitive output
 
-### For StayGold Evolution:
+### For Backspin Evolution:
 1. **Extract a Strategy Pattern** for command interception
 2. **Add Configuration System** for global settings
 3. **Implement Cassette Library** for organization
@@ -144,7 +144,7 @@ end
 ### Architecture Improvements:
 ```ruby
 # Better structure:
-module StayGold
+module Backspin
   class Cassette
     # Encapsulate cassette operations
   end
@@ -165,7 +165,7 @@ end
 
 ## Conclusion
 
-StayGold is a solid foundation for CLI characterization testing. Its VCR-inspired design makes it immediately familiar to Ruby developers, while its simplicity makes it easy to understand and extend.
+Backspin is a solid foundation for CLI characterization testing. Its VCR-inspired design makes it immediately familiar to Ruby developers, while its simplicity makes it easy to understand and extend.
 
 For rux specifically, it provides immediate value for output stability testing. With some enhancements around timing, parallel safety, and broader command support, it could become an essential part of rux's test suite.
 

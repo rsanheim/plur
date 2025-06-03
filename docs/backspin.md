@@ -1,10 +1,10 @@
-# StayGold: Characterization Testing for CLIs
+# Backspin: Characterization Testing for CLIs
 
 ## Overview
 
-StayGold is a Ruby library for characterization testing of command-line interfaces, inspired by [VCR](https://github.com/vcr/vcr). While VCR records and replays HTTP interactions, StayGold records and replays CLI interactions - capturing stdout, stderr, and exit status from shell commands.
+Backspin is a Ruby library for characterization testing of command-line interfaces, inspired by [VCR](https://github.com/vcr/vcr). While VCR records and replays HTTP interactions, Backspin records and replays CLI interactions - capturing stdout, stderr, and exit status from shell commands.
 
-The name "StayGold" comes from the idea of preserving "golden master" outputs - a common pattern in characterization testing where you capture the current behavior of a system as the expected behavior.
+The name "Backspin" comes from the idea of replaying past interactions - spinning back recorded command outputs during test execution.
 
 ## Purpose
 
@@ -16,7 +16,7 @@ The name "StayGold" comes from the idea of preserving "golden master" outputs - 
 ## Core Concepts
 
 ### Cassettes
-Like VCR, StayGold stores recordings in "cassettes" - YAML files containing:
+Like VCR, Backspin stores recordings in "cassettes" - YAML files containing:
 - Command arguments
 - stdout output
 - stderr output
@@ -28,7 +28,8 @@ Like VCR, StayGold stores recordings in "cassettes" - YAML files containing:
 ### Recording Mode
 Intercepts CLI calls and saves outputs to cassette files:
 ```ruby
-StayGold.record(record_as: "echo_hello") do
+# Cassette name is required
+Backspin.record("echo_hello") do
   Open3.capture3("echo hello")
 end
 ```
@@ -36,7 +37,7 @@ end
 ### Playback Mode (Future)
 Replays recorded interactions without executing actual commands:
 ```ruby
-StayGold.use_cassette("echo_hello") do
+Backspin.use_cassette("echo_hello") do
   Open3.capture3("echo hello")  # Returns recorded output, doesn't run command
 end
 ```
@@ -45,19 +46,17 @@ end
 
 ### Core Methods
 
-#### `StayGold.record(options = {}, &block)`
+#### `Backspin.record(cassette_name, &block)`
 Records CLI interactions within the block.
 
-Options:
-- `record_as`: Name for the cassette file (without .yaml extension)
-- `path`: Directory to store cassettes (default: tmp/stay_gold)
-- `record_mode`: :new_episodes, :once, :none, :all (like VCR)
+Parameters:
+- `cassette_name`: Name for the cassette file (without .yaml extension). Required.
 
 Returns: Result object with:
 - `commands`: Array of command objects
 - `cassette_path`: Path to the generated cassette file
 
-#### `StayGold.verify(options = {}, &block)`
+#### `Backspin.verify(options = {}, &block)`
 Verifies CLI output against recorded cassettes.
 
 Options:
@@ -75,7 +74,7 @@ Returns: VerifyResult object with:
 - `command_executed?`: Whether the command was actually run (false in playback mode)
 - `error_message`: Human-readable error description
 
-#### `StayGold.verify!(options = {}, &block)`
+#### `Backspin.verify!(options = {}, &block)`
 Same as `verify` but automatically raises an error if verification fails. More convenient for most test cases where you just want the test to fail on mismatch.
 
 Options: Same as `verify`
@@ -87,18 +86,18 @@ Raises: RSpec::Expectations::ExpectationNotMetError with detailed diff informati
 Examples:
 ```ruby
 # Strict verification (default)
-result = StayGold.verify(cassette: "echo_test") do
+result = Backspin.verify(cassette: "echo_test") do
   Open3.capture3("echo hello")
 end
 expect(result.verified?).to be true
 
 # Playback mode - doesn't run command
-result = StayGold.verify(cassette: "slow_command", mode: :playback) do
+result = Backspin.verify(cassette: "slow_command", mode: :playback) do
   Open3.capture3("slow_command")  # Not executed!
 end
 
 # Custom matcher for flexible verification
-result = StayGold.verify(cassette: "version", 
+result = Backspin.verify(cassette: "version", 
                         matcher: ->(recorded, actual) { 
                           recorded["stdout"].start_with?("ruby")
                         }) do
@@ -106,12 +105,12 @@ result = StayGold.verify(cassette: "version",
 end
 
 # Using verify! for automatic test failure
-StayGold.verify!(cassette: "echo_test") do
+Backspin.verify!(cassette: "echo_test") do
   Open3.capture3("echo hello")  # Raises error if output doesn't match
 end
 
 # Custom matcher with verify!
-StayGold.verify!(cassette: "version", 
+Backspin.verify!(cassette: "version", 
                 matcher: ->(recorded, actual) { 
                   recorded["stdout"].start_with?("ruby")
                 }) do
@@ -119,10 +118,42 @@ StayGold.verify!(cassette: "version",
 end
 ```
 
-#### `StayGold.configure(&block)` (Future)
+#### `Backspin.use_cassette(cassette_name, options = {}, &block)`
+VCR-style unified API that records on first run and replays on subsequent runs.
+
+Parameters:
+- `cassette_name`: Name for the cassette file (without .yaml extension). Required.
+- `options`: Hash of options
+  - `:record` - Recording mode (:once, :all, :none, :new_episodes)
+    - `:once` (default) - Record if cassette doesn't exist, replay if it does
+    - `:all` - Always re-record
+    - `:none` - Never record, only replay (raises error if cassette doesn't exist)
+    - `:new_episodes` - Append new recordings to existing cassette
+
+Returns: The return value of the block
+
+Examples:
+```ruby
+# Default :once mode - record first time, replay after
+stdout, stderr, status = Backspin.use_cassette("my_test") do
+  Open3.capture3("echo hello")
+end
+
+# Always re-record
+Backspin.use_cassette("my_test", record: :all) do
+  Open3.capture3("date")  # Always gets current date
+end
+
+# Playback only
+Backspin.use_cassette("my_test", record: :none) do
+  Open3.capture3("slow_command")  # Fast because it just replays
+end
+```
+
+#### `Backspin.configure(&block)`
 Global configuration:
 ```ruby
-StayGold.configure do |config|
+Backspin.configure do |config|
   config.cassette_library_dir = "spec/cassettes"
   config.default_cassette_options = {
     record: :new_episodes
@@ -179,7 +210,7 @@ Each intercepted command should create a command object with:
 
 6. **Integration with RSpec**: Custom matchers?
    ```ruby
-   expect { system("rux --version") }.to stay_gold
+   expect { system("rux --version") }.to backspin
    ```
 
 ## TODOs
@@ -217,7 +248,7 @@ Each intercepted command should create a command object with:
 ```ruby
 # spec/cli_spec.rb
 it "prints version" do
-  result = StayGold.record(record_as: "rux_version") do
+  result = Backspin.record("rux_version") do
     stdout, stderr, status = Open3.capture3("rux --version")
     expect(stdout).to match(/rux v\d+\.\d+\.\d+/)
   end
@@ -227,7 +258,7 @@ end
 ### With Playback (Future)
 ```ruby
 it "runs quickly on replay" do
-  StayGold.use_cassette("slow_command") do
+  Backspin.use_cassette("slow_command") do
     # First run: takes 5 seconds
     # Subsequent runs: instant
     system("sleep 5 && echo done")
@@ -238,7 +269,7 @@ end
 ### Auto-naming (Future)
 ```ruby
 describe "git commands" do
-  around { |ex| StayGold.record(&ex) }
+  around { |ex| Backspin.record(&ex) }
   
   it "shows status" do
     # Cassette: git_commands/shows_status.yaml
@@ -288,7 +319,7 @@ Key concepts to borrow:
 ```ruby
 # Basic output testing
 it "shows version" do
-  output = StayGold.use_cassette("rux_version") do
+  output = Backspin.use_cassette("rux_version") do
     stdout, _, _ = Open3.capture3("rux --version")
     stdout
   end
@@ -298,7 +329,7 @@ end
 # Performance regression testing
 it "completes within time limit" do
   start = Time.now
-  StayGold.use_cassette("rux_performance") do
+  Backspin.use_cassette("rux_performance") do
     Open3.capture3("rux spec/fixtures/sample_specs")
   end
   duration = Time.now - start
@@ -310,7 +341,7 @@ end
 
 # Error output testing
 it "shows helpful error for missing files" do
-  _, stderr, status = StayGold.use_cassette("rux_missing_file") do
+  _, stderr, status = Backspin.use_cassette("rux_missing_file") do
     Open3.capture3("rux spec/does_not_exist.rb")
   end
   

@@ -1,11 +1,11 @@
-require "stay_gold"
+require "backspin"
 
-RSpec.describe "StayGold use_cassette integration" do
-  let(:cassette_dir) { ROOT_PATH.join("tmp", "stay_gold") }
+RSpec.describe "Backspin use_cassette integration" do
+  let(:cassette_dir) { ROOT_PATH.join("tmp", "backspin") }
   
   it "works seamlessly with rux testing" do
     # First run - records
-    output1 = StayGold.use_cassette("rux_version") do
+    output1 = Backspin.use_cassette("rux_version") do
       stdout, _, _ = Open3.capture3("echo 'rux v0.6.0'")
       stdout
     end
@@ -13,7 +13,7 @@ RSpec.describe "StayGold use_cassette integration" do
     expect(output1).to eq("rux v0.6.0\n")
     
     # Second run - replays without executing
-    output2 = StayGold.use_cassette("rux_version") do
+    output2 = Backspin.use_cassette("rux_version") do
       stdout, _, _ = Open3.capture3("echo 'this will not run'")
       stdout
     end
@@ -25,7 +25,7 @@ RSpec.describe "StayGold use_cassette integration" do
     # Test that our API is transparent
     original_result = Open3.capture3("echo test")
     
-    cassette_result = StayGold.use_cassette("transparent_test") do
+    cassette_result = Backspin.use_cassette("transparent_test") do
       Open3.capture3("echo test")
     end
     
@@ -38,7 +38,7 @@ RSpec.describe "StayGold use_cassette integration" do
     recordings = []
     
     3.times do |i|
-      result = StayGold.use_cassette("hook_test") do
+      result = Backspin.use_cassette("hook_test") do
         Open3.capture3("echo iteration")
       end
       recordings << result[0]

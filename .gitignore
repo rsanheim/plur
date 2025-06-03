@@ -8,7 +8,6 @@
 *.out
 go.work
 go.work.sum
-vendor/
 
 # Go build artifacts
 main

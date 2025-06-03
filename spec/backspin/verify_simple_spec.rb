@@ -1,16 +1,16 @@
-require "stay_gold"
+require "backspin"
 
-RSpec.describe "StayGold simple verify" do
-  let(:cassette_dir) { ROOT_PATH.join("tmp", "stay_gold") }
+RSpec.describe "Backspin simple verify" do
+  let(:cassette_dir) { ROOT_PATH.join("tmp", "backspin") }
   
   it "verifies matching output" do
     # Record
-    StayGold.record(record_as: "simple_echo") do
+    Backspin.record("simple_echo") do
       Open3.capture3("echo hello")
     end
     
     # Verify - should pass
-    result = StayGold.verify(cassette: "simple_echo") do
+    result = Backspin.verify(cassette: "simple_echo") do
       Open3.capture3("echo hello")
     end
     
@@ -19,12 +19,12 @@ RSpec.describe "StayGold simple verify" do
   
   it "detects non-matching output" do
     # Record
-    StayGold.record(record_as: "echo_original") do
+    Backspin.record("echo_original") do
       Open3.capture3("echo original")
     end
     
     # Verify - should fail
-    result = StayGold.verify(cassette: "echo_original") do
+    result = Backspin.verify(cassette: "echo_original") do
       Open3.capture3("echo different")
     end
     
@@ -33,10 +33,10 @@ RSpec.describe "StayGold simple verify" do
   
   it "raises error when cassette not found" do
     expect {
-      StayGold.verify(cassette: "missing") do
+      Backspin.verify(cassette: "missing") do
         Open3.capture3("echo test")
       end
-    }.to raise_error(StayGold::CassetteNotFoundError)
+    }.to raise_error(Backspin::CassetteNotFoundError)
   end
   
   after do

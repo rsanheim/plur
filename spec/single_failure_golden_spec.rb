@@ -1,5 +1,5 @@
 require 'spec_helper'
-require 'stay_gold'
+require 'backspin'
 
 RSpec.describe "single failure golden test" do
   def fixture_path(name)
@@ -24,16 +24,16 @@ RSpec.describe "single failure golden test" do
       "Finished in [fake-time] seconds (files took [fake-time] seconds to load)")
   end
 
-  it "shows filtered backtrace same as rspec using StayGold" do
+  it "shows filtered backtrace same as rspec using Backspin" do
     # Record RSpec output as the golden master
-    StayGold.record(record_as: "rspec_backtrace_golden") do
+    Backspin.record("rspec_backtrace_golden") do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--tty", "--force-color")
       end
     end
     
     # Verify Rux output contains the same backtrace line as RSpec
-    StayGold.verify!(
+    Backspin.verify!(
       cassette: "rspec_backtrace_golden",
       matcher: ->(recorded, actual) {
         # Both should fail with exit status 1 (since we're using custom matcher, we need to check this)
@@ -54,16 +54,16 @@ RSpec.describe "single failure golden test" do
     end
   end
 
-  it "matches rspec colorized output using StayGold verification" do
+  it "matches rspec colorized output using Backspin verification" do
     # Record RSpec output as the golden master
-    StayGold.record(record_as: "rspec_colorized_output_golden") do
+    Backspin.record("rspec_colorized_output_golden") do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--force-color", "--tty")
       end
     end
     
     # Verify Rux output matches the recorded RSpec output
-    StayGold.verify!(
+    Backspin.verify!(
       cassette: "rspec_colorized_output_golden",
       matcher: ->(recorded, actual) {
         # Normalize timing information in both outputs
@@ -86,10 +86,10 @@ RSpec.describe "single failure golden test" do
     end
   end
 
-  it "demonstrates StayGold playback mode for fast tests" do
+  it "demonstrates Backspin playback mode for fast tests" do
     # First run: record the RSpec output (slow)
     start_time = Time.now
-    StayGold.use_cassette("rspec_playback_demo", record: :once) do
+    Backspin.use_cassette("rspec_playback_demo", record: :once) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--force-color")
       end
@@ -98,7 +98,7 @@ RSpec.describe "single failure golden test" do
     
     # Second run: playback from cassette (fast)
     start_time = Time.now
-    playback_result = StayGold.verify(
+    playback_result = Backspin.verify(
       cassette: "rspec_playback_demo", 
       mode: :playback
     ) do

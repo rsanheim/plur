@@ -1,18 +1,18 @@
-require "stay_gold"
+require "backspin"
 
-RSpec.describe "StayGold verify functionality" do
-  let(:cassette_dir) { ROOT_PATH.join("tmp", "stay_gold") }
+RSpec.describe "Backspin verify functionality" do
+  let(:cassette_dir) { ROOT_PATH.join("tmp", "backspin") }
   
   describe "basic verification" do
     before do
       # First, record a command
-      StayGold.record(record_as: "echo_verify") do
+      Backspin.record("echo_verify") do
         Open3.capture3("echo hello")
       end
     end
     
     it "passes when output matches recorded cassette" do
-      result = StayGold.verify(cassette: "echo_verify") do
+      result = Backspin.verify(cassette: "echo_verify") do
         Open3.capture3("echo hello")
       end
       
@@ -21,7 +21,7 @@ RSpec.describe "StayGold verify functionality" do
     end
     
     it "fails when output differs from recorded cassette" do
-      result = StayGold.verify(cassette: "echo_verify") do
+      result = Backspin.verify(cassette: "echo_verify") do
         Open3.capture3("echo goodbye")
       end
       
@@ -34,19 +34,19 @@ RSpec.describe "StayGold verify functionality" do
     
     it "verifies stderr and exit status too" do
       # Record a command with stderr
-      StayGold.record(record_as: "stderr_test") do
+      Backspin.record("stderr_test") do
         Open3.capture3("sh -c 'echo error >&2; exit 1'")
       end
       
       # Verify matching stderr and status
-      result = StayGold.verify(cassette: "stderr_test") do
+      result = Backspin.verify(cassette: "stderr_test") do
         Open3.capture3("sh -c 'echo error >&2; exit 1'")
       end
       
       expect(result.verified?).to be true
       
       # Verify non-matching stderr
-      result = StayGold.verify(cassette: "stderr_test") do
+      result = Backspin.verify(cassette: "stderr_test") do
         Open3.capture3("sh -c 'echo different >&2; exit 1'")
       end
       
@@ -58,14 +58,14 @@ RSpec.describe "StayGold verify functionality" do
   
   describe "verification modes" do
     it "can run in strict mode (default) - must match exactly" do
-      StayGold.record(record_as: "timestamp_test") do
+      Backspin.record("timestamp_test") do
         Open3.capture3("date +%s%N") # nanoseconds since epoch
       end
       
       sleep 0.01 # Small delay to ensure different timestamp
       
       # Running date again will produce different output
-      result = StayGold.verify(cassette: "timestamp_test", mode: :strict) do
+      result = Backspin.verify(cassette: "timestamp_test", mode: :strict) do
         Open3.capture3("date +%s%N")
       end
       
@@ -73,11 +73,11 @@ RSpec.describe "StayGold verify functionality" do
     end
     
     it "can run in playback mode - returns recorded output without running command" do
-      StayGold.record(record_as: "playback_test") do
+      Backspin.record("playback_test") do
         Open3.capture3("echo original")
       end
       
-      result = StayGold.verify(cassette: "playback_test", mode: :playback) do
+      result = Backspin.verify(cassette: "playback_test", mode: :playback) do
         # This would normally output "different" but playback mode should return "original"
         Open3.capture3("echo different")
       end
@@ -88,11 +88,11 @@ RSpec.describe "StayGold verify functionality" do
     end
     
     it "can use custom matchers for flexible verification" do
-      StayGold.record(record_as: "version_test") do
+      Backspin.record("version_test") do
         Open3.capture3("ruby --version")
       end
       
-      result = StayGold.verify(cassette: "version_test", 
+      result = Backspin.verify(cassette: "version_test", 
                               matcher: ->(recorded, actual) { 
                                 recorded["stdout"].start_with?("ruby") && actual["stdout"].start_with?("ruby")
                               }) do
@@ -106,18 +106,18 @@ RSpec.describe "StayGold verify functionality" do
   describe "error handling" do
     it "raises error when cassette doesn't exist" do
       expect {
-        StayGold.verify(cassette: "nonexistent") do
+        Backspin.verify(cassette: "nonexistent") do
           Open3.capture3("echo test")
         end
-      }.to raise_error(StayGold::CassetteNotFoundError, /nonexistent.yaml/)
+      }.to raise_error(Backspin::CassetteNotFoundError, /nonexistent.yaml/)
     end
     
     it "provides helpful error messages on verification failure" do
-      StayGold.record(record_as: "failure_test") do
+      Backspin.record("failure_test") do
         Open3.capture3("echo expected")
       end
       
-      result = StayGold.verify(cassette: "failure_test") do
+      result = Backspin.verify(cassette: "failure_test") do
         Open3.capture3("echo actual")
       end
       
@@ -130,12 +130,12 @@ RSpec.describe "StayGold verify functionality" do
   describe "auto-cassette naming with verify" do
     it "uses auto-generated cassette name when not specified" do
       # Record with auto-generated name
-      StayGold.record do
+      Backspin.record do
         Open3.capture3("echo auto")
       end
       
       # Verify using same auto-generated name
-      result = StayGold.verify do
+      result = Backspin.verify do
         Open3.capture3("echo auto")
       end
       
