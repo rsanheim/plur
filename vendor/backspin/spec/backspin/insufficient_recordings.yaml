@@ -1,0 +1,13 @@
+---
+- stdout: 'first
+
+    '
+  stderr: ''
+  status: 0
+  recorded_at: '2025-06-02T23:15:27-05:00'
+- stdout: 'second
+
+    '
+  stderr: ''
+  status: 0
+  recorded_at: '2025-06-02T23:15:27-05:00'

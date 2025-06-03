@@ -1,0 +1,9 @@
+---
+- stdout: 'normal output
+
+    '
+  stderr: 'Error: Invalid *******************************************
+
+    '
+  status: 1
+  recorded_at: '2025-06-02T23:15:27-05:00'
