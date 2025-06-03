@@ -1,27 +1,44 @@
 # Spike: add e-dant/watcher to rux
 
-## Status: Walking Skeleton Complete! 🎉
+## Status: Production-Ready Foundation Complete! 🚀
 
-### What's Working:
-- ✅ `rux watch` command added and functional
-- ✅ Successfully integrated e-dant/watcher binary 
-- ✅ Detects file changes and runs individual specs
-- ✅ `rux doctor` command added for debugging
-- ✅ Integration tests using backspin for golden testing
+### What We've Accomplished:
+- ✅ `rux watch` command - fully functional file watcher
+- ✅ Embedded watcher binary using Go `embed` - "one stop shop" installation
+- ✅ Automatic binary extraction to `~/.cache/rux/bin/` on first use
+- ✅ Proper process lifecycle management (stdin pipe to keep watcher alive)
+- ✅ Signal handling (SIGINT) for graceful shutdown
+- ✅ `rux doctor` command with watcher status diagnostics
+- ✅ Comprehensive integration tests with backspin golden testing
+- ✅ File change detection and automatic spec re-runs
 
-### Current Implementation:
-- Watches `./spec` directory for changes
-- Runs specs when `*_spec.rb` files are modified
-- Uses the downloaded watcher binary from ~/Downloads
-- Simple stdout-based UI (no TUI yet)
-- Serial execution only
+### Current Implementation Details:
+- **Binary Management**: Watcher binary embedded at compile time, extracted on demand
+- **File Watching**: Monitors `./spec` directory for `*_spec.rb` changes
+- **Process Management**: Spawns watcher as subprocess with proper stdin handling
+- **Event Processing**: JSON event stream parsed and filtered for Ruby spec files
+- **Test Execution**: Reuses existing rux runner for consistency
+- **Platform Support**: Currently Darwin ARM64 only (easily extensible)
 
-### Next Steps:
-- Add lib → spec mapping
-- Implement debouncing for rapid changes
-- Bundle watcher binaries with rux releases
-- Add TUI interface
-- Support parallel test execution
+### Immediate Next Steps:
+1. **lib → spec mapping**: Watch `lib/foo.rb` → run `spec/foo_spec.rb`
+2. **Debouncing**: Handle rapid file changes gracefully
+3. **spec_helper.rb handling**: Run all specs when spec_helper changes
+4. **Smart file filtering**: Ignore .gitignore'd files, tmp/, log/, etc.
+
+### Medium-term Improvements:
+- **TUI interface**: Show test status, file being watched, last run results
+- **Parallel execution**: Use rux's existing parallel capabilities
+- **Smart test selection**: Run related tests based on git changes
+- **Configuration file**: `.rux-watch.yml` for custom mappings
+- **Rails support**: Built-in conventions for Rails apps
+- **Multi-platform binaries**: Add Linux x86_64, Linux ARM64, macOS x86_64 support
+
+### Technical Decisions Made:
+- ✅ Go `embed` over runtime downloads - simpler, more reliable
+- ✅ Subprocess over CGO - avoids complexity, works great
+- ✅ JSON event stream - easy to parse and filter
+- ✅ Cache directory pattern - standard location, easy cleanup
 
 ---
 
