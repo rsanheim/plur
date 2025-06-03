@@ -1,6 +1,8 @@
 # Spike: add e-dant/watcher to rux
 
-Okay, the crown jewel of Rux: I would like to emulate what [guard](https://github.com/guard/guard) does for ruby/rails projects, but I want it be a single command to run in _any_ ruby project. Assuming someone installs rux and runs the following in any ruby project:
+Okay, the crown jewel of Rux: I would like to emulate what [guard](https://github.com/guard/guard) does for ruby/rails projects, but I want it be a single command to run in _any_ ruby project. No messing with Gemfiles. No messing with configs. Very performant and fast (uses OS file system events via https://github.com/e-dant/watcher). 
+
+Assuming someone installs rux and runs the following in any ruby project:
 
 ```
 rux watch
@@ -23,6 +25,12 @@ Rux will:
 * Reuse the Rux code as much as possible - we have done good work in managing calling RSpec, handling formatting, etc, and we should build on that
 * Use the `watcher` binary directly for our watcher - to start we will just hard lock to the aarch64-darwin binary, but we can make it more flexible later
 * See example output of me using this binary directly in [2025-06-03-watcher-output-darwin.log](./2025-06-03-watcher-output-darwin.log) - so it appears the binary from the release artifact works 'out of the box' on Mac
+
+### Technical Details
+
+* I think the watcher c++ binary is the best option, because the Go alternatives are in a very complicated morass of development state - Mac OS support seems not quite there, and adding the Go fsnotify library would require CGO, which I've heard is a pain.
+* If the e-dant/watcher binary is as nice as it appears, we can bundle the binaries for mac, linux, and maybe even windows, and call the right one. I think that should work for 98% of users.
+* Its also less code for us to worry about, and it seems like e-dant knows what they are doing.
 
 ### Future
 * auto-discovery of files to watch, and generate a baseline config based on that
