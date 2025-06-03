@@ -1,5 +1,32 @@
 # Spike: add e-dant/watcher to rux
 
+## Status: Walking Skeleton Complete! 🎉
+
+### What's Working:
+- ✅ `rux watch` command added and functional
+- ✅ Successfully integrated e-dant/watcher binary 
+- ✅ Detects file changes and runs individual specs
+- ✅ `rux doctor` command added for debugging
+- ✅ Integration tests using backspin for golden testing
+
+### Current Implementation:
+- Watches `./spec` directory for changes
+- Runs specs when `*_spec.rb` files are modified
+- Uses the downloaded watcher binary from ~/Downloads
+- Simple stdout-based UI (no TUI yet)
+- Serial execution only
+
+### Next Steps:
+- Add lib → spec mapping
+- Implement debouncing for rapid changes
+- Bundle watcher binaries with rux releases
+- Add TUI interface
+- Support parallel test execution
+
+---
+
+# Original Spike Document
+
 Okay, the final cherry on the top of Rux: I want to replace [guard](https://github.com/guard/guard) for the Ruby ecosystem. I want it be a single command to you can run in _any_ ruby project, and you have a FS based, fast test runner with zero config and zero futzing. No messing with Gemfiles. No creating Guardfiles. Very performant and fast (uses OS file system events via https://github.com/e-dant/watcher). 
 
 Assuming someone installs rux and runs the following in any ruby project:
