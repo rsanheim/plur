@@ -1,7 +1,7 @@
 require "spec_helper"
 
 RSpec.describe Backspin do
-  let(:backspin_path) { Pathname.new(File.join("tmp", "backspin")) }
+  let(:backspin_path) { Backspin.configuration.backspin_dir }
 
   context "record" do
     it "records stdout, stderr, and status to a single yaml" do
@@ -13,7 +13,7 @@ RSpec.describe Backspin do
       expect(result.commands.size).to eq(1)
       expect(result.commands.first.class).to eq(Open3::Capture3)
       expect(result.commands.first.args).to eq(["echo", "hello"])
-      expect(result.dubplate_path.to_s).to end_with("tmp/backspin/echo_hello.yaml")
+      expect(result.dubplate_path.to_s).to end_with("echo_hello.yaml")
       expect(backspin_path.join("echo_hello.yaml")).to exist
       results = YAML.load_file(backspin_path.join("echo_hello.yaml"))
       expect(results).to be_a(Array)

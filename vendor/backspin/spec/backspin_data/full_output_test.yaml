@@ -1,0 +1,9 @@
+---
+- stdout: 'stdout
+
+    '
+  stderr: 'stderr
+
+    '
+  status: 42
+  recorded_at: '2025-06-03T01:05:12-05:00'

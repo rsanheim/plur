@@ -1,7 +1,7 @@
 require "spec_helper"
 
 RSpec.describe "Backspin.use_dubplate" do
-  let(:dubplate_dir) { Pathname.new(File.join("tmp", "backspin")) }
+  let(:dubplate_dir) { Backspin.configuration.backspin_dir }
 
   describe "VCR-style unified API" do
     it "records on first run, replays on subsequent runs" do
@@ -47,6 +47,9 @@ RSpec.describe "Backspin.use_dubplate" do
     end
 
     it "supports record modes" do
+      # Clean up any existing file first
+      FileUtils.rm_f(dubplate_dir.join("modes_test.yaml"))
+      
       # Record initially
       Backspin.use_dubplate("modes_test") do
         Open3.capture3("echo first")
@@ -143,7 +146,4 @@ RSpec.describe "Backspin.use_dubplate" do
     end
   end
 
-  after do
-    FileUtils.rm_rf(dubplate_dir)
-  end
 end

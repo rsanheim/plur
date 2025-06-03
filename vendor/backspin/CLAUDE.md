@@ -62,9 +62,10 @@ rake standard               # Run Standard Ruby linter
 ### Testing Approach
 
 - Integration-focused tests that exercise the full stack
-- Uses temporary directories (`tmp/backspin`) cleaned after each test
+- Default dubplate directory is `spec/backspin_data` (can be configured)
 - Tests use real shell commands (`echo`, `date`, etc.)
 - Configuration is reset between tests to avoid side effects
+- **Important**: Backspin specs MUST be as local and un-DRY as possible. Each spec should be self-contained with its own setup, expectations, and cleanup if needed. Avoid shared contexts or helpers that hide important test details.
 
 ## Common Development Tasks
 
@@ -75,7 +76,7 @@ rake standard               # Run Standard Ruby linter
 4. Run tests with `rake spec`
 
 ### Debugging Tests
-- Dubplates are saved to `spec/backspin/` during tests
+- Dubplates are saved to `spec/backspin_data/` by default
 - Check YAML files to see recorded command outputs
 - Use `VERBOSE=1` for additional output during tests
 

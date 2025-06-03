@@ -1,7 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Backspin use_dubplate integration" do
-  let(:dubplate_dir) { Pathname.new(File.join(Dir.pwd, "..")).join("tmp", "backspin") }
 
   it "works seamlessly with rux testing" do
     # First run - records
@@ -48,7 +47,4 @@ RSpec.describe "Backspin use_dubplate integration" do
     expect(recordings).to eq(["iteration\n", "iteration\n", "iteration\n"])
   end
 
-  after do
-    FileUtils.rm_rf(dubplate_dir)
-  end
 end

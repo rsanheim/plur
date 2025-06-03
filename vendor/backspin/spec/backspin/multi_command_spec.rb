@@ -1,7 +1,7 @@
 require "spec_helper"
 
 RSpec.describe "Backspin multi-command support" do
-  let(:backspin_path) { Pathname.new(File.join("tmp", "backspin")) }
+  let(:backspin_path) { Backspin.configuration.backspin_dir }
 
   context "recording multiple commands" do
     it "records and replays multiple commands in sequence" do

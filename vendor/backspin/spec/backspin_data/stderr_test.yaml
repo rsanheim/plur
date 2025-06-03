@@ -1,0 +1,7 @@
+---
+- stdout: ''
+  stderr: 'error
+
+    '
+  status: 1
+  recorded_at: '2025-06-03T01:07:10-05:00'

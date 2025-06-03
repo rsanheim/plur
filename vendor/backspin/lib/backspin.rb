@@ -26,7 +26,7 @@ module Backspin
     def initialize
       @scrub_credentials = true
       @credential_patterns = default_credential_patterns
-      @backspin_dir = Pathname(Dir.pwd).join("spec", "backspin")
+      @backspin_dir = Pathname(Dir.pwd).join("spec", "backspin_data")
     end
 
     def add_credential_pattern(pattern)

@@ -19,6 +19,13 @@ func createApp() *cli.App {
 		Version: GetVersionInfo(),
 		Commands: []*cli.Command{
 			{
+				Name:  "watch",
+				Usage: "Watch for file changes and run tests automatically",
+				Action: func(ctx *cli.Context) error {
+					return runWatch(ctx)
+				},
+			},
+			{
 				Name:  "db:setup",
 				Usage: "Setup test databases in parallel",
 				Flags: []cli.Flag{

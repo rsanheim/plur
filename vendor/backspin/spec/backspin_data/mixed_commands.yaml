@@ -1,0 +1,17 @@
+---
+- stdout: 'success
+
+    '
+  stderr: ''
+  status: 0
+  recorded_at: '2025-06-03T01:05:12-05:00'
+- stdout: ''
+  stderr: 'error message
+
+    '
+  status: 0
+  recorded_at: '2025-06-03T01:05:12-05:00'
+- stdout: ''
+  stderr: ''
+  status: 42
+  recorded_at: '2025-06-03T01:05:12-05:00'

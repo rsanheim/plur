@@ -1,7 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Backspin edge cases" do
-  let(:dubplate_dir) { Pathname.new(File.join(Dir.pwd, "..")).join("tmp", "backspin") }
 
   it "raises error for empty dubplate name" do
     expect {
@@ -28,8 +27,4 @@ RSpec.describe "Backspin edge cases" do
     expect(result.dubplate_path.to_s).to end_with("test/with/slashes.yaml")
   end
 
-  after do
-    # Clean up test dubplates
-    FileUtils.rm_rf(dubplate_dir)
-  end
 end

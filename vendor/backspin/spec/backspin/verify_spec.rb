@@ -1,7 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Backspin verify functionality" do
-  let(:dubplate_dir) { Pathname.new(File.join(Dir.pwd, "..")).join("tmp", "backspin") }
 
   describe "basic verification" do
     before do
@@ -147,7 +146,4 @@ RSpec.describe "Backspin verify functionality" do
     end
   end
 
-  after do
-    FileUtils.rm_rf(dubplate_dir)
-  end
 end
