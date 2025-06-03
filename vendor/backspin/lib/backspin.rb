@@ -286,8 +286,8 @@ module Backspin
       end
     end
 
-    def verify(dubplate: nil, mode: :strict, matcher: nil, &block)
-      dubplate_path = build_dubplate_path(dubplate)
+    def verify(dubplate_name, mode: :strict, matcher: nil, &block)
+      dubplate_path = build_dubplate_path(dubplate_name)
 
       unless File.exist?(dubplate_path)
         raise DubplateNotFoundError, "Dubplate not found: #{dubplate_path}"
@@ -394,8 +394,8 @@ module Backspin
       end
     end
 
-    def verify!(dubplate: nil, mode: :strict, matcher: nil, &block)
-      result = verify(dubplate: dubplate, mode: mode, matcher: matcher, &block)
+    def verify!(dubplate_name, mode: :strict, matcher: nil, &block)
+      result = verify(dubplate_name, mode: mode, matcher: matcher, &block)
 
       unless result.verified?
         error_message = "Backspin verification failed!\n"

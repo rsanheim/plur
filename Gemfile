@@ -1,9 +1,13 @@
 source "https://rubygems.org"
 
-gem "benchmark"
-gem "guard-rspec", require: false
 gem "rake"
-gem "rspec", "~> 3"
-gem "standard"
-gem "super_diff"
-gem "timecop"
+
+group :development, :test do
+  gem "backspin", path: "./vendor/backspin"
+  gem "benchmark"
+  gem "guard-rspec", require: false
+  gem "rspec", "~> 3"
+  gem "standard"
+  gem "super_diff"
+  gem "timecop"
+end

@@ -1,3 +1,10 @@
+PATH
+  remote: vendor/backspin
+  specs:
+    backspin (0.1.0)
+      ostruct
+      rspec-mocks (~> 3.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -117,6 +124,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  backspin!
   benchmark
   guard-rspec
   rake
