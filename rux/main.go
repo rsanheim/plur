@@ -26,6 +26,13 @@ func createApp() *cli.App {
 				},
 			},
 			{
+				Name:  "doctor",
+				Usage: "Show diagnostic information about rux installation",
+				Action: func(ctx *cli.Context) error {
+					return runDoctor(ctx)
+				},
+			},
+			{
 				Name:  "db:setup",
 				Usage: "Setup test databases in parallel",
 				Flags: []cli.Flag{

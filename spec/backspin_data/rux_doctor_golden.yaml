@@ -1,0 +1,46 @@
+---
+- stdout: |
+    Rux Doctor
+    ==========
+
+    Rux Version:     v0.6.2-20250603-0616-0668ca811
+    Build Date:      2025-06-03 06:16:08 UTC
+    Git Commit:      0668ca811
+    Built By:        rake
+
+    Operating System: darwin
+    Architecture:     arm64
+    CPU Count:        20
+    Go Version:       go1.24.2
+
+    Working Dir:      /Users/rsanheim/src/oss/rux-meta
+    Rux Binary:       /Users/rsanheim/src/oss/rux-meta/spec/../rux/rux
+
+    Ruby Environment:
+      Ruby Version:   ruby 3.4.4 (2025-05-14 revision a38531fd3f) +PRISM [arm64-darwin24]
+      Bundler:        Bundler version 2.6.9
+      RSpec:          RSpec 3.13
+      - rspec-core 3.13.3
+      - rspec-expectations 3.13.4
+      - rspec-mocks 3.13.4
+      - rspec-support 3.13.3
+
+    File Watcher:
+      Status:         Available
+      Binary Path:    /Users/rsanheim/Downloads/aarch64-apple-darwin/watcher
+      Version:        Binary exists (no version info available)
+      Platform:       darwin/arm64
+
+    Cache Directory:  /Users/rsanheim/.cache/rux
+    Runtime Data:     /Users/rsanheim/.cache/rux/runtimes/f8fee6d7.json
+                      (file exists)
+
+    Environment Variables:
+      PARALLEL_TEST_PROCESSORS: (not set)
+      FORCE_COLOR:              (not set)
+      NO_COLOR:                 (not set)
+      HOME:                     /Users/rsanheim
+      GOPATH:                   (not set)
+  stderr: ''
+  status: 0
+  recorded_at: '2025-06-03T01:17:51-05:00'

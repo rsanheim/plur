@@ -8,6 +8,10 @@ This is a research repository for `rux`, a Go-based parallel test runner for Rub
 
 ## Core Commands
 
+### 🔨 IMPORTANT: Always Build with Rake Commands
+
+**DO NOT use `go build` directly!** Always use the Rake commands below for proper builds:
+
 ### Building Rux
 
 ```bash
