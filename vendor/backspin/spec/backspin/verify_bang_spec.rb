@@ -12,7 +12,7 @@ RSpec.describe "Backspin verify! functionality" do
 
   it "succeeds when output matches recorded dubplate" do
     # Should not raise an error
-    result = Backspin.verify!(dubplate: "echo_verify_bang") do
+    result = Backspin.verify!("echo_verify_bang") do
       Open3.capture3("echo hello")
     end
 
@@ -22,14 +22,14 @@ RSpec.describe "Backspin verify! functionality" do
 
   it "raises an RSpec expectation error when output differs from recorded dubplate" do
     expect {
-      Backspin.verify!(dubplate: "echo_verify_bang") do
+      Backspin.verify!("echo_verify_bang") do
         Open3.capture3("echo goodbye")
       end
     }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /Backspin verification failed!/)
   end
 
   it "includes useful information in the error message" do
-    Backspin.verify!(dubplate: "echo_verify_bang") do
+    Backspin.verify!("echo_verify_bang") do
       Open3.capture3("echo goodbye")
     end
     fail "Expected RSpec::Expectations::ExpectationNotMetError to be raised"
@@ -47,8 +47,7 @@ RSpec.describe "Backspin verify! functionality" do
 
   it "works with custom matchers and raises on matcher failure" do
     expect {
-      Backspin.verify!(
-        dubplate: "echo_verify_bang",
+      Backspin.verify!("echo_verify_bang",
         matcher: ->(recorded, actual) {
           # This matcher will always fail
           false
@@ -61,7 +60,7 @@ RSpec.describe "Backspin verify! functionality" do
 
   it "works in playback mode and never raises" do
     # Playback mode always returns verified: true, so verify! should never raise
-    result = Backspin.verify!(dubplate: "echo_verify_bang", mode: :playback) do
+    result = Backspin.verify!("echo_verify_bang", mode: :playback) do
       Open3.capture3("echo anything")  # Command not actually executed
     end
 

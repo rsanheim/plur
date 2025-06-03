@@ -10,7 +10,7 @@ RSpec.describe "Backspin simple verify" do
     end
 
     # Verify - should pass
-    result = Backspin.verify(dubplate: "simple_echo") do
+    result = Backspin.verify("simple_echo") do
       Open3.capture3("echo hello")
     end
 
@@ -24,7 +24,7 @@ RSpec.describe "Backspin simple verify" do
     end
 
     # Verify - should fail
-    result = Backspin.verify(dubplate: "echo_original") do
+    result = Backspin.verify("echo_original") do
       Open3.capture3("echo different")
     end
 
@@ -33,7 +33,7 @@ RSpec.describe "Backspin simple verify" do
 
   it "raises error when dubplate not found" do
     expect {
-      Backspin.verify(dubplate: "missing") do
+      Backspin.verify("missing") do
         Open3.capture3("echo test")
       end
     }.to raise_error(Backspin::DubplateNotFoundError)

@@ -12,7 +12,7 @@ RSpec.describe "Backspin verify functionality" do
     end
 
     it "passes when output matches recorded dubplate" do
-      result = Backspin.verify(dubplate: "echo_verify") do
+      result = Backspin.verify("echo_verify") do
         Open3.capture3("echo hello")
       end
 
@@ -21,7 +21,7 @@ RSpec.describe "Backspin verify functionality" do
     end
 
     it "fails when output differs from recorded dubplate" do
-      result = Backspin.verify(dubplate: "echo_verify") do
+      result = Backspin.verify("echo_verify") do
         Open3.capture3("echo goodbye")
       end
 
@@ -39,14 +39,14 @@ RSpec.describe "Backspin verify functionality" do
       end
 
       # Verify matching stderr and status
-      result = Backspin.verify(dubplate: "stderr_test") do
+      result = Backspin.verify("stderr_test") do
         Open3.capture3("sh -c 'echo error >&2; exit 1'")
       end
 
       expect(result.verified?).to be true
 
       # Verify non-matching stderr
-      result = Backspin.verify(dubplate: "stderr_test") do
+      result = Backspin.verify("stderr_test") do
         Open3.capture3("sh -c 'echo different >&2; exit 1'")
       end
 
@@ -65,7 +65,7 @@ RSpec.describe "Backspin verify functionality" do
       sleep 0.01 # Small delay to ensure different timestamp
 
       # Running date again will produce different output
-      result = Backspin.verify(dubplate: "timestamp_test", mode: :strict) do
+      result = Backspin.verify("timestamp_test", mode: :strict) do
         Open3.capture3("date +%s%N")
       end
 
@@ -77,7 +77,7 @@ RSpec.describe "Backspin verify functionality" do
         Open3.capture3("echo original")
       end
 
-      result = Backspin.verify(dubplate: "playback_test", mode: :playback) do
+      result = Backspin.verify("playback_test", mode: :playback) do
         # This would normally output "different" but playback mode should return "original"
         Open3.capture3("echo different")
       end
@@ -92,7 +92,7 @@ RSpec.describe "Backspin verify functionality" do
         Open3.capture3("ruby --version")
       end
 
-      result = Backspin.verify(dubplate: "version_test",
+      result = Backspin.verify("version_test",
         matcher: ->(recorded, actual) {
           recorded["stdout"].start_with?("ruby") && actual["stdout"].start_with?("ruby")
         }) do
@@ -106,7 +106,7 @@ RSpec.describe "Backspin verify functionality" do
   describe "error handling" do
     it "raises error when dubplate doesn't exist" do
       expect {
-        Backspin.verify(dubplate: "nonexistent") do
+        Backspin.verify("nonexistent") do
           Open3.capture3("echo test")
         end
       }.to raise_error(Backspin::DubplateNotFoundError, /nonexistent.yaml/)
@@ -117,7 +117,7 @@ RSpec.describe "Backspin verify functionality" do
         Open3.capture3("echo expected")
       end
 
-      result = Backspin.verify(dubplate: "failure_test") do
+      result = Backspin.verify("failure_test") do
         Open3.capture3("echo actual")
       end
 
