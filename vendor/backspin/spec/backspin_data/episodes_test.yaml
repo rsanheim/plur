@@ -23,3 +23,15 @@
   stderr: ''
   status: 0
   recorded_at: '2025-06-03T01:07:10-05:00'
+- stdout: 'episode1
+
+    '
+  stderr: ''
+  status: 0
+  recorded_at: '2025-06-03T01:09:51-05:00'
+- stdout: 'episode2
+
+    '
+  stderr: ''
+  status: 0
+  recorded_at: '2025-06-03T01:09:51-05:00'
