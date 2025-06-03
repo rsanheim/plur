@@ -6,45 +6,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a research repository for `rux`, a Go-based parallel test runner for Ruby/RSpec projects designed to outperform existing solutions like turbo_tests and parallel_tests. The project is production-ready with demonstrated 13% performance improvements.
 
-## Core Commands
+## 🚨 Critical Build & Test Commands
 
-### 🔨 IMPORTANT: Always Build with Rake Commands
+### ALWAYS Use Rake Commands (Never `go build` directly!)
 
-**DO NOT use `go build` directly!** Always use the Rake commands below for proper builds:
+**Why this matters:** The rake tasks handle version embedding, proper flags, and installation paths that manual `go build` will miss.
 
 ### Building Rux
 
 ```bash
-# Release build with version info (recommended)
-rake build                      # Alias for build_release
-rake build_release              # Uses version from VERSION file (currently 0.6.0)
-VERSION=v1.0.0 rake build_release  # Override with custom version
-rake install                    # Installs to $GOPATH/bin for global dev usage
-rux --version                  # Check version
-rake clean                      # Clean build artifacts
+# MOST COMMON COMMANDS YOU'LL USE:
+bin/rake install                # Build & install globally - USE THIS DURING DEVELOPMENT
+bin/rake                        # Run default task (all tests + lints) - USE THIS BEFORE COMMITTING
+bin/rake test:all               # Run all tests with proper bundler context
+
+# Other build commands:
+bin/rake build                  # Alias for build_release
+bin/rake build_release          # Uses version from VERSION file (currently 0.6.0)
+VERSION=v1.0.0 bin/rake build_release  # Override with custom version
+rux --version                   # Check version
+bin/rake clean                  # Clean build artifacts
 ```
+
+### 📌 Key Mono-repo Patterns
+
+1. **Always use `bin/rake` for ALL rake tasks** - This ensures bundler context is correct
+2. **Run `bundle install` at root level** - The Gemfile includes backspin and other test dependencies
+3. **`bin/rake install` is your friend** - Use it frequently during development to test globally
+4. **Check `git status` before running tests** - Modified Go files may need `go fmt`
 
 
 ### Testing & Development Tasks
 ```bash
 # Run all tests
-rake test                    # Alias for test:all
-rake test:all                # Run Go, Ruby, and Integration tests
-rake test:go                 # Run Go unit tests
-rake test:ruby               # Build rux and run Ruby tests
-rake test:integration        # Build rux and run integration specs
-VERBOSE=1 rake test:go       # Show detailed test output
+bin/rake test                # Alias for test:all
+bin/rake test:all            # Run Go, Ruby, and Integration tests
+bin/rake test:go             # Run Go unit tests
+bin/rake test:ruby           # Build rux and run Ruby tests
+bin/rake test:integration    # Build rux and run integration specs
+VERBOSE=1 bin/rake test:go   # Show detailed test output
 
 # Individual test projects
-rake test:rux_ruby           # Run rux-ruby specs with rux
-rake test:rux_ruby_turbo     # Run rux-ruby specs with turbo_tests
-rake test:test_app           # Run test_app specs with rux
+bin/rake test:rux_ruby       # Run rux-ruby specs with rux
+bin/rake test:rux_ruby_turbo # Run rux-ruby specs with turbo_tests
+bin/rake test:test_app       # Run test_app specs with rux
 ```
 
 ### Testing from the Outside-in
 
 Rux development should be driven from the outside-in via Ruby integration specs in the `spec/` directory.
-Run these via `rake test:ruby` or directly via `rspec [filename]`.
+Run these via `bin/rake test:ruby` or directly via `bundle exec rspec [filename]`.
 
 You MUST use these integration tests as guardrails when making architectural changes to rux.
 
@@ -58,32 +69,37 @@ You MUST use these integration tests as guardrails when making architectural cha
 ### Linting & Code Quality
 ```bash
 # Run all linting
-rake lint                    # Alias for lint:all  
-rake lint:all                # Run Go and Ruby linting
-rake lint:go                 # Run go fmt, go vet, and golint
-rake lint:ruby               # Run Standard Ruby linter
-rake lint:ruby_fix           # Auto-fix Ruby linting issues
+bin/rake lint                # Alias for lint:all  
+bin/rake lint:all            # Run Go and Ruby linting
+bin/rake lint:go             # Run go fmt, go vet, and golint
+bin/rake lint:ruby           # Run Standard Ruby linter
+bin/rake lint:ruby_fix       # Auto-fix Ruby linting issues
 
 # Default task (runs all tests and linting)
-rake                         # Same as: rake test:all lint:all
+bin/rake                     # Same as: bin/rake test:all lint:all
 ```
 
 ### CI Tasks
 ```bash
 # Run all CI checks
-rake ci:all                  # Run all linting and tests
-rake ci:go                   # Run Go linting and tests
-rake ci:ruby                 # Run Ruby linting and tests
+bin/rake ci:all              # Run all linting and tests
+bin/rake ci:go               # Run Go linting and tests
+bin/rake ci:ruby             # Run Ruby linting and tests
 ```
 
 ### Using Rux
 
 ```bash
+# Core commands:
 rux                          # Auto-detect workers (cores-2)
 rux -n 4                    # Specific worker count (often optimal)
 rux --dry-run               # Preview execution plan
 rux spec/specific_spec.rb    # Run specific files
 rux --trace                  # Enable performance tracing
+
+# New commands (as of this session):
+rux doctor                   # Show diagnostic info about rux installation
+rux watch                    # Watch files and auto-run tests (experimental)
 ```
 
 ### Performance Tracing
@@ -113,10 +129,10 @@ ruby rux/analyze_trace.rb -v ./tmp/rux-traces/rux-trace-*.json
 # Run benchmarks with tracing enabled
 ./script/bench --trace ./rux-ruby
 
-# Using Rake tasks
-rake bench:all               # Run all benchmarks
-rake bench:rux_ruby          # Benchmark rux-ruby project
-rake bench:test_app          # Benchmark test_app project
+# Using bin/rake tasks
+bin/rake bench:all           # Run all benchmarks
+bin/rake bench:rux_ruby      # Benchmark rux-ruby project
+bin/rake bench:test_app      # Benchmark test_app project
 
 # Results: bench-results.md and bench-results.json
 # Trace analysis is included when --trace is used
@@ -156,14 +172,38 @@ rake bench:test_app          # Benchmark test_app project
 - **Runtime-based test distribution**: Automatically tracks and uses test execution times for optimal load balancing
 - **Channel-based output aggregation**: Eliminates lock contention for high worker counts (25-30+)
 
+## Common Gotchas & Solutions
+
+### 🐛 When Things Go Wrong
+
+1. **"cannot load such file -- backspin"**
+   - Run `bundle install` at the root level
+   - Use `bin/rake` instead of `rake` to ensure bundler context
+
+2. **"go: inconsistent vendoring"**
+   - Run `go mod vendor` in the rux directory
+   - The vendor directory sometimes gets out of sync
+
+3. **"watcher binary not found"**
+   - The watch command currently expects the watcher binary at:
+     `/Users/rsanheim/Downloads/aarch64-apple-darwin/watcher`
+   - This will be improved to bundle the binary with rux
+
+4. **Tests pass individually but fail in rake**
+   - Check if you're using the right Ruby version
+   - Ensure `bin/rake` is used for proper bundler context
+
 ## Development Workflow
 
-### Quick Test Cycle
+### Quick Test Cycle (DON'T DO THIS - Use rake install instead!)
 ```bash
-cd rux/ && go build -o rux main.go
-cd ../rux-ruby/
-../rux/rux --dry-run        # Verify discovery
-../rux/rux                  # Execute tests
+# WRONG WAY:
+# cd rux/ && go build -o rux main.go
+
+# RIGHT WAY:
+bin/rake install             # Builds with proper flags AND installs
+rux --dry-run                # Verify it works
+rux                          # Run tests
 ```
 
 ### Finding Optimal Performance
@@ -183,3 +223,22 @@ The repository includes multiple test projects:
 - **Reference implementations**: references/parallel_tests and references/turbo_tests for comparison
 
 All .git directories have been removed to focus on testing functionality rather than git operations.
+
+## 🎯 Commit Workflow for Maximum Productivity
+
+When making changes in this mono-repo:
+
+1. **Make your code changes**
+2. **Run `bin/rake install`** to test locally with the global binary
+3. **Run `bin/rake`** to execute all tests and lints
+4. **Fix any issues** (use `bin/rake standard:fix` for Ruby lint fixes)
+5. **Use `git add -A` and commit** with descriptive message
+
+### Quick Commands Reference
+```bash
+bin/rake install          # After making changes
+bin/rake                  # Before committing (runs everything)
+bin/rake lint:all         # Just linting
+bin/rake test:all         # Just tests
+bin/rake standard:fix     # Auto-fix Ruby style issues
+```
