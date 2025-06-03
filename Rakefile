@@ -9,9 +9,7 @@ rescue LoadError
 end
 
 # Define RSpec task if available
-if defined?(RSpec)
-  RSpec::Core::RakeTask.new(:spec)
-end
+RSpec::Core::RakeTask.new(:spec) if defined?(RSpec)
 
 # Default task runs all checks
 desc "Run all tests and linting"
@@ -35,7 +33,7 @@ end
 # ========================================
 namespace :test do
   desc "Run all tests (Go, Ruby, and Integration)"
-  task all: [:go, :ruby, :integration]
+  task all: %i[go ruby integration]
 
   desc "Run Go tests"
   task :go do
@@ -54,9 +52,7 @@ namespace :test do
       end
 
       # Ensure we're in the right directory and can find embedded files
-      unless File.exist?("rspec/formatter.rb")
-        raise "Cannot find rspec/formatter.rb - are we in the right directory?"
-      end
+      raise "Cannot find rspec/formatter.rb - are we in the right directory?" unless File.exist?("rspec/formatter.rb")
 
       # Use standard output format (dots) unless verbose is requested
       if ENV["VERBOSE"]
@@ -72,7 +68,7 @@ namespace :test do
   end
 
   desc "Run Ruby tests with rux"
-  task ruby: [:build, :rux_ruby]
+  task ruby: %i[build rux_ruby]
 
   desc "Run rux-ruby specs using rux (excluding failing examples)"
   task :rux_ruby do
@@ -110,7 +106,7 @@ namespace :test do
   end
 
   desc "Run integration tests in root spec directory"
-  task integration: [:build, :spec]
+  task integration: %i[build spec]
 end
 
 # ========================================
@@ -118,7 +114,7 @@ end
 # ========================================
 namespace :lint do
   desc "Run all linting (Go and Ruby)"
-  task all: [:go, :ruby]
+  task all: %i[go ruby]
 
   desc "Lint Go code"
   task :go do
@@ -227,7 +223,7 @@ end
 # ========================================
 namespace :bench do
   desc "Run all benchmarks"
-  task all: [:rux_ruby, :test_app]
+  task all: %i[rux_ruby test_app]
 
   desc "Run benchmarks on rux-ruby"
   task rux_ruby: [:build] do
@@ -254,6 +250,79 @@ namespace :ci do
 
   desc "Run CI checks for Ruby"
   task ruby: ["lint:ruby", "test:ruby"]
+end
+
+# ========================================
+# External Dependencies
+# ========================================
+namespace :deps do
+  desc "Download watcher binary for file system monitoring"
+  task :watcher do
+    require "net/http"
+    require "uri"
+    require "fileutils"
+
+    puts "Downloading watcher binary..."
+
+    # Determine platform
+    platform = case RUBY_PLATFORM
+    when /darwin.*aarch64/, /darwin.*arm64/
+      "aarch64-apple-darwin"
+    when /darwin/
+      "x86_64-apple-darwin"
+    when /linux.*aarch64/, /linux.*arm64/
+      "aarch64-unknown-linux-gnu"
+    when /linux/
+      "x86_64-unknown-linux-gnu"
+    else
+      raise "Unsupported platform: #{RUBY_PLATFORM}"
+    end
+
+    # Create vendor directory
+    vendor_dir = File.join("rux", "vendor", "watcher")
+    FileUtils.mkdir_p(vendor_dir)
+
+    # Download URL - using v0.9.2 release
+    url = "https://github.com/e-dant/watcher/releases/download/release%2F0.9.2/watcher-#{platform}.tar.gz"
+
+    # Download to temp file
+    temp_file = File.join(vendor_dir, "watcher.tar.gz")
+
+    begin
+      uri = URI(url)
+      puts "Downloading from: #{url}"
+
+      Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+        request = Net::HTTP::Get.new(uri)
+        http.request(request) do |response|
+          raise "Failed to download: HTTP #{response.code}" if response.code != "200"
+
+          File.open(temp_file, "wb") do |file|
+            response.read_body do |chunk|
+              file.write(chunk)
+            end
+          end
+        end
+      end
+
+      # Extract the binary
+      puts "Extracting watcher binary..."
+      Dir.chdir(vendor_dir) do
+        sh "tar -xzf watcher.tar.gz"
+
+        # The tarball contains watcher binary directly
+        binary_name = "watcher-#{platform}"
+        raise "Expected watcher binary not found in tarball" unless File.exist?("watcher")
+
+        FileUtils.mv("watcher", binary_name)
+        FileUtils.chmod(0o755, binary_name)
+        puts "Watcher binary installed at: rux/vendor/watcher/#{binary_name}"
+      end
+    ensure
+      # Clean up temp file
+      FileUtils.rm_f(temp_file)
+    end
+  end
 end
 
 # ========================================
