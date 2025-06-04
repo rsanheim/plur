@@ -7,7 +7,7 @@ I want to have a more straight forward name here. Lets rename away from Dubplate
 Update specs as you go.
 
 * [ ] change the object name from `Dubplate` to `Record`
-* [ ] change the directory that backspin uses to store the records from `dubplates` to `records`
+* [ ] the location for record files can remain "backspin_data" - so by default in an rspec project it would be ./spec/backspin/records
 * [ ] change the top level Backspin.record to be named `Backspin.call` to avoid confusion
 * [ ] update docs and CLAUDE.md
 * [ ] commit  when everything is passing
@@ -16,6 +16,18 @@ Update specs as you go.
 
 We need to know the first recorded at time to allow automatic re-recording of the record later on.
 Add it to the Record object and the record file. Do not implement 're-record' yet.
+
+### Store the command info in the record file
+
+i.e. store the command type (Open3.capture3) and the arguments (["echo", "hello"])
+
+I think we already have this mostly in the Command object, its mostly a matter of serializing it back and forth.
+
+### Introduce the ability to record `system` calls
+* we want to capture other system calls like `system("echo hello")`
+* make the result and serialization format the same as capture3, even though this may mean adapting the results from system to match the more detailed output from capture3
+* consider splitting this out, along side the capture3 stuff, into new objects that follow the same sort of pattern
+* for context, we will want to add other command types later.
 
 ### Add preprocessing/filtering support to recording methods
 
