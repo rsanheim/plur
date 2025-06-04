@@ -4,6 +4,11 @@ require "pathname"
 require "super_diff/rspec"
 require "tmpdir"
 
+BACKSPIN_PATH = Pathname.new(__dir__).parent.join("vendor", "backspin", "lib").expand_path.freeze
+$LOAD_PATH.unshift(BACKSPIN_PATH)
+
+require "backspin"
+
 ROOT_PATH = Pathname.new(__dir__).parent
 
 RSpec.configure do |config|

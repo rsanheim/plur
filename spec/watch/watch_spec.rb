@@ -1,5 +1,4 @@
 require "spec_helper"
-require_relative "../vendor/backspin/lib/backspin"
 require "tempfile"
 
 RSpec.describe "rux watch command" do
@@ -30,8 +29,6 @@ RSpec.describe "rux watch command" do
   end
 
   context "with rux-ruby test project" do
-    let(:rux_ruby_dir) { File.join(__dir__, "..", "rux-ruby") }
-
     it "starts successfully when spec directory exists" do
       stdout, stderr, status = run_rux_watch_in_dir(rux_ruby_dir)
 
@@ -92,8 +89,6 @@ RSpec.describe "rux watch command" do
   end
 
   context "with backspin golden testing" do
-    let(:rux_ruby_dir) { File.join(__dir__, "..", "rux-ruby") }
-
     it "produces consistent watch output" do
       # Skip recording if watcher binary is not available
       skip "Watcher binary not available" unless File.exist?(File.expand_path("~/.cache/rux/bin/watcher-aarch64-apple-darwin"))

@@ -1,5 +1,4 @@
 require "spec_helper"
-require "backspin"
 
 RSpec.describe "rux doctor command" do
   def run_rux_doctor(*args)

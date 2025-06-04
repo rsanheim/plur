@@ -1,5 +1,4 @@
 require "spec_helper"
-require "backspin"
 
 RSpec.describe "single failure golden test" do
   def fixture_path(name)

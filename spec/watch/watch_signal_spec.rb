@@ -2,8 +2,6 @@ require "spec_helper"
 require "timeout"
 
 RSpec.describe "rux watch signal handling" do
-  let(:rux_ruby_dir) { File.join(__dir__, "..", "rux-ruby") }
-
   it "runs indefinitely until receiving SIGINT signal and detects file changes" do
     Dir.chdir(rux_ruby_dir) do
       output = []
