@@ -2,6 +2,12 @@
 
 Remeber to run the full build after significant changes via `bin/rake` - the default task runs specs and standardrb.
 
+### Clean up where we store the data in the spec suite!
+
+* For unit test (i.e. things that don't remove saved data) we should use "spec/backspin_data", just like any other gem
+* For integration tests (i.e. things that have to remove saved records) we should use "./tmp/backspin_data"
+* We should never store data in "spec/backspin" - its confusing and I don't know how it keeps creeping back in
+
 ### Rename Dubplate to Record
 I want to have a more straight forward name here. Lets rename away from Dubplate to Record.
 Update specs as you go.
