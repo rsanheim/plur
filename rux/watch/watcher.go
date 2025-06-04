@@ -30,12 +30,12 @@ type Config struct {
 
 // Watcher manages the file watching process
 type Watcher struct {
-	config         *Config
-	binaryPath     string
-	process        *exec.Cmd
-	eventChan      chan Event
-	errorChan      chan error
-	stopChan       chan struct{}
+	config     *Config
+	binaryPath string
+	process    *exec.Cmd
+	eventChan  chan Event
+	errorChan  chan error
+	stopChan   chan struct{}
 }
 
 // NewWatcher creates a new watcher instance
@@ -63,34 +63,34 @@ func (w *Watcher) Start() error {
 
 	// Start the watcher process
 	w.process = exec.Command(w.binaryPath, absPaths...)
-	
+
 	// Create stdin pipe to keep watcher alive
 	stdinPipe, err := w.process.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
-	
+
 	// Get stdout for events
 	stdout, err := w.process.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("failed to get stdout pipe: %w", err)
 	}
-	
+
 	// Get stderr for errors
 	stderr, err := w.process.StderrPipe()
 	if err != nil {
 		return fmt.Errorf("failed to get stderr pipe: %w", err)
 	}
-	
+
 	// Start the process
 	if err := w.process.Start(); err != nil {
 		return fmt.Errorf("failed to start watcher: %w", err)
 	}
-	
+
 	// Start goroutines to handle output
 	go w.readEvents(stdout)
 	go w.readErrors(stderr)
-	
+
 	// Handle process lifecycle
 	go func() {
 		<-w.stopChan
@@ -98,7 +98,7 @@ func (w *Watcher) Start() error {
 		w.process.Process.Kill()
 		w.process.Wait()
 	}()
-	
+
 	return nil
 }
 
@@ -121,23 +121,23 @@ func (w *Watcher) Errors() <-chan error {
 func (w *Watcher) readEvents(stdout io.Reader) {
 	scanner := bufio.NewScanner(stdout)
 	defer close(w.eventChan)
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		var event Event
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			// Skip non-JSON lines
 			continue
 		}
-		
+
 		select {
 		case w.eventChan <- event:
 		case <-w.stopChan:
 			return
 		}
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		select {
 		case w.errorChan <- fmt.Errorf("error reading watcher output: %w", err):
@@ -149,7 +149,7 @@ func (w *Watcher) readEvents(stdout io.Reader) {
 // readErrors reads error messages from stderr
 func (w *Watcher) readErrors(stderr io.Reader) {
 	scanner := bufio.NewScanner(stderr)
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Fprintf(os.Stderr, "watcher stderr: %s\n", line)
@@ -182,7 +182,7 @@ func GetBinaryPath(cacheDir string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
-	
+
 	// Return the expected binary path
 	return filepath.Join(cacheDir, "bin", binaryName), nil
 }

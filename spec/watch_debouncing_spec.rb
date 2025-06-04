@@ -26,7 +26,7 @@ RSpec.describe "rux watch debouncing" do
   
   it "shows configurable debounce delay" do
     Dir.chdir(temp_dir) do
-      output = `timeout 1 rux watch --debounce 200 2>&1`
+      output = `timeout 1 GO_LOG=debug rux watch --debounce 200 2>&1`
       expect(output).to include("Debounce delay: 200ms")
     end
   end

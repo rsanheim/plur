@@ -4,40 +4,28 @@ require 'fileutils'
 require 'timeout'
 
 RSpec.describe "rux watch integration" do
-  let(:rux_ruby_dir) { File.join(File.dirname(__FILE__), '..', 'rux-ruby') }
-  
-  def capture_watch_output(timeout_seconds: 5, debounce: nil, &block)
-    output = ""
-    
+  DEFAULT_RUX_TIMEOUT = 2
+
+  def capture_watch_output(rux_timeout: DEFAULT_RUX_TIMEOUT, debounce: nil, &block)
     Dir.chdir(rux_ruby_dir) do
-      # Start watch mode in a thread
-      read_io, write_io = IO.pipe
-      
-      debounce_flag = debounce ? "--debounce #{debounce}" : ""
-      watch_pid = spawn("rux watch --timeout #{timeout_seconds} #{debounce_flag}", 
-                       out: write_io, err: write_io)
-      write_io.close
-      
-      # Give watcher time to start
-      sleep 1
-      
-      # Execute the block that will modify files
-      yield if block_given?
-      
-      # Read output
-      begin
-        Timeout.timeout(timeout_seconds + 2) do
-          output = read_io.read
-        end
-      rescue Timeout::Error
-        # Expected - the watch command will timeout
-      ensure
-        read_io.close
-        Process.wait(watch_pid) rescue nil
+      cmd = "rux watch --timeout #{rux_timeout}"
+      cmd += " --debounce #{debounce}" if debounce
+
+      stdout, stderr, status = nil
+
+      env = { "GO_LOG" => "debug" }
+      thread = Thread.new do
+        stdout, stderr, status = Open3.capture3(env, cmd)
       end
+
+      sleep 1
+
+      yield if block_given?
+
+      thread.join
+
+      [stdout, stderr, status]
     end
-    
-    output
   end
   
   it "starts watching the correct directories" do
@@ -51,7 +39,7 @@ RSpec.describe "rux watch integration" do
   it "maps lib files to their specs" do
     output = capture_watch_output do
       # Touch a lib file
-      FileUtils.touch(File.join(rux_ruby_dir, "lib/calculator.rb"))
+      FileUtils.touch(rux_ruby_dir.join("lib/calculator.rb"))
       sleep 0.5
     end
     
@@ -61,7 +49,7 @@ RSpec.describe "rux watch integration" do
   
   it "maps nested lib files correctly" do
     # Create a nested lib file temporarily
-    nested_lib = File.join(rux_ruby_dir, "lib/models/temp_model.rb")
+    nested_lib = rux_ruby_dir.join("lib/models/temp_model.rb")
     FileUtils.mkdir_p(File.dirname(nested_lib))
     
     begin
@@ -84,7 +72,7 @@ RSpec.describe "rux watch integration" do
   
   it "runs all specs when spec_helper.rb changes" do
     output = capture_watch_output do
-      FileUtils.touch(File.join(rux_ruby_dir, "spec/spec_helper.rb"))
+      FileUtils.touch(rux_ruby_dir.join("spec/spec_helper.rb"))
       sleep 0.5
     end
     
@@ -95,7 +83,7 @@ RSpec.describe "rux watch integration" do
   
   it "handles spec file changes" do
     output = capture_watch_output do
-      FileUtils.touch(File.join(rux_ruby_dir, "spec/calculator_spec.rb"))
+      FileUtils.touch(rux_ruby_dir.join("spec/calculator_spec.rb"))
       sleep 0.5
     end
     
@@ -104,7 +92,7 @@ RSpec.describe "rux watch integration" do
   end
   
   it "ignores non-Ruby files" do
-    readme_file = File.join(rux_ruby_dir, "README.md")
+    readme_file = rux_ruby_dir.join("README.md")
     FileUtils.touch(readme_file) # Ensure it exists
     
     output = capture_watch_output do
@@ -125,9 +113,9 @@ RSpec.describe "rux watch integration" do
   it "handles multiple file changes with debouncing" do
     output = capture_watch_output(debounce: 200) do
       # Rapidly touch multiple files
-      FileUtils.touch(File.join(rux_ruby_dir, "lib/calculator.rb"))
-      FileUtils.touch(File.join(rux_ruby_dir, "lib/string_utils.rb"))
-      FileUtils.touch(File.join(rux_ruby_dir, "lib/validator.rb"))
+      FileUtils.touch(rux_ruby_dir.join("lib/calculator.rb"))
+      FileUtils.touch(rux_ruby_dir.join("lib/string_utils.rb"))
+      FileUtils.touch(rux_ruby_dir.join("lib/validator.rb"))
       sleep 0.5
     end
     
@@ -176,15 +164,16 @@ RSpec.describe "rux watch integration" do
     
     it "maps app/controllers files to spec/controllers" do
       controller_file = File.join(app_dir, "controllers/users_controller.rb")
-      File.write(controller_file, "class UsersController; end")
       
-      output = capture_watch_output do
+      stdout, stderr, status = capture_watch_output do
+        File.write(controller_file, "class UsersController; def index; end; end")
         FileUtils.touch(controller_file)
-        sleep 0.5
+        sleep 5
       end
+      pp [stdout, stderr, status]
       
-      expect(output).to include("Changed: app/controllers/users_controller.rb")
-      expect(output).to include("Running: spec/controllers/users_controller_spec.rb")
+      expect(stdout).to include("Changed: app/controllers/users_controller.rb")
+      expect(stdout).to include("Running: spec/controllers/users_controller_spec.rb")
     end
   end
 end

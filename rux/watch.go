@@ -2,7 +2,9 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,22 +22,22 @@ var watcherBinaries embed.FS
 
 func runWatch(ctx *cli.Context) error {
 	fmt.Println("Starting rux watch mode...")
-	
+
 	// Create file mapper
 	fileMapper := watch.NewFileMapper()
-	
+
 	// Create debouncer with configurable delay
 	debounceMs := ctx.Int("debounce")
 	debounceDelay := time.Duration(debounceMs) * time.Millisecond
 	debouncer := watch.NewDebouncer(debounceDelay)
-	fmt.Printf("Debounce delay: %dms\n", debounceMs)
+	slog.Debug("Debounce delay", "ms", debounceMs)
 
 	// Determine which directories to watch
 	watchDirs := watch.GetWatchDirectories()
 	if len(watchDirs) == 0 {
 		return fmt.Errorf("no directories to watch found (tried: spec, lib, app)")
 	}
-	
+
 	fmt.Printf("Watching directories: %s\n", strings.Join(watchDirs, ", "))
 
 	timeout := ctx.Int("timeout")
@@ -106,8 +108,8 @@ func runWatch(ctx *cli.Context) error {
 				continue
 			}
 
-			fmt.Printf("Changed: %s\n", relPath)
-			
+			slog.Debug("Changed", "path", relPath)
+
 			// Debounce the spec runs
 			debouncer.Debounce(specsToRun, func(specs []string) {
 				// Remove duplicates
@@ -115,10 +117,10 @@ func runWatch(ctx *cli.Context) error {
 				for _, spec := range specs {
 					uniqueSpecs[spec] = true
 				}
-				
+
 				// Run each unique spec
 				for spec := range uniqueSpecs {
-					fmt.Printf("\nRunning: %s\n", spec)
+					slog.Debug("Running", "spec", spec)
 					runSpecsOrDirectory(spec)
 				}
 			})
@@ -159,7 +161,7 @@ func getWatcherBinaryPath() (string, error) {
 
 	// Get the binary name from the path
 	binaryName := filepath.Base(binaryPath)
-	
+
 	// Extract binary from embedded files
 	embeddedPath := filepath.Join("vendor/watcher", binaryName)
 	data, err := watcherBinaries.ReadFile(embeddedPath)
@@ -176,38 +178,28 @@ func getWatcherBinaryPath() (string, error) {
 	return binaryPath, nil
 }
 
+// Simple implementation using direct rspec call for now
+// We'll integrate with rux runner properly later
 func runSpecsOrDirectory(specPath string) {
-	fmt.Printf("\n" + strings.Repeat("=", 80) + "\n")
-	
-	// Simple implementation using direct rspec call for now
-	// We'll integrate with rux runner properly later
 	var cmd *exec.Cmd
-	
-	// Check if this is a directory (e.g., "spec" for running all specs)
-	stat, err := os.Stat(specPath)
-	if err == nil && stat.IsDir() {
-		// Run all specs in the directory
-		fmt.Printf("Running all specs in %s/\n", specPath)
-		cmd = exec.Command("bundle", "exec", "rspec", "--format", "progress", specPath)
-	} else {
-		// Check if the spec file exists before running
-		if _, err := os.Stat(specPath); os.IsNotExist(err) {
-			fmt.Printf("Spec file not found: %s\n", specPath)
-			fmt.Println("Watching for changes...")
-			return
-		}
-		
-		// Run single spec file
-		cmd = exec.Command("bundle", "exec", "rspec", "--format", "progress", specPath)
+
+	if _, err := os.Stat(specPath); errors.Is(err, os.ErrNotExist) {
+		fmt.Printf("Spec file not found: %s\n", specPath)
+		return
 	}
-	
+
+	args := []string{"bundle", "exec", "rspec", "--format", "progress", specPath}
+	cmd_string := strings.Join(args, " ")
+
+	fmt.Println("running:", cmd_string)
+
+	cmd = exec.Command(args[0], args[1:]...)
+
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to run spec: %v\n", err)
 	}
-
-	fmt.Printf(strings.Repeat("=", 80) + "\n\n")
-	fmt.Println("Watching for changes...")
+	slog.Debug("watching...")
 }

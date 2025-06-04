@@ -17,6 +17,10 @@ RSpec.configure do |config|
     @rux_binary ||= File.join(__dir__, "..", "rux", "rux")
   end
 
+  def rux_ruby_dir
+    @rux_ruby_dir ||= Pathname.new(__dir__).parent.join("rux-ruby")
+  end
+
   config.filter_run_when_matching :focus
   config.disable_monkey_patching!
 

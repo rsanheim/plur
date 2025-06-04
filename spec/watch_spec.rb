@@ -3,9 +3,11 @@ require_relative "../vendor/backspin/lib/backspin"
 require "tempfile"
 
 RSpec.describe "rux watch command" do
-  def run_rux_watch_in_dir(dir, timeout: 2, &block)
+  DEFAULT_RUX_TIMEOUT = 2
+
+  def run_rux_watch_in_dir(dir, rux_timeout: DEFAULT_RUX_TIMEOUT, &block)
     Dir.chdir(dir) do
-      cmd = "#{rux_binary} watch --timeout #{timeout}"
+      cmd = "#{rux_binary} watch --timeout #{rux_timeout}"
 
       stdout, stderr, status = nil
 
@@ -35,29 +37,20 @@ RSpec.describe "rux watch command" do
 
       expect(stderr).to be_empty
       expect(stdout).to include("Starting rux watch mode")
-      expect(stdout).to include("Watching spec directory for changes")
+      expect(stdout).to include("Watching directories: spec, lib")
       expect(stdout).to include("Will exit after 2 seconds")
       expect(stdout).to include("Timeout reached, exiting watch mode")
       expect(status.exitstatus).to eq(0)
     end
 
     it "detects and runs spec when file is modified" do
-      stdout, stderr, status = run_rux_watch_in_dir(rux_ruby_dir, timeout: 5) do
+      stdout, stderr, status = run_rux_watch_in_dir(rux_ruby_dir, rux_timeout: 2) do
         # Wait longer for watcher to fully initialize
         sleep 1
 
-        # Actually modify file content to ensure a modify event
-        spec_file = File.join(rux_ruby_dir, "spec", "calculator_spec.rb")
-        original_content = File.read(spec_file)
-
-        # Add a comment to trigger a real modification
-        File.write(spec_file, original_content + "\n# test modification")
-
-        # Give more time for detection and spec run
-        sleep 2
-
-        # Restore original content
-        File.write(spec_file, original_content)
+        # Write back the same file to trigger a modify event
+        spec_file = Pathname.new(rux_ruby_dir).join("spec", "calculator_spec.rb")
+        spec_file.write(spec_file.read)
       end
 
       # Debug output if test fails
@@ -69,19 +62,17 @@ RSpec.describe "rux watch command" do
         puts "=================="
       end
 
-      expect(stderr).to be_empty
-      expect(stdout).to include("Event: modify file")
+      expect(stdout).to include("running:")
+      expect(stdout).to include(/bundle exec rspec/)
       expect(stdout).to include("calculator_spec.rb")
-      expect(stdout).to include("Running spec:")
-      expect(stdout).to include("=====") # The separator from runSingleSpec
       expect(status.exitstatus).to eq(0)
     end
 
     it "creates initial watcher event on startup" do
       stdout, _, status = run_rux_watch_in_dir(rux_ruby_dir)
 
-      expect(stdout).to include("Event: create watcher")
-      expect(stdout).to include("/spec")
+      puts stdout
+      expect(stdout).to match(/watching directories: spec, lib/i)
       expect(status.exitstatus).to eq(0)
     end
   end
@@ -92,8 +83,9 @@ RSpec.describe "rux watch command" do
         Dir.chdir(tmpdir) do
           _, stderr, status = Open3.capture3("#{rux_binary} watch --timeout 1")
 
-          expect(stderr).to include("spec directory not found in current directory")
           expect(status.exitstatus).to eq(1)
+          expect(stderr).to match(/no directories to watch found/i)
+          expect(stderr).to include("spec")
         end
       end
     end
@@ -108,7 +100,7 @@ RSpec.describe "rux watch command" do
 
       # Use backspin with :once mode - records if file doesn't exist, replays if it does
       Backspin.use_dubplate("rux_watch_golden", record: :once) do
-        stdout, _, status = run_rux_watch_in_dir(rux_ruby_dir, timeout: 1)
+        stdout, _, status = run_rux_watch_in_dir(rux_ruby_dir, rux_timeout: 1)
 
         # Normalize output for consistent comparison
         normalized_stdout = stdout

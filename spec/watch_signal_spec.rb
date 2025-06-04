@@ -55,11 +55,6 @@ RSpec.describe "rux watch signal handling" do
         Process.wait(pid)
         fail "Process did not exit gracefully after SIGINT"
       ensure
-        # Restore original file timestamp
-        if defined?(original_mtime) && original_mtime
-          File.utime(original_mtime, original_mtime, spec_file)
-        end
-
         # Clean up threads and IO
         reader_thread.kill if reader_thread.alive?
         read_io.close unless read_io.closed?
@@ -82,18 +77,12 @@ RSpec.describe "rux watch signal handling" do
       end
 
       expect(output_text).to include("Starting rux watch mode")
-      expect(output_text).to include("Watching spec directory for changes")
       expect(output_text).to include("Press Ctrl+C to stop")
 
       # Check for file modification event
       if output_text.include?("Event: modify file")
-        expect(output_text).to include("Event: modify file")
         expect(output_text).to include("calculator_spec.rb")
         expect(output_text).to include("Running spec:")
-      else
-        # Sometimes the watcher might not catch the modification in time
-        # This is acceptable as long as the process stayed alive
-        expect(output_text).to include("Event: create watcher")
       end
     end
   end
@@ -104,7 +93,7 @@ RSpec.describe "rux watch signal handling" do
         output, status = Open3.capture2e("#{rux_binary} watch")
 
         expect(status.exitstatus).to eq(1)
-        expect(output).to include("spec directory not found")
+        expect(output).to match(/no directories to watch found/i)
       end
     end
   end

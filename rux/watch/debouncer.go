@@ -7,10 +7,10 @@ import (
 
 // Debouncer helps prevent multiple rapid executions
 type Debouncer struct {
-	mu       sync.Mutex
-	delay    time.Duration
-	timer    *time.Timer
-	pending  map[string]bool // Track pending files
+	mu      sync.Mutex
+	delay   time.Duration
+	timer   *time.Timer
+	pending map[string]bool // Track pending files
 }
 
 // NewDebouncer creates a new debouncer with the specified delay
@@ -39,16 +39,16 @@ func (d *Debouncer) Debounce(files []string, fn func([]string)) {
 	// Start new timer
 	d.timer = time.AfterFunc(d.delay, func() {
 		d.mu.Lock()
-		
+
 		// Get all pending files
 		pendingFiles := make([]string, 0, len(d.pending))
 		for file := range d.pending {
 			pendingFiles = append(pendingFiles, file)
 		}
-		
+
 		// Clear pending set
 		d.pending = make(map[string]bool)
-		
+
 		d.mu.Unlock()
 
 		// Execute function with all pending files
