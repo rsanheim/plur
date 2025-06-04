@@ -1,9 +1,9 @@
 require "spec_helper"
 
-RSpec.describe "Backspin use_dubplate integration" do
+RSpec.describe "Backspin use_record integration" do
   it "works seamlessly with rux testing" do
     # First run - records
-    output1 = Backspin.use_dubplate("rux_version") do
+    output1 = Backspin.use_record("rux_version") do
       stdout, _, _ = Open3.capture3("echo 'rux v0.6.0'")
       stdout
     end
@@ -11,7 +11,7 @@ RSpec.describe "Backspin use_dubplate integration" do
     expect(output1).to eq("rux v0.6.0\n")
 
     # Second run - replays without executing
-    output2 = Backspin.use_dubplate("rux_version") do
+    output2 = Backspin.use_record("rux_version") do
       stdout, _, _ = Open3.capture3("echo 'this will not run'")
       stdout
     end
@@ -23,20 +23,20 @@ RSpec.describe "Backspin use_dubplate integration" do
     # Test that our API is transparent
     original_result = Open3.capture3("echo test")
 
-    dubplate_result = Backspin.use_dubplate("transparent_test") do
+    record_result = Backspin.use_record("transparent_test") do
       Open3.capture3("echo test")
     end
 
-    expect(dubplate_result[0]).to eq(original_result[0]) # stdout
-    expect(dubplate_result[1]).to eq(original_result[1]) # stderr
-    expect(dubplate_result[2]).to eq(original_result[2].exitstatus) # status
+    expect(record_result[0]).to eq(original_result[0]) # stdout
+    expect(record_result[1]).to eq(original_result[1]) # stderr
+    expect(record_result[2]).to eq(original_result[2].exitstatus) # status
   end
 
   it "can be used in before/after hooks" do
     recordings = []
 
     3.times do |i|
-      result = Backspin.use_dubplate("hook_test") do
+      result = Backspin.use_record("hook_test") do
         Open3.capture3("echo iteration")
       end
       recordings << result[0]

@@ -2,28 +2,28 @@
 
 Remeber to run the full build after significant changes via `bin/rake` - the default task runs specs and standardrb.
 
-### Clean up where we store the data in the spec suite!
+### Clean up where we store the data in the spec suite! ✅
 
 * For unit test (i.e. things that don't remove saved data) we should use "spec/backspin_data", just like any other gem
 * For integration tests (i.e. things that have to remove saved records) we should use "./tmp/backspin_data"
 * We should never store data in "spec/backspin" - its confusing and I don't know how it keeps creeping back in
 
-### Rename Dubplate to Record
+### Rename Dubplate to Record ✅
 I want to have a more straight forward name here. Lets rename away from Dubplate to Record.
 Update specs as you go.
 
-* [ ] change the object name from `Dubplate` to `Record`
-* [ ] the location for record files can remain "backspin_data" - so by default in an rspec project it would be ./spec/backspin/records
-* [ ] change the top level Backspin.record to be named `Backspin.call` to avoid confusion
-* [ ] update docs and CLAUDE.md
-* [ ] commit  when everything is passing
+* [x] change the object name from `Dubplate` to `Record`
+* [x] the location for record files can remain "backspin_data" - so by default in an rspec project it would be ./spec/backspin_data
+* [x] change the top level Backspin.record to be named `Backspin.call` to avoid confusion
+* [x] update docs and CLAUDE.md
+* [ ] commit when everything is passing
 
-### Store `first_recorded_at` in the cassette file
+### Store `first_recorded_at` in the cassette file ✅
 
 We need to know the first recorded at time to allow automatic re-recording of the record later on.
 Add it to the Record object and the record file. Do not implement 're-record' yet.
 
-### Store the command info in the record file
+### Store the command info in the record file ✅
 
 i.e. store the command type (Open3.capture3) and the arguments (["echo", "hello"])
 

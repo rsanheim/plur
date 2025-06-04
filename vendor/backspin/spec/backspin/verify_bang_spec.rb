@@ -1,16 +1,16 @@
 require "spec_helper"
 
 RSpec.describe "Backspin verify! functionality" do
-  let(:dubplate_dir) { Pathname.new(File.join(Dir.pwd, "..")).join("tmp", "backspin") }
+  let(:record_dir) { Pathname.new(File.join(Dir.pwd, "..")).join("tmp", "backspin") }
 
   before do
     # Record a command for testing
-    Backspin.record("echo_verify_bang") do
+    Backspin.call("echo_verify_bang") do
       Open3.capture3("echo hello")
     end
   end
 
-  it "succeeds when output matches recorded dubplate" do
+  it "succeeds when output matches recorded record" do
     # Should not raise an error
     result = Backspin.verify!("echo_verify_bang") do
       Open3.capture3("echo hello")
@@ -20,7 +20,7 @@ RSpec.describe "Backspin verify! functionality" do
     expect(result.output).to eq("hello\n")
   end
 
-  it "raises an RSpec expectation error when output differs from recorded dubplate" do
+  it "raises an RSpec expectation error when output differs from recorded record" do
     expect {
       Backspin.verify!("echo_verify_bang") do
         Open3.capture3("echo goodbye")
@@ -35,7 +35,7 @@ RSpec.describe "Backspin verify! functionality" do
     fail "Expected RSpec::Expectations::ExpectationNotMetError to be raised"
   rescue RSpec::Expectations::ExpectationNotMetError => e
     expect(e.message).to include("Backspin verification failed!")
-    expect(e.message).to include("Dubplate:")
+    expect(e.message).to include("Record:")
     expect(e.message).to include("Expected output:")
     expect(e.message).to include("hello")
     expect(e.message).to include("Actual output:")

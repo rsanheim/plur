@@ -5,10 +5,10 @@ RSpec.describe "Backspin multi-command support" do
 
   context "recording multiple commands" do
     it "records and replays multiple commands in sequence" do
-      dubplate_name = "multi_command_test"
+      record_name = "multi_command_test"
 
       # First run: record multiple commands
-      Backspin.use_dubplate(dubplate_name) do
+      Backspin.use_record(record_name) do
         stdout1, _, _ = Open3.capture3("echo command1")
         expect(stdout1).to eq("command1\n")
 
@@ -19,18 +19,20 @@ RSpec.describe "Backspin multi-command support" do
         expect(stdout3).to eq("command3\n")
       end
 
-      # Verify dubplate was created with array
-      dubplate_path = backspin_path.join("#{dubplate_name}.yaml")
-      expect(dubplate_path).to exist
+      # Verify record was created with array
+      record_path = backspin_path.join("#{record_name}.yaml")
+      expect(record_path).to exist
 
-      dubplate_data = YAML.load_file(dubplate_path)
-      expect(dubplate_data).to be_a(Array)
-      expect(dubplate_data.size).to eq(3)
-      expect(dubplate_data.map { |cmd| cmd["stdout"] }).to eq(["command1\n", "command2\n", "command3\n"])
+      record_data = YAML.load_file(record_path)
+      expect(record_data).to be_a(Hash)
+      expect(record_data["format_version"]).to eq("2.0")
+      expect(record_data["commands"]).to be_an(Array)
+      expect(record_data["commands"].size).to eq(3)
+      expect(record_data["commands"].map { |cmd| cmd["stdout"] }).to eq(["command1\n", "command2\n", "command3\n"])
 
-      # Second run: replay from dubplate
+      # Second run: replay from record
       replay_outputs = []
-      Backspin.use_dubplate(dubplate_name) do
+      Backspin.use_record(record_name) do
         stdout1, _, _ = Open3.capture3("echo command1")
         replay_outputs << stdout1
 
@@ -45,9 +47,9 @@ RSpec.describe "Backspin multi-command support" do
     end
 
     it "handles mixed commands with different outputs" do
-      dubplate_name = "mixed_commands"
+      record_name = "mixed_commands"
 
-      Backspin.use_dubplate(dubplate_name) do
+      Backspin.use_record(record_name) do
         # Different commands with different outputs
         stdout1, _, status1 = Open3.capture3("echo success")
         expect(stdout1).to eq("success\n")
@@ -63,58 +65,62 @@ RSpec.describe "Backspin multi-command support" do
         expect(status3.exitstatus).to eq(42)
       end
 
-      # Verify dubplate structure
-      dubplate_path = backspin_path.join("#{dubplate_name}.yaml")
-      dubplate_data = YAML.load_file(dubplate_path)
-      expect(dubplate_data).to be_a(Array)
-      expect(dubplate_data.size).to eq(3)
+      # Verify record structure
+      record_path = backspin_path.join("#{record_name}.yaml")
+      record_data = YAML.load_file(record_path)
+      expect(record_data).to be_a(Hash)
+      expect(record_data["format_version"]).to eq("2.0")
+      expect(record_data["commands"]).to be_an(Array)
+      expect(record_data["commands"].size).to eq(3)
 
-      expect(dubplate_data[0]["stdout"]).to eq("success\n")
-      expect(dubplate_data[0]["status"]).to eq(0)
+      expect(record_data["commands"][0]["stdout"]).to eq("success\n")
+      expect(record_data["commands"][0]["status"]).to eq(0)
 
-      expect(dubplate_data[1]["stderr"]).to include("error message")
-      expect(dubplate_data[1]["status"]).to eq(0)
+      expect(record_data["commands"][1]["stderr"]).to include("error message")
+      expect(record_data["commands"][1]["status"]).to eq(0)
 
-      expect(dubplate_data[2]["status"]).to eq(42)
+      expect(record_data["commands"][2]["status"]).to eq(42)
     end
 
     it "fails gracefully when replaying with too few recordings" do
-      dubplate_name = "insufficient_recordings"
+      record_name = "insufficient_recordings"
 
       # Record only 2 commands
-      Backspin.use_dubplate(dubplate_name) do
+      Backspin.use_record(record_name) do
         Open3.capture3("echo first")
         Open3.capture3("echo second")
       end
 
       # Try to replay 3 commands - should fail on the third
       expect {
-        Backspin.use_dubplate(dubplate_name) do
+        Backspin.use_record(record_name) do
           Open3.capture3("echo first")
           Open3.capture3("echo second")
           Open3.capture3("echo third")  # This should fail
         end
-      }.to raise_error(Backspin::DubplateNotFoundError, /No more recordings available/)
+      }.to raise_error(Backspin::RecordNotFoundError, /No more recordings available/)
     end
 
     it "saves single commands as arrays for consistency" do
-      dubplate_name = "single_command_array"
+      record_name = "single_command_array"
 
       # Record single command (should save as array)
-      Backspin.use_dubplate(dubplate_name) do
+      Backspin.use_record(record_name) do
         stdout, _, _ = Open3.capture3("echo single")
         expect(stdout).to eq("single\n")
       end
 
-      # Verify dubplate is array even for single command
-      dubplate_path = backspin_path.join("#{dubplate_name}.yaml")
-      dubplate_data = YAML.load_file(dubplate_path)
-      expect(dubplate_data).to be_a(Array)
-      expect(dubplate_data.size).to eq(1)
-      expect(dubplate_data.first["stdout"]).to eq("single\n")
+      # Verify record is array even for single command
+      record_path = backspin_path.join("#{record_name}.yaml")
+      record_data = YAML.load_file(record_path)
+      expect(record_data).to be_a(Hash)
+      expect(record_data["format_version"]).to eq("2.0")
+      expect(record_data["commands"]).to be_an(Array)
+      expect(record_data["commands"].size).to eq(1)
+      expect(record_data["commands"].first["stdout"]).to eq("single\n")
 
       # Should still replay correctly
-      Backspin.use_dubplate(dubplate_name) do
+      Backspin.use_record(record_name) do
         stdout, _, _ = Open3.capture3("echo single")
         expect(stdout).to eq("single\n")
       end

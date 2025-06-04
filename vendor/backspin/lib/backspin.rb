@@ -6,10 +6,10 @@ require "ostruct"
 require "rspec/mocks"
 require "backspin/version"
 require "backspin/rspec_metadata"
-require "backspin/dubplate"
+require "backspin/record"
 
 module Backspin
-  class DubplateNotFoundError < StandardError; end
+  class RecordNotFoundError < StandardError; end
 
   # Include RSpec mocks methods
   extend RSpec::Mocks::ExampleMethods
@@ -78,22 +78,22 @@ module Backspin
   end
 
   class Result
-    attr_reader :commands, :dubplate_path
+    attr_reader :commands, :record_path
 
-    def initialize(commands:, dubplate_path:)
+    def initialize(commands:, record_path:)
       @commands = commands
-      @dubplate_path = dubplate_path
+      @record_path = record_path
     end
   end
 
   class VerifyResult
-    attr_reader :dubplate_path, :expected_output, :actual_output, :diff, :stderr_diff
+    attr_reader :record_path, :expected_output, :actual_output, :diff, :stderr_diff
 
-    def initialize(verified:, dubplate_path:, expected_output: nil, actual_output: nil,
+    def initialize(verified:, record_path:, expected_output: nil, actual_output: nil,
       expected_stderr: nil, actual_stderr: nil, expected_status: nil, actual_status: nil,
       command_executed: true)
       @verified = verified
-      @dubplate_path = dubplate_path
+      @record_path = record_path
       @expected_output = expected_output
       @actual_output = actual_output
       @expected_stderr = expected_stderr
@@ -172,6 +172,8 @@ module Backspin
     # Convert to hash for YAML serialization
     def to_h
       {
+        "command_type" => @method_class.name,
+        "args" => @args,
         "stdout" => Backspin.scrub_text(@stdout),
         "stderr" => Backspin.scrub_text(@stderr),
         "status" => @status,
@@ -183,7 +185,7 @@ module Backspin
     def self.from_h(data)
       new(
         method_class: Open3::Capture3,
-        args: [], # Args not stored in legacy format, but not needed for replay
+        args: data["args"],
         stdout: data["stdout"],
         stderr: data["stderr"],
         status: data["status"],
@@ -208,11 +210,11 @@ module Backspin
       scrubbed
     end
 
-    def record(dubplate_name)
-      raise ArgumentError, "dubplate_name is required" if dubplate_name.nil? || dubplate_name.empty?
+    def call(record_name)
+      raise ArgumentError, "record_name is required" if record_name.nil? || record_name.empty?
 
       commands = []
-      dubplate_path = build_dubplate_path(dubplate_name)
+      record_path = build_record_path(record_name)
 
       # Use RSpec's and_wrap_original to intercept calls
       allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
@@ -246,71 +248,68 @@ module Backspin
 
       yield
 
-      # Save commands to dubplate as array
-      FileUtils.mkdir_p(File.dirname(dubplate_path))
-      dubplate_data = commands.map(&:to_h)
-      File.write(dubplate_path, dubplate_data.to_yaml)
+      # Save commands using new format
+      FileUtils.mkdir_p(File.dirname(record_path))
+      # Don't load existing data when creating new record
+      record = Record.new(record_path)
+      record.clear  # Clear any loaded data
+      commands.each { |cmd| record.add_command(cmd) }
+      record.save
 
-      Result.new(commands: commands, dubplate_path: Pathname.new(dubplate_path))
+      Result.new(commands: commands, record_path: Pathname.new(record_path))
     end
 
     def output
       last_output
     end
 
-    def use_dubplate(dubplate_name, options = {}, &block)
-      raise ArgumentError, "dubplate_name is required" if dubplate_name.nil? || dubplate_name.empty?
+    def use_record(record_name, options = {}, &block)
+      raise ArgumentError, "record_name is required" if record_name.nil? || record_name.empty?
 
-      dubplate_path = build_dubplate_path(dubplate_name)
+      record_path = build_record_path(record_name)
       record_mode = options[:record] || :once
 
       case record_mode
       when :none
         # Never record, only replay
-        unless File.exist?(dubplate_path)
-          raise DubplateNotFoundError, "Dubplate not found: #{dubplate_path}"
+        unless File.exist?(record_path)
+          raise RecordNotFoundError, "Record not found: #{record_path}"
         end
-        replay_dubplate(dubplate_path, &block)
+        replay_record(record_path, &block)
       when :all
         # Always record
-        record_and_save_dubplate(dubplate_path, &block)
+        record_and_save_record(record_path, &block)
       when :once
         # Record if doesn't exist, replay if exists
-        if File.exist?(dubplate_path)
-          replay_dubplate(dubplate_path, &block)
+        if File.exist?(record_path)
+          replay_record(record_path, &block)
         else
-          record_and_save_dubplate(dubplate_path, &block)
+          record_and_save_record(record_path, &block)
         end
       when :new_episodes
-        # Record new commands not in dubplate
+        # Record new commands not in record
         # For now, simplified: just append new recordings
-        record_new_episode(dubplate_path, &block)
+        record_new_episode(record_path, &block)
       else
         raise ArgumentError, "Unknown record mode: #{record_mode}"
       end
     end
 
-    def verify(dubplate_name, mode: :strict, matcher: nil, &block)
-      dubplate_path = build_dubplate_path(dubplate_name)
+    def verify(record_name, mode: :strict, matcher: nil, &block)
+      record_path = build_record_path(record_name)
 
-      unless File.exist?(dubplate_path)
-        raise DubplateNotFoundError, "Dubplate not found: #{dubplate_path}"
+      record = Record.load_or_create(record_path)
+      unless record.exists?
+        raise RecordNotFoundError, "Record not found: #{record_path}"
       end
 
-      recordings_data = YAML.load_file(dubplate_path)
-
-      # Convert hash data to Command objects
-      unless recordings_data.is_a?(Array)
-        raise DubplateNotFoundError, "Invalid dubplate format: expected array"
+      if record.empty?
+        raise RecordNotFoundError, "No commands found in record"
       end
 
       # For verify, we only handle single command verification for now
       # Use the first command
-      if recordings_data.empty?
-        raise DubplateNotFoundError, "No commands found in dubplate"
-      end
-
-      command = Command.from_h(recordings_data.first)
+      command = record.commands.first
 
       if mode == :playback
         # Playback mode: return recorded output without running command
@@ -326,7 +325,7 @@ module Backspin
         # In playback mode, always verified
         VerifyResult.new(
           verified: true,
-          dubplate_path: Pathname.new(dubplate_path),
+          record_path: Pathname.new(record_path),
           expected_output: command.stdout,
           actual_output: actual_stdout,
           expected_stderr: command.stderr,
@@ -356,7 +355,7 @@ module Backspin
 
         VerifyResult.new(
           verified: verified,
-          dubplate_path: Pathname.new(dubplate_path),
+          record_path: Pathname.new(record_path),
           expected_output: command.stdout,
           actual_output: actual_data["stdout"],
           expected_stderr: command.stderr,
@@ -387,7 +386,7 @@ module Backspin
 
         VerifyResult.new(
           verified: verified,
-          dubplate_path: Pathname.new(dubplate_path),
+          record_path: Pathname.new(record_path),
           expected_output: command.stdout,
           actual_output: actual_stdout,
           expected_stderr: command.stderr,
@@ -398,12 +397,12 @@ module Backspin
       end
     end
 
-    def verify!(dubplate_name, mode: :strict, matcher: nil, &block)
-      result = verify(dubplate_name, mode: mode, matcher: matcher, &block)
+    def verify!(record_name, mode: :strict, matcher: nil, &block)
+      result = verify(record_name, mode: mode, matcher: matcher, &block)
 
       unless result.verified?
         error_message = "Backspin verification failed!\n"
-        error_message += "Dubplate: #{result.dubplate_path}\n"
+        error_message += "Record: #{result.record_path}\n"
         error_message += "Expected output:\n#{result.expected_output}\n"
         error_message += "Actual output:\n#{result.actual_output}\n"
 
@@ -424,33 +423,27 @@ module Backspin
 
     private
 
-    def replay_dubplate(dubplate_path, &block)
-      recordings_data = YAML.load_file(dubplate_path)
-
-      # Dubplates are always arrays now
-      unless recordings_data.is_a?(Array)
-        raise DubplateNotFoundError, "Invalid dubplate format: expected array"
+    def replay_record(record_path, &block)
+      record = Record.load_or_create(record_path)
+      unless record.exists?
+        raise RecordNotFoundError, "Record not found: #{record_path}"
       end
 
-      # Convert hash data to Command objects
-      commands = recordings_data.map { |data| Command.from_h(data) }
-      current_command_index = 0
+      if record.empty?
+        raise RecordNotFoundError, "No commands found in record"
+      end
 
       # Use RSpec to stub Open3.capture3 to return recorded data
       allow(Open3).to receive(:capture3) do |*args|
-        if current_command_index < commands.size
-          command = commands[current_command_index]
-          current_command_index += 1
+        command = record.next_command
 
-          recorded_stdout = command.stdout
-          recorded_stderr = command.stderr
-          recorded_status = OpenStruct.new(exitstatus: command.status)
+        recorded_stdout = command.stdout
+        recorded_stderr = command.stderr
+        recorded_status = OpenStruct.new(exitstatus: command.status)
 
-          [recorded_stdout, recorded_stderr, recorded_status]
-        else
-          # If we run out of recordings, raise an error
-          raise DubplateNotFoundError, "No more recordings available for replay"
-        end
+        [recorded_stdout, recorded_stderr, recorded_status]
+      rescue NoMoreRecordingsError => e
+        raise RecordNotFoundError, e.message
       end
 
       block_return_value = yield
@@ -468,7 +461,7 @@ module Backspin
       end
     end
 
-    def record_and_save_dubplate(dubplate_path, &block)
+    def record_and_save_record(record_path, &block)
       commands = []
 
       # Use RSpec's and_wrap_original to record and save
@@ -500,10 +493,13 @@ module Backspin
 
       block_return_value = yield
 
-      # Save commands to dubplate as array
-      FileUtils.mkdir_p(File.dirname(dubplate_path))
-      dubplate_data = commands.map(&:to_h)
-      File.write(dubplate_path, dubplate_data.to_yaml)
+      # Save commands using new format
+      FileUtils.mkdir_p(File.dirname(record_path))
+      # Don't load existing data when creating new record
+      record = Record.new(record_path)
+      record.clear  # Clear any loaded data
+      commands.each { |cmd| record.add_command(cmd) }
+      record.save
 
       # Return appropriate value
       if block_return_value.is_a?(Array) && block_return_value.size == 3
@@ -515,15 +511,10 @@ module Backspin
       end
     end
 
-    def record_new_episode(dubplate_path, &block)
+    def record_new_episode(record_path, &block)
       # For new_episodes mode, we'd need to track which commands have been seen
       # For now, simplified implementation that just appends
-      existing_recordings = if File.exist?(dubplate_path)
-        YAML.load_file(dubplate_path) || []
-      else
-        []
-      end
-
+      record = Record.load_or_create(record_path)
       new_commands = []
 
       # Use RSpec's and_wrap_original to record new episodes
@@ -557,10 +548,8 @@ module Backspin
 
       # Save all recordings (existing + new)
       if new_commands.any?
-        new_command_data = new_commands.map(&:to_h)
-        all_recordings = existing_recordings + new_command_data
-        FileUtils.mkdir_p(File.dirname(dubplate_path))
-        File.write(dubplate_path, all_recordings.to_yaml)
+        new_commands.each { |cmd| record.add_command(cmd) }
+        record.save
       end
 
       # Return appropriate value
@@ -572,13 +561,13 @@ module Backspin
       end
     end
 
-    def build_dubplate_path(name)
+    def build_record_path(name)
       backspin_dir = configuration.backspin_dir
       backspin_dir.mkpath
 
       # For verify, we still support auto-naming
       if name.nil? || name.empty?
-        name = RSpecMetadata.dubplate_name_from_example
+        name = RSpecMetadata.record_name_from_example
       end
 
       File.join(backspin_dir, "#{name}.yaml")

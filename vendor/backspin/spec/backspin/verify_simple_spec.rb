@@ -3,7 +3,7 @@ require "spec_helper"
 RSpec.describe "Backspin simple verify" do
   it "verifies matching output" do
     # Record
-    Backspin.record("simple_echo") do
+    Backspin.call("simple_echo") do
       Open3.capture3("echo hello")
     end
 
@@ -17,7 +17,7 @@ RSpec.describe "Backspin simple verify" do
 
   it "detects non-matching output" do
     # Record
-    Backspin.record("echo_original") do
+    Backspin.call("echo_original") do
       Open3.capture3("echo original")
     end
 
@@ -29,11 +29,11 @@ RSpec.describe "Backspin simple verify" do
     expect(result.verified?).to be false
   end
 
-  it "raises error when dubplate not found" do
+  it "raises error when record not found" do
     expect {
       Backspin.verify("missing") do
         Open3.capture3("echo test")
       end
-    }.to raise_error(Backspin::DubplateNotFoundError)
+    }.to raise_error(Backspin::RecordNotFoundError)
   end
 end

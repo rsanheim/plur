@@ -4,12 +4,12 @@ RSpec.describe "Backspin verify functionality" do
   describe "basic verification" do
     before do
       # First, record a command
-      Backspin.record("echo_verify") do
+      Backspin.call("echo_verify") do
         Open3.capture3("echo hello")
       end
     end
 
-    it "passes when output matches recorded dubplate" do
+    it "passes when output matches recorded record" do
       result = Backspin.verify("echo_verify") do
         Open3.capture3("echo hello")
       end
@@ -18,7 +18,7 @@ RSpec.describe "Backspin verify functionality" do
       expect(result.output).to eq("hello\n")
     end
 
-    it "fails when output differs from recorded dubplate" do
+    it "fails when output differs from recorded record" do
       result = Backspin.verify("echo_verify") do
         Open3.capture3("echo goodbye")
       end
@@ -32,7 +32,7 @@ RSpec.describe "Backspin verify functionality" do
 
     it "verifies stderr and exit status too" do
       # Record a command with stderr
-      Backspin.record("stderr_test") do
+      Backspin.call("stderr_test") do
         Open3.capture3("sh -c 'echo error >&2; exit 1'")
       end
 
@@ -56,7 +56,7 @@ RSpec.describe "Backspin verify functionality" do
 
   describe "verification modes" do
     it "can run in strict mode (default) - must match exactly" do
-      Backspin.record("timestamp_test") do
+      Backspin.call("timestamp_test") do
         Open3.capture3("date +%s%N") # nanoseconds since epoch
       end
 
@@ -71,7 +71,7 @@ RSpec.describe "Backspin verify functionality" do
     end
 
     it "can run in playback mode - returns recorded output without running command" do
-      Backspin.record("playback_test") do
+      Backspin.call("playback_test") do
         Open3.capture3("echo original")
       end
 
@@ -86,7 +86,7 @@ RSpec.describe "Backspin verify functionality" do
     end
 
     it "can use custom matchers for flexible verification" do
-      Backspin.record("version_test") do
+      Backspin.call("version_test") do
         Open3.capture3("ruby --version")
       end
 
@@ -102,16 +102,16 @@ RSpec.describe "Backspin verify functionality" do
   end
 
   describe "error handling" do
-    it "raises error when dubplate doesn't exist" do
+    it "raises error when record doesn't exist" do
       expect {
         Backspin.verify("nonexistent") do
           Open3.capture3("echo test")
         end
-      }.to raise_error(Backspin::DubplateNotFoundError, /nonexistent.yaml/)
+      }.to raise_error(Backspin::RecordNotFoundError, /nonexistent.yaml/)
     end
 
     it "provides helpful error messages on verification failure" do
-      Backspin.record("failure_test") do
+      Backspin.call("failure_test") do
         Open3.capture3("echo expected")
       end
 
@@ -125,14 +125,14 @@ RSpec.describe "Backspin verify functionality" do
     end
   end
 
-  describe "auto-dubplate naming with verify", pending: "Verify still supports auto-naming but record doesn't" do
-    it "uses auto-generated dubplate name when not specified" do
+  describe "auto-record naming with verify", pending: "Verify still supports auto-naming but record doesn't" do
+    it "uses auto-generated record name when not specified" do
       # This test is pending because record no longer supports auto-naming
       # but verify still does. Keeping for future reference.
-      pending "record requires dubplate name"
+      pending "record requires record name"
 
       # Record with auto-generated name
-      Backspin.record do
+      Backspin.call do
         Open3.capture3("echo auto")
       end
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Backspin is a Ruby gem for characterization testing of command-line interfaces. It records and replays CLI interactions by capturing stdout, stderr, and exit status from shell commands - similar to how VCR works for HTTP interactions. Backspin uses "dubplates" (YAML files) to store recorded command outputs.
+Backspin is a Ruby gem for characterization testing of command-line interfaces. It records and replays CLI interactions by capturing stdout, stderr, and exit status from shell commands - similar to how VCR works for HTTP interactions. Backspin uses "records" (YAML files) to store recorded command outputs.
 
 ## Development Commands
 
@@ -37,7 +37,7 @@ bin/rake standard               # Run Standard Ruby linter
 ### Core Components
 
 **Backspin Module** (`lib/backspin.rb`)
-- Main API: `record`, `verify`, `verify!`, `use_dubplate`
+- Main API: `call`, `verify`, `verify!`, `use_record`
 - Credential scrubbing logic
 - Configuration management
 
@@ -45,24 +45,24 @@ bin/rake standard               # Run Standard Ruby linter
 - Represents a single CLI execution
 - Stores: args, stdout, stderr, status, recorded_at
 
-**Dubplate Class** (`lib/backspin/dubplate.rb`)
-- Manages YAML cassette files
+**Record Class** (`lib/backspin/record.rb`)
+- Manages YAML record files
 - Handles recording/playback sequencing
 
 **RSpecMetadata** (`lib/backspin/rspec_metadata.rb`)
-- Auto-generates dubplate names from RSpec context
+- Auto-generates record names from RSpec context
 
 ### Key Design Patterns
 
 - Uses RSpec mocking to intercept `Open3.capture3` calls
-- Dubplates are stored as YAML arrays to support multiple commands
+- Records are stored as YAML arrays to support multiple commands
 - Automatic credential scrubbing for security (AWS keys, API tokens, passwords)
 - VCR-style recording modes: `:once`, `:all`, `:none`, `:new_episodes`
 
 ### Testing Approach
 
 - Integration-focused tests that exercise the full stack
-- Default dubplate directory is `spec/backspin_data` (can be configured)
+- Default record directory is `spec/backspin_data` (can be configured)
 - Tests use real shell commands (`echo`, `date`, etc.)
 - Configuration is reset between tests to avoid side effects
 - **Important**: Backspin specs MUST be as local and un-DRY as possible. Each spec should be self-contained with its own setup, expectations, and cleanup if needed. Avoid shared contexts or helpers that hide important test details.
@@ -76,7 +76,7 @@ bin/rake standard               # Run Standard Ruby linter
 4. Run tests with `rake spec`
 
 ### Debugging Tests
-- Dubplates are saved to `spec/backspin_data/` by default
+- Records are saved to `spec/backspin_data/` by default
 - Check YAML files to see recorded command outputs
 - Use `VERBOSE=1` for additional output during tests
 

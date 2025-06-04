@@ -1,6 +1,6 @@
 module Backspin
   module RSpecMetadata
-    def self.dubplate_name_from_example
+    def self.record_name_from_example
       return nil unless defined?(RSpec) && RSpec.respond_to?(:current_example)
 
       example = RSpec.current_example

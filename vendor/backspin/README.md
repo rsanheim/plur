@@ -32,18 +32,18 @@ Or install it yourself as:
 require 'backspin'
 
 # Record a command's output
-result = Backspin.record("echo_hello") do
+result = Backspin.call("echo_hello") do
   stdout, stderr, status = Open3.capture3("echo hello")
 end
 
-# The cassette is saved to tmp/backspin/echo_hello.yaml
+# The record is saved to spec/backspin_data/echo_hello.yaml
 ```
 
 ### Verifying CLI output
 
 ```ruby
 # Verify that a command produces the expected output
-result = Backspin.verify(cassette: "echo_hello") do
+result = Backspin.verify("echo_hello") do
   Open3.capture3("echo hello")
 end
 
@@ -54,7 +54,7 @@ expect(result.verified?).to be true
 
 ```ruby
 # Automatically fail the test if output doesn't match
-Backspin.verify!(cassette: "echo_hello") do
+Backspin.verify!("echo_hello") do
   Open3.capture3("echo hello")
 end
 ```
@@ -63,7 +63,7 @@ end
 
 ```ruby
 # Return recorded output without running the command
-result = Backspin.verify(cassette: "slow_command", mode: :playback) do
+result = Backspin.verify("slow_command", mode: :playback) do
   Open3.capture3("slow_command")  # Not actually executed!
 end
 ```
@@ -72,7 +72,7 @@ end
 
 ```ruby
 # Use custom logic to verify output
-Backspin.verify(cassette: "version_check", 
+Backspin.verify("version_check", 
                 matcher: ->(recorded, actual) {
                   # Just check that both start with "ruby"
                   recorded["stdout"].start_with?("ruby") && 
@@ -82,22 +82,22 @@ Backspin.verify(cassette: "version_check",
 end
 ```
 
-### VCR-style use_cassette
+### VCR-style use_record
 
 ```ruby
 # Record on first run, replay on subsequent runs
-Backspin.use_cassette("my_command", record: :once) do
+Backspin.use_record("my_command", record: :once) do
   Open3.capture3("echo hello")
 end
 ```
 
 ### Credential Scrubbing
 
-By default, Backspin automatically scrubs common credential patterns from cassettes:
+By default, Backspin automatically scrubs common credential patterns from records:
 
 ```ruby
 # This will automatically scrub AWS keys, API tokens, passwords, etc.
-Backspin.record("aws_command") do
+Backspin.call("aws_command") do
   Open3.capture3("aws s3 ls")
 end
 
@@ -122,10 +122,10 @@ Automatic scrubbing includes:
 
 - **Simple recording**: Capture stdout, stderr, and exit status
 - **Flexible verification**: Strict matching, playback mode, or custom matchers
-- **Auto-naming**: Automatically generate cassette names from RSpec examples
-- **Multiple commands**: Record sequences of commands in a single cassette
+- **Auto-naming**: Automatically generate record names from RSpec examples
+- **Multiple commands**: Record sequences of commands in a single record
 - **RSpec integration**: Works seamlessly with RSpec's mocking framework
-- **Human-readable**: YAML cassettes are easy to read and edit
+- **Human-readable**: YAML records are easy to read and edit
 - **Credential scrubbing**: Automatically removes sensitive data like API keys and passwords
 
 ## Development
