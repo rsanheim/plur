@@ -1,7 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Backspin use_dubplate integration" do
-
   it "works seamlessly with rux testing" do
     # First run - records
     output1 = Backspin.use_dubplate("rux_version") do
@@ -46,5 +45,4 @@ RSpec.describe "Backspin use_dubplate integration" do
     # All iterations should get the same recorded value
     expect(recordings).to eq(["iteration\n", "iteration\n", "iteration\n"])
   end
-
 end

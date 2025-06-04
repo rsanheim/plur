@@ -18,10 +18,9 @@ module Backspin
   class Configuration
     attr_accessor :scrub_credentials
     # The directory where backspin will store its files - defaults to spec/backspin
-    attr_accessor :backspin_dir 
+    attr_accessor :backspin_dir
     # Regex patterns to scrub from saved output
     attr_reader :credential_patterns
-
 
     def initialize
       @scrub_credentials = true

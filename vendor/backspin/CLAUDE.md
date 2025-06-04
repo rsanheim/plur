@@ -16,7 +16,7 @@ bin/setup
 
 ### Testing
 ```bash
-rake spec                    # Run all tests
+bin/rake spec                    # Run all tests
 rspec spec/[file]           # Run specific test file
 rspec spec/[file]:[line]    # Run specific test
 ```
@@ -29,7 +29,7 @@ bundle exec rake release     # Release to RubyGems (updates version, tags, pushe
 
 ### Code Quality
 ```bash
-rake standard               # Run Standard Ruby linter
+bin/rake standard               # Run Standard Ruby linter
 ```
 
 ## Architecture

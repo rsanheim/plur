@@ -51,8 +51,7 @@ RSpec.describe "Backspin verify! functionality" do
         matcher: ->(recorded, actual) {
           # This matcher will always fail
           false
-        }
-      ) do
+        }) do
         Open3.capture3("echo hello")
       end
     }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /Backspin verification failed!/)

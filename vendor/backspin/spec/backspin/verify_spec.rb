@@ -1,7 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Backspin verify functionality" do
-
   describe "basic verification" do
     before do
       # First, record a command
@@ -145,5 +144,4 @@ RSpec.describe "Backspin verify functionality" do
       expect(result.verified?).to be true
     end
   end
-
 end

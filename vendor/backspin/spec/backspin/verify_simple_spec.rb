@@ -1,7 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Backspin simple verify" do
-
   it "verifies matching output" do
     # Record
     Backspin.record("simple_echo") do
@@ -37,5 +36,4 @@ RSpec.describe "Backspin simple verify" do
       end
     }.to raise_error(Backspin::DubplateNotFoundError)
   end
-
 end

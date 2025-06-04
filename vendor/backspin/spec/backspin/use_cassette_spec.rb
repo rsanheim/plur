@@ -49,7 +49,7 @@ RSpec.describe "Backspin.use_dubplate" do
     it "supports record modes" do
       # Clean up any existing file first
       FileUtils.rm_f(dubplate_dir.join("modes_test.yaml"))
-      
+
       # Record initially
       Backspin.use_dubplate("modes_test") do
         Open3.capture3("echo first")
@@ -145,5 +145,4 @@ RSpec.describe "Backspin.use_dubplate" do
       }.to raise_error("Something went wrong")
     end
   end
-
 end

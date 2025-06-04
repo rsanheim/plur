@@ -1,7 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Backspin edge cases" do
-
   it "raises error for empty dubplate name" do
     expect {
       Backspin.record("") do
@@ -26,5 +25,4 @@ RSpec.describe "Backspin edge cases" do
     # Slashes should create subdirectories
     expect(result.dubplate_path.to_s).to end_with("test/with/slashes.yaml")
   end
-
 end

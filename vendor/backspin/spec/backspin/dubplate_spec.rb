@@ -87,7 +87,7 @@ RSpec.describe Backspin::Dubplate do
       dubplate.save
 
       expect(File.exist?(dubplate_path)).to be true
-      
+
       saved_data = YAML.load_file(dubplate_path)
       expect(saved_data).to be_an(Array)
       expect(saved_data.size).to eq(2)
@@ -103,7 +103,7 @@ RSpec.describe Backspin::Dubplate do
       # Create a new dubplate instance that won't load the existing data
       new_dubplate = described_class.new(dubplate_path)
       expect(new_dubplate.size).to eq(1)  # It loaded the existing data
-      
+
       # Clear and add new data
       new_dubplate.clear
       new_dubplate.add_command(create_test_command("new"))
@@ -208,7 +208,7 @@ RSpec.describe Backspin::Dubplate do
       dubplate.add_command(create_test_command("only"))
 
       dubplate.next_command # Use the only command
-      
+
       expect {
         dubplate.next_command
       }.to raise_error(Backspin::NoMoreRecordingsError, /No more recordings available/)
@@ -245,14 +245,14 @@ RSpec.describe Backspin::Dubplate do
       ].to_yaml)
 
       dubplate = described_class.load_or_create(dubplate_path)
-      
+
       expect(dubplate.size).to eq(1)
       expect(dubplate.commands.first.stdout).to eq("existing\n")
     end
 
     it "creates new dubplate if file doesn't exist" do
       dubplate = described_class.load_or_create(dubplate_path)
-      
+
       expect(dubplate.empty?).to be true
       expect(dubplate.path).to eq(dubplate_path)
     end
