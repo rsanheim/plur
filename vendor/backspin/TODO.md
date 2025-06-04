@@ -16,7 +16,7 @@ Update specs as you go.
 * [x] the location for record files can remain "backspin_data" - so by default in an rspec project it would be ./spec/backspin_data
 * [x] change the top level Backspin.record to be named `Backspin.call` to avoid confusion
 * [x] update docs and CLAUDE.md
-* [ ] commit when everything is passing
+* [x] commit when everything is passing
 
 ### Store `first_recorded_at` in the cassette file ✅
 
