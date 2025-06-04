@@ -1,8 +1,9 @@
 require "spec_helper"
-require "tempfile"
-require "fileutils"
 
-RSpec.describe "rux watch file mapping integration" do
+RSpec.describe "rux watch advanced file mapping" do
+  # This spec focuses on testing with temporary directory structures
+  # Basic file mapping is covered in watch_integration_spec.rb
+  
   let(:temp_dir) { Dir.mktmpdir("rux-watch-mapping-test") }
 
   before do
@@ -87,66 +88,54 @@ RSpec.describe "rux watch file mapping integration" do
     FileUtils.rm_rf(temp_dir)
   end
 
-  def simulate_file_change_and_capture_output(file_to_change, expected_spec)
-    Dir.chdir(temp_dir) do
-      output = nil
-
-      # Start watch mode in a thread
-      watch_thread = Thread.new do
-        output = `timeout 3 rux watch 2>&1`
-      end
-
-      # Wait for watcher to start
-      sleep 1
-
-      # Touch the file to trigger a change
-      FileUtils.touch(file_to_change)
-
-      # Wait for the thread to complete
-      watch_thread.join
-
-      output
-    end
+  it "watches multiple directories including app when present" do
+    result = run_rux_watch(dir: temp_dir, timeout: 1)
+    expect(result.out).to include("Watching directories: spec, lib, app")
   end
 
   it "runs the corresponding spec when a lib file changes" do
-    output = simulate_file_change_and_capture_output("lib/calculator.rb", "spec/calculator_spec.rb")
+    result = run_rux_watch(dir: temp_dir, timeout: 3) do
+      sleep 1
+      FileUtils.touch("#{temp_dir}/lib/calculator.rb")
+    end
 
-    expect(output).to include("Changed: lib/calculator.rb")
-    expect(output).to include("Running: spec/calculator_spec.rb")
-    expect(output).to include("1 example, 0 failures")
+    expect(result.out).to include("Changed: lib/calculator.rb")
+    expect(result.out).to include("Running: spec/calculator_spec.rb")
+    expect(result.out).to include("1 example, 0 failures")
   end
 
   it "runs the corresponding model spec when a Rails model changes" do
-    output = simulate_file_change_and_capture_output("app/models/user.rb", "spec/models/user_spec.rb")
+    result = run_rux_watch(dir: temp_dir, timeout: 3) do
+      sleep 1
+      FileUtils.touch("#{temp_dir}/app/models/user.rb")
+    end
 
-    expect(output).to include("Changed: app/models/user.rb")
-    expect(output).to include("Running: spec/models/user_spec.rb")
-    expect(output).to include("1 example, 0 failures")
+    expect(result.out).to include("Changed: app/models/user.rb")
+    expect(result.out).to include("Running: spec/models/user_spec.rb")
+    expect(result.out).to include("1 example, 0 failures")
   end
 
   it "runs all specs when spec_helper.rb changes" do
-    output = simulate_file_change_and_capture_output("spec/spec_helper.rb", "all specs")
+    result = run_rux_watch(dir: temp_dir, timeout: 3) do
+      sleep 1
+      FileUtils.touch("#{temp_dir}/spec/spec_helper.rb")
+    end
 
-    expect(output).to include("Changed: spec/spec_helper.rb")
-    expect(output).to include("Running: spec")
-    expect(output).to include("Running all specs in spec/")
+    expect(result.out).to include("Changed: spec/spec_helper.rb")
+    expect(result.out).to include("Running: spec")
+    expect(result.out).to include("Running all specs in spec/")
     # Should run all 3 specs
-    expect(output).to include("3 examples, 0 failures")
+    expect(result.out).to include("3 examples, 0 failures")
   end
 
   it "handles nested lib files correctly" do
-    output = simulate_file_change_and_capture_output("lib/models/product.rb", "spec/models/product_spec.rb")
-
-    expect(output).to include("Changed: lib/models/product.rb")
-    expect(output).to include("Running: spec/models/product_spec.rb")
-    expect(output).to include("1 example, 0 failures")
-  end
-
-  it "watches multiple directories" do
-    Dir.chdir(temp_dir) do
-      output = `timeout 1 rux watch 2>&1`
-      expect(output).to include("Watching directories: spec, lib, app")
+    result = run_rux_watch(dir: temp_dir, timeout: 3) do
+      sleep 1
+      FileUtils.touch("#{temp_dir}/lib/models/product.rb")
     end
+
+    expect(result.out).to include("Changed: lib/models/product.rb")
+    expect(result.out).to include("Running: spec/models/product_spec.rb")
+    expect(result.out).to include("1 example, 0 failures")
   end
 end

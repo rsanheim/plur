@@ -25,7 +25,12 @@ RSpec.describe "single failure golden test" do
 
   it "shows filtered backtrace same as rspec using Backspin" do
     # Record RSpec output as the golden master with normalized times
-    Backspin.use_dubplate("rspec_backtrace_golden", record: :once) do
+    Backspin.use_record("rspec_backtrace_golden", record: :once, 
+      filter: ->(data) {
+        # Normalize timing information in stdout
+        data["stdout"] = make_summary_line_consistent(data["stdout"]) if data["stdout"]
+        data
+      }) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--tty", "--force-color")
       end
@@ -57,7 +62,12 @@ RSpec.describe "single failure golden test" do
 
   it "matches rspec colorized output using Backspin verification" do
     # Record RSpec output as the golden master with normalized times
-    Backspin.use_dubplate("rspec_colorized_output_golden", record: :once) do
+    Backspin.use_record("rspec_colorized_output_golden", record: :once,
+      filter: ->(data) {
+        # Normalize timing information in stdout
+        data["stdout"] = make_summary_line_consistent(data["stdout"]) if data["stdout"]
+        data
+      }) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--force-color", "--tty")
       end
@@ -88,7 +98,12 @@ RSpec.describe "single failure golden test" do
   it "demonstrates Backspin playback mode for fast tests" do
     # First run: record the RSpec output (slow)
     Time.now
-    Backspin.use_dubplate("rspec_playback_demo", record: :once) do
+    Backspin.use_record("rspec_playback_demo", record: :once,
+      filter: ->(data) {
+        # Normalize timing information in stdout
+        data["stdout"] = make_summary_line_consistent(data["stdout"]) if data["stdout"]
+        data
+      }) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--force-color")
       end

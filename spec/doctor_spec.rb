@@ -57,8 +57,8 @@ RSpec.describe "rux doctor command" do
   end
 
   it "produces consistent output using Backspin golden testing" do
-    # Use use_dubplate for easier recording management
-    Backspin.use_dubplate("rux_doctor_golden", record: :once) do
+    # Use use_record for easier recording management
+    Backspin.use_record("rux_doctor_golden", record: :once) do
       run_rux_doctor
     end
 

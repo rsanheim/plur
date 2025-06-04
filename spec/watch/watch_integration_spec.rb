@@ -14,11 +14,16 @@ RSpec.describe "rux watch integration" do
       env = {"GO_LOG" => "debug"}
       full_timeout = rux_timeout + 1
       cmd = TTY::Command.new(timeout: full_timeout)
-      result = cmd.run(args, env: env)
+      streamed_out, streamed_err = [], []
+      changes = block
+      result = cmd.run(args, env: env) do |out, err|
+        streamed_out << out
+        streamed_err << err
+        block.call if block_given?
+      end
 
-      yield if block_given?
 
-      result
+      [result, streamed_out, streamed_err]
     end
     
   end
@@ -36,12 +41,13 @@ RSpec.describe "rux watch integration" do
       # Touch a lib file
       calculator_file = rux_ruby_dir.join("lib/calculator.rb")
       calculator_file.write(calculator_file.read)
+
       sleep 2.0
     end
-    pp result
+    pp result.err
 
-    expect(output).to include("Changed: lib/calculator.rb")
-    expect(output).to include("Running: spec/calculator_spec.rb")
+    expect(result.err).to include("Changed: lib/calculator.rb")
+    expect(result.out).to include("Running: spec/calculator_spec.rb")
   end
 
   it "maps nested lib files correctly" do
@@ -82,14 +88,23 @@ RSpec.describe "rux watch integration" do
     expect(output).to include("Running all specs in spec/")
   end
 
-  it "handles spec file changes" do
-    output = capture_watch_output do
-      FileUtils.touch(rux_ruby_dir.join("spec/calculator_spec.rb"))
-      sleep 0.5
+  fit "handles spec file changes" do
+    $stdout.sync = true
+    $stderr.sync = true
+
+    spec_path = rux_ruby_dir.join("spec/calculator_spec.rb")
+    contents = spec_path.read
+    result, streamed_out, streamed_err = capture_watch_output(rux_timeout: 5) do
+      file = spec_path.open("w")
+      file.write("test")
+      file.flush
     end
 
-    expect(output).to include("Changed: spec/calculator_spec.rb")
-    expect(output).to include("Running: spec/calculator_spec.rb")
+    pp ["command result", result]
+    pp ["streamed out", streamed_out]
+    pp ["streamed err", streamed_err]
+    expect(result.err).to include("Changed: spec/calculator_spec.rb")
+    expect(result.out).to include("Running: spec/calculator_spec.rb")
   end
 
   it "ignores non-Ruby files" do

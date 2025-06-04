@@ -29,8 +29,6 @@ RSpec.describe "Rux integration tests" do
 
   describe "database tasks" do
     it "shows dry-run output for database creation" do
-      pending "skipping database tasks for now"
-
       Dir.chdir(test_app_dir) do
         stdout, _, status = Open3.capture3(rux_binary, "db:create", "--dry-run", "-n", "3")
 

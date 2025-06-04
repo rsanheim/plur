@@ -25,6 +25,7 @@ func runWatch(ctx *cli.Context) error {
 	defer slog.SetLogLoggerLevel(currentLogLevel) // revert chang
 
 	fmt.Println("Starting rux watch mode...")
+	slog.Debug("log level", "level", currentLogLevel)
 
 	// Create file mapper
 	fileMapper := watch.NewFileMapper()
@@ -81,6 +82,7 @@ func runWatch(ctx *cli.Context) error {
 		select {
 		case event := <-watcher.Events():
 			slog.Debug("Event", "event", event)
+			fmt.Println("Event", event)
 
 			// Only process file events (not directories)
 			if event.PathType != "file" {
