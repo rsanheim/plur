@@ -21,6 +21,9 @@ import (
 var watcherBinaries embed.FS
 
 func runWatch(ctx *cli.Context) error {
+	currentLogLevel := slog.SetLogLoggerLevel(slog.LevelDebug)
+	defer slog.SetLogLoggerLevel(currentLogLevel) // revert chang
+
 	fmt.Println("Starting rux watch mode...")
 
 	// Create file mapper
@@ -77,6 +80,7 @@ func runWatch(ctx *cli.Context) error {
 	for {
 		select {
 		case event := <-watcher.Events():
+			slog.Debug("Event", "event", event)
 
 			// Only process file events (not directories)
 			if event.PathType != "file" {

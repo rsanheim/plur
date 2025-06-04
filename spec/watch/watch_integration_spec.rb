@@ -2,46 +2,43 @@ require "spec_helper"
 require "tempfile"
 require "fileutils"
 require "timeout"
+require "tty-command"
 
 RSpec.describe "rux watch integration" do
-  DEFAULT_RUX_TIMEOUT = 2
+  def capture_watch_output(rux_timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, &block)
 
-  def capture_watch_output(rux_timeout: DEFAULT_RUX_TIMEOUT, debounce: nil, &block)
     Dir.chdir(rux_ruby_dir) do
-      cmd = "rux watch --timeout #{rux_timeout}"
-      cmd += " --debounce #{debounce}" if debounce
-
-      stdout, stderr, status = nil
+      args = "rux watch --timeout #{rux_timeout}"
+      args += " --debounce #{debounce}" if debounce
 
       env = {"GO_LOG" => "debug"}
-      thread = Thread.new do
-        stdout, stderr, status = Open3.capture3(env, cmd)
-      end
-
-      sleep 1
+      full_timeout = rux_timeout + 1
+      cmd = TTY::Command.new(timeout: full_timeout)
+      result = cmd.run(args, env: env)
 
       yield if block_given?
 
-      thread.join
-
-      [stdout, stderr, status]
+      result
     end
+    
   end
 
   it "starts watching the correct directories" do
-    output = capture_watch_output(timeout_seconds: 2)
+    result = capture_watch_output
 
-    expect(output).to include("Starting rux watch mode")
-    expect(output).to include("Watching directories: spec, lib")
-    expect(output).to include("Debounce delay: 100ms")
+    expect(result.out).to include("Starting rux watch mode")
+    expect(result.out).to include("Watching directories: spec, lib")
+    expect(result.err).to include("Debounce delay ms=100")
   end
 
   it "maps lib files to their specs" do
-    output = capture_watch_output do
+    result = capture_watch_output do
       # Touch a lib file
-      FileUtils.touch(rux_ruby_dir.join("lib/calculator.rb"))
-      sleep 0.5
+      calculator_file = rux_ruby_dir.join("lib/calculator.rb")
+      calculator_file.write(calculator_file.read)
+      sleep 2.0
     end
+    pp result
 
     expect(output).to include("Changed: lib/calculator.rb")
     expect(output).to include("Running: spec/calculator_spec.rb")
@@ -109,7 +106,7 @@ RSpec.describe "rux watch integration" do
   end
 
   it "respects custom debounce delay" do
-    output = capture_watch_output(timeout_seconds: 2, debounce: 250)
+    output = capture_watch_output(rux_timeout: 2, debounce: 250)
 
     expect(output).to include("Debounce delay: 250ms")
   end

@@ -10,6 +10,9 @@ $LOAD_PATH.unshift(BACKSPIN_PATH)
 require "backspin"
 
 ROOT_PATH = Pathname.new(__dir__).parent
+# The default 'run time' for rux watch for integration tests
+# After this time rux watch will automatically exit
+DEFAULT_RUX_WATCH_TIMEOUT = 2
 
 RSpec.configure do |config|
   def chdir(path)

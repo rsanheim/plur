@@ -2,9 +2,7 @@ require "spec_helper"
 require "tempfile"
 
 RSpec.describe "rux watch command" do
-  DEFAULT_RUX_TIMEOUT = 2
-
-  def run_rux_watch_in_dir(dir, rux_timeout: DEFAULT_RUX_TIMEOUT, &block)
+  def run_rux_watch_in_dir(dir, rux_timeout: DEFAULT_RUX_WATCH_TIMEOUT, &block)
     Dir.chdir(dir) do
       cmd = "#{rux_binary} watch --timeout #{rux_timeout}"
 

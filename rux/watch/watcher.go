@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -62,6 +63,8 @@ func (w *Watcher) Start() error {
 	}
 
 	// Start the watcher process
+	fmt.Printf("Starting watcher with binary path: %s\n", w.binaryPath)
+	fmt.Printf("with paths: %s\n", strings.Join(absPaths, ", "))
 	w.process = exec.Command(w.binaryPath, absPaths...)
 
 	// Create stdin pipe to keep watcher alive
