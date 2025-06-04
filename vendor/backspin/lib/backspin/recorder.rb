@@ -7,9 +7,11 @@ module Backspin
   class Recorder
     include RSpec::Mocks::ExampleMethods
 
-    attr_reader :commands, :verification_data
+    attr_reader :commands, :verification_data, :mode, :record
 
-    def initialize
+    def initialize(mode: :record, record: nil)
+      @mode = mode
+      @record = record
       @commands = []
       @verification_data = {}
     end
@@ -72,7 +74,50 @@ module Backspin
       end
     end
 
+    # Setup stubs for replay mode - returns recorded values for multiple commands
+    def setup_replay_stubs
+      raise ArgumentError, "Record required for replay mode" unless @record
+
+      setup_capture3_replay_stub
+      setup_system_replay_stub
+    end
+
     private
+
+    def setup_capture3_replay_stub
+      allow(Open3).to receive(:capture3) do |*args|
+        command = @record.next_command
+
+        # Make sure this is a capture3 command
+        unless command.method_class == Open3::Capture3
+          raise RecordNotFoundError, "Expected Open3::Capture3 command but got #{command.method_class.name}"
+        end
+
+        recorded_stdout = command.stdout
+        recorded_stderr = command.stderr
+        recorded_status = OpenStruct.new(exitstatus: command.status)
+
+        [recorded_stdout, recorded_stderr, recorded_status]
+      rescue NoMoreRecordingsError => e
+        raise RecordNotFoundError, e.message
+      end
+    end
+
+    def setup_system_replay_stub
+      allow_any_instance_of(Object).to receive(:system) do |receiver, *args|
+        command = @record.next_command
+
+        # Make sure this is a system command
+        unless command.method_class == ::Kernel::System
+          raise RecordNotFoundError, "Expected Kernel::System command but got #{command.method_class.name}"
+        end
+
+        # Return true if exit status was 0, false otherwise
+        command.status == 0
+      rescue NoMoreRecordingsError => e
+        raise RecordNotFoundError, e.message
+      end
+    end
 
     def setup_capture3_call_stub
       allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
@@ -107,43 +152,24 @@ module Backspin
 
     def setup_system_call_stub
       allow_any_instance_of(Object).to receive(:system).and_wrap_original do |original_method, receiver, *args|
-        # Handle different forms of system calls
-        # When called as system("echo hello"), receiver is the command string and args is empty
-        # When called as system("echo", "hello"), receiver is the test object and args contains the command
-        if args.empty? && receiver.is_a?(String)
-          # Single string form: system("command and args")
-          command_string = receiver
-          cmd_args = [command_string]
-        else
-          # Multi-arg form: system("command", "arg1", "arg2")
-          cmd_args = args
-        end
-
         # Execute the real system call
         result = original_method.call(receiver, *args)
+
+        # Parse command args based on how system was called
+        parsed_args = if args.empty? && receiver.is_a?(String)
+          # Single string form - split the command string
+          receiver.split(" ")
+        else
+          # Multi-arg form - already an array
+          args
+        end
 
         # For system calls, stdout and stderr are not captured
         # The caller of system() doesn't have access to them
         stdout = ""
         stderr = ""
         # Derive exit status from result: true = 0, false = non-zero, nil = command failed
-        status = if result
-          0
-        else
-          ((result == false) ? 1 : 127)
-        end
-
-        # Parse command args for recording
-        parsed_args = if args.empty? && receiver.is_a?(String)
-          # Single string form - split the command string
-          receiver.split(" ")
-        elsif cmd_args.length == 1 && cmd_args.first.is_a?(String)
-          # Single string form
-          cmd_args.first.split(" ")
-        else
-          # Multi-arg form - already an array
-          cmd_args
-        end
+        status = result ? 0 : 1
 
         # Create command with interaction data
         command = Command.new(
@@ -156,14 +182,12 @@ module Backspin
         )
         @commands << command
 
+        # Store output for later access (for consistency with capture3)
+        Backspin.last_output = stdout
+
         # Return the original result (true/false/nil)
         result
       end
     end
   end
-end
-
-# Define the Kernel::System class for identification at top level
-module ::Kernel
-  class System; end
 end

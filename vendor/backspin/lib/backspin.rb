@@ -5,7 +5,7 @@ require "pathname"
 require "ostruct"
 require "rspec/mocks"
 require "backspin/version"
-require "backspin/rspec_metadata"
+require "backspin/command"
 require "backspin/record"
 require "backspin/recorder"
 
@@ -151,61 +151,6 @@ module Backspin
       end
 
       diff.join("\n")
-    end
-  end
-
-  class Command
-    attr_reader :args, :stdout, :stderr, :status, :recorded_at, :method_class
-
-    def initialize(method_class:, args:, stdout: nil, stderr: nil, status: nil, recorded_at: nil)
-      @method_class = method_class
-      @args = args
-      @stdout = stdout
-      @stderr = stderr
-      @status = status
-      @recorded_at = recorded_at
-    end
-
-    # Convert to hash for YAML serialization
-    def to_h(filter: nil)
-      data = {
-        "command_type" => @method_class.name,
-        "args" => @args,
-        "stdout" => Backspin.scrub_text(@stdout),
-        "stderr" => Backspin.scrub_text(@stderr),
-        "status" => @status,
-        "recorded_at" => @recorded_at
-      }
-
-      # Apply filter if provided
-      if filter
-        data = filter.call(data)
-      end
-
-      data
-    end
-
-    # Create from hash (for loading from YAML)
-    def self.from_h(data)
-      # Determine method class from command_type
-      method_class = case data["command_type"]
-      when "Open3::Capture3"
-        Open3::Capture3
-      when "Kernel::System"
-        ::Kernel::System
-      else
-        # Default to capture3 for backwards compatibility
-        Open3::Capture3
-      end
-
-      new(
-        method_class: method_class,
-        args: data["args"],
-        stdout: data["stdout"],
-        stderr: data["stderr"],
-        status: data["status"],
-        recorded_at: data["recorded_at"]
-      )
     end
   end
 
@@ -406,38 +351,9 @@ module Backspin
         raise RecordNotFoundError, "No commands found in record"
       end
 
-      # Use RSpec to stub Open3.capture3 to return recorded data
-      allow(Open3).to receive(:capture3) do |*args|
-        command = record.next_command
-
-        # Make sure this is a capture3 command
-        unless command.method_class == Open3::Capture3
-          raise RecordNotFoundError, "Expected Open3::Capture3 command but got #{command.method_class.name}"
-        end
-
-        recorded_stdout = command.stdout
-        recorded_stderr = command.stderr
-        recorded_status = OpenStruct.new(exitstatus: command.status)
-
-        [recorded_stdout, recorded_stderr, recorded_status]
-      rescue NoMoreRecordingsError => e
-        raise RecordNotFoundError, e.message
-      end
-
-      # Also stub system calls
-      allow_any_instance_of(Object).to receive(:system) do |receiver, *args|
-        command = record.next_command
-
-        # Make sure this is a system command
-        unless command.method_class == ::Kernel::System
-          raise RecordNotFoundError, "Expected Kernel::System command but got #{command.method_class.name}"
-        end
-
-        # Return true if exit status was 0, false otherwise
-        command.status == 0
-      rescue NoMoreRecordingsError => e
-        raise RecordNotFoundError, e.message
-      end
+      # Create recorder in replay mode
+      recorder = Recorder.new(mode: :replay, record: record)
+      recorder.setup_replay_stubs
 
       block_return_value = yield
 
@@ -455,86 +371,9 @@ module Backspin
     end
 
     def record_and_save_record(record_path, filter: nil, &block)
-      commands = []
-      capture3_original = Open3.method(:capture3)
-
-      # Use RSpec's and_wrap_original to record and save
-      allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
-        # Execute the real command
-        stdout, stderr, status = original_method.call(*args)
-
-        # Parse command args
-        cmd_args = if args.length == 1 && args.first.is_a?(String)
-          args.first.split(" ")
-        else
-          args
-        end
-
-        # Create command with interaction data
-        command = Command.new(
-          method_class: Open3::Capture3,
-          args: cmd_args,
-          stdout: stdout,
-          stderr: stderr,
-          status: status.exitstatus,
-          recorded_at: Time.now.iso8601
-        )
-        commands << command
-
-        # Return original result
-        [stdout, stderr, status]
-      end
-
-      # Also intercept system calls
-      system_intercepted = false
-      allow_any_instance_of(Object).to receive(:system).and_wrap_original do |original_method, receiver, *args|
-        system_intercepted = true
-
-        # Handle different forms of system calls
-        # When called as system("echo hello"), receiver is the command string and args is empty
-        # When called as system("echo", "hello"), receiver is the test object and args contains the command
-        if args.empty? && receiver.is_a?(String)
-          # Single string form: system("command and args")
-          command_string = receiver
-          capture_args = [command_string]
-        else
-          # Multi-arg form: system("command", "arg1", "arg2")
-          capture_args = args
-        end
-
-        # For system calls, we capture output by using the original capture3
-        # directly to avoid triggering our stub
-        stdout, stderr, status = capture3_original.call(*capture_args)
-
-        # Execute the real system call to get the correct return value
-        result = original_method.call(receiver, *args)
-
-        # Parse command args based on how system was called
-        cmd_args = if args.empty? && receiver.is_a?(String)
-          # Single string form - split the command string
-          receiver.split(" ")
-        elsif capture_args.length == 1 && capture_args.first.is_a?(String)
-          # Single string passed to capture3
-          capture_args.first.split(" ")
-        else
-          # Multi-arg form
-          capture_args
-        end
-
-        # Create command with interaction data
-        command = Command.new(
-          method_class: ::Kernel::System,
-          args: cmd_args,
-          stdout: stdout,
-          stderr: stderr,
-          status: status.exitstatus,
-          recorded_at: Time.now.iso8601
-        )
-        commands << command
-
-        # Return original result (true/false)
-        result
-      end
+      # Create recorder to handle stubbing and command recording
+      recorder = Recorder.new
+      recorder.record_calls(:capture3, :system)
 
       block_return_value = yield
 
@@ -543,7 +382,7 @@ module Backspin
       # Don't load existing data when creating new record
       record = Record.new(record_path)
       record.clear  # Clear any loaded data
-      commands.each { |cmd| record.add_command(cmd) }
+      recorder.commands.each { |cmd| record.add_command(cmd) }
       record.save(filter: filter)
 
       # Return appropriate value
@@ -560,92 +399,16 @@ module Backspin
       # For new_episodes mode, we'd need to track which commands have been seen
       # For now, simplified implementation that just appends
       record = Record.load_or_create(record_path)
-      new_commands = []
-      capture3_original = Open3.method(:capture3)
 
-      # Use RSpec's and_wrap_original to record new episodes
-      allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
-        # Execute the real command
-        stdout, stderr, status = original_method.call(*args)
-
-        # Parse command args
-        cmd_args = if args.length == 1 && args.first.is_a?(String)
-          args.first.split(" ")
-        else
-          args
-        end
-
-        # Create command with interaction data
-        command = Command.new(
-          method_class: Open3::Capture3,
-          args: cmd_args,
-          stdout: stdout,
-          stderr: stderr,
-          status: status.exitstatus,
-          recorded_at: Time.now.iso8601
-        )
-        new_commands << command
-
-        # Return original result
-        [stdout, stderr, status]
-      end
-
-      # Also intercept system calls
-      system_intercepted = false
-      allow_any_instance_of(Object).to receive(:system).and_wrap_original do |original_method, receiver, *args|
-        system_intercepted = true
-
-        # Handle different forms of system calls
-        # When called as system("echo hello"), receiver is the command string and args is empty
-        # When called as system("echo", "hello"), receiver is the test object and args contains the command
-        if args.empty? && receiver.is_a?(String)
-          # Single string form: system("command and args")
-          command_string = receiver
-          capture_args = [command_string]
-        else
-          # Multi-arg form: system("command", "arg1", "arg2")
-          capture_args = args
-        end
-
-        # For system calls, we capture output by using the original capture3
-        # directly to avoid triggering our stub
-        stdout, stderr, status = capture3_original.call(*capture_args)
-
-        # Execute the real system call to get the correct return value
-        result = original_method.call(receiver, *args)
-
-        # Parse command args based on how system was called
-        cmd_args = if args.empty? && receiver.is_a?(String)
-          # Single string form - split the command string
-          receiver.split(" ")
-        elsif capture_args.length == 1 && capture_args.first.is_a?(String)
-          # Single string passed to capture3
-          capture_args.first.split(" ")
-        else
-          # Multi-arg form
-          capture_args
-        end
-
-        # Create command with interaction data
-        command = Command.new(
-          method_class: ::Kernel::System,
-          args: cmd_args,
-          stdout: stdout,
-          stderr: stderr,
-          status: status.exitstatus,
-          recorded_at: Time.now.iso8601
-        )
-        new_commands << command
-
-        # Return original result (true/false)
-        result
-      end
+      # Create recorder to handle stubbing and command recording
+      recorder = Recorder.new
+      recorder.record_calls(:capture3, :system)
 
       result = yield
 
       # Save all recordings (existing + new)
-      if new_commands.any?
-        new_commands.each { |cmd| record.add_command(cmd) }
+      if recorder.commands.any?
+        recorder.commands.each { |cmd| record.add_command(cmd) }
         record.save(filter: filter)
       end
 
@@ -662,17 +425,7 @@ module Backspin
       backspin_dir = configuration.backspin_dir
       backspin_dir.mkpath
 
-      # For verify, we still support auto-naming
-      if name.nil? || name.empty?
-        name = RSpecMetadata.record_name_from_example
-      end
-
       File.join(backspin_dir, "#{name}.yaml")
     end
   end
-end
-
-# Define the Open3::Capture3 class for identification
-module Open3
-  class Capture3; end
 end
