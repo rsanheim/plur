@@ -35,36 +35,63 @@ I think we already have this mostly in the Command object, its mostly a matter o
 * consider splitting this out, along side the capture3 stuff, into new objects that follow the same sort of pattern
 * for context, we will want to add other command types later.
 
-### Add preprocessing/filtering support to recording methods
+### Refactor the stub mechanism
 
-Currently, Backspin only supports custom matchers during verification, not during recording. This makes it difficult to normalize dynamic content (like timestamps) before saving to golden files.
+We should refactor the details of stubbing out Backspin itself into a new object
+Something like this, in rough outline form - note that this just example code, and I've left out details of logic that will have to move.
 
-Proposed API additions:
+```ruby
+   def call
+      recorder = Recorder.new() # recorder is an object to setup the stubs and record the command details of any that get executed
+      recorder.record_call(:system)
+      recorder.record_call(:capture3)
 
-1. Add `filter` or `preprocessor` option to `record`:
-   ```ruby
-   Backspin.record("example", filter: ->(result) {
-     result["stdout"] = normalize_timestamps(result["stdout"])
-     result
-   })
-   ```
+      yield
 
-2. Add same option to `use_dubplate`:
-   ```ruby
-   Backspin.use_dubplate("example", record: :once, filter: ->(result) {
-     # Normalize before saving
-   })
-   ```
+      recorder.commands.each { |cmd| record.add_command(cmd) }
 
-3. Consider adding common built-in filters:
-   ```ruby
-   Backspin.record("example", filter: [:timestamps, :paths])
-   # Or
-   Backspin.record("example", filter: Backspin::Filters.timestamps)
-   ```
+      Result.new(commands: recorder.commands, record_path: Pathname.new(record_path))
+   end
 
-### Use Cases
-- Normalize execution times in test output
-- Remove absolute paths that vary between environments
-- Scrub dynamic IDs or timestamps
-- Make golden files more portable across environments
+   # then Recorder has the stub logic and stores commands and their results
+   class Recorder
+      attr_reader :commands
+
+      def initialize
+         @commands = []
+      end
+
+   def record_call(command_type)
+      case command_type
+      when :system
+         setup_system_call_stub
+      when :capture3
+         setup_capture3_call_stub
+      end
+   end
+
+      def setup_capture3_call_stub
+         allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
+            # Execute the real command
+            stdout, stderr, status = original_method.call(*args)
+
+            # Create command with interaction data
+            command = Command.new(
+               method_class: Open3::Capture3,
+               args: cmd_args,
+               stdout: stdout,
+               stderr: stderr,
+               status: status.exitstatus,
+               recorded_at: Time.now.iso8601
+            )
+            @commands << command
+         end
+      end
+
+      def setup_system_call_stub
+         allow_any_instance_of(Object).to receive(:system).and_wrap_original do |original_method, receiver, *args|
+         # etc
+      end
+```
+
+

@@ -10,18 +10,22 @@ RSpec.describe "Backspin system() support" do
       expect(result.commands.size).to eq(1)
       command = result.commands.first
       expect(command.args).to eq(["echo", "hello"])
-      expect(command.stdout).to eq("hello\n")
+      # System calls don't capture stdout/stderr - they go directly to the terminal
+      expect(command.stdout).to eq("")
       expect(command.stderr).to eq("")
       expect(command.status).to eq(0)
     end
 
-    it "records system call exit status" do
+    it "records system call exit status and preserves return value" do
+      return_values = []
       result = Backspin.call("system_false") do
-        system("false")
+        return_values << system("true")   # Should return true
+        return_values << system("false")  # Should return false
       end
 
-      command = result.commands.first
-      expect(command.status).to eq(1)
+      expect(return_values).to eq([true, false])
+      expect(result.commands[0].status).to eq(0)
+      expect(result.commands[1].status).to eq(1)
     end
 
     it "records multiple system calls" do
@@ -31,29 +35,34 @@ RSpec.describe "Backspin system() support" do
       end
 
       expect(result.commands.size).to eq(2)
-      expect(result.commands[0].stdout).to eq("first\n")
-      expect(result.commands[1].stdout).to eq("second\n")
+      expect(result.commands[0].args).to eq(["echo", "first"])
+      expect(result.commands[0].stdout).to eq("")
+      expect(result.commands[1].args).to eq(["echo", "second"])
+      expect(result.commands[1].stdout).to eq("")
     end
 
-    it "captures stderr from system calls" do
+    it "records system calls that output to stderr" do
       result = Backspin.call("system_stderr") do
         system("echo error >&2")
       end
 
       command = result.commands.first
+      # System calls don't capture stdout/stderr - they go directly to the terminal
       expect(command.stdout).to eq("")
-      expect(command.stderr).to eq("error\n")
+      expect(command.stderr).to eq("")
+      # But we still record the exit status
+      expect(command.status).to eq(0)
     end
   end
 
   describe "verifying system calls" do
-    it "verifies matching system output" do
+    it "verifies matching system calls" do
       # Record
       Backspin.call("verify_system") do
         system("echo hello")
       end
 
-      # Verify - should pass
+      # Verify - should pass because command and exit status match
       result = Backspin.verify("verify_system") do
         system("echo hello")
       end
@@ -61,15 +70,15 @@ RSpec.describe "Backspin system() support" do
       expect(result.verified?).to be true
     end
 
-    it "detects non-matching system output" do
-      # Record
+    it "detects non-matching system exit status" do
+      # Record a successful command
       Backspin.call("verify_system_diff") do
-        system("echo original")
+        system("true")  # exit status 0
       end
 
-      # Verify - should fail
+      # Verify with a failing command - should fail
       result = Backspin.verify("verify_system_diff") do
-        system("echo different")
+        system("false")  # exit status 1
       end
 
       expect(result.verified?).to be false
@@ -102,10 +111,10 @@ RSpec.describe "Backspin system() support" do
       end
 
       expect(result.commands.size).to eq(2)
-      expect(result.commands[0].class.name).to eq("Kernel::System")
-      expect(result.commands[0].stdout).to eq("from system\n")
-      expect(result.commands[1].class.name).to eq("Open3::Capture3")
-      expect(result.commands[1].stdout).to eq("from capture3\n")
+      expect(result.commands[0].method_class.name).to eq("Kernel::System")
+      expect(result.commands[0].stdout).to eq("")  # System calls don't capture stdout
+      expect(result.commands[1].method_class.name).to eq("Open3::Capture3")
+      expect(result.commands[1].stdout).to eq("from capture3\n")  # But capture3 does
     end
   end
 end

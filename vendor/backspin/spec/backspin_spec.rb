@@ -11,7 +11,7 @@ RSpec.describe Backspin do
         Open3.capture3("echo hello")
       end
       expect(result.commands.size).to eq(1)
-      expect(result.commands.first.class).to eq(Open3::Capture3)
+      expect(result.commands.first.method_class).to eq(Open3::Capture3)
       expect(result.commands.first.args).to eq(["echo", "hello"])
       expect(result.record_path.to_s).to end_with("echo_hello.yaml")
       expect(backspin_path.join("echo_hello.yaml")).to exist
