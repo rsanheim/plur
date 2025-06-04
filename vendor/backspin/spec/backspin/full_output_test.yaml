@@ -1,9 +1,0 @@
----
-- stdout: 'stdout
-
-    '
-  stderr: 'stderr
-
-    '
-  status: 42
-  recorded_at: '2025-06-02T23:15:27-05:00'
