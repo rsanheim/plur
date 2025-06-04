@@ -146,12 +146,9 @@ namespace :lint do
 
   desc "Fix Ruby linting issues automatically"
   task :ruby_fix do
-    if defined?(Rake::Task["standard:fix"])
-      Rake::Task["standard:fix"].invoke
-    else
-      puts "Standard gem not found, cannot auto-fix"
-    end
+    Rake::Task["standard:fix"].invoke
   end
+  task fix: [:ruby_fix]
 end
 
 # ========================================

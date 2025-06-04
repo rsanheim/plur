@@ -31,7 +31,7 @@ RSpec.describe "rux watch signal handling" do
 
         # Touch a spec file to trigger watcher
         spec_file = File.join(rux_ruby_dir, "spec", "calculator_spec.rb")
-        original_mtime = File.mtime(spec_file)
+        File.mtime(spec_file)
         FileUtils.touch(spec_file)
 
         # Wait for watcher to detect the change
