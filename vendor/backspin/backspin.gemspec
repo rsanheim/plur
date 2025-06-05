@@ -3,12 +3,12 @@ require_relative "lib/backspin/version"
 Gem::Specification.new do |spec|
   spec.name = "backspin"
   spec.version = Backspin::VERSION
-  spec.authors = ["Your Name"]
-  spec.email = ["your.email@example.com"]
+  spec.authors = ["Rob Sanheim"]
+  spec.email = ["rsanheim@gmail.com"]
 
   spec.summary = "Record and replay CLI interactions for testing"
   spec.description = "Backspin is a Ruby library for characterization testing of command-line interfaces. Inspired by VCR's cassette-based approach, it records and replays CLI interactions to make testing faster and more deterministic."
-  spec.homepage = "https://github.com/yourusername/backspin"
+  spec.homepage = "https://github.com/rsanheim/backspin"
   spec.license = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.5.0")
 
