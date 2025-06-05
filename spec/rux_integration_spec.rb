@@ -2,8 +2,6 @@ require "spec_helper"
 require "open3"
 
 RSpec.describe "Rux integration tests" do
-  let(:test_app_dir) { File.join(__dir__, "..", "test_app") }
-
   before do
     # Clean up any existing test databases
     Dir.chdir(test_app_dir) do

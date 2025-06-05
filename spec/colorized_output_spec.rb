@@ -3,8 +3,6 @@ require "spec_helper"
 RSpec.describe "Rux colorized output" do
   let(:fixture_path) { File.join(__dir__, "fixtures", "rspec_colorized_output.txt") }
   let(:expected_output) { File.read(fixture_path) }
-  let(:rux_binary) { File.join(__dir__, "..", "rux", "rux") }
-  let(:test_project_path) { File.join(__dir__, "..", "rux-ruby") }
 
   before do
     expect(File.exist?(rux_binary)).to be(true)

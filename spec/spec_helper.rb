@@ -13,7 +13,7 @@ $LOAD_PATH.unshift(BACKSPIN_PATH)
 require "backspin"
 
 ROOT_PATH = Pathname.new(__dir__).parent
-RUX_RUBY_DIR = ROOT_PATH.join("rux-ruby")
+RUX_RUBY_DIR = ROOT_PATH.join("test_fixtures", "rux-ruby")
 # The default 'run time' for rux watch for integration tests
 # After this time rux watch will automatically exit
 DEFAULT_RUX_WATCH_TIMEOUT = 2
@@ -33,7 +33,11 @@ RSpec.configure do |config|
   end
 
   def rux_ruby_dir
-    @rux_ruby_dir ||= Pathname.new(__dir__).parent.join("rux-ruby")
+    @rux_ruby_dir ||= Pathname.new(__dir__).parent.join("test_fixtures", "rux-ruby")
+  end
+
+  def test_app_dir
+    @test_app_dir ||= Pathname.new(__dir__).parent.join("test_fixtures", "test_app")
   end
 
   config.filter_run_when_matching :focus

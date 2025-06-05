@@ -6,7 +6,7 @@ RSpec.describe "Flexible argument ordering" do
 
   context "with --no-color flag" do
     it "works with --no-color before file arguments" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} --no-color --dry-run spec/calculator_spec.rb")
 
         expect(status.success?).to be true
@@ -17,7 +17,7 @@ RSpec.describe "Flexible argument ordering" do
     end
 
     it "works with --no-color after file arguments" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb --no-color --dry-run")
 
         expect(status.success?).to be true
@@ -28,7 +28,7 @@ RSpec.describe "Flexible argument ordering" do
     end
 
     it "works with --no-color in the middle of file arguments" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb --no-color spec/counter_spec.rb --dry-run")
 
         expect(status.success?).to be true
@@ -41,7 +41,7 @@ RSpec.describe "Flexible argument ordering" do
 
   context "with -n/--workers flag" do
     it "works with -n before file arguments" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} -n 4 --dry-run spec/calculator_spec.rb")
 
         expect(status.success?).to be true
@@ -51,7 +51,7 @@ RSpec.describe "Flexible argument ordering" do
     end
 
     it "works with -n after file arguments" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb -n 4 --dry-run")
 
         expect(status.success?).to be true
@@ -61,7 +61,7 @@ RSpec.describe "Flexible argument ordering" do
     end
 
     it "works with --workers after file arguments" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb --workers 4 --dry-run")
 
         expect(status.success?).to be true
@@ -73,7 +73,7 @@ RSpec.describe "Flexible argument ordering" do
 
   context "with directory arguments" do
     it "expands spec/ directory before flags" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} spec/ --dry-run")
 
         expect(status.success?).to be true
@@ -83,7 +83,7 @@ RSpec.describe "Flexible argument ordering" do
     end
 
     it "expands spec/ directory after flags" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} --dry-run spec/")
 
         expect(status.success?).to be true
@@ -93,7 +93,7 @@ RSpec.describe "Flexible argument ordering" do
     end
 
     it "expands spec/ directory with --no-color after" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} spec/ --no-color --dry-run")
 
         expect(status.success?).to be true
@@ -106,7 +106,7 @@ RSpec.describe "Flexible argument ordering" do
 
   context "with multiple flags and arguments" do
     it "handles complex argument ordering" do
-      Dir.chdir("rux-ruby") do
+      Dir.chdir("test_fixtures/rux-ruby") do
         output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb --no-color -n 2 spec/counter_spec.rb --dry-run")
 
         expect(status.success?).to be true

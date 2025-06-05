@@ -1,16 +1,13 @@
 require "spec_helper"
 
 RSpec.describe "Rux output performance" do
-  let(:rux_binary) { File.join(__dir__, "..", "rux", "rux") }
-  let(:test_project_path) { File.join(__dir__, "..", "rux-ruby") }
-
   before do
     expect(File.exist?(rux_binary)).to be(true)
   end
 
   describe "concurrent output handling" do
     it "produces valid output with high worker count" do
-      Dir.chdir(test_project_path) do
+      Dir.chdir(rux_ruby_dir) do
         # Run with many workers to stress-test the output handling
         output = `#{rux_binary} -n 8 2>&1`
 
@@ -28,7 +25,7 @@ RSpec.describe "Rux output performance" do
     end
 
     it "maintains colored output when supported" do
-      Dir.chdir(test_project_path) do
+      Dir.chdir(rux_ruby_dir) do
         # Force color output
         output = `FORCE_COLOR=1 #{rux_binary} -n 4 2>&1`
 
