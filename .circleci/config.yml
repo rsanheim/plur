@@ -31,6 +31,9 @@ jobs:
             go version
       - ruby/install-deps
       - run:
+          name: Download watcher binary for platform
+          command: bin/rake deps:watcher
+      - run:
           name: Run Go tests
           command: rake test:go
       - run:
