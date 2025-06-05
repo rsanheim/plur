@@ -10,6 +10,8 @@ jobs:
       - image: cimg/ruby:3.4.4
     working_directory: ~/project
     resource_class: medium
+    environment:
+      - VERBOSE=true
     steps:
       - checkout
       - run:
