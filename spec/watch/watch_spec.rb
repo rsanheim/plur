@@ -1,9 +1,10 @@
 require "spec_helper"
 
 RSpec.describe "rux watch command" do
+  include RuxWatchHelper
   context "basic functionality" do
     it "starts successfully when spec directory exists" do
-      result = run_rux_watch
+      result = run_rux_watch(timeout: 2)
 
       expect(result.out).to include("Starting rux watch mode")
       expect(result.out).to include("Watching directories: spec, lib")
@@ -35,9 +36,6 @@ RSpec.describe "rux watch command" do
   context "file change detection" do
     it "detects and runs spec when file is modified" do
       result = run_rux_watch(timeout: 2) do
-        # Wait longer for watcher to fully initialize
-        sleep 1
-
         # Write back the same file to trigger a modify event
         spec_file = Pathname.new(rux_ruby_dir).join("spec", "calculator_spec.rb")
         spec_file.write(spec_file.read)

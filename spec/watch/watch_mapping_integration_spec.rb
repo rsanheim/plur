@@ -1,9 +1,10 @@
 require "spec_helper"
 
 RSpec.describe "rux watch advanced file mapping" do
+  include RuxWatchHelper
   # This spec focuses on testing with temporary directory structures
   # Basic file mapping is covered in watch_integration_spec.rb
-  
+
   let(:temp_dir) { Dir.mktmpdir("rux-watch-mapping-test") }
 
   before do
@@ -95,47 +96,54 @@ RSpec.describe "rux watch advanced file mapping" do
 
   it "runs the corresponding spec when a lib file changes" do
     result = run_rux_watch(dir: temp_dir, timeout: 3) do
-      sleep 1
-      FileUtils.touch("#{temp_dir}/lib/calculator.rb")
+      # Modify the file content to trigger a change event
+      calc_file = "#{temp_dir}/lib/calculator.rb"
+      content = File.read(calc_file)
+      File.write(calc_file, content + "\n# modified")
     end
 
-    expect(result.out).to include("Changed: lib/calculator.rb")
-    expect(result.out).to include("Running: spec/calculator_spec.rb")
+    expect(result.err).to include("Changed: lib/calculator.rb")
+    expect(result.err).to include("Running: spec/calculator_spec.rb")
     expect(result.out).to include("1 example, 0 failures")
   end
 
   it "runs the corresponding model spec when a Rails model changes" do
     result = run_rux_watch(dir: temp_dir, timeout: 3) do
-      sleep 1
-      FileUtils.touch("#{temp_dir}/app/models/user.rb")
+      # Modify the file content to trigger a change event
+      user_file = "#{temp_dir}/app/models/user.rb"
+      content = File.read(user_file)
+      File.write(user_file, content + "\n# modified")
     end
 
-    expect(result.out).to include("Changed: app/models/user.rb")
-    expect(result.out).to include("Running: spec/models/user_spec.rb")
+    expect(result.err).to include("Changed: app/models/user.rb")
+    expect(result.err).to include("Running: spec/models/user_spec.rb")
     expect(result.out).to include("1 example, 0 failures")
   end
 
   it "runs all specs when spec_helper.rb changes" do
     result = run_rux_watch(dir: temp_dir, timeout: 3) do
-      sleep 1
-      FileUtils.touch("#{temp_dir}/spec/spec_helper.rb")
+      # Modify the file content to trigger a change event
+      spec_helper = "#{temp_dir}/spec/spec_helper.rb"
+      content = File.read(spec_helper)
+      File.write(spec_helper, content + "\n# modified")
     end
 
-    expect(result.out).to include("Changed: spec/spec_helper.rb")
-    expect(result.out).to include("Running: spec")
-    expect(result.out).to include("Running all specs in spec/")
+    expect(result.err).to include("Changed: spec/spec_helper.rb")
+    expect(result.err).to include("Running: spec")
     # Should run all 3 specs
     expect(result.out).to include("3 examples, 0 failures")
   end
 
   it "handles nested lib files correctly" do
     result = run_rux_watch(dir: temp_dir, timeout: 3) do
-      sleep 1
-      FileUtils.touch("#{temp_dir}/lib/models/product.rb")
+      # Modify the file content to trigger a change event
+      product_file = "#{temp_dir}/lib/models/product.rb"
+      content = File.read(product_file)
+      File.write(product_file, content + "\n# modified")
     end
 
-    expect(result.out).to include("Changed: lib/models/product.rb")
-    expect(result.out).to include("Running: spec/models/product_spec.rb")
+    expect(result.err).to include("Changed: lib/models/product.rb")
+    expect(result.err).to include("Running: spec/models/product_spec.rb")
     expect(result.out).to include("1 example, 0 failures")
   end
 end

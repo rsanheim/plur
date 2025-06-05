@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/rsanheim/rux/watch"
@@ -64,12 +66,12 @@ func runWatch(ctx *cli.Context) error {
 		TimeoutSeconds: timeout,
 	}
 
-	// Create and start the watcher
-	watcher := watch.NewWatcher(watcherConfig, watcherPath)
-	if err := watcher.Start(); err != nil {
+	// Create and start the watcher manager
+	manager := watch.NewWatcherManager(watcherConfig, watcherPath)
+	if err := manager.Start(); err != nil {
 		return err
 	}
-	defer watcher.Stop()
+	defer manager.Stop()
 
 	// Set up timeout if specified
 	var timeoutChan <-chan time.Time
@@ -77,12 +79,16 @@ func runWatch(ctx *cli.Context) error {
 		timeoutChan = time.After(time.Duration(timeout) * time.Second)
 	}
 
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
 	// Process events with timeout
 	for {
 		select {
-		case event := <-watcher.Events():
+		case event := <-manager.Events():
 			slog.Debug("Event", "event", event)
-			fmt.Println("Event", event)
+			fmt.Fprintf(os.Stderr, "Event: %+v\n", event)
 
 			// Only process file events (not directories)
 			if event.PathType != "file" {
@@ -115,6 +121,7 @@ func runWatch(ctx *cli.Context) error {
 			}
 
 			slog.Debug("Changed", "path", relPath)
+			fmt.Fprintf(os.Stderr, "Changed: %s\n", relPath)
 
 			// Debounce the spec runs
 			debouncer.Debounce(specsToRun, func(specs []string) {
@@ -127,15 +134,20 @@ func runWatch(ctx *cli.Context) error {
 				// Run each unique spec
 				for spec := range uniqueSpecs {
 					slog.Debug("Running", "spec", spec)
+					fmt.Fprintf(os.Stderr, "Running: %s\n", spec)
 					runSpecsOrDirectory(spec)
 				}
 			})
 
-		case err := <-watcher.Errors():
+		case err := <-manager.Errors():
 			return fmt.Errorf("watcher error: %v", err)
 
 		case <-timeoutChan:
 			fmt.Println("\nTimeout reached, exiting watch mode")
+			return nil
+
+		case sig := <-sigChan:
+			fmt.Printf("\nReceived signal %v, shutting down gracefully...\n", sig)
 			return nil
 		}
 	}

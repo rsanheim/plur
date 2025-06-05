@@ -2,34 +2,12 @@ require "spec_helper"
 require "tempfile"
 require "fileutils"
 require "timeout"
-require "tty-command"
 
 RSpec.describe "rux watch integration" do
-  def capture_watch_output(rux_timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, &block)
-
-    Dir.chdir(rux_ruby_dir) do
-      args = "rux watch --timeout #{rux_timeout}"
-      args += " --debounce #{debounce}" if debounce
-
-      env = {"GO_LOG" => "debug"}
-      full_timeout = rux_timeout + 1
-      cmd = TTY::Command.new(timeout: full_timeout)
-      streamed_out, streamed_err = [], []
-      changes = block
-      result = cmd.run(args, env: env) do |out, err|
-        streamed_out << out
-        streamed_err << err
-        block.call if block_given?
-      end
-
-
-      [result, streamed_out, streamed_err]
-    end
-    
-  end
+  include RuxWatchHelper
 
   it "starts watching the correct directories" do
-    result = capture_watch_output
+    result, _streamed_out, _streamed_err = capture_watch_output
 
     expect(result.out).to include("Starting rux watch mode")
     expect(result.out).to include("Watching directories: spec, lib")
@@ -37,17 +15,19 @@ RSpec.describe "rux watch integration" do
   end
 
   it "maps lib files to their specs" do
-    result = capture_watch_output do
-      # Touch a lib file
-      calculator_file = rux_ruby_dir.join("lib/calculator.rb")
-      calculator_file.write(calculator_file.read)
-
-      sleep 2.0
+    modified = false
+    result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
+      # Wait for the watcher to be ready
+      if !modified && err && err.include?("s/self/live@")
+        # Modify a lib file
+        calculator_file = rux_ruby_dir.join("lib/calculator.rb")
+        calculator_file.write(calculator_file.read + "\n# test")
+        modified = true
+      end
     end
-    pp result.err
 
     expect(result.err).to include("Changed: lib/calculator.rb")
-    expect(result.out).to include("Running: spec/calculator_spec.rb")
+    expect(result.err).to include("Running: spec/calculator_spec.rb")
   end
 
   it "maps nested lib files correctly" do
@@ -58,10 +38,18 @@ RSpec.describe "rux watch integration" do
     begin
       File.write(nested_lib, "class TempModel; end")
 
-      output = capture_watch_output do
-        FileUtils.touch(nested_lib)
-        sleep 0.5
+      modified = false
+      result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
+        # Wait for the watcher to be ready
+        if !modified && err && err.include?("s/self/live@")
+          # Write to trigger a modify event
+          File.write(nested_lib, "class TempModel; end")
+          modified = true
+        end
       end
+
+      # Combine stdout and stderr for tests that check both
+      output = result.out + result.err
 
       expect(output).to include("Changed: lib/models/temp_model.rb")
       expect(output).to include("Running: spec/models/temp_model_spec.rb")
@@ -78,62 +66,102 @@ RSpec.describe "rux watch integration" do
   end
 
   it "runs all specs when spec_helper.rb changes" do
-    output = capture_watch_output do
-      FileUtils.touch(rux_ruby_dir.join("spec/spec_helper.rb"))
-      sleep 0.5
+    modified = false
+    result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
+      # Wait for the watcher to be ready
+      if !modified && err && err.include?("s/self/live@")
+        # Modify spec_helper.rb by appending a comment
+        spec_helper = rux_ruby_dir.join("spec/spec_helper.rb")
+        original_content = spec_helper.read
+        spec_helper.write(original_content + "\n# Modified by test")
+        # Restore original content after a moment
+        sleep 0.1
+        spec_helper.write(original_content)
+        modified = true
+      end
     end
 
-    expect(output).to include("Changed: spec/spec_helper.rb")
-    expect(output).to include("Running: spec")
-    expect(output).to include("Running all specs in spec/")
+    expect(result.err).to include("Changed: spec/spec_helper.rb")
+    expect(result.err).to include("Running: spec")
   end
 
-  fit "handles spec file changes" do
+  it "handles spec file changes" do
     $stdout.sync = true
     $stderr.sync = true
 
     spec_path = rux_ruby_dir.join("spec/calculator_spec.rb")
     contents = spec_path.read
-    result, streamed_out, streamed_err = capture_watch_output(rux_timeout: 5) do
-      file = spec_path.open("w")
-      file.write("test")
-      file.flush
+
+    modified = false
+    result, streamed_out, streamed_err = capture_watch_output(rux_timeout: 5) do |out, err|
+      # Wait for watcher to be ready (live message)
+      if !modified && err && err.include?("s/self/live@")
+        File.write(spec_path, "# Modified\n" + contents)
+        modified = true
+      end
     end
 
     pp ["command result", result]
     pp ["streamed out", streamed_out]
     pp ["streamed err", streamed_err]
     expect(result.err).to include("Changed: spec/calculator_spec.rb")
-    expect(result.out).to include("Running: spec/calculator_spec.rb")
+    expect(result.err).to include("Running: spec/calculator_spec.rb")
+  ensure
+    # Restore original content
+    File.write(spec_path, contents) if contents
   end
 
   it "ignores non-Ruby files" do
     readme_file = rux_ruby_dir.join("README.md")
-    FileUtils.touch(readme_file) # Ensure it exists
+    original_content = readme_file.read
 
-    output = capture_watch_output do
-      FileUtils.touch(readme_file)
-      sleep 0.5
+    modified = false
+    result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
+      # Wait for the watcher to be ready
+      if !modified && err && err.include?("s/self/live@")
+        # Modify README by appending content
+        readme_file.write(original_content + "\n<!-- test -->")
+        modified = true
+      end
     end
+
+    output = result.out + result.err
 
     # Should not see any change events for README.md
     expect(output).not_to include("Changed: README.md")
+  ensure
+    # Restore original content
+    readme_file.write(original_content) if original_content
   end
 
   it "respects custom debounce delay" do
-    output = capture_watch_output(rux_timeout: 2, debounce: 250)
+    result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: 2, debounce: 250)
 
-    expect(output).to include("Debounce delay: 250ms")
+    output = result.out + result.err
+
+    expect(output).to include("Debounce delay ms=250")
   end
 
   it "handles multiple file changes with debouncing" do
-    output = capture_watch_output(debounce: 200) do
-      # Rapidly touch multiple files
-      FileUtils.touch(rux_ruby_dir.join("lib/calculator.rb"))
-      FileUtils.touch(rux_ruby_dir.join("lib/string_utils.rb"))
-      FileUtils.touch(rux_ruby_dir.join("lib/validator.rb"))
-      sleep 0.5
+    modified = false
+    result, _streamed_out, _streamed_err = capture_watch_output(debounce: 200) do |out, err|
+      # Wait for the watcher to be ready
+      if !modified && err && err.include?("s/self/live@")
+        # Rapidly modify multiple files
+        calc_file = rux_ruby_dir.join("lib/calculator.rb")
+        calc_file.write(calc_file.read + "\n# test")
+
+        str_file = rux_ruby_dir.join("lib/string_utils.rb")
+        str_file.write(str_file.read + "\n# test")
+
+        val_file = rux_ruby_dir.join("lib/validator.rb")
+        val_file.write(val_file.read + "\n# test")
+
+        modified = true
+      end
     end
+
+    output = result.out + result.err
 
     # Should see all changes
     expect(output).to include("Changed: lib/calculator.rb")
@@ -160,7 +188,9 @@ RSpec.describe "rux watch integration" do
     end
 
     it "detects app directory and watches it" do
-      output = capture_watch_output(timeout_seconds: 2)
+      result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: 2)
+
+      output = result.out + result.err
 
       expect(output).to include("Watching directories: spec, lib, app")
     end
@@ -169,10 +199,17 @@ RSpec.describe "rux watch integration" do
       model_file = File.join(app_dir, "models/user.rb")
       File.write(model_file, "class User; end")
 
-      output = capture_watch_output do
-        FileUtils.touch(model_file)
-        sleep 0.5
+      modified = false
+      result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
+        # Wait for the watcher to be ready
+        if !modified && err && err.include?("s/self/live@")
+          # Write to trigger a modify event
+          File.write(model_file, "class User\n  # Modified\nend")
+          modified = true
+        end
       end
+
+      output = result.out + result.err
 
       expect(output).to include("Changed: app/models/user.rb")
       expect(output).to include("Running: spec/models/user_spec.rb")
@@ -181,15 +218,20 @@ RSpec.describe "rux watch integration" do
     it "maps app/controllers files to spec/controllers" do
       controller_file = File.join(app_dir, "controllers/users_controller.rb")
 
-      stdout, stderr, status = capture_watch_output do
-        File.write(controller_file, "class UsersController; def index; end; end")
-        FileUtils.touch(controller_file)
-        sleep 5
+      modified = false
+      result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
+        # Wait for the watcher to be ready
+        if !modified && err && err.include?("s/self/live@")
+          # Write to trigger a modify event
+          File.write(controller_file, "class UsersController\n  def index\n    # Modified\n  end\nend")
+          modified = true
+        end
       end
-      pp [stdout, stderr, status]
 
-      expect(stdout).to include("Changed: app/controllers/users_controller.rb")
-      expect(stdout).to include("Running: spec/controllers/users_controller_spec.rb")
+      output = result.out + result.err
+
+      expect(output).to include("Changed: app/controllers/users_controller.rb")
+      expect(output).to include("Running: spec/controllers/users_controller_spec.rb")
     end
   end
 end

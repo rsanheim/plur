@@ -25,7 +25,7 @@ RSpec.describe "single failure golden test" do
 
   it "shows filtered backtrace same as rspec using Backspin" do
     # Record RSpec output as the golden master with normalized times
-    Backspin.use_record("rspec_backtrace_golden", record: :once, 
+    Backspin.use_record("rspec_backtrace_golden", record: :once,
       filter: ->(data) {
         # Normalize timing information in stdout
         data["stdout"] = make_summary_line_consistent(data["stdout"]) if data["stdout"]
