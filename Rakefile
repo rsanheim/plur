@@ -14,7 +14,7 @@ RSpec::Core::RakeTask.new(:spec) if defined?(RSpec)
 desc "Run all tests and linting"
 task default: ["test:all", "lint:all"]
 
-task install: [:build_release] do
+task install: [:build] do
   Dir.chdir("rux") do
     # Copy the built binary to GOPATH/bin
     sh "cp rux $(go env GOPATH)/bin/"
@@ -151,20 +151,8 @@ namespace :lint do
   task fix: [:ruby_fix]
 end
 
-# ========================================
-# Build Tasks
-# ========================================
-desc "Build the rux Go binary"
-task build: :build_release
-#   Dir.chdir("rux") do
-#     puts "Building rux..."
-#     sh "go build -o rux ."
-#     puts "Binary created at rux/rux"
-#   end
-# end
-
-desc "Build the rux Go binary with version information"
-task :build_release do
+desc "Build the rux Go binary - specify VERSION=0.x.x - current is #{`cat rux/VERSION`.strip}"
+task :build do
   Dir.chdir("rux") do
     # Read version from VERSION file or use environment variable
     base_version = if ENV["VERSION"]
