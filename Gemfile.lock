@@ -1,7 +1,7 @@
 PATH
   remote: vendor/backspin
   specs:
-    backspin (0.2.0)
+    backspin (0.2.1)
       ostruct
       rspec-mocks (~> 3.0)
 

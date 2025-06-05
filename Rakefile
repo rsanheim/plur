@@ -1,8 +1,7 @@
-require "rake"
+require "bundler/setup"
 require "fileutils"
 
 begin
-  require "bundler"
   require "standard/rake" if Gem::Specification.find_all_by_name("standard").any?
   require "rspec/core/rake_task" if Gem::Specification.find_all_by_name("rspec").any?
 rescue LoadError
