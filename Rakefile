@@ -55,14 +55,15 @@ namespace :test do
       raise "Cannot find rspec/formatter.rb - are we in the right directory?" unless File.exist?("rspec/formatter.rb")
 
       # Use standard output format (dots) unless verbose is requested
+      # Use -mod=mod to ignore vendor directory and use module cache
       if ENV["VERBOSE"]
-        sh "go test -v ./..."
+        sh "go test -mod=mod -v ./..."
       elsif system("which gotestsum > /dev/null 2>&1")
         # Use gotestsum for better formatting if available
-        sh "gotestsum --format short ./..."
+        sh "gotestsum --format short -- -mod=mod ./..."
       else
         # This gives a cleaner output with just pass/fail
-        sh "go test ./..."
+        sh "go test -mod=mod ./..."
       end
     end
   end
@@ -199,7 +200,7 @@ task :build_release do
     ].join(" ")
 
     puts "Building rux with version: #{full_version}"
-    sh %(go build -ldflags "#{ldflags}" -o rux .)
+    sh %(go build -mod=mod -ldflags "#{ldflags}" -o rux .)
     puts "Binary created at rux/rux with version: #{full_version}"
   end
 end
