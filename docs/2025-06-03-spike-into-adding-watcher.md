@@ -1,6 +1,51 @@
 # Spike: add e-dant/watcher to rux
 
-Okay, the crown jewel of Rux: I would like to emulate what [guard](https://github.com/guard/guard) does for ruby/rails projects, but I want it be a single command to run in _any_ ruby project. No messing with Gemfiles. No messing with configs. Very performant and fast (uses OS file system events via https://github.com/e-dant/watcher). 
+## Status: Production-Ready Foundation Complete! 🚀
+
+### What We've Accomplished:
+- ✅ `rux watch` command - fully functional file watcher
+- ✅ Embedded watcher binary using Go `embed` - "one stop shop" installation
+- ✅ Automatic binary extraction to `~/.cache/rux/bin/` on first use
+- ✅ Proper process lifecycle management (stdin pipe to keep watcher alive)
+- ✅ Signal handling (SIGINT) for graceful shutdown
+- ✅ `rux doctor` command with watcher status diagnostics
+- ✅ Comprehensive integration tests with backspin golden testing
+- ✅ File change detection and automatic spec re-runs
+
+### Current Implementation Details:
+- **Binary Management**: Watcher binary embedded at compile time, extracted on demand
+- **File Watching**: Monitors `./spec` directory for `*_spec.rb` changes
+- **Process Management**: Spawns watcher as subprocess with proper stdin handling
+- **Event Processing**: JSON event stream parsed and filtered for Ruby spec files
+- **Test Execution**: Reuses existing rux runner for consistency
+- **Platform Support**: Currently Darwin ARM64 only (easily extensible)
+
+### Immediate Next Steps:
+1. **lib → spec mapping**: Watch `lib/foo.rb` → run `spec/foo_spec.rb`
+1. **Basic rails app mappings**: Watch `app/models/foo.rb` → run `spec/models/foo_spec.rb`
+2. **Debouncing**: Handle rapid file changes gracefully - assume a sane default debounce time, but allow config
+3. **spec_helper.rb handling**: Run all specs when spec_helper changes
+4. **Smart file filtering**: Ignore .gitignore'd files, tmp/, log/, etc.
+
+### Medium-term Improvements:
+- **TUI interface**: Show test status, file being watched, last run results
+- **Parallel execution**: Use rux's existing parallel capabilities
+- **Smart test selection**: Run related tests based on git changes
+- **Configuration file**: `.rux-watch.yml` for custom mappings
+- **Rails support**: Built-in conventions for Rails apps
+- **Multi-platform binaries**: Add Linux x86_64, Linux ARM64, macOS x86_64 support
+
+### Technical Decisions Made:
+- ✅ Go `embed` over runtime downloads - simpler, more reliable
+- ✅ Subprocess over CGO - avoids complexity, works great
+- ✅ JSON event stream - easy to parse and filter
+- ✅ Cache directory pattern - standard location, easy cleanup
+
+---
+
+# Original Spike Document
+
+Okay, the final cherry on the top of Rux: I want to replace [guard](https://github.com/guard/guard) for the Ruby ecosystem. I want it be a single command to you can run in _any_ ruby project, and you have a FS based, fast test runner with zero config and zero futzing. No messing with Gemfiles. No creating Guardfiles. Very performant and fast (uses OS file system events via https://github.com/e-dant/watcher). 
 
 Assuming someone installs rux and runs the following in any ruby project:
 
@@ -34,5 +79,7 @@ Rux will:
 
 ### Future
 * auto-discovery of files to watch, and generate a baseline config based on that
-* rails support
 * look for a Guardfile, and if its defined, we would use it as a template for creating a .rux-config file with the same mappings
+* build in basic rails support based on that
+* support for running other tests - Go to start ?
+* support for running other commands? That seems a big stretch, and requires much more config and thought.

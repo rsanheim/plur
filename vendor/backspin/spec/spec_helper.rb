@@ -13,9 +13,9 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 
-  # Clean up dubplates after each test
+  # Reset configuration after each test
   config.after(:each) do
-    dubplate_dir = File.join(Dir.pwd, "tmp", "backspin")
-    FileUtils.rm_rf(dubplate_dir) if Dir.exist?(dubplate_dir)
+    # Reset configuration to defaults
+    Backspin.reset_configuration!
   end
 end

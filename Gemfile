@@ -10,4 +10,5 @@ group :development, :test do
   gem "standard"
   gem "super_diff"
   gem "timecop"
+  gem "tty-command"
 end

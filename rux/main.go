@@ -19,6 +19,39 @@ func createApp() *cli.App {
 		Version: GetVersionInfo(),
 		Commands: []*cli.Command{
 			{
+				Name:  "watch",
+				Usage: "Watch for file changes and run tests automatically",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:  "timeout",
+						Usage: "Exit after specified seconds (default: run until Ctrl-C)",
+					},
+					&cli.IntFlag{
+						Name:  "debounce",
+						Usage: "Debounce delay in milliseconds (default: 100)",
+						Value: 100,
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					return runWatch(ctx)
+				},
+			},
+			{
+				Name:  "doctor",
+				Usage: "Show diagnostic information about rux installation",
+				Action: func(ctx *cli.Context) error {
+					return runDoctor(ctx)
+				},
+			},
+			{
+				Name:      "dev:file_mapper",
+				Usage:     "Test file mapping - shows which specs would run for given files",
+				ArgsUsage: "[files...]",
+				Action: func(ctx *cli.Context) error {
+					return runFileMapper(ctx)
+				},
+			},
+			{
 				Name:  "db:setup",
 				Usage: "Setup test databases in parallel",
 				Flags: []cli.Flag{
@@ -325,21 +358,63 @@ func reorderArgs(args []string) []string {
 		return args
 	}
 
-	// Separate the command name, flags, and positional args
+	// Check if we have a subcommand (watch, doctor, etc)
+	hasSubcommand := false
+	subcommandIndex := -1
+	for i := 1; i < len(args); i++ {
+		if !strings.HasPrefix(args[i], "-") {
+			// This might be a subcommand
+			for _, cmd := range []string{"watch", "doctor", "db:setup", "db:create", "db:migrate", "db:test:prepare"} {
+				if args[i] == cmd {
+					hasSubcommand = true
+					subcommandIndex = i
+					break
+				}
+			}
+			if hasSubcommand {
+				break
+			}
+		}
+	}
+
+	// If we have a subcommand, don't reorder after it
+	if hasSubcommand {
+		// Only reorder global flags before the subcommand
+		result := []string{args[0]}
+		var globalFlags []string
+		var beforeSubcommand []string
+
+		for i := 1; i < subcommandIndex; i++ {
+			if strings.HasPrefix(args[i], "-") {
+				globalFlags = append(globalFlags, args[i])
+				// Handle flag values
+				if i+1 < subcommandIndex && !strings.HasPrefix(args[i+1], "-") {
+					i++
+					globalFlags = append(globalFlags, args[i])
+				}
+			} else {
+				beforeSubcommand = append(beforeSubcommand, args[i])
+			}
+		}
+
+		result = append(result, globalFlags...)
+		result = append(result, beforeSubcommand...)
+		// Add subcommand and everything after it unchanged
+		result = append(result, args[subcommandIndex:]...)
+		return result
+	}
+
+	// Original logic for when there's no subcommand
 	cmd := args[0]
 	var flags []string
 	var positional []string
 
-	// Skip the command name and process remaining args
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 
-		// Check if it's a flag (starts with - or --)
 		if strings.HasPrefix(arg, "-") {
 			flags = append(flags, arg)
-
-			// Check if this flag takes a value (not a boolean flag)
-			// For now, we'll handle known flags that take values
+			// Check if this flag takes a value
 			if (arg == "-n" || arg == "--workers" || arg == "--runtime-dir") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 				i++
 				flags = append(flags, args[i])
@@ -349,11 +424,9 @@ func reorderArgs(args []string) []string {
 		}
 	}
 
-	// Reconstruct args with flags before positional args
 	result := []string{cmd}
 	result = append(result, flags...)
 	result = append(result, positional...)
-
 	return result
 }
 

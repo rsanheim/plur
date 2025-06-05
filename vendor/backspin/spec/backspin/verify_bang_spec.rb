@@ -1,18 +1,18 @@
 require "spec_helper"
 
 RSpec.describe "Backspin verify! functionality" do
-  let(:dubplate_dir) { Pathname.new(File.join(Dir.pwd, "..")).join("tmp", "backspin") }
+  let(:record_dir) { Pathname.new(File.join(Dir.pwd, "..")).join("tmp", "backspin") }
 
   before do
     # Record a command for testing
-    Backspin.record("echo_verify_bang") do
+    Backspin.call("echo_verify_bang") do
       Open3.capture3("echo hello")
     end
   end
 
-  it "succeeds when output matches recorded dubplate" do
+  it "succeeds when output matches recorded record" do
     # Should not raise an error
-    result = Backspin.verify!(dubplate: "echo_verify_bang") do
+    result = Backspin.verify!("echo_verify_bang") do
       Open3.capture3("echo hello")
     end
 
@@ -20,22 +20,22 @@ RSpec.describe "Backspin verify! functionality" do
     expect(result.output).to eq("hello\n")
   end
 
-  it "raises an RSpec expectation error when output differs from recorded dubplate" do
+  it "raises an RSpec expectation error when output differs from recorded record" do
     expect {
-      Backspin.verify!(dubplate: "echo_verify_bang") do
+      Backspin.verify!("echo_verify_bang") do
         Open3.capture3("echo goodbye")
       end
     }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /Backspin verification failed!/)
   end
 
   it "includes useful information in the error message" do
-    Backspin.verify!(dubplate: "echo_verify_bang") do
+    Backspin.verify!("echo_verify_bang") do
       Open3.capture3("echo goodbye")
     end
     fail "Expected RSpec::Expectations::ExpectationNotMetError to be raised"
   rescue RSpec::Expectations::ExpectationNotMetError => e
     expect(e.message).to include("Backspin verification failed!")
-    expect(e.message).to include("Dubplate:")
+    expect(e.message).to include("Record:")
     expect(e.message).to include("Expected output:")
     expect(e.message).to include("hello")
     expect(e.message).to include("Actual output:")
@@ -47,13 +47,11 @@ RSpec.describe "Backspin verify! functionality" do
 
   it "works with custom matchers and raises on matcher failure" do
     expect {
-      Backspin.verify!(
-        dubplate: "echo_verify_bang",
+      Backspin.verify!("echo_verify_bang",
         matcher: ->(recorded, actual) {
           # This matcher will always fail
           false
-        }
-      ) do
+        }) do
         Open3.capture3("echo hello")
       end
     }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /Backspin verification failed!/)
@@ -61,7 +59,7 @@ RSpec.describe "Backspin verify! functionality" do
 
   it "works in playback mode and never raises" do
     # Playback mode always returns verified: true, so verify! should never raise
-    result = Backspin.verify!(dubplate: "echo_verify_bang", mode: :playback) do
+    result = Backspin.verify!("echo_verify_bang", mode: :playback) do
       Open3.capture3("echo anything")  # Command not actually executed
     end
 

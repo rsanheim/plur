@@ -1,24 +1,29 @@
 require "spec_helper"
 
 RSpec.describe Backspin do
-  let(:backspin_path) { Pathname.new(File.join("tmp", "backspin")) }
+  let(:backspin_path) { Backspin.configuration.backspin_dir }
 
   context "record" do
     it "records stdout, stderr, and status to a single yaml" do
       time = Time.now
       Timecop.freeze(time)
-      result = Backspin.record("echo_hello") do
+      result = Backspin.call("echo_hello") do
         Open3.capture3("echo hello")
       end
       expect(result.commands.size).to eq(1)
-      expect(result.commands.first.class).to eq(Open3::Capture3)
+      expect(result.commands.first.method_class).to eq(Open3::Capture3)
       expect(result.commands.first.args).to eq(["echo", "hello"])
-      expect(result.dubplate_path.to_s).to end_with("tmp/backspin/echo_hello.yaml")
+      expect(result.record_path.to_s).to end_with("echo_hello.yaml")
       expect(backspin_path.join("echo_hello.yaml")).to exist
       results = YAML.load_file(backspin_path.join("echo_hello.yaml"))
-      expect(results).to be_a(Array)
-      expect(results.size).to eq(1)
-      expect(results.first).to eq({
+      expect(results).to be_a(Hash)
+      expect(results["format_version"]).to eq("2.0")
+      expect(results["first_recorded_at"]).not_to be_nil
+      expect(results["commands"]).to be_an(Array)
+      expect(results["commands"].size).to eq(1)
+      expect(results["commands"].first).to include({
+        "command_type" => "Open3::Capture3",
+        "args" => ["echo", "hello"],
         "stdout" => "hello\n",
         "stderr" => "",
         "status" => 0,
@@ -28,35 +33,35 @@ RSpec.describe Backspin do
       expect(Backspin.output).to eq("hello\n")
     end
 
-    it "raises ArgumentError when no dubplate name is provided" do
+    it "raises ArgumentError when no record name is provided" do
       expect {
-        Backspin.record do
+        Backspin.call do
           Open3.capture3("echo hello")
         end
       }.to raise_error(ArgumentError, "wrong number of arguments (given 0, expected 1)")
     end
 
-    it "raises ArgumentError when dubplate name is nil" do
+    it "raises ArgumentError when record name is nil" do
       expect {
-        Backspin.record(nil) do
+        Backspin.call(nil) do
           Open3.capture3("echo hello")
         end
-      }.to raise_error(ArgumentError, "dubplate_name is required")
+      }.to raise_error(ArgumentError, "record_name is required")
     end
 
-    it "raises ArgumentError when dubplate name is empty" do
+    it "raises ArgumentError when record name is empty" do
       expect {
-        Backspin.record("") do
+        Backspin.call("") do
           Open3.capture3("echo hello")
         end
-      }.to raise_error(ArgumentError, "dubplate_name is required")
+      }.to raise_error(ArgumentError, "record_name is required")
     end
 
-    it "records multiple commands to an array in the dubplate" do
+    it "records multiple commands to an array in the record" do
       time = Time.now
       Timecop.freeze(time)
 
-      result = Backspin.record("multi_command") do
+      result = Backspin.call("multi_command") do
         Open3.capture3("echo first")
         Open3.capture3("echo second")
         Open3.capture3("echo third")
@@ -67,28 +72,36 @@ RSpec.describe Backspin do
       expect(result.commands[1].args).to eq(["echo", "second"])
       expect(result.commands[2].args).to eq(["echo", "third"])
 
-      expect(result.dubplate_path).to exist
-      dubplate_data = YAML.load_file(result.dubplate_path)
+      expect(result.record_path).to exist
+      record_data = YAML.load_file(result.record_path)
 
-      # Multiple commands should be stored as an array
-      expect(dubplate_data).to be_a(Array)
-      expect(dubplate_data.size).to eq(3)
+      # Multiple commands should be stored in new format
+      expect(record_data).to be_a(Hash)
+      expect(record_data["format_version"]).to eq("2.0")
+      expect(record_data["commands"]).to be_an(Array)
+      expect(record_data["commands"].size).to eq(3)
 
-      expect(dubplate_data[0]).to eq({
+      expect(record_data["commands"][0]).to include({
+        "command_type" => "Open3::Capture3",
+        "args" => ["echo", "first"],
         "stdout" => "first\n",
         "stderr" => "",
         "status" => 0,
         "recorded_at" => time.iso8601
       })
 
-      expect(dubplate_data[1]).to eq({
+      expect(record_data["commands"][1]).to include({
+        "command_type" => "Open3::Capture3",
+        "args" => ["echo", "second"],
         "stdout" => "second\n",
         "stderr" => "",
         "status" => 0,
         "recorded_at" => time.iso8601
       })
 
-      expect(dubplate_data[2]).to eq({
+      expect(record_data["commands"][2]).to include({
+        "command_type" => "Open3::Capture3",
+        "args" => ["echo", "third"],
         "stdout" => "third\n",
         "stderr" => "",
         "status" => 0,

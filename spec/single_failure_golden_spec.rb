@@ -1,5 +1,4 @@
 require "spec_helper"
-require "backspin"
 
 RSpec.describe "single failure golden test" do
   def fixture_path(name)
@@ -25,8 +24,13 @@ RSpec.describe "single failure golden test" do
   end
 
   it "shows filtered backtrace same as rspec using Backspin" do
-    # Record RSpec output as the golden master
-    Backspin.record("rspec_backtrace_golden") do
+    # Record RSpec output as the golden master with normalized times
+    Backspin.use_record("rspec_backtrace_golden", record: :once,
+      filter: ->(data) {
+        # Normalize timing information in stdout
+        data["stdout"] = make_summary_line_consistent(data["stdout"]) if data["stdout"]
+        data
+      }) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--tty", "--force-color")
       end
@@ -35,16 +39,20 @@ RSpec.describe "single failure golden test" do
     # Verify Rux output contains the same backtrace line as RSpec
     Backspin.verify!("rspec_backtrace_golden",
       matcher: ->(recorded, actual) {
-        # Both should fail with exit status 1 (since we're using custom matcher, we need to check this)
+        # Normalize timing in both outputs
+        recorded_normalized = make_summary_line_consistent(recorded["stdout"])
+        actual_normalized = make_summary_line_consistent(actual["stdout"])
+
+        # Both should fail with exit status 1
         return false unless recorded["status"] == 1 && actual["status"] == 1
 
         # Find the specific backtrace line from RSpec output
-        rspec_lines = recorded["stdout"].split("\n")
+        rspec_lines = recorded_normalized.split("\n")
         backtrace_line = rspec_lines.find { |line| line.include?("./spec/single_failure_spec.rb:6") }
 
         # Verify Rux output contains the same backtrace line
         return false if backtrace_line.nil?
-        actual["stdout"].include?(backtrace_line)
+        actual_normalized.include?(backtrace_line)
       }) do
       chdir fixture_path("failing_specs") do
         run_rux("spec/single_failure_spec.rb")
@@ -53,8 +61,13 @@ RSpec.describe "single failure golden test" do
   end
 
   it "matches rspec colorized output using Backspin verification" do
-    # Record RSpec output as the golden master
-    Backspin.record("rspec_colorized_output_golden") do
+    # Record RSpec output as the golden master with normalized times
+    Backspin.use_record("rspec_colorized_output_golden", record: :once,
+      filter: ->(data) {
+        # Normalize timing information in stdout
+        data["stdout"] = make_summary_line_consistent(data["stdout"]) if data["stdout"]
+        data
+      }) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--force-color", "--tty")
       end
@@ -85,7 +98,12 @@ RSpec.describe "single failure golden test" do
   it "demonstrates Backspin playback mode for fast tests" do
     # First run: record the RSpec output (slow)
     Time.now
-    Backspin.use_dubplate("rspec_playback_demo", record: :once) do
+    Backspin.use_record("rspec_playback_demo", record: :once,
+      filter: ->(data) {
+        # Normalize timing information in stdout
+        data["stdout"] = make_summary_line_consistent(data["stdout"]) if data["stdout"]
+        data
+      }) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--force-color")
       end

@@ -2,8 +2,6 @@ require "spec_helper"
 require "open3"
 
 RSpec.describe "Rux CLI behavior" do
-  let(:rux_ruby_dir) { File.join(__dir__, "..", "rux-ruby") }
-
   describe "dry-run functionality" do
     it "runs dry-run with no arguments" do
       stdout, stderr, status = Open3.capture3(rux_binary, "--dry-run")

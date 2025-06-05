@@ -1,7 +1,0 @@
----
-- stdout: 'ruby 3.4.4 (2025-05-14 revision a38531fd3f) +PRISM [arm64-darwin24]
-
-    '
-  stderr: ''
-  status: 0
-  recorded_at: '2025-06-02T23:15:27-05:00'
