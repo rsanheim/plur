@@ -13,6 +13,7 @@ $LOAD_PATH.unshift(BACKSPIN_PATH)
 require "backspin"
 
 ROOT_PATH = Pathname.new(__dir__).parent
+RUX_RUBY_DIR = ROOT_PATH.join("rux-ruby")
 # The default 'run time' for rux watch for integration tests
 # After this time rux watch will automatically exit
 DEFAULT_RUX_WATCH_TIMEOUT = 2
@@ -47,4 +48,12 @@ RSpec.configure do |config|
   end
 
   config.shared_context_metadata_behavior = :apply_to_host_groups
+
+  # Restore rux-ruby state after the entire test suite
+  config.after(:suite) do
+    Dir.chdir(RUX_RUBY_DIR) do
+      # Reset any file changes made during tests
+      system("git checkout -- .", out: File::NULL, err: File::NULL)
+    end
+  end
 end
