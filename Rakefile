@@ -72,7 +72,7 @@ namespace :test do
 
   desc "Run rux-ruby specs using rux (excluding failing examples)"
   task :rux_ruby do
-    Dir.chdir("rux-ruby") do
+    Dir.chdir("test_fixtures/rux-ruby") do
       puts "Running rux-ruby specs with rux (excluding failing_examples_spec.rb)..."
       spec_files = Dir.glob("spec/**/*_spec.rb").reject { |f| f.include?("failing_examples_spec.rb") }
 
@@ -85,7 +85,7 @@ namespace :test do
 
   desc "Run rux-ruby specs using turbo_tests (excluding failing examples)"
   task :rux_ruby_turbo do
-    Dir.chdir("rux-ruby") do
+    Dir.chdir("test_fixtures/rux-ruby") do
       puts "Running rux-ruby specs with turbo_tests (excluding failing_examples_spec.rb)..."
       spec_files = Dir.glob("spec/**/*_spec.rb").reject { |f| f.include?("failing_examples_spec.rb") }
 
@@ -95,7 +95,7 @@ namespace :test do
 
   desc "Run test_app specs using rux"
   task test_app: [:build] do
-    Dir.chdir("test_app") do
+    Dir.chdir("test_fixtures/test_app") do
       puts "Running test_app specs with rux..."
 
       # Use rux from PATH if available, otherwise use relative path
@@ -213,13 +213,13 @@ namespace :bench do
   desc "Run benchmarks on rux-ruby"
   task rux_ruby: [:build] do
     puts "Running benchmarks on rux-ruby..."
-    sh "./script/bench ./rux-ruby"
+    sh "./script/bench ./test_fixtures/rux-ruby"
   end
 
   desc "Run benchmarks on test_app"
   task test_app: [:build] do
     puts "Running benchmarks on test_app..."
-    sh "./script/bench ./test_app"
+    sh "./script/bench ./test_fixtures/test_app"
   end
 end
 

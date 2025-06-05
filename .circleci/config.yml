@@ -90,13 +90,13 @@ jobs:
             sudo chmod +x /usr/local/bin/rux
       - run:
           name: Setup test_app
-          working_directory: test_app
+          working_directory: test_fixtures/test_app
           command: |
             bundle install
             bundle exec rake db:create db:migrate
       - run:
           name: Run test_app specs with rux
-          working_directory: test_app
+          working_directory: test_fixtures/test_app
           command: |
             rux -n 2
 
