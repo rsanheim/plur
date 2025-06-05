@@ -169,7 +169,7 @@ func GetBinaryPath(cacheDir string) (string, error) {
 		case "arm64", "aarch64":
 			binaryName = "watcher-aarch64-apple-darwin"
 		case "amd64":
-			binaryName = "watcher-x86_64-apple-darwin"
+			return "", fmt.Errorf("Intel Mac (x86_64) is not supported. Please use an Apple Silicon Mac")
 		default:
 			return "", fmt.Errorf("unsupported macOS architecture: %s", runtime.GOARCH)
 		}

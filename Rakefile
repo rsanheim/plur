@@ -266,7 +266,7 @@ namespace :deps do
     when /darwin.*aarch64/, /darwin.*arm64/
       "aarch64-apple-darwin"
     when /darwin/
-      "x86_64-apple-darwin"
+      raise "Intel Mac (x86_64) is not supported. Please use an Apple Silicon Mac."
     when /linux.*aarch64/, /linux.*arm64/
       "aarch64-unknown-linux-gnu"
     when /linux/
@@ -279,40 +279,42 @@ namespace :deps do
     vendor_dir = File.join("rux", "vendor", "watcher")
     FileUtils.mkdir_p(vendor_dir)
 
-    # Download URL - using v0.9.2 release
-    url = "https://github.com/e-dant/watcher/releases/download/release%2F0.9.2/watcher-#{platform}.tar.gz"
+    # Download URL - using v0.13.6 release
+    url = "https://github.com/e-dant/watcher/releases/download/0.13.6/#{platform}.tar"
 
     # Download to temp file
-    temp_file = File.join(vendor_dir, "watcher.tar.gz")
+    temp_file = File.join(vendor_dir, "watcher.tar")
 
     begin
       uri = URI(url)
       puts "Downloading from: #{url}"
 
-      Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
-        request = Net::HTTP::Get.new(uri)
-        http.request(request) do |response|
-          raise "Failed to download: HTTP #{response.code}" if response.code != "200"
-
-          File.open(temp_file, "wb") do |file|
-            response.read_body do |chunk|
-              file.write(chunk)
-            end
-          end
+      # Use open-uri for simpler redirect handling
+      require "open-uri"
+      
+      URI.open(url) do |remote_file|
+        File.open(temp_file, "wb") do |local_file|
+          local_file.write(remote_file.read)
         end
       end
 
       # Extract the binary
       puts "Extracting watcher binary..."
       Dir.chdir(vendor_dir) do
-        sh "tar -xzf watcher.tar.gz"
+        sh "tar -xf watcher.tar"
 
-        # The tarball contains watcher binary directly
+        # The tarball contains the binary in a platform-specific directory
+        binary_source = File.join(platform, "watcher")
         binary_name = "watcher-#{platform}"
-        raise "Expected watcher binary not found in tarball" unless File.exist?("watcher")
+        
+        raise "Expected watcher binary not found at #{binary_source}" unless File.exist?(binary_source)
 
-        FileUtils.mv("watcher", binary_name)
+        FileUtils.mv(binary_source, binary_name)
         FileUtils.chmod(0o755, binary_name)
+        
+        # Clean up extracted directory
+        FileUtils.rm_rf(platform)
+        
         puts "Watcher binary installed at: rux/vendor/watcher/#{binary_name}"
       end
     ensure
