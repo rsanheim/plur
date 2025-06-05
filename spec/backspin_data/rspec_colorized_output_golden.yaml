@@ -1,13 +1,24 @@
 ---
-- stdout: "\e[31mF\e[0m\n\nFailures:\n\n  1) Single Failure fails due to strings not
+first_recorded_at: '2025-06-04T17:11:34-05:00'
+format_version: '2.0'
+commands:
+- command_type: Open3::Capture3
+  args:
+  - bundle
+  - exec
+  - rspec
+  - spec/single_failure_spec.rb
+  - "--force-color"
+  - "--tty"
+  stdout: "\e[31mF\e[0m\n\nFailures:\n\n  1) Single Failure fails due to strings not
     matching\n     \e[31mFailure/Error: \e[0m\e[32mexpect\e[0m(actual).to eq(expected)\e[0m\n
     \    \e[31m\e[0m\n     \e[31m  expected: \"All work and no play makes Jack a dull
     boy\"\e[0m\n     \e[31m       got: \"All work and no play makes something something
     something\"\e[0m\n     \e[31m\e[0m\n     \e[31m  (compared using ==)\e[0m\n     \e[36m#
     ./spec/single_failure_spec.rb:6:in 'block (2 levels) in <top (required)>'\e[0m\n\nFinished
-    in [fake-time] seconds (files took [fake-time] seconds to load)\n\e[31m1 example, 1 failure\e[0m\n\nFailed
-    examples:\n\n\e[31mrspec ./spec/single_failure_spec.rb:2\e[0m \e[36m# Single Failure
-    fails due to strings not matching\e[0m\n\n"
+    in [fake-time] seconds (files took [fake-time] seconds to load)\n\e[31m1 example,
+    1 failure\e[0m\n\nFailed examples:\n\n\e[31mrspec ./spec/single_failure_spec.rb:2\e[0m
+    \e[36m# Single Failure fails due to strings not matching\e[0m\n\n"
   stderr: ''
   status: 1
-  recorded_at: '2025-06-03T02:47:43-05:00'
+  recorded_at: '2025-06-04T17:11:34-05:00'

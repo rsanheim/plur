@@ -5,8 +5,9 @@ require "pathname"
 require "ostruct"
 require "rspec/mocks"
 require "backspin/version"
-require "backspin/rspec_metadata"
+require "backspin/command"
 require "backspin/record"
+require "backspin/recorder"
 
 module Backspin
   class RecordNotFoundError < StandardError; end
@@ -153,47 +154,6 @@ module Backspin
     end
   end
 
-  class Command
-    attr_reader :args, :stdout, :stderr, :status, :recorded_at
-
-    def initialize(method_class:, args:, stdout: nil, stderr: nil, status: nil, recorded_at: nil)
-      @method_class = method_class
-      @args = args
-      @stdout = stdout
-      @stderr = stderr
-      @status = status
-      @recorded_at = recorded_at
-    end
-
-    def class
-      @method_class
-    end
-
-    # Convert to hash for YAML serialization
-    def to_h
-      {
-        "command_type" => @method_class.name,
-        "args" => @args,
-        "stdout" => Backspin.scrub_text(@stdout),
-        "stderr" => Backspin.scrub_text(@stderr),
-        "status" => @status,
-        "recorded_at" => @recorded_at
-      }
-    end
-
-    # Create from hash (for loading from YAML)
-    def self.from_h(data)
-      new(
-        method_class: Open3::Capture3,
-        args: data["args"],
-        stdout: data["stdout"],
-        stderr: data["stderr"],
-        status: data["status"],
-        recorded_at: data["recorded_at"]
-      )
-    end
-  end
-
   class << self
     attr_accessor :last_output
 
@@ -210,41 +170,14 @@ module Backspin
       scrubbed
     end
 
-    def call(record_name)
+    def call(record_name, filter: nil)
       raise ArgumentError, "record_name is required" if record_name.nil? || record_name.empty?
 
-      commands = []
       record_path = build_record_path(record_name)
 
-      # Use RSpec's and_wrap_original to intercept calls
-      allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
-        # Execute the real command
-        stdout, stderr, status = original_method.call(*args)
-
-        # Parse command args
-        cmd_args = if args.length == 1 && args.first.is_a?(String)
-          args.first.split(" ")
-        else
-          args
-        end
-
-        # Create command with interaction data
-        command = Command.new(
-          method_class: Open3::Capture3,
-          args: cmd_args,
-          stdout: stdout,
-          stderr: stderr,
-          status: status.exitstatus,
-          recorded_at: Time.now.iso8601
-        )
-        commands << command
-
-        # Store output for later access (last one wins)
-        Backspin.last_output = stdout
-
-        # Return original result
-        [stdout, stderr, status]
-      end
+      # Create recorder to handle stubbing and command recording
+      recorder = Recorder.new
+      recorder.record_calls(:capture3, :system)
 
       yield
 
@@ -253,10 +186,10 @@ module Backspin
       # Don't load existing data when creating new record
       record = Record.new(record_path)
       record.clear  # Clear any loaded data
-      commands.each { |cmd| record.add_command(cmd) }
-      record.save
+      recorder.commands.each { |cmd| record.add_command(cmd) }
+      record.save(filter: filter)
 
-      Result.new(commands: commands, record_path: Pathname.new(record_path))
+      Result.new(commands: recorder.commands, record_path: Pathname.new(record_path))
     end
 
     def output
@@ -268,6 +201,7 @@ module Backspin
 
       record_path = build_record_path(record_name)
       record_mode = options[:record] || :once
+      filter = options[:filter]
 
       case record_mode
       when :none
@@ -278,18 +212,18 @@ module Backspin
         replay_record(record_path, &block)
       when :all
         # Always record
-        record_and_save_record(record_path, &block)
+        record_and_save_record(record_path, filter: filter, &block)
       when :once
         # Record if doesn't exist, replay if exists
         if File.exist?(record_path)
           replay_record(record_path, &block)
         else
-          record_and_save_record(record_path, &block)
+          record_and_save_record(record_path, filter: filter, &block)
         end
       when :new_episodes
         # Record new commands not in record
         # For now, simplified: just append new recordings
-        record_new_episode(record_path, &block)
+        record_new_episode(record_path, filter: filter, &block)
       else
         raise ArgumentError, "Unknown record mode: #{record_mode}"
       end
@@ -311,14 +245,12 @@ module Backspin
       # Use the first command
       command = record.commands.first
 
+      # Create recorder for verification
+      recorder = Recorder.new
+
       if mode == :playback
         # Playback mode: return recorded output without running command
-        actual_stdout = command.stdout
-        actual_stderr = command.stderr
-        actual_status = OpenStruct.new(exitstatus: command.status)
-
-        # Use RSpec to stub Open3.capture3
-        allow(Open3).to receive(:capture3).and_return([actual_stdout, actual_stderr, actual_status])
+        recorder.setup_playback_stub(command)
 
         yield
 
@@ -327,62 +259,48 @@ module Backspin
           verified: true,
           record_path: Pathname.new(record_path),
           expected_output: command.stdout,
-          actual_output: actual_stdout,
+          actual_output: command.stdout,
           expected_stderr: command.stderr,
-          actual_stderr: actual_stderr,
+          actual_stderr: command.stderr,
           expected_status: command.status,
           actual_status: command.status,
           command_executed: false
         )
       elsif matcher
         # Custom matcher verification
-        actual_data = {}
-
-        # Use RSpec's and_wrap_original to capture actual output
-        allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
-          stdout, stderr, status = original_method.call(*args)
-          actual_data["stdout"] = stdout
-          actual_data["stderr"] = stderr
-          actual_data["status"] = status.exitstatus
-          [stdout, stderr, status]
-        end
+        recorder.setup_verification_stub(command)
 
         yield
 
         # Call custom matcher - convert command back to hash format for matcher
         recorded_data = command.to_h
-        verified = matcher.call(recorded_data, actual_data)
+        verified = matcher.call(recorded_data, recorder.verification_data)
 
         VerifyResult.new(
           verified: verified,
           record_path: Pathname.new(record_path),
           expected_output: command.stdout,
-          actual_output: actual_data["stdout"],
+          actual_output: recorder.verification_data["stdout"],
           expected_stderr: command.stderr,
-          actual_stderr: actual_data["stderr"],
+          actual_stderr: recorder.verification_data["stderr"],
           expected_status: command.status,
-          actual_status: actual_data["status"]
+          actual_status: recorder.verification_data["status"]
         )
       else
         # Default strict mode
-        actual_stdout = nil
-        actual_stderr = nil
-        actual_status = nil
-
-        # Use RSpec's and_wrap_original to capture actual output
-        allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
-          actual_stdout, actual_stderr, actual_status = original_method.call(*args)
-          [actual_stdout, actual_stderr, actual_status]
-        end
+        recorder.setup_verification_stub(command)
 
         yield
 
         # Compare outputs
-        actual_exit_status = actual_status&.exitstatus
+        actual_stdout = recorder.verification_data["stdout"]
+        actual_stderr = recorder.verification_data["stderr"]
+        actual_status = recorder.verification_data["status"]
+
         verified =
           command.stdout == actual_stdout &&
           command.stderr == actual_stderr &&
-          command.status == actual_exit_status
+          command.status == actual_status
 
         VerifyResult.new(
           verified: verified,
@@ -392,7 +310,7 @@ module Backspin
           expected_stderr: command.stderr,
           actual_stderr: actual_stderr,
           expected_status: command.status,
-          actual_status: actual_exit_status
+          actual_status: actual_status
         )
       end
     end
@@ -433,18 +351,9 @@ module Backspin
         raise RecordNotFoundError, "No commands found in record"
       end
 
-      # Use RSpec to stub Open3.capture3 to return recorded data
-      allow(Open3).to receive(:capture3) do |*args|
-        command = record.next_command
-
-        recorded_stdout = command.stdout
-        recorded_stderr = command.stderr
-        recorded_status = OpenStruct.new(exitstatus: command.status)
-
-        [recorded_stdout, recorded_stderr, recorded_status]
-      rescue NoMoreRecordingsError => e
-        raise RecordNotFoundError, e.message
-      end
+      # Create recorder in replay mode
+      recorder = Recorder.new(mode: :replay, record: record)
+      recorder.setup_replay_stubs
 
       block_return_value = yield
 
@@ -461,35 +370,10 @@ module Backspin
       end
     end
 
-    def record_and_save_record(record_path, &block)
-      commands = []
-
-      # Use RSpec's and_wrap_original to record and save
-      allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
-        # Execute the real command
-        stdout, stderr, status = original_method.call(*args)
-
-        # Parse command args
-        cmd_args = if args.length == 1 && args.first.is_a?(String)
-          args.first.split(" ")
-        else
-          args
-        end
-
-        # Create command with interaction data
-        command = Command.new(
-          method_class: Open3::Capture3,
-          args: cmd_args,
-          stdout: stdout,
-          stderr: stderr,
-          status: status.exitstatus,
-          recorded_at: Time.now.iso8601
-        )
-        commands << command
-
-        # Return original result
-        [stdout, stderr, status]
-      end
+    def record_and_save_record(record_path, filter: nil, &block)
+      # Create recorder to handle stubbing and command recording
+      recorder = Recorder.new
+      recorder.record_calls(:capture3, :system)
 
       block_return_value = yield
 
@@ -498,8 +382,8 @@ module Backspin
       # Don't load existing data when creating new record
       record = Record.new(record_path)
       record.clear  # Clear any loaded data
-      commands.each { |cmd| record.add_command(cmd) }
-      record.save
+      recorder.commands.each { |cmd| record.add_command(cmd) }
+      record.save(filter: filter)
 
       # Return appropriate value
       if block_return_value.is_a?(Array) && block_return_value.size == 3
@@ -511,45 +395,21 @@ module Backspin
       end
     end
 
-    def record_new_episode(record_path, &block)
+    def record_new_episode(record_path, filter: nil, &block)
       # For new_episodes mode, we'd need to track which commands have been seen
       # For now, simplified implementation that just appends
       record = Record.load_or_create(record_path)
-      new_commands = []
 
-      # Use RSpec's and_wrap_original to record new episodes
-      allow(Open3).to receive(:capture3).and_wrap_original do |original_method, *args|
-        # Execute the real command
-        stdout, stderr, status = original_method.call(*args)
-
-        # Parse command args
-        cmd_args = if args.length == 1 && args.first.is_a?(String)
-          args.first.split(" ")
-        else
-          args
-        end
-
-        # Create command with interaction data
-        command = Command.new(
-          method_class: Open3::Capture3,
-          args: cmd_args,
-          stdout: stdout,
-          stderr: stderr,
-          status: status.exitstatus,
-          recorded_at: Time.now.iso8601
-        )
-        new_commands << command
-
-        # Return original result
-        [stdout, stderr, status]
-      end
+      # Create recorder to handle stubbing and command recording
+      recorder = Recorder.new
+      recorder.record_calls(:capture3, :system)
 
       result = yield
 
       # Save all recordings (existing + new)
-      if new_commands.any?
-        new_commands.each { |cmd| record.add_command(cmd) }
-        record.save
+      if recorder.commands.any?
+        recorder.commands.each { |cmd| record.add_command(cmd) }
+        record.save(filter: filter)
       end
 
       # Return appropriate value
@@ -565,17 +425,7 @@ module Backspin
       backspin_dir = configuration.backspin_dir
       backspin_dir.mkpath
 
-      # For verify, we still support auto-naming
-      if name.nil? || name.empty?
-        name = RSpecMetadata.record_name_from_example
-      end
-
       File.join(backspin_dir, "#{name}.yaml")
     end
   end
-end
-
-# Define the Open3::Capture3 class for identification
-module Open3
-  class Capture3; end
 end

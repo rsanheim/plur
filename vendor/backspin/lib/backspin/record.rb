@@ -20,13 +20,13 @@ module Backspin
       self
     end
 
-    def save
+    def save(filter: nil)
       FileUtils.mkdir_p(File.dirname(@path))
       # New format: top-level metadata with commands array
       record_data = {
         "first_recorded_at" => @first_recorded_at,
         "format_version" => "2.0",
-        "commands" => @commands.map(&:to_h)
+        "commands" => @commands.map { |cmd| cmd.to_h(filter: filter) }
       }
       File.write(@path, record_data.to_yaml)
     end

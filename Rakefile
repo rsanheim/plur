@@ -55,14 +55,15 @@ namespace :test do
       raise "Cannot find rspec/formatter.rb - are we in the right directory?" unless File.exist?("rspec/formatter.rb")
 
       # Use standard output format (dots) unless verbose is requested
+      # Use -mod=mod to ignore vendor directory and use module cache
       if ENV["VERBOSE"]
-        sh "go test -v ./..."
+        sh "go test -mod=mod -v ./..."
       elsif system("which gotestsum > /dev/null 2>&1")
         # Use gotestsum for better formatting if available
-        sh "gotestsum --format short ./..."
+        sh "gotestsum --format short -- -mod=mod ./..."
       else
         # This gives a cleaner output with just pass/fail
-        sh "go test ./..."
+        sh "go test -mod=mod ./..."
       end
     end
   end
@@ -199,7 +200,7 @@ task :build_release do
     ].join(" ")
 
     puts "Building rux with version: #{full_version}"
-    sh %(go build -ldflags "#{ldflags}" -o rux .)
+    sh %(go build -mod=mod -ldflags "#{ldflags}" -o rux .)
     puts "Binary created at rux/rux with version: #{full_version}"
   end
 end
@@ -259,14 +260,14 @@ namespace :deps do
     require "uri"
     require "fileutils"
 
-    puts "Downloading watcher binary..."
+    puts "Downloading watcher binary for platform: #{RUBY_PLATFORM}"
 
     # Determine platform
     platform = case RUBY_PLATFORM
-    when /darwin.*aarch64/, /darwin.*arm64/
+    when /aarch64-darwin/, /arm64-darwin/
       "aarch64-apple-darwin"
-    when /darwin/
-      "x86_64-apple-darwin"
+    when /x86_64-darwin/
+      raise "Intel Mac (x86_64) is not supported. Please use an Apple Silicon Mac."
     when /linux.*aarch64/, /linux.*arm64/
       "aarch64-unknown-linux-gnu"
     when /linux/
@@ -279,40 +280,40 @@ namespace :deps do
     vendor_dir = File.join("rux", "vendor", "watcher")
     FileUtils.mkdir_p(vendor_dir)
 
-    # Download URL - using v0.9.2 release
-    url = "https://github.com/e-dant/watcher/releases/download/release%2F0.9.2/watcher-#{platform}.tar.gz"
+    # Download URL - using v0.13.6 release
+    url = "https://github.com/e-dant/watcher/releases/download/0.13.6/#{platform}.tar"
 
     # Download to temp file
-    temp_file = File.join(vendor_dir, "watcher.tar.gz")
+    temp_file = File.join(vendor_dir, "watcher.tar")
 
     begin
       uri = URI(url)
       puts "Downloading from: #{url}"
 
-      Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
-        request = Net::HTTP::Get.new(uri)
-        http.request(request) do |response|
-          raise "Failed to download: HTTP #{response.code}" if response.code != "200"
+      # Use open-uri for simpler redirect handling
+      require "open-uri"
 
-          File.open(temp_file, "wb") do |file|
-            response.read_body do |chunk|
-              file.write(chunk)
-            end
-          end
-        end
+      uri.open do |remote_file|
+        File.binwrite(temp_file, remote_file.read)
       end
 
       # Extract the binary
       puts "Extracting watcher binary..."
       Dir.chdir(vendor_dir) do
-        sh "tar -xzf watcher.tar.gz"
+        sh "tar -xf watcher.tar"
 
-        # The tarball contains watcher binary directly
+        # The tarball contains the binary in a platform-specific directory
+        binary_source = File.join(platform, "watcher")
         binary_name = "watcher-#{platform}"
-        raise "Expected watcher binary not found in tarball" unless File.exist?("watcher")
 
-        FileUtils.mv("watcher", binary_name)
+        raise "Expected watcher binary not found at #{binary_source}" unless File.exist?(binary_source)
+
+        FileUtils.mv(binary_source, binary_name)
         FileUtils.chmod(0o755, binary_name)
+
+        # Clean up extracted directory
+        FileUtils.rm_rf(platform)
+
         puts "Watcher binary installed at: rux/vendor/watcher/#{binary_name}"
       end
     ensure

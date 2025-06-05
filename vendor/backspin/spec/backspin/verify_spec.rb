@@ -124,24 +124,4 @@ RSpec.describe "Backspin verify functionality" do
       expect(result.error_message).to include("Actual: actual")
     end
   end
-
-  describe "auto-record naming with verify", pending: "Verify still supports auto-naming but record doesn't" do
-    it "uses auto-generated record name when not specified" do
-      # This test is pending because record no longer supports auto-naming
-      # but verify still does. Keeping for future reference.
-      pending "record requires record name"
-
-      # Record with auto-generated name
-      Backspin.call do
-        Open3.capture3("echo auto")
-      end
-
-      # Verify using same auto-generated name
-      result = Backspin.verify do
-        Open3.capture3("echo auto")
-      end
-
-      expect(result.verified?).to be true
-    end
-  end
 end
