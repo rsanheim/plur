@@ -1,5 +1,5 @@
 ---
-first_recorded_at: '2025-06-04T17:11:35-05:00'
+first_recorded_at: '2025-06-06T04:35:46-05:00'
 format_version: '2.0'
 commands:
 - command_type: Open3::Capture3
@@ -15,9 +15,9 @@ commands:
     boy\"\e[0m\n     \e[31m       got: \"All work and no play makes something something
     something\"\e[0m\n     \e[31m\e[0m\n     \e[31m  (compared using ==)\e[0m\n     \e[36m#
     ./spec/single_failure_spec.rb:6:in 'block (2 levels) in <top (required)>'\e[0m\n\nFinished
-    in [fake-time] seconds (files took [fake-time] seconds to load)\n\e[31m1 example,
-    1 failure\e[0m\n\nFailed examples:\n\n\e[31mrspec ./spec/single_failure_spec.rb:2\e[0m
-    \e[36m# Single Failure fails due to strings not matching\e[0m\n\n"
+    in 0.00714 seconds (files took 0.03634 seconds to load)\n\e[31m1 example, 1 failure\e[0m\n\nFailed
+    examples:\n\n\e[31mrspec ./spec/single_failure_spec.rb:2\e[0m \e[36m# Single Failure
+    fails due to strings not matching\e[0m\n\n"
   stderr: ''
   status: 1
-  recorded_at: '2025-06-04T17:11:35-05:00'
+  recorded_at: '2025-06-06T04:35:46-05:00'

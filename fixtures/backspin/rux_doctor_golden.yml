@@ -1,5 +1,5 @@
 ---
-first_recorded_at: '2025-06-04T17:12:06-05:00'
+first_recorded_at: '2025-06-06T04:36:40-05:00'
 format_version: '2.0'
 commands:
 - command_type: Open3::Capture3
@@ -10,10 +10,10 @@ commands:
     Rux Doctor
     ==========
 
-    Rux Version:     v0.0.0-20250604202912-7d66f4f0df47+dirty
-    Build Date:      unknown
-    Git Commit:      unknown
-    Built By:        unknown
+    Rux Version:     v0.6.5-20250606-0932-d50355286
+    Build Date:      2025-06-06 09:32:15 UTC
+    Git Commit:      d50355286
+    Built By:        rake
 
     Operating System: darwin
     Architecture:     arm64
@@ -50,4 +50,4 @@ commands:
       GOPATH:                   (not set)
   stderr: ''
   status: 0
-  recorded_at: '2025-06-04T17:12:06-05:00'
+  recorded_at: '2025-06-06T04:36:40-05:00'

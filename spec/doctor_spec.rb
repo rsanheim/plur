@@ -57,38 +57,24 @@ RSpec.describe "rux doctor command" do
   end
 
   it "produces consistent output using Backspin golden testing" do
-    # Use use_record for easier recording management
-    Backspin.use_record("rux_doctor_golden", record: :once) do
-      run_rux_doctor
-    end
+    stdout_matcher = ->(recorded_stdout, actual_stdout) {
+      # Check that all key sections appear in both outputs
+      key_sections = [
+        "Rux Doctor", "Rux Version:", "Operating System:",
+        "Ruby Environment:", "File Watcher:", "Cache Directory:",
+        "Environment Variables:"
+      ]
 
-    # Verify current output matches golden (with normalization)
-    Backspin.verify!("rux_doctor_golden",
-      matcher: ->(recorded, actual) {
-        # Both should succeed with exit status 0
-        return false unless recorded["status"] == 0 && actual["status"] == 0
+      normalized_recorded = normalize_doctor_output(recorded_stdout)
+      normalized_actual = normalize_doctor_output(actual_stdout)
 
-        # Normalize both outputs for comparison
-        recorded_normalized = normalize_doctor_output(recorded["stdout"])
-        actual_normalized = normalize_doctor_output(actual["stdout"])
+      key_sections.all? { |section|
+        normalized_recorded.include?(section) && normalized_actual.include?(section)
+      }
+    }
 
-        # Instead of exact match, check that all key sections are present
-        # and in the correct order
-        key_sections = [
-          "Rux Doctor",
-          "Rux Version:",
-          "Operating System:",
-          "Ruby Environment:",
-          "File Watcher:",
-          "Cache Directory:",
-          "Environment Variables:"
-        ]
-
-        # Check that all key sections appear in both outputs
-        key_sections.all? do |section|
-          recorded_normalized.include?(section) && actual_normalized.include?(section)
-        end
-      }) do
+    Backspin.run!("rux_doctor_golden",
+      match_on: [:stdout, stdout_matcher]) do
       run_rux_doctor
     end
   end

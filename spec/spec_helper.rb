@@ -7,9 +7,6 @@ require "tty-command"
 require "stringio"
 require "ostruct"
 
-BACKSPIN_PATH = Pathname.new(__dir__).parent.join("vendor", "backspin", "lib").expand_path.freeze
-$LOAD_PATH.unshift(BACKSPIN_PATH)
-
 require "backspin"
 
 ROOT_PATH = Pathname.new(__dir__).parent
