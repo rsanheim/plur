@@ -102,7 +102,9 @@ jobs:
           working_directory: fixtures/projects/default-rails
           command: |
             rux -n 2
-      - ruby/install-deps
+      - run:
+          name: Install turbo_tests
+          command: gem install turbo_tests
       - run:
           name: Install hyperfine for benchmarking
           command: |
