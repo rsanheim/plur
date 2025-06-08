@@ -93,7 +93,7 @@ func InitLogger(verbose bool, debug bool) {
 	} else if verbose {
 		level = slog.LevelInfo
 	} else {
-		level = slog.LevelWarn
+		level = slog.LevelInfo
 	}
 
 	// Create custom text handler that writes to stderr
