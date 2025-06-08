@@ -4,7 +4,7 @@ require "open3"
 RSpec.describe "Rux integration tests" do
   before do
     # Clean up any existing test databases
-    Dir.chdir(test_app_dir) do
+    Dir.chdir(default_rails_dir) do
       FileUtils.rm_f(Dir.glob("storage/test*.sqlite3"))
     end
   end
@@ -27,7 +27,7 @@ RSpec.describe "Rux integration tests" do
 
   describe "database tasks" do
     it "shows dry-run output for database creation" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         stdout, _, status = Open3.capture3(rux_binary, "db:create", "--dry-run", "-n", "3")
 
         expect(status.success?).to be true
@@ -39,7 +39,7 @@ RSpec.describe "Rux integration tests" do
     end
 
     it "creates and migrates databases for parallel testing", pending: "Database setup needs investigation" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         # Create databases
         _, stderr, status = Open3.capture3(rux_binary, "db:create", "-n", "3")
         expect(status.success?).to eq(true), "db:create failed: #{stderr}"
@@ -58,7 +58,7 @@ RSpec.describe "Rux integration tests" do
 
   describe "parallel test execution" do
     it "runs tests in parallel", pending: "Database setup needs investigation" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         # Set up databases first
         system(rux_binary, "db:create", "-n", "3", out: File::NULL, err: File::NULL)
         system(rux_binary, "db:migrate", "-n", "3", out: File::NULL, err: File::NULL)
@@ -73,7 +73,7 @@ RSpec.describe "Rux integration tests" do
     end
 
     it "assigns different TEST_ENV_NUMBER to workers", pending: "Database setup needs investigation" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         # Set up databases
         system(rux_binary, "db:create", "-n", "2", out: File::NULL, err: File::NULL)
         system(rux_binary, "db:migrate", "-n", "2", out: File::NULL, err: File::NULL)
@@ -87,7 +87,7 @@ RSpec.describe "Rux integration tests" do
     end
 
     it "shows dry-run output for test execution" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         stdout, stderr, status = Open3.capture3(rux_binary, "--dry-run", "-n", "2")
 
         expect(status.success?).to be true

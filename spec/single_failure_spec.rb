@@ -1,6 +1,6 @@
 RSpec.describe "single failure" do
   def fixture_path(name)
-    File.join(__dir__, "..", "test_fixtures", name)
+    project_fixture(name)
   end
 
   def capture(cmd_array)

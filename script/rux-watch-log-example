@@ -3,7 +3,7 @@
 # Script to test rux watch verbose output with specific file change scenarios
 
 
-pushd test_fixtures/rux-ruby || exit 1
+pushd fixtures/projects/default-ruby || exit 1
 
 log_path=../../log/rux-watch-log.log
 

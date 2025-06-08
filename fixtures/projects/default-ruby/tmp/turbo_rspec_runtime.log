@@ -1,0 +1,11 @@
+spec/calculator_spec.rb:0.003731000004336238
+spec/counter_spec.rb:0.004604000016115606
+spec/failing_examples_spec.rb:0.007225000066682696
+spec/string_utils_spec.rb:0.0017399999778717756
+spec/rux_ruby_spec.rb:0.0012649999698624015
+spec/services/email_service_spec.rb:0.0013219999382272363
+spec/validator_spec.rb:0.0005100000416859984
+spec/array_helpers_spec.rb:0.0009640000062063336
+spec/env_test_spec.rb:0.0007380000315606594
+spec/date_formatter_spec.rb:0.000784000032581389
+spec/models/user_spec.rb:0.00022200006060302258

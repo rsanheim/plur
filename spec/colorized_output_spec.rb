@@ -11,7 +11,7 @@ RSpec.describe "Rux colorized output" do
 
   context "with color enabled (default)" do
     it "outputs red F for failures matching rspec format" do
-      failing_specs_path = File.join(__dir__, "..", "test_fixtures", "failing_specs")
+      failing_specs_path = project_fixture("failing_specs")
       Dir.chdir(failing_specs_path) do
         output = `FORCE_COLOR=1 #{rux_binary} --color spec/mixed_results_spec.rb 2>&1`
 
@@ -30,7 +30,7 @@ RSpec.describe "Rux colorized output" do
 
   context "with --no-color flag" do
     it "outputs plain text without ANSI codes" do
-      failing_specs_path = File.join(__dir__, "..", "test_fixtures", "failing_specs")
+      failing_specs_path = project_fixture("failing_specs")
       Dir.chdir(failing_specs_path) do
         output = `#{rux_binary} --no-color spec/mixed_results_spec.rb 2>&1`
 
@@ -46,7 +46,7 @@ RSpec.describe "Rux colorized output" do
 
   context "with --no-colour flag (British spelling)" do
     it "outputs plain text without ANSI codes" do
-      failing_specs_path = File.join(__dir__, "..", "test_fixtures", "failing_specs")
+      failing_specs_path = project_fixture("failing_specs")
       Dir.chdir(failing_specs_path) do
         output = `#{rux_binary} --no-colour spec/mixed_results_spec.rb 2>&1`
 

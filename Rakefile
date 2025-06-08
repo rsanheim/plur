@@ -51,7 +51,7 @@ task :install do
 
     puts "Installing rux with version: #{full_version}"
     sh %(go install -mod=mod -ldflags "#{ldflags}" .)
-    
+
     # Get actual GOPATH for display
     gopath = `go env GOPATH`.chomp
     puts "Installed rux to #{gopath}/bin/ with version: #{full_version}"
@@ -104,36 +104,34 @@ namespace :test do
     end
   end
 
-  desc "Run Ruby tests with rux"
-  task ruby: %i[build rux_ruby]
+  desc "Run our default-ruby fixture projecttests with rux"
+  task ruby: %i[build default_ruby]
 
-  desc "Run rux-ruby specs using rux (excluding failing examples)"
-  task :rux_ruby do
-    Dir.chdir("test_fixtures/rux-ruby") do
-      puts "Running rux-ruby specs with rux (excluding failing_examples_spec.rb)..."
-      spec_files = Dir.glob("spec/**/*_spec.rb").reject { |f| f.include?("failing_examples_spec.rb") }
-
+  desc "Run our default-ruby fixture project with rux"
+  task :default_ruby do
+    Dir.chdir("fixtures/projects/default-ruby") do
+      puts "Running default-ruby specs with rux..."
+      
       # Use rux from PATH if available, otherwise use relative path
       rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
 
-      sh "#{rux_command} #{spec_files.join(" ")}"
+      sh rux_command
     end
   end
 
-  desc "Run rux-ruby specs using turbo_tests (excluding failing examples)"
-  task :rux_ruby_turbo do
-    Dir.chdir("test_fixtures/rux-ruby") do
-      puts "Running rux-ruby specs with turbo_tests (excluding failing_examples_spec.rb)..."
-      spec_files = Dir.glob("spec/**/*_spec.rb").reject { |f| f.include?("failing_examples_spec.rb") }
-
-      sh "bundle exec turbo_tests #{spec_files.join(" ")}"
+  desc "Run default-ruby specs using turbo_tests"
+  task :default_ruby_turbo do
+    Dir.chdir("fixtures/projects/default-ruby") do
+      puts "Running default-ruby specs with turbo_tests..."
+      
+      sh "bundle exec turbo_tests"
     end
   end
 
-  desc "Run test_app specs using rux"
-  task test_app: [:build] do
-    Dir.chdir("test_fixtures/test_app") do
-      puts "Running test_app specs with rux..."
+  desc "Run default-rails specs using rux"
+  task default_rails: [:build] do
+    Dir.chdir("fixtures/projects/default-rails") do
+      puts "Running default-rails specs with rux..."
 
       # Use rux from PATH if available, otherwise use relative path
       rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
@@ -245,18 +243,18 @@ end
 # ========================================
 namespace :bench do
   desc "Run all benchmarks"
-  task all: %i[rux_ruby test_app]
+  task all: %i[default_ruby rails8_app]
 
-  desc "Run benchmarks on rux-ruby"
-  task rux_ruby: [:build] do
-    puts "Running benchmarks on rux-ruby..."
-    sh "./script/bench ./test_fixtures/rux-ruby"
+  desc "Run benchmarks on default-ruby"
+  task default_ruby: [:build] do
+    puts "Running benchmarks on default-ruby..."
+    sh "./script/bench ./fixtures/projects/default-ruby"
   end
 
-  desc "Run benchmarks on test_app"
-  task test_app: [:build] do
-    puts "Running benchmarks on test_app..."
-    sh "./script/bench ./test_fixtures/test_app"
+  desc "Run benchmarks on default-rails"
+  task default_rails: [:build] do
+    puts "Running benchmarks on default-rails..."
+    sh "./script/bench ./fixtures/projects/default-rails"
   end
 end
 

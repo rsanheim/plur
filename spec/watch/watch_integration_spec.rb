@@ -22,7 +22,7 @@ RSpec.describe "rux watch integration" do
       # Wait for the watcher to be ready
       if !modified && err && err.include?("s/self/live@")
         # Modify a lib file
-        calculator_file = rux_ruby_dir.join("lib/calculator.rb")
+        calculator_file = default_ruby_dir.join("lib/calculator.rb")
         calculator_file.write(calculator_file.read + "\n# test")
         modified = true
       end
@@ -36,7 +36,7 @@ RSpec.describe "rux watch integration" do
 
   it "maps nested lib files correctly" do
     # Create a nested lib file temporarily
-    nested_lib = rux_ruby_dir.join("lib/models/temp_model.rb")
+    nested_lib = default_ruby_dir.join("lib/models/temp_model.rb")
     FileUtils.mkdir_p(File.dirname(nested_lib))
 
     begin
@@ -73,7 +73,7 @@ RSpec.describe "rux watch integration" do
       # Wait for the watcher to be ready
       if !modified && err && err.include?("s/self/live@")
         # Modify spec_helper.rb by appending a comment
-        spec_helper = rux_ruby_dir.join("spec/spec_helper.rb")
+        spec_helper = default_ruby_dir.join("spec/spec_helper.rb")
         original_content = spec_helper.read
         spec_helper.write(original_content + "\n# Modified by test")
         # Restore original content after a moment
@@ -92,7 +92,7 @@ RSpec.describe "rux watch integration" do
     $stdout.sync = true
     $stderr.sync = true
 
-    spec_path = rux_ruby_dir.join("spec/calculator_spec.rb")
+    spec_path = default_ruby_dir.join("spec/calculator_spec.rb")
     contents = spec_path.read
 
     modified = false
@@ -115,7 +115,7 @@ RSpec.describe "rux watch integration" do
   end
 
   it "ignores non-Ruby files" do
-    readme_file = rux_ruby_dir.join("README.md")
+    readme_file = default_ruby_dir.join("README.md")
     original_content = readme_file.read
 
     modified = false
@@ -151,13 +151,13 @@ RSpec.describe "rux watch integration" do
       # Wait for the watcher to be ready
       if !modified && err && err.include?("s/self/live@")
         # Rapidly modify multiple files
-        calc_file = rux_ruby_dir.join("lib/calculator.rb")
+        calc_file = default_ruby_dir.join("lib/calculator.rb")
         calc_file.write(calc_file.read + "\n# test")
 
-        str_file = rux_ruby_dir.join("lib/string_utils.rb")
+        str_file = default_ruby_dir.join("lib/string_utils.rb")
         str_file.write(str_file.read + "\n# test")
 
-        val_file = rux_ruby_dir.join("lib/validator.rb")
+        val_file = default_ruby_dir.join("lib/validator.rb")
         val_file.write(val_file.read + "\n# test")
 
         modified = true
@@ -176,7 +176,7 @@ RSpec.describe "rux watch integration" do
   end
 
   describe "Rails-style mappings" do
-    let(:app_dir) { File.join(rux_ruby_dir, "app") }
+    let(:app_dir) { File.join(default_ruby_dir, "app") }
 
     before do
       # Create Rails-like directory structure

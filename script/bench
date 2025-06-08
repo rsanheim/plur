@@ -29,7 +29,7 @@ OPTIONS:
     -h, --help             Show this help message
 
 EXAMPLES:
-    # Benchmark default projects (rux-ruby and example-project)
+    # Benchmark default projects (default-ruby and example-project)
     $0
 
     # Benchmark a specific project with 4 workers
@@ -214,9 +214,9 @@ if [ ${#PROJECT_PATHS[@]} -gt 0 ]; then
     done
 else
     # Run default benchmarks
-    echo "Running benchmarks for rux-ruby and example-project"
+    echo "Running benchmarks for default-ruby and example-project"
     
-    benchmark_project "./rux-ruby"
+    benchmark_project "./fixtures/projects/default-ruby"
     benchmark_project "./references/example-project"
 fi
 

@@ -11,7 +11,7 @@ end
 
 # Setup Rails app
 puts "Setting up Rails test app..."
-Dir.chdir("test_app") do
+Dir.chdir("fixtures/projects/default-rails") do
   puts "Installing gems..."
   system("bundle install") || abort("Failed to install gems")
 
@@ -36,14 +36,14 @@ puts <<~SUCCESS
   The Rails app is ready for parallel testing. You can now:
 
   1. Run tests in parallel:
-     cd test_app && ../rux/rux -n 3
+     cd fixtures/projects/default-rails && rux -n 3
 
   2. Setup databases:
-     cd test_app && ../rux/rux db:create -n 3
-     cd test_app && ../rux/rux db:migrate -n 3
+     cd fixtures/projects/default-rails && rux db:create -n 3
+     cd fixtures/projects/default-rails && rux db:migrate -n 3
 
   3. See what would run (dry-run):
-     cd test_app && ../rux/rux --dry-run -n 3
+     cd fixtures/projects/default-rails && rux --dry-run -n 3
 
   4. Run integration tests:
      ruby test_rux_integration.rb

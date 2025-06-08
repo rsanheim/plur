@@ -9,7 +9,7 @@ RSpec.describe "Rux performance" do
 
   describe "parallelization efficiency" do
     it "chooses optimal execution strategy based on file count" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         # With grouping optimization, for small test suites a single worker
         # might be faster as it avoids process spawn overhead
         single_output = `#{rux_binary} -n 1 2>&1`
@@ -28,7 +28,7 @@ RSpec.describe "Rux performance" do
     end
 
     it "shows wall time vs CPU time to demonstrate parallelization" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         output = `#{rux_binary} 2>&1`
 
         # Should show both wall time and CPU time
@@ -86,7 +86,7 @@ RSpec.describe "Rux performance" do
 
   describe "worker optimization" do
     it "chooses reasonable default worker count" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         output = `#{rux_binary} 2>&1`
 
         # Should show worker count and available cores

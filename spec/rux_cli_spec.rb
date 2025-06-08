@@ -12,7 +12,7 @@ RSpec.describe "Rux CLI behavior" do
     end
 
     it "runs dry-run with specific spec file" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         stdout, stderr, status = Open3.capture3(rux_binary, "--dry-run", "spec/calculator_spec.rb")
 
         expect(status.success?).to be true
@@ -23,7 +23,7 @@ RSpec.describe "Rux CLI behavior" do
     end
 
     it "runs dry-run with multiple spec files" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         stdout, stderr, status = Open3.capture3(
           rux_binary,
           "--dry-run",
@@ -40,7 +40,7 @@ RSpec.describe "Rux CLI behavior" do
     end
 
     it "runs dry-run with --auto flag" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         stdout, stderr, status = Open3.capture3(
           rux_binary,
           "--dry-run",
@@ -55,7 +55,7 @@ RSpec.describe "Rux CLI behavior" do
     end
 
     it "runs dry-run with auto-discovery in rux-ruby" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         stdout, stderr, status = Open3.capture3(rux_binary, "--dry-run")
 
         expect(status.success?).to be true
@@ -68,7 +68,7 @@ RSpec.describe "Rux CLI behavior" do
 
   describe "actual test execution" do
     it "runs all specs in parallel with auto-discovery" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         stdout, _, status = Open3.capture3(rux_binary)
 
         expect(status.success?).to be true
@@ -79,7 +79,7 @@ RSpec.describe "Rux CLI behavior" do
     end
 
     it "runs with --auto flag (bundle install + run)" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         stdout, _, status = Open3.capture3(rux_binary, "--auto")
 
         expect(status.success?).to be true
@@ -89,7 +89,7 @@ RSpec.describe "Rux CLI behavior" do
     end
 
     it "runs specific spec file" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         stdout, _, status = Open3.capture3(rux_binary, "spec/calculator_spec.rb")
 
         expect(status.success?).to be true
@@ -98,7 +98,7 @@ RSpec.describe "Rux CLI behavior" do
     end
 
     it "provides interleaved output from parallel execution" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         stdout, _, status = Open3.capture3(rux_binary, "-n", "2")
 
         expect(status.success?).to be true
