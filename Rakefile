@@ -107,7 +107,7 @@ namespace :test do
     end
   end
 
-  desc "Run our default-ruby fixture projecttests with rux"
+  desc "Run our default-ruby fixture project with rux"
   task ruby: %i[build default_ruby]
 
   desc "Run our default-ruby fixture project with rux"
