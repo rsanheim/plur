@@ -111,9 +111,9 @@ jobs:
             wget https://github.com/sharkdp/hyperfine/releases/download/v1.19.0/hyperfine_1.19.0_amd64.deb
             sudo dpkg -i hyperfine_1.19.0_amd64.deb
             hyperfine --version
-      - run:
-          name: Run benchmarks default benchmark suite
-          command: ./script/bench
+      # - run:
+      #     name: Run benchmarks default benchmark suite
+      #     command: ./script/bench
 
 workflows:
   test-all:
