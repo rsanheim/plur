@@ -24,6 +24,7 @@ OPTIONS:
     -n, --workers NUM      Number of workers to use (default: $WORKERS)
     --no-results           Don't save results to file
     --warmup NUM           Number of warmup runs (default: $WARMUP)
+    --show-output          Show output of each benchmark run
     --runs NUM             Number of benchmark runs (default: $RUNS)
     --trace                Enable rux tracing for performance analysis
     -h, --help             Show this help message
@@ -135,12 +136,14 @@ benchmark_project() {
         --warmup $WARMUP \
         --runs $RUNS \
         --export-json "$JSON_FILE" \
+        --show-output \
             "turbo_tests -n $WORKERS" \
             "$RUX_CMD"
     else
         hyperfine \
             --warmup $WARMUP \
             --runs $RUNS \
+            --show-output \
             "turbo_tests -n $WORKERS" \
             "$RUX_CMD"
     fi
