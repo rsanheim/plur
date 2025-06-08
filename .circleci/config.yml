@@ -102,6 +102,7 @@ jobs:
           working_directory: fixtures/projects/default-rails
           command: |
             rux -n 2
+      - ruby/install-deps
       - run:
           name: Install hyperfine for benchmarking
           command: |
