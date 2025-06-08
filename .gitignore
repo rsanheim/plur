@@ -26,7 +26,7 @@ main
 /test/tmp/
 /test/version_tmp/
 /tmp/
-*.log
+/log/*.log
 
 # RSpec
 /spec/fixtures/cassettes/
@@ -49,7 +49,6 @@ main
 *~
 
 # Logs
-*.log
 *.pid
 
 # Test artifacts
