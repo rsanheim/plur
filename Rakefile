@@ -22,7 +22,7 @@ task :install do
   Dir.chdir("rux") do
     sh %(go install -mod=mod .)
     gopath = `go env GOPATH`.chomp
-    puts "Installed rux to #{gopath}/bin/ with version: #{full_version}"
+    puts "Installed rux to #{gopath}/bin/ with version: #{`./rux --version`.strip}"
   end
 end
 
