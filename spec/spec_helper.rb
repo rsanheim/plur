@@ -1,11 +1,12 @@
 require "fileutils"
 require "open3"
+require "ostruct"
 require "pathname"
+require "stringio"
 require "super_diff/rspec"
+require "timecop"
 require "tmpdir"
 require "tty-command"
-require "stringio"
-require "ostruct"
 
 require "backspin"
 
