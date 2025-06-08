@@ -18,8 +18,8 @@ main
 *.rbc
 /.config
 /coverage/
-/fixtures/**/tmp/
-/fixtures/**/log/
+/fixtures/**/tmp/*
+/fixtures/**/log/*
 /InstalledFiles
 /pkg/
 /spec/reports/
