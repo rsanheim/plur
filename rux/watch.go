@@ -4,7 +4,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -23,11 +22,16 @@ import (
 var watcherBinaries embed.FS
 
 func runWatch(ctx *cli.Context) error {
-	currentLogLevel := slog.SetLogLoggerLevel(slog.LevelDebug)
-	defer slog.SetLogLoggerLevel(currentLogLevel) // revert chang
+	// Initialize logging if not already done (watch can be called directly)
+	if Logger == nil {
+		debug := os.Getenv("RUX_DEBUG") == "1"
+		// Try to get verbose flag from context
+		verbose := ctx.Bool("verbose")
+		InitLogger(verbose, debug)
+	}
 
-	fmt.Println("Starting rux watch mode...")
-	slog.Debug("log level", "level", currentLogLevel)
+	// Log startup info
+	Logger.Info("rux watch starting!", "version", GetVersionInfo())
 
 	// Create file mapper
 	fileMapper := watch.NewFileMapper()
@@ -36,7 +40,7 @@ func runWatch(ctx *cli.Context) error {
 	debounceMs := ctx.Int("debounce")
 	debounceDelay := time.Duration(debounceMs) * time.Millisecond
 	debouncer := watch.NewDebouncer(debounceDelay)
-	slog.Debug("Debounce delay", "ms", debounceMs)
+	LogDebug("Debounce delay", "ms", debounceMs)
 
 	// Determine which directories to watch
 	watchDirs := watch.GetWatchDirectories()
@@ -44,13 +48,21 @@ func runWatch(ctx *cli.Context) error {
 		return fmt.Errorf("no directories to watch found (tried: spec, lib, app)")
 	}
 
-	fmt.Printf("Watching directories: %s\n", strings.Join(watchDirs, ", "))
-
+	// Get project name from current directory
+	projectName := "unknown"
+	if cwd, err := os.Getwd(); err == nil {
+		projectName = filepath.Base(cwd)
+	}
+	
 	timeout := ctx.Int("timeout")
+	
+	Logger.Info("rux configuration info", 
+		"project", projectName,
+		"directories", watchDirs,
+		"debounce", debounceMs,
+		"timeout", timeout)
 	if timeout > 0 {
-		fmt.Printf("Will exit after %d seconds\n", timeout)
-	} else {
-		fmt.Println("Press Ctrl+C to stop")
+		LogDebug("rux in timeout mode - with auto exit after "+fmt.Sprintf("%d", timeout)+" seconds")
 	}
 
 	// Get the watcher binary path
@@ -58,6 +70,9 @@ func runWatch(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}
+	
+	// Log binary path in debug mode
+	LogDebug("rux using e-dant/watcher", "path", watcherPath)
 
 	// Create watcher configuration
 	watcherConfig := &watch.Config{
@@ -87,27 +102,39 @@ func runWatch(ctx *cli.Context) error {
 	for {
 		select {
 		case event := <-manager.Events():
-			slog.Debug("Event", "event", event)
-			fmt.Fprintf(os.Stderr, "Event: %+v\n", event)
+			// Convert absolute path to relative for cleaner logs
+			cwd, _ := os.Getwd()
+			relPath := event.PathName
+			if rel, err := filepath.Rel(cwd, event.PathName); err == nil {
+				relPath = "./" + rel
+			}
+			
+			LogDebug("watch", 
+				"event", event.EffectType,
+				"type", event.PathType,
+				"associated", fmt.Sprintf("%v", event.Associated),
+				"path", relPath)
 
 			// Only process file events (not directories)
 			if event.PathType != "file" {
+				// Skip logging for directory events
 				continue
 			}
 
 			// Only process modify and create events
 			if event.EffectType != "modify" && event.EffectType != "create" {
+				// Skip logging for non-modify/create events
 				continue
 			}
 
 			// Check if we should watch this file
 			if !fileMapper.ShouldWatchFile(event.PathName) {
+				// Skip logging for files not in watch list
 				continue
 			}
 
 			// Convert absolute path to relative path for mapping
-			cwd, _ := os.Getwd()
-			relPath, err := filepath.Rel(cwd, event.PathName)
+			relPath, err = filepath.Rel(cwd, event.PathName)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get relative path: %v\n", err)
 				continue
@@ -116,12 +143,12 @@ func runWatch(ctx *cli.Context) error {
 			// Map the file to specs
 			specsToRun := fileMapper.MapFileToSpecs(relPath)
 			if len(specsToRun) == 0 {
-				fmt.Printf("Changed: %s (no spec mapping found)\n", relPath)
+				LogDebug("rux", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
 				continue
 			}
+			LogDebug("rux", "event", "mapping_found", "path", "./"+relPath, "specs", specsToRun)
 
-			slog.Debug("Changed", "path", relPath)
-			fmt.Fprintf(os.Stderr, "Changed: %s\n", relPath)
+			// File change notification removed - info is in debug logs
 
 			// Debounce the spec runs
 			debouncer.Debounce(specsToRun, func(specs []string) {
@@ -133,8 +160,7 @@ func runWatch(ctx *cli.Context) error {
 
 				// Run each unique spec
 				for spec := range uniqueSpecs {
-					slog.Debug("Running", "spec", spec)
-					fmt.Fprintf(os.Stderr, "Running: %s\n", spec)
+					LogDebug("rux", "event", "run_spec", "path", "./"+spec)
 					runSpecsOrDirectory(spec)
 				}
 			})
@@ -143,7 +169,8 @@ func runWatch(ctx *cli.Context) error {
 			return fmt.Errorf("watcher error: %v", err)
 
 		case <-timeoutChan:
-			fmt.Println("\nTimeout reached, exiting watch mode")
+			Logger.Info("rux timeout reached, exiting!", "event", "timeout", "timeout", timeout)
+			fmt.Println("\nTimeout reached, exiting!")
 			return nil
 
 		case sig := <-sigChan:
@@ -192,7 +219,7 @@ func getWatcherBinaryPath() (string, error) {
 		return "", fmt.Errorf("failed to write watcher binary: %v", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Extracted watcher binary to: %s\n", binaryPath)
+	LogDebug("Extracted watcher binary", "path", binaryPath)
 	return binaryPath, nil
 }
 
@@ -219,5 +246,4 @@ func runSpecsOrDirectory(specPath string) {
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to run spec: %v\n", err)
 	}
-	slog.Debug("watching...")
 }
