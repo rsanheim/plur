@@ -4,7 +4,7 @@ require "tmpdir"
 RSpec.describe "Rux error handling" do
   context "when JSON output is empty or malformed" do
     it "provides helpful error message instead of raw JSON parsing error" do
-      fixture_dir = File.join(__dir__, "..", "test_fixtures", "empty_json")
+      fixture_dir = project_fixture("empty_json")
 
       # Run rux and capture output
       chdir(fixture_dir) do

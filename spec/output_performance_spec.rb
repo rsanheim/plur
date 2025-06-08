@@ -7,7 +7,7 @@ RSpec.describe "Rux output performance" do
 
   describe "concurrent output handling" do
     it "produces valid output with high worker count" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         # Run with many workers to stress-test the output handling
         output = `#{rux_binary} -n 8 2>&1`
 
@@ -25,7 +25,7 @@ RSpec.describe "Rux output performance" do
     end
 
     it "maintains colored output when supported" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         # Force color output
         output = `FORCE_COLOR=1 #{rux_binary} -n 4 2>&1`
 

@@ -3,12 +3,12 @@ require "spec_helper"
 RSpec.describe "Rux database tasks", skip: true do
   before do
     expect(File.exist?(rux_binary)).to be(true)
-    expect(File.exist?(test_app_dir)).to be(true)
+    expect(File.exist?(default_rails_dir)).to be(true)
   end
 
   describe "db:setup command" do
     it "runs db:setup in dry-run mode for Rails app" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         output = `#{rux_binary} db:setup --dry-run -n 3 2>&1`
 
         expect(output).to include("[dry-run] Would run database task 'db:setup' with 3 workers")
@@ -47,7 +47,7 @@ RSpec.describe "Rux database tasks", skip: true do
 
   describe "db:create command" do
     it "runs db:create in dry-run mode" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         output = `#{rux_binary} db:create --dry-run -n 2 2>&1`
 
         expect(output).to include("[dry-run] Would run database task 'db:create' with 2 workers")
@@ -58,7 +58,7 @@ RSpec.describe "Rux database tasks", skip: true do
 
   describe "db:migrate command" do
     it "runs db:migrate in dry-run mode" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         output = `#{rux_binary} db:migrate --dry-run -n 2 2>&1`
 
         expect(output).to include("[dry-run] Would run database task 'db:migrate' with 2 workers")
@@ -69,7 +69,7 @@ RSpec.describe "Rux database tasks", skip: true do
 
   describe "db:test:prepare command" do
     it "runs db:test:prepare in dry-run mode" do
-      Dir.chdir(test_app_dir) do
+      Dir.chdir(default_rails_dir) do
         output = `#{rux_binary} db:test:prepare --dry-run -n 2 2>&1`
 
         expect(output).to include("[dry-run] Would run database task 'db:test:prepare' with 2 workers")

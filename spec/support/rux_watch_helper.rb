@@ -11,7 +11,7 @@ module RuxWatchHelper
   # @param env [Hash] environment variables
   # @param block [Proc] optional block to execute while watch is running
   # @return [TTY::Command::Result] with stdout, stderr, and exit status
-  def run_rux_watch(dir: rux_ruby_dir, timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, env: {}, &block)
+  def run_rux_watch(dir: default_ruby_dir, timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, env: {}, &block)
     Dir.chdir(dir) do
       cmd_args = ["rux", "--debug", "watch", "--timeout", timeout.to_s]
       cmd_args += ["--debounce", debounce.to_s] if debounce
@@ -48,7 +48,7 @@ module RuxWatchHelper
   # Captures watch output with streaming support for tests that need to
   # react to output in real-time
   def capture_watch_output(rux_timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, &block)
-    Dir.chdir(rux_ruby_dir) do
+    Dir.chdir(default_ruby_dir) do
       args = "rux --debug watch --timeout #{rux_timeout}"
       args += " --debounce #{debounce}" if debounce
 

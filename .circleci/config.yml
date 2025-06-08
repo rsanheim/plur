@@ -73,11 +73,7 @@ jobs:
       - run:
           name: Run Ruby tests with rux
           command: |
-            bin/rake test:rux_ruby
-      # - run:
-      #     name: Run benchmarks
-      #     command: |
-      #       ./script/bench ./rux-ruby
+            bin/rake test:default_ruby
 
   test-integration:
     docker:
@@ -97,15 +93,27 @@ jobs:
             sudo chmod +x /usr/local/bin/rux
       - run:
           name: Setup test_app
-          working_directory: test_fixtures/test_app
+          working_directory: fixtures/projects/default-rails
           command: |
             bundle install
             bundle exec rake db:create db:migrate
       - run:
           name: Run test_app specs with rux
-          working_directory: test_fixtures/test_app
+          working_directory: fixtures/projects/default-rails
           command: |
             rux -n 2
+      - run:
+          name: Install turbo_tests
+          command: gem install turbo_tests
+      - run:
+          name: Install hyperfine for benchmarking
+          command: |
+            wget https://github.com/sharkdp/hyperfine/releases/download/v1.19.0/hyperfine_1.19.0_amd64.deb
+            sudo dpkg -i hyperfine_1.19.0_amd64.deb
+            hyperfine --version
+      # - run:
+      #     name: Run benchmarks default benchmark suite
+      #     command: ./script/bench
 
 workflows:
   test-all:

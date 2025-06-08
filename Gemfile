@@ -9,3 +9,4 @@ gem "standard"
 gem "super_diff"
 gem "timecop", require: false
 gem "tty-command"
+gem "turbo_tests", require: false

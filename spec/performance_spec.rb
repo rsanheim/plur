@@ -7,9 +7,11 @@ RSpec.describe "Rux performance" do
     expect(File.exist?(rux_binary)).to be(true)
   end
 
+  let(:expected_spec_files) { 12 }
+
   describe "parallelization efficiency" do
     it "chooses optimal execution strategy based on file count" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         # With grouping optimization, for small test suites a single worker
         # might be faster as it avoids process spawn overhead
         single_output = `#{rux_binary} -n 1 2>&1`
@@ -19,7 +21,7 @@ RSpec.describe "Rux performance" do
         expect($?.exitstatus).to eq(0)
 
         # Should use grouped execution when appropriate (either runtime or size-based)
-        expect(single_output).to match(/Using (runtime-based|size-based) grouped execution: 11 files across 1 workers/)
+        expect(single_output).to match(/Using (runtime-based|size-based) grouped execution: #{expected_spec_files} files across 1 workers/)
 
         # Verify all examples run in both cases
         expect(single_output).to match(/\d+ examples, 0 failures/)
@@ -28,7 +30,7 @@ RSpec.describe "Rux performance" do
     end
 
     it "shows wall time vs CPU time to demonstrate parallelization" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         output = `#{rux_binary} 2>&1`
 
         # Should show both wall time and CPU time
@@ -86,7 +88,7 @@ RSpec.describe "Rux performance" do
 
   describe "worker optimization" do
     it "chooses reasonable default worker count" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         output = `#{rux_binary} 2>&1`
 
         # Should show worker count and available cores
@@ -101,7 +103,7 @@ RSpec.describe "Rux performance" do
           expected_workers = [cores - 2, 1].max
 
           # But also limited by number of spec files
-          spec_files = 11 # Known number in rux-ruby
+          spec_files = expected_spec_files
           expected_workers = [expected_workers, spec_files].min
 
           expect(workers).to eq(expected_workers)

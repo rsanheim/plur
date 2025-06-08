@@ -42,7 +42,7 @@ rux watch                # Auto-run tests on file changes (experimental)
 ### Project Structure
 - `rux/` - Go source (main binary)
 - `spec/` - Integration tests (USE THESE as guardrails)
-- `rux-ruby/` - Example Ruby project for testing
+- `default-ruby/` - Example Ruby project for testing
 - `vendor/backspin/` - Vendored golden testing gem
 
 ### Architecture Notes

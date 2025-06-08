@@ -2,7 +2,7 @@ require "spec_helper"
 
 RSpec.describe "single failure golden test" do
   def fixture_path(name)
-    File.join(__dir__, "..", "test_fixtures", name)
+    project_fixture(name)
   end
 
   def run_rux(file_or_glob, *args)

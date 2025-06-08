@@ -15,7 +15,7 @@ RSpec.describe "Rux runtime tracking" do
     let(:temp_cache_dir) { Dir.mktmpdir }
 
     it "uses the runtime-dir option if provided" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         `#{rux_binary} -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
         expect($?.exitstatus).to eq(0)
 
@@ -29,7 +29,7 @@ RSpec.describe "Rux runtime tracking" do
     it "uses a default of ~/.cache/rux/runtimes when no runtime-dir is specified" do
       # We'll verify the default behavior by checking the output message
       # without actually writing to the home directory
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         output = `#{rux_binary} -n 2 --dry-run 2>&1`
         expect($?.exitstatus).to eq(0)
 
@@ -44,7 +44,7 @@ RSpec.describe "Rux runtime tracking" do
     let(:temp_cache_dir) { Dir.mktmpdir }
 
     it "saves runtime data after running specs" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         # Run rux with custom runtime dir
         output = `#{rux_binary} -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
         expect($?.exitstatus).to eq(0)
@@ -68,7 +68,7 @@ RSpec.describe "Rux runtime tracking" do
     end
 
     it "uses runtime data for grouping when available" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         # First run to generate runtime data
         `#{rux_binary} -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
         expect($?.exitstatus).to eq(0)
@@ -80,7 +80,7 @@ RSpec.describe "Rux runtime tracking" do
     end
 
     it "falls back to size-based grouping when no runtime data exists" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         # Use a fresh temp directory to ensure no runtime data exists
         fresh_temp_dir = Dir.mktmpdir
 
@@ -95,10 +95,10 @@ RSpec.describe "Rux runtime tracking" do
     let(:temp_cache_dir) { Dir.mktmpdir }
 
     it "distributes files based on their runtime" do
-      Dir.chdir(rux_ruby_dir) do
+      Dir.chdir(default_ruby_dir) do
         # Calculate project hash
         require "digest"
-        project_hash = Digest::SHA256.hexdigest(File.expand_path(rux_ruby_dir))[0..7]
+        project_hash = Digest::SHA256.hexdigest(File.expand_path(default_ruby_dir))[0..7]
 
         # Create fake runtime data with uneven distribution
         runtime_data = {

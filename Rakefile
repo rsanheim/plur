@@ -10,6 +10,9 @@ end
 # Define RSpec task if available
 RSpec::Core::RakeTask.new(:spec) if defined?(RSpec)
 
+# Load all tasks from lib/tasks
+Dir.glob(File.join(__dir__, "lib", "tasks", "*.rake")).each { |file| load file }
+
 # Default task runs all checks
 desc "Run all tests and linting"
 task default: ["test:all", "lint:all"]
@@ -17,44 +20,9 @@ task default: ["test:all", "lint:all"]
 desc "Build and install rux to GOPATH/bin"
 task :install do
   Dir.chdir("rux") do
-    # Read version from VERSION file or use environment variable
-    base_version = if ENV["VERSION"]
-      ENV["VERSION"]
-    elsif File.exist?("VERSION")
-      File.read("VERSION").strip
-    else
-      raise "No version found - set via VERSION env var or VERSION file"
-    end
-
-    # Ensure version starts with 'v'
-    version = base_version.start_with?("v") ? base_version : "v#{base_version}"
-
-    # Get git commit (short hash)
-    commit = `git rev-parse --short HEAD`.chomp
-
-    # Get current timestamp in Go pseudo-version format (YYYYMMDD-HHMM)
-    timestamp = Time.now.utc.strftime("%Y%m%d-%H%M")
-
-    # Build pseudo-version: v0.6.0-TIMESTAMP-GITREF
-    full_version = "#{version}-#{timestamp}-#{commit}"
-
-    # Get build date
-    date = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    # Build with ldflags to embed version info
-    ldflags = [
-      "-X main.version=#{full_version}",
-      "-X main.commit=#{commit}",
-      "-X 'main.date=#{date}'",
-      "-X main.builtBy=rake"
-    ].join(" ")
-
-    puts "Installing rux with version: #{full_version}"
-    sh %(go install -mod=mod -ldflags "#{ldflags}" .)
-    
-    # Get actual GOPATH for display
+    sh %(go install -mod=mod .)
     gopath = `go env GOPATH`.chomp
-    puts "Installed rux to #{gopath}/bin/ with version: #{full_version}"
+    puts "Installed rux to #{gopath}/bin/ with version: #{`./rux --version`.strip}"
   end
 end
 
@@ -104,36 +72,34 @@ namespace :test do
     end
   end
 
-  desc "Run Ruby tests with rux"
-  task ruby: %i[build rux_ruby]
+  desc "Run our default-ruby fixture project with rux"
+  task ruby: %i[build default_ruby]
 
-  desc "Run rux-ruby specs using rux (excluding failing examples)"
-  task :rux_ruby do
-    Dir.chdir("test_fixtures/rux-ruby") do
-      puts "Running rux-ruby specs with rux (excluding failing_examples_spec.rb)..."
-      spec_files = Dir.glob("spec/**/*_spec.rb").reject { |f| f.include?("failing_examples_spec.rb") }
+  desc "Run our default-ruby fixture project with rux"
+  task :default_ruby do
+    Dir.chdir("fixtures/projects/default-ruby") do
+      puts "Running default-ruby specs with rux..."
 
       # Use rux from PATH if available, otherwise use relative path
       rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
 
-      sh "#{rux_command} #{spec_files.join(" ")}"
+      sh rux_command
     end
   end
 
-  desc "Run rux-ruby specs using turbo_tests (excluding failing examples)"
-  task :rux_ruby_turbo do
-    Dir.chdir("test_fixtures/rux-ruby") do
-      puts "Running rux-ruby specs with turbo_tests (excluding failing_examples_spec.rb)..."
-      spec_files = Dir.glob("spec/**/*_spec.rb").reject { |f| f.include?("failing_examples_spec.rb") }
+  desc "Run default-ruby specs using turbo_tests"
+  task :default_ruby_turbo do
+    Dir.chdir("fixtures/projects/default-ruby") do
+      puts "Running default-ruby specs with turbo_tests..."
 
-      sh "bundle exec turbo_tests #{spec_files.join(" ")}"
+      sh "bundle exec turbo_tests"
     end
   end
 
-  desc "Run test_app specs using rux"
-  task test_app: [:build] do
-    Dir.chdir("test_fixtures/test_app") do
-      puts "Running test_app specs with rux..."
+  desc "Run default-rails specs using rux"
+  task default_rails: [:build] do
+    Dir.chdir("fixtures/projects/default-rails") do
+      puts "Running default-rails specs with rux..."
 
       # Use rux from PATH if available, otherwise use relative path
       rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
@@ -188,44 +154,13 @@ namespace :lint do
   task fix: [:ruby_fix]
 end
 
-desc "Build the rux Go binary - specify VERSION=0.x.x - current is #{`cat rux/VERSION`.strip}"
+desc "Build the rux Go binary"
 task :build do
   Dir.chdir("rux") do
-    # Read version from VERSION file or use environment variable
-    base_version = if ENV["VERSION"]
-      ENV["VERSION"]
-    elsif File.exist?("VERSION")
-      File.read("VERSION").strip
-    else
-      raise "No version found - set via VERSION env var or VERSION file"
-    end
-
-    # Ensure version starts with 'v'
-    version = base_version.start_with?("v") ? base_version : "v#{base_version}"
-
-    # Get git commit (short hash)
-    commit = `git rev-parse --short HEAD`.chomp
-
-    # Get current timestamp in Go pseudo-version format (YYYYMMDD-HHMM)
-    timestamp = Time.now.utc.strftime("%Y%m%d-%H%M")
-
-    # Build pseudo-version: v0.6.0-TIMESTAMP-GITREF
-    full_version = "#{version}-#{timestamp}-#{commit}"
-
-    # Get build date
-    date = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    # Build with ldflags to embed version info
-    ldflags = [
-      "-X main.version=#{full_version}",
-      "-X main.commit=#{commit}",
-      "-X 'main.date=#{date}'",
-      "-X main.builtBy=rake"
-    ].join(" ")
-
-    puts "Building rux with version: #{full_version}"
-    sh %(go build -mod=mod -ldflags "#{ldflags}" -o rux .)
-    puts "Binary created at rux/rux with version: #{full_version}"
+    puts "Building rux"
+    sh %(go build -mod=mod -o rux .)
+    version = `./rux --version`.strip
+    puts "Binary created at rux/rux with version: #{version}"
   end
 end
 
@@ -245,18 +180,18 @@ end
 # ========================================
 namespace :bench do
   desc "Run all benchmarks"
-  task all: %i[rux_ruby test_app]
+  task all: %i[default_ruby rails8_app]
 
-  desc "Run benchmarks on rux-ruby"
-  task rux_ruby: [:build] do
-    puts "Running benchmarks on rux-ruby..."
-    sh "./script/bench ./test_fixtures/rux-ruby"
+  desc "Run benchmarks on default-ruby"
+  task default_ruby: [:build] do
+    puts "Running benchmarks on default-ruby..."
+    sh "./script/bench ./fixtures/projects/default-ruby"
   end
 
-  desc "Run benchmarks on test_app"
-  task test_app: [:build] do
-    puts "Running benchmarks on test_app..."
-    sh "./script/bench ./test_fixtures/test_app"
+  desc "Run benchmarks on default-rails"
+  task default_rails: [:build] do
+    puts "Running benchmarks on default-rails..."
+    sh "./script/bench ./fixtures/projects/default-rails"
   end
 end
 
@@ -274,78 +209,7 @@ namespace :ci do
   task ruby: ["lint:ruby", "test:ruby"]
 end
 
-# ========================================
-# External Dependencies
-# ========================================
-namespace :deps do
-  desc "Download watcher binary for file system monitoring"
-  task :watcher do
-    require "net/http"
-    require "uri"
-    require "fileutils"
-
-    puts "Downloading watcher binary for platform: #{RUBY_PLATFORM}"
-
-    # Determine platform
-    platform = case RUBY_PLATFORM
-    when /aarch64-darwin/, /arm64-darwin/
-      "aarch64-apple-darwin"
-    when /x86_64-darwin/
-      raise "Intel Mac (x86_64) is not supported. Please use an Apple Silicon Mac."
-    when /linux.*aarch64/, /linux.*arm64/
-      "aarch64-unknown-linux-gnu"
-    when /linux/
-      "x86_64-unknown-linux-gnu"
-    else
-      raise "Unsupported platform: #{RUBY_PLATFORM}"
-    end
-
-    # Create vendor directory
-    vendor_dir = File.join("rux", "vendor", "watcher")
-    FileUtils.mkdir_p(vendor_dir)
-
-    # Download URL - using v0.13.6 release
-    url = "https://github.com/e-dant/watcher/releases/download/0.13.6/#{platform}.tar"
-
-    # Download to temp file
-    temp_file = File.join(vendor_dir, "watcher.tar")
-
-    begin
-      uri = URI(url)
-      puts "Downloading from: #{url}"
-
-      # Use open-uri for simpler redirect handling
-      require "open-uri"
-
-      uri.open do |remote_file|
-        File.binwrite(temp_file, remote_file.read)
-      end
-
-      # Extract the binary
-      puts "Extracting watcher binary..."
-      Dir.chdir(vendor_dir) do
-        sh "tar -xf watcher.tar"
-
-        # The tarball contains the binary in a platform-specific directory
-        binary_source = File.join(platform, "watcher")
-        binary_name = "watcher-#{platform}"
-
-        raise "Expected watcher binary not found at #{binary_source}" unless File.exist?(binary_source)
-
-        FileUtils.mv(binary_source, binary_name)
-        FileUtils.chmod(0o755, binary_name)
-
-        # Clean up extracted directory
-        FileUtils.rm_rf(platform)
-
-        puts "Watcher binary installed at: rux/vendor/watcher/#{binary_name}"
-      end
-    ensure
-      # Clean up temp file
-      FileUtils.rm_f(temp_file)
-    end
-  end
-end
+# External Dependencies moved to lib/tasks/
 
 # ========================================
 # Convenience Tasks (top-level)

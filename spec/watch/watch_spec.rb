@@ -37,7 +37,7 @@ RSpec.describe "rux watch command" do
     it "detects and runs spec when file is modified" do
       result = run_rux_watch(timeout: 2) do
         # Write back the same file to trigger a modify event
-        spec_file = Pathname.new(rux_ruby_dir).join("spec", "calculator_spec.rb")
+        spec_file = Pathname.new(default_ruby_dir).join("spec", "calculator_spec.rb")
         spec_file.write(spec_file.read)
       end
 

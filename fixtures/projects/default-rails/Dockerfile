@@ -2,8 +2,8 @@
 # check=error=true
 
 # This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
-# docker build -t test_app .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name test_app test_app
+# docker build -t rails8-app .
+# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name rails8-app rails8-app
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
