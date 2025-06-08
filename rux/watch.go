@@ -22,14 +22,6 @@ import (
 var watcherBinaries embed.FS
 
 func runWatch(ctx *cli.Context) error {
-	// Initialize logging if not already done (watch can be called directly)
-	if Logger == nil {
-		debug := os.Getenv("RUX_DEBUG") == "1"
-		// Try to get verbose flag from context
-		verbose := ctx.Bool("verbose")
-		InitLogger(verbose, debug)
-	}
-
 	// Log startup info
 	Logger.Info("rux watch starting!", "version", GetVersionInfo())
 
@@ -53,16 +45,16 @@ func runWatch(ctx *cli.Context) error {
 	if cwd, err := os.Getwd(); err == nil {
 		projectName = filepath.Base(cwd)
 	}
-	
+
 	timeout := ctx.Int("timeout")
-	
-	Logger.Info("rux configuration info", 
+
+	Logger.Info("rux configuration info",
 		"project", projectName,
 		"directories", watchDirs,
 		"debounce", debounceMs,
 		"timeout", timeout)
 	if timeout > 0 {
-		LogDebug("rux in timeout mode - with auto exit after "+fmt.Sprintf("%d", timeout)+" seconds")
+		LogDebug("rux in timeout mode - with auto exit after " + fmt.Sprintf("%d", timeout) + " seconds")
 	}
 
 	// Get the watcher binary path
@@ -70,7 +62,7 @@ func runWatch(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}
-	
+
 	// Log binary path in debug mode
 	LogDebug("rux using e-dant/watcher", "path", watcherPath)
 
@@ -108,8 +100,8 @@ func runWatch(ctx *cli.Context) error {
 			if rel, err := filepath.Rel(cwd, event.PathName); err == nil {
 				relPath = "./" + rel
 			}
-			
-			LogDebug("watch", 
+
+			LogDebug("watch",
 				"event", event.EffectType,
 				"type", event.PathType,
 				"associated", fmt.Sprintf("%v", event.Associated),

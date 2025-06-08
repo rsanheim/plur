@@ -28,10 +28,11 @@ RSpec.describe "rux watch with multiple directories" do
         File.write(lib_file, "# Modified\n" + File.read(lib_file))
       end
 
-      # Verify we see watcher processes for both directories
-      expect(result.out).to include("Starting watcher with binary path")
-      expect(result.out).to include("/spec")
-      expect(result.out).to include("/lib")
+      # Verify we see watcher processes for both directories in stderr
+      expect(result.err).to include("rux using e-dant/watcher")
+      expect(result.err).to include("watch event=create type=watcher")
+      expect(result.err).to include("/spec")
+      expect(result.err).to include("/lib")
 
       # Verify both watchers went live (the output includes the full path)
       # The live messages are in stderr
@@ -50,9 +51,9 @@ RSpec.describe "rux watch with multiple directories" do
 
       result = run_rux_watch(dir: tmpdir, timeout: 2)
 
-      # Should start watchers for spec and lib only
-      expect(result.out).to include("Watching directories: spec, lib")
-      expect(result.out).not_to include("Watching directories: spec, lib, app")
+      # Should start watchers for spec and lib only (in stderr)
+      expect(result.err).to include("directories=[spec lib]")
+      expect(result.err).not_to include("directories=[spec lib app]")
     end
   end
 
@@ -65,7 +66,7 @@ RSpec.describe "rux watch with multiple directories" do
       result = run_rux_watch(dir: tmpdir, timeout: 2)
 
       # Verify clean shutdown messages
-      expect(result.out).to include("Timeout reached, exiting watch mode")
+      expect(result.out).to include("Timeout reached, exiting!")
 
       # The debug output goes to stderr but that's expected behavior
       # Just verify no actual errors occurred

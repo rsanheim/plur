@@ -12,8 +12,8 @@ echo "This will run for about 10 seconds and capture two file change events."
 echo "Output will be saved to: $log_path"
 echo
 
-# Start rux watch in background with verbose flag
-rux watch --verbose --timeout 10 > $log_path 2>&1 &
+# Start rux watch in background with debug flag (shows all log levels)
+rux watch --debug --timeout 10 > $log_path 2>&1 &
 RUX_PID=$!
 
 # Wait for watch to start

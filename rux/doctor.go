@@ -11,14 +11,6 @@ import (
 )
 
 func runDoctor(ctx *cli.Context) error {
-	// Initialize logging if not already done
-	if Logger == nil {
-		debug := os.Getenv("RUX_DEBUG") == "1"
-		// Try to get verbose flag from context
-		verbose := ctx.Bool("verbose")
-		InitLogger(verbose, debug)
-	}
-
 	fmt.Println("Rux Doctor")
 	fmt.Println("==========")
 	fmt.Println()

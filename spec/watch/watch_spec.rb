@@ -6,10 +6,10 @@ RSpec.describe "rux watch command" do
     it "starts successfully when spec directory exists" do
       result = run_rux_watch(timeout: 2)
 
-      expect(result.out).to include("Starting rux watch mode")
-      expect(result.out).to include("Watching directories: spec, lib")
-      expect(result.out).to include("Will exit after 2 seconds")
-      expect(result.out).to include("Timeout reached, exiting watch mode")
+      expect(result.err).to include("rux watch starting!")
+      expect(result.err).to include("directories=[spec lib]")
+      expect(result.err).to include("timeout=2")
+      expect(result.out).to include("Timeout reached, exiting!")
       expect(result.success?).to be true
     end
 
@@ -17,8 +17,8 @@ RSpec.describe "rux watch command" do
       result = run_rux_watch
 
       if RUBY_PLATFORM.include?("darwin") && RUBY_PLATFORM.include?("arm64")
-        expect(result.out).to include("Starting watcher with binary path:")
-        expect(result.out).to include("/.cache/rux/bin/watcher-aarch64-apple-darwin")
+        expect(result.err).to include("rux using e-dant/watcher")
+        expect(result.err).to include("path=/Users/rsanheim/.cache/rux/bin/watcher-aarch64-apple-darwin")
       end
     end
 
@@ -80,15 +80,21 @@ RSpec.describe "rux watch command" do
       result = run_rux_watch(timeout: 1)
 
       # Normalize output for consistent comparison
-      normalized_stdout = result.out
+      result.out
         .gsub(/Event: create watcher.*/, "Event: create watcher [PATH]")
         .gsub(/\/Users\/[^\/]+/, "/Users/[USER]")
         .gsub(/Will exit after \d+ seconds/, "Will exit after [N] seconds")
         .gsub(/Absolute watch path:.*/, "Absolute watch path: [PATH]")
         .gsub(/Timeout reached.*/, "Timeout reached, exiting watch mode")
 
-      expect(normalized_stdout).to include("Starting rux watch mode")
-      expect(normalized_stdout).to include("Watching directories: spec, lib")
+      # Check for the new log format in stderr instead
+      normalized_stderr = result.err
+        .gsub(/\d+:\d+:\d+/, "[TIME]")
+        .gsub(/version=v[\d.-]+/, "version=[VERSION]")
+        .gsub(/\/Users\/[^\/]+/, "/Users/[USER]")
+
+      expect(normalized_stderr).to include("rux watch starting!")
+      expect(normalized_stderr).to include("directories=[spec lib]")
       expect(result.success?).to be true
     end
   end

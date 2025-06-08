@@ -378,7 +378,7 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWo
 			if len(runtimeData) > 0 {
 				runtimeInfo = fmt.Sprintf("%.2fs", float64(group.TotalSize)/1000.0)
 			}
-			LogVerbose("Worker assignment", 
+			LogVerbose("Worker assignment",
 				"worker", i,
 				"files", group.Files,
 				"estimated_time", runtimeInfo)

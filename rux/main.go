@@ -17,6 +17,12 @@ func createApp() *cli.App {
 		Name:    "rux",
 		Usage:   "A fast Go-based test runner for Ruby/RSpec",
 		Version: GetVersionInfo(),
+		Before: func(ctx *cli.Context) error {
+			// Initialize logging globally before any command runs
+			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
+			InitLogger(ctx.Bool("verbose"), debug)
+			return nil
+		},
 		Commands: []*cli.Command{
 			{
 				Name:  "watch",
@@ -175,11 +181,12 @@ func createApp() *cli.App {
 				Name:  "verbose",
 				Usage: "Enable verbose output for debugging",
 			},
+			&cli.BoolFlag{
+				Name:  "debug",
+				Usage: "Enable debug output (includes verbose)",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
-			// Initialize logging
-			debug := os.Getenv("RUX_DEBUG") == "1"
-			InitLogger(ctx.Bool("verbose"), debug)
 
 			// Initialize tracing if enabled
 			if ctx.Bool("trace") {

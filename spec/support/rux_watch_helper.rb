@@ -13,12 +13,12 @@ module RuxWatchHelper
   # @return [TTY::Command::Result] with stdout, stderr, and exit status
   def run_rux_watch(dir: rux_ruby_dir, timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, env: {}, &block)
     Dir.chdir(dir) do
-      cmd_args = ["rux", "watch", "--timeout", timeout.to_s]
+      cmd_args = ["rux", "--debug", "watch", "--timeout", timeout.to_s]
       cmd_args += ["--debounce", debounce.to_s] if debounce
 
-      full_env = {"GO_LOG" => "debug"}.merge(env)
+      full_env = env
 
-      cmd = TTY::Command.new
+      cmd = TTY::Command.new(uuid: false)
 
       if block_given?
         # Run command asynchronously with block
@@ -49,13 +49,13 @@ module RuxWatchHelper
   # react to output in real-time
   def capture_watch_output(rux_timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, &block)
     Dir.chdir(rux_ruby_dir) do
-      args = "rux watch --timeout #{rux_timeout}"
+      args = "rux --debug watch --timeout #{rux_timeout}"
       args += " --debounce #{debounce}" if debounce
 
-      env = {"GO_LOG" => "debug"}
+      env = {}
       # TTY::Command timeout needs to be longer than rux watch timeout to avoid timeout errors
       full_timeout = rux_timeout + 2
-      cmd = TTY::Command.new(timeout: full_timeout)
+      cmd = TTY::Command.new(timeout: full_timeout, uuid: false)
 
       streamed_out, streamed_err = [], []
 
@@ -68,5 +68,16 @@ module RuxWatchHelper
       # Return the result object plus the streamed arrays
       [result, streamed_out, streamed_err]
     end
+  end
+
+  # Helper to check for file change events in the new log format
+  def expect_file_change_logged(output, file_path)
+    expect(output).to include("watch event=modify type=file")
+    expect(output).to include("path=#{file_path}")
+  end
+
+  # Helper to check for spec run events in the new log format
+  def expect_spec_run_logged(output, spec_path)
+    expect(output).to include("rux event=run_spec path=#{spec_path}")
   end
 end

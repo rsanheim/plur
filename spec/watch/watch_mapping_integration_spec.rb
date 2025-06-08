@@ -91,7 +91,7 @@ RSpec.describe "rux watch advanced file mapping" do
 
   it "watches multiple directories including app when present" do
     result = run_rux_watch(dir: temp_dir, timeout: 1)
-    expect(result.out).to include("Watching directories: spec, lib, app")
+    expect(result.err).to include("directories=[spec lib app]")
   end
 
   it "runs the corresponding spec when a lib file changes" do
@@ -102,8 +102,8 @@ RSpec.describe "rux watch advanced file mapping" do
       File.write(calc_file, content + "\n# modified")
     end
 
-    expect(result.err).to include("Changed: lib/calculator.rb")
-    expect(result.err).to include("Running: spec/calculator_spec.rb")
+    expect_file_change_logged(result.err, "./lib/calculator.rb")
+    expect_spec_run_logged(result.err, "./spec/calculator_spec.rb")
     expect(result.out).to include("1 example, 0 failures")
   end
 
@@ -115,8 +115,8 @@ RSpec.describe "rux watch advanced file mapping" do
       File.write(user_file, content + "\n# modified")
     end
 
-    expect(result.err).to include("Changed: app/models/user.rb")
-    expect(result.err).to include("Running: spec/models/user_spec.rb")
+    expect_file_change_logged(result.err, "./app/models/user.rb")
+    expect_spec_run_logged(result.err, "./spec/models/user_spec.rb")
     expect(result.out).to include("1 example, 0 failures")
   end
 
@@ -128,8 +128,8 @@ RSpec.describe "rux watch advanced file mapping" do
       File.write(spec_helper, content + "\n# modified")
     end
 
-    expect(result.err).to include("Changed: spec/spec_helper.rb")
-    expect(result.err).to include("Running: spec")
+    expect_file_change_logged(result.err, "./spec/spec_helper.rb")
+    expect_spec_run_logged(result.err, "./spec")
     # Should run all 3 specs
     expect(result.out).to include("3 examples, 0 failures")
   end
@@ -142,8 +142,8 @@ RSpec.describe "rux watch advanced file mapping" do
       File.write(product_file, content + "\n# modified")
     end
 
-    expect(result.err).to include("Changed: lib/models/product.rb")
-    expect(result.err).to include("Running: spec/models/product_spec.rb")
+    expect_file_change_logged(result.err, "./lib/models/product.rb")
+    expect_spec_run_logged(result.err, "./spec/models/product_spec.rb")
     expect(result.out).to include("1 example, 0 failures")
   end
 end

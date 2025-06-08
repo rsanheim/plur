@@ -40,16 +40,16 @@ func (h *CustomTextHandler) Enabled(_ context.Context, level slog.Level) bool {
 func (h *CustomTextHandler) Handle(_ context.Context, r slog.Record) error {
 	// Format timestamp as HH:MM:SS
 	timestamp := r.Time.Format("15:04:05")
-	
+
 	// Format level
 	level := strings.ToUpper(r.Level.String())
 	// Pad level to 5 chars for alignment
 	level = fmt.Sprintf("%-5s", level)
-	
+
 	// Start with base message
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%s - %s - %s", timestamp, level, r.Message))
-	
+
 	// Add attributes
 	r.Attrs(func(a slog.Attr) bool {
 		// Format value based on type
@@ -65,9 +65,9 @@ func (h *CustomTextHandler) Handle(_ context.Context, r slog.Record) error {
 		sb.WriteString(fmt.Sprintf(" %s=%s", a.Key, value))
 		return true
 	})
-	
+
 	sb.WriteString("\n")
-	
+
 	_, err := io.WriteString(h.writer, sb.String())
 	return err
 }
