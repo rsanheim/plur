@@ -9,8 +9,10 @@ RSpec.describe "rux watch integration" do
   it "starts watching the correct directories" do
     result, _streamed_out, _streamed_err = capture_watch_output
 
-    expect(result.out).to include("Starting rux watch mode")
-    expect(result.out).to include("Watching directories: spec, lib")
+    # All logs go to stderr now with structured format
+    expect(result.err).to include("rux watch starting!")
+    expect(result.err).to include("rux configuration info")
+    expect(result.err).to include("directories=[spec lib]")
     expect(result.err).to include("Debounce delay ms=100")
   end
 
@@ -26,8 +28,10 @@ RSpec.describe "rux watch integration" do
       end
     end
 
-    expect(result.err).to include("Changed: lib/calculator.rb")
-    expect(result.err).to include("Running: spec/calculator_spec.rb")
+    # Check for the new debug log format
+    expect(result.err).to include("watch event=modify type=file")
+    expect(result.err).to include("path=./lib/calculator.rb")
+    expect(result.err).to include("rux event=run_spec path=./spec/calculator_spec.rb")
   end
 
   it "maps nested lib files correctly" do
@@ -48,13 +52,11 @@ RSpec.describe "rux watch integration" do
         end
       end
 
-      # Combine stdout and stderr for tests that check both
-      output = result.out + result.err
-
-      expect(output).to include("Changed: lib/models/temp_model.rb")
-      expect(output).to include("Running: spec/models/temp_model_spec.rb")
+      # Check stderr for log messages
+      expect_file_change_logged(result.err, "./lib/models/temp_model.rb")
+      expect_spec_run_logged(result.err, "./spec/models/temp_model_spec.rb")
       # It will say spec not found since we didn't create the spec
-      expect(output).to include("Spec file not found: spec/models/temp_model_spec.rb")
+      expect(result.out).to include("Spec file not found: spec/models/temp_model_spec.rb")
     ensure
       FileUtils.rm_f(nested_lib)
       begin
@@ -81,8 +83,9 @@ RSpec.describe "rux watch integration" do
       end
     end
 
-    expect(result.err).to include("Changed: spec/spec_helper.rb")
-    expect(result.err).to include("Running: spec")
+    expect_file_change_logged(result.err, "./spec/spec_helper.rb")
+    # When spec_helper changes, it runs all specs
+    expect_spec_run_logged(result.err, "./spec")
   end
 
   it "handles spec file changes" do
@@ -104,8 +107,8 @@ RSpec.describe "rux watch integration" do
     pp ["command result", result]
     pp ["streamed out", streamed_out]
     pp ["streamed err", streamed_err]
-    expect(result.err).to include("Changed: spec/calculator_spec.rb")
-    expect(result.err).to include("Running: spec/calculator_spec.rb")
+    expect_file_change_logged(result.err, "./spec/calculator_spec.rb")
+    expect_spec_run_logged(result.err, "./spec/calculator_spec.rb")
   ensure
     # Restore original content
     File.write(spec_path, contents) if contents
@@ -161,17 +164,15 @@ RSpec.describe "rux watch integration" do
       end
     end
 
-    output = result.out + result.err
-
-    # Should see all changes
-    expect(output).to include("Changed: lib/calculator.rb")
-    expect(output).to include("Changed: lib/string_utils.rb")
-    expect(output).to include("Changed: lib/validator.rb")
+    # Should see all changes in stderr
+    expect_file_change_logged(result.err, "./lib/calculator.rb")
+    expect_file_change_logged(result.err, "./lib/string_utils.rb")
+    expect_file_change_logged(result.err, "./lib/validator.rb")
 
     # Should run corresponding specs
-    expect(output).to include("Running: spec/calculator_spec.rb")
-    expect(output).to include("Running: spec/string_utils_spec.rb")
-    expect(output).to include("Running: spec/validator_spec.rb")
+    expect_spec_run_logged(result.err, "./spec/calculator_spec.rb")
+    expect_spec_run_logged(result.err, "./spec/string_utils_spec.rb")
+    expect_spec_run_logged(result.err, "./spec/validator_spec.rb")
   end
 
   describe "Rails-style mappings" do
@@ -190,9 +191,8 @@ RSpec.describe "rux watch integration" do
     it "detects app directory and watches it" do
       result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: 2)
 
-      output = result.out + result.err
-
-      expect(output).to include("Watching directories: spec, lib, app")
+      # Check that app directory is being watched
+      expect(result.err).to include("directories=[spec lib app]")
     end
 
     it "maps app/models files to spec/models" do
@@ -209,10 +209,9 @@ RSpec.describe "rux watch integration" do
         end
       end
 
-      output = result.out + result.err
-
-      expect(output).to include("Changed: app/models/user.rb")
-      expect(output).to include("Running: spec/models/user_spec.rb")
+      # Check file change and spec run in stderr
+      expect_file_change_logged(result.err, "./app/models/user.rb")
+      expect_spec_run_logged(result.err, "./spec/models/user_spec.rb")
     end
 
     it "maps app/controllers files to spec/controllers" do
@@ -228,10 +227,9 @@ RSpec.describe "rux watch integration" do
         end
       end
 
-      output = result.out + result.err
-
-      expect(output).to include("Changed: app/controllers/users_controller.rb")
-      expect(output).to include("Running: spec/controllers/users_controller_spec.rb")
+      # Check file change and spec run in stderr
+      expect_file_change_logged(result.err, "./app/controllers/users_controller.rb")
+      expect_spec_run_logged(result.err, "./spec/controllers/users_controller_spec.rb")
     end
   end
 end

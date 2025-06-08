@@ -1,0 +1,20 @@
+HH:MM:SS - INFO  - rux watch starting! version=x.x.x
+HH:MM:SS - INFO  - rux configuration info project="rux-ruby" directories="[spec lib]" debounce=100 timeout=10
+HH:MM:SS - DEBUG - rux in timeout mode - with auto exit after 10 seconds
+HH:MM:SS - DEBUG - rux using e-dant/watcher path="~/.cache/rux/bin/watcher-aarch64-apple-darwin"
+HH:MM:SS - DEBUG - watch event=create type=watcher associated=nil path=./spec
+HH:MM:SS - DEBUG - watch event=create type=watcher associated=nil path=./lib
+HH:MM:SS - DEBUG - watch event=modify type=file associated=nil path=./lib/string_utils.rb
+HH:MM:SS - DEBUG - rux event=mapping_found path=./lib/string_utils.rb specs=[spec/string_utils_spec.rb]
+HH:MM:SS - DEBUG - rux event=run_spec path=./spec/string_utils_spec.rb
+running: bundle exec rspec --format progress spec/string_utils_spec.rb
+.......
+
+Finished in 0.00113 seconds (files took 0.03688 seconds to load)
+7 examples, 0 failures
+HH:MM:SS - DEBUG - watch event=create type=file associated=nil path=./lib/test.txt
+HH:MM:SS - DEBUG - watch event=modify type=file associated=nil path=./lib/test.txt
+HH:MM:SS - DEBUG - rux event=mapping_not_found path=./lib/test.txt specs=[]
+HH:MM:SS - INFO  - rux timeout reached, exiting! event=timeout timeout=10
+
+Timeout reached, exiting!

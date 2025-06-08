@@ -17,6 +17,12 @@ func createApp() *cli.App {
 		Name:    "rux",
 		Usage:   "A fast Go-based test runner for Ruby/RSpec",
 		Version: GetVersionInfo(),
+		Before: func(ctx *cli.Context) error {
+			// Initialize logging globally before any command runs
+			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
+			InitLogger(ctx.Bool("verbose"), debug)
+			return nil
+		},
 		Commands: []*cli.Command{
 			{
 				Name:  "watch",
@@ -31,6 +37,10 @@ func createApp() *cli.App {
 						Usage: "Debounce delay in milliseconds (default: 100)",
 						Value: 100,
 					},
+					&cli.BoolFlag{
+						Name:  "verbose",
+						Usage: "Enable verbose output for debugging",
+					},
 				},
 				Action: func(ctx *cli.Context) error {
 					return runWatch(ctx)
@@ -39,6 +49,12 @@ func createApp() *cli.App {
 			{
 				Name:  "doctor",
 				Usage: "Show diagnostic information about rux installation",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "verbose",
+						Usage: "Enable verbose output for debugging",
+					},
+				},
 				Action: func(ctx *cli.Context) error {
 					return runDoctor(ctx)
 				},
@@ -161,8 +177,17 @@ func createApp() *cli.App {
 				Name:  "runtime-dir",
 				Usage: "Directory to store runtime data (default: ~/.cache/rux/runtimes)",
 			},
+			&cli.BoolFlag{
+				Name:  "verbose",
+				Usage: "Enable verbose output for debugging",
+			},
+			&cli.BoolFlag{
+				Name:  "debug",
+				Usage: "Enable debug output (includes verbose)",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
+
 			// Initialize tracing if enabled
 			if ctx.Bool("trace") {
 				if err := InitTracer(true); err != nil {

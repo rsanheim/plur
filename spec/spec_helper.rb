@@ -1,14 +1,12 @@
 require "fileutils"
 require "open3"
+require "ostruct"
 require "pathname"
+require "stringio"
 require "super_diff/rspec"
+require "timecop"
 require "tmpdir"
 require "tty-command"
-require "stringio"
-require "ostruct"
-
-BACKSPIN_PATH = Pathname.new(__dir__).parent.join("vendor", "backspin", "lib").expand_path.freeze
-$LOAD_PATH.unshift(BACKSPIN_PATH)
 
 require "backspin"
 
