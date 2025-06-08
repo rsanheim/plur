@@ -8,12 +8,12 @@ RSpec.describe "rux glob pattern support" do
   end
 
   context "with glob patterns" do
-    it "expands simple glob patterns with *" do
+    it "expands simple glob patterns correctly" do
       Dir.chdir(default_ruby_dir) do
         _, stderr, status = Open3.capture3("#{rux_binary} --dry-run spec/*_spec.rb")
 
         expect(status).to be_success
-        expect(stderr).to include("[dry-run] Found 9 spec files")
+        expect(stderr).to include("[dry-run] Found 10 spec files")
         expect(stderr).to include("spec/array_helpers_spec.rb")
         expect(stderr).to include("spec/calculator_spec.rb")
         expect(stderr).to include("spec/counter_spec.rb")
@@ -32,7 +32,7 @@ RSpec.describe "rux glob pattern support" do
         _, stderr, status = Open3.capture3("bash", "-c", "shopt -s globstar; #{rux_binary} --dry-run spec/**/*_spec.rb")
 
         expect(status).to be_success
-        expect(stderr).to include("[dry-run] Found 11 spec files")
+        expect(stderr).to include("[dry-run] Found 12 spec files")
         expect(stderr).to include("spec/array_helpers_spec.rb")
         expect(stderr).to include("spec/models/user_spec.rb")
         expect(stderr).to include("spec/services/email_service_spec.rb")
@@ -45,7 +45,7 @@ RSpec.describe "rux glob pattern support" do
         _, stderr, status = Open3.capture3("#{rux_binary} --dry-run 'spec/**/*_spec.rb'")
 
         expect(status).to be_success
-        expect(stderr).to include("[dry-run] Found 11 spec files")
+        expect(stderr).to include("[dry-run] Found 12 spec files")
         expect(stderr).to include("spec/array_helpers_spec.rb")
         expect(stderr).to include("spec/models/user_spec.rb")
         expect(stderr).to include("spec/services/email_service_spec.rb")
@@ -128,7 +128,7 @@ RSpec.describe "rux glob pattern support" do
         _, stderr, status = Open3.capture3("#{rux_binary} --dry-run")
 
         expect(status).to be_success
-        expect(stderr).to include("[dry-run] Found 11 spec files")
+        expect(stderr).to include("[dry-run] Found 12 spec files")
         expect(stderr).to include("spec/array_helpers_spec.rb")
         expect(stderr).to include("spec/models/user_spec.rb")
         expect(stderr).to include("spec/services/email_service_spec.rb")

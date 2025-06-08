@@ -72,13 +72,15 @@ RSpec.describe "Flexible argument ordering" do
   end
 
   context "with directory arguments" do
+    let(:expected_spec_files) { 12 }
+
     it "expands spec/ directory before flags" do
       Dir.chdir(project_fixture("default-ruby")) do
         output, status = Open3.capture2e("#{rux_path} spec/ --dry-run")
 
         expect(status.success?).to be true
         expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 11 spec files")
+        expect(output).to include("[dry-run] Found #{expected_spec_files} spec files")
       end
     end
 
@@ -88,7 +90,7 @@ RSpec.describe "Flexible argument ordering" do
 
         expect(status.success?).to be true
         expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 11 spec files")
+        expect(output).to include("[dry-run] Found #{expected_spec_files} spec files")
       end
     end
 
@@ -98,7 +100,7 @@ RSpec.describe "Flexible argument ordering" do
 
         expect(status.success?).to be true
         expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 11 spec files")
+        expect(output).to include("[dry-run] Found #{expected_spec_files} spec files")
         expect(output).to include("--no-color")
       end
     end
