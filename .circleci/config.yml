@@ -73,11 +73,7 @@ jobs:
       - run:
           name: Run Ruby tests with rux
           command: |
-            bin/rake test:rux_ruby
-      # - run:
-      #     name: Run benchmarks
-      #     command: |
-      #       ./script/bench ./rux-ruby
+            bin/rake test:default_ruby
 
   test-integration:
     docker:
@@ -97,15 +93,18 @@ jobs:
             sudo chmod +x /usr/local/bin/rux
       - run:
           name: Setup test_app
-          working_directory: test_fixtures/test_app
+          working_directory: fixtures/projects/default-rails
           command: |
             bundle install
             bundle exec rake db:create db:migrate
       - run:
           name: Run test_app specs with rux
-          working_directory: test_fixtures/test_app
+          working_directory: fixtures/projects/default-rails
           command: |
             rux -n 2
+      - run:
+          name: Run benchmarks default benchmark suite
+          command: ./script/bench
 
 workflows:
   test-all:
