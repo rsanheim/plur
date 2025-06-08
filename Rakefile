@@ -192,41 +192,10 @@ end
 desc "Build the rux Go binary - specify VERSION=0.x.x - current is #{`cat rux/VERSION`.strip}"
 task :build do
   Dir.chdir("rux") do
-    # Read version from VERSION file or use environment variable
-    base_version = if ENV["VERSION"]
-      ENV["VERSION"]
-    elsif File.exist?("VERSION")
-      File.read("VERSION").strip
-    else
-      raise "No version found - set via VERSION env var or VERSION file"
-    end
-
-    # Ensure version starts with 'v'
-    version = base_version.start_with?("v") ? base_version : "v#{base_version}"
-
-    # Get git commit (short hash)
-    commit = `git rev-parse --short HEAD`.chomp
-
-    # Get current timestamp in Go pseudo-version format (YYYYMMDD-HHMM)
-    timestamp = Time.now.utc.strftime("%Y%m%d-%H%M")
-
-    # Build pseudo-version: v0.6.0-TIMESTAMP-GITREF
-    full_version = "#{version}-#{timestamp}-#{commit}"
-
-    # Get build date
-    date = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    # Build with ldflags to embed version info
-    ldflags = [
-      "-X main.version=#{full_version}",
-      "-X main.commit=#{commit}",
-      "-X 'main.date=#{date}'",
-      "-X main.builtBy=rake"
-    ].join(" ")
-
-    puts "Building rux with version: #{full_version}"
-    sh %(go build -mod=mod -ldflags "#{ldflags}" -o rux .)
-    puts "Binary created at rux/rux with version: #{full_version}"
+    puts "Building rux"
+    sh %(go build -mod=mod -o rux .)
+    version = `./rux --version`.strip
+    puts "Binary created at rux/rux with version: #{version}"
   end
 end
 
