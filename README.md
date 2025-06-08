@@ -82,7 +82,7 @@ Benchmarked on example-project project (24 spec files):
 ### Run All Tests
 ```bash
 rake                         # Go tests (lint + test)
-rake test:ruby              # Run default-ruby specs using rux (excluding failing examples)
+rake test:ruby              # Run default-ruby specs using rux
 rake test:ruby_turbo        # Run default-ruby specs using turbo_tests (for comparison)
 rake build_and_test         # Build rux and run default-ruby tests
 ruby test_rux_integration.rb # Ruby integration tests
