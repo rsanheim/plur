@@ -18,6 +18,8 @@ main
 *.rbc
 /.config
 /coverage/
+/fixtures/**/tmp/
+/fixtures/**/log/
 /InstalledFiles
 /pkg/
 /spec/reports/
@@ -25,7 +27,6 @@ main
 /storage
 /test/tmp/
 /test/version_tmp/
-/test_fixtures/**/tmp/
 /tmp/
 /log/*
 !/log/.keep
