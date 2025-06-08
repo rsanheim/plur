@@ -25,8 +25,10 @@ main
 /storage
 /test/tmp/
 /test/version_tmp/
+/test_fixtures/**/tmp/
 /tmp/
-/log/*.log
+/log/*
+!/log/.keep
 
 # RSpec
 /spec/fixtures/cassettes/
