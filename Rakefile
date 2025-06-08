@@ -20,42 +20,7 @@ task default: ["test:all", "lint:all"]
 desc "Build and install rux to GOPATH/bin"
 task :install do
   Dir.chdir("rux") do
-    # Read version from VERSION file or use environment variable
-    base_version = if ENV["VERSION"]
-      ENV["VERSION"]
-    elsif File.exist?("VERSION")
-      File.read("VERSION").strip
-    else
-      raise "No version found - set via VERSION env var or VERSION file"
-    end
-
-    # Ensure version starts with 'v'
-    version = base_version.start_with?("v") ? base_version : "v#{base_version}"
-
-    # Get git commit (short hash)
-    commit = `git rev-parse --short HEAD`.chomp
-
-    # Get current timestamp in Go pseudo-version format (YYYYMMDD-HHMM)
-    timestamp = Time.now.utc.strftime("%Y%m%d-%H%M")
-
-    # Build pseudo-version: v0.6.0-TIMESTAMP-GITREF
-    full_version = "#{version}-#{timestamp}-#{commit}"
-
-    # Get build date
-    date = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    # Build with ldflags to embed version info
-    ldflags = [
-      "-X main.version=#{full_version}",
-      "-X main.commit=#{commit}",
-      "-X 'main.date=#{date}'",
-      "-X main.builtBy=rake"
-    ].join(" ")
-
-    puts "Installing rux with version: #{full_version}"
-    sh %(go install -mod=mod -ldflags "#{ldflags}" .)
-
-    # Get actual GOPATH for display
+    sh %(go install -mod=mod .)
     gopath = `go env GOPATH`.chomp
     puts "Installed rux to #{gopath}/bin/ with version: #{full_version}"
   end
@@ -189,7 +154,7 @@ namespace :lint do
   task fix: [:ruby_fix]
 end
 
-desc "Build the rux Go binary - specify VERSION=0.x.x - current is #{`cat rux/VERSION`.strip}"
+desc "Build the rux Go binary"
 task :build do
   Dir.chdir("rux") do
     puts "Building rux"
