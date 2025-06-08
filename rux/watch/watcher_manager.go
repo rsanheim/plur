@@ -3,7 +3,15 @@ package watch
 import (
 	"fmt"
 	"sync"
+	"time"
 )
+
+// ManagerConfig holds configuration for the watcher manager
+type ManagerConfig struct {
+	Directories    []string
+	DebounceDelay  time.Duration
+	TimeoutSeconds int
+}
 
 // WatcherManager manages multiple watcher processes
 type WatcherManager struct {
@@ -11,14 +19,14 @@ type WatcherManager struct {
 	eventChan  chan Event
 	errorChan  chan error
 	stopChan   chan struct{}
-	config     *Config
+	config     *ManagerConfig
 	binaryPath string
 	wg         sync.WaitGroup
 	mu         sync.Mutex
 }
 
 // NewWatcherManager creates a new watcher manager instance
-func NewWatcherManager(config *Config, binaryPath string) *WatcherManager {
+func NewWatcherManager(config *ManagerConfig, binaryPath string) *WatcherManager {
 	return &WatcherManager{
 		config:     config,
 		binaryPath: binaryPath,
@@ -34,8 +42,8 @@ func (wm *WatcherManager) Start() error {
 	// For each directory, create and start a watcher
 	for _, dir := range wm.config.Directories {
 		// Create a config for single directory
-		singleDirConfig := &Config{
-			Directories:    []string{dir},
+		singleDirConfig := &WatcherConfig{
+			Directory:      dir,
 			DebounceDelay:  wm.config.DebounceDelay,
 			TimeoutSeconds: wm.config.TimeoutSeconds,
 		}

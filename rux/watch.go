@@ -67,7 +67,7 @@ func runWatch(ctx *cli.Context) error {
 	LogDebug("rux using e-dant/watcher", "path", watcherPath)
 
 	// Create watcher configuration
-	watcherConfig := &watch.Config{
+	watcherConfig := &watch.ManagerConfig{
 		Directories:    watchDirs,
 		DebounceDelay:  debounceDelay,
 		TimeoutSeconds: timeout,

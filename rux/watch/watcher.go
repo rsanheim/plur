@@ -21,16 +21,16 @@ type Event struct {
 	Associated interface{} `json:"associated"`
 }
 
-// Config holds configuration for the watcher
-type Config struct {
-	Directories    []string
+// WatcherConfig holds configuration for a single watcher
+type WatcherConfig struct {
+	Directory      string // Single directory to watch
 	DebounceDelay  time.Duration
 	TimeoutSeconds int
 }
 
 // Watcher manages the file watching process
 type Watcher struct {
-	config     *Config
+	config     *WatcherConfig
 	binaryPath string
 	process    *exec.Cmd
 	eventChan  chan Event
@@ -39,7 +39,7 @@ type Watcher struct {
 }
 
 // NewWatcher creates a new watcher instance
-func NewWatcher(config *Config, binaryPath string) *Watcher {
+func NewWatcher(config *WatcherConfig, binaryPath string) *Watcher {
 	return &Watcher{
 		config:     config,
 		binaryPath: binaryPath,
@@ -49,20 +49,16 @@ func NewWatcher(config *Config, binaryPath string) *Watcher {
 	}
 }
 
-// Start begins watching the configured directories
+// Start begins watching the configured directory
 func (w *Watcher) Start() error {
-	// Convert directories to absolute paths
-	absPaths := make([]string, len(w.config.Directories))
-	for i, dir := range w.config.Directories {
-		absPath, err := filepath.Abs(dir)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path for %s: %w", dir, err)
-		}
-		absPaths[i] = absPath
+	// Convert directory to absolute path
+	absPath, err := filepath.Abs(w.config.Directory)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path for %s: %w", w.config.Directory, err)
 	}
 
 	// Start the watcher process - logging handled by caller
-	w.process = exec.Command(w.binaryPath, absPaths...)
+	w.process = exec.Command(w.binaryPath, absPath)
 
 	// Create stdin pipe to keep watcher alive
 	stdinPipe, err := w.process.StdinPipe()
