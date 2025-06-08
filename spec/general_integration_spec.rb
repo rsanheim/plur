@@ -8,12 +8,14 @@ RSpec.describe "Rux general integration" do
     expect(File.exist?(rux_binary)).to be(true)
   end
 
+  let(:expected_spec_files) { 12 }
+
   describe "basic functionality" do
     it "runs all specs when no arguments are provided" do
       Dir.chdir(default_ruby_dir) do
         output = `#{rux_binary} 2>&1`
 
-        expect(output).to include("Running 11 spec files in parallel")
+        expect(output).to include("Running #{expected_spec_files} spec files in parallel")
         expect(output).to include("examples")
         expect(output).to include("failures")
         expect(output).to include("Finished in")
@@ -84,7 +86,7 @@ RSpec.describe "Rux general integration" do
       Dir.chdir(default_ruby_dir) do
         output = `#{rux_binary} --dry-run 2>&1`
 
-        expect(output).to include("[dry-run] Found 11 spec files")
+        expect(output).to include("[dry-run] Found #{expected_spec_files} spec files")
         expect(output).to include("[dry-run] Worker")
         expect(output).to include("bundle exec rspec")
         expect(output).not_to include("Finished in")
@@ -97,7 +99,7 @@ RSpec.describe "Rux general integration" do
         output = `#{rux_binary} --dry-run --auto 2>&1`
 
         expect(output).to include("[dry-run] bundle install")
-        expect(output).to include("[dry-run] Found 11 spec files")
+        expect(output).to include("[dry-run] Found #{expected_spec_files} spec files")
       end
     end
   end
