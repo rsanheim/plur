@@ -59,6 +59,8 @@ jobs:
     working_directory: ~/project/
     steps:
       - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
       - attach_workspace:
           at: ~/workspace
       - run:
@@ -84,6 +86,8 @@ jobs:
     working_directory: ~/project/
     steps:
       - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
       - attach_workspace:
           at: ~/workspace
       - run:
