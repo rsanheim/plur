@@ -456,6 +456,13 @@ func reorderArgs(args []string) []string {
 }
 
 func main() {
+	// Check KONG=1 environment variable to use kong CLI
+	if os.Getenv("KONG") == "1" {
+		runKongCLI()
+		return
+	}
+
+	// Default to urfave/cli
 	app := createApp()
 	// Reorder arguments to put flags before positional args
 	args := reorderArgs(os.Args)
