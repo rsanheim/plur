@@ -26,7 +26,6 @@ RSpec.describe "Flexible argument ordering" do
         expect(output).to include("--no-color")
       end
     end
-
   end
 
   context "with -n/--workers flag" do
