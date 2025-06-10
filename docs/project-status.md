@@ -116,13 +116,21 @@ The rux implementation is feature-complete and performing well:
 4. **Usability**: Clean CLI interface with sensible defaults
 5. **Testing**: Comprehensive benchmarking infrastructure
 
+## Recent Additions
+
+### Watch Mode (Experimental) ⚠️
+- **File watching**: Automatically runs tests when files change
+- **Interactive commands**: Press Enter to run all tests, type 'exit' to quit
+- **Intelligent mapping**: Maps source files to their corresponding spec files
+- **Known issue**: Concurrent test runs can produce interleaved output (see [architecture docs](architecture/watch-mode-concurrent-output-issue.md))
+
 ## Future Enhancements (Optional)
 
 - **Test filtering**: Support for RSpec's `--tag` and file filtering
 - **JSON reporting**: Enhanced structured output for CI integration
 - **Configuration files**: Support for `.rux.yml` configuration
-- **Watch mode**: File watching for development workflows
 - **Failure isolation**: Re-run only failed tests
+- **Watch mode improvements**: Better output management, queue-based execution
 
 ## Dependencies
 
