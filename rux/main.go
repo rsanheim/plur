@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
+	"runtime/trace"
 	"strings"
 
 	"github.com/rsanheim/rux/rspec"
+	"github.com/rsanheim/rux/tracing"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
 )
@@ -190,10 +193,10 @@ func createApp() *cli.App {
 
 			// Initialize tracing if enabled
 			if ctx.Bool("trace") {
-				if err := InitTracer(true); err != nil {
+				if err := tracing.Init(true); err != nil {
 					return fmt.Errorf("failed to initialize tracer: %v", err)
 				}
-				defer CloseTracer()
+				defer tracing.Close()
 			}
 
 			// Set custom runtime directory if provided
@@ -201,15 +204,13 @@ func createApp() *cli.App {
 				customRuntimeDir = runtimeDir
 			}
 
-			defer TraceFunc("main.total_execution")()
+			defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
 			var specFiles []string
 			var err error
 
 			// Determine which spec files to run
-			func() {
-				defer TraceFunc("file_discovery")()
-
+			trace.WithRegion(context.Background(), "file_discovery", func() {
 				if ctx.NArg() > 0 {
 					// Expand glob patterns from provided arguments
 					specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
@@ -231,7 +232,7 @@ func createApp() *cli.App {
 						return
 					}
 				}
-			}()
+			})
 
 			if err != nil {
 				return err
@@ -296,7 +297,7 @@ func createApp() *cli.App {
 
 			// Run bundle install if --auto flag is set
 			if ctx.Bool("auto") {
-				defer TraceFunc("bundle_install")()
+				defer tracing.StartRegion(context.Background(), "bundle_install")()
 
 				fmt.Println("Installing dependencies...")
 				bundleCmd := exec.Command("bundle", "install")

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/rux/rspec"
+	"github.com/rsanheim/rux/tracing"
 )
 
 // Global cached formatter path
@@ -152,14 +153,14 @@ func errorResult(specFiles []string, err error, start time.Time) TestResult {
 
 // RunSpecFile executes multiple spec files in a single RSpec process
 func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, outputChan chan<- OutputMessage) TestResult {
-	defer TraceFuncWithWorker("run_spec_files", workerIndex, strings.Join(specFiles, ","))()
+	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
 	// Get the cached formatter path (computed only once)
 	var formatterPath string
 	var err error
 	func() {
-		defer TraceFuncWithWorker("get_formatter_path", workerIndex, "grouped")()
+		defer tracing.StartRegionWithWorker(ctx, "get_formatter_path", workerIndex, "grouped")()
 		formatterPath, err = getCachedFormatterPath()
 	}()
 	if err != nil {
@@ -213,7 +214,7 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 
 	// Start the command
 	func() {
-		defer TraceFuncWithWorker("process_spawn", workerIndex, fmt.Sprintf("%d files", len(specFiles)))()
+		defer tracing.StartRegionWithWorker(ctx, "process_spawn", workerIndex, fmt.Sprintf("%d files", len(specFiles)))()
 		err = cmd.Start()
 	}()
 	if err != nil {
@@ -237,11 +238,10 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 			if firstOutput {
 				// Trace time to first output
 				firstOutput = false
-				TraceFuncWithMetadata("ruby_first_output", map[string]interface{}{
-					"worker_id":        workerIndex,
-					"spec_files":       len(specFiles),
-					"time_since_spawn": time.Since(start).Seconds() * 1000,
-				})()
+				tracing.LogEvent(ctx, "ruby_first_output",
+					"worker_id", workerIndex,
+					"spec_files", len(specFiles),
+					"time_since_spawn", time.Since(start).Seconds()*1000)
 			}
 
 			msg, err := rspec.ParseStreamingMessage(line)
@@ -255,12 +255,11 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 				switch msg.Type {
 				case "start":
 					streamingResults.LoadTime = msg.LoadTime
-					TraceFuncWithMetadata("rspec_loaded", map[string]interface{}{
-						"worker_id":        workerIndex,
-						"spec_files":       len(specFiles),
-						"load_time":        msg.LoadTime,
-						"time_since_spawn": time.Since(start).Seconds() * 1000,
-					})()
+					tracing.LogEvent(ctx, "rspec_loaded",
+						"worker_id", workerIndex,
+						"spec_files", len(specFiles),
+						"load_time", msg.LoadTime,
+						"time_since_spawn", time.Since(start).Seconds()*1000)
 				case "example_passed":
 					streamingResults.AddExample(*msg)
 					outputChan <- OutputMessage{
@@ -347,7 +346,7 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
 func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWorkers int, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
-	defer TraceFunc("run_specs_parallel_grouped")()
+	defer tracing.StartRegion(context.Background(), "run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
 
