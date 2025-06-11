@@ -1,3 +1,0 @@
-[submodule "vendor/backspin"]
-	path = vendor/backspin
-	url = https://github.com/rsanheim/backspin.git
