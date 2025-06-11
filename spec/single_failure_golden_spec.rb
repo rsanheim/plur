@@ -41,7 +41,7 @@ RSpec.describe "single failure golden test" do
 
     # Record rspec output
     Backspin.run("rspec_vs_rux_backtrace_comparison",
-      matcher: { stdout: stdout_matcher }) do
+      matcher: {stdout: stdout_matcher}) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--tty", "--force-color")
       end
@@ -50,7 +50,7 @@ RSpec.describe "single failure golden test" do
     # Verify rux output matches
     result = Backspin.run!("rspec_vs_rux_backtrace_comparison",
       mode: :auto,
-      matcher: { stdout: stdout_matcher, stderr: stderr_matcher }) do
+      matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
       chdir fixture_path("failing_specs") do
         run_rux("spec/single_failure_spec.rb")
       end
@@ -82,7 +82,7 @@ RSpec.describe "single failure golden test" do
 
     # Record rspec output
     Backspin.run("rspec_vs_rux_colorized_comparison",
-      matcher: { stdout: stdout_matcher, stderr: stderr_matcher }) do
+      matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--force-color", "--tty")
       end
@@ -91,7 +91,7 @@ RSpec.describe "single failure golden test" do
     # Verify rux output matches
     result = Backspin.run!("rspec_vs_rux_colorized_comparison",
       mode: :verify,
-      matcher: { stdout: stdout_matcher, stderr: stderr_matcher }) do
+      matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
       chdir fixture_path("failing_specs") do
         run_rux("spec/single_failure_spec.rb")
       end

@@ -65,8 +65,8 @@ RSpec.describe "rux doctor command" do
       normalized_recorded == normalized_actual
     }
 
-    result = Backspin.run!("rux_doctor_golden", 
-      matcher: { stdout: stdout_matcher}) do
+    Backspin.run!("rux_doctor_golden",
+      matcher: {stdout: stdout_matcher}) do
       run_rux_doctor
     end
   end
