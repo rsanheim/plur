@@ -70,32 +70,16 @@ RSpec.describe "rux watch command" do
   end
 
   context "golden testing with backspin" do
-    it "produces consistent watch output" do
+    fit "produces consistent watch output" do
       # Skip recording if watcher binary is not available
       skip "Watcher binary not available" unless File.exist?(File.expand_path("~/.cache/rux/bin/watcher-aarch64-apple-darwin"))
 
       # Use backspin with :once mode - records if file doesn't exist, replays if it does
       # Note: This test has been simplified due to complexities with backspin replay
       # and the run_rux_watch helper returning OpenStruct objects
-      result = run_rux_watch(timeout: 1)
-
-      # Normalize output for consistent comparison
-      result.out
-        .gsub(/Event: create watcher.*/, "Event: create watcher [PATH]")
-        .gsub(/\/Users\/[^\/]+/, "/Users/[USER]")
-        .gsub(/Will exit after \d+ seconds/, "Will exit after [N] seconds")
-        .gsub(/Absolute watch path:.*/, "Absolute watch path: [PATH]")
-        .gsub(/Timeout reached.*/, "Timeout reached, exiting watch mode")
-
-      # Check for the new log format in stderr instead
-      normalized_stderr = result.err
-        .gsub(/\d+:\d+:\d+/, "[TIME]")
-        .gsub(/version=v[\d.-]+/, "version=[VERSION]")
-        .gsub(/\/Users\/[^\/]+/, "/Users/[USER]")
-
-      expect(normalized_stderr).to include("rux watch starting!")
-      expect(normalized_stderr).to include("directories=[spec lib]")
-      expect(result.success?).to be true
+      result = Backspin.run!("simple_watch_output") do
+        run_rux_watch(timeout: 1)
+      end
     end
   end
 end

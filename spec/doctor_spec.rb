@@ -8,24 +8,25 @@ RSpec.describe "rux doctor command" do
   end
 
   # Normalize dynamic values for consistent golden testing
-  def normalize_doctor_output(output)
-    output
-      # Normalize version info
-      .gsub(/v\d+\.\d+\.\d+-\d+-\d+-[a-f0-9]+/, "v[VERSION]")
-      .gsub(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC/, "[BUILD_DATE]")
-      .gsub(/[a-f0-9]{9}/, "[COMMIT]")
+  # Using loose regex patterns here deliberately, its good enough
+  def normalize_doctor_output(str)
+    str
+      .gsub(/v[\d\.\-\w\+]+/, "v[VERSION]")
+      .gsub(/(Build Date:\s+).+/, '\1[BUILD_DATE]')
+      .gsub(/(Git Commit:\s+).+/, '\1[COMMIT]')
+      .gsub(/(Built By:\s+).+/, '\1[BUILT_BY]')
       # Normalize paths
       .gsub(/\/Users\/[^\/]+/, "/Users/[USER]")
       .gsub(/\/home\/[^\/]+/, "/home/[USER]")
       # Normalize watcher binary paths
       .gsub(/Binary Path:\s+\/Users\/[^\/]+\/.cache\/rux\/bin\/[^\n]+/, "Binary Path:    [WATCHER_PATH]")
       # Normalize Go version
-      .gsub(/go\d+\.\d+\.\d+/, "go[VERSION]")
-      # Normalize Ruby versions
-      .gsub(/ruby \d+\.\d+\.\d+ \(\d{4}-\d{2}-\d{2} revision [a-f0-9]+\)/, "ruby [VERSION]")
-      .gsub(/Bundler version \d+\.\d+\.\d+/, "Bundler version [VERSION]")
-      .gsub(/RSpec \d+\.\d+/, "RSpec [VERSION]")
-      .gsub(/rspec-\w+ \d+\.\d+\.\d+/, "rspec-[MODULE] [VERSION]")
+      .gsub(/go[\d\.]+/, "go[VERSION]")
+      # Normalize Ruby versions - looser patterns
+      .gsub(/ruby [\d\.\w\s\(\)\-]+/, "ruby [VERSION]")
+      .gsub(/Bundler version [\d\.]+/, "Bundler version [VERSION]")
+      .gsub(/RSpec [\d\.]+/, "RSpec [VERSION]")
+      .gsub(/- rspec-\w+ [\d\.]+/, "- rspec-[COMPONENT] [VERSION]")
       # Normalize runtime data hash
       .gsub(/[a-f0-9]{8}\.json/, "[HASH].json")
   end
@@ -57,24 +58,15 @@ RSpec.describe "rux doctor command" do
   end
 
   it "produces consistent output using Backspin golden testing" do
-    stdout_matcher = ->(recorded_stdout, actual_stdout) {
-      # Check that all key sections appear in both outputs
-      key_sections = [
-        "Rux Doctor", "Rux Version:", "Operating System:",
-        "Ruby Environment:", "File Watcher:", "Cache Directory:",
-        "Environment Variables:"
-      ]
+    stdout_matcher = ->(record, actual) {
+      normalized_recorded = normalize_doctor_output(record)
+      normalized_actual = normalize_doctor_output(actual)
 
-      normalized_recorded = normalize_doctor_output(recorded_stdout)
-      normalized_actual = normalize_doctor_output(actual_stdout)
-
-      key_sections.all? { |section|
-        normalized_recorded.include?(section) && normalized_actual.include?(section)
-      }
+      normalized_recorded == normalized_actual
     }
 
-    Backspin.run!("rux_doctor_golden",
-      match_on: [:stdout, stdout_matcher]) do
+    result = Backspin.run!("rux_doctor_golden", 
+      matcher: { stdout: stdout_matcher}) do
       run_rux_doctor
     end
   end
