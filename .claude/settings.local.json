@@ -52,6 +52,7 @@
       "Bash(gh pr review:*)",
       "Bash(gh pr view:*)",
       "Bash(gh run list:*)",
+      "Bash(gh search repos:*)",
       "Bash(git add:*)",
       "Bash(git check-ignore:*)",
       "Bash(git clone:*)",
@@ -88,7 +89,6 @@
       "Bash(RUX_DEBUG=1 rux watch --verbose --timeout 5)",
       "Bash(RUX_WORKERS=4 ./script/bench ./rux-ruby)",
       "Bash(rux:*)",
-      "Bash(script/serve-docs:*)",
       "Bash(sed:*)",
       "Bash(tar:*)",
       "Bash(time:*)",
@@ -101,6 +101,8 @@
       "Go(*)",
       "mcp__github__add_issue_comment",
       "mcp__github__add_pull_request_review_comment_to_pending_review",
+      "mcp__github__create_pending_pull_request_review",
+      "mcp__github__get_issue_comments",
       "mcp__github__create_issue",
       "mcp__github__create_pending_pull_request_review",
       "mcp__github__get_file_contents",
@@ -116,16 +118,18 @@
       "mcp__github__search_issues",
       "mcp__github__search_repositories",
       "mcp__github__submit_pending_pull_request_review",
+      "mcp__github__update_issue",
       "mcp__github__update_pull_request",
       "WebFetch(domain:cli.urfave.org)",
       "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:dystroy.org)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pkg.go.dev)",
       "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": []
   },
-  "enableAllProjectMcpServers": false,
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "github"
   ]
