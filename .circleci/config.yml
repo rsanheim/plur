@@ -91,10 +91,7 @@ jobs:
             sudo chmod +x /usr/local/bin/rux
       - ruby/install-deps
       - restore_cache:
-          key: v1-default-rails-{{ checksum "Gemfile.lock" }}
-          working_directory: fixtures/projects/default-rails
-          paths:
-            - vendor/bundle
+          key: v1-default-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
       - run:
           name: Setup test_app
           working_directory: fixtures/projects/default-rails
@@ -102,10 +99,10 @@ jobs:
             bundle install
             bundle exec rake db:create db:migrate
       - save_cache:
-          key: v1-default-rails-{{ checksum "Gemfile.lock" }}
-          working_directory: fixtures/projects/default-rails
+          key: v1-default-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
           paths:
-            - vendor/bundle
+            - fixtures/projects/default-rails/vendor/bundle
+
       - run:
           name: Run test_app specs with rux
           working_directory: fixtures/projects/default-rails
