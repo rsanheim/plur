@@ -67,9 +67,9 @@ jobs:
             rux --help
       - ruby/install-deps
       - run:
-          name: Run ruby linting
+          name: Run all linters
           command: |
-            bin/rake lint:ruby
+            bin/rake lint
       - run:
           name: Run Ruby tests with rux
           command: |
@@ -89,6 +89,7 @@ jobs:
           command: |
             sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
+      - ruby/install-deps
       - run:
           name: Setup test_app
           working_directory: fixtures/projects/default-rails
