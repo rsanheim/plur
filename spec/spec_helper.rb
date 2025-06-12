@@ -59,7 +59,7 @@ RSpec.configure do |config|
   config.after(:suite) do
     Dir.chdir(DEFAULT_RUBY_DIR) do
       # Reset any file changes made during tests
-      system("git checkout -- .", out: File::NULL, err: File::NULL)
+      system("git checkout .", out: File::NULL, err: File::NULL)
     end
   end
 end
