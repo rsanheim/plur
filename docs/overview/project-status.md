@@ -6,7 +6,7 @@
 
 ## Current Implementation
 
-### Core Features ✅
+### Core Features
 - **Parallel test execution** using Go goroutines and worker pools
 - **Clean progress output** using RSpec's progress formatter (dots only)
 - **Intelligent worker limiting** (cores-2 default, configurable via CLI or env)
@@ -14,7 +14,7 @@
 - **Performance timing** showing wall time vs CPU time
 - **Environment compatibility** with `PARALLEL_TEST_PROCESSORS`
 
-### CLI Interface ✅
+### CLI Interface
 ```bash
 rux                          # Run with auto-detected workers (cores-2)
 rux --workers 4              # Run with 4 workers
@@ -22,7 +22,7 @@ rux --dry-run               # Show what would run without execution
 rux --auto                  # Auto-detect and show worker count
 ```
 
-### Technical Architecture ✅
+### Technical Architecture
 - **Language**: Go 1.21+ 
 - **CLI Framework**: urfave/cli/v2
 - **Concurrency**: Worker pool pattern with sync.WaitGroup
@@ -106,7 +106,7 @@ func getWorkerCount(cliWorkers int) int {
 - Finds all `*_spec.rb` files in nested directories
 - Handles complex project structures
 
-## Current Status: Production Ready ✅
+## Current Status: Production Ready
 
 The rux implementation is feature-complete and performing well:
 
@@ -118,7 +118,7 @@ The rux implementation is feature-complete and performing well:
 
 ## Recent Additions
 
-### Watch Mode (Experimental) ⚠️
+### Watch Mode (Experimental)
 - **File watching**: Automatically runs tests when files change
 - **Interactive commands**: Press Enter to run all tests, type 'exit' to quit
 - **Intelligent mapping**: Maps source files to their corresponding spec files

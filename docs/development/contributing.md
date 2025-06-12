@@ -1,5 +1,3 @@
-# Contributing to Rux
-
 We welcome contributions! This guide will help you get started.
 
 ## Development Setup

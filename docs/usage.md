@@ -113,41 +113,6 @@ RUX_TRACE=1 rux
 
 Creates trace files in `/tmp/rux-traces/` for analysis.
 
-## Integration
-
-### CI/CD
-
-```yaml
-# GitHub Actions
-- name: Run tests
-  run: rux -n ${{ steps.cpu-cores.outputs.count }}
-
-# CircleCI
-test:
-  parallelism: 4
-  steps:
-    - run: rux -n $CIRCLE_NODE_TOTAL
-
-# GitLab CI
-test:
-  script:
-    - rux -n $(nproc)
-```
-
-### Git Hooks
-
-```bash
-# .git/hooks/pre-push
-#!/bin/sh
-rux --dry-run && rux -n 4
-```
-
-## Advanced Usage
-
-### Test Discovery
-
-Rux discovers all `*_spec.rb` files recursively from the current directory.
-
 ### Debugging Test Failures
 
 ```bash
