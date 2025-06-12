@@ -136,14 +136,12 @@ benchmark_project() {
         --warmup $WARMUP \
         --runs $RUNS \
         --export-json "$JSON_FILE" \
-        --show-output \
             "turbo_tests -n $WORKERS" \
             "$RUX_CMD"
     else
         hyperfine \
             --warmup $WARMUP \
             --runs $RUNS \
-            --show-output \
             "turbo_tests -n $WORKERS" \
             "$RUX_CMD"
     fi

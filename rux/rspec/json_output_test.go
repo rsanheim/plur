@@ -84,9 +84,6 @@ func TestFormatFailure(t *testing.T) {
 				} else if strings.HasPrefix(line, "       ") && (strings.Contains(line, "expected:") || strings.Contains(line, "got:")) {
 					// These are correctly indented with 7 spaces
 					continue
-				} else if strings.HasPrefix(line, "     #") {
-					// These are correctly indented with 5 spaces
-					continue
 				}
 			}
 		})
