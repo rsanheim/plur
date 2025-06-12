@@ -104,9 +104,6 @@ RSpec.describe "rux watch integration" do
       end
     end
 
-    pp ["command result", result]
-    pp ["streamed out", streamed_out]
-    pp ["streamed err", streamed_err]
     expect_file_change_logged(result.err, "./spec/calculator_spec.rb")
     expect_spec_run_logged(result.err, "./spec/calculator_spec.rb")
   ensure

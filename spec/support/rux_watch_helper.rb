@@ -2,7 +2,7 @@ require "tty-command"
 require "open3"
 
 module RuxWatchHelper
-  DEFAULT_RUX_WATCH_TIMEOUT = ENV["CI"] ? 10 : 3
+  DEFAULT_RUX_WATCH_TIMEOUT = 3
 
   # Runs rux watch with TTY::Command and returns a proper result object
   # @param dir [String] directory to run in
@@ -18,7 +18,7 @@ module RuxWatchHelper
 
       full_env = env
 
-      cmd = TTY::Command.new(uuid: false)
+      cmd = TTY::Command.new(uuid: false, printer: :null)
 
       if block_given?
         # Run command asynchronously with block
@@ -55,7 +55,7 @@ module RuxWatchHelper
       env = {}
       # TTY::Command timeout needs to be longer than rux watch timeout to avoid timeout errors
       full_timeout = rux_timeout + 2
-      cmd = TTY::Command.new(timeout: full_timeout, uuid: false)
+      cmd = TTY::Command.new(timeout: full_timeout, uuid: false, printer: :null)
 
       streamed_out, streamed_err = [], []
 

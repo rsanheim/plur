@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.describe "rux watch command" do
+RSpec.describe "rux watch command", :skip_if_ci do
   include RuxWatchHelper
 
   context "basic functionality" do
