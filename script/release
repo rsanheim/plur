@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+
+require "optparse"
+require_relative "../lib/release"
+parser = OptionParser.new do |opts|
+  opts.banner = "Usage: script/release VERSION"
+
+  opts.on("-h", "--help", "Show this help message") do
+    puts opts
+    exit
+  end
+
+  opts.separator ""
+  opts.separator "Examples:"
+  opts.separator "  script/release v0.7.0    # Create release v0.7.0"
+  opts.separator "  script/release v1.0.0    # Create major release"
+  opts.separator ""
+  opts.separator "Version must be in format vX.Y.Z"
+end
+
+parser.parse!
+
+version = ARGV[0]
+
+unless version
+  puts parser
+  exit 1
+end
+
+unless version.match?(/^v\d+\.\d+\.\d+$/)
+  puts "Error: Version must be in format vX.Y.Z (e.g., v0.7.0)"
+  exit 1
+end
+
+Release.new(version).call

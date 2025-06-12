@@ -19,7 +19,6 @@ cd fixtures/projects/default-rails && rux -n 3
 
 ### Core rux Implementation (`rux/`)
 - **Go-based CLI** for parallel RSpec execution
-- **TEST_ENV_NUMBER support** for Rails database isolation
 - **Database commands** (db:create, db:migrate, db:setup, db:test:prepare)
 - **Performance optimized** - 13% faster than turbo_tests
 
@@ -130,15 +129,23 @@ rux -n 3                  # Run RSpec tests in parallel
 ## 📚 Documentation
 
 - **`docs/project-status.md`**: Complete project overview and status
-- **`docs/usage.md`**: Detailed usage guide and examples
+- **`docs/development/user-guide.md`**: Detailed usage guide and examples
 - **`CLAUDE.md`**: Development environment setup for future work
+
+### Viewing Documentation Locally
+
+We use MkDocs Material for browsing documentation. To view the docs locally:
+
+```bash
+# requires `uv` - servces documentation at http://localhost:8000
+script/serve-docs
+```
 
 ## 🛠️ Development
 
 ### Requirements
 - Go 1.22+
 - Ruby 3.0+ (for Rails testing)
-- Rails 8+ (for test app)
 
 ### Project Structure
 ```

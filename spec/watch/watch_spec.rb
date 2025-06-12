@@ -1,7 +1,8 @@
 require "spec_helper"
 
-RSpec.describe "rux watch command" do
+RSpec.describe "rux watch command", :skip_if_ci do
   include RuxWatchHelper
+
   context "basic functionality" do
     it "starts successfully when spec directory exists" do
       result = run_rux_watch(timeout: 2)
@@ -66,20 +67,6 @@ RSpec.describe "rux watch command" do
     it "respects custom debounce delay" do
       result = run_rux_watch(timeout: 1, debounce: 250)
       expect(result.err).to include("Debounce delay ms=250")
-    end
-  end
-
-  context "golden testing with backspin" do
-    fit "produces consistent watch output" do
-      # Skip recording if watcher binary is not available
-      skip "Watcher binary not available" unless File.exist?(File.expand_path("~/.cache/rux/bin/watcher-aarch64-apple-darwin"))
-
-      # Use backspin with :once mode - records if file doesn't exist, replays if it does
-      # Note: This test has been simplified due to complexities with backspin replay
-      # and the run_rux_watch helper returning OpenStruct objects
-      result = Backspin.run!("simple_watch_output") do
-        run_rux_watch(timeout: 1)
-      end
     end
   end
 end

@@ -78,3 +78,65 @@ ALWAYS use integration specs as guardrails:
 - `spec/doctor_spec.rb` - Doctor command with backspin
 
 Run via: `bin/rake test:ruby` or `bundle exec rspec spec/[file]`
+
+## GitHub MCP Server Integration
+
+This project includes a GitHub MCP (Model Context Protocol) server configuration for enhanced GitHub integration with Claude Code.
+
+### Features Enabled
+The `.mcp.json` configuration enables:
+- **Context**: Access repository context and metadata
+- **Pull Requests**: Create, review, and manage PRs directly
+- **Issues**: Create and manage GitHub issues
+- **Repos**: Access repository information and settings
+
+### Usage
+Once configured, Claude Code can:
+- Create and update PRs and issues
+- Review PR changes and provide feedback
+- Create and manage issues
+- Access repository metadata
+
+## GitHub CLI (`gh`) for Better Control
+
+When searching GitHub repositories or needing more control over the data returned, use the `gh` CLI instead of MCP tools:
+
+### Repository Search Examples
+```bash
+# Search Go glob libraries with specific fields
+gh search repos --language=go --stars=">50" glob --json name,owner,stargazersCount,pushedAt
+
+# Search with custom output format
+gh search repos glob --language=go --limit=10 \
+  --json name,owner,stargazersCount,pushedAt \
+  --jq '.[] | {name, owner: .owner.login, stars: .stargazersCount, updated: .pushedAt}'
+
+# Search code in repositories
+gh search code "glob extension:go" --limit=20
+
+# Search issues/PRs
+gh search issues "glob" --repo=gobwas/glob --state=open
+```
+
+### Direct API Access When Needed
+```bash
+# Get specific commit info
+gh api repos/owner/repo/commits/SHA --jq '{sha: .sha, date: .commit.author.date, message: .commit.message}'
+
+# List branches with just names
+gh repo view owner/repo --json defaultBranchRef,refs --jq '.refs.nodes[].name'
+```
+
+Key advantages over MCP tools:
+- `--json` flag to specify only the fields you need
+- Built-in search syntax with proper filters
+- `--limit` to control result count
+- Cleaner command structure with dedicated subcommands
+
+## Documentation Guidelines
+
+Keep documentation focused on the **current state** of the project:
+- Document what exists and works today, not future plans
+- Remove inline references to "coming soon", "will support", etc.
+- Future plans belong only in `docs/overview/roadmap.md`
+- When features are implemented, move them from roadmap to main docs

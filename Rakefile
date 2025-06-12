@@ -4,18 +4,29 @@ require "fileutils"
 begin
   require "standard/rake" if Gem::Specification.find_all_by_name("standard").any?
   require "rspec/core/rake_task" if Gem::Specification.find_all_by_name("rspec").any?
+  RSpec::Core::RakeTask.new(:spec) if defined?(RSpec)
 rescue LoadError
 end
-
-# Define RSpec task if available
-RSpec::Core::RakeTask.new(:spec) if defined?(RSpec)
 
 # Load all tasks from lib/tasks
 Dir.glob(File.join(__dir__, "lib", "tasks", "*.rake")).each { |file| load file }
 
+# Using 3 cores for medium/large resource class on CircleCI
+RUX_CORES = ENV["CI"] ? 3 : 8
+
 # Default task runs all checks
 desc "Run all tests and linting"
 task default: ["test:all", "lint:all"]
+
+desc "Build the rux Go binary"
+task :build do
+  Dir.chdir("rux") do
+    puts "Building rux"
+    sh %(go build -mod=mod -o rux .)
+    version = `./rux --version`.strip
+    puts "Binary created at rux/rux with version: #{version}"
+  end
+end
 
 desc "Build and install rux to GOPATH/bin"
 task :install do
@@ -32,8 +43,7 @@ end
 # For Go tests:
 #   - Default: minimal output (just pass/fail)
 #   - VERBOSE=1 rake test:go: detailed test output
-#   - Install gotestsum for better formatting:
-#     go install gotest.tools/gotestsum@latest
+#   - Investigate gotestsum for better formatting
 # ========================================
 namespace :test do
   desc "Run all tests (Go, Ruby, and Integration)"
@@ -42,13 +52,10 @@ namespace :test do
   desc "Run Go tests"
   task :go do
     Dir.chdir("rux") do
-      puts "Running Go tests..."
+      puts "running go tests..."
 
-      # Download dependencies first
-      puts "Downloading Go dependencies..."
       sh "go mod download"
 
-      # Clean up tmp directory first to avoid test artifacts
       if Dir.exist?("tmp")
         puts "Cleaning up tmp directory..."
         FileUtils.rm_rf("tmp")
@@ -79,11 +86,7 @@ namespace :test do
   task :default_ruby do
     Dir.chdir("fixtures/projects/default-ruby") do
       puts "Running default-ruby specs with rux..."
-
-      # Use rux from PATH if available, otherwise use relative path
-      rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
-
-      sh rux_command
+      sh "rux", "-n", RUX_CORES.to_s
     end
   end
 
@@ -100,16 +103,15 @@ namespace :test do
   task default_rails: [:build] do
     Dir.chdir("fixtures/projects/default-rails") do
       puts "Running default-rails specs with rux..."
-
-      # Use rux from PATH if available, otherwise use relative path
-      rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
-
-      sh rux_command.to_s
+      sh "rux", "-n", RUX_CORES.to_s
     end
   end
 
   desc "Run integration tests in root spec directory"
-  task integration: %i[build spec]
+  task :integration do
+    puts "Running ruby integration suite with rux..."
+    sh "rux", "-n", RUX_CORES.to_s
+  end
 end
 
 # ========================================
@@ -127,24 +129,12 @@ namespace :lint do
 
       puts "Running go vet..."
       sh "go vet ./..."
-
-      # Run golint if available
-      if system("which golint > /dev/null 2>&1")
-        puts "Running golint..."
-        sh "golint ./..."
-      else
-        puts "Note: golint not found, skipping (install with: go install golang.org/x/lint/golint@latest)"
-      end
     end
   end
 
   desc "Lint Ruby code with Standard"
   task :ruby do
-    if defined?(Rake::Task["standard"])
-      Rake::Task["standard"].invoke
-    else
-      puts "Standard gem not found, skipping Ruby linting"
-    end
+    Rake::Task["standard"].invoke
   end
 
   desc "Fix Ruby linting issues automatically"
@@ -152,27 +142,6 @@ namespace :lint do
     Rake::Task["standard:fix"].invoke
   end
   task fix: [:ruby_fix]
-end
-
-desc "Build the rux Go binary"
-task :build do
-  Dir.chdir("rux") do
-    puts "Building rux"
-    sh %(go build -mod=mod -o rux .)
-    version = `./rux --version`.strip
-    puts "Binary created at rux/rux with version: #{version}"
-  end
-end
-
-# ========================================
-# Clean Tasks
-# ========================================
-desc "Clean Go build artifacts"
-task :clean do
-  Dir.chdir("rux") do
-    rm_f "rux"
-    puts "Cleaned Go build artifacts"
-  end
 end
 
 # ========================================

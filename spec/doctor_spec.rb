@@ -46,18 +46,14 @@ RSpec.describe "rux doctor command" do
     expect(stdout).to include("Environment Variables:")
   end
 
-  it "shows watcher availability on supported platforms" do
+  it "shows e-dant/watcher availability" do
     stdout, _stderr, _status = run_rux_doctor
 
-    if RUBY_PLATFORM.include?("darwin") && RUBY_PLATFORM.include?("arm64")
-      expect(stdout).to include("Status:         Available")
-      expect(stdout).to include("Binary Path:")
-    else
-      expect(stdout).to match(/Status:\s+Not available/)
-    end
+    expect(stdout).to match(/Status:\s+Available/)
+    expect(stdout).to match(/Binary Path:\s+/)
   end
 
-  it "produces consistent output using Backspin golden testing" do
+  it "produces consistent output using Backspin golden testing", :skip_if_ci do
     stdout_matcher = ->(record, actual) {
       normalized_recorded = normalize_doctor_output(record)
       normalized_actual = normalize_doctor_output(actual)

@@ -12,18 +12,3 @@ class Calculator
     a / b.to_f
   end
 end
-# test
-# test
-# test
-# test
-# test
-# test
-# test
-# test
-
-# test
-# test
-# test
-# test
-# test
-# test
