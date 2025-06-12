@@ -74,6 +74,10 @@ jobs:
           name: Run Ruby tests with rux
           command: |
             bin/rake test:default_ruby
+      - run:
+          name: Run integration tests
+          command: |
+            bin/rake test:integration
 
   test-integration:
     docker:

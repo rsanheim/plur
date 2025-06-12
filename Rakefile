@@ -4,18 +4,28 @@ require "fileutils"
 begin
   require "standard/rake" if Gem::Specification.find_all_by_name("standard").any?
   require "rspec/core/rake_task" if Gem::Specification.find_all_by_name("rspec").any?
+  RSpec::Core::RakeTask.new(:spec) if defined?(RSpec)
 rescue LoadError
 end
-
-# Define RSpec task if available
-RSpec::Core::RakeTask.new(:spec) if defined?(RSpec)
 
 # Load all tasks from lib/tasks
 Dir.glob(File.join(__dir__, "lib", "tasks", "*.rake")).each { |file| load file }
 
+LOCAL_RUX = Pathname.new(__dir__).join("rux", "rux").expand_path.to_s.freeze
+
 # Default task runs all checks
 desc "Run all tests and linting"
 task default: ["test:all", "lint:all"]
+
+desc "Build the rux Go binary"
+task :build do
+  Dir.chdir("rux") do
+    puts "Building rux"
+    sh %(go build -mod=mod -o rux .)
+    version = `./rux --version`.strip
+    puts "Binary created at rux/rux with version: #{version}"
+  end
+end
 
 desc "Build and install rux to GOPATH/bin"
 task :install do
@@ -32,8 +42,7 @@ end
 # For Go tests:
 #   - Default: minimal output (just pass/fail)
 #   - VERBOSE=1 rake test:go: detailed test output
-#   - Install gotestsum for better formatting:
-#     go install gotest.tools/gotestsum@latest
+#   - Investigate gotestsum for better formatting
 # ========================================
 namespace :test do
   desc "Run all tests (Go, Ruby, and Integration)"
@@ -79,11 +88,7 @@ namespace :test do
   task :default_ruby do
     Dir.chdir("fixtures/projects/default-ruby") do
       puts "Running default-ruby specs with rux..."
-
-      # Use rux from PATH if available, otherwise use relative path
-      rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
-
-      sh rux_command
+      sh LOCAL_RUX
     end
   end
 
@@ -100,11 +105,7 @@ namespace :test do
   task default_rails: [:build] do
     Dir.chdir("fixtures/projects/default-rails") do
       puts "Running default-rails specs with rux..."
-
-      # Use rux from PATH if available, otherwise use relative path
-      rux_command = system("which rux > /dev/null 2>&1") ? "rux" : "../rux/rux"
-
-      sh rux_command.to_s
+      sh LOCAL_RUX
     end
   end
 
@@ -140,16 +141,6 @@ namespace :lint do
     Rake::Task["standard:fix"].invoke
   end
   task fix: [:ruby_fix]
-end
-
-desc "Build the rux Go binary"
-task :build do
-  Dir.chdir("rux") do
-    puts "Building rux"
-    sh %(go build -mod=mod -o rux .)
-    version = `./rux --version`.strip
-    puts "Binary created at rux/rux with version: #{version}"
-  end
 end
 
 # ========================================
