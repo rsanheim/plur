@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+function show_help() {
+  cat <<EOF
+Usage: $0 [options]
+
+Run linters
+
+Options:
+  -h, --help         Show this help message
+  -f, --fix          Fix linting errors
+  --fix-unsafely     Fix linting errors unsafely
+EOF
+  exit 0
+}
+
+FIX_OPT="--no-fix"
+while [[ $# -gt 0 ]]; do
+  case $1 in
+      -h|--help)
+          show_help
+          ;;
+      -f|--fix)
+          FIX_OPT="--fix"
+          shift 2
+          ;;
+      --fix-unsafely)
+          FIX_OPT="--fix-unsafely"
+          shift 2
+          ;;
+      *)
+          echo "Error: Unknown option: $1"
+          echo "Use -h or --help for usage information"
+          exit 1
+          ;;
+  esac
+done
+
+echo "Running Go linters"
+pushd rux || exit 1
+go fmt ./...
+go vet ./...
+popd || exit 1
+
+echo "Running StandardRB with $FIX_OPT"
+bundle exec standardrb $FIX_OPT
