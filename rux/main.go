@@ -4,12 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
-	"runtime/trace"
 	"strings"
 
-	"github.com/rsanheim/rux/rspec"
 	"github.com/rsanheim/rux/tracing"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
@@ -190,7 +186,6 @@ func createApp() *cli.App {
 			},
 		},
 		Action: func(ctx *cli.Context) error {
-
 			// Initialize tracing if enabled
 			if ctx.Bool("trace") {
 				if err := tracing.Init(true); err != nil {
@@ -199,150 +194,30 @@ func createApp() *cli.App {
 				defer tracing.Close()
 			}
 
-			// Set custom runtime directory if provided
-			if runtimeDir := ctx.String("runtime-dir"); runtimeDir != "" {
-				customRuntimeDir = runtimeDir
-			}
-
 			defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
-			var specFiles []string
-			var err error
-
-			// Determine which spec files to run
-			trace.WithRegion(context.Background(), "file_discovery", func() {
-				if ctx.NArg() > 0 {
-					// Expand glob patterns from provided arguments
-					specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
-					if err != nil {
-						return
-					}
-					if len(specFiles) == 0 {
-						err = fmt.Errorf("no spec files found matching provided patterns")
-						return
-					}
-				} else {
-					// Auto-discover spec files
-					specFiles, err = FindSpecFiles()
-					if err != nil {
-						return
-					}
-					if len(specFiles) == 0 {
-						err = fmt.Errorf("no spec files found")
-						return
-					}
-				}
-			})
-
+			// Build execution configuration
+			config, err := BuildExecutionConfig(ctx)
 			if err != nil {
 				return err
 			}
 
-			dryRun := ctx.Bool("dry-run")
-
-			// Print version as first line (for both dry-run and normal)
-			fmt.Printf("rux version %s\n", GetVersionInfo())
-
-			if dryRun {
-				if ctx.Bool("auto") {
-					fmt.Fprintln(os.Stderr, "[dry-run] bundle install")
-				}
-
-				fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(specFiles))
-
-				// Get formatter path for dry-run display
-				cacheDir, err := getRuxCacheDir()
-				var formatterPath string
-				if err != nil {
-					formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
-				} else {
-					formatterPath, err = rspec.GetFormatterPath(cacheDir)
-					if err != nil {
-						formatterPath = "~/.cache/rux/formatters/json_rows_formatter.rb"
-					}
-				}
-
-				// Show grouped execution in dry-run
-				workerCount := GetWorkerCount(ctx.Int("n"))
-
-				// Load runtime data if available
-				runtimeData, err := LoadRuntimeData()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
-					runtimeData = make(map[string]float64)
-				}
-
-				// Always use grouping
-				var groups []FileGroup
-				if len(runtimeData) > 0 {
-					groups = GroupSpecFilesByRuntime(specFiles, workerCount, runtimeData)
-					fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
-				} else {
-					groups = GroupSpecFilesBySize(specFiles, workerCount)
-					fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
-				}
-				for i, group := range groups {
-					args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
-					// Add color flags based on preference
-					if !shouldUseColor(ctx) {
-						args = append(args, "--no-color")
-					} else {
-						args = append(args, "--force-color", "--tty")
-					}
-					args = append(args, group.Files...)
-					fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
-				}
-				return nil
-			}
-
 			// Run bundle install if --auto flag is set
-			if ctx.Bool("auto") {
-				defer tracing.StartRegion(context.Background(), "bundle_install")()
-
-				fmt.Println("Installing dependencies...")
-				bundleCmd := exec.Command("bundle", "install")
-				bundleCmd.Stdout = os.Stdout
-				bundleCmd.Stderr = os.Stderr
-
-				if err := bundleCmd.Run(); err != nil {
-					return fmt.Errorf("error running bundle install: %v", err)
+			if config.Auto && !config.DryRun {
+				depManager := NewDependencyManager()
+				if err := depManager.InstallDependencies(); err != nil {
+					return err
 				}
 			}
 
-			workerCount := GetWorkerCount(ctx.Int("n"))
-			actualWorkers := workerCount
-			if len(specFiles) < workerCount {
-				actualWorkers = len(specFiles)
-			}
-
-			fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
-				len(specFiles), actualWorkers, runtime.NumCPU())
-
-			// Determine color output settings
-			colorOutput := shouldUseColor(ctx)
-
-			// Always initialize runtime tracker
-			runtimeTracker := NewRuntimeTracker()
-
-			// Run specs in parallel with intelligent grouping
-			results, wallTime := RunSpecsInParallel(specFiles, dryRun, colorOutput, workerCount, runtimeTracker)
-
-			// Save runtime data
-			if err := runtimeTracker.SaveToFile(); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
-			} else {
-				if runtimePath, err := GetRuntimeFilePath(); err == nil {
-					fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", runtimePath)
+			// Create and run executor
+			executor := NewTestExecutor(config)
+			if err := executor.Execute(); err != nil {
+				// Exit with error code 1 for test failures
+				if strings.Contains(err.Error(), "test run failed") {
+					os.Exit(1)
 				}
-			}
-
-			// Build summary and print results
-			summary := BuildTestSummary(results, wallTime)
-			PrintResults(summary, colorOutput)
-
-			// Exit with error if any tests failed
-			if !summary.Success {
-				os.Exit(1)
+				return err
 			}
 
 			return nil
