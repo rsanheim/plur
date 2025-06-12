@@ -51,13 +51,10 @@ namespace :test do
   desc "Run Go tests"
   task :go do
     Dir.chdir("rux") do
-      puts "Running Go tests..."
+      puts "running go tests..."
 
-      # Download dependencies first
-      puts "Downloading Go dependencies..."
       sh "go mod download"
 
-      # Clean up tmp directory first to avoid test artifacts
       if Dir.exist?("tmp")
         puts "Cleaning up tmp directory..."
         FileUtils.rm_rf("tmp")
@@ -141,17 +138,6 @@ namespace :lint do
     Rake::Task["standard:fix"].invoke
   end
   task fix: [:ruby_fix]
-end
-
-# ========================================
-# Clean Tasks
-# ========================================
-desc "Clean Go build artifacts"
-task :clean do
-  Dir.chdir("rux") do
-    rm_f "rux"
-    puts "Cleaned Go build artifacts"
-  end
 end
 
 # ========================================
