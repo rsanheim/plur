@@ -272,4 +272,4 @@ let g:test#ruby#rux#file_pattern = '\v(spec|test)/.*_spec\.rb$'
 
 - [Watch Mode Documentation](/docs/features/watch-mode.md)
 - [Configuration Guide](/docs/configuration.md)
-- [Architecture Overview](/docs/internals/architecture.md)
+- [Architecture Overview](index.md)
