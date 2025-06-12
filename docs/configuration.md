@@ -1,38 +1,32 @@
-# Configuration
-
 Rux aims for zero-configuration operation, but provides options for customization when needed.
 
 ## Configuration Methods
 
 Configuration precedence (highest to lowest):
+
 1. Command-line flags
 2. Environment variables
 3. Configuration file (coming soon)
-4. Defaults
+4. built-in defaults
 
 ## Worker Configuration
 
-### Number of Workers
+Rux uses smart distribution of specs/tests across your CPU cores based on previous runtime data. Otherwise it falls back to a simple round-robin distribution. Future versions will support:
+
+### Specifying Number of Workers
 
 ```bash
-# Command line
+# Auto-detection (default)
+rux
+
+# specify number of workers
 rux -n 8
 rux --workers 8
 
-# Environment variable
+# or via environment variable
 export PARALLEL_TEST_PROCESSORS=8
 rux
-
-# Auto-detection (default)
-rux  # Uses CPU cores - 2
 ```
-
-### Worker Strategy
-
-Currently, Rux uses a simple round-robin distribution. Future versions will support:
-- Runtime-based distribution
-- File-size based grouping
-- Custom distribution strategies
 
 ## Output Configuration
 
@@ -66,18 +60,6 @@ rux --trace
 - Starts from current directory
 - Excludes `vendor/` directory
 
-### Future Options
-
-```yaml
-# .rux.yml (coming soon)
-test_files:
-  pattern: "**/*_spec.rb"
-  exclude:
-    - vendor/
-    - tmp/
-    - coverage/
-```
-
 ## Performance Tuning
 
 ### Trace Output
@@ -90,26 +72,12 @@ rux --trace
 /tmp/rux-traces/rux-trace-{timestamp}-{pid}/
 ```
 
-### Performance Options (Future)
-
-```yaml
-# .rux.yml (coming soon)
-performance:
-  file_grouping:
-    enabled: true
-    min_group_size: 5
-    max_group_size: 20
-  
-  runtime_tracking:
-    enabled: true
-    history_file: .rux-runtimes.json
-```
-
 ## Watch Mode Configuration
 
 ### File Watching
 
-Currently uses embedded watcher binary. Future configuration:
+Currently uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher), with support
+for ruby and rails conventions. Future configuration:
 
 ```yaml
 # .rux.yml (coming soon)
