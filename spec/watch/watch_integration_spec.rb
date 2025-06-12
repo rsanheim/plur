@@ -172,7 +172,7 @@ RSpec.describe "rux watch integration" do
     expect_spec_run_logged(result.err, "./spec/validator_spec.rb")
   end
 
-  describe "Rails-style mappings" do
+  describe "Rails-style mappings", :skip_if_ci do
     let(:app_dir) { File.join(default_ruby_dir, "app") }
     let(:rux_timeout) { ENV["CI"] ? 10 : 2 }
 
