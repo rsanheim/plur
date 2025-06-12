@@ -83,11 +83,6 @@ Run via: `bin/rake test:ruby` or `bundle exec rspec spec/[file]`
 
 This project includes a GitHub MCP (Model Context Protocol) server configuration for enhanced GitHub integration with Claude Code.
 
-### Setup Requirements
-1. **Docker** must be installed and running
-2. **GitHub Personal Access Token** configured in 1Password at `op://Private/github-mcp-rux-meta/credential`
-3. **1Password CLI** (`op`) must be installed and authenticated
-
 ### Features Enabled
 The `.mcp.json` configuration enables:
 - **Context**: Access repository context and metadata
@@ -97,12 +92,10 @@ The `.mcp.json` configuration enables:
 
 ### Usage
 Once configured, Claude Code can:
-- Create PRs with `gh pr create` command
+- Create and update PRs and issues
 - Review PR changes and provide feedback
 - Create and manage issues
 - Access repository metadata
-
-Note: The MCP server configuration is project-scoped and shared with all team members via `.mcp.json`.
 
 ## GitHub CLI (`gh`) for Better Control
 
@@ -139,3 +132,11 @@ Key advantages over MCP tools:
 - Built-in search syntax with proper filters
 - `--limit` to control result count
 - Cleaner command structure with dedicated subcommands
+
+## Documentation Guidelines
+
+Keep documentation focused on the **current state** of the project:
+- Document what exists and works today, not future plans
+- Remove inline references to "coming soon", "will support", etc.
+- Future plans belong only in `docs/overview/roadmap.md`
+- When features are implemented, move them from roadmap to main docs

@@ -1,10 +1,9 @@
-# Rux Documentation
+Welcome to Rux! Rux is a fast, friendly test runner & watcher for Ruby.
 
-This directory contains all documentation for the Rux project.
-
-## Structure
+## Documentation Structure
 
 ### Root Level
+
 - `project-status.md` - Overall project status, architecture overview, and performance results
 - `rux-optimization-plan.md` - Active optimization planning (needs update with file grouping results)
 - `rux-output-and-design.md` - Design philosophy and logging strategy
@@ -21,9 +20,7 @@ Developer guides and setup:
 
 ### `/research`
 Research, analysis, and design explorations:
-- `backspin-api-analysis.md` - Analysis of backspin's filter/matcher API design
 - `backspin-filter-vs-match-research.md` - Comparison of transformation approaches
-- `snapshot-testing-approaches-summary.md` - Snapshot testing patterns across languages
 - `file-mapping-config-formats.md` - Config format comparison for watch mappings
 
 ### `/_archive`

@@ -16,6 +16,7 @@ main
 # Ruby
 *.gem
 *.rbc
+/.cache
 /.config
 /coverage/
 /fixtures/**/tmp/*
@@ -61,3 +62,14 @@ test-pipes/
 # Downloaded test repositories
 *-[0-9]*[0-9]/
 /tmp/rux-traces/
+
+# MkDocs
+site/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Font preview (temporary)
+font-preview.html

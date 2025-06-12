@@ -1,4 +1,4 @@
-# CLI Context Comparison: urfave/cli vs Kong
+# CLI Comparison: urfave/cli vs Kong
 
 ## Overview
 

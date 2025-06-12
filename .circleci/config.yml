@@ -14,8 +14,6 @@ jobs:
       - VERBOSE=true
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
       - run:
           name: Debug - Show directory structure
           command: |
@@ -59,8 +57,6 @@ jobs:
     working_directory: ~/project/
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
       - attach_workspace:
           at: ~/workspace
       - run:
@@ -70,6 +66,10 @@ jobs:
             sudo chmod +x /usr/local/bin/rux
             rux --help
       - ruby/install-deps
+      - run:
+          name: Run ruby linting
+          command: |
+            bin/rake lint:ruby
       - run:
           name: Run Ruby tests with rux
           command: |
@@ -82,8 +82,6 @@ jobs:
     working_directory: ~/project/
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
       - attach_workspace:
           at: ~/workspace
       - run:

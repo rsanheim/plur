@@ -1,0 +1,78 @@
+site_name: Rux Documentation
+site_description: Fast parallel test runner for Ruby/RSpec
+repo_name: rsanheim/rux-meta
+repo_url: https://github.com/rsanheim/rux-meta
+
+theme:
+  name: material
+  font:
+    text: Lato
+    code: JetBrains Mono
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+
+docs_dir: docs
+
+# Hybrid navigation - explicit section ordering with auto-discovery within sections
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - Configuration: configuration.md
+  - Overview: overview/*
+  - Architecture: architecture/*
+  - Features: features/*
+  - Development: development/*
+  - Internals: internals/*
+  - Archive: archive/*
+
+plugins:
+  - search
+  - social
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/rsanheim/rux-meta
