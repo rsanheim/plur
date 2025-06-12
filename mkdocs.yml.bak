@@ -61,18 +61,12 @@ nav:
   - Installation: installation.md
   - Usage: usage.md
   - Configuration: configuration.md
-  - Overview:
-    - overview/*
-  - Architecture:
-    - architecture/*
-  - Features:
-    - features/*
-  - Development:
-    - development/*
-  - Internals:
-    - internals/*
-  - Archive:
-    - archive/*
+  - Overview: overview/*
+  - Architecture: architecture/*
+  - Features: features/*
+  - Development: development/*
+  - Internals: internals/*
+  - Archive: archive/*
 
 plugins:
   - search
