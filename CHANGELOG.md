@@ -1,5 +1,14 @@
 # rux CHANGELOG
 
+
+## v0.6.7 - 2025-06-12
+
+* Trying out Kong CLI [#29](https://github.com/rsanheim/rux-meta/pull/29)
+* GitHub mcp setup [#32](https://github.com/rsanheim/rux-meta/pull/32)
+* Reorg all test projects to fixtures/projects: [#25](https://github.com/rsanheim/rux-meta/pull/25)
+* Update and reorg docs [#24](https://github.com/rsanheim/rux-meta/pull/24)
+* Update backspint to latest 0.4.1; update logging [#23](https://github.com/rsanheim/rux-meta/pull/23)
+
 ### v0.6.6 (2025-06-08)
 
 - Extract watcher downloader into separate module
