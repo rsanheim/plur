@@ -47,8 +47,8 @@ class Release
   def capture3!(cmd, err: nil)
     stdout, stderr, status = Open3.capture3(cmd)
     unless status.success?
-      $stderr.puts err if err
-      $stderr.puts "Error: #{stderr}"
+      warn err if err
+      warn "Error: #{stderr}"
       abort
     end
     [stdout, stderr, status]
@@ -67,15 +67,14 @@ class Release
   end
 
   def get_current_version
-    stdout, _, status = Open3.capture3("git describe --tags --abbrev=0")
-    status.success? ? stdout.strip : "v0.0.0"
+    _, = capture3!("git describe --tags --abbrev=0").strip
   end
 
   def ensure_version_is_newer!(current, new)
     require "rubygems/version"
     current_v = Gem::Version.new(current.sub(/^v/, ""))
     new_v = Gem::Version.new(new.sub(/^v/, ""))
-    
+
     abort "Error: New version #{new} must be greater than current version #{current}" unless new_v > current_v
   end
 
@@ -112,7 +111,7 @@ class Release
 
   def confirm_release?
     print "\nProceed with release? (y/N): "
-    response = STDIN.gets.chomp.downcase
+    response = $stdin.gets.chomp.downcase
     response == "y" || response == "yes"
   end
 
@@ -158,10 +157,10 @@ class Release
   def create_github_release!
     changelog_entry = extract_changelog_entry(@new_version)
     system("gh", "release", "create", @new_version,
-           "--title", @new_version,
-           "--notes", changelog_entry,
-           "--target", "main",
-           exception: true)
+      "--title", @new_version,
+      "--notes", changelog_entry,
+      "--target", "main",
+      exception: true)
   end
 
   def extract_changelog_entry(version)
@@ -194,26 +193,23 @@ class Release
 
   def find_last_pr_merged_to_main
     last_tag = get_current_version
-    commit_range = last_tag == "v0.0.0" ? "main" : "#{last_tag}..main"
-    
+    commit_range = (last_tag == "v0.0.0") ? "main" : "#{last_tag}..main"
+
     stdout, _, _ = capture3!("git log #{commit_range} --merges --oneline")
-    merge_commits = stdout
-    
     prs = []
-    merge_commits.each_line do |commit|
+    stdout.each_line do |commit|
       if commit =~ /Merge pull request #(\d+)/
         pr_info = get_pr_info($1)
         prs << pr_info if pr_info
       end
     end
-    
+
     prs
   end
 
   def get_pr_info(pr_number)
-    stdout, stderr, status = Open3.capture3("gh pr view #{pr_number} --json number,title,url")
-    return nil unless status.success?
-    
+    stdout, = capture3!("gh pr view #{pr_number} --json number,title,url")
+
     data = JSON.parse(stdout)
     {
       number: data["number"],
