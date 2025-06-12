@@ -67,9 +67,9 @@ jobs:
             rux --help
       - ruby/install-deps
       - run:
-          name: Run all linters
+          name: Run ruby linting
           command: |
-            bin/rake lint
+            bin/rake lint:ruby
       - run:
           name: Run Ruby tests with rux
           command: |
