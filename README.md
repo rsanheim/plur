@@ -19,7 +19,6 @@ cd fixtures/projects/default-rails && rux -n 3
 
 ### Core rux Implementation (`rux/`)
 - **Go-based CLI** for parallel RSpec execution
-- **TEST_ENV_NUMBER support** for Rails database isolation
 - **Database commands** (db:create, db:migrate, db:setup, db:test:prepare)
 - **Performance optimized** - 13% faster than turbo_tests
 
