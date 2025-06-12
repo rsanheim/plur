@@ -120,7 +120,8 @@
       "mcp__github__submit_pending_pull_request_review",
       "Bash(git tag:*)",
       "mcp__github__list_tags",
-      "mcp__github__list_commits"
+      "mcp__github__list_commits",
+      "mcp__github__list_pull_requests"
     ],
     "deny": []
   },
