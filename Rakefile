@@ -107,9 +107,9 @@ namespace :test do
   end
 
   desc "Run integration tests in root spec directory"
-  task integration: :build do
+  task :integration do
     puts "Running ruby integration suite with rux..."
-    sh LOCAL_RUX
+    sh "rux"
   end
 end
 
