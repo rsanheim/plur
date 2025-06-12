@@ -1,0 +1,364 @@
+# File Mapping
+
+## Overview
+
+File mapping in Rux determines which test files should run when source files change. This is primarily used by the `rux watch` command to automatically run relevant tests during development.
+
+## Current Implementation
+
+Rux implements a simple convention-based file mapping system that follows Ruby/Rails conventions:
+
+### Basic Mapping Rules
+
+1. **Spec files** (`*_spec.rb`) → Run themselves
+2. **Helper files** (`spec_helper.rb`, `rails_helper.rb`) → Run all specs
+3. **Lib files** (`lib/**/*.rb`) → Map to `spec/**/*_spec.rb`
+4. **App files** (`app/**/*.rb`) → Map to `spec/**/*_spec.rb` (Rails convention)
+
+### Examples
+
+```
+# Direct spec file mapping
+spec/models/user_spec.rb → spec/models/user_spec.rb
+
+# Lib to spec mapping
+lib/validators/email.rb → spec/validators/email_spec.rb
+
+# Rails app to spec mapping
+app/models/user.rb → spec/models/user_spec.rb
+app/controllers/users_controller.rb → spec/controllers/users_controller_spec.rb
+
+# Helper files trigger all specs
+spec/spec_helper.rb → spec/**/*_spec.rb
+spec/rails_helper.rb → spec/**/*_spec.rb
+```
+
+### File Types Watched
+
+The file mapper watches these extensions:
+- `.rb` - Ruby source files
+- `.erb` - ERB templates (Rails views)
+- `.haml` - Haml templates
+- `.slim` - Slim templates
+
+## Implementation Details
+
+### FileMapper Structure
+
+```go
+// FileMapper handles mapping between source files and their corresponding spec files
+type FileMapper struct {
+    // Configuration options for future expansion
+}
+
+// Core mapping function
+func (fm *FileMapper) MapFileToSpecs(changedFile string) []string {
+    // Returns array of spec files to run
+}
+
+// Determines if a file should trigger spec runs
+func (fm *FileMapper) ShouldWatchFile(filePath string) bool {
+    // Returns true if file type should be watched
+}
+```
+
+### Mapping Algorithm
+
+1. **Normalize** the file path
+2. **Check** if it's already a spec file
+3. **Check** if it's a helper file (triggers all specs)
+4. **Apply** convention-based mapping rules
+5. **Return** list of spec files to run
+
+## Usage
+
+### With Watch Command
+
+```bash
+# Starts watching files and runs tests automatically
+rux watch
+
+# When you edit lib/user.rb, it automatically runs:
+# rux spec/user_spec.rb
+```
+
+### Testing File Mappings
+
+Rux includes a hidden command for testing file mappings:
+
+```bash
+# Test what specs would run for given files
+rux file-mapper lib/user.rb app/models/post.rb
+# Output:
+# lib/user.rb -> spec/user_spec.rb
+# app/models/post.rb -> spec/models/post_spec.rb
+```
+
+## Configuration (Future)
+
+While Rux currently uses convention-based mapping, future versions may support configuration files:
+
+### Proposed .rux.yml Format
+
+```yaml
+# .rux.yml
+file_mappings:
+  # Custom mappings
+  custom:
+    - pattern: "lib/tasks/*.rake"
+      specs: ["spec/tasks/**/*_spec.rb"]
+    
+    - pattern: "config/*.yml"
+      specs: ["spec/config_spec.rb"]
+  
+  # Additional patterns to watch
+  watch_patterns:
+    - "*.yml"
+    - "*.json"
+    - "Gemfile"
+  
+  # Patterns to ignore
+  ignore_patterns:
+    - "tmp/**/*"
+    - "log/**/*"
+    - "vendor/**/*"
+```
+
+### Proposed .rux.json Format
+
+```json
+{
+  "file_mappings": {
+    "rules": [
+      {
+        "pattern": "app/javascript/**/*.js",
+        "specs": ["spec/javascript/**/*_spec.js"]
+      },
+      {
+        "pattern": "engines/*/app/**/*.rb",
+        "specs": ["engines/*/spec/**/*_spec.rb"]
+      }
+    ],
+    "watch_extensions": [".rb", ".erb", ".js", ".jsx"],
+    "ignore": ["node_modules/", "public/assets/"]
+  }
+}
+```
+
+## Advanced Patterns
+
+### 1. Multiple Spec Files
+
+Some files might map to multiple specs:
+
+```
+# Future feature: One file → multiple specs
+app/models/user.rb → [
+  "spec/models/user_spec.rb",
+  "spec/requests/users_spec.rb",
+  "spec/system/user_flows_spec.rb"
+]
+```
+
+### 2. Regex-Based Mapping
+
+More flexible pattern matching:
+
+```ruby
+# Conceptual example
+mappings = [
+  {
+    pattern: /app\/services\/(.+)\.rb/,
+    spec: 'spec/services/\1_spec.rb'
+  },
+  {
+    pattern: /app\/(.+)\.rb/,
+    spec: ['spec/\1_spec.rb', 'spec/requests/\1_spec.rb']
+  }
+]
+```
+
+### 3. Dynamic Mapping
+
+Map based on file content or git history:
+
+```ruby
+# Conceptual: Find specs that import this file
+def find_dependent_specs(changed_file)
+  specs = []
+  Dir.glob("spec/**/*_spec.rb").each do |spec|
+    content = File.read(spec)
+    if content.include?(changed_file.basename)
+      specs << spec
+    end
+  end
+  specs
+end
+```
+
+## Comparison with Other Tools
+
+### Guard
+
+Guard uses a Guardfile with Ruby DSL:
+
+```ruby
+guard :rspec do
+  watch(%r{^spec/.+_spec\.rb$})
+  watch(%r{^lib/(.+)\.rb$}) { |m| "spec/#{m[1]}_spec.rb" }
+  watch('spec/spec_helper.rb') { "spec" }
+end
+```
+
+### Watchman
+
+Facebook's Watchman uses trigger configurations:
+
+```json
+{
+  "trigger": "rspec",
+  "expression": ["anyof",
+    ["match", "*.rb"],
+    ["match", "*.erb"]
+  ],
+  "command": ["rux", "spec"]
+}
+```
+
+### Entr
+
+Entr uses shell patterns:
+
+```bash
+find . -name '*.rb' | entr -c rux spec/
+```
+
+## Best Practices
+
+### 1. Follow Conventions
+
+Structure your project to follow standard Ruby/Rails conventions:
+
+```
+project/
+├── lib/
+│   └── my_class.rb
+├── spec/
+│   ├── my_class_spec.rb
+│   └── spec_helper.rb
+└── app/  # Rails only
+    └── models/
+        └── user.rb
+```
+
+### 2. Explicit Spec Naming
+
+Name spec files to match source files:
+
+```
+# Good
+lib/validators/email.rb → spec/validators/email_spec.rb
+
+# Avoid
+lib/validators/email.rb → spec/email_validation_spec.rb
+```
+
+### 3. Group Related Tests
+
+When one file affects multiple specs, consider grouping:
+
+```
+app/models/user.rb → spec/models/user/
+├── validations_spec.rb
+├── associations_spec.rb
+└── callbacks_spec.rb
+```
+
+## Troubleshooting
+
+### Specs Not Running
+
+1. **Check file extension**: Ensure files have watched extensions
+2. **Check path**: Verify file follows expected conventions
+3. **Check spec exists**: Ensure corresponding spec file exists
+
+### Too Many Specs Running
+
+1. **Be specific**: Edit spec files directly when focused on one test
+2. **Use focus**: Use RSpec's `focus: true` or `fdescribe`/`fit`
+3. **Filter**: Pass specific files to rux directly
+
+### Performance Issues
+
+1. **Limit scope**: Configure ignore patterns for large directories
+2. **Use debouncing**: Wait for file changes to settle
+3. **Run subset**: Use RSpec tags to run only relevant specs
+
+## Future Enhancements
+
+### 1. Smart Mapping
+
+Use static analysis to determine test dependencies:
+
+```ruby
+# Analyze require/include statements
+# If user.rb requires validator.rb
+# Then changes to validator.rb should run user_spec.rb
+```
+
+### 2. Test Impact Analysis
+
+Use code coverage data to map files to tests:
+
+```ruby
+# Based on coverage data:
+# lib/calculator.rb is covered by:
+#   - spec/calculator_spec.rb (direct)
+#   - spec/invoice_spec.rb (indirect)
+#   - spec/system/checkout_spec.rb (integration)
+```
+
+### 3. Configuration UI
+
+Interactive configuration builder:
+
+```bash
+rux watch --configure
+# Interactive prompt:
+# > What specs should run when app/services/payment.rb changes?
+# > [x] spec/services/payment_spec.rb
+# > [ ] spec/models/invoice_spec.rb
+# > [ ] spec/system/payment_flow_spec.rb
+```
+
+## Integration with Editors
+
+### VS Code
+
+Future VS Code extension could use file mappings:
+
+```json
+{
+  "rux.watch.enabled": true,
+  "rux.watch.runOnSave": true,
+  "rux.watch.customMappings": {
+    "**/*.rake": ["spec/tasks/**/*_spec.rb"]
+  }
+}
+```
+
+### Vim
+
+Integration with vim-test:
+
+```vim
+" .vimrc
+let g:test#runner_commands = ['Rux']
+let g:test#ruby#rux#file_pattern = '\v(spec|test)/.*_spec\.rb$'
+```
+
+## See Also
+
+- [Watch Mode Documentation](/docs/features/watch-mode.md)
+- [Configuration Guide](/docs/configuration.md)
+- [Architecture Overview](/docs/internals/architecture.md)

@@ -69,7 +69,7 @@ Rux will:
 * Run specs in serial to start (KISS)
 * Reuse the Rux code as much as possible - we have done good work in managing calling RSpec, handling formatting, etc, and we should build on that
 * Use the `watcher` binary directly for our watcher - to start we will just hard lock to the aarch64-darwin binary, but we can make it more flexible later
-* See example output of me using this binary directly in [2025-06-03-watcher-output-darwin.log](./2025-06-03-watcher-output-darwin.log) - so it appears the binary from the release artifact works 'out of the box' on Mac
+* The watcher binary from the release artifact works 'out of the box' on Mac
 
 ### Technical Details
 
