@@ -174,6 +174,7 @@ RSpec.describe "rux watch integration" do
 
   describe "Rails-style mappings" do
     let(:app_dir) { File.join(default_ruby_dir, "app") }
+    let(:rux_timeout) { ENV["CI"] ? 10 : 2 }
 
     before do
       # Create Rails-like directory structure
@@ -197,7 +198,7 @@ RSpec.describe "rux watch integration" do
       File.write(model_file, "class User; end")
 
       modified = false
-      result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
+      result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: rux_timeout) do |out, err|
         # Wait for the watcher to be ready
         if !modified && err && err.include?("s/self/live@")
           # Write to trigger a modify event
@@ -215,7 +216,7 @@ RSpec.describe "rux watch integration" do
       controller_file = File.join(app_dir, "controllers/users_controller.rb")
 
       modified = false
-      result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
+      result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: rux_timeout) do |out, err|
         # Wait for the watcher to be ready
         if !modified && err && err.include?("s/self/live@")
           # Write to trigger a modify event
