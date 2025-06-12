@@ -127,6 +127,7 @@ namespace :lint do
 
       puts "Running go vet..."
       sh "go vet ./..."
+    end
   end
 
   desc "Lint Ruby code with Standard"

@@ -1,7 +1,6 @@
 fix: false
 parallel: true
 ignore:
+  - "fixtures/**/*"
   - "references/**/*"
-  - "rux-ruby/**/*"
   - "rux/**/*"
-  - "test_app/**/*"
