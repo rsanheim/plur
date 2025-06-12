@@ -67,7 +67,7 @@ class Release
   end
 
   def get_current_version
-    _, = capture3!("git describe --tags --abbrev=0").strip
+    _, = capture3!("git describe --tags --abbrev=0")[0].strip
   end
 
   def ensure_version_is_newer!(current, new)
