@@ -96,7 +96,7 @@ RSpec.describe "rux watch integration" do
     contents = spec_path.read
 
     modified = false
-    result, streamed_out, streamed_err = capture_watch_output(rux_timeout: 5) do |out, err|
+    result, _, _ = capture_watch_output(rux_timeout: 5) do |out, err|
       # Wait for watcher to be ready (live message)
       if !modified && err && err.include?("s/self/live@")
         File.write(spec_path, "# Modified\n" + contents)
