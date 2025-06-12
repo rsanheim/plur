@@ -121,7 +121,10 @@
       "Bash(git tag:*)",
       "mcp__github__list_tags",
       "mcp__github__list_commits",
-      "mcp__github__list_pull_requests"
+      "mcp__github__list_pull_requests",
+      "mcp__github__get_issue",
+      "mcp__github__add_issue_comment",
+      "Bash(script/serve-docs:*)"
     ],
     "deny": []
   },

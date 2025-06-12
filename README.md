@@ -130,8 +130,21 @@ rux -n 3                  # Run RSpec tests in parallel
 ## 📚 Documentation
 
 - **`docs/project-status.md`**: Complete project overview and status
-- **`docs/usage.md`**: Detailed usage guide and examples
+- **`docs/development/user-guide.md`**: Detailed usage guide and examples
 - **`CLAUDE.md`**: Development environment setup for future work
+
+### Viewing Documentation Locally
+
+We use MkDocs Material for browsing documentation. To view the docs locally:
+
+```bash
+# Install uv if you don't have it (one time only)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Serve documentation at http://localhost:8000
+# (This will create a virtual environment and install dependencies automatically)
+script/serve-docs
+```
 
 ## 🛠️ Development
 
