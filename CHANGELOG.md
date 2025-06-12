@@ -1,5 +1,15 @@
 # rux CHANGELOG
 
+
+## v0.6.9 - 2025-06-12
+Lotsa internal cleanup
+* Extract execution logic and add Kong CLI experiment [#31](https://github.com/rsanheim/rux-meta/pull/31)
+* Add the integration test to CI (oops) [#41](https://github.com/rsanheim/rux-meta/pull/41)
+* get caching working for integration in CI [#40](https://github.com/rsanheim/rux-meta/pull/40)
+* Planning for auto config [#35](https://github.com/rsanheim/rux-meta/pull/35)
+* sort and clean up. [#39](https://github.com/rsanheim/rux-meta/pull/39)
+* Fix release thinger [#38](https://github.com/rsanheim/rux-meta/pull/38)
+
 ## v0.6.8 - 2025-06-12
 
 * Fix: update ci [#37](https://github.com/rsanheim/rux-meta/pull/37)
