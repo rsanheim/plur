@@ -90,12 +90,22 @@ jobs:
             sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
       - ruby/install-deps
+      - restore_cache:
+          key: v1-default-rails-{{ checksum "Gemfile.lock" }}
+          working_directory: fixtures/projects/default-rails
+          paths:
+            - vendor/bundle
       - run:
           name: Setup test_app
           working_directory: fixtures/projects/default-rails
           command: |
             bundle install
             bundle exec rake db:create db:migrate
+      - save_cache:
+          key: v1-default-rails-{{ checksum "Gemfile.lock" }}
+          working_directory: fixtures/projects/default-rails
+          paths:
+            - vendor/bundle
       - run:
           name: Run test_app specs with rux
           working_directory: fixtures/projects/default-rails
