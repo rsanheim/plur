@@ -1,5 +1,9 @@
 # rux CHANGELOG
 
+## v0.6.8 - 2025-06-12
+
+* Fix: update ci [#37](https://github.com/rsanheim/rux-meta/pull/37)
+* Migrate documentation from Jekyll to MkDocs [#33](https://github.com/rsanheim/rux-meta/pull/33)
 
 ## v0.6.7 - 2025-06-12
 

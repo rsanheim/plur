@@ -6,11 +6,12 @@ class Release
   def initialize(new_version, prs_in_release = nil)
     @new_version = new_version
     @prs_in_release = prs_in_release || find_last_pr_merged_to_main
+    @main_required = false
   end
 
   def call
     # Ensure we are on main branch with clean git status
-    ensure_on_main_branch!
+    ensure_on_main_branch! if @main_required
     ensure_clean_git_status!
 
     # Get current version and ensure new version is greater
@@ -67,7 +68,7 @@ class Release
   end
 
   def get_current_version
-    _, = capture3!("git describe --tags --abbrev=0").strip
+    _, = capture3!("git describe --tags --abbrev=0")[0].strip
   end
 
   def ensure_version_is_newer!(current, new)

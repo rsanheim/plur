@@ -127,24 +127,12 @@ namespace :lint do
 
       puts "Running go vet..."
       sh "go vet ./..."
-
-      # Run golint if available
-      if system("which golint > /dev/null 2>&1")
-        puts "Running golint..."
-        sh "golint ./..."
-      else
-        puts "Note: golint not found, skipping (install with: go install golang.org/x/lint/golint@latest)"
-      end
     end
   end
 
   desc "Lint Ruby code with Standard"
   task :ruby do
-    if defined?(Rake::Task["standard"])
-      Rake::Task["standard"].invoke
-    else
-      puts "Standard gem not found, skipping Ruby linting"
-    end
+    Rake::Task["standard"].invoke
   end
 
   desc "Fix Ruby linting issues automatically"
