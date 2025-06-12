@@ -74,10 +74,6 @@ jobs:
           name: Run Ruby tests with rux
           command: |
             bin/rake test:default_ruby
-      - run:
-          name: Run integration tests
-          command: |
-            bin/rake test:integration
 
   test-integration:
     docker:
@@ -120,6 +116,10 @@ jobs:
             wget https://github.com/sharkdp/hyperfine/releases/download/v1.19.0/hyperfine_1.19.0_amd64.deb
             sudo dpkg -i hyperfine_1.19.0_amd64.deb
             hyperfine --version
+      - run:
+          name: Run integration tests
+          command: |
+            bin/rake test:integration
       # - run:
       #     name: Run benchmarks default benchmark suite
       #     command: ./script/bench

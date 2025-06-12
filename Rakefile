@@ -107,7 +107,12 @@ namespace :test do
   end
 
   desc "Run integration tests in root spec directory"
-  task integration: %i[build spec]
+  task integration: :build do
+    Dir.chdir("spec") do
+      puts "Running ruby integration suite with rux..."
+      sh LOCAL_RUX
+    end
+  end
 end
 
 # ========================================
