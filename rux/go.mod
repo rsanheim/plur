@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.24.2
 
 require (
+	github.com/alecthomas/kong v1.11.0
 	github.com/urfave/cli/v2 v2.27.1
 	golang.org/x/term v0.32.0
 )

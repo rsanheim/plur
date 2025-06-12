@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"embed"
 	"errors"
 	"fmt"
@@ -90,9 +91,52 @@ func runWatch(ctx *cli.Context) error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
+	// Set up stdin monitoring for commands
+	stdinChan := make(chan string)
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			select {
+			case stdinChan <- line:
+			default:
+				// Channel is full, skip this input
+			}
+		}
+	}()
+
+	// Show instructions to user
+	fmt.Println("Watching for file changes.")
+	fmt.Println("Commands:")
+	fmt.Println("  [Enter]  - Run all tests")
+	fmt.Println("  exit     - Exit watch mode")
+	fmt.Println("  Ctrl-C   - Exit watch mode")
+	fmt.Println()
+	fmt.Print("rux> ")
+
 	// Process events with timeout
 	for {
 		select {
+		case input := <-stdinChan:
+			switch input {
+			case "":
+				// User pressed Enter - run all specs
+				Logger.Info("Running all tests (manual trigger)")
+				fmt.Println("Running all tests...")
+				runSpecsOrDirectory("spec")
+				fmt.Print("\nrux> ")
+			case "exit":
+				// User typed exit command
+				Logger.Info("User requested exit")
+				fmt.Println("Exiting watch mode...")
+				return nil
+			default:
+				// Unknown command
+				fmt.Printf("Unknown command: '%s'\n", input)
+				fmt.Println("Commands: [Enter] to run all tests, 'exit' to quit")
+				fmt.Print("rux> ")
+			}
+
 		case event := <-manager.Events():
 			// Convert absolute path to relative for cleaner logs
 			cwd, _ := os.Getwd()
@@ -140,8 +184,6 @@ func runWatch(ctx *cli.Context) error {
 			}
 			LogDebug("rux", "event", "mapping_found", "path", "./"+relPath, "specs", specsToRun)
 
-			// File change notification removed - info is in debug logs
-
 			// Debounce the spec runs
 			debouncer.Debounce(specsToRun, func(specs []string) {
 				// Remove duplicates
@@ -155,6 +197,11 @@ func runWatch(ctx *cli.Context) error {
 					LogDebug("rux", "event", "run_spec", "path", "./"+spec)
 					runSpecsOrDirectory(spec)
 				}
+
+				go func() {
+					time.Sleep(50 * time.Millisecond)
+					fmt.Print("rux> ")
+				}()
 			})
 
 		case err := <-manager.Errors():

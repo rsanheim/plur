@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem "backspin", path: "./vendor/backspin", require: false
+gem "backspin", require: false
 gem "benchmark"
 gem "guard-rspec", require: false
 gem "rake"
