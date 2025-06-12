@@ -48,7 +48,7 @@ The file mapper watches these extensions:
 ```go
 // FileMapper handles mapping between source files and their corresponding spec files
 type FileMapper struct {
-    // Configuration options for future expansion
+    // Configuration options
 }
 
 // Core mapping function
@@ -94,56 +94,6 @@ rux file-mapper lib/user.rb app/models/post.rb
 # app/models/post.rb -> spec/models/post_spec.rb
 ```
 
-## Configuration (Future)
-
-While Rux currently uses convention-based mapping, future versions may support configuration files:
-
-### Proposed .rux.yml Format
-
-```yaml
-# .rux.yml
-file_mappings:
-  # Custom mappings
-  custom:
-    - pattern: "lib/tasks/*.rake"
-      specs: ["spec/tasks/**/*_spec.rb"]
-    
-    - pattern: "config/*.yml"
-      specs: ["spec/config_spec.rb"]
-  
-  # Additional patterns to watch
-  watch_patterns:
-    - "*.yml"
-    - "*.json"
-    - "Gemfile"
-  
-  # Patterns to ignore
-  ignore_patterns:
-    - "tmp/**/*"
-    - "log/**/*"
-    - "vendor/**/*"
-```
-
-### Proposed .rux.json Format
-
-```json
-{
-  "file_mappings": {
-    "rules": [
-      {
-        "pattern": "app/javascript/**/*.js",
-        "specs": ["spec/javascript/**/*_spec.js"]
-      },
-      {
-        "pattern": "engines/*/app/**/*.rb",
-        "specs": ["engines/*/spec/**/*_spec.rb"]
-      }
-    ],
-    "watch_extensions": [".rb", ".erb", ".js", ".jsx"],
-    "ignore": ["node_modules/", "public/assets/"]
-  }
-}
-```
 
 ## Advanced Patterns
 
@@ -152,7 +102,7 @@ file_mappings:
 Some files might map to multiple specs:
 
 ```
-# Future feature: One file → multiple specs
+# One file can map to multiple specs (conceptual example)
 app/models/user.rb → [
   "spec/models/user_spec.rb",
   "spec/requests/users_spec.rb",
@@ -294,56 +244,17 @@ app/models/user.rb → spec/models/user/
 2. **Use debouncing**: Wait for file changes to settle
 3. **Run subset**: Use RSpec tags to run only relevant specs
 
-## Future Enhancements
-
-### 1. Smart Mapping
-
-Use static analysis to determine test dependencies:
-
-```ruby
-# Analyze require/include statements
-# If user.rb requires validator.rb
-# Then changes to validator.rb should run user_spec.rb
-```
-
-### 2. Test Impact Analysis
-
-Use code coverage data to map files to tests:
-
-```ruby
-# Based on coverage data:
-# lib/calculator.rb is covered by:
-#   - spec/calculator_spec.rb (direct)
-#   - spec/invoice_spec.rb (indirect)
-#   - spec/system/checkout_spec.rb (integration)
-```
-
-### 3. Configuration UI
-
-Interactive configuration builder:
-
-```bash
-rux watch --configure
-# Interactive prompt:
-# > What specs should run when app/services/payment.rb changes?
-# > [x] spec/services/payment_spec.rb
-# > [ ] spec/models/invoice_spec.rb
-# > [ ] spec/system/payment_flow_spec.rb
-```
 
 ## Integration with Editors
 
 ### VS Code
 
-Future VS Code extension could use file mappings:
+Example VS Code configuration:
 
 ```json
 {
   "rux.watch.enabled": true,
-  "rux.watch.runOnSave": true,
-  "rux.watch.customMappings": {
-    "**/*.rake": ["spec/tasks/**/*_spec.rb"]
-  }
+  "rux.watch.runOnSave": true
 }
 ```
 

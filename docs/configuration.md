@@ -6,12 +6,11 @@ Configuration precedence (highest to lowest):
 
 1. Command-line flags
 2. Environment variables
-3. Configuration file (coming soon)
-4. built-in defaults
+3. Built-in defaults
 
 ## Worker Configuration
 
-Rux uses smart distribution of specs/tests across your CPU cores based on previous runtime data. Otherwise it falls back to a simple round-robin distribution. Future versions will support:
+Rux uses smart distribution of specs/tests across your CPU cores based on previous runtime data. Otherwise it falls back to a simple round-robin distribution.
 
 ### Specifying Number of Workers
 
@@ -35,8 +34,6 @@ rux
 Rux always uses dual formatters:
 - Progress formatter (for visual feedback)
 - JSON formatter (for result parsing)
-
-Custom formatters coming in future releases.
 
 ### Verbosity
 
@@ -76,23 +73,10 @@ rux --trace
 
 ### File Watching
 
-Currently uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher), with support
-for ruby and rails conventions. Future configuration:
-
-```yaml
-# .rux.yml (coming soon)
-watch:
-  paths:
-    - lib/
-    - spec/
-  ignore:
-    - "*.log"
-    - tmp/
-  
-  mappings:
-    - pattern: "lib/(.*)\.rb"
-      run: "spec/{1}_spec.rb"
-```
+Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with support for Ruby and Rails conventions. The watcher automatically detects changes in:
+- `spec/` directory for test files
+- `lib/` directory for source files (mapped to corresponding specs)
+- `app/` directory for Rails applications
 
 ## Environment Variables
 
@@ -101,49 +85,12 @@ watch:
 - `PARALLEL_TEST_PROCESSORS` - Number of workers
 - `RUX_DEBUG` - Enable debug output
 - `RUX_TRACE` - Enable performance tracing
-- `RUX_NO_COLOR` - Disable colored output (future)
 
 ### RSpec Compatibility
 
 Rux passes through RSpec-specific environment variables:
 - `SPEC_OPTS`
 - `RSPEC_OPTS`
-
-## Configuration File (Coming Soon)
-
-Future releases will support `.rux.yml`:
-
-```yaml
-# .rux.yml
-version: 1
-
-# Worker configuration
-workers:
-  count: auto  # auto, number, or percentage (e.g., "75%")
-  strategy: round-robin  # round-robin, runtime-balanced, size-grouped
-
-# Test discovery
-test_files:
-  pattern: "spec/**/*_spec.rb"
-  exclude:
-    - spec/fixtures/
-    - spec/support/cassettes/
-
-# Output preferences
-output:
-  format: progress  # progress, documentation, json
-  color: auto      # auto, always, never
-  
-# Performance
-performance:
-  trace: false
-  profile: false
-  
-# Watch mode
-watch:
-  enabled: true
-  debounce: 100ms
-```
 
 ## Best Practices
 
@@ -155,12 +102,6 @@ watch:
 ## Debugging Configuration
 
 ```bash
-# Show effective configuration (coming soon)
-rux config
-
-# Validate configuration file (coming soon)
-rux config --validate
-
 # Show what rux detects
 rux --auto
 ```

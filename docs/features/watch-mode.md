@@ -161,30 +161,10 @@ This is a known issue accepted for the MVP. The functionality works correctly de
 
 ### Current Limitations
 - Serial test execution only (no parallel mode in watch)
-- No support for custom file mappings (`.rux-watch.yml` planned)
+- No support for custom file mappings
 - Limited to Ruby/Rails conventions
 - No ignore patterns beyond built-in exclusions
 - Basic terminal output (no TUI interface yet)
-
-## Future Improvements
-
-### Near Term
-1. **Configuration file** (`.rux-watch.yml`) for custom mappings
-2. **Ignore patterns** to exclude specific files/directories
-3. **Parallel execution** using rux's existing capabilities
-4. **Better Rails support** with more conventions
-
-### Medium Term
-1. **TUI interface** showing test status, files watched, results
-2. **Smart test selection** based on git changes
-3. **Watch profiles** for different project types
-4. **Queue-based execution** to prevent concurrent runs
-
-### Long Term
-1. **Auto-discovery** of project structure and conventions
-2. **Guard compatibility** - read existing Guardfiles
-3. **Multi-language support** - Go, JavaScript, etc.
-4. **Custom commands** beyond just test execution
 
 ## Troubleshooting
 

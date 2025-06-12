@@ -144,9 +144,9 @@ rux --dry-run && rux -n 4
 
 ## Advanced Usage
 
-### Custom Spec Patterns
+### Test Discovery
 
-Currently, Rux discovers all `*_spec.rb` files recursively. Custom patterns coming soon.
+Rux discovers all `*_spec.rb` files recursively from the current directory.
 
 ### Debugging Test Failures
 

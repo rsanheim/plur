@@ -232,46 +232,6 @@ else
 end
 ```
 
-## Future Improvements
-
-### 1. Automatic Pattern Detection
-
-Backspin could analyze multiple runs and suggest normalization patterns:
-
-```ruby
-Backspin.analyze("flaky_test") do
-  3.times { system("rux spec/flaky_spec.rb") }
-end
-# Suggests: Pattern /\d+\.\d+s/ varies between runs
-```
-
-### 2. Shared Normalization Profiles
-
-Create reusable normalization sets:
-
-```ruby
-module BackspinProfiles
-  RUBY_TEST_OUTPUT = {
-    normalize: {
-      stdout: [
-        [/\d+\.\d+ seconds/, "[DURATION]"],
-        [/\d+ examples?/, "[N] examples"]
-      ]
-    }
-  }
-end
-```
-
-### 3. Better Diff Visualization
-
-Enhanced diff output for complex changes:
-
-```
-Expected: Process [PID] completed in [DURATION]
-Actual:   Process 12345 completed in 1.234 seconds
-          ~~~~~~~~ ^^^^^             ~~~~~~~~~~~~~~~
-          Normalized to [PID]        Normalized to [DURATION]
-```
 
 ## See Also
 

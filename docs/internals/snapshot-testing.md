@@ -352,44 +352,6 @@ Backspin.run("debug_test",
 end
 ```
 
-## Future Directions
-
-### 1. Smart Normalization
-
-Use machine learning to detect patterns:
-
-```ruby
-# Automatically detect and suggest normalizations
-Backspin.learn("test_output") do
-  10.times { system("rux spec/") }
-end
-# => Suggests: /\d+\.\d+s/ appears to be a duration
-```
-
-### 2. Visual Snapshots
-
-For tools with rich output:
-
-```ruby
-# Capture terminal screenshots
-Backspin.run("colored_output",
-  capture: :terminal_screenshot
-) do
-  system("rux --color spec/")
-end
-```
-
-### 3. Distributed Snapshots
-
-Share snapshots across teams:
-
-```ruby
-# Pull canonical snapshots
-Backspin.sync(
-  repository: "rux/golden-files",
-  filters: ["compatibility/**"]
-)
-```
 
 ## Conclusion
 

@@ -13,10 +13,7 @@ Rux uses a goroutine-based worker pool for parallel test execution.
 
 ### Distribution Strategy
 
-Currently uses round-robin distribution. Future versions will support:
-- Runtime-based distribution
-- File-size based grouping
-- Custom distribution strategies
+Uses round-robin distribution to assign test files evenly across workers.
 
 ## Channel Design
 

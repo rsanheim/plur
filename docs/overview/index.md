@@ -1,6 +1,6 @@
 # Project Overview
 
-This section provides an overview of the Rux project, its current status, and future roadmap.
+This section provides an overview of the Rux project and its current status.
 
 ## Contents
 
