@@ -173,5 +173,5 @@ rux doctor
 ## Next Steps
 
 - See [Configuration](configuration.md) for customization
-- See [Architecture](02-architecture/) for technical details
-- See [Features](03-features/) for detailed feature documentation
+- See [Architecture](architecture/) for technical details
+- See [Features](features/) for detailed feature documentation

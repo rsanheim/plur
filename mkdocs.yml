@@ -54,29 +54,12 @@ markdown_extensions:
 
 docs_dir: docs
 
-# Hybrid navigation - explicit section ordering with auto-discovery within sections
-nav:
-  - Home: index.md
-  - Getting Started: getting-started.md
-  - Installation: installation.md
-  - Usage: usage.md
-  - Configuration: configuration.md
-  - Overview:
-    - overview/*
-  - Architecture:
-    - architecture/*
-  - Features:
-    - features/*
-  - Development:
-    - development/*
-  - Internals:
-    - internals/*
-  - Archive:
-    - archive/*
+# Navigation handled by awesome-pages plugin
 
 plugins:
   - search
   - social
+  - awesome-pages
 
 extra:
   social:

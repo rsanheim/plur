@@ -199,6 +199,6 @@ rux --auto
 
 ## Next Steps
 
-- See [Performance Tracing](02-architecture/performance-tracing.md) for optimization
+- See [Performance Tracing](architecture/performance-tracing.md) for optimization
 - See [Usage](usage.md) for command examples
-- See [Development](04-development/) for contributing
+- See [Development](development/) for contributing
