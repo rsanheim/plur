@@ -54,34 +54,19 @@ markdown_extensions:
 
 docs_dir: docs
 
-# Optional: Define navigation structure
+# Hybrid navigation - explicit section ordering with auto-discovery within sections
 nav:
-  - Home: README.md
-  - Project Status: project-status.md
-  - Architecture:
-      - Performance Tracing: architecture/performance-tracing.md
-      - Watch Mode: architecture/rux-watch-architecture.md
-      - CLI Context Comparison: architecture/cli-context-comparison.md
-      - Concurrent Output Issues: architecture/watch-mode-concurrent-output-issue.md
-  - Development:
-      - User Guide: development/user-guide.md
-      - Go Vendoring and CI: development/go-vendoring-and-ci.md
-  - Design:
-      - Output and Design: rux-output-and-design.md
-      - Optimization Plan: rux-optimization-plan.md
-  - Research:
-      - Backspin API Analysis: research/backspin-api-analysis.md
-      - Backspin Filter vs Match: research/backspin-filter-vs-match-research.md
-      - Backspin IO Capture: research/backspin-io-capture-design.md
-      - File Mapping Formats: research/file-mapping-config-formats.md
-      - Snapshot Testing: research/snapshot-testing-approaches-summary.md
-  - Process:
-      - Release Process: release-process.md
-  - Archive:
-      - RSpec Package Extraction: _archive/2025-05-28-rspec-package.md
-      - Single Stream Migration: _archive/2025-05-28-single-stream-full-migration.md
-      - Watcher Implementation Spike: _archive/2025-06-03-spike-into-adding-watcher.md
-      - Multiple Watchers Plan: _archive/2025-06-04-rux-watch-multiple-watchers-plan.md
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - Configuration: configuration.md
+  - Overview: overview/*
+  - Architecture: architecture/*
+  - Features: features/*
+  - Development: development/*
+  - Internals: internals/*
+  - Archive: archive/*
 
 plugins:
   - search
