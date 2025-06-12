@@ -10,7 +10,11 @@ Configuration precedence (highest to lowest):
 
 ## Worker Configuration
 
-Rux uses smart distribution of specs/tests across your CPU cores based on previous runtime data. Otherwise it falls back to a simple round-robin distribution.
+Rux uses intelligent distribution of specs/tests across workers:
+- **Runtime-based**: When historical runtime data exists, tests are distributed based on previous execution times for optimal load balancing
+- **Size-based**: When no runtime data exists, tests are distributed based on file sizes as a heuristic for complexity
+
+Note: Watch mode (`rux watch`) runs tests serially without parallel execution.
 
 ### Specifying Number of Workers
 

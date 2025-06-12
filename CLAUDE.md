@@ -103,3 +103,11 @@ Once configured, Claude Code can:
 - Access repository metadata
 
 Note: The MCP server configuration is project-scoped and shared with all team members via `.mcp.json`.
+
+## Documentation Guidelines
+
+Keep documentation focused on the **current state** of the project:
+- Document what exists and works today, not future plans
+- Remove inline references to "coming soon", "will support", etc.
+- Future plans belong only in `docs/overview/roadmap.md`
+- When features are implemented, move them from roadmap to main docs

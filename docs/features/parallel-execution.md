@@ -6,9 +6,12 @@ Rux's core feature is running RSpec tests in parallel for faster feedback.
 
 1. **Test Discovery**: Finds all `*_spec.rb` files recursively
 2. **Worker Pool**: Creates N worker processes
-3. **Distribution**: Assigns test files to workers
+3. **Intelligent Distribution**: 
+   - Uses historical runtime data when available for optimal load balancing
+   - Falls back to file-size-based distribution for new projects
+   - Runtime data is automatically collected and cached per project
 4. **Aggregation**: Combines results from all workers
-5. **Reporting**: Shows unified test results
+5. **Reporting**: Shows unified test results with timing information
 
 ## Worker Count
 
