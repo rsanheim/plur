@@ -78,7 +78,7 @@ jobs:
   test-integration:
     docker:
       - image: cimg/ruby:3.4.4
-    resource_class: medium
+    resource_class: large
     working_directory: ~/project/
     steps:
       - checkout
