@@ -85,10 +85,11 @@ jobs:
       - attach_workspace:
           at: ~/workspace
       - run:
-          name: Install rux from workspace
+          name: Install rux from workspace (global and local)
           command: |
             sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
+            cp ~/workspace/rux/rux ./rux
       - ruby/install-deps
       - restore_cache:
           key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
