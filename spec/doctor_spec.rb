@@ -49,8 +49,8 @@ RSpec.describe "rux doctor command" do
   it "shows e-dant/watcher availability" do
     stdout, _stderr, _status = run_rux_doctor
 
-    expect(stdout).to include("Status:         Available")
-    expect(stdout).to include("Binary Path:")
+    expect(stdout).to match(/Status:\s+Available/)
+    expect(stdout).to match(/Binary Path:\s+/)
   end
 
   it "produces consistent output using Backspin golden testing", :skip_if_ci do
