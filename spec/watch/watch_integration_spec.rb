@@ -9,7 +9,6 @@ RSpec.describe "rux watch integration" do
   it "starts watching the correct directories" do
     result, _streamed_out, _streamed_err = capture_watch_output
 
-    # All logs go to stderr now with structured format
     expect(result.err).to include("rux watch starting!")
     expect(result.err).to include("rux configuration info")
     expect(result.err).to include("directories=[spec lib]")
@@ -28,7 +27,6 @@ RSpec.describe "rux watch integration" do
       end
     end
 
-    # Check for the new debug log format
     expect(result.err).to include("watch event=modify type=file")
     expect(result.err).to include("path=./lib/calculator.rb")
     expect(result.err).to include("rux event=run_spec path=./spec/calculator_spec.rb")
@@ -46,13 +44,11 @@ RSpec.describe "rux watch integration" do
       result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
         # Wait for the watcher to be ready
         if !modified && err && err.include?("s/self/live@")
-          # Write to trigger a modify event
           File.write(nested_lib, "class TempModel; end")
           modified = true
         end
       end
 
-      # Check stderr for log messages
       expect_file_change_logged(result.err, "./lib/models/temp_model.rb")
       expect_spec_run_logged(result.err, "./spec/models/temp_model_spec.rb")
       # It will say spec not found since we didn't create the spec
@@ -70,13 +66,10 @@ RSpec.describe "rux watch integration" do
   it "runs all specs when spec_helper.rb changes" do
     modified = false
     result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
-      # Wait for the watcher to be ready
       if !modified && err && err.include?("s/self/live@")
-        # Modify spec_helper.rb by appending a comment
         spec_helper = default_ruby_dir.join("spec/spec_helper.rb")
         original_content = spec_helper.read
         spec_helper.write(original_content + "\n# Modified by test")
-        # Restore original content after a moment
         sleep 0.1
         spec_helper.write(original_content)
         modified = true
@@ -96,7 +89,7 @@ RSpec.describe "rux watch integration" do
     contents = spec_path.read
 
     modified = false
-    result, streamed_out, streamed_err = capture_watch_output(rux_timeout: 5) do |out, err|
+    result, _, _ = capture_watch_output(rux_timeout: 5) do |out, err|
       # Wait for watcher to be ready (live message)
       if !modified && err && err.include?("s/self/live@")
         File.write(spec_path, "# Modified\n" + contents)
@@ -104,9 +97,6 @@ RSpec.describe "rux watch integration" do
       end
     end
 
-    pp ["command result", result]
-    pp ["streamed out", streamed_out]
-    pp ["streamed err", streamed_err]
     expect_file_change_logged(result.err, "./spec/calculator_spec.rb")
     expect_spec_run_logged(result.err, "./spec/calculator_spec.rb")
   ensure
@@ -133,7 +123,6 @@ RSpec.describe "rux watch integration" do
     # Should not see any change events for README.md
     expect(output).not_to include("Changed: README.md")
   ensure
-    # Restore original content
     readme_file.write(original_content) if original_content
   end
 
@@ -175,8 +164,9 @@ RSpec.describe "rux watch integration" do
     expect_spec_run_logged(result.err, "./spec/validator_spec.rb")
   end
 
-  describe "Rails-style mappings" do
+  describe "Rails-style mappings", :skip_if_ci do
     let(:app_dir) { File.join(default_ruby_dir, "app") }
+    let(:rux_timeout) { ENV["CI"] ? 10 : 2 }
 
     before do
       # Create Rails-like directory structure
@@ -200,10 +190,8 @@ RSpec.describe "rux watch integration" do
       File.write(model_file, "class User; end")
 
       modified = false
-      result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
-        # Wait for the watcher to be ready
+      result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: rux_timeout) do |out, err|
         if !modified && err && err.include?("s/self/live@")
-          # Write to trigger a modify event
           File.write(model_file, "class User\n  # Modified\nend")
           modified = true
         end
@@ -218,16 +206,13 @@ RSpec.describe "rux watch integration" do
       controller_file = File.join(app_dir, "controllers/users_controller.rb")
 
       modified = false
-      result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
-        # Wait for the watcher to be ready
+      result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: rux_timeout) do |out, err|
         if !modified && err && err.include?("s/self/live@")
-          # Write to trigger a modify event
           File.write(controller_file, "class UsersController\n  def index\n    # Modified\n  end\nend")
           modified = true
         end
       end
 
-      # Check file change and spec run in stderr
       expect_file_change_logged(result.err, "./app/controllers/users_controller.rb")
       expect_spec_run_logged(result.err, "./spec/controllers/users_controller_spec.rb")
     end

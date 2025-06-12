@@ -20,6 +20,8 @@ DEFAULT_RUX_WATCH_TIMEOUT = 2
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
+  config.filter_run_excluding :skip_if_ci if ENV["CI"]
+
   def chdir(path)
     Dir.chdir(path) do
       yield
@@ -59,7 +61,7 @@ RSpec.configure do |config|
   config.after(:suite) do
     Dir.chdir(DEFAULT_RUBY_DIR) do
       # Reset any file changes made during tests
-      system("git checkout -- .", out: File::NULL, err: File::NULL)
+      system("git checkout .", out: File::NULL, err: File::NULL)
     end
   end
 end

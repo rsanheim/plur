@@ -78,17 +78,19 @@ jobs:
   test-integration:
     docker:
       - image: cimg/ruby:3.4.4
-    resource_class: medium
+    resource_class: large
     working_directory: ~/project/
     steps:
       - checkout
       - attach_workspace:
           at: ~/workspace
       - run:
-          name: Install rux from workspace
+          name: Install rux from workspace (global and local)
           command: |
             sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
+            cp ~/workspace/rux/rux ./rux
+      - ruby/install-deps
       - restore_cache:
           key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
       - run:
@@ -116,6 +118,10 @@ jobs:
             wget https://github.com/sharkdp/hyperfine/releases/download/v1.19.0/hyperfine_1.19.0_amd64.deb
             sudo dpkg -i hyperfine_1.19.0_amd64.deb
             hyperfine --version
+      - run:
+          name: Run integration tests
+          command: |
+            bin/rake test:integration
       # - run:
       #     name: Run benchmarks default benchmark suite
       #     command: ./script/bench

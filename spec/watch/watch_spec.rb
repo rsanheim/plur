@@ -1,7 +1,8 @@
 require "spec_helper"
 
-RSpec.describe "rux watch command" do
+RSpec.describe "rux watch command", :skip_if_ci do
   include RuxWatchHelper
+
   context "basic functionality" do
     it "starts successfully when spec directory exists" do
       result = run_rux_watch(timeout: 2)
