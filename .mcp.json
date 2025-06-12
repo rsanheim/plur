@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "op",
+      "args": [
+        "run",
+        "--",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server:latest"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "op://Private/github-mcp-rux-meta/credential"
+      }
+    }
+  }
+}

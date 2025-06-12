@@ -78,3 +78,28 @@ ALWAYS use integration specs as guardrails:
 - `spec/doctor_spec.rb` - Doctor command with backspin
 
 Run via: `bin/rake test:ruby` or `bundle exec rspec spec/[file]`
+
+## GitHub MCP Server Integration
+
+This project includes a GitHub MCP (Model Context Protocol) server configuration for enhanced GitHub integration with Claude Code.
+
+### Setup Requirements
+1. **Docker** must be installed and running
+2. **GitHub Personal Access Token** configured in 1Password at `op://Private/github-mcp-rux-meta/credential`
+3. **1Password CLI** (`op`) must be installed and authenticated
+
+### Features Enabled
+The `.mcp.json` configuration enables:
+- **Context**: Access repository context and metadata
+- **Pull Requests**: Create, review, and manage PRs directly
+- **Issues**: Create and manage GitHub issues
+- **Repos**: Access repository information and settings
+
+### Usage
+Once configured, Claude Code can:
+- Create PRs with `gh pr create` command
+- Review PR changes and provide feedback
+- Create and manage issues
+- Access repository metadata
+
+Note: The MCP server configuration is project-scoped and shared with all team members via `.mcp.json`.
