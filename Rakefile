@@ -11,8 +11,8 @@ end
 # Load all tasks from lib/tasks
 Dir.glob(File.join(__dir__, "lib", "tasks", "*.rake")).each { |file| load file }
 
-LOCAL_RUX = Pathname.new(__dir__).join("rux", "rux").expand_path.to_s.freeze
-RUX_CORES = ENV["CI"] ? 2 : 8
+# Using 3 cores for medium/large resource class on CircleCI
+RUX_CORES = ENV["CI"] ? 3 : 8
 
 # Default task runs all checks
 desc "Run all tests and linting"
