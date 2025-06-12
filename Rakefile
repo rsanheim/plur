@@ -12,6 +12,7 @@ end
 Dir.glob(File.join(__dir__, "lib", "tasks", "*.rake")).each { |file| load file }
 
 LOCAL_RUX = Pathname.new(__dir__).join("rux", "rux").expand_path.to_s.freeze
+RUX_CORES = ENV["CI"] ? 2 : 8
 
 # Default task runs all checks
 desc "Run all tests and linting"
@@ -85,7 +86,7 @@ namespace :test do
   task :default_ruby do
     Dir.chdir("fixtures/projects/default-ruby") do
       puts "Running default-ruby specs with rux..."
-      sh "rux"
+      sh "rux", "-n", RUX_CORES.to_s
     end
   end
 
@@ -102,14 +103,14 @@ namespace :test do
   task default_rails: [:build] do
     Dir.chdir("fixtures/projects/default-rails") do
       puts "Running default-rails specs with rux..."
-      sh "rux"
+      sh "rux", "-n", RUX_CORES.to_s
     end
   end
 
   desc "Run integration tests in root spec directory"
   task :integration do
     puts "Running ruby integration suite with rux..."
-    sh "rux"
+    sh "rux", "-n", RUX_CORES.to_s
   end
 end
 

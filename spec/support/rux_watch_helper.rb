@@ -2,7 +2,7 @@ require "tty-command"
 require "open3"
 
 module RuxWatchHelper
-  DEFAULT_RUX_WATCH_TIMEOUT = 3
+  DEFAULT_RUX_WATCH_TIMEOUT = ENV["CI"] ? 10 : 3
 
   # Runs rux watch with TTY::Command and returns a proper result object
   # @param dir [String] directory to run in
