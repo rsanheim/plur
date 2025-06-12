@@ -85,7 +85,7 @@ namespace :test do
   task :default_ruby do
     Dir.chdir("fixtures/projects/default-ruby") do
       puts "Running default-ruby specs with rux..."
-      sh LOCAL_RUX
+      sh "rux"
     end
   end
 
@@ -102,7 +102,7 @@ namespace :test do
   task default_rails: [:build] do
     Dir.chdir("fixtures/projects/default-rails") do
       puts "Running default-rails specs with rux..."
-      sh LOCAL_RUX
+      sh "rux"
     end
   end
 
