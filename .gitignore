@@ -16,6 +16,7 @@ main
 # Ruby
 *.gem
 *.rbc
+/.cache
 /.config
 /coverage/
 /fixtures/**/tmp/*
