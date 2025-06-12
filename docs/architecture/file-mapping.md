@@ -244,30 +244,6 @@ app/models/user.rb → spec/models/user/
 2. **Use debouncing**: Wait for file changes to settle
 3. **Run subset**: Use RSpec tags to run only relevant specs
 
-
-## Integration with Editors
-
-### VS Code
-
-Example VS Code configuration:
-
-```json
-{
-  "rux.watch.enabled": true,
-  "rux.watch.runOnSave": true
-}
-```
-
-### Vim
-
-Integration with vim-test:
-
-```vim
-" .vimrc
-let g:test#runner_commands = ['Rux']
-let g:test#ruby#rux#file_pattern = '\v(spec|test)/.*_spec\.rb$'
-```
-
 ## See Also
 
 - [Watch Mode Documentation](/docs/features/watch-mode.md)

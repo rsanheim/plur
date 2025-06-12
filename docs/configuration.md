@@ -90,26 +90,6 @@ Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with
 - `RUX_DEBUG` - Enable debug output
 - `RUX_TRACE` - Enable performance tracing
 
-### RSpec Compatibility
-
-Rux passes through RSpec-specific environment variables:
-- `SPEC_OPTS`
-- `RSPEC_OPTS`
-
-## Best Practices
-
-1. **Start with defaults** - Rux's auto-detection works well for most projects
-2. **Use environment variables in CI** - Easier to adjust without code changes
-3. **Enable tracing for optimization** - Identify bottlenecks before tuning
-4. **Document your configuration** - Help teammates understand customizations
-
-## Debugging Configuration
-
-```bash
-# Show what rux detects
-rux --auto
-```
-
 ## Next Steps
 
 - See [Performance Tracing](architecture/performance-tracing.md) for optimization

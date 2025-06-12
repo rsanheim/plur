@@ -20,22 +20,20 @@ Rux watch mode provides automatic test execution when files change, replacing to
 ```bash
 # Start watching for file changes
 rux watch
-
-# Or use the dedicated binary
-rux-watch
 ```
 
 ### Command Options
 
 ```bash
+# Dry run to see what would be watched
+rux watch --dry-run
+
 # Set custom debounce delay (milliseconds)
 rux watch --debounce 250
 
 # Auto-exit after timeout (useful for CI)
 rux watch --timeout 60
 
-# Dry run to see what would be watched
-rux watch --dry-run
 ```
 
 ### What Gets Watched
@@ -131,7 +129,7 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 
 ### Process Lifecycle
 
-- Each watcher process is kept alive via stdin pipe
+- Each watcher process is kept via standard *nix pipes
 - Graceful shutdown on SIGINT/SIGTERM
 - Automatic cleanup ensures no zombie processes
 
@@ -140,6 +138,7 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 The watcher detects:
 - `create` - New files
 - `modify` - Content changes (metadata-only changes like `touch` are ignored)
+# TODO you sure aout that?
 - `destroy` - Deleted files
 - `rename` - Renamed files
 
@@ -157,14 +156,13 @@ When multiple file changes occur rapidly, concurrent test runs can execute, lead
 - Multiple "rux> " prompts appearing
 - Generally "janky" terminal experience
 
-This is a known issue accepted for the MVP. The functionality works correctly despite the output confusion.
+This is a known issue currently. The functionality works correctly despite the output confusion.
 
 ### Current Limitations
 - Serial test execution only (no parallel mode in watch)
 - No support for custom file mappings
 - Limited to Ruby/Rails conventions
 - No ignore patterns beyond built-in exclusions
-- Basic terminal output (no TUI interface yet)
 
 ## Troubleshooting
 
@@ -178,19 +176,17 @@ This is a known issue accepted for the MVP. The functionality works correctly de
 **Tests not running on file change**
 - Verify file is not in .gitignore
 - Check that spec file exists at expected location
-- Use `--dry-run` to see what would run
+- Use `rux --debug watch` to see file system events
 - Note: metadata-only changes (touch) don't trigger events
-
-**Multiple prompts appearing**
-- Known issue with concurrent test runs
-- Functionally correct but visually confusing
-- Workaround: make changes more slowly
 
 ### Debug Commands
 
 ```bash
 # Check watcher status and installation
 rux doctor
+
+# See file system events
+rux --debug watch
 
 # See what files would be watched
 rux watch --dry-run

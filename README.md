@@ -138,11 +138,7 @@ rux -n 3                  # Run RSpec tests in parallel
 We use MkDocs Material for browsing documentation. To view the docs locally:
 
 ```bash
-# Install uv if you don't have it (one time only)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Serve documentation at http://localhost:8000
-# (This will create a virtual environment and install dependencies automatically)
+# requires `uv` - servces documentation at http://localhost:8000
 script/serve-docs
 ```
 
@@ -151,7 +147,6 @@ script/serve-docs
 ### Requirements
 - Go 1.22+
 - Ruby 3.0+ (for Rails testing)
-- Rails 8+ (for test app)
 
 ### Project Structure
 ```

@@ -30,21 +30,6 @@ rux doctor
    - Memory statistics
    - Process limits
 
-## Common Issues
-
-### "rux: command not found"
-- Run `bin/rake install` from project root
-- Check `$GOPATH/bin` is in your PATH
-
-### "cannot load such file -- backspin"
-- Run `bundle install` at project root
-- Ensure you're in a bundled environment
-
-### "no test files found"
-- Check for `*_spec.rb` files
-- Verify working directory
-- Check file permissions
-
 ## Debug Output
 
 For verbose diagnostics:

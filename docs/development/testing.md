@@ -2,7 +2,7 @@
 
 ## Test Structure
 
-Rux uses integration tests written in RSpec to ensure correctness.
+Rux uses "outside-in" integration tests written in RSpec to ensure correctness.
 
 ### Running Tests
 
@@ -19,10 +19,8 @@ DEBUG=1 bundle exec rspec spec/parallel_execution_spec.rb
 
 ## Integration Test Approach
 
-Tests use the `default-ruby` project as a test fixture:
-- Real RSpec tests that can pass or fail
-- Controlled environment for testing parallelism
-- Predictable output for assertions
+Many tests use projects from the `fixtures/projects` directory for common scenarios.
+The 'default-ruby' project and 'default-rails' project are good starting points.
 
 ## Key Test Files
 
@@ -33,10 +31,10 @@ Tests use the `default-ruby` project as a test fixture:
 
 ## Golden Testing
 
-We use the backspin gem for golden testing:
-- Captures expected output
-- Compares against actual output
-- Easy to update when output changes intentionally
+We use the [backspin](https://github.com/rsanheim/backspin) gem for golden testing in a few spots.
+- Records actual output on the first run to records in `fixtures/backspin`
+- Compares actual output to the recorded output
+- Easy to update
 
 ## Writing New Tests
 
