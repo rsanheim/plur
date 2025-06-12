@@ -1,0 +1,12 @@
+nav:
+  - index.md
+  - getting-started.md
+  - installation.md
+  - usage.md
+  - configuration.md
+  - overview
+  - architecture
+  - features
+  - development
+  - archive
+  - ...
