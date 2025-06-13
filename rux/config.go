@@ -43,19 +43,16 @@ func InitConfigPaths() (*ConfigPaths, error) {
 		return nil, fmt.Errorf("failed to create RUX_HOME directory: %v", err)
 	}
 
-	paths := map[string]string{
-		"cache":     filepath.Join(ruxHome, "cache"),
-		"runtime":   filepath.Join(ruxHome, "runtime"),
-		"formatter": filepath.Join(ruxHome, "formatter"),
-	}
+	cacheDir := filepath.Join(ruxHome, "cache")
+	runtimeDir := filepath.Join(ruxHome, "runtime")
+	formatterDir := filepath.Join(ruxHome, "formatter")
 
+	paths := []string{cacheDir, runtimeDir, formatterDir}
 	for _, path := range paths {
 		if os.MkdirAll(path, 0755) != nil {
 			return nil, fmt.Errorf("failed to create %s directory: %v", path, err)
 		}
 	}
-
-	formatterDir := filepath.Join(ruxHome, "formatter")
 
 	jsonRowsFormatter, err := rspec.GetFormatterPath(formatterDir)
 	if err != nil {
@@ -64,8 +61,8 @@ func InitConfigPaths() (*ConfigPaths, error) {
 
 	configPaths := ConfigPaths{
 		RuxHome:           ruxHome,
-		CacheDir:          paths["cache"],
-		RuntimeDir:        paths["runtime"],
+		CacheDir:          cacheDir,
+		RuntimeDir:        runtimeDir,
 		FormatterDir:      formatterDir,
 		JSONRowsFormatter: jsonRowsFormatter,
 	}
