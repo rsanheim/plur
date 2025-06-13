@@ -6,7 +6,7 @@
 - Your instinct to separate "stuff that can be initialized immediately" (`ConfigPaths`) from "stuff that needs CLI context" (`Config`) is spot on.
 
 ## The Bad (and Ugly)
-- **Classic Go footgun**: You've been bitten by variable shadowing. That `:=` in your Before function created a local `ruxConfig` while the global one stayed nil. This is Go's most beloved/hated feature.
+- **Classic Go footgun**: You've been bitten by variable shadowing. That `:=` in your Before function created a local `ruxConfig` while the global one stayed nil. This is Go's most beloved/hated feature. ✅ FIXED
 - **Global variables**: Yeah, you're right to feel icky about them. They make testing a pain and create hidden dependencies. Every function that touches `ruxConfig` now has an implicit dependency you can't see from its signature.
 
 ## The Bug
@@ -71,9 +71,32 @@ If you're planning to switch to Kong, it has better patterns built-in:
 ## Bottom Line
 
 Your refactoring direction is good - consolidating config is the right move. Just:
-1. Fix the shadowing bug (change `:=` to `=` after declaring `err`)
+1. Fix the shadowing bug (change `:=` to `=` after declaring `err`) ✅ DONE
 2. Consider moving away from globals before it spreads further
 3. If keeping globals for now, at least make them unexported (`configPaths` not `ConfigPaths`)
 4. Add a comment above the globals explaining your shame and future refactoring plans
 
 The real Go lesson here: The language actively tries to trick you with `:=`, but at least the compiler is fast enough that you discover your mistakes quickly!
+
+## Actionable TODOs
+
+### Immediate Tasks
+- [ ] **Fix `rux watch` command parsing** - The Before hook is running before command resolution, treating 'watch' as a spec pattern
+- [ ] **Implement App.Metadata approach** - Replace global `ruxConfig` with storing config in `ctx.App.Metadata["config"]`
+- [ ] **Investigate Before hook timing** - Document exactly when Before runs in relation to command parsing
+
+### Config Refactoring Tasks
+- [ ] **Remove global variables** - Replace `var ruxConfig *Config` with App.Metadata storage
+- [ ] **Update command Actions** - Modify all commands to extract config from `ctx.App.Metadata`
+- [ ] **Make ConfigPaths unexported** - Change `ConfigPaths` to `configPaths` if keeping any globals
+- [ ] **Add initialization documentation** - Document the config initialization flow and lifecycle
+
+### Testing & Validation
+- [ ] **Test all commands** - Ensure doctor, watch, and main test runner work with new config approach
+- [ ] **Add config tests** - Unit tests for BuildConfig and ConfigPaths initialization
+- [ ] **Verify no nil panics** - Test edge cases where config might not be initialized
+
+### Documentation
+- [ ] **Document App.Metadata pattern** - Add examples of how to access config from commands
+- [ ] **Before hook behavior** - Document when Before runs vs command resolution
+- [ ] **Migration guide** - If switching approaches, document the changes needed in each command
