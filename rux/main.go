@@ -24,7 +24,8 @@ func createApp() *cli.App {
 			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
 			InitLogger(ctx.Bool("verbose"), debug)
 
-			ruxConfig, err := BuildConfig(ctx, configPaths)
+			var err error
+			ruxConfig, err = BuildConfig(ctx, configPaths)
 			if err != nil {
 				return fmt.Errorf("failed to initialize config: %v", err)
 			}
