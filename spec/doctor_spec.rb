@@ -8,27 +8,34 @@ RSpec.describe "rux doctor command" do
   end
 
   # Normalize dynamic values for consistent golden testing
-  # Using loose regex patterns here deliberately, its good enough
+  # Very general normalization - we only care about structure, not values
   def normalize_doctor_output(str)
     str
-      .gsub(/v[\d\.\-\w\+]+/, "v[VERSION]")
-      .gsub(/(Build Date:\s+).+/, '\1[BUILD_DATE]')
-      .gsub(/(Git Commit:\s+).+/, '\1[COMMIT]')
-      .gsub(/(Built By:\s+).+/, '\1[BUILT_BY]')
-      # Normalize paths
-      .gsub(/\/Users\/[^\/]+/, "/Users/[USER]")
-      .gsub(/\/home\/[^\/]+/, "/home/[USER]")
-      # Normalize watcher binary paths
-      .gsub(/Binary Path:\s+\/Users\/[^\/]+\/.cache\/rux\/bin\/[^\n]+/, "Binary Path:    [WATCHER_PATH]")
-      # Normalize Go version
-      .gsub(/go[\d\.]+/, "go[VERSION]")
-      # Normalize Ruby versions - looser patterns
-      .gsub(/ruby [\d\.\w\s\(\)\-]+/, "ruby [VERSION]")
-      .gsub(/Bundler version [\d\.]+/, "Bundler version [VERSION]")
-      .gsub(/RSpec [\d\.]+/, "RSpec [VERSION]")
-      .gsub(/- rspec-\w+ [\d\.]+/, "- rspec-[COMPONENT] [VERSION]")
-      # Normalize runtime data hash
-      .gsub(/[a-f0-9]{8}\.json/, "[HASH].json")
+      # Version info - any version format
+      .gsub(/Rux Version:\s+.+/, "Rux Version:     [VERSION]")
+      .gsub(/Build Date:\s+.+/, "Build Date:      [BUILD_DATE]")
+      .gsub(/Git Commit:\s+.+/, "Git Commit:      [COMMIT]")
+      .gsub(/Built By:\s+.+/, "Built By:        [BUILT_BY]")
+      
+      # System info - normalize any numbers
+      .gsub(/CPU Count:\s+\d+/, "CPU Count:        [CPU_COUNT]")
+      .gsub(/Go Version:\s+.+/, "Go Version:       [GO_VERSION]")
+      
+      # Paths - normalize all paths
+      .gsub(/Working Dir:\s+.+/, "Working Dir:      [WORKING_DIR]")
+      .gsub(/Rux Binary:\s+.+/, "Rux Binary:       [RUX_BINARY]")
+      .gsub(/Binary Path:\s+.+/, "Binary Path:    [WATCHER_PATH]")
+      .gsub(/Cache Directory:\s+.+/, "Cache Directory:  [CACHE_DIR]")
+      .gsub(/Runtime Data:\s+.+/, "Runtime Data:     [RUNTIME_PATH]")
+      
+      # Ruby environment - very general
+      .gsub(/Ruby Version:\s+.+/, "Ruby Version:   [RUBY_VERSION]")
+      .gsub(/Bundler:\s+.+/, "Bundler:        [BUNDLER_VERSION]")
+      .gsub(/RSpec:\s+.+/, "RSpec:          [RSPEC_VERSION]")
+      .gsub(/- rspec-\w+\s+.+/, "- rspec-[COMPONENT] [VERSION]")
+      
+      # Environment variables - normalize values but keep keys
+      .gsub(/HOME:\s+.+/, "HOME:                     [HOME_PATH]")
   end
 
   it "displays diagnostic information" do
