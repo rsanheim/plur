@@ -24,7 +24,7 @@ type ConfigPaths struct {
 	RuxHome           string // ~/.rux or $RUX_HOME
 	CacheDir          string
 	RuntimeDir        string
-	Formatters        string
+	FormatterDir      string
 	JSONRowsFormatter string
 }
 
@@ -44,9 +44,9 @@ func InitConfigPaths() (*ConfigPaths, error) {
 	}
 
 	paths := map[string]string{
-		"cache":      filepath.Join(ruxHome, "cache"),
-		"runtime":    filepath.Join(ruxHome, "runtime"),
-		"formatters": filepath.Join(ruxHome, "formatter"),
+		"cache":     filepath.Join(ruxHome, "cache"),
+		"runtime":   filepath.Join(ruxHome, "runtime"),
+		"formatter": filepath.Join(ruxHome, "formatter"),
 	}
 
 	for _, path := range paths {
@@ -55,9 +55,9 @@ func InitConfigPaths() (*ConfigPaths, error) {
 		}
 	}
 
-	formattersPath := filepath.Join(ruxHome, "formatters")
+	formatterDir := filepath.Join(ruxHome, "formatter")
 
-	jsonRowsFormatter, err := rspec.GetFormatterPath(formattersPath)
+	jsonRowsFormatter, err := rspec.GetFormatterPath(formatterDir)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func InitConfigPaths() (*ConfigPaths, error) {
 		RuxHome:           ruxHome,
 		CacheDir:          paths["cache"],
 		RuntimeDir:        paths["runtime"],
-		Formatters:        paths["formatter"],
+		FormatterDir:      formatterDir,
 		JSONRowsFormatter: jsonRowsFormatter,
 	}
 
