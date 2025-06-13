@@ -11,6 +11,7 @@ import (
 	"golang.org/x/term"
 )
 
+var configPaths = InitConfigPaths()
 var ruxConfig *Config
 
 func createApp() *cli.App {
@@ -23,15 +24,10 @@ func createApp() *cli.App {
 			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
 			InitLogger(ctx.Bool("verbose"), debug)
 
-			configPaths, err := InitConfigPaths()
-			if err != nil {
-				return fmt.Errorf("failed to initialize config paths: %v", err)
-			}
-			config, err := BuildConfig(ctx, configPaths)
+			ruxConfig, err := BuildConfig(ctx, configPaths)
 			if err != nil {
 				return fmt.Errorf("failed to initialize config: %v", err)
 			}
-			ruxConfig := config
 			Logger.Debug("initial config", "config", ruxConfig)
 
 			return nil
@@ -200,8 +196,6 @@ func createApp() *cli.App {
 			},
 		},
 		Action: func(ctx *cli.Context) error {
-			config := ruxConfig
-
 			// Initialize tracing if enabled
 			if ctx.Bool("trace") {
 				if err := tracing.Init(true); err != nil {
@@ -213,7 +207,7 @@ func createApp() *cli.App {
 			defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
 			// Run bundle install if --auto flag is set
-			if config.Auto && !config.DryRun {
+			if ruxConfig.Auto && !ruxConfig.DryRun {
 				depManager := NewDependencyManager()
 				if err := depManager.InstallDependencies(); err != nil {
 					return err
@@ -221,7 +215,7 @@ func createApp() *cli.App {
 			}
 
 			// Create and run executor
-			executor := NewTestExecutor(config)
+			executor := NewTestExecutor(ruxConfig)
 			if err := executor.Execute(); err != nil {
 				// Exit with error code 1 for test failures
 				if strings.Contains(err.Error(), "test run failed") {

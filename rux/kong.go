@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/alecthomas/kong"
@@ -58,17 +57,9 @@ var KongCLI struct {
 }
 
 func runKongCLI() {
-	// Get cache directory early - fail if environment is broken
-
-	paths, configErr := InitConfigPaths()
-	if configErr != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", configErr)
-		os.Exit(1)
-	}
-
 	ctx := kong.Parse(&KongCLI,
 		kong.Vars{
-			"cache_dir": paths.CacheDir,
+			"cache_dir": configPaths.CacheDir,
 		})
 
 	// Initialize logging before running any command (same as main.go Before hook)

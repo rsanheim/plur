@@ -102,7 +102,7 @@ func getProjectHash() (string, error) {
 
 // getRuntimeFilePath returns the project-specific runtime file path
 func getRuntimeFilePath() (string, error) {
-	runtimesDir := ruxConfig.ConfigPaths.RuntimeDir
+	runtimesDir := configPaths.RuntimeDir
 
 	// Get project hash for filename
 	projectHash, err := getProjectHash()

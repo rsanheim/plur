@@ -28,19 +28,21 @@ type ConfigPaths struct {
 	JSONRowsFormatter string
 }
 
-func InitConfigPaths() (*ConfigPaths, error) {
+func InitConfigPaths() *ConfigPaths {
 	ruxHome, ok := os.LookupEnv("RUX_HOME")
 	if !ok {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			return nil, fmt.Errorf("cannot find home directory and RUX_HOME not set: %w", err)
+			fmt.Fprintf(os.Stderr, "cannot find home directory and RUX_HOME not set: %v\n", err)
+			os.Exit(1)
 		}
 		ruxHome = filepath.Join(homeDir, ".rux")
 	}
 
 	err := os.MkdirAll(ruxHome, 0755)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create RUX_HOME directory: %v", err)
+		fmt.Fprintf(os.Stderr, "failed to create RUX_HOME directory: %v\n", err)
+		os.Exit(1)
 	}
 
 	cacheDir := filepath.Join(ruxHome, "cache")
@@ -50,13 +52,15 @@ func InitConfigPaths() (*ConfigPaths, error) {
 	paths := []string{cacheDir, runtimeDir, formatterDir}
 	for _, path := range paths {
 		if os.MkdirAll(path, 0755) != nil {
-			return nil, fmt.Errorf("failed to create %s directory: %v", path, err)
+			fmt.Fprintf(os.Stderr, "failed to create %s directory: %v\n", path, err)
+			os.Exit(1)
 		}
 	}
 
 	jsonRowsFormatter, err := rspec.GetFormatterPath(formatterDir)
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "failed to get JSON rows formatter path: %v\n", err)
+		os.Exit(1)
 	}
 
 	configPaths := ConfigPaths{
@@ -67,7 +71,7 @@ func InitConfigPaths() (*ConfigPaths, error) {
 		JSONRowsFormatter: jsonRowsFormatter,
 	}
 
-	return &configPaths, nil
+	return &configPaths
 }
 
 func BuildConfig(ctx *cli.Context, paths *ConfigPaths) (*Config, error) {
