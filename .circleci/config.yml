@@ -35,13 +35,13 @@ jobs:
           name: Build rux
           command: bin/rake build
       - run:
-          name: Run Go tests
-          command: bin/rake test:go
-      - run:
           name: Verify rux binary
           command: |
             ./rux/rux --version
             ./rux/rux --help
+      - run:
+          name: Run Go tests
+          command: bin/rake test:go
       - persist_to_workspace:
           root: .
           paths:
