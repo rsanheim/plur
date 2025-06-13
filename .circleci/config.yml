@@ -32,14 +32,11 @@ jobs:
 
       - ruby/install-deps
       - run:
-          name: Download watcher binary for platform
-          command: bin/rake deps:watcher
+          name: Build rux
+          command: bin/rake build
       - run:
           name: Run Go tests
           command: bin/rake test:go
-      - run:
-          name: Build rux
-          command: bin/rake build
       - run:
           name: Verify rux binary
           command: |
