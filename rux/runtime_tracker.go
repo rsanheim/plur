@@ -11,9 +11,6 @@ import (
 	"github.com/rsanheim/rux/rspec"
 )
 
-// customRuntimeDir stores the custom runtime directory if provided
-var customRuntimeDir string
-
 // RuntimeTracker accumulates runtime data for spec files
 type RuntimeTracker struct {
 	mu       sync.Mutex
@@ -105,24 +102,7 @@ func getProjectHash() (string, error) {
 
 // getRuntimeFilePath returns the project-specific runtime file path
 func getRuntimeFilePath() (string, error) {
-	var runtimesDir string
-
-	if customRuntimeDir != "" {
-		// Use the custom runtime directory
-		runtimesDir = customRuntimeDir
-	} else {
-		// Use the default cache directory
-		cacheDir, err := getRuxCacheDir()
-		if err != nil {
-			return "", err
-		}
-		runtimesDir = filepath.Join(cacheDir, "runtimes")
-	}
-
-	// Create directory if it doesn't exist
-	if err := os.MkdirAll(runtimesDir, 0755); err != nil {
-		return "", err
-	}
+	runtimesDir := ruxConfig.ConfigPaths.RuntimeDir
 
 	// Get project hash for filename
 	projectHash, err := getProjectHash()

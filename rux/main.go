@@ -11,6 +11,8 @@ import (
 	"golang.org/x/term"
 )
 
+var ruxConfig *Config
+
 func createApp() *cli.App {
 	return &cli.App{
 		Name:    "rux",
@@ -20,6 +22,18 @@ func createApp() *cli.App {
 			// Initialize logging globally before any command runs
 			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
 			InitLogger(ctx.Bool("verbose"), debug)
+
+			configPaths, err := InitConfigPaths()
+			if err != nil {
+				return fmt.Errorf("failed to initialize config paths: %v", err)
+			}
+			config, err := BuildConfig(ctx, configPaths)
+			if err != nil {
+				return fmt.Errorf("failed to initialize config: %v", err)
+			}
+			ruxConfig := config
+			Logger.Debug("initial config", "config", ruxConfig)
+
 			return nil
 		},
 		Commands: []*cli.Command{
@@ -186,6 +200,8 @@ func createApp() *cli.App {
 			},
 		},
 		Action: func(ctx *cli.Context) error {
+			config := ruxConfig
+
 			// Initialize tracing if enabled
 			if ctx.Bool("trace") {
 				if err := tracing.Init(true); err != nil {
@@ -195,12 +211,6 @@ func createApp() *cli.App {
 			}
 
 			defer tracing.StartRegion(context.Background(), "main.total_execution")()
-
-			// Build execution configuration
-			config, err := BuildExecutionConfig(ctx)
-			if err != nil {
-				return err
-			}
 
 			// Run bundle install if --auto flag is set
 			if config.Auto && !config.DryRun {

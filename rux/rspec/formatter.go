@@ -14,25 +14,16 @@ var jsonRowsFormatterCode string
 
 // GetFormatterPath returns the path to the JSON rows formatter,
 // creating it in the cache directory if it doesn't exist
-func GetFormatterPath(cacheDir string) (string, error) {
-	// Create the rux formatters directory
-	formattersDir := filepath.Join(cacheDir, "formatters")
-	if err := os.MkdirAll(formattersDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create formatters directory: %w", err)
-	}
-
-	// Path to the formatter file
-	formatterPath := filepath.Join(formattersDir, "json_rows_formatter.rb")
+func GetFormatterPath(formattersPath string) (string, error) {
+	formatterPath := filepath.Join(formattersPath, "json_rows_formatter.rb")
 
 	// Check if formatter already exists and has the same content
 	if existingContent, err := os.ReadFile(formatterPath); err == nil {
 		if string(existingContent) == jsonRowsFormatterCode {
-			// Formatter already exists with correct content
 			return formatterPath, nil
 		}
 	}
 
-	// Write the formatter to the cache directory
 	if err := os.WriteFile(formatterPath, []byte(jsonRowsFormatterCode), 0644); err != nil {
 		return "", fmt.Errorf("failed to write formatter file: %w", err)
 	}

@@ -220,11 +220,7 @@ func runWatch(ctx *cli.Context) error {
 }
 
 func getWatcherBinaryPath() (string, error) {
-	// Get cache directory
-	cacheDir, err := getRuxCacheDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get cache directory: %v", err)
-	}
+	cacheDir := ruxConfig.ConfigPaths.CacheDir
 
 	// Get expected binary path
 	binaryPath, err := watch.GetBinaryPath(cacheDir)

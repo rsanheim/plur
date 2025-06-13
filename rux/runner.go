@@ -78,19 +78,6 @@ func GetTestEnvNumber(workerIndex int) string {
 	return fmt.Sprintf("%d", workerIndex+1)
 }
 
-// getCachedFormatterPath returns the formatter path, computing it only once
-func getCachedFormatterPath() (string, error) {
-	formatterPathOnce.Do(func() {
-		cacheDir, err := getRuxCacheDir()
-		if err != nil {
-			formatterPathErr = err
-			return
-		}
-		cachedFormatterPath, formatterPathErr = rspec.GetFormatterPath(cacheDir)
-	})
-	return cachedFormatterPath, formatterPathErr
-}
-
 // ANSI color codes
 const (
 	colorGreen  = "\033[32m"
@@ -152,20 +139,9 @@ func errorResult(specFiles []string, err error, start time.Time) TestResult {
 }
 
 // RunSpecFile executes multiple spec files in a single RSpec process
-func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, outputChan chan<- OutputMessage) TestResult {
+func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, outputChan chan<- OutputMessage) TestResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
-
-	// Get the cached formatter path (computed only once)
-	var formatterPath string
-	var err error
-	func() {
-		defer tracing.StartRegionWithWorker(ctx, "get_formatter_path", workerIndex, "grouped")()
-		formatterPath, err = getCachedFormatterPath()
-	}()
-	if err != nil {
-		return errorResult(specFiles, fmt.Errorf("failed to get formatter path: %v", err), start)
-	}
 
 	// Build args with streaming JSON formatter
 	args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
@@ -345,7 +321,7 @@ func RunSpecFile(ctx context.Context, specFiles []string, workerIndex int, dryRu
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWorkers int, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
+func RunSpecsInParallel(config *Config, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
 	defer tracing.StartRegion(context.Background(), "run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
@@ -356,6 +332,11 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWo
 		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
 		runtimeData = make(map[string]float64)
 	}
+
+	specFiles := config.SpecFiles
+	maxWorkers := config.WorkerCount
+	colorOutput := config.ColorOutput
+	dryRun := config.DryRun
 
 	// Group files using runtime data if available, otherwise by size
 	var groups []FileGroup
@@ -407,7 +388,7 @@ func RunSpecsInParallel(specFiles []string, dryRun bool, colorOutput bool, maxWo
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunSpecFile(ctx, files, workerIndex, dryRun, colorOutput, outputChan)
+			result := RunSpecFile(ctx, ruxConfig.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, outputChan)
 			LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success)
 			results <- result
 		}(i, group.Files)

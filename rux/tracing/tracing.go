@@ -29,19 +29,19 @@ func Init(enable bool) error {
 
 	// Create trace file in centralized ~/.cache/rux/traces directory
 	timestamp := time.Now().Format("20060102-150405")
-	
+
 	// Get cache directory (same as formatter cache)
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %v", err)
 	}
-	
+
 	cacheDir := filepath.Join(homeDir, ".cache", "rux")
 	traceDir := filepath.Join(cacheDir, "traces")
 	if err := os.MkdirAll(traceDir, 0755); err != nil {
 		return fmt.Errorf("failed to create trace directory: %v", err)
 	}
-	
+
 	traceFilePath := filepath.Join(traceDir, fmt.Sprintf("rux-trace-%s.trace", timestamp))
 
 	file, err := os.Create(traceFilePath)
@@ -54,7 +54,6 @@ func Init(enable bool) error {
 		file.Close()
 		return fmt.Errorf("failed to start trace: %v", err)
 	}
-
 
 	fmt.Fprintf(os.Stderr, "Tracing enabled, writing to: %s\n", traceFilePath)
 	fmt.Fprintf(os.Stderr, "View with: go tool trace %s\n", traceFilePath)
@@ -92,14 +91,13 @@ func StartRegionWithWorker(ctx context.Context, name string, workerID int, specF
 	return region.End
 }
 
-
 // LogEvent logs a trace event with key-value pairs.
 // Usage: tracing.LogEvent(ctx, "event_name", "key1", value1, "key2", value2)
 func LogEvent(ctx context.Context, name string, keyvals ...interface{}) {
 	if !enabled {
 		return
 	}
-	
+
 	// Build format string and args
 	var keys []string
 	var vals []interface{}
@@ -109,7 +107,7 @@ func LogEvent(ctx context.Context, name string, keyvals ...interface{}) {
 			vals = append(vals, keyvals[i+1])
 		}
 	}
-	
+
 	if len(keys) > 0 {
 		format := strings.Join(keys, " ")
 		trace.Logf(ctx, name, format, vals...)
@@ -117,9 +115,6 @@ func LogEvent(ctx context.Context, name string, keyvals ...interface{}) {
 		trace.Log(ctx, name, "")
 	}
 }
-
-
-
 
 // IsEnabled returns whether tracing is currently enabled.
 func IsEnabled() bool {

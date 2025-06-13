@@ -59,15 +59,16 @@ var KongCLI struct {
 
 func runKongCLI() {
 	// Get cache directory early - fail if environment is broken
-	cacheDir, cacheDirErr := getRuxCacheDir()
-	if cacheDirErr != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", cacheDirErr)
+
+	paths, configErr := InitConfigPaths()
+	if configErr != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", configErr)
 		os.Exit(1)
 	}
 
 	ctx := kong.Parse(&KongCLI,
 		kong.Vars{
-			"cache_dir": cacheDir,
+			"cache_dir": paths.CacheDir,
 		})
 
 	// Initialize logging before running any command (same as main.go Before hook)

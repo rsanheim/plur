@@ -92,10 +92,7 @@ func runDoctor(ctx *cli.Context) error {
 	fmt.Println()
 
 	// Cache info
-	cacheDir, err := getRuxCacheDir()
-	if err != nil {
-		cacheDir = fmt.Sprintf("error: %v", err)
-	}
+	cacheDir := ruxConfig.ConfigPaths.CacheDir
 	fmt.Printf("Cache Directory:  %s\n", cacheDir)
 
 	// Runtime data
