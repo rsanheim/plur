@@ -11,30 +11,21 @@ RSpec.describe "rux doctor command" do
   # Very general normalization - we only care about structure, not values
   def normalize_doctor_output(str)
     str
-      # Version info - any version format
       .gsub(/Rux Version:\s+.+/, "Rux Version:     [VERSION]")
       .gsub(/Build Date:\s+.+/, "Build Date:      [BUILD_DATE]")
       .gsub(/Git Commit:\s+.+/, "Git Commit:      [COMMIT]")
       .gsub(/Built By:\s+.+/, "Built By:        [BUILT_BY]")
-      
-      # System info - normalize any numbers
       .gsub(/CPU Count:\s+\d+/, "CPU Count:        [CPU_COUNT]")
       .gsub(/Go Version:\s+.+/, "Go Version:       [GO_VERSION]")
-      
-      # Paths - normalize all paths
       .gsub(/Working Dir:\s+.+/, "Working Dir:      [WORKING_DIR]")
       .gsub(/Rux Binary:\s+.+/, "Rux Binary:       [RUX_BINARY]")
       .gsub(/Binary Path:\s+.+/, "Binary Path:    [WATCHER_PATH]")
       .gsub(/Cache Directory:\s+.+/, "Cache Directory:  [CACHE_DIR]")
       .gsub(/Runtime Data:\s+.+/, "Runtime Data:     [RUNTIME_PATH]")
-      
-      # Ruby environment - very general
       .gsub(/Ruby Version:\s+.+/, "Ruby Version:   [RUBY_VERSION]")
       .gsub(/Bundler:\s+.+/, "Bundler:        [BUNDLER_VERSION]")
       .gsub(/RSpec:\s+.+/, "RSpec:          [RSPEC_VERSION]")
       .gsub(/- rspec-\w+\s+.+/, "- rspec-[COMPONENT] [VERSION]")
-      
-      # Environment variables - normalize values but keep keys
       .gsub(/HOME:\s+.+/, "HOME:                     [HOME_PATH]")
   end
 
