@@ -24,11 +24,7 @@ func createApp() *cli.App {
 			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
 			InitLogger(ctx.Bool("verbose"), debug)
 
-			var err error
-			ruxConfig, err = BuildConfig(ctx, configPaths)
-			if err != nil {
-				return fmt.Errorf("failed to initialize config: %v", err)
-			}
+			ruxConfig = BuildConfig(ctx, configPaths)
 			Logger.Debug("initial config", "config", ruxConfig)
 
 			return nil
@@ -207,6 +203,12 @@ func createApp() *cli.App {
 
 			defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
+			// Discover spec files for the main command
+			specFiles, err := discoverSpecFiles(ctx)
+			if err != nil {
+				return err
+			}
+
 			// Run bundle install if --auto flag is set
 			if ruxConfig.Auto && !ruxConfig.DryRun {
 				depManager := NewDependencyManager()
@@ -216,7 +218,7 @@ func createApp() *cli.App {
 			}
 
 			// Create and run executor
-			executor := NewTestExecutor(ruxConfig)
+			executor := NewTestExecutor(ruxConfig, specFiles)
 			if err := executor.Execute(); err != nil {
 				// Exit with error code 1 for test failures
 				if strings.Contains(err.Error(), "test run failed") {

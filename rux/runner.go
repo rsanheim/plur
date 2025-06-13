@@ -321,7 +321,7 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(config *Config, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
+func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
 	defer tracing.StartRegion(context.Background(), "run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
@@ -333,7 +333,6 @@ func RunSpecsInParallel(config *Config, runtimeTracker *RuntimeTracker) ([]TestR
 		runtimeData = make(map[string]float64)
 	}
 
-	specFiles := config.SpecFiles
 	maxWorkers := config.WorkerCount
 	colorOutput := config.ColorOutput
 	dryRun := config.DryRun

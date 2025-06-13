@@ -14,13 +14,15 @@ import (
 // TestExecutor orchestrates the execution of tests
 type TestExecutor struct {
 	config         *Config
+	specFiles      []string
 	runtimeTracker *RuntimeTracker
 }
 
 // NewTestExecutor creates a new test executor
-func NewTestExecutor(config *Config) *TestExecutor {
+func NewTestExecutor(config *Config, specFiles []string) *TestExecutor {
 	return &TestExecutor{
 		config:         config,
+		specFiles:      specFiles,
 		runtimeTracker: NewRuntimeTracker(),
 	}
 }
@@ -42,7 +44,7 @@ func (e *TestExecutor) executeDryRun() error {
 		fmt.Fprintln(os.Stderr, "[dry-run] bundle install")
 	}
 
-	fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(e.config.SpecFiles))
+	fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(e.specFiles))
 
 	// Load runtime data if available
 	runtimeData, err := LoadRuntimeData()
@@ -54,10 +56,10 @@ func (e *TestExecutor) executeDryRun() error {
 	// Group files for execution
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(e.config.SpecFiles, e.config.WorkerCount, runtimeData)
+		groups = GroupSpecFilesByRuntime(e.specFiles, e.config.WorkerCount, runtimeData)
 		fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
 	} else {
-		groups = GroupSpecFilesBySize(e.config.SpecFiles, e.config.WorkerCount)
+		groups = GroupSpecFilesBySize(e.specFiles, e.config.WorkerCount)
 		fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
 	}
 
@@ -73,14 +75,14 @@ func (e *TestExecutor) executeDryRun() error {
 // executeTests handles the actual test execution
 func (e *TestExecutor) executeTests() error {
 	actualWorkers := e.config.WorkerCount
-	if len(e.config.SpecFiles) < e.config.WorkerCount {
-		actualWorkers = len(e.config.SpecFiles)
+	if len(e.specFiles) < e.config.WorkerCount {
+		actualWorkers = len(e.specFiles)
 	}
 
 	fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
-		len(e.config.SpecFiles), actualWorkers, runtime.NumCPU())
+		len(e.specFiles), actualWorkers, runtime.NumCPU())
 
-	results, wallTime := RunSpecsInParallel(e.config, e.runtimeTracker)
+	results, wallTime := RunSpecsInParallel(e.config, e.specFiles, e.runtimeTracker)
 
 	// Save runtime data
 	if err := e.runtimeTracker.SaveToFile(); err != nil {

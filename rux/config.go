@@ -15,7 +15,6 @@ type Config struct {
 	ColorOutput  bool
 	ConfigPaths  *ConfigPaths
 	DryRun       bool
-	SpecFiles    []string
 	TraceEnabled bool
 	WorkerCount  int
 }
@@ -74,19 +73,13 @@ func InitConfigPaths() *ConfigPaths {
 	return &configPaths
 }
 
-func BuildConfig(ctx *cli.Context, paths *ConfigPaths) (*Config, error) {
-	specFiles, err := discoverSpecFiles(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func BuildConfig(ctx *cli.Context, paths *ConfigPaths) *Config {
 	return &Config{
 		Auto:         ctx.Bool("auto"),
 		ColorOutput:  shouldUseColor(ctx),
 		ConfigPaths:  paths,
 		DryRun:       ctx.Bool("dry-run"),
-		SpecFiles:    specFiles,
 		TraceEnabled: ctx.Bool("trace"),
 		WorkerCount:  GetWorkerCount(ctx.Int("n")),
-	}, nil
+	}
 }
