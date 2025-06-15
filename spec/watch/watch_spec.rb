@@ -19,7 +19,7 @@ RSpec.describe "rux watch command", :skip_if_ci do
 
       if RUBY_PLATFORM.include?("darwin") && RUBY_PLATFORM.include?("arm64")
         expect(result.err).to include("rux using e-dant/watcher")
-        expect(result.err).to include("path=#{ENV["HOME"]}/.rux/cache/bin/watcher-aarch64-apple-darwin")
+        expect(result.err).to include("path=#{ENV["HOME"]}/.rux/bin/watcher-aarch64-apple-darwin")
       end
     end
 

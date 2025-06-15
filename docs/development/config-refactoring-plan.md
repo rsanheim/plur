@@ -75,6 +75,10 @@ If you're planning to switch to Kong, it has better patterns built-in:
 - Separated "immediate initialization" (`ConfigPaths`) from "CLI context dependent" (`Config`)
 - Extracted `specFiles` from `BuildConfig` - no longer part of global config
 - All tests passing with the refactored configuration
+- Added `BinDir` to `ConfigPaths` for watcher binary storage
+- Implemented `rux watch install` command for explicit binary installation
+- Refactored all watcher binary logic into `watch/binary.go` for better organization
+- Updated `doctor` and `watch` commands to use centralized binary functions
 
 ### In Progress 🚧
 - Still using global variables (`ruxConfig` and `configPaths`)
@@ -86,6 +90,11 @@ If you're planning to switch to Kong, it has better patterns built-in:
 2. Update all commands to extract config from context instead of globals
 3. Consider making ConfigPaths unexported if keeping any globals
 4. Add comprehensive tests for config initialization
+5. Clean up dead code identified in code review:
+   - Remove unused variables in `runner.go`
+   - Remove unused `GetVersion()` function
+   - Remove unused logger wrapper functions
+   - Complete or remove Kong CLI implementation
 
 The real Go lesson here: The language actively tries to trick you with `:=`, but at least the compiler is fast enough that you discover your mistakes quickly!
 
@@ -94,8 +103,11 @@ The real Go lesson here: The language actively tries to trick you with `:=`, but
 ### Immediate Tasks
 - [x] **Fix variable shadowing bug** - Changed `:=` to `=` to properly assign to global
 - [x] **Extract specFiles from BuildConfig** - Spec files are now discovered per-command, not globally
-- [ ] **Implement App.Metadata approach** - Replace global `ruxConfig` with storing config in `ctx.App.Metadata["config"]`
 - [x] **Fix `rux watch` command parsing** - Watch command now has dedicated handler, doesn't treat 'watch' as spec pattern
+- [x] **Implement `rux watch install`** - Added explicit binary installation command
+- [x] **Refactor binary management** - Consolidated all binary logic in `watch/binary.go`
+- [ ] **Implement App.Metadata approach** - Replace global `ruxConfig` with storing config in `ctx.App.Metadata["config"]`
+- [ ] **Clean up dead code** - Remove unused functions and variables identified in review
 
 ### Config Refactoring Tasks
 - [x] **Consolidate config initialization** - Created `Config` and `ConfigPaths` structs
@@ -108,10 +120,30 @@ The real Go lesson here: The language actively tries to trick you with `:=`, but
 ### Testing & Validation
 - [x] **Test all commands** - Doctor, watch, and main test runner confirmed working
 - [x] **Fix failing specs** - Updated specs to work with new config structure
+- [x] **Add watch install spec** - Integration test for binary installation
+- [x] **Update watch specs** - Fixed binary path expectations for new bin directory
 - [ ] **Add config tests** - Unit tests for BuildConfig and ConfigPaths initialization
 - [ ] **Test App.Metadata approach** - Ensure new pattern works across all commands
 
 ### Documentation
+- [x] **Document watch install implementation** - Created implementation plan documentation
+- [x] **Document binary refactoring** - Created summary of binary management changes
 - [ ] **Document App.Metadata pattern** - Add examples of how to access config from commands
 - [ ] **Before hook behavior** - Document when Before runs vs command resolution
 - [ ] **Migration guide** - If switching approaches, document the changes needed in each command
+
+## Recent Accomplishments (2025-06-15)
+
+### Watch Binary Management Refactoring
+- Created `watch/binary.go` consolidating all binary-related functions
+- Removed duplicate code from `watcher.go` and `watch.go`
+- Implemented `rux watch install` command for explicit binary installation
+- Changed binary location from `.cache/bin/` to `bin/` for better organization
+- All binary logic now follows DRY principles with centralized platform detection
+
+### Code Review Findings
+Identified dead code to be cleaned up:
+- Unused caching variables in `runner.go` (lines 21-23)
+- Unused `GetVersion()` function in `version.go`
+- Unused logger wrapper functions (`LogError`, `LogWarn`, etc.)
+- Incomplete Kong CLI implementation that needs completion or removal

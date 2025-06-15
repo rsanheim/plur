@@ -22,6 +22,10 @@ import (
 //go:embed vendor/watcher/*
 var watcherBinaries embed.FS
 
+func runWatchInstall(ctx *cli.Context) error {
+	return watch.InstallBinary(watcherBinaries, ruxConfig.ConfigPaths.BinDir, ruxConfig.ConfigPaths.RuxHome)
+}
+
 func runWatch(ctx *cli.Context) error {
 	// Log startup info
 	Logger.Info("rux watch starting!", "version", GetVersionInfo())
@@ -59,7 +63,7 @@ func runWatch(ctx *cli.Context) error {
 	}
 
 	// Get the watcher binary path
-	watcherPath, err := getWatcherBinaryPath()
+	watcherPath, err := watch.GetWatcherBinaryPath(ruxConfig.ConfigPaths.BinDir)
 	if err != nil {
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}
@@ -217,36 +221,6 @@ func runWatch(ctx *cli.Context) error {
 			return nil
 		}
 	}
-}
-
-func getWatcherBinaryPath() (string, error) {
-	cacheDir := ruxConfig.ConfigPaths.CacheDir
-
-	binaryPath, err := watch.GetBinaryPath(cacheDir)
-	if err != nil {
-		return "", err
-	}
-
-	if _, err := os.Stat(binaryPath); err == nil {
-		return binaryPath, nil
-	}
-
-	binaryName := filepath.Base(binaryPath)
-
-	// Extract binary from embedded files
-	embeddedPath := filepath.Join("vendor/watcher", binaryName)
-	data, err := watcherBinaries.ReadFile(embeddedPath)
-	if err != nil {
-		return "", fmt.Errorf("watcher binary not embedded: %v", err)
-	}
-
-	// Write binary to cache
-	if err := os.WriteFile(binaryPath, data, 0755); err != nil {
-		return "", fmt.Errorf("failed to write watcher binary: %v", err)
-	}
-
-	LogDebug("Extracted watcher binary", "path", binaryPath)
-	return binaryPath, nil
 }
 
 // Simple implementation using direct rspec call for now

@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/rsanheim/rux/watch"
 	"github.com/urfave/cli/v2"
 )
 
@@ -67,7 +68,7 @@ func runDoctor(ctx *cli.Context) error {
 
 	// Watcher info
 	fmt.Println("File Watcher:")
-	watcherPath, err := getWatcherBinaryPath()
+	watcherPath, err := watch.GetWatcherBinaryPath(ruxConfig.ConfigPaths.BinDir)
 	if err != nil {
 		fmt.Printf("  Status:         Not available (%v)\n", err)
 		fmt.Printf("  Platform:       %s/%s\n", runtime.GOOS, runtime.GOARCH)

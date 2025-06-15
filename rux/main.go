@@ -38,7 +38,7 @@ func createApp() *cli.App {
 						Name:  "install",
 						Usage: "Install the watcher binary",
 						Action: func(ctx *cli.Context) error {
-							return watch.InstallBinary(ruxConfig.ConfigPaths)
+							return runWatchInstall(ctx)
 						},
 					},
 				},
