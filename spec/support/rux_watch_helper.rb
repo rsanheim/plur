@@ -10,7 +10,6 @@ module RuxWatchHelper
   # @return [TTY::Command::Result] with stdout, stderr, and exit status
   def run_rux(*args, env: {})
     cmd = TTY::Command.new(uuid: false, printer: :null)
-    rux_binary = File.join(File.dirname(__FILE__), "..", "..", "rux", "rux")
     cmd_args = [rux_binary] + args
     cmd.run!(cmd_args.join(" "), env: env)
   end

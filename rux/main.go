@@ -81,10 +81,6 @@ func createApp() *cli.App {
 						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
 					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
-					},
 				},
 				Action: func(ctx *cli.Context) error {
 					return runDatabaseTask("db:setup", ctx)
@@ -98,10 +94,6 @@ func createApp() *cli.App {
 						Name:    "n",
 						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
-					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
 					},
 				},
 				Action: func(ctx *cli.Context) error {
@@ -117,10 +109,6 @@ func createApp() *cli.App {
 						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
 					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
-					},
 				},
 				Action: func(ctx *cli.Context) error {
 					return runDatabaseTask("db:migrate", ctx)
@@ -134,10 +122,6 @@ func createApp() *cli.App {
 						Name:    "n",
 						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
-					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
 					},
 				},
 				Action: func(ctx *cli.Context) error {
