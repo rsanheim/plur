@@ -125,8 +125,7 @@
       "WebFetch(domain:dystroy.org)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pkg.go.dev)",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(RUX_HOME=/tmp/test-rux-home rux watch --timeout 1)"
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": []
   },
