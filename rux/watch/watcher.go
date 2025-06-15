@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"time"
 )
 
@@ -150,35 +149,4 @@ func (w *Watcher) readErrors(stderr io.Reader) {
 		line := scanner.Text()
 		fmt.Fprintf(os.Stderr, "watcher stderr: %s\n", line)
 	}
-}
-
-// GetBinaryPath determines the platform-specific watcher binary path
-func GetBinaryPath(cacheDir string) (string, error) {
-	// Determine platform-specific binary name
-	var binaryName string
-	switch runtime.GOOS {
-	case "darwin":
-		switch runtime.GOARCH {
-		case "arm64", "aarch64":
-			binaryName = "watcher-aarch64-apple-darwin"
-		case "amd64":
-			return "", fmt.Errorf("intel Mac (x86_64) is not supported. Please use an Apple Silicon Mac")
-		default:
-			return "", fmt.Errorf("unsupported macOS architecture: %s", runtime.GOARCH)
-		}
-	case "linux":
-		switch runtime.GOARCH {
-		case "arm64", "aarch64":
-			binaryName = "watcher-aarch64-unknown-linux-gnu"
-		case "amd64":
-			binaryName = "watcher-x86_64-unknown-linux-gnu"
-		default:
-			return "", fmt.Errorf("unsupported Linux architecture: %s", runtime.GOARCH)
-		}
-	default:
-		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
-	}
-
-	// Return the expected binary path
-	return filepath.Join(cacheDir, "bin", binaryName), nil
 }

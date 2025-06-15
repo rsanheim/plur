@@ -6,10 +6,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/tracing"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
 )
+
+var configPaths = InitConfigPaths()
+var ruxConfig *Config
 
 func createApp() *cli.App {
 	return &cli.App{
@@ -19,13 +23,29 @@ func createApp() *cli.App {
 		Before: func(ctx *cli.Context) error {
 			// Initialize logging globally before any command runs
 			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
-			InitLogger(ctx.Bool("verbose"), debug)
+			logger.InitLogger(ctx.Bool("verbose"), debug)
+
+			ruxConfig = BuildConfig(ctx, configPaths)
+			logger.Logger.Debug("initial config", "config", ruxConfig)
+
 			return nil
 		},
 		Commands: []*cli.Command{
 			{
 				Name:  "watch",
 				Usage: "Watch for file changes and run tests automatically",
+				Before: func(ctx *cli.Context) error {
+					return runWatchInstall(false)
+				},
+				Subcommands: []*cli.Command{
+					{
+						Name:  "install",
+						Usage: "Install the watcher binary",
+						Action: func(ctx *cli.Context) error {
+							return runWatchInstall(true)
+						},
+					},
+				},
 				Flags: []cli.Flag{
 					&cli.IntFlag{
 						Name:  "timeout",
@@ -36,10 +56,6 @@ func createApp() *cli.App {
 						Usage: "Debounce delay in milliseconds (default: 100)",
 						Value: 100,
 					},
-					&cli.BoolFlag{
-						Name:  "verbose",
-						Usage: "Enable verbose output for debugging",
-					},
 				},
 				Action: func(ctx *cli.Context) error {
 					return runWatch(ctx)
@@ -48,12 +64,6 @@ func createApp() *cli.App {
 			{
 				Name:  "doctor",
 				Usage: "Show diagnostic information about rux installation",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:  "verbose",
-						Usage: "Enable verbose output for debugging",
-					},
-				},
 				Action: func(ctx *cli.Context) error {
 					return runDoctor(ctx)
 				},
@@ -75,10 +85,6 @@ func createApp() *cli.App {
 						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
 					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
-					},
 				},
 				Action: func(ctx *cli.Context) error {
 					return runDatabaseTask("db:setup", ctx)
@@ -92,10 +98,6 @@ func createApp() *cli.App {
 						Name:    "n",
 						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
-					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
 					},
 				},
 				Action: func(ctx *cli.Context) error {
@@ -111,10 +113,6 @@ func createApp() *cli.App {
 						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
 					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
-					},
 				},
 				Action: func(ctx *cli.Context) error {
 					return runDatabaseTask("db:migrate", ctx)
@@ -128,10 +126,6 @@ func createApp() *cli.App {
 						Name:    "n",
 						Aliases: []string{"workers"},
 						Usage:   "Number of parallel workers",
-					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
 					},
 				},
 				Action: func(ctx *cli.Context) error {
@@ -196,14 +190,14 @@ func createApp() *cli.App {
 
 			defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
-			// Build execution configuration
-			config, err := BuildExecutionConfig(ctx)
+			// Discover spec files for the main command
+			specFiles, err := discoverSpecFiles(ctx)
 			if err != nil {
 				return err
 			}
 
 			// Run bundle install if --auto flag is set
-			if config.Auto && !config.DryRun {
+			if ruxConfig.Auto && !ruxConfig.DryRun {
 				depManager := NewDependencyManager()
 				if err := depManager.InstallDependencies(); err != nil {
 					return err
@@ -211,7 +205,7 @@ func createApp() *cli.App {
 			}
 
 			// Create and run executor
-			executor := NewTestExecutor(config)
+			executor := NewTestExecutor(ruxConfig, specFiles)
 			if err := executor.Execute(); err != nil {
 				// Exit with error code 1 for test failures
 				if strings.Contains(err.Error(), "test run failed") {

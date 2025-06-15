@@ -16,10 +16,10 @@ RUX_CORES = ENV["CI"] ? 3 : 8
 
 # Default task runs all checks
 desc "Run all tests and linting"
-task default: ["test:all", "lint:all"]
+task default: ["build", "test:all", "lint:all"]
 
 desc "Build the rux Go binary"
-task :build do
+task build: ["vendor:build"] do
   Dir.chdir("rux") do
     puts "Building rux"
     sh %(go build -mod=mod -o rux .)
@@ -29,7 +29,7 @@ task :build do
 end
 
 desc "Build and install rux to GOPATH/bin"
-task :install do
+task install: ["vendor:build"] do
   Dir.chdir("rux") do
     sh %(go install -mod=mod .)
     gopath = `go env GOPATH`.chomp
@@ -50,7 +50,7 @@ namespace :test do
   task all: %i[go ruby integration]
 
   desc "Run Go tests"
-  task :go do
+  task go: ["vendor:build"] do
     Dir.chdir("rux") do
       puts "running go tests..."
 

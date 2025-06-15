@@ -9,7 +9,7 @@ RSpec.describe "Rux database tasks", skip: true do
   describe "db:setup command" do
     it "runs db:setup in dry-run mode for Rails app" do
       Dir.chdir(default_rails_dir) do
-        output = `#{rux_binary} db:setup --dry-run -n 3 2>&1`
+        output = `#{rux_binary} --dry-run db:setup -n 3 2>&1`
 
         expect(output).to include("[dry-run] Would run database task 'db:setup' with 3 workers")
         expect(output).to include("[dry-run] Worker 0: RAILS_ENV=test bundle exec rake db:setup")

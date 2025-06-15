@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/watch"
 	"github.com/urfave/cli/v2"
 )
@@ -22,9 +23,13 @@ import (
 //go:embed vendor/watcher/*
 var watcherBinaries embed.FS
 
+func runWatchInstall(force bool) error {
+	return watch.InstallBinary(watcherBinaries, ruxConfig.ConfigPaths.BinDir, ruxConfig.ConfigPaths.RuxHome, force)
+}
+
 func runWatch(ctx *cli.Context) error {
 	// Log startup info
-	Logger.Info("rux watch starting!", "version", GetVersionInfo())
+	logger.Logger.Info("rux watch starting!", "version", GetVersionInfo())
 
 	// Create file mapper
 	fileMapper := watch.NewFileMapper()
@@ -33,7 +38,7 @@ func runWatch(ctx *cli.Context) error {
 	debounceMs := ctx.Int("debounce")
 	debounceDelay := time.Duration(debounceMs) * time.Millisecond
 	debouncer := watch.NewDebouncer(debounceDelay)
-	LogDebug("Debounce delay", "ms", debounceMs)
+	logger.LogDebug("Debounce delay", "ms", debounceMs)
 
 	// Determine which directories to watch
 	watchDirs := watch.GetWatchDirectories()
@@ -49,23 +54,23 @@ func runWatch(ctx *cli.Context) error {
 
 	timeout := ctx.Int("timeout")
 
-	Logger.Info("rux configuration info",
+	logger.Logger.Info("rux configuration info",
 		"project", projectName,
 		"directories", watchDirs,
 		"debounce", debounceMs,
 		"timeout", timeout)
 	if timeout > 0 {
-		LogDebug("rux in timeout mode - with auto exit after " + fmt.Sprintf("%d", timeout) + " seconds")
+		logger.LogDebug("rux in timeout mode - with auto exit after " + fmt.Sprintf("%d", timeout) + " seconds")
 	}
 
 	// Get the watcher binary path
-	watcherPath, err := getWatcherBinaryPath()
+	watcherPath, err := watch.GetWatcherBinaryPath(ruxConfig.ConfigPaths.BinDir)
 	if err != nil {
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}
 
 	// Log binary path in debug mode
-	LogDebug("rux using e-dant/watcher", "path", watcherPath)
+	logger.LogDebug("rux using e-dant/watcher", "path", watcherPath)
 
 	// Create watcher configuration
 	watcherConfig := &watch.ManagerConfig{
@@ -121,13 +126,13 @@ func runWatch(ctx *cli.Context) error {
 			switch input {
 			case "":
 				// User pressed Enter - run all specs
-				Logger.Info("Running all tests (manual trigger)")
+				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
 				runSpecsOrDirectory("spec")
 				fmt.Print("\nrux> ")
 			case "exit":
 				// User typed exit command
-				Logger.Info("User requested exit")
+				logger.Logger.Info("User requested exit")
 				fmt.Println("Exiting watch mode...")
 				return nil
 			default:
@@ -145,7 +150,7 @@ func runWatch(ctx *cli.Context) error {
 				relPath = "./" + rel
 			}
 
-			LogDebug("watch",
+			logger.LogDebug("watch",
 				"event", event.EffectType,
 				"type", event.PathType,
 				"associated", fmt.Sprintf("%v", event.Associated),
@@ -179,10 +184,10 @@ func runWatch(ctx *cli.Context) error {
 			// Map the file to specs
 			specsToRun := fileMapper.MapFileToSpecs(relPath)
 			if len(specsToRun) == 0 {
-				LogDebug("rux", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
+				logger.LogDebug("rux", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
 				continue
 			}
-			LogDebug("rux", "event", "mapping_found", "path", "./"+relPath, "specs", specsToRun)
+			logger.LogDebug("rux", "event", "mapping_found", "path", "./"+relPath, "specs", specsToRun)
 
 			// Debounce the spec runs
 			debouncer.Debounce(specsToRun, func(specs []string) {
@@ -194,7 +199,7 @@ func runWatch(ctx *cli.Context) error {
 
 				// Run each unique spec
 				for spec := range uniqueSpecs {
-					LogDebug("rux", "event", "run_spec", "path", "./"+spec)
+					logger.LogDebug("rux", "event", "run_spec", "path", "./"+spec)
 					runSpecsOrDirectory(spec)
 				}
 
@@ -208,7 +213,7 @@ func runWatch(ctx *cli.Context) error {
 			return fmt.Errorf("watcher error: %v", err)
 
 		case <-timeoutChan:
-			Logger.Info("rux timeout reached, exiting!", "event", "timeout", "timeout", timeout)
+			logger.Logger.Info("rux timeout reached, exiting!", "event", "timeout", "timeout", timeout)
 			fmt.Println("\nTimeout reached, exiting!")
 			return nil
 
@@ -217,49 +222,6 @@ func runWatch(ctx *cli.Context) error {
 			return nil
 		}
 	}
-}
-
-func getWatcherBinaryPath() (string, error) {
-	// Get cache directory
-	cacheDir, err := getRuxCacheDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get cache directory: %v", err)
-	}
-
-	// Get expected binary path
-	binaryPath, err := watch.GetBinaryPath(cacheDir)
-	if err != nil {
-		return "", err
-	}
-
-	// Check if binary already exists
-	if _, err := os.Stat(binaryPath); err == nil {
-		return binaryPath, nil
-	}
-
-	// Need to extract the binary
-	binDir := filepath.Dir(binaryPath)
-	if err := os.MkdirAll(binDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create bin directory: %v", err)
-	}
-
-	// Get the binary name from the path
-	binaryName := filepath.Base(binaryPath)
-
-	// Extract binary from embedded files
-	embeddedPath := filepath.Join("vendor/watcher", binaryName)
-	data, err := watcherBinaries.ReadFile(embeddedPath)
-	if err != nil {
-		return "", fmt.Errorf("watcher binary not embedded: %v", err)
-	}
-
-	// Write binary to cache
-	if err := os.WriteFile(binaryPath, data, 0755); err != nil {
-		return "", fmt.Errorf("failed to write watcher binary: %v", err)
-	}
-
-	LogDebug("Extracted watcher binary", "path", binaryPath)
-	return binaryPath, nil
 }
 
 // Simple implementation using direct rspec call for now
