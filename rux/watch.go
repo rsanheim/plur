@@ -222,24 +222,15 @@ func runWatch(ctx *cli.Context) error {
 func getWatcherBinaryPath() (string, error) {
 	cacheDir := ruxConfig.ConfigPaths.CacheDir
 
-	// Get expected binary path
 	binaryPath, err := watch.GetBinaryPath(cacheDir)
 	if err != nil {
 		return "", err
 	}
 
-	// Check if binary already exists
 	if _, err := os.Stat(binaryPath); err == nil {
 		return binaryPath, nil
 	}
 
-	// Need to extract the binary
-	binDir := filepath.Dir(binaryPath)
-	if err := os.MkdirAll(binDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create bin directory: %v", err)
-	}
-
-	// Get the binary name from the path
 	binaryName := filepath.Base(binaryPath)
 
 	// Extract binary from embedded files

@@ -153,7 +153,7 @@ func (w *Watcher) readErrors(stderr io.Reader) {
 }
 
 // GetBinaryPath determines the platform-specific watcher binary path
-func GetBinaryPath(cacheDir string) (string, error) {
+func GetBinaryPath(binDir string) (string, error) {
 	// Determine platform-specific binary name
 	var binaryName string
 	switch runtime.GOOS {
@@ -180,5 +180,5 @@ func GetBinaryPath(cacheDir string) (string, error) {
 	}
 
 	// Return the expected binary path
-	return filepath.Join(cacheDir, "bin", binaryName), nil
+	return filepath.Join(binDir, binaryName), nil
 }

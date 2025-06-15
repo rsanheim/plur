@@ -21,6 +21,7 @@ type Config struct {
 
 type ConfigPaths struct {
 	RuxHome           string // ~/.rux or $RUX_HOME
+	BinDir            string
 	CacheDir          string
 	RuntimeDir        string
 	FormatterDir      string
@@ -44,11 +45,12 @@ func InitConfigPaths() *ConfigPaths {
 		os.Exit(1)
 	}
 
+	binDir := filepath.Join(ruxHome, "bin")
 	cacheDir := filepath.Join(ruxHome, "cache")
 	runtimeDir := filepath.Join(ruxHome, "runtime")
 	formatterDir := filepath.Join(ruxHome, "formatter")
 
-	paths := []string{cacheDir, runtimeDir, formatterDir}
+	paths := []string{binDir, cacheDir, runtimeDir, formatterDir}
 	for _, path := range paths {
 		if os.MkdirAll(path, 0755) != nil {
 			fmt.Fprintf(os.Stderr, "failed to create %s directory: %v\n", path, err)
@@ -64,6 +66,7 @@ func InitConfigPaths() *ConfigPaths {
 
 	configPaths := ConfigPaths{
 		RuxHome:           ruxHome,
+		BinDir:            binDir,
 		CacheDir:          cacheDir,
 		RuntimeDir:        runtimeDir,
 		FormatterDir:      formatterDir,
