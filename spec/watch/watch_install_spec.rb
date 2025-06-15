@@ -1,19 +1,7 @@
 RSpec.describe "rux watch install command" do
   include RuxWatchHelper
 
-  around do |example|
-    Dir.mktmpdir do |tmpdir|
-      rux_home = Pathname.new(tmpdir)
-      ENV["RUX_HOME"] = rux_home.to_s
-      example.run
-    ensure
-      ENV.delete("RUX_HOME")
-    end
-  end
-
-  def rux_home
-    Pathname.new(ENV["RUX_HOME"])
-  end
+  around_with_tmp_rux_home
 
   it "installs the watcher binary in RUX_HOME/bin/[platform-specific-binary]" do
     expect(rux_home.join("bin", "watcher-aarch64-apple-darwin")).to_not exist

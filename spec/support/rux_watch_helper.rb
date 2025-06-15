@@ -4,16 +4,6 @@ require "open3"
 module RuxWatchHelper
   DEFAULT_RUX_WATCH_TIMEOUT = 3
 
-  # Generic method to run rux with any subcommands
-  # @param args [Array<String>] command arguments
-  # @param env [Hash] environment variables
-  # @return [TTY::Command::Result] with stdout, stderr, and exit status
-  def run_rux(*args, env: {})
-    cmd = TTY::Command.new(uuid: false, printer: :null)
-    cmd_args = [rux_binary] + args
-    cmd.run!(cmd_args.join(" "), env: env)
-  end
-
   # Runs rux watch with TTY::Command and returns a proper result object
   # @param dir [String] directory to run in
   # @param timeout [Integer] timeout in seconds

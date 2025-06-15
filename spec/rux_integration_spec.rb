@@ -28,7 +28,7 @@ RSpec.describe "Rux integration tests" do
   describe "database tasks" do
     it "shows dry-run output for database creation" do
       Dir.chdir(default_rails_dir) do
-        stdout, _, status = Open3.capture3(rux_binary, "db:create", "--dry-run", "-n", "3")
+        stdout, _, status = Open3.capture3(rux_binary, "--dry-run", "db:create", "-n", "3")
 
         expect(status.success?).to be true
         expect(stdout).to include("[dry-run] Would run database task 'db:create' with 3 workers")

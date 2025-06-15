@@ -16,7 +16,7 @@ RUX_CORES = ENV["CI"] ? 3 : 8
 
 # Default task runs all checks
 desc "Run all tests and linting"
-task default: ["test:all", "lint:all"]
+task default: ["build", "test:all", "lint:all"]
 
 desc "Build the rux Go binary"
 task build: ["vendor:build"] do
