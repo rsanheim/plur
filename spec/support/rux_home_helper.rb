@@ -1,5 +1,4 @@
 module RuxHomeHelper
-
   module ClassMethods
     def around_with_tmp_rux_home
       around do |example|
@@ -38,5 +37,4 @@ module RuxHomeHelper
       cmd.run(:rux, *args, env: env)
     end
   end
-
 end

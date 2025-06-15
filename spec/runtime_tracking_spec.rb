@@ -8,7 +8,7 @@ RSpec.describe "Rux runtime tracking" do
       temp_runtime_dir = File.join(tmp_rux_home, "runtime")
 
       Dir.chdir(default_ruby_dir) do
-        result = run_rux("-n", "2", env: { "RUX_HOME" => tmp_rux_home })
+        run_rux("-n", "2", env: {"RUX_HOME" => tmp_rux_home})
 
         expect(File.exist?(temp_runtime_dir)).to be true
         matches = Dir.glob(File.join(temp_runtime_dir, "*.json"))
@@ -25,7 +25,7 @@ RSpec.describe "Rux runtime tracking" do
       Dir.chdir(default_ruby_dir) do
         result = run_rux("-n", "2")
 
-        runtime_file_match = result.err.match(/Runtime data saved to\: (.+)/)
+        runtime_file_match = result.err.match(/Runtime data saved to: (.+)/)
         expect(runtime_file_match).not_to be_nil
         runtime_file = runtime_file_match[1].strip
 

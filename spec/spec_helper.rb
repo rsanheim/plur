@@ -35,7 +35,6 @@ RSpec.configure do |config|
     end
   end
 
-
   def rux_binary
     @rux_binary ||= File.join(__dir__, "..", "rux", "rux")
   end
@@ -52,7 +51,6 @@ RSpec.configure do |config|
     Pathname.new(__dir__).parent.join("fixtures", "projects", name)
   end
 
-
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
   end
@@ -60,7 +58,6 @@ RSpec.configure do |config|
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
   end
-
 
   # Restore default-ruby state after the entire test suite
   config.after(:suite) do
