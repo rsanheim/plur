@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/rspec"
 	"github.com/rsanheim/rux/tracing"
 )
@@ -342,22 +343,22 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 	if len(runtimeData) > 0 {
 		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(specFiles), pluralize(len(specFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesByRuntime(specFiles, maxWorkers, runtimeData)
-		LogVerbose("Using runtime-based grouping", "runtime_entries", len(runtimeData))
+		logger.LogVerbose("Using runtime-based grouping", "runtime_entries", len(runtimeData))
 	} else {
 		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(specFiles), pluralize(len(specFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesBySize(specFiles, maxWorkers)
-		LogVerbose("Using size-based grouping (no runtime data available)")
+		logger.LogVerbose("Using size-based grouping (no runtime data available)")
 	}
 
 	// Log group assignments in verbose mode
-	if VerboseMode {
+	if logger.VerboseMode {
 		for i, group := range groups {
 			// TotalSize represents milliseconds when using runtime data, bytes when using file size
 			runtimeInfo := "by file size"
 			if len(runtimeData) > 0 {
 				runtimeInfo = fmt.Sprintf("%.2fs", float64(group.TotalSize)/1000.0)
 			}
-			LogVerbose("Worker assignment",
+			logger.LogVerbose("Worker assignment",
 				"worker", i,
 				"files", group.Files,
 				"estimated_time", runtimeInfo)
@@ -386,9 +387,9 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		wg.Add(1)
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
-			LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
+			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
 			result := RunSpecFile(ctx, ruxConfig.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, outputChan)
-			LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success)
+			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success)
 			results <- result
 		}(i, group.Files)
 	}

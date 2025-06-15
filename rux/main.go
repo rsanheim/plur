@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/tracing"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
@@ -22,10 +23,10 @@ func createApp() *cli.App {
 		Before: func(ctx *cli.Context) error {
 			// Initialize logging globally before any command runs
 			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
-			InitLogger(ctx.Bool("verbose"), debug)
+			logger.InitLogger(ctx.Bool("verbose"), debug)
 
 			ruxConfig = BuildConfig(ctx, configPaths)
-			Logger.Debug("initial config", "config", ruxConfig)
+			logger.Logger.Debug("initial config", "config", ruxConfig)
 
 			return nil
 		},
@@ -33,12 +34,15 @@ func createApp() *cli.App {
 			{
 				Name:  "watch",
 				Usage: "Watch for file changes and run tests automatically",
+				Before: func(ctx *cli.Context) error {
+					return runWatchInstall(false)
+				},
 				Subcommands: []*cli.Command{
 					{
 						Name:  "install",
 						Usage: "Install the watcher binary",
 						Action: func(ctx *cli.Context) error {
-							return runWatchInstall(ctx)
+							return runWatchInstall(true)
 						},
 					},
 				},

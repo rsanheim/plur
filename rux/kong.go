@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
+	"github.com/rsanheim/rux/logger"
 )
 
 type WatchCmd struct {
@@ -13,14 +14,14 @@ type WatchCmd struct {
 }
 
 func (w *WatchCmd) Run() error {
-	Logger.Info("rux-kong watch starting",
+	logger.Logger.Info("rux-kong watch starting",
 		"timeout", w.Timeout,
 		"debounce", w.Debounce,
 		"verbose", w.Verbose)
 
 	// TODO: Call the actual runWatch logic here
 	// For now, just show it would work
-	Logger.Warn("kong watch not fully implemented yet")
+	logger.Logger.Warn("kong watch not fully implemented yet")
 	return nil
 }
 
@@ -29,13 +30,13 @@ type SpecCmd struct {
 }
 
 func (cmd *SpecCmd) Run() error {
-	Logger.Info("rux-kong spec starting", "glob", cmd.Glob)
+	logger.Logger.Info("rux-kong spec starting", "glob", cmd.Glob)
 
 	files, err := ExpandGlobPatterns([]string{cmd.Glob})
 	if err != nil {
 		return err
 	}
-	Logger.Info("found files", "files", files)
+	logger.Logger.Info("found files", "files", files)
 	return nil
 }
 
@@ -64,15 +65,15 @@ func runKongCLI() {
 
 	// Initialize logging before running any command (same as main.go Before hook)
 	debug := KongCLI.Debug || os.Getenv("RUX_DEBUG") == "1"
-	InitLogger(KongCLI.Verbose, debug)
+	logger.InitLogger(KongCLI.Verbose, debug)
 
 	if KongCLI.DryRun {
-		Logger.Info("kong dry run mode - exiting")
+		logger.Logger.Info("kong dry run mode - exiting")
 		return
 	}
 
 	err := ctx.Run()
 	if err != nil {
-		Logger.Error("Command failed", "error", err)
+		logger.Logger.Error("Command failed", "error", err)
 	}
 }

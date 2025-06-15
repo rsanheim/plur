@@ -8,6 +8,18 @@ import (
 	"runtime"
 )
 
+// LogDebug logs a debug message with key-value pairs
+func LogDebug(msg string, args ...interface{}) {
+	// For now, just print to stdout
+	fmt.Printf("[DEBUG] %s", msg)
+	for i := 0; i < len(args); i += 2 {
+		if i+1 < len(args) {
+			fmt.Printf(" %v=%v", args[i], args[i+1])
+		}
+	}
+	fmt.Println()
+}
+
 // GetWatcherBinaryPath returns the path to the installed watcher binary
 // It checks if the binary exists and returns an error with helpful message if not
 func GetWatcherBinaryPath(binDir string) (string, error) {
@@ -25,11 +37,17 @@ func GetWatcherBinaryPath(binDir string) (string, error) {
 }
 
 // InstallBinary extracts the embedded watcher binary and installs it to RUX_HOME/bin
-func InstallBinary(watcherBinaries embed.FS, binDir, ruxHome string) error {
+func InstallBinary(watcherBinaries embed.FS, binDir, ruxHome string, force bool) error {
 	// Get the platform-specific binary path
 	binaryPath, err := getBinaryPath(binDir)
 	if err != nil {
 		return fmt.Errorf("failed to determine binary path: %v", err)
+	}
+	if !force {
+		if _, err := os.Stat(binaryPath); err == nil {
+			LogDebug("watcher binary already installed at", "path", binaryPath)
+			return nil
+		}
 	}
 
 	embeddedPath, err := getEmbeddedBinaryPath()

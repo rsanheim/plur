@@ -1,4 +1,4 @@
-package main
+package logger
 
 import (
 	"context"
@@ -86,7 +86,6 @@ func (h *CustomTextHandler) WithGroup(name string) slog.Handler {
 func InitLogger(verbose bool, debug bool) {
 	VerboseMode = verbose
 
-	// Configure log level
 	var level slog.Level
 	if debug {
 		level = slog.LevelDebug
