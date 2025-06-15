@@ -43,10 +43,6 @@ func createApp() *cli.App {
 						Usage: "Debounce delay in milliseconds (default: 100)",
 						Value: 100,
 					},
-					&cli.BoolFlag{
-						Name:  "verbose",
-						Usage: "Enable verbose output for debugging",
-					},
 				},
 				Action: func(ctx *cli.Context) error {
 					return runWatch(ctx)
@@ -55,12 +51,6 @@ func createApp() *cli.App {
 			{
 				Name:  "doctor",
 				Usage: "Show diagnostic information about rux installation",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:  "verbose",
-						Usage: "Enable verbose output for debugging",
-					},
-				},
 				Action: func(ctx *cli.Context) error {
 					return runDoctor(ctx)
 				},
