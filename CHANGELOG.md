@@ -1,5 +1,8 @@
 # rux CHANGELOG
 
+## v0.6.10 - 2025-06-15
+
+* Consolidating init [#43](https://github.com/rsanheim/rux-meta/pull/43)
 
 ## v0.6.9 - 2025-06-12
 Lotsa internal cleanup
