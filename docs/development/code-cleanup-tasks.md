@@ -2,26 +2,6 @@
 
 ## Dead Code to Remove
 
-### 1. Unused Variables in `runner.go`
-**Location**: Lines 21-23
-```go
-var (
-    cachedFormatterPath string
-    formatterPathOnce   sync.Once
-    formatterPathErr    error
-)
-```
-**Action**: Remove these variables and the `sync` import
-
-### 2. Unused Function in `version.go`
-**Location**: Line 16
-```go
-func GetVersion() string {
-    return version
-}
-```
-**Action**: Remove this function (use `GetVersionInfo()` instead)
-
 ### 3. Unused Logger Functions in `logger.go`
 **Functions to remove**:
 - `LogError()` (line 124)

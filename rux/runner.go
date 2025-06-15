@@ -17,13 +17,6 @@ import (
 	"github.com/rsanheim/rux/tracing"
 )
 
-// Global cached formatter path
-var (
-	cachedFormatterPath string
-	formatterPathOnce   sync.Once
-	formatterPathErr    error
-)
-
 // TestResult represents the result of running a single spec file
 type TestResult struct {
 	SpecFile     string
