@@ -102,6 +102,7 @@ func getProjectHash() (string, error) {
 
 // getRuntimeFilePath returns the project-specific runtime file path
 func getRuntimeFilePath() (string, error) {
+	configPaths := InitConfigPaths()
 	runtimesDir := configPaths.RuntimeDir
 
 	// Get project hash for filename

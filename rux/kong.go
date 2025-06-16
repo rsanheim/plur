@@ -230,6 +230,7 @@ func (r *RuxCLI) AfterApply() error {
 
 func runKongCLI() {
 	var cli RuxCLI
+	configPaths := InitConfigPaths()
 	ctx := kong.Parse(&cli,
 		kong.Name("rux"),
 		kong.Description("A fast Go-based test runner for Ruby/RSpec"),

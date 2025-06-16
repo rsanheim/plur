@@ -12,7 +12,6 @@ import (
 	"golang.org/x/term"
 )
 
-var configPaths = InitConfigPaths()
 var ruxConfig *Config
 
 func createApp() *cli.App {
@@ -25,6 +24,7 @@ func createApp() *cli.App {
 			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
 			logger.InitLogger(ctx.Bool("verbose"), debug)
 
+			configPaths := InitConfigPaths()
 			ruxConfig = BuildConfig(ctx, configPaths)
 			logger.Logger.Debug("initial config", "config", ruxConfig)
 
