@@ -326,18 +326,18 @@ func reorderArgs(args []string) []string {
 }
 
 func main() {
-	// Check KONG=1 environment variable to use kong CLI
-	if os.Getenv("KONG") == "1" {
-		runKongCLI()
+	// Use urfave/cli only if explicitly requested
+	if os.Getenv("URFAVE") == "1" {
+		app := createApp()
+		// Reorder arguments to put flags before positional args
+		args := reorderArgs(os.Args)
+		if err := app.Run(args); err != nil {
+			logger.Logger.Error("Application error", "error", err)
+			os.Exit(1)
+		}
 		return
 	}
 
-	// Default to urfave/cli
-	app := createApp()
-	// Reorder arguments to put flags before positional args
-	args := reorderArgs(os.Args)
-	if err := app.Run(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	// Default to Kong CLI
+	runKongCLI()
 }

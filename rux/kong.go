@@ -11,11 +11,11 @@ import (
 	"github.com/rsanheim/rux/tracing"
 )
 
-type RunCmd struct {
+type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
 }
 
-func (r *RunCmd) Run(parent *RuxCLI) error {
+func (r *SpecCmd) Run(parent *RuxCLI) error {
 	// Build config from parent
 	paths := InitConfigPaths()
 	config := &Config{
@@ -189,7 +189,7 @@ func (d *DBPrepareCmd) Run(parent *RuxCLI) error {
 
 type RuxCLI struct {
 	// Commands
-	Run    RunCmd    `cmd:"" help:"Run tests" default:"withargs"`
+	Spec   SpecCmd   `cmd:"" help:"Run tests" default:"withargs"`
 	Watch  WatchCmd  `cmd:"" help:"Watch for file changes and run tests automatically"`
 	Doctor DoctorCmd `cmd:"" help:"Diagnose Rux installation and environment"`
 	DB     DBCmd     `cmd:"" help:"Database management commands"`
@@ -201,6 +201,7 @@ type RuxCLI struct {
 	DryRun     bool   `help:"Print what would be executed without running" default:"false"`
 	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
 	Color      bool   `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
+	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" hidden:""`
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
 	CacheDir   string `help:"Directory for caching runtime data" default:"${cache_dir}"`
 	Trace      bool   `help:"Enable performance tracing (saves to ./rux_trace_*.json)" default:"false"`
@@ -213,6 +214,11 @@ func (r *RuxCLI) AfterApply() error {
 	if r.Version {
 		fmt.Println(GetVersionInfo())
 		os.Exit(0)
+	}
+
+	// Sync British spelling to American spelling
+	if r.Colour {
+		r.Color = r.Colour
 	}
 
 	// Initialize logging
