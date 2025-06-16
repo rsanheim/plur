@@ -5,7 +5,7 @@ RSpec.describe "rux doctor command" do
     # Use Open3 directly to match Backspin's expected format
     cmd_array = ["rux", "doctor"]
     cmd_array += args if args.any?
-    
+
     Open3.capture3(*cmd_array)
   end
 

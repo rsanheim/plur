@@ -139,51 +139,47 @@ type DBCmd struct {
 	Prepare DBPrepareCmd `cmd:"" help:"Prepare test databases"`
 }
 
-type DBSetupCmd struct {
-	Workers int `short:"n" help:"Number of parallel workers"`
-}
+type DBSetupCmd struct{}
 
 func (d *DBSetupCmd) Run(parent *RuxCLI) error {
 	config := &Config{
 		DryRun: parent.DryRun,
 	}
-	workerCount := GetWorkerCount(d.Workers)
+	// Use parent.Workers since Kong parses -n as a global flag
+	workerCount := GetWorkerCount(parent.Workers)
 	return RunDatabaseTask("db:setup", workerCount, config.DryRun)
 }
 
-type DBCreateCmd struct {
-	Workers int `short:"n" help:"Number of parallel workers"`
-}
+type DBCreateCmd struct{}
 
 func (d *DBCreateCmd) Run(parent *RuxCLI) error {
 	config := &Config{
 		DryRun: parent.DryRun,
 	}
-	workerCount := GetWorkerCount(d.Workers)
+	// Use parent.Workers since Kong parses -n as a global flag
+	workerCount := GetWorkerCount(parent.Workers)
 	return RunDatabaseTask("db:create", workerCount, config.DryRun)
 }
 
-type DBMigrateCmd struct {
-	Workers int `short:"n" help:"Number of parallel workers"`
-}
+type DBMigrateCmd struct{}
 
 func (d *DBMigrateCmd) Run(parent *RuxCLI) error {
 	config := &Config{
 		DryRun: parent.DryRun,
 	}
-	workerCount := GetWorkerCount(d.Workers)
+	// Use parent.Workers since Kong parses -n as a global flag
+	workerCount := GetWorkerCount(parent.Workers)
 	return RunDatabaseTask("db:migrate", workerCount, config.DryRun)
 }
 
-type DBPrepareCmd struct {
-	Workers int `short:"n" help:"Number of parallel workers"`
-}
+type DBPrepareCmd struct{}
 
 func (d *DBPrepareCmd) Run(parent *RuxCLI) error {
 	config := &Config{
 		DryRun: parent.DryRun,
 	}
-	workerCount := GetWorkerCount(d.Workers)
+	// Use parent.Workers since Kong parses -n as a global flag
+	workerCount := GetWorkerCount(parent.Workers)
 	return RunDatabaseTask("db:test:prepare", workerCount, config.DryRun)
 }
 
@@ -217,8 +213,18 @@ func (r *RuxCLI) AfterApply() error {
 	}
 
 	// Sync British spelling to American spelling
-	if r.Colour {
-		r.Color = r.Colour
+	// If --no-colour is used, r.Colour is false and we need to set r.Color to false
+	// If --colour is used, r.Colour is true and we need to set r.Color to true
+	// The issue is that Kong sets the flag based on what's explicitly provided
+	// TODO: This is a limitation of Kong - we can't distinguish between
+	// "not set" vs "explicitly set to false"
+
+	// For now, we'll check if the args contain --no-colour
+	for _, arg := range os.Args {
+		if arg == "--no-colour" {
+			r.Color = false
+			break
+		}
 	}
 
 	// Initialize logging
