@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 export KONG=1
-exec ./rux "$@"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$DIR/rux" "$@"

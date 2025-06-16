@@ -33,6 +33,8 @@ main
 /log/*
 !/log/.keep
 
+.claude/settings.local.json
+
 # RSpec
 /spec/fixtures/cassettes/
 .rspec_status

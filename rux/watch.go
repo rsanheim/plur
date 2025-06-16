@@ -28,6 +28,12 @@ func runWatchInstall(force bool) error {
 }
 
 func runWatch(ctx *cli.Context) error {
+	timeout := ctx.Int("timeout")
+	debounceMs := ctx.Int("debounce")
+	return runWatchWithConfig(ruxConfig, timeout, debounceMs)
+}
+
+func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 	// Log startup info
 	logger.Logger.Info("rux watch starting!", "version", GetVersionInfo())
 
@@ -35,7 +41,6 @@ func runWatch(ctx *cli.Context) error {
 	fileMapper := watch.NewFileMapper()
 
 	// Create debouncer with configurable delay
-	debounceMs := ctx.Int("debounce")
 	debounceDelay := time.Duration(debounceMs) * time.Millisecond
 	debouncer := watch.NewDebouncer(debounceDelay)
 	logger.LogDebug("Debounce delay", "ms", debounceMs)
@@ -52,8 +57,6 @@ func runWatch(ctx *cli.Context) error {
 		projectName = filepath.Base(cwd)
 	}
 
-	timeout := ctx.Int("timeout")
-
 	logger.Logger.Info("rux configuration info",
 		"project", projectName,
 		"directories", watchDirs,
@@ -64,7 +67,7 @@ func runWatch(ctx *cli.Context) error {
 	}
 
 	// Get the watcher binary path
-	watcherPath, err := watch.GetWatcherBinaryPath(ruxConfig.ConfigPaths.BinDir)
+	watcherPath, err := watch.GetWatcherBinaryPath(config.ConfigPaths.BinDir)
 	if err != nil {
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}

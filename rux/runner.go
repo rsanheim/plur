@@ -381,7 +381,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunSpecFile(ctx, ruxConfig.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, outputChan)
+			result := RunSpecFile(ctx, config.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, outputChan)
 			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success)
 			results <- result
 		}(i, group.Files)

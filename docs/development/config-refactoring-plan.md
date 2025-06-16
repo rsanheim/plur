@@ -81,33 +81,137 @@ If you're planning to switch to Kong, it has better patterns built-in:
 - Updated `doctor` and `watch` commands to use centralized binary functions
 
 ### In Progress 🚧
-- Still using global variables (`ruxConfig` and `configPaths`)
-- Need to implement App.Metadata approach to eliminate globals
-- Watch command and doctor command still depend on global config
+- Kong CLI is fully functional and can be used with `rux-kong` or `KONG=1 rux`
+- Still using global variables (`ruxConfig` and `configPaths`) for backward compatibility
+- Both CLIs (urfave/cli2 and Kong) coexist peacefully
 
-### Next Steps
-1. Implement App.Metadata approach to eliminate global variables
-2. Update all commands to extract config from context instead of globals
-3. Consider making ConfigPaths unexported if keeping any globals
-4. Add comprehensive tests for config initialization
-5. Clean up dead code identified in code review:
-   - Remove unused variables in `runner.go`
-   - Remove unused `GetVersion()` function
-   - Remove unused logger wrapper functions
-   - Complete or remove Kong CLI implementation
+### Next Steps (Simplified)
+1. ~~**Today:** Update all functions to accept config as parameters (mechanical change)~~ ✅ DONE
+2. ~~**Tomorrow:** Complete Kong implementation and test with `KONG=1`~~ ✅ DONE
+3. **Next:** Switch to Kong as default, remove urfave/cli2
+   - Remove global variables (`ruxConfig`, `configPaths`)
+   - Make Kong the default CLI (remove `KONG=1` check)
+   - Remove urfave/cli2 dependencies
+   - Update all documentation
+
+### Later
+
+- ~~Complete or remove Kong CLI implementation~~ ✅ DONE - Kong CLI is now fully functional!
 
 The real Go lesson here: The language actively tries to trick you with `:=`, but at least the compiler is fast enough that you discover your mistakes quickly!
 
+## Simplified Kong Transition Strategy (2025-06-15)
+
+### Current State
+- **2 global variables:** `configPaths` and `ruxConfig`
+- **4 commands:** main runner, watch, doctor, version
+- **Limited surface area:** Most config usage is in just a few files
+
+### Simple 3-Step Plan
+
+#### Step 1: Pass config as parameters (keep globals for now)
+Update function signatures to accept config instead of using globals:
+
+```go
+// Before:
+func runDoctor() error {
+    // uses global ruxConfig
+}
+
+// After:
+func runDoctor(config *Config) error {
+    // uses passed config
+}
+```
+
+Do this for all functions that use config. The CLI handlers can still use globals to pass them in.
+
+#### Step 2: Complete the Kong implementation
+Finish the existing Kong CLI in `kong.go`:
+
+```go
+type RuxCLI struct {
+    // Global flags (same as current)
+    Auto     bool `help:"Auto bundle install"`
+    Verbose  bool `help:"Verbose output"`
+    Workers  int  `short:"n" help:"Worker count"`
+    // ... etc
+    
+    // Commands
+    Run    RunCmd    `cmd:"" default:"withargs"`
+    Watch  WatchCmd  `cmd:""`
+    Doctor DoctorCmd `cmd:""`
+}
+
+func (cli *RuxCLI) AfterApply() error {
+    // Build config once after parsing
+    paths := InitConfigPaths()
+    config := &Config{
+        Auto:        cli.Auto,
+        ColorOutput: cli.Color,
+        ConfigPaths: paths,
+        DryRun:      cli.DryRun,
+        WorkerCount: GetWorkerCount(cli.Workers),
+    }
+    
+    // Store in context for commands
+    // Kong passes this context to all Run methods
+    ctx := kong.GetContext(cli)
+    ctx.Bind(config)
+    ctx.Bind(paths)
+    return nil
+}
+
+func (r *RunCmd) Run(ctx *kong.Context) error {
+    config := ctx.Value((*Config)(nil)).(*Config)
+    return runTests(config, r.Patterns)
+}
+```
+
+#### Step 3: Switch the entry point
+```go
+// main.go
+func main() {
+    if os.Getenv("KONG") == "1" {
+        runKongCLI()
+    } else {
+        runUrfaveCLI() // current implementation
+    }
+}
+```
+
+### Why This Works
+- **No abstractions needed** - just pass config as params
+- **Kong handles DI naturally** - via context binding
+- **Easy testing** - `KONG=1 rux` to try it out
+- **Low risk** - keep both CLIs until Kong is proven
+- **Fast to implement** - mostly mechanical changes
+
 ## Actionable TODOs
 
-### Immediate Tasks
+### Immediate Tasks (Simplified Kong Transition)
 - [x] **Fix variable shadowing bug** - Changed `:=` to `=` to properly assign to global
 - [x] **Extract specFiles from BuildConfig** - Spec files are now discovered per-command, not globally
 - [x] **Fix `rux watch` command parsing** - Watch command now has dedicated handler, doesn't treat 'watch' as spec pattern
 - [x] **Implement `rux watch install`** - Added explicit binary installation command
 - [x] **Refactor binary management** - Consolidated all binary logic in `watch/binary.go`
-- [ ] **Implement App.Metadata approach** - Replace global `ruxConfig` with storing config in `ctx.App.Metadata["config"]`
-- [ ] **Clean up dead code** - Remove unused functions and variables identified in review
+- [x] **Step 1: Update function signatures** - Pass config as parameters instead of using globals
+  - [x] `runDoctor()` → `runDoctorWithConfig(config *Config)`
+  - [x] `runWatch()` → `runWatchWithConfig(config *Config, timeout, debounce int)`
+  - [x] `Execute()` → Already accepts config via `NewTestExecutor(config, specFiles)`
+  - [x] Update callers to pass global config (temporary)
+- [x] **Step 2: Complete Kong implementation**
+  - [x] Finish `RuxCLI` struct with all flags
+  - [x] Implement `AfterApply()` for logging initialization
+  - [x] Add Run methods for all commands (run, watch, doctor, db:*)
+  - [x] Test with `KONG=1` env var
+  - [x] Create `rux-kong` wrapper script
+  - [x] Symlink to `~/go/bin/rux-kong` for global access
+  - [x] Add CLI framework info to doctor output
+- [ ] **Step 3: Clean up**
+  - [ ] Remove globals once Kong is primary
+  - [ ] Remove urfave/cli2 code
+  - [ ] Update docs and tests
 
 ### Config Refactoring Tasks
 - [x] **Consolidate config initialization** - Created `Config` and `ConfigPaths` structs
