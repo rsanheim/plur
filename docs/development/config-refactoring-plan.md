@@ -252,8 +252,8 @@ test_matrix:
   * [x] Add CLI framework info to doctor output
 * [ ] **Step 3: Prepare for Kong as default**
   * [ ] Update integration test suite to support both CLIs
-    * [ ] Add `TEST_KONG_CLI` env var support in spec helper
-    * [ ] Update `run_rux` helper to set `KONG=1` when `TEST_KONG_CLI=1`
+    * [ ] Add `KONG` env var support in spec helper
+    * [ ] Update `run_rux` helper to set `KONG=1` -- this will switch all tests using the helper to use Kong.  Thats fine for now.
     * [ ] Run CI tests with both CLI frameworks
   * [ ] Rename `RunCmd` to `SpecCmd` for clarity
   * [ ] Investigate Kong default command syntax

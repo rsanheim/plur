@@ -24,12 +24,19 @@ module RuxHomeHelper
 
   # Generic method to run rux with any subcommands
   # By default this will raise an error if the command fails - pass allow_error: true to allow it to fail
+  # 
+  # When TEST_KONG_CLI=1 is set in the environment, automatically adds KONG=1 to test the Kong CLI
   #
   # @param args [Array<String>] command arguments
   # @param allow_error [Boolean] whether to allow the command to fail
   # @param env [Hash] environment variables
   # @return [TTY::Command::Result] with stdout, stderr, and exit status
   def run_rux(*args, allow_error: false, env: {})
+    # Automatically use Kong CLI when TEST_KONG_CLI is set
+    if ENV['TEST_KONG_CLI'] == '1'
+      env = env.merge('KONG' => '1')
+    end
+    
     cmd = TTY::Command.new(uuid: false, printer: :null)
     if allow_error
       cmd.run!(:rux, *args, env: env)

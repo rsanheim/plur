@@ -26,7 +26,7 @@ func (r *RunCmd) Run(parent *RuxCLI) error {
 		TraceEnabled: parent.Trace,
 		WorkerCount:  GetWorkerCount(parent.Workers),
 	}
-	
+
 	// Initialize tracing if enabled
 	if config.TraceEnabled {
 		if err := tracing.Init(true); err != nil {
@@ -80,12 +80,18 @@ func (r *RunCmd) Run(parent *RuxCLI) error {
 }
 
 type WatchCmd struct {
-	Timeout  int  `help:"Exit after specified seconds (default: run until Ctrl-C)"`
-	Debounce int  `help:"Debounce delay in milliseconds" default:"100"`
-	Install  bool `help:"Install watcher binary and exit"`
+	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
+
+	// Flags for watch command
+	Timeout  int `help:"Exit after specified seconds (default: run until Ctrl-C)"`
+	Debounce int `help:"Debounce delay in milliseconds" default:"100"`
 }
 
-func (w *WatchCmd) Run(parent *RuxCLI) error {
+func (w *WatchCmd) Run(parent *RuxCLI, ctx *kong.Context) error {
+	if ctx.Args[len(ctx.Args)-1] == "install" {
+		return nil
+	}
+
 	// Build config from parent
 	paths := InitConfigPaths()
 	config := &Config{
@@ -96,17 +102,19 @@ func (w *WatchCmd) Run(parent *RuxCLI) error {
 		TraceEnabled: parent.Trace,
 		WorkerCount:  GetWorkerCount(parent.Workers),
 	}
-	
-	if w.Install {
-		return runWatchInstall(true)
-	}
-	
+
 	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}
-	
+
 	return runWatchWithConfig(config, w.Timeout, w.Debounce)
+}
+
+type WatchInstallCmd struct{}
+
+func (w *WatchInstallCmd) Run(parent *RuxCLI, ctx *kong.Context) error {
+	return runWatchInstall(true)
 }
 
 type DoctorCmd struct{}
@@ -207,7 +215,7 @@ func (r *RuxCLI) AfterApply() error {
 		fmt.Println(GetVersionInfo())
 		os.Exit(0)
 	}
-	
+
 	// Initialize logging
 	debug := r.Debug || os.Getenv("RUX_DEBUG") == "1"
 	logger.InitLogger(r.Verbose, debug)
@@ -224,7 +232,8 @@ func runKongCLI() {
 			"cache_dir": configPaths.CacheDir,
 		})
 
-	err := ctx.Run()
+	logger.Logger.Debug("running kong CLI", "args", os.Args, "ctx", ctx)
+	err := ctx.Run(ctx)
 	if err != nil {
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)

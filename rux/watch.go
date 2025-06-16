@@ -24,7 +24,11 @@ import (
 var watcherBinaries embed.FS
 
 func runWatchInstall(force bool) error {
-	return watch.InstallBinary(watcherBinaries, ruxConfig.ConfigPaths.BinDir, ruxConfig.ConfigPaths.RuxHome, force)
+	// For Kong CLI, we need to initialize paths if globals are not set
+	if configPaths == nil {
+		configPaths = InitConfigPaths()
+	}
+	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.RuxHome, force)
 }
 
 func runWatch(ctx *cli.Context) error {
