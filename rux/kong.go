@@ -80,18 +80,17 @@ func (r *RunCmd) Run(parent *RuxCLI) error {
 }
 
 type WatchCmd struct {
+	Run     WatchRunCmd     `cmd:"" default:"" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
+}
 
+type WatchRunCmd struct {
 	// Flags for watch command
 	Timeout  int `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int `help:"Debounce delay in milliseconds" default:"100"`
 }
 
-func (w *WatchCmd) Run(parent *RuxCLI, ctx *kong.Context) error {
-	if ctx.Args[len(ctx.Args)-1] == "install" {
-		return nil
-	}
-
+func (w *WatchRunCmd) Run(parent *RuxCLI) error {
 	// Build config from parent
 	paths := InitConfigPaths()
 	config := &Config{
@@ -113,7 +112,7 @@ func (w *WatchCmd) Run(parent *RuxCLI, ctx *kong.Context) error {
 
 type WatchInstallCmd struct{}
 
-func (w *WatchInstallCmd) Run(parent *RuxCLI, ctx *kong.Context) error {
+func (w *WatchInstallCmd) Run(parent *RuxCLI) error {
 	return runWatchInstall(true)
 }
 

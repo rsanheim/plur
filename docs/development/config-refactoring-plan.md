@@ -84,6 +84,7 @@ If you're planning to switch to Kong, it has better patterns built-in:
 * Kong CLI is fully functional and can be used with `rux-kong` or `KONG=1 rux`
 * Still using global variables (`ruxConfig` and `configPaths`) for backward compatibility
 * Both CLIs (urfave/cli2 and Kong) coexist peacefully
+* **Learning:** Kong treats commands with subcommands as namespaces only - use `default:""` tag to specify default subcommand behavior (see `docs/development/kong-cli-patterns.md`)
 
 ### Next Steps (Simplified)
 1. ~~**Today:** Update all functions to accept config as parameters (mechanical change)~~ ✅ DONE
@@ -251,12 +252,13 @@ test_matrix:
   * [x] Symlink to `~/go/bin/rux-kong` for global access
   * [x] Add CLI framework info to doctor output
 * [ ] **Step 3: Prepare for Kong as default**
-  * [ ] Update integration test suite to support both CLIs
-    * [ ] Add `KONG` env var support in spec helper
-    * [ ] Update `run_rux` helper to set `KONG=1` -- this will switch all tests using the helper to use Kong.  Thats fine for now.
+  * [x] Update integration test suite to support both CLIs
+    * [x] Add `KONG` env var support in spec helper
+    * [x] Update `run_rux` helper to set `KONG=1` when `TEST_KONG_CLI=1`
     * [ ] Run CI tests with both CLI frameworks
+  * [x] Fix watch subcommand structure using Kong's `default:""` pattern
   * [ ] Rename `RunCmd` to `SpecCmd` for clarity
-  * [ ] Investigate Kong default command syntax
+  * [x] Investigate Kong default command syntax - uses `default:""` tag
   * [ ] Make `SpecCmd` the default command so `rux` and `rux spec` both run tests
 * [ ] **Step 4: Clean up**
   * [ ] Remove globals once Kong is primary
@@ -285,6 +287,18 @@ test_matrix:
 * [ ] **Document App.Metadata pattern** - Add examples of how to access config from commands
 * [ ] **Before hook behavior** - Document when Before runs vs command resolution
 * [ ] **Migration guide** - If switching approaches, document the changes needed in each command
+
+## Recent Accomplishments (2025-06-16)
+
+### Kong CLI Subcommand Pattern Discovery
+* Discovered that Kong treats commands differently than urfave/cli:
+  - Commands with subcommands are **namespaces only** and cannot be directly executable
+  - Must use `default:""` tag to specify default subcommand behavior
+* Fixed `watch` command structure:
+  - Created `WatchRunCmd` as default subcommand with `default:""` tag
+  - Moved flags to the leaf command where they belong
+  - Now supports both `rux watch` (uses default) and `rux watch install`
+* Documented Kong patterns in `docs/development/kong-cli-patterns.md`
 
 ## Recent Accomplishments (2025-06-15)
 

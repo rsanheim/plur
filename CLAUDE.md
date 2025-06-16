@@ -79,6 +79,10 @@ ALWAYS use integration specs as guardrails:
 
 Run via: `bin/rake test:ruby` or `bundle exec rspec spec/[file]`
 
+## Kong CLI Patterns
+
+**IMPORTANT**: When implementing Kong subcommands, be aware that Kong executes commands in reverse order (from deepest subcommand up to parent). Parent commands must check the context to avoid running when a subcommand is invoked. See `docs/development/kong-cli-patterns.md` for critical implementation details.
+
 ## GitHub MCP Server Integration
 
 This project includes a GitHub MCP (Model Context Protocol) server configuration for enhanced GitHub integration with Claude Code.
