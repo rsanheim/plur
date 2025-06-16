@@ -33,16 +33,6 @@ rux doctor               # Debug installation issues
 rux watch                # Auto-run tests on file changes (experimental)
 ```
 
-### Kong CLI (Experimental)
-```bash
-./rux-kong               # Use Kong-based CLI (sets KONG=1 automatically)
-./rux-kong --help        # Show Kong CLI help and available flags
-./rux-kong -n 4          # Run with Kong CLI using 4 workers
-./rux-kong watch         # Watch mode with Kong CLI
-
-# Kong CLI is experimental - tracks the same functionality but with
-# cleaner argument parsing via github.com/alecthomas/kong
-```
 
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root
