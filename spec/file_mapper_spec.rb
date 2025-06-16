@@ -1,7 +1,7 @@
 require "spec_helper"
 require "open3"
 
-RSpec.describe "rux dev:file_mapper" do
+RSpec.describe "rux dev:file_mapper", skip: "dev:file_mapper command removed with urfave/cli2" do
   def run_file_mapper(*files)
     stdout, stderr, status = Open3.capture3("rux", "dev:file_mapper", *files)
     raise "Command failed: #{stderr}" unless status.success?

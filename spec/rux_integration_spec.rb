@@ -18,17 +18,17 @@ RSpec.describe "Rux integration tests" do
       stdout, _, status = Open3.capture3(rux_binary, "--help")
 
       expect(status.success?).to be true
-      expect(stdout).to include("rux - A fast Go-based test runner for Ruby/RSpec")
-      expect(stdout).to include("db:create")
-      expect(stdout).to include("db:setup")
-      expect(stdout).to include("db:migrate")
+      expect(stdout).to include("A fast Go-based test runner for Ruby/RSpec")
+      expect(stdout).to include("db create")
+      expect(stdout).to include("db setup")
+      expect(stdout).to include("db migrate")
     end
   end
 
   describe "database tasks" do
     it "shows dry-run output for database creation" do
       Dir.chdir(default_rails_dir) do
-        stdout, _, status = Open3.capture3(rux_binary, "--dry-run", "db:create", "-n", "3")
+        stdout, _, status = Open3.capture3(rux_binary, "--dry-run", "db", "create", "-n", "3")
 
         expect(status.success?).to be true
         expect(stdout).to include("[dry-run] Would run database task 'db:create' with 3 workers")
@@ -41,7 +41,7 @@ RSpec.describe "Rux integration tests" do
     it "creates and migrates databases for parallel testing", pending: "Database setup needs investigation" do
       Dir.chdir(default_rails_dir) do
         # Create databases
-        _, stderr, status = Open3.capture3(rux_binary, "db:create", "-n", "3")
+        _, stderr, status = Open3.capture3(rux_binary, "db", "create", "-n", "3")
         expect(status.success?).to eq(true), "db:create failed: #{stderr}"
 
         # Check that databases were created
@@ -50,7 +50,7 @@ RSpec.describe "Rux integration tests" do
         expect(File.exist?("storage/test3.sqlite3")).to be true
 
         # Run migrations
-        _, stderr, status = Open3.capture3(rux_binary, "db:migrate", "-n", "3")
+        _, stderr, status = Open3.capture3(rux_binary, "db", "migrate", "-n", "3")
         expect(status.success?).to eq(true), "db:migrate failed: #{stderr}"
       end
     end
@@ -60,8 +60,8 @@ RSpec.describe "Rux integration tests" do
     it "runs tests in parallel", pending: "Database setup needs investigation" do
       Dir.chdir(default_rails_dir) do
         # Set up databases first
-        system(rux_binary, "db:create", "-n", "3", out: File::NULL, err: File::NULL)
-        system(rux_binary, "db:migrate", "-n", "3", out: File::NULL, err: File::NULL)
+        system(rux_binary, "db", "create", "-n", "3", out: File::NULL, err: File::NULL)
+        system(rux_binary, "db", "migrate", "-n", "3", out: File::NULL, err: File::NULL)
 
         # Run tests
         stdout, stderr, status = Open3.capture3(rux_binary, "-n", "3")
