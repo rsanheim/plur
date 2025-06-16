@@ -8,12 +8,7 @@ import (
 	"strings"
 
 	"github.com/rsanheim/rux/watch"
-	"github.com/urfave/cli/v2"
 )
-
-func runDoctor(ctx *cli.Context) error {
-	return runDoctorWithConfig(ruxConfig)
-}
 
 func runDoctorWithConfig(config *Config) error {
 	fmt.Println("Rux Doctor")
@@ -25,13 +20,9 @@ func runDoctorWithConfig(config *Config) error {
 	fmt.Printf("Build Date:      %s\n", date)
 	fmt.Printf("Git Commit:      %s\n", commit)
 	fmt.Printf("Built By:        %s\n", builtBy)
-	
+
 	// CLI Framework info
-	if os.Getenv("KONG") == "1" {
-		fmt.Printf("CLI Framework:   Kong (experimental)\n")
-	} else {
-		fmt.Printf("CLI Framework:   urfave/cli2\n")
-	}
+	fmt.Printf("CLI Framework:   Kong\n")
 	fmt.Println()
 
 	// System info

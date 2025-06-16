@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/rsanheim/rux/rspec"
-	"github.com/urfave/cli/v2"
 )
 
 // Config holds top level config for rux
@@ -74,15 +73,4 @@ func InitConfigPaths() *ConfigPaths {
 	}
 
 	return &configPaths
-}
-
-func BuildConfig(ctx *cli.Context, paths *ConfigPaths) *Config {
-	return &Config{
-		Auto:         ctx.Bool("auto"),
-		ColorOutput:  shouldUseColor(ctx),
-		ConfigPaths:  paths,
-		DryRun:       ctx.Bool("dry-run"),
-		TraceEnabled: ctx.Bool("trace"),
-		WorkerCount:  GetWorkerCount(ctx.Int("n")),
-	}
 }

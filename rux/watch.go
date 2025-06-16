@@ -15,7 +15,6 @@ import (
 
 	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/watch"
-	"github.com/urfave/cli/v2"
 )
 
 // Embed the watcher binaries at compile time
@@ -26,12 +25,6 @@ var watcherBinaries embed.FS
 func runWatchInstall(force bool) error {
 	configPaths := InitConfigPaths()
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.RuxHome, force)
-}
-
-func runWatch(ctx *cli.Context) error {
-	timeout := ctx.Int("timeout")
-	debounceMs := ctx.Int("debounce")
-	return runWatchWithConfig(ruxConfig, timeout, debounceMs)
 }
 
 func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {

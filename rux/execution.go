@@ -1,14 +1,10 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
-	"runtime/trace"
 	"strings"
-
-	"github.com/urfave/cli/v2"
 )
 
 // TestExecutor orchestrates the execution of tests
@@ -119,36 +115,4 @@ func (e *TestExecutor) buildRSpecArgs(formatterPath string, files []string) []st
 
 	args = append(args, files...)
 	return args
-}
-
-// discoverSpecFiles determines which spec files to run based on CLI context
-func discoverSpecFiles(ctx *cli.Context) ([]string, error) {
-	var specFiles []string
-	var err error
-
-	trace.WithRegion(context.Background(), "file_discovery", func() {
-		if ctx.NArg() > 0 {
-			// Expand glob patterns from provided arguments
-			specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
-			if err != nil {
-				return
-			}
-			if len(specFiles) == 0 {
-				err = fmt.Errorf("no spec files found matching provided patterns")
-				return
-			}
-		} else {
-			// Auto-discover spec files
-			specFiles, err = FindSpecFiles()
-			if err != nil {
-				return
-			}
-			if len(specFiles) == 0 {
-				err = fmt.Errorf("no spec files found")
-				return
-			}
-		}
-	})
-
-	return specFiles, err
 }
