@@ -14,7 +14,6 @@ func TestFileMapper_MapFileToSpecs(t *testing.T) {
 		changedFile string
 		want        []string
 	}{
-		// Spec files
 		{
 			name:        "spec file returns itself",
 			changedFile: "spec/models/user_spec.rb",
