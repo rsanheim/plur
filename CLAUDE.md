@@ -69,6 +69,12 @@ ALWAYS use integration specs as guardrails:
 
 Run via: `bin/rake test:ruby` or `bundle exec rspec spec/[file]`
 
+### Go Testing Guidelines
+- Use testify assertions (`assert` and `require`) for all new Go tests
+- `require` for critical assertions that should stop the test
+- `assert` for non-critical assertions that can continue
+- Only add descriptive messages when the assertion itself isn't self-explanatory (e.g., complex conditions or domain-specific checks)
+
 ## Kong CLI Patterns
 
 **IMPORTANT**: When implementing Kong subcommands, be aware that Kong executes commands in reverse order (from deepest subcommand up to parent). Parent commands must check the context to avoid running when a subcommand is invoked. See `docs/development/kong-cli-patterns.md` for critical implementation details.

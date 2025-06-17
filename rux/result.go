@@ -9,14 +9,15 @@ import (
 
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
-	TotalExamples int
-	TotalFailures int
-	AllFailures   []rspec.FailureDetail
-	TotalCPUTime  time.Duration
-	WallTime      time.Duration
-	HasFailures   bool
-	Success       bool         // True if no failures and no errors
-	ErroredFiles  []TestResult // Files that had errors running
+	TotalExamples     int
+	TotalFailures     int
+	AllFailures       []rspec.FailureDetail
+	TotalCPUTime      time.Duration
+	WallTime          time.Duration
+	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
+	HasFailures       bool
+	Success           bool         // True if no failures and no errors
+	ErroredFiles      []TestResult // Files that had errors running
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -38,6 +39,11 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 		summary.TotalCPUTime += result.Duration
 		summary.TotalExamples += result.ExampleCount
 		summary.TotalFailures += result.FailureCount
+
+		// Track the maximum file load time (since workers run in parallel)
+		if result.FileLoadTime > summary.TotalFileLoadTime {
+			summary.TotalFileLoadTime = result.FileLoadTime
+		}
 
 		if len(result.Failures) > 0 {
 			summary.AllFailures = append(summary.AllFailures, result.Failures...)
@@ -79,7 +85,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 			fmt.Print(summary.FormattedSummary)
 		} else {
 			fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
-				summary.WallTime.Seconds(), summary.TotalCPUTime.Seconds())
+				summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
 			fmt.Printf("%s, 0 failures\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
 		}
 		return
@@ -106,7 +112,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 	} else {
 		// Fall back to manual formatting for parallel mode
 		fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
-			summary.WallTime.Seconds(), summary.TotalCPUTime.Seconds())
+			summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
 
 		if summary.TotalFailures > 0 {
 			// Check if terminal supports color and format accordingly

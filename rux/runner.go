@@ -24,6 +24,7 @@ type TestResult struct {
 	Output       string
 	Error        error
 	Duration     time.Duration
+	FileLoadTime time.Duration // Time to load spec files before running tests
 	JSONOutput   *rspec.JSONOutput
 	Failures     []rspec.FailureDetail
 	ExampleCount int
@@ -223,13 +224,16 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 			if msg != nil {
 				// Handle different message types
 				switch msg.Type {
-				case "start":
-					streamingResults.LoadTime = msg.LoadTime
-					tracing.LogEvent(ctx, "rspec_loaded",
-						"worker_id", workerIndex,
-						"spec_files", len(specFiles),
-						"load_time", msg.LoadTime,
-						"time_since_spawn", time.Since(start).Seconds()*1000)
+				case "load_summary":
+					// Both rux and turbo_tests use this format
+					if msg.Summary != nil {
+						streamingResults.LoadTime = msg.Summary.FileLoadTime
+						tracing.LogEvent(ctx, "rspec_loaded",
+							"worker_id", workerIndex,
+							"spec_files", len(specFiles),
+							"load_time", msg.Summary.FileLoadTime,
+							"time_since_spawn", time.Since(start).Seconds()*1000)
+					}
 				case "example_passed":
 					streamingResults.AddExample(*msg)
 					outputChan <- OutputMessage{
@@ -305,6 +309,7 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 		Output:            outputBuilder.String(),
 		Error:             err,
 		Duration:          time.Since(start),
+		FileLoadTime:      time.Duration(streamingResults.LoadTime * float64(time.Second)),
 		JSONOutput:        jsonOutput,
 		Failures:          failures,
 		ExampleCount:      streamingResults.ExampleCount,
