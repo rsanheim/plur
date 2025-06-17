@@ -2,6 +2,9 @@ package rspec
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseStreamingMessage_LoadSummary(t *testing.T) {
@@ -22,27 +25,24 @@ func TestParseStreamingMessage_LoadSummary(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			msg, err := ParseStreamingMessage(tt.input)
-			if err != nil {
-				t.Fatalf("ParseStreamingMessage() error = %v", err)
-			}
-			if msg == nil {
-				t.Fatal("ParseStreamingMessage() returned nil message")
-			}
-			if msg.Type != tt.wantType {
-				t.Errorf("ParseStreamingMessage() Type = %v, want %v", msg.Type, tt.wantType)
-			}
+			require.NoError(t, err, "ParseStreamingMessage() should not return error")
+			require.NotNil(t, msg, "ParseStreamingMessage() should not return nil message")
+			assert.Equal(t, tt.wantType, msg.Type, "message type should match")
 
 			// Check load time for load_summary message
 			if msg.Type == "load_summary" {
-				if msg.Summary == nil {
-					t.Fatal("ParseStreamingMessage() Summary is nil for load_summary message")
-				}
-				if msg.Summary.FileLoadTime != tt.wantLoadTime {
-					t.Errorf("ParseStreamingMessage() FileLoadTime = %v, want %v", msg.Summary.FileLoadTime, tt.wantLoadTime)
-				}
+				require.NotNil(t, msg.Summary, "Summary should not be nil for load_summary message")
+				assert.Equal(t, tt.wantLoadTime, msg.Summary.FileLoadTime, "FileLoadTime should match")
 			}
 		})
 	}
+}
+
+func TestParseStreamingMessage_NonJSONLine(t *testing.T) {
+	// Test that non-JSON lines return nil without error
+	msg, err := ParseStreamingMessage("This is not a JSON line")
+	assert.NoError(t, err, "non-JSON lines should not return error")
+	assert.Nil(t, msg, "non-JSON lines should return nil message")
 }
 
 func TestParseStreamingMessage_TurboTestsCompatibility(t *testing.T) {
@@ -71,15 +71,9 @@ func TestParseStreamingMessage_TurboTestsCompatibility(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			msg, err := ParseStreamingMessage(tt.input)
-			if err != nil {
-				t.Fatalf("ParseStreamingMessage() error = %v", err)
-			}
-			if msg == nil {
-				t.Fatal("ParseStreamingMessage() returned nil message")
-			}
-			if msg.Type != tt.want.Type {
-				t.Errorf("ParseStreamingMessage() Type = %v, want %v", msg.Type, tt.want.Type)
-			}
+			require.NoError(t, err, "ParseStreamingMessage() should not return error")
+			require.NotNil(t, msg, "ParseStreamingMessage() should not return nil message")
+			assert.Equal(t, tt.want.Type, msg.Type, "message type should match")
 		})
 	}
 }

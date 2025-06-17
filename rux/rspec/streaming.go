@@ -8,16 +8,9 @@ import (
 
 // StreamingMessage represents a single JSON message from the streaming formatter
 type StreamingMessage struct {
-	Type            string              `json:"type"`
-	Description     string              `json:"description,omitempty"`
-	FullDescription string              `json:"full_description,omitempty"`
-	Location        string              `json:"location,omitempty"`
-	FilePath        string              `json:"file_path,omitempty"`
-	LineNumber      int                 `json:"line_number,omitempty"`
-	PendingMessage  string              `json:"pending_message,omitempty"`
-	Exception       *StreamingException `json:"exception,omitempty"`
-	Example         *StreamingExample   `json:"example,omitempty"`
-	Summary         *LoadSummary        `json:"summary,omitempty"` // For load_summary message type
+	Type    string            `json:"type"`
+	Example *StreamingExample `json:"example,omitempty"`
+	Summary *LoadSummary      `json:"summary,omitempty"` // For load_summary message type
 
 	// Fields for dump_failures and dump_summary messages
 	FormattedOutput     string  `json:"formatted_output,omitempty"`
@@ -121,20 +114,11 @@ func (sr *StreamingResults) ConvertToJSONOutput() *JSONOutput {
 			continue
 		}
 
-		// Use example data from nested field if available, otherwise fall back to top-level fields
-		var exampleData *StreamingExample
-		if msg.Example != nil {
-			exampleData = msg.Example
-		} else {
-			// Fallback for backwards compatibility
-			exampleData = &StreamingExample{
-				Description:     msg.Description,
-				FullDescription: msg.FullDescription,
-				FilePath:        msg.FilePath,
-				LineNumber:      msg.LineNumber,
-				Exception:       msg.Exception,
-			}
+		// Skip if no example data
+		if msg.Example == nil {
+			continue
 		}
+		exampleData := msg.Example
 
 		example := Example{
 			ID:              fmt.Sprintf("[%d:%d]", 1, exampleData.LineNumber), // Generate a simple ID
