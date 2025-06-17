@@ -132,13 +132,6 @@ func (d *DoctorCmd) Run(parent *RuxCLI) error {
 	return runDoctorWithConfig(config)
 }
 
-type DBCmd struct {
-	Setup   DBSetupCmd   `cmd:"" help:"Setup test databases"`
-	Create  DBCreateCmd  `cmd:"" help:"Create test databases"`
-	Migrate DBMigrateCmd `cmd:"" help:"Migrate test databases"`
-	Prepare DBPrepareCmd `cmd:"" help:"Prepare test databases"`
-}
-
 type DBSetupCmd struct{}
 
 func (d *DBSetupCmd) Run(parent *RuxCLI) error {
@@ -185,10 +178,13 @@ func (d *DBPrepareCmd) Run(parent *RuxCLI) error {
 
 type RuxCLI struct {
 	// Commands
-	Spec   SpecCmd   `cmd:"" help:"Run tests" default:"withargs"`
-	Watch  WatchCmd  `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Doctor DoctorCmd `cmd:"" help:"Diagnose Rux installation and environment"`
-	DB     DBCmd     `cmd:"" help:"Database management commands"`
+	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
+	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Rux installation and environment"`
+	DBSetup   DBSetupCmd   `cmd:"" name:"db:setup" help:"Setup test databases"`
+	DBCreate  DBCreateCmd  `cmd:"" name:"db:create" help:"Create test databases"`
+	DBMigrate DBMigrateCmd `cmd:"" name:"db:migrate" help:"Migrate test databases"`
+	DBPrepare DBPrepareCmd `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
 
 	// Global flags
 	Auto       bool   `help:"Automatically run bundle install before tests" default:"false"`
