@@ -18,6 +18,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
+			FileLoadTime: 50 * time.Millisecond,
 			Failures:     []rspec.FailureDetail{},
 		},
 		{
@@ -26,6 +27,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 5,
 			FailureCount: 2,
 			Duration:     200 * time.Millisecond,
+			FileLoadTime: 75 * time.Millisecond,
 			Failures: []rspec.FailureDetail{
 				{
 					Description: "Controller GET /index returns 200",
@@ -45,6 +47,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 0,
 			FailureCount: 0,
 			Duration:     50 * time.Millisecond,
+			FileLoadTime: 25 * time.Millisecond,
 			Error:        fmt.Errorf("Failed to load spec file"),
 		},
 	}
@@ -59,6 +62,7 @@ func TestBuildTestSummary(t *testing.T) {
 
 	assert.Equal(350*time.Millisecond, summary.TotalCPUTime, "total CPU time")
 	assert.Equal(wallTime, summary.WallTime, "wall time")
+	assert.Equal(75*time.Millisecond, summary.TotalFileLoadTime, "file load time should be the max of all workers")
 
 	assert.True(summary.HasFailures, "should have failures")
 	assert.False(summary.Success, "should not be successful when there are failures")
@@ -76,6 +80,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
+			FileLoadTime: 40 * time.Millisecond,
 		},
 		{
 			SpecFile:     "spec/controller_spec.rb",
@@ -83,6 +88,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 			ExampleCount: 5,
 			FailureCount: 0,
 			Duration:     200 * time.Millisecond,
+			FileLoadTime: 60 * time.Millisecond,
 		},
 	}
 
@@ -105,6 +111,7 @@ func TestSingleTestResultIsSingleWorkerMode(t *testing.T) {
 			ExampleCount:     10,
 			FailureCount:     0,
 			Duration:         100 * time.Millisecond,
+			FileLoadTime:     30 * time.Millisecond,
 			FormattedSummary: "10 examples, 0 failures",
 		},
 	}
