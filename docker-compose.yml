@@ -1,0 +1,27 @@
+services:
+  rux-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rux-test:latest
+    container_name: rux-test-container
+    volumes:
+      # Mount entire repo
+      - .:/workspace:rw
+      # Exclude references and vendor directories (using anonymous volumes)
+      - /workspace/references
+      - /workspace/vendor
+    working_dir: /workspace
+    environment:
+      # Go build cache
+      GOCACHE: /workspace/.cache/go-build
+      # Test environment
+      PARALLEL_TEST_PROCESSORS: "4"
+      # Color output
+      TERM: xterm-256color
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    # Run as rux user (commented out for now to avoid permission issues)
+    # user: rux
+    command: /bin/bash
