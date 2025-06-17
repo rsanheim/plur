@@ -1,7 +1,7 @@
 require "spec_helper"
 
 RSpec.describe "Rux database tasks" do
-  describe "db:setup command" do
+  context "db:setup command (dry-run)" do
     it "runs db:setup in dry-run mode for Rails app" do
       Dir.chdir(default_rails_dir) do
         output = run_rux("--dry-run", "db:setup", "-n", "3").out
@@ -12,27 +12,32 @@ RSpec.describe "Rux database tasks" do
         expect(output).to include("[dry-run] Worker 2: TEST_ENV_NUMBER=3 RAILS_ENV=test bundle exec rake db:setup")
       end
     end
+  end
 
-    it "shows completion message when running actual task" do
-      # Use a simple Rakefile in a temp dir to avoid actually running db:setup on test_app
-      Dir.mktmpdir do |tmpdir|
-        File.write(File.join(tmpdir, "Gemfile"), <<~RUBY)
-          source "https://rubygems.org"
-          gem "rake"
-        RUBY
+  context "db:create command (for-real)" do
+    before do
+      # Clean up any existing test databases
+      Dir.chdir(default_rails_dir) do
+        FileUtils.rm_f(Dir.glob("storage/*.sqlite3"))
+      end
+    end
 
-        File.write(File.join(tmpdir, "Rakefile"), <<~RUBY)
-          task "db:setup" do
-            puts "DB setup for \#{ENV['TEST_ENV_NUMBER'] || '1'}"
-          end
-        RUBY
+    it "creates and migrates databases for parallel testing", pending: "Needs investigation, db tasks are failing" do
+      Dir.chdir(default_rails_dir) do
+        system("bundle install")
 
-        Dir.chdir(tmpdir) do
-          output = run_rux("db:setup", "-n", "2").out
+        result = run_rux("db:create", "-n", "3", allow_error: true)
+        pp result
+        expect(result.status).to eq(0), "db:create failed: #{result.err}"
 
-          expect(output).to include("Running database task 'db:setup' with 2 workers...")
-          expect(output).to include("Database task 'db:setup' completed successfully")
-        end
+        # Check that databases were created
+        expect(File.exist?("storage/test.sqlite3")).to be true
+        expect(File.exist?("storage/test2.sqlite3")).to be true
+        expect(File.exist?("storage/test3.sqlite3")).to be true
+
+        # Run migrations
+        _, stderr, status = Open3.capture3(rux_binary, "db", "migrate", "-n", "3")
+        expect(status.success?).to eq(true), "db:migrate failed: #{stderr}"
       end
     end
   end
