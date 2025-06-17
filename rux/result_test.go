@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/rux/rspec"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildTestSummary(t *testing.T) {
@@ -52,41 +53,15 @@ func TestBuildTestSummary(t *testing.T) {
 	summary := BuildTestSummary(results, wallTime)
 
 	// Test the summary values
-	if summary.TotalExamples != 15 {
-		t.Errorf("Expected 15 total examples, got %d", summary.TotalExamples)
-	}
-
-	if summary.TotalFailures != 2 {
-		t.Errorf("Expected 2 total failures, got %d", summary.TotalFailures)
-	}
-
-	if len(summary.AllFailures) != 2 {
-		t.Errorf("Expected 2 failure details, got %d", len(summary.AllFailures))
-	}
-
-	if summary.TotalCPUTime != 350*time.Millisecond {
-		t.Errorf("Expected 350ms total CPU time, got %v", summary.TotalCPUTime)
-	}
-
-	if summary.WallTime != wallTime {
-		t.Errorf("Expected %v wall time, got %v", wallTime, summary.WallTime)
-	}
-
-	if !summary.HasFailures {
-		t.Error("Expected HasFailures to be true")
-	}
-
-	if summary.Success {
-		t.Error("Expected Success to be false when there are failures")
-	}
-
-	if len(summary.ErroredFiles) != 1 {
-		t.Errorf("Expected 1 errored file, got %d", len(summary.ErroredFiles))
-	}
-
-	if summary.ErroredFiles[0].SpecFile != "spec/broken_spec.rb" {
-		t.Errorf("Expected errored file to be spec/broken_spec.rb, got %s", summary.ErroredFiles[0].SpecFile)
-	}
+	assert.Equal(t, 15, summary.TotalExamples, "total examples")
+	assert.Equal(t, 2, summary.TotalFailures, "total failures")
+	assert.Len(t, summary.AllFailures, 2, "failure details")
+	assert.Equal(t, 350*time.Millisecond, summary.TotalCPUTime, "total CPU time")
+	assert.Equal(t, wallTime, summary.WallTime, "wall time")
+	assert.True(t, summary.HasFailures, "should have failures")
+	assert.False(t, summary.Success, "should not be successful when there are failures")
+	assert.Len(t, summary.ErroredFiles, 1, "errored files")
+	assert.Equal(t, "spec/broken_spec.rb", summary.ErroredFiles[0].SpecFile, "errored file name")
 }
 
 // Test that summary correctly identifies when there are no failures
@@ -110,19 +85,8 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 
 	summary := BuildTestSummary(results, 250*time.Millisecond)
 
-	if summary.HasFailures {
-		t.Error("Expected HasFailures to be false when all tests pass")
-	}
-
-	if !summary.Success {
-		t.Error("Expected Success to be true when all tests pass")
-	}
-
-	if len(summary.AllFailures) != 0 {
-		t.Errorf("Expected no failures, got %d", len(summary.AllFailures))
-	}
-
-	if len(summary.ErroredFiles) != 0 {
-		t.Errorf("Expected no errored files, got %d", len(summary.ErroredFiles))
-	}
+	assert.False(t, summary.HasFailures, "should have no failures when all tests pass")
+	assert.True(t, summary.Success, "should be successful when all tests pass")
+	assert.Empty(t, summary.AllFailures, "should have no failures")
+	assert.Empty(t, summary.ErroredFiles, "should have no errored files")
 }

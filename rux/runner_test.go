@@ -5,6 +5,9 @@ import (
 	"os"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFindSpecFilesRunner(t *testing.T) {
@@ -15,21 +18,15 @@ func TestFindSpecFilesRunner(t *testing.T) {
 	// Create temp directory in rux/tmp/
 	os.MkdirAll("tmp", 0755)
 	tempDir, err := os.MkdirTemp("tmp", "test-runner-specs-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
+	require.NoError(t, err, "Failed to create temp dir")
 	defer os.RemoveAll(tempDir)
 
 	os.Chdir(tempDir)
 
 	// Test empty directory
 	files, err := FindSpecFiles()
-	if err != nil {
-		t.Errorf("FindSpecFiles() returned error: %v", err)
-	}
-	if len(files) != 0 {
-		t.Errorf("FindSpecFiles() returned %d files, expected 0", len(files))
-	}
+	assert.NoError(t, err, "FindSpecFiles() should not return error")
+	assert.Empty(t, files, "FindSpecFiles() should return empty slice for empty directory")
 
 	// Create complex directory structure
 	os.MkdirAll("spec/models", 0755)
@@ -52,14 +49,10 @@ func TestFindSpecFilesRunner(t *testing.T) {
 	}
 
 	files, err = FindSpecFiles()
-	if err != nil {
-		t.Errorf("FindSpecFiles() returned error: %v", err)
-	}
+	assert.NoError(t, err, "FindSpecFiles() should not return error")
 
 	expectedFiles := 5 // Only *_spec.rb files
-	if len(files) != expectedFiles {
-		t.Errorf("FindSpecFiles() found %d files, expected %d", len(files), expectedFiles)
-	}
+	assert.Len(t, files, expectedFiles, "FindSpecFiles() should find exactly 5 spec files")
 
 	// Verify all expected spec files were found
 	expectedSpecs := map[string]bool{
@@ -74,14 +67,12 @@ func TestFindSpecFilesRunner(t *testing.T) {
 		if _, exists := expectedSpecs[file]; exists {
 			expectedSpecs[file] = true
 		} else {
-			t.Errorf("Unexpected spec file found: %s", file)
+			assert.Fail(t, "Unexpected spec file found: %s", file)
 		}
 	}
 
 	for specFile, found := range expectedSpecs {
-		if !found {
-			t.Errorf("Expected spec file not found: %s", specFile)
-		}
+		assert.True(t, found, "Expected spec file not found: %s", specFile)
 	}
 }
 
@@ -130,9 +121,7 @@ func TestGetWorkerCountEdgeCases(t *testing.T) {
 			}
 
 			result := GetWorkerCount(tt.cliWorkers)
-			if result != tt.expected {
-				t.Errorf("GetWorkerCount(%d) = %d, expected %d", tt.cliWorkers, result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result, "GetWorkerCount(%d)", tt.cliWorkers)
 		})
 	}
 }
@@ -152,9 +141,7 @@ func TestGetTestEnvNumber(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("worker_%d", tt.workerIndex), func(t *testing.T) {
 			result := GetTestEnvNumber(tt.workerIndex)
-			if result != tt.expected {
-				t.Errorf("GetTestEnvNumber(%d) = %q, expected %q", tt.workerIndex, result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result, "GetTestEnvNumber(%d)", tt.workerIndex)
 		})
 	}
 }
