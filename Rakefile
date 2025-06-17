@@ -31,7 +31,7 @@ end
 desc "Build and install rux to GOPATH/bin"
 task install: ["build"] do
   Dir.chdir("rux") do
-    sh %(go install)
+    sh %(go install -mod=mod)
   end
   puts "[install] Installed rux with version: #{`rux --version`.strip}"
 end
@@ -94,8 +94,8 @@ namespace :lint do
   task :go do
     Dir.chdir("rux") do
       puts "[lint:go] Running go fmt and go vet"
-      sh "go fmt ./..."
-      sh "go vet ./..."
+      sh "go fmt -mod=mod ./..."
+      sh "go vet -mod=mod ./..."
     end
   end
 
