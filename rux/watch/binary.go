@@ -38,7 +38,6 @@ func GetWatcherBinaryPath(binDir string) (string, error) {
 
 // InstallBinary extracts the embedded watcher binary and installs it to RUX_HOME/bin
 func InstallBinary(watcherBinaries embed.FS, binDir, ruxHome string, force bool) error {
-	// Get the platform-specific binary path
 	binaryPath, err := getBinaryPath(binDir)
 	if err != nil {
 		return fmt.Errorf("failed to determine binary path: %v", err)
@@ -60,7 +59,6 @@ func InstallBinary(watcherBinaries embed.FS, binDir, ruxHome string, force bool)
 		return fmt.Errorf("watcher binary not embedded for this platform: %v", err)
 	}
 
-	// Write the binary to the bin directory (always overwrite)
 	if err := os.WriteFile(binaryPath, data, 0755); err != nil {
 		return fmt.Errorf("failed to write watcher binary: %v", err)
 	}

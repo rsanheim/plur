@@ -29,7 +29,7 @@ task build: ["vendor:build"] do
 end
 
 desc "Build and install rux to GOPATH/bin"
-task install: ["vendor:build"] do
+task install: ["build", "vendor:build"] do
   Dir.chdir("rux") do
     sh %(go install -mod=mod .)
     gopath = `go env GOPATH`.chomp

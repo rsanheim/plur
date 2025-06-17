@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/rsanheim/rux/rspec"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRuntimeTracker(t *testing.T) {
@@ -17,13 +19,8 @@ func TestRuntimeTracker(t *testing.T) {
 
 		runtimes := rt.GetRuntimes()
 
-		if runtimes["spec/foo_spec.rb"] != 2.0 {
-			t.Errorf("Expected foo_spec.rb runtime to be 2.0, got %f", runtimes["spec/foo_spec.rb"])
-		}
-
-		if runtimes["spec/bar_spec.rb"] != 2.0 {
-			t.Errorf("Expected bar_spec.rb runtime to be 2.0, got %f", runtimes["spec/bar_spec.rb"])
-		}
+		assert.Equal(t, 2.0, runtimes["spec/foo_spec.rb"], "foo_spec.rb runtime should be accumulated")
+		assert.Equal(t, 2.0, runtimes["spec/bar_spec.rb"], "bar_spec.rb runtime should be correct")
 	})
 
 	t.Run("AddExample extracts runtime from RSpec example", func(t *testing.T) {
@@ -37,9 +34,7 @@ func TestRuntimeTracker(t *testing.T) {
 		rt.AddExample(example)
 
 		runtimes := rt.GetRuntimes()
-		if runtimes["spec/test_spec.rb"] != 0.123 {
-			t.Errorf("Expected test_spec.rb runtime to be 0.123, got %f", runtimes["spec/test_spec.rb"])
-		}
+		assert.Equal(t, 0.123, runtimes["spec/test_spec.rb"], "test_spec.rb runtime should be extracted from example")
 	})
 
 	t.Run("SaveToFile creates runtime.json", func(t *testing.T) {
@@ -50,19 +45,14 @@ func TestRuntimeTracker(t *testing.T) {
 		// Create temp directory for test
 		// Save runtime data (it will use project-specific path)
 		err := rt.SaveToFile()
-		if err != nil {
-			t.Errorf("Failed to save runtime data: %v", err)
-		}
+		assert.NoError(t, err, "Failed to save runtime data")
 
 		// Get the runtime file path and check it exists
 		runtimeFile, err := GetRuntimeFilePath()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer os.Remove(runtimeFile) // Clean up after test
 
-		if _, err := os.Stat(runtimeFile); os.IsNotExist(err) {
-			t.Error("runtime.json was not created")
-		}
+		_, err = os.Stat(runtimeFile)
+		assert.NoError(t, err, "runtime.json should be created")
 	})
 }

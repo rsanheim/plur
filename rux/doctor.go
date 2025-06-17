@@ -8,10 +8,9 @@ import (
 	"strings"
 
 	"github.com/rsanheim/rux/watch"
-	"github.com/urfave/cli/v2"
 )
 
-func runDoctor(ctx *cli.Context) error {
+func runDoctorWithConfig(config *Config) error {
 	fmt.Println("Rux Doctor")
 	fmt.Println("==========")
 	fmt.Println()
@@ -21,6 +20,9 @@ func runDoctor(ctx *cli.Context) error {
 	fmt.Printf("Build Date:      %s\n", date)
 	fmt.Printf("Git Commit:      %s\n", commit)
 	fmt.Printf("Built By:        %s\n", builtBy)
+
+	// CLI Framework info
+	fmt.Printf("CLI Framework:   Kong\n")
 	fmt.Println()
 
 	// System info
@@ -68,7 +70,7 @@ func runDoctor(ctx *cli.Context) error {
 
 	// Watcher info
 	fmt.Println("File Watcher:")
-	watcherPath, err := watch.GetWatcherBinaryPath(ruxConfig.ConfigPaths.BinDir)
+	watcherPath, err := watch.GetWatcherBinaryPath(config.ConfigPaths.BinDir)
 	if err != nil {
 		fmt.Printf("  Status:         Not available (%v)\n", err)
 		fmt.Printf("  Platform:       %s/%s\n", runtime.GOOS, runtime.GOARCH)
@@ -93,7 +95,7 @@ func runDoctor(ctx *cli.Context) error {
 	fmt.Println()
 
 	// Cache info
-	cacheDir := ruxConfig.ConfigPaths.CacheDir
+	cacheDir := config.ConfigPaths.CacheDir
 	fmt.Printf("Cache Directory:  %s\n", cacheDir)
 
 	// Runtime data
