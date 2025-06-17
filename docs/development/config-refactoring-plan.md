@@ -1,58 +1,5 @@
 # Config Refactoring Plan
 
-## The Good
-* Consolidating scattered config logic into `Config` and `ConfigPaths` structs is solid. Much cleaner than having path construction littered everywhere.
-* `InitConfigPaths()` being called once at startup is the right approach for directory setup.
-* Your instinct to separate "stuff that can be initialized immediately" (`ConfigPaths`) from "stuff that needs CLI context" (`Config`) is spot on.
-
-## The Bad (and Ugly)
-* **Classic Go footgun**: You've been bitten by variable shadowing. That `:=` in your Before function created a local `ruxConfig` while the global one stayed nil. This is Go's most beloved/hated feature. ✅ FIXED
-* **Global variables**: Yeah, you're right to feel icky about them. They make testing a pain and create hidden dependencies. Every function that touches `ruxConfig` now has an implicit dependency you can't see from its signature.
-
-## The Bug ✅ FIXED
-
-The panic was caused by variable shadowing in `main.go`:
-
-```go
-// Line 27 - This created a LOCAL ruxConfig, leaving global nil
-ruxConfig, err := BuildConfig(ctx, configPaths)
-
-// Fixed to:
-ruxConfig = BuildConfig(ctx, configPaths)
-
-## Better Patterns for CLI Init
-
-Instead of globals, consider these approaches:
-
-### 1. Dependency Injection via Context
-* Store your config in the CLI context and pass it through
-* Each command extracts what it needs from context
-* Makes dependencies explicit
-
-### 2. Init in Before, Store in App Metadata
-```go
-app.Before = func(ctx *cli.Context) error {
-    config := BuildConfig(ctx)
-    ctx.App.Metadata["config"] = config
-    return nil
-}
-```
-
-### 3. Command-specific initialization
-* Each command's Action initializes only what it needs
-* More boilerplate but very explicit
-
-### 4. Struct with methods (my favorite for larger CLIs)
-```go
-type RuxCLI struct {
-    configPaths *ConfigPaths
-    config      *Config
-}
-
-func (r *RuxCLI) Run() { /* setup and run */ }
-func (r *RuxCLI) createApp() *cli.App { /* commands reference r */ }
-```
-
 ## The Kong Consideration
 
 If you're planning to switch to Kong, it has better patterns built-in:
@@ -98,38 +45,6 @@ If you're planning to switch to Kong, it has better patterns built-in:
    * ✅ Made Kong the default CLI (removed `KONG=1` check)
    * ✅ Removed urfave/cli2 dependencies completely
    * ✅ Fixed integration tests for Kong CLI structure
-
-### Later
-
-* ~~Complete or remove Kong CLI implementation~~ ✅ DONE - Kong CLI is now fully functional!
-
-The real Go lesson here: The language actively tries to trick you with `:=`, but at least the compiler is fast enough that you discover your mistakes quickly!
-
-## Simplified Kong Transition Strategy (2025-06-15)
-
-### Current State
-* **2 global variables:** `configPaths` and `ruxConfig`
-* **4 commands:** main runner, watch, doctor, version
-* **Limited surface area:** Most config usage is in just a few files
-
-### Simple 3-Step Plan
-
-#### Step 1: Pass config as parameters (keep globals for now)
-Update function signatures to accept config instead of using globals:
-
-```go
-// Before:
-func runDoctor() error {
-    // uses global ruxConfig
-}
-
-// After:
-func runDoctor(config *Config) error {
-    // uses passed config
-}
-```
-
-Do this for all functions that use config. The CLI handlers can still use globals to pass them in.
 
 #### Step 2: Complete the Kong implementation
 Finish the existing Kong CLI in `kong.go`:
