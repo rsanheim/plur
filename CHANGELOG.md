@@ -1,5 +1,11 @@
 # rux CHANGELOG
 
+
+## v0.7.0 - 2025-06-17
+
+* Replace urfave/cli with Kong [#44](https://github.com/rsanheim/rux-meta/pull/44)
+* Convert all tests to use testify assertions [#45](https://github.com/rsanheim/rux-meta/pull/45)
+
 ## v0.6.10 - 2025-06-15
 
 * Consolidating init [#43](https://github.com/rsanheim/rux-meta/pull/43)
