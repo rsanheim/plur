@@ -1,8 +1,9 @@
 package watch
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFileMapper_MapFileToSpecs(t *testing.T) {
@@ -13,7 +14,6 @@ func TestFileMapper_MapFileToSpecs(t *testing.T) {
 		changedFile string
 		want        []string
 	}{
-		// Spec files
 		{
 			name:        "spec file returns itself",
 			changedFile: "spec/models/user_spec.rb",
@@ -87,9 +87,7 @@ func TestFileMapper_MapFileToSpecs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := fm.MapFileToSpecs(tt.changedFile)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("MapFileToSpecs(%q) = %v, want %v", tt.changedFile, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got, "MapFileToSpecs(%q)", tt.changedFile)
 		})
 	}
 }
@@ -141,9 +139,8 @@ func TestFileMapper_ShouldWatchFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := fm.ShouldWatchFile(tt.filePath); got != tt.want {
-				t.Errorf("ShouldWatchFile(%q) = %v, want %v", tt.filePath, got, tt.want)
-			}
+			got := fm.ShouldWatchFile(tt.filePath)
+			assert.Equal(t, tt.want, got, "ShouldWatchFile(%q)", tt.filePath)
 		})
 	}
 }
