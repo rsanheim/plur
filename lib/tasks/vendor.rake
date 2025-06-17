@@ -7,7 +7,7 @@ def watcher_platform
   case RUBY_PLATFORM
   when /aarch64-darwin/, /arm64-darwin/
     "aarch64-apple-darwin"
-  when /linux.*aarch64/, /linux.*arm64/
+  when /linux.*aarch64/, /linux.*arm64/, /aarch64.*linux/
     "aarch64-unknown-linux-gnu"
   when /linux/
     "x86_64-unknown-linux-gnu"
