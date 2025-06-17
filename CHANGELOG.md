@@ -1,6 +1,11 @@
 # rux CHANGELOG
 
 
+
+## v0.7.1 - 2025-06-17
+
+* Fix file load time; clean up StreamingMessage [#47](https://github.com/rsanheim/rux-meta/pull/47)
+
 ## v0.7.0 - 2025-06-17
 
 * Replace urfave/cli with Kong [#44](https://github.com/rsanheim/rux-meta/pull/44)
