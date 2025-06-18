@@ -66,7 +66,7 @@ module DockerHelper
     # Always use buildx for consistency
     platform_arg = platform ? "--platform #{platform}" : ""
     cmd = "docker buildx build #{platform_arg} -t #{image_name} .".strip
-    
+
     system(cmd)
   end
 end

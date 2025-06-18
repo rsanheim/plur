@@ -100,7 +100,7 @@ class DockerBuilder
     platforms.each do |platform, tag|
       info "Building for #{platform}..."
       start_time = Time.now
-      
+
       if build_tagged_image(platform: platform, tag: tag)
         elapsed = Time.now - start_time
         success "#{platform} build completed in #{elapsed.round(1)} seconds"
@@ -111,7 +111,7 @@ class DockerBuilder
 
     # Update build timestamp
     FileUtils.touch(build_timestamp_file)
-    
+
     info "All platform builds completed!"
     system("docker images | grep rux-test | sort")
   end
@@ -293,11 +293,11 @@ class DockerBuilder
   def build_tagged_image(platform:, tag:)
     tagged_name = "rux-test:#{tag}"
     cmd = "docker buildx build --platform #{platform} -t #{tagged_name} ."
-    
+
     if options[:verbose]
       puts "Running: #{cmd}"
     end
-    
+
     system(cmd)
   end
 end
