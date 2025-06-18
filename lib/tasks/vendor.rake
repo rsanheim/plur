@@ -37,7 +37,7 @@ file watcher_binary_path => [Plur.config.watcher_dir.to_s] do
   platform = watcher_platform
 
   # Download URL
-  url = "https://github.com/e-dant/watcher/releases/download/#{Plur.config.watcher_version}/#{platform}.tar"
+  url = "https://github.com/e-dant/watcher/releases/download/#{Plur.config.edant_watcher_version}/#{platform}.tar"
 
   # Use a temporary directory for download and extraction
   Dir.mktmpdir do |tmpdir|

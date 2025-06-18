@@ -43,7 +43,7 @@ As such, we need a docker container that matches the following:
    * Set working directory
    * Environment variables for test execution
 
-3. Create `scripts/docker-test.sh` that:
+3. Create Docker scripts that:
    * Builds rux for Linux
    * Installs watcher binary
    * Runs test suite against fixture projects
@@ -53,7 +53,7 @@ As such, we need a docker container that matches the following:
 
 * [x] Create Dockerfile with Ubuntu + Ruby 3.4 + Go 1.24.4
 * [x] Create docker-compose.yml for volume mounting
-* [x] Create docker-test.sh script
+* [x] Create docker-build and docker-run scripts
 * [x] Test rux build process in container
 * [x] Test watcher installation in container
 * [x] Run fixture project tests
@@ -91,11 +91,12 @@ As such, we need a docker container that matches the following:
    - Could revisit with proper volume permissions
 
 ### Improvements Made
-1. **Created standalone test script** - `scripts/docker-test-runner.sh`
-   - Extracted from inline script for better maintenance
-   - Synced via volume mount
+1. **Created separate Docker scripts** - `script/docker-build` and `script/docker-run`
+   - Build script handles image creation with smart rebuild detection
+   - Run script focuses on container execution and testing
+   - Both use Plur configuration for consistency
 
-2. **Enhanced docker-test.sh with platform support**
+2. **Enhanced Docker scripts with platform support**
    - `--platform linux/amd64` - Build/run x86_64 image
    - `--platform linux/arm64` - Build/run ARM64 image
    - Falls back to docker-compose for default platform
@@ -125,7 +126,7 @@ As such, we need a docker container that matches the following:
 ## Docker Optimization Analysis
 
 ### Current Docker Build Performance
-* **Always rebuilds** - No caching logic in docker-test.sh
+* **Smart rebuilds** - Caching logic in docker-test.rb checks timestamps
 * **Build times**:
   * ARM64 (native): ~1-2 minutes
   * x86_64 (Rosetta): ~2-4 minutes (Ruby compilation is slow)
@@ -169,9 +170,9 @@ Use `ruby:3.4` as base with these modifications:
 
 This would reduce Dockerfile from 88 to ~40 lines and cut build time significantly.
 
-### Smart Build Strategy
-Implement caching logic in docker-test.sh:
-1. Add `--no-build` flag to skip rebuilds
-2. Check image freshness vs Dockerfile timestamp
-3. Add `--rebuild` flag to force fresh builds
-4. Use Docker build cache more effectively
+### Smart Build Strategy (Implemented)
+The Ruby-based docker-test.rb now includes:
+1. ✅ `--no-build` flag to skip rebuilds
+2. ✅ Image freshness check vs Dockerfile timestamp
+3. ✅ Automatic detection of when rebuild is needed
+4. ✅ Better Docker build cache usage via Plur configuration

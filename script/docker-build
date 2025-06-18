@@ -1,0 +1,257 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+require "fileutils"
+require_relative "../lib/docker_helper"
+
+# Docker image builder for Rux
+class DockerBuilder
+  include DockerHelper
+
+  attr_reader :options
+
+  def initialize
+    @options = {
+      platform: nil,
+      force: false,
+      verbose: false
+    }
+  end
+
+  def run(args)
+    # Check for status subcommand first
+    if args.first == "status"
+      show_status
+      return
+    end
+
+    parse_options(args)
+    build
+  end
+
+  private
+
+  def parse_options(args)
+    parser = OptionParser.new do |opts|
+      opts.banner = "Usage: #{$0} [options] or #{$0} status"
+
+      opts.separator <<~HELP
+
+        Build Docker image for Rux testing
+
+        Commands:
+          status                       Show information about built images
+
+        Options:
+      HELP
+
+      opts.on("-p", "--platform PLATFORM", "Build for specific platform (linux/amd64, linux/arm64)") do |platform|
+        options[:platform] = platform
+      end
+
+      opts.on("-f", "--force", "Force rebuild even if image is up to date") do
+        options[:force] = true
+      end
+
+      opts.on("-v", "--verbose", "Verbose output") do
+        options[:verbose] = true
+      end
+
+      opts.on_tail("-h", "--help", "Show this message") do
+        puts opts
+        puts <<~EXAMPLES
+
+          Examples:
+            #{$0}                        # Build for current platform
+            #{$0} --platform linux/amd64 # Build for x86_64
+            #{$0} --platform linux/arm64 # Build for ARM64
+            #{$0} --force                # Force rebuild
+            #{$0} status                 # Show built images
+        EXAMPLES
+        exit
+      end
+    end
+
+    parser.parse!(args)
+  end
+
+  def build
+    if !options[:force] && !needs_rebuild?
+      info "Image is up to date. Use --force to rebuild."
+      return
+    end
+
+    info "Building Docker image#{options[:platform] ? " for #{options[:platform]}" : ""}..."
+
+    start_time = Time.now
+
+    if build_image(platform: options[:platform])
+      # Update build timestamp
+      FileUtils.touch(build_timestamp_file)
+
+      elapsed = Time.now - start_time
+      success "Build completed in #{elapsed.round(1)} seconds"
+
+      # Show image info
+      if options[:verbose]
+        system("docker images | grep #{image_name.split(":").first}")
+      end
+    else
+      error "Build failed!"
+    end
+  end
+
+  def needs_rebuild?
+    # Check if image exists
+    unless image_exists?
+      puts "Image not found, build required" if options[:verbose]
+      return true
+    end
+
+    # Check if Dockerfile is newer than last build
+    if File.exist?(build_timestamp_file)
+      if File.mtime("Dockerfile") > File.mtime(build_timestamp_file)
+        puts "Dockerfile has changed, rebuild needed" if options[:verbose]
+        return true
+      end
+
+      # Check if any build context files have changed
+      context_files = ["plur.rb", "Gemfile", "Gemfile.lock", "lib/docker_helper.rb"]
+      context_files.each do |file|
+        if File.exist?(file) && File.mtime(file) > File.mtime(build_timestamp_file)
+          puts "#{file} has changed, rebuild needed" if options[:verbose]
+          return true
+        end
+      end
+    else
+      puts "No build timestamp found, build required" if options[:verbose]
+      return true
+    end
+
+    false
+  end
+
+  def build_timestamp_file
+    ".docker-build-timestamp"
+  end
+
+  def info(message)
+    puts ">>> #{message}"
+  end
+
+  def success(message)
+    puts "✓ #{message}"
+  end
+
+  def error(message)
+    puts "✗ ERROR: #{message}"
+    exit(1)
+  end
+
+  def show_status
+    info "Docker images for Rux testing"
+
+    # Get all rux-test images
+    images_output = `docker images rux-test --no-trunc`
+
+    if images_output.lines.count <= 1  # Only header line
+      puts "\nNo rux-test images found. Run './script/docker-build' to build one."
+      return
+    end
+
+    puts <<~HEADER
+
+      Built images:
+      #{"-" * 80}
+    HEADER
+
+    # Get detailed info for each image
+    image_ids = `docker images rux-test -q`.split("\n").uniq
+
+    image_ids.each do |image_id|
+      require "json"
+      require "time"
+
+      # Get more detailed info using docker inspect
+      inspect_output = `docker inspect #{image_id} 2>/dev/null`
+      if $?.success?
+        inspect_data = JSON.parse(inspect_output).first
+
+        # Extract useful information
+        architecture = inspect_data.dig("Architecture") || "unknown"
+        os = inspect_data.dig("Os") || "unknown"
+        created = inspect_data.dig("Created") || ""
+        size_bytes = inspect_data.dig("Size") || 0
+        repo_tags = inspect_data.dig("RepoTags") || ["rux-test:unknown"]
+
+        # Format size
+        size_mb = (size_bytes / 1024.0 / 1024.0).round(1)
+        size_str = (size_mb > 1024) ? "#{(size_mb / 1024.0).round(2)} GB" : "#{size_mb} MB"
+
+        # Format creation time
+        created_time = Time.parse(created).localtime.strftime("%Y-%m-%d %H:%M:%S")
+
+        # Check if this matches our current platform
+        current_platform = `uname -m`.strip
+        platform_match = case current_platform
+        when "arm64", "aarch64"
+          architecture == "arm64"
+        when "x86_64"
+          architecture == "amd64"
+        else
+          false
+        end
+
+        repo_tags.each do |tag|
+          default_marker = tag.end_with?(":latest") ? "\n  Default:      Yes" : ""
+          platform_marker = platform_match ? "(current platform)" : ""
+
+          puts <<~IMAGE_INFO
+
+            Image: #{tag}
+              ID:           #{image_id[0..11]}
+              Architecture: #{os}/#{architecture} #{platform_marker}
+              Size:         #{size_str}
+              Created:      #{created_time}#{default_marker}
+          IMAGE_INFO
+        end
+      end
+    rescue => e
+      # Fallback to simple display if parsing fails
+      puts "  Error inspecting image #{image_id}: #{e.message}"
+    end
+
+    # Show build timestamp if it exists
+    if File.exist?(build_timestamp_file)
+      puts "\nLast build: #{File.mtime(build_timestamp_file).strftime("%Y-%m-%d %H:%M:%S")}"
+    end
+
+    # Show current platform info
+    docker_arch = `docker version --format '{{.Server.Arch}}'`.strip
+    puts <<~PLATFORM_INFO
+
+      Current host platform: #{RUBY_PLATFORM}
+      Docker default platform: #{docker_arch}
+    PLATFORM_INFO
+
+    # Check if buildx is available for multi-platform builds
+    if system("docker buildx version", out: File::NULL, err: File::NULL)
+      puts "\n✓ Docker buildx available for multi-platform builds"
+
+      # Show available builders
+      builders = `docker buildx ls 2>/dev/null`
+      if $?.success? && options[:verbose]
+        puts "\nAvailable builders:"
+        puts builders
+      end
+    else
+      puts "\n✗ Docker buildx not available (install for multi-platform support)"
+    end
+  end
+end
+
+# Run if executed directly
+if __FILE__ == $0
+  DockerBuilder.new.run(ARGV)
+end

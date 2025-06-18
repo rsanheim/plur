@@ -14,10 +14,10 @@ RSpec.describe Plur::Config do
   end
 
   describe "constants" do
-    it "defines watcher_version as a non-empty string" do
-      expect(config.watcher_version).to be_a(String)
-      expect(config.watcher_version).not_to be_empty
-      expect(config.watcher_version).to match(/^\d+\.\d+\.\d+$/)
+    it "defines edant_watcher_version as a non-empty string" do
+      expect(config.edant_watcher_version).to be_a(String)
+      expect(config.edant_watcher_version).not_to be_empty
+      expect(config.edant_watcher_version).to match(/^\d+\.\d+\.\d+$/)
     end
 
     it "defines root_dir as an existing Pathname" do

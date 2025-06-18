@@ -60,13 +60,29 @@
 
 ## Commands for Testing
 
+Docker operations are now split into dedicated build and run scripts:
+
 ```bash
-# Test on ARM64
-scripts/docker-test.sh --platform linux/arm64 --run /workspace/scripts/docker-test-runner.sh
+# Build images for different architectures
+./script/docker-build --platform linux/arm64
+./script/docker-build --platform linux/amd64
 
-# Test on x86_64
-scripts/docker-test.sh --platform linux/amd64 --run /workspace/scripts/docker-test-runner.sh
+# Run tests on specific architecture
+./script/docker-run --test --platform linux/arm64
+./script/docker-run --test --platform linux/amd64
 
-# Quick test specific architecture
-scripts/docker-test.sh --platform linux/amd64 --run "cd /workspace && bin/rake install && rux doctor"
+# Quick commands on specific architecture
+./script/docker-run --command "rux doctor" --platform linux/amd64
+
+# Interactive shell for debugging
+./script/docker-run --shell --platform linux/arm64
+
+# Run without rebuilding (much faster)
+./script/docker-run --command "bin/rake test:ruby"
 ```
+
+The scripts automatically use Plur configuration for:
+- Correct number of cores (RUX_CORES)
+- E-dant watcher version
+- Proper directory paths
+- Build timestamp tracking

@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../plur"
+
+# Export Plur configuration as environment variables for docker-compose
+ENV["RUX_CORES"] = Plur.config.rux_cores.to_s
+ENV["EDANT_WATCHER_VERSION"] = Plur.config.edant_watcher_version
+
+# Pass through to docker-compose with all arguments
+exec("docker-compose", *ARGV)

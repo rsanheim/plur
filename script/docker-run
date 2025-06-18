@@ -1,0 +1,222 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+require "tempfile"
+require_relative "../lib/docker_helper"
+require_relative "../plur"
+
+# Docker runner for Rux
+class DockerRunner
+  include DockerHelper
+
+  attr_reader :options
+
+  def initialize
+    @options = {
+      platform: nil,
+      command: nil,
+      shell: false,
+      test: false,
+      attach: false
+    }
+  end
+
+  def run(args)
+    parse_options(args)
+
+    unless image_exists?
+      error "Docker image not found. Run './script/docker-build.rb' first."
+    end
+
+    if options[:shell]
+      run_shell
+    elsif options[:test]
+      run_test_suite
+    elsif options[:command]
+      run_command(options[:command])
+    elsif options[:attach]
+      attach_to_running
+    else
+      # Default: show help
+      run(["--help"])
+    end
+  end
+
+  private
+
+  def parse_options(args)
+    parser = OptionParser.new do |opts|
+      opts.banner = "Usage: #{$0} [options]"
+
+      opts.separator ""
+      opts.separator "Run commands in Rux Docker container"
+      opts.separator ""
+      opts.separator "Options:"
+
+      opts.on("-s", "--shell", "Start an interactive shell") do
+        options[:shell] = true
+      end
+
+      opts.on("-t", "--test", "Run the full test suite") do
+        options[:test] = true
+      end
+
+      opts.on("-c", "--command COMMAND", "Run a specific command") do |cmd|
+        options[:command] = cmd
+      end
+
+      opts.on("-p", "--platform PLATFORM", "Run on specific platform (linux/amd64, linux/arm64)") do |platform|
+        options[:platform] = platform
+      end
+
+      opts.on("-a", "--attach", "Attach to running container (if using docker-compose)") do
+        options[:attach] = true
+      end
+
+      opts.on("--ps", "Show running containers") do
+        show_status
+        exit
+      end
+
+      opts.on("--logs [SERVICE]", "Show container logs") do |service|
+        show_logs(service)
+        exit
+      end
+
+      opts.on_tail("-h", "--help", "Show this message") do
+        puts opts
+        puts
+        puts "Examples:"
+        puts "  #{$0} --shell                           # Interactive shell"
+        puts "  #{$0} --test                            # Run full test suite"
+        puts "  #{$0} --command 'rux doctor'            # Run specific command"
+        puts "  #{$0} --command 'bin/rake test:ruby'    # Run Ruby tests"
+        puts "  #{$0} --shell --platform linux/amd64    # Shell on x86_64"
+        puts
+        puts "Common commands:"
+        puts "  rux doctor                              # Check rux installation"
+        puts "  bin/rake test:all                       # Run all tests"
+        puts "  bin/rake test:ruby                      # Run Ruby integration tests"
+        puts "  bin/rake test:go                        # Run Go unit tests"
+        puts "  cd fixtures/projects/default-ruby && rux # Run rux on test project"
+        exit
+      end
+    end
+
+    parser.parse!(args)
+  end
+
+  def run_shell
+    info "Starting interactive shell..."
+
+    cmd = docker_run("bash",
+      platform: options[:platform],
+      interactive: true)
+
+    exec(cmd)
+  end
+
+  def run_command(command)
+    info "Running: #{command}"
+
+    cmd = docker_run("bash -c '#{command}'",
+      platform: options[:platform])
+
+    system(cmd) || error("Command failed with exit code #{$?.exitstatus}")
+  end
+
+  def run_test_suite
+    info "Running full test suite..."
+
+    # Create test runner script
+    runner_script = create_test_runner_script
+
+    begin
+      cmd = docker_run("/tmp/test-runner.rb",
+        platform: options[:platform],
+        volumes: ["#{runner_script}:/tmp/test-runner.rb:ro"])
+
+      if system(cmd)
+        success "All tests passed!"
+      else
+        error "Test suite failed with exit code #{$?.exitstatus}"
+      end
+    ensure
+      File.unlink(runner_script) if File.exist?(runner_script)
+    end
+  end
+
+  def attach_to_running
+    info "Attaching to running container..."
+    system("docker-compose exec rux-test bash") || error("No running container found")
+  end
+
+  def create_test_runner_script
+    script = Tempfile.new(["docker-test-runner", ".rb"])
+    script.write(<<~RUBY)
+      #!/usr/bin/env ruby
+      # frozen_string_literal: true
+      
+      require_relative "/workspace/plur"
+      
+      puts <<~ENV_INFO
+        
+        >>> Test Environment
+        E-dant watcher version: \#{Plur.config.edant_watcher_version}
+        Rux cores: \#{Plur.config.rux_cores}
+        Ruby: \#{RUBY_VERSION}
+        Go: \#{`go version`.strip}
+        Platform: \#{`uname -m`.strip}
+      ENV_INFO
+      
+      puts "\\n>>> Installing dependencies"
+      system("bundle install") || exit(1)
+      
+      puts "\\n>>> Building rux"
+      system("bin/rake install") || exit(1)
+      
+      puts "\\n>>> Running test suite"
+      system("bin/rake test:all") || exit(1)
+    RUBY
+    script.close
+
+    FileUtils.chmod(0o755, script.path)
+    script.path
+  end
+
+  def show_status
+    info "Docker container status..."
+    system("docker ps -a | grep rux-test || echo 'No rux-test containers found'")
+  end
+
+  def show_logs(service = nil)
+    if File.exist?("docker-compose.yml")
+      info "Container logs from docker-compose..."
+      cmd = "docker-compose logs"
+      cmd += " #{service}" if service
+      system(cmd)
+    else
+      info "Container logs..."
+      system("docker logs rux-test-container 2>&1 || echo 'No logs found'")
+    end
+  end
+
+  def info(message)
+    puts ">>> #{message}"
+  end
+
+  def success(message)
+    puts "✓ #{message}"
+  end
+
+  def error(message)
+    puts "✗ ERROR: #{message}"
+    exit(1)
+  end
+end
+
+# Run if executed directly
+if __FILE__ == $0
+  DockerRunner.new.run(ARGV)
+end

@@ -10,12 +10,12 @@ module Plur
   class Config
     include Singleton
 
-    attr_reader :watcher_version, :root_dir, :rux_dir, :watcher_dir, :rux_binary,
+    attr_reader :edant_watcher_version, :root_dir, :rux_dir, :watcher_dir, :rux_binary,
       :fixtures_dir, :default_ruby_dir, :default_rails_dir
 
     def initialize
       # Version information
-      @watcher_version = "0.13.6"
+      @edant_watcher_version = "0.13.6"
 
       # Directory paths
       @root_dir = Pathname.new(__dir__).expand_path
