@@ -19,7 +19,7 @@ import (
 
 // Embed the watcher binaries at compile time
 //
-//go:embed vendor/watcher/*
+//go:embed embedded/watcher/*
 var watcherBinaries embed.FS
 
 func runWatchInstall(force bool) error {
