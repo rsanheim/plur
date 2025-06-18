@@ -109,5 +109,5 @@ func getEmbeddedBinaryPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join("vendor/watcher", binaryName), nil
+	return filepath.Join("embedded/watcher", binaryName), nil
 }
