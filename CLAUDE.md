@@ -143,7 +143,5 @@ Keep documentation focused on the **current state** of the project:
 
 ## Output Formatting
 
-- **No color codes**: Do not use ANSI color escape sequences in output unless specifically requested
-- Keep output clean and readable in plain text
-- Use simple ASCII characters for emphasis (e.g., `>>>`, `✓`, `✗`)
-- This applies to all scripts, tools, and code output
+- No ANSI color codes in output (keep it plain text)
+- Use simple ASCII for emphasis: `>>>`, `✓`, `✗`
