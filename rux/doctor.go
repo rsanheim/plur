@@ -78,8 +78,8 @@ func runDoctorWithConfig(config *Config) error {
 		fmt.Printf("  Status:         Available\n")
 		fmt.Printf("  Binary Path:    %s\n", watcherPath)
 
-		// Try to get watcher version
-		watcherVersion, err := getCommandOutput(watcherPath, "--version")
+		// Try to get e-dant watcher version
+		edantWatcherVersion, err := getCommandOutput(watcherPath, "--version")
 		if err != nil {
 			// e-dant/watcher doesn't have --version, so check if binary exists
 			if _, statErr := os.Stat(watcherPath); statErr == nil {
@@ -88,7 +88,7 @@ func runDoctorWithConfig(config *Config) error {
 				fmt.Printf("  Version:        error: %v\n", err)
 			}
 		} else {
-			fmt.Printf("  Version:        %s\n", strings.TrimSpace(watcherVersion))
+			fmt.Printf("  Version:        %s\n", strings.TrimSpace(edantWatcherVersion))
 		}
 		fmt.Printf("  Platform:       %s/%s\n", runtime.GOOS, runtime.GOARCH)
 	}

@@ -140,3 +140,8 @@ Keep documentation focused on the **current state** of the project:
 - Remove inline references to "coming soon", "will support", etc.
 - Future plans belong only in `docs/overview/roadmap.md`
 - When features are implemented, move them from roadmap to main docs
+
+## Output Formatting
+
+- No ANSI color codes in output (keep it plain text)
+- Use simple ASCII for emphasis: `>>>`, `✓`, `✗`
