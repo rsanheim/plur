@@ -25,8 +25,17 @@ class DockerRunner
   def run(args)
     parse_options(args)
 
-    unless image_exists?
-      error "Docker image not found. Run './script/docker-build.rb' first."
+    # Platform is required except for help/status commands
+    if options[:platform].nil? && !ARGV.include?("--help") && !ARGV.include?("-h") && !ARGV.include?("--ps") && !ARGV.include?("--logs")
+      error "Platform must be specified. Use --platform amd64 or --platform arm64"
+    end
+
+    unless image_exists?(platform: options[:platform])
+      if options[:platform]
+        error "Docker image for platform '#{options[:platform]}' not found. Run './script/docker-build --platform linux/#{options[:platform]}' first."
+      else
+        error "Docker image not found. Run './script/docker-build' first."
+      end
     end
 
     if options[:shell]
@@ -66,8 +75,17 @@ class DockerRunner
         options[:command] = cmd
       end
 
-      opts.on("-p", "--platform PLATFORM", "Run on specific platform (linux/amd64, linux/arm64)") do |platform|
-        options[:platform] = platform
+      opts.on("-p", "--platform PLATFORM", "Use platform-specific image (amd64, arm64)") do |platform|
+        # Map platform names to our tag convention
+        tag = case platform
+        when "linux/amd64", "amd64", "x86_64"
+          "amd64"
+        when "linux/arm64", "arm64", "aarch64"
+          "arm64"
+        else
+          platform
+        end
+        options[:platform] = tag
       end
 
       opts.on("-a", "--attach", "Attach to running container (if using docker-compose)") do
@@ -87,12 +105,15 @@ class DockerRunner
       opts.on_tail("-h", "--help", "Show this message") do
         puts opts
         puts
+        puts "Platform is REQUIRED for all commands (except --help, --ps, --logs)"
+        puts
         puts "Examples:"
-        puts "  #{$0} --shell                           # Interactive shell"
-        puts "  #{$0} --test                            # Run full test suite"
-        puts "  #{$0} --command 'rux doctor'            # Run specific command"
-        puts "  #{$0} --command 'bin/rake test:ruby'    # Run Ruby tests"
-        puts "  #{$0} --shell --platform linux/amd64    # Shell on x86_64"
+        puts "  #{$0} --shell --platform amd64          # Interactive shell on x86_64"
+        puts "  #{$0} --shell --platform arm64          # Interactive shell on ARM64"
+        puts "  #{$0} --test --platform amd64           # Run full test suite on x86_64"
+        puts "  #{$0} --test --platform arm64           # Run full test suite on ARM64"
+        puts "  #{$0} --command 'rux doctor' --platform amd64"
+        puts "  #{$0} --command 'bin/rake test:ruby' --platform arm64"
         puts
         puts "Common commands:"
         puts "  rux doctor                              # Check rux installation"

@@ -15,7 +15,8 @@ class DockerBuilder
     @options = {
       platform: nil,
       force: false,
-      verbose: false
+      verbose: false,
+      all: false
     }
   end
 
@@ -50,6 +51,10 @@ class DockerBuilder
         options[:platform] = platform
       end
 
+      opts.on("-a", "--all", "Build for all platforms (creates tagged images: arm64, amd64)") do
+        options[:all] = true
+      end
+
       opts.on("-f", "--force", "Force rebuild even if image is up to date") do
         options[:force] = true
       end
@@ -66,6 +71,7 @@ class DockerBuilder
             #{$0}                        # Build for current platform
             #{$0} --platform linux/amd64 # Build for x86_64
             #{$0} --platform linux/arm64 # Build for ARM64
+            #{$0} --all                  # Build all platforms with arch tags
             #{$0} --force                # Force rebuild
             #{$0} status                 # Show built images
         EXAMPLES
@@ -77,6 +83,40 @@ class DockerBuilder
   end
 
   def build
+    if options[:all]
+      build_all_platforms
+    else
+      build_single_platform
+    end
+  end
+
+  def build_all_platforms
+    info "Building Docker images for all platforms..."
+    platforms = {
+      "linux/amd64" => "amd64",
+      "linux/arm64" => "arm64"
+    }
+
+    platforms.each do |platform, tag|
+      info "Building for #{platform}..."
+      start_time = Time.now
+      
+      if build_tagged_image(platform: platform, tag: tag)
+        elapsed = Time.now - start_time
+        success "#{platform} build completed in #{elapsed.round(1)} seconds"
+      else
+        error "#{platform} build failed!"
+      end
+    end
+
+    # Update build timestamp
+    FileUtils.touch(build_timestamp_file)
+    
+    info "All platform builds completed!"
+    system("docker images | grep rux-test | sort")
+  end
+
+  def build_single_platform
     if !options[:force] && !needs_rebuild?
       info "Image is up to date. Use --force to rebuild."
       return
@@ -248,6 +288,17 @@ class DockerBuilder
     else
       puts "\n✗ Docker buildx not available (install for multi-platform support)"
     end
+  end
+
+  def build_tagged_image(platform:, tag:)
+    tagged_name = "rux-test:#{tag}"
+    cmd = "docker buildx build --platform #{platform} -t #{tagged_name} ."
+    
+    if options[:verbose]
+      puts "Running: #{cmd}"
+    end
+    
+    system(cmd)
   end
 end
 

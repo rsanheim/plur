@@ -1,8 +1,8 @@
 services:
   rux-test:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Note: We use buildx for building, not docker-compose
+    # Run: ./script/docker-build to build images
+    # WARNING: This uses 'latest' tag - for platform-specific testing use ./script/docker-run
     image: rux-test:latest
     container_name: rux-test-container
     volumes:

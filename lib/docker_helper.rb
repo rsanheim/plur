@@ -12,7 +12,6 @@ module DockerHelper
     # Basic flags
     args << "-it" if interactive
     args << "--rm"
-    args << "--platform #{platform}" if platform
 
     # Volumes from Plur
     args << "-v #{Plur.config.root_dir}:/workspace:rw"
@@ -30,7 +29,7 @@ module DockerHelper
     env.each { |k, v| args << "-e #{k}=#{v}" }
 
     # Image and command
-    args << image_name
+    args << image_name(platform: platform)
     args << command
 
     args.join(" ")
@@ -49,22 +48,25 @@ module DockerHelper
     args.join(" ")
   end
 
-  def image_name
-    "rux-test:latest"
+  def image_name(platform: nil)
+    if platform && !["latest", nil].include?(platform)
+      "rux-test:#{platform}"
+    else
+      "rux-test:latest"
+    end
   end
 
-  def image_exists?
-    system("docker images | grep -q '#{image_name.split(":").first}.*#{image_name.split(":").last}'",
+  def image_exists?(platform: nil)
+    name = image_name(platform: platform)
+    system("docker images | grep -q '#{name.split(":").first}.*#{name.split(":").last}'",
       out: File::NULL, err: File::NULL)
   end
 
   def build_image(platform: nil)
-    if platform
-      system("docker buildx build --platform #{platform} -t #{image_name} .")
-    else
-      ENV["RUX_CORES"] = Plur.config.rux_cores.to_s
-      ENV["EDANT_WATCHER_VERSION"] = Plur.config.edant_watcher_version
-      system("docker-compose build")
-    end
+    # Always use buildx for consistency
+    platform_arg = platform ? "--platform #{platform}" : ""
+    cmd = "docker buildx build #{platform_arg} -t #{image_name} .".strip
+    
+    system(cmd)
   end
 end
