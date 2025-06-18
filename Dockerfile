@@ -62,14 +62,14 @@ RUN apt-get update && apt-get install -y \
 
 # Build Ruby 3.4 from source
 RUN cd /tmp \
-    && wget https://cache.ruby-lang.org/pub/ruby/3.4/ruby-3.4.0.tar.gz \
-    && tar xzf ruby-3.4.0.tar.gz \
-    && cd ruby-3.4.0 \
+    && wget https://cache.ruby-lang.org/pub/ruby/3.4/ruby-3.4.4.tar.gz \
+    && tar xzf ruby-3.4.4.tar.gz \
+    && cd ruby-3.4.4 \
     && ./configure --prefix=/usr/local --enable-shared \
     && make -j$(nproc) \
     && make install \
     && cd / \
-    && rm -rf /tmp/ruby-3.4.0*
+    && rm -rf /tmp/ruby-3.4.4*
 
 # Install bundler
 RUN gem install bundler
