@@ -1,6 +1,11 @@
 # rux CHANGELOG
 
+## v0.7.2 - 2025-06-21
 
+* Benchmark cleanup [#53](https://github.com/rsanheim/rux-meta/pull/53)
+* Clean up [#52](https://github.com/rsanheim/rux-meta/pull/52)
+* Docker [#48](https://github.com/rsanheim/rux-meta/pull/48)
+* Cleaning up rakefile and build [#49](https://github.com/rsanheim/rux-meta/pull/49)
 
 ## v0.7.1 - 2025-06-17
 
