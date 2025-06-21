@@ -1,5 +1,17 @@
 # Minitest Support & Framework Abstraction Plan
 
+## Current Status
+
+**Phase 0**: ✅ COMPLETED (2024-12-21)
+- All fixture projects created
+- Helper methods implemented using inline Ruby script approach
+- Ready to proceed with Phase 1
+
+**Next Steps**: 
+1. Begin Phase 1 - Decouple Core Types from RSpec
+2. Create framework-agnostic types in Go
+3. Update TestResult and TestSummary structs
+
 ## Overview
 
 This document outlines the plan to add Minitest support to rux while establishing proper abstractions for supporting multiple test frameworks. The approach prioritizes incremental changes, maintains backward compatibility, and uses Minitest as a forcing function to drive better design.
@@ -31,28 +43,44 @@ This document outlines the plan to add Minitest support to rux while establishin
 
 ## Implementation Phases
 
-### Phase 0: Create more fixture projects for testing and verification
+### Phase 0: Create more fixture projects for testing and verification ✅ COMPLETED
 
-* create `fixtures/projects/minitest-success` project
+* ✅ create `fixtures/projects/minitest-success` project
     * A basic test project using latest minitest in a 'stock' way
     * Add some some basic tests that all pass
-* create `fixtures/projects/minitest-failures` project
+* ✅ create `fixtures/projects/minitest-failures` project
     * A basic test project using latest minitest in a 'stock' way
-    * Add a mix of tests, some failing and some failing
+    * Add a mix of tests, some failing and some passing
     * For verifying failure detection and output
-* create `fixtures/projects/testunit-success` project
+* ✅ create `fixtures/projects/testunit-success` project
     * A basic test project using latest ruby test-unit in a 'stock' way
     * Add some some basic tests that all pass
-* create `fixtures/projects/testunit-failures` project
+* ✅ create `fixtures/projects/testunit-failures` project
     * A basic test project using latest test-unit in a 'stock' way
-    * Add a mix of tests, some failing and some failing
+    * Add a mix of tests, some failing and some passing
     * For verifying failure detection and output
-* create a spec helper method to run the tests in these projects using the default Ruby way, so we can compare against and see
+* ✅ create a spec helper method to run the tests in these projects using the default Ruby way, so we can compare against and see
 how they run by default
+
+#### Phase 0 Implementation Notes:
+- Created fixture projects with realistic test cases including edge cases, error handling, and skipped tests
+- Implemented `spec/support/fixture_runner.rb` using Open3.capture3 and TTY::Command::Result
+- Solved minitest's multiple file execution limitation using inline Ruby script approach from parallel_tests:
+  ```ruby
+  ruby -Itest -e "%w[test1.rb test2.rb].each { |f| require %{./#{f}} }"
+  ```
+- All fixture project specs passing in `spec/fixture_projects_spec.rb`
 
 ### Phase 1: Decouple Core Types from RSpec
 
 **Goal**: Remove `rspec` package imports from core types
+
+**Specific Tasks**:
+1. Create new `result.go` file with framework-agnostic types
+2. Update `runner.go` to use new types instead of `rspec.FailureDetail` and `rspec.JSONOutput`
+3. Create conversion functions in `rspec` package to transform RSpec-specific types to generic ones
+4. Update all references throughout codebase
+5. Ensure backward compatibility - existing behavior must remain unchanged
 
 #### 1.1 Create Framework-Agnostic Types
 
@@ -567,6 +595,21 @@ This architecture sets up support for:
 - Testing & Documentation: 1 week
 
 Total: ~1 month for full implementation
+
+---
+
+## Key Learnings from Phase 0
+
+1. **Minitest Multiple File Execution**: Minitest doesn't natively support running multiple test files from command line arguments (unlike RSpec). Must use inline Ruby script approach or require each file individually.
+
+2. **Command Construction Pattern**: The parallel_tests pattern works well:
+   ```bash
+   ruby -Itest -e "%w[file1.rb file2.rb].each { |f| require %{./#{f}} }"
+   ```
+
+3. **Test::Unit Compatibility**: Test::Unit uses the same limitation and solution as Minitest, making the implementation reusable.
+
+4. **TTY::Command vs Open3**: Open3.capture3 provides simpler command execution without auto-escaping complications. Can still return TTY::Command::Result for interface compatibility.
 
 ---
 

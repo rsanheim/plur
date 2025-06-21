@@ -32,6 +32,6 @@ class StringHelperTest < Minitest::Test
     assert_equal 2, StringHelper.count_vowels("hello")
     assert_equal 5, StringHelper.count_vowels("aeiou")
     assert_equal 0, StringHelper.count_vowels("xyz")
-    assert_equal 3, StringHelper.count_vowels("HELLO")
+    assert_equal 2, StringHelper.count_vowels("HELLO")
   end
 end

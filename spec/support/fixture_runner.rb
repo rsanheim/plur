@@ -1,5 +1,6 @@
 # Helper module for running tests in fixture projects
-require 'tty-command'
+require "open3"
+require "tty-command"
 
 module FixtureRunner
   # Run the tests in the given fixture project and return the result
@@ -7,26 +8,34 @@ module FixtureRunner
   # - `:null` to suppress output
   # - `:pretty` colorful output
   # - `:quiet` to show only errors
-  def run_fixture_tests(project_name, printer: :null, framework:)
+  def run_fixture_tests(project_name, framework:, printer: :null)
     project_path = project_fixture!(project_name).expand_path
-    
+
     Bundler.with_unbundled_env do
       Dir.chdir(project_path) do
-        cmd = TTY::Command.new(printer: printer)
-        
         # Install dependencies if needed
         if File.exist?("Gemfile")
-          cmd.run("bundle check || bundle install --quiet")
+          _, _, status = Open3.capture3("bundle check")
+          unless status.success?
+            _, _, _ = Open3.capture3("bundle install --quiet")
+          end
         end
 
         # Determine the test command based on framework
         command = case framework
-        when :minitest
+        when :minitest, :testunit
           test_files = Dir.glob("test/**/*_test.rb")
-          ["bundle", "exec", "ruby", "-Itest"] + test_files
-        when :testunit
-          test_files = Dir.glob("test/**/*_test.rb")
-          ["bundle", "exec", "ruby", "-Itest"] + test_files
+          if test_files.empty?
+            raise "No test files found in #{project_path}/test"
+          end
+
+          # Build the inline script like parallel_tests does
+          require_list = test_files.map { |f| f.gsub(" ", "\\ ") }.join(" ")
+          [
+            "bundle", "exec", "ruby",
+            "-Itest",
+            "-e", "%w[#{require_list}].each { |f| require %{./\#{f}} }"
+          ]
         when :rspec
           ["bundle", "exec", "rspec"]
         else
@@ -34,19 +43,21 @@ module FixtureRunner
         end
 
         # Run the tests and capture output
-        puts "Running command in #{Dir.pwd}: #{command.join(' ')}" if ENV['DEBUG']
-        
-        cmd.run!(*command)
+        puts "Running command in #{Dir.pwd}: #{command.join(" ")}" if ENV["DEBUG"]
+
+        stdout, stderr, status = Open3.capture3(*command)
+
+        # Return a TTY::Command::Result directly
+        TTY::Command::Result.new(status.exitstatus, stdout, stderr)
       end
     end
   end
 
   # Helper to run tests and compare with rux output
   def compare_with_native_runner(project_name, framework: :auto)
-    native_result = run_fixture_tests(project_name, framework: framework)
-    
+    run_fixture_tests(project_name, framework: framework)
+
     # Return the native result for comparison
-    native_result
   end
 
   # Extract test counts from output
