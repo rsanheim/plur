@@ -33,8 +33,8 @@ RSpec.describe Plur::Benchmark do
     describe "#default_projects" do
       it "returns the default project paths" do
         expect(config.default_projects).to eq([
-          "./fixtures/projects/default-ruby",
-          "./references/example-project"
+          Plur.config.default_ruby_dir.to_s,
+          Plur.config.root_dir.join("references", "example-project").to_s
         ])
       end
     end
@@ -56,6 +56,8 @@ RSpec.describe Plur::Benchmark do
     let(:runner) { Plur::Benchmark::Runner.new(config) }
 
     before do
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?).with(Plur.config.rux_binary).and_return(true)
       allow(runner).to receive(:system).and_return(true)
       allow(runner).to receive(:get_git_sha).and_return("abc123")
       allow(runner).to receive(:get_rux_version).and_return("rux version 1.0.0")
