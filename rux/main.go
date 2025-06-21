@@ -30,6 +30,8 @@ func (r *SpecCmd) Run(parent *RuxCLI) error {
 		SpecCommand:  r.Command,
 	}
 
+	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns)
+
 	// Initialize tracing if enabled
 	if config.TraceEnabled {
 		if err := tracing.Init(true); err != nil {
@@ -89,8 +91,9 @@ type WatchCmd struct {
 
 type WatchRunCmd struct {
 	// Flags for watch command
-	Timeout  int `help:"Exit after specified seconds (default: run until Ctrl-C)"`
-	Debounce int `help:"Debounce delay in milliseconds" default:"100"`
+	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
+	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
+	Command  string `help:"Test command to run" default:"bundle exec rspec"`
 }
 
 func (w *WatchRunCmd) Run(parent *RuxCLI) error {
@@ -103,6 +106,7 @@ func (w *WatchRunCmd) Run(parent *RuxCLI) error {
 		DryRun:       parent.DryRun,
 		TraceEnabled: parent.Trace,
 		WorkerCount:  GetWorkerCount(parent.Workers),
+		WatchCommand: w.Command,
 	}
 
 	// Auto-install watcher binary if needed

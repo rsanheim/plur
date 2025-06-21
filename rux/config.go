@@ -17,6 +17,7 @@ type Config struct {
 	TraceEnabled bool
 	WorkerCount  int
 	SpecCommand  string
+	WatchCommand string
 }
 
 type ConfigPaths struct {

@@ -125,7 +125,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 				// User pressed Enter - run all specs
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
-				runSpecsOrDirectory("spec")
+				runSpecsOrDirectory("spec", config.WatchCommand)
 				fmt.Print("\nrux> ")
 			case "exit":
 				// User typed exit command
@@ -197,7 +197,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 				// Run each unique spec
 				for spec := range uniqueSpecs {
 					logger.LogDebug("rux", "event", "run_spec", "path", "./"+spec)
-					runSpecsOrDirectory(spec)
+					runSpecsOrDirectory(spec, config.WatchCommand)
 				}
 
 				go func() {
@@ -223,7 +223,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 
 // Simple implementation using direct rspec call for now
 // We'll integrate with rux runner properly later
-func runSpecsOrDirectory(specPath string) {
+func runSpecsOrDirectory(specPath string, command string) {
 	var cmd *exec.Cmd
 
 	if _, err := os.Stat(specPath); errors.Is(err, os.ErrNotExist) {
@@ -231,7 +231,9 @@ func runSpecsOrDirectory(specPath string) {
 		return
 	}
 
-	args := []string{"bundle", "exec", "rspec", "--format", "progress", specPath}
+	// Split the command string into parts
+	cmdParts := strings.Fields(command)
+	args := append(cmdParts, "--format", "progress", specPath)
 	cmd_string := strings.Join(args, " ")
 
 	fmt.Println("running:", cmd_string)
