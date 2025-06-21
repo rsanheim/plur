@@ -47,6 +47,8 @@ This document outlines the plan to add Minitest support to rux while establishin
     * A basic test project using latest test-unit in a 'stock' way
     * Add a mix of tests, some failing and some failing
     * For verifying failure detection and output
+* create a spec helper method to run the tests in these projects using the default Ruby way, so we can compare against and see
+how they run by default
 
 ### Phase 1: Decouple Core Types from RSpec
 
