@@ -1,12 +1,12 @@
 #!/usr/bin/env ruby
 
-require 'optparse'
-require_relative '../lib/rux_benchmark'
+require "optparse"
+require_relative "../lib/plur/benchmark"
 
-config = RuxBenchmark::Config.new
+config = Plur::Benchmark::Config.new
 
 OptionParser.new do |opts|
-  opts.banner = "Usage: rux-bench [OPTIONS]"
+  opts.banner = "Usage: bench [OPTIONS]"
   opts.separator ""
   opts.separator "Benchmark rux vs turbo_tests performance on Ruby projects."
   opts.separator ""
@@ -32,6 +32,14 @@ OptionParser.new do |opts|
     config.runs = n
   end
 
+  opts.on("--min-runs NUM", Integer, "Minimum number of runs for each command") do |n|
+    config.min_runs = n
+  end
+
+  opts.on("--max-runs NUM", Integer, "Maximum number of runs for each command") do |n|
+    config.max_runs = n
+  end
+
   opts.on("--trace", "Enable rux tracing for performance analysis") do
     config.trace = true
   end
@@ -46,44 +54,54 @@ OptionParser.new do |opts|
 
   opts.on("-h", "--help", "Show this help message") do
     puts opts
-    puts ""
-    puts "EXAMPLES:"
-    puts "    # Benchmark default projects (default-ruby and example-project)"
-    puts "    rux-bench"
-    puts ""
-    puts "    # Create checkpoint with summary (combines results from all projects)"
-    puts "    rux-bench --checkpoint"
-    puts ""
-    puts "    # Benchmark a specific project with 4 workers"
-    puts "    rux-bench -p ./references/example-project -n 4"
-    puts ""
-    puts "    # Benchmark multiple projects"
-    puts "    rux-bench -p ./project1 -p ./project2 -n 8"
-    puts ""
-    puts "    # Enable tracing for performance analysis"
-    puts "    rux-bench -p ./references/example-project --trace"
-    puts ""
-    puts "ENVIRONMENT:"
-    puts "    BENCH_TIMESTAMP        Override the timestamp used for output files"
-    puts ""
-    puts "OUTPUT:"
-    puts "    Results are saved to: #{config.results_dir}/"
+    puts <<~HELP
+
+      EXAMPLES:
+          # Benchmark default projects (default-ruby and example-project)
+          bench
+
+          # Create checkpoint with summary (combines results from all projects)
+          bench --checkpoint
+
+          # Benchmark a specific project with 4 workers
+          bench -p ./references/example-project -n 4
+
+          # Benchmark multiple projects
+          bench -p ./project1 -p ./project2 -n 8
+
+          # Enable tracing for performance analysis
+          bench -p ./references/example-project --trace
+
+      ENVIRONMENT:
+          BENCH_TIMESTAMP        Override the timestamp used for output files
+
+      OUTPUT:
+          Results are saved to: #{config.results_dir}/
+    HELP
     exit 0
   end
 end.parse!
 
 # Show configuration
-puts "Benchmark Configuration"
-puts "======================"
-puts "Commit: #{`git rev-parse --short HEAD`.strip rescue 'unknown'}"
-puts "Time: #{config.timestamp}"
-puts "Workers: #{config.workers}"
-puts "Projects: #{config.projects_to_benchmark.map { |p| File.basename(p) }.join(', ')}"
-puts ""
+commit = begin
+  `git rev-parse --short HEAD`.strip
+rescue
+  "unknown"
+end
+
+puts <<~CONFIG
+  Benchmark Configuration
+  ======================
+  Commit: #{commit}
+  Time: #{config.timestamp}
+  Workers: #{config.workers}
+  Projects: #{config.projects_to_benchmark.map { |p| File.basename(p) }.join(", ")}
+  
+CONFIG
 
 # Run benchmarks
-runner = RuxBenchmark::Runner.new(config)
-results = runner.run
+runner = Plur::Benchmark::Runner.new(config)
+runner.run
 
 puts "\nAll benchmarks complete!"
 puts "Trace files saved to: #{Dir.pwd}/tmp/rux-traces/" if config.trace
