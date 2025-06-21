@@ -2,6 +2,7 @@ require "json"
 require "fileutils"
 require "time"
 require "open3"
+require "pathname"
 require_relative "../../plur"
 
 module Plur
@@ -27,8 +28,8 @@ module Plur
 
       def default_projects
         [
-          "./fixtures/projects/default-ruby",
-          "./references/example-project"
+          Plur.config.default_ruby_dir.to_s,
+          Plur.config.root_dir.join("references", "example-project").to_s
         ]
       end
 
@@ -43,6 +44,7 @@ module Plur
       def initialize(config)
         @config = config
         @original_dir = Dir.pwd
+        check_rux_binary!
         @git_sha = get_git_sha
         @rux_version = get_rux_version
       end
@@ -91,8 +93,9 @@ module Plur
       end
 
       def run_hyperfine(project_name)
-        json_file = File.join(config.results_dir, "#{config.timestamp}-#{git_sha}-#{project_name}.json")
-        markdown_file = File.join(config.results_dir, "#{config.timestamp}-#{git_sha}-#{project_name}.md")
+        results_path = Pathname.new(config.results_dir)
+        json_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.json").to_s
+        markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
 
         rux_cmd = "#{Plur.config.rux_binary} -n #{config.workers}"
         rux_cmd += " --trace" if config.trace
@@ -172,6 +175,18 @@ module Plur
       rescue
         "rux version unknown"
       end
+
+      def check_rux_binary!
+        unless File.exist?(Plur.config.rux_binary)
+          puts <<~ERROR
+            Error: Rux binary not found at #{Plur.config.rux_binary}
+            
+            Please build rux first by running:
+              bin/rake build
+          ERROR
+          exit 1
+        end
+      end
     end
 
     class Checkpoint
@@ -215,15 +230,17 @@ module Plur
           }
         end
 
-        json_file = File.join(config.results_dir, "#{config.timestamp}-#{git_sha}-summary.json")
-        File.write(json_file, JSON.pretty_generate(summary))
+        results_path = Pathname.new(config.results_dir)
+        json_file = results_path.join("#{config.timestamp}-#{git_sha}-summary.json")
+        json_file.write(JSON.pretty_generate(summary))
         puts "\nCheckpoint summary saved to: #{json_file}"
       end
 
       def write_markdown_summary
-        md_file = File.join(config.results_dir, "#{config.timestamp}-#{git_sha}-summary.md")
+        results_path = Pathname.new(config.results_dir)
+        md_file = results_path.join("#{config.timestamp}-#{git_sha}-summary.md")
 
-        File.open(md_file, "w") do |f|
+        md_file.open("w") do |f|
           f.puts "# Benchmark Summary"
           f.puts ""
           f.puts "- **Date**: #{config.timestamp} UTC"
@@ -261,7 +278,7 @@ module Plur
         end
 
         puts "Summary Markdown saved to: #{md_file}"
-        puts "\n#{File.read(md_file)}"
+        puts "\n#{md_file.read}"
       end
 
       def calculate_comparison(data)
