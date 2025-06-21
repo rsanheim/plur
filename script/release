@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require "optparse"
-require_relative "../lib/release"
+require_relative "../lib/plur/release"
 parser = OptionParser.new do |opts|
   opts.banner = "Usage: script/release VERSION"
 

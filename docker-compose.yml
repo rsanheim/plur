@@ -1,0 +1,29 @@
+services:
+  rux-test:
+    # Note: We use buildx for building, not docker-compose
+    # Run: ./script/docker-build to build images
+    # WARNING: This uses 'latest' tag - for platform-specific testing use ./script/docker-run
+    image: rux-test:latest
+    container_name: rux-test-container
+    volumes:
+      # Mount entire repo
+      - .:/workspace:rw
+      # Exclude references and vendor directories (using anonymous volumes)
+      - /workspace/references
+      - /workspace/vendor
+    working_dir: /workspace
+    environment:
+      # Go build cache
+      GOCACHE: /workspace/.cache/go-build
+      # Test environment - dynamically set from Plur
+      PARALLEL_TEST_PROCESSORS: "${RUX_CORES:-4}"
+      # E-dant watcher version from Plur
+      EDANT_WATCHER_VERSION: "${EDANT_WATCHER_VERSION:-0.13.6}"
+      # Color output
+      TERM: xterm-256color
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    # Run as rux user (commented out for now to avoid permission issues)
+    # user: rux
+    command: /bin/bash
