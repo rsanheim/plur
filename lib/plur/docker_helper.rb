@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../plur"
+require_relative "../../plur"
 
 # Helper module for Docker operations using Plur configuration
 module DockerHelper

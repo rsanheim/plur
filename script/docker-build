@@ -3,7 +3,7 @@
 
 require "optparse"
 require "fileutils"
-require_relative "../lib/docker_helper"
+require_relative "../lib/plur/docker_helper"
 
 # Docker image builder for Rux
 class DockerBuilder
