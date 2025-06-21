@@ -32,12 +32,6 @@ jobs:
 
       - ruby/install-deps
       - run:
-          name: Download watcher binary for platform
-          command: bin/rake deps:watcher
-      - run:
-          name: Run Go tests
-          command: bin/rake test:go
-      - run:
           name: Build rux
           command: bin/rake build
       - run:
@@ -45,6 +39,9 @@ jobs:
           command: |
             ./rux/rux --version
             ./rux/rux --help
+      - run:
+          name: Run Go tests
+          command: bin/rake test:go
       - persist_to_workspace:
           root: .
           paths:

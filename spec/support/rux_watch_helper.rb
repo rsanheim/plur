@@ -2,7 +2,7 @@ require "tty-command"
 require "open3"
 
 module RuxWatchHelper
-  DEFAULT_RUX_WATCH_TIMEOUT = 3
+  DEFAULT_RUX_WATCH_TIMEOUT = ENV["CI"] ? 8 : 3
 
   # Runs rux watch with TTY::Command and returns a proper result object
   # @param dir [String] directory to run in
@@ -13,7 +13,7 @@ module RuxWatchHelper
   # @return [TTY::Command::Result] with stdout, stderr, and exit status
   def run_rux_watch(dir: default_ruby_dir, timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, env: {}, &block)
     Dir.chdir(dir) do
-      cmd_args = ["rux", "--debug", "watch", "--timeout", timeout.to_s]
+      cmd_args = ["rux", "--debug", "watch", "run", "--timeout", timeout.to_s]
       cmd_args += ["--debounce", debounce.to_s] if debounce
 
       full_env = env
@@ -49,7 +49,7 @@ module RuxWatchHelper
   # react to output in real-time
   def capture_watch_output(rux_timeout: DEFAULT_RUX_WATCH_TIMEOUT, debounce: nil, &block)
     Dir.chdir(default_ruby_dir) do
-      args = "rux --debug watch --timeout #{rux_timeout}"
+      args = "rux --debug watch run --timeout #{rux_timeout}"
       args += " --debounce #{debounce}" if debounce
 
       env = {}

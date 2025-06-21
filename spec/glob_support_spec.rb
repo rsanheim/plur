@@ -96,7 +96,8 @@ RSpec.describe "rux glob pattern support" do
 
           expect(status).not_to be_success  # Fails when no spec files found
           expect(stderr).to include("Warning: spec/helper.rb does not end with _spec.rb")
-          expect(output + stderr).to include("Error: no spec files found matching provided patterns")
+          # Kong logs errors through the logger with a specific format
+          expect(output + stderr).to include("no spec files found matching provided patterns")
         ensure
           File.delete("spec/helper.rb") if File.exist?("spec/helper.rb")
         end

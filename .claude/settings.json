@@ -73,8 +73,6 @@
       "Bash(grep:*)",
       "Bash(hyperfine:*)",
       "Bash(jq:*)",
-      "Bash(KONG=1 rux --dry-run --verbose)",
-      "Bash(KONG=1 rux -n 4 --trace --json results.json --color)",
       "Bash(ls:*)",
       "Bash(mise:*)",
       "Bash(mkdir:*)",
@@ -129,9 +127,5 @@
       "Bash(./script/rux-bench:*)"
     ],
     "deny": []
-  },
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "github"
-  ]
+  }
 }

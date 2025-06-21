@@ -10,18 +10,19 @@ commands:
     Rux Doctor
     ==========
 
-    Rux Version:     v0.6.5-20250606-0932-d50355286
-    Build Date:      2025-06-06 09:32:15 UTC
-    Git Commit:      d50355286
-    Built By:        rake
+    Rux Version:     v0.6.11-0.20250616145353-46834ba1bc4e+dirty
+    Build Date:      unknown
+    Git Commit:      unknown
+    Built By:        unknown
+    CLI Framework:   Kong
 
     Operating System: darwin
     Architecture:     arm64
     CPU Count:        20
-    Go Version:       go1.24.2
+    Go Version:       go1.24.4
 
     Working Dir:      /Users/rsanheim/src/oss/rux-meta
-    Rux Binary:       /Users/rsanheim/src/oss/rux-meta/spec/../rux/rux
+    Rux Binary:       /Users/rsanheim/go/bin/rux
 
     Ruby Environment:
       Ruby Version:   ruby 3.4.4 (2025-05-14 revision a38531fd3f) +PRISM [arm64-darwin24]
@@ -29,17 +30,17 @@ commands:
       RSpec:          RSpec 3.13
       - rspec-core 3.13.3
       - rspec-expectations 3.13.4
-      - rspec-mocks 3.13.4
-      - rspec-support 3.13.3
+      - rspec-mocks 3.13.5
+      - rspec-support 3.13.4
 
     File Watcher:
       Status:         Available
-      Binary Path:    /Users/rsanheim/.cache/rux/bin/watcher-aarch64-apple-darwin
+      Binary Path:    /Users/rsanheim/.rux/bin/watcher-aarch64-apple-darwin
       Version:        Binary exists (no version info available)
       Platform:       darwin/arm64
 
-    Cache Directory:  /Users/rsanheim/.cache/rux
-    Runtime Data:     /Users/rsanheim/.cache/rux/runtimes/f8fee6d7.json
+    Cache Directory:  /Users/rsanheim/.rux/cache
+    Runtime Data:     /Users/rsanheim/.rux/runtime/f8fee6d7.json
                       (file exists)
 
     Environment Variables:

@@ -1,92 +1,60 @@
 require "spec_helper"
-require "tmpdir"
-require "fileutils"
-require "json"
 
 RSpec.describe "Rux runtime tracking" do
-  before do
-    # Build rux
-    Dir.chdir(File.join(__dir__, "..", "rux")) do
-      system("go build -o rux", err: File::NULL)
-    end
-  end
-
   context "explicit runtime dir" do
-    let(:temp_cache_dir) { Dir.mktmpdir }
+    around_with_tmp_rux_home
 
-    it "uses the runtime-dir option if provided" do
+    it "uses RUX_HOME environment variable if provided" do
+      temp_runtime_dir = File.join(tmp_rux_home, "runtime")
+
       Dir.chdir(default_ruby_dir) do
-        `#{rux_binary} -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
-        expect($?.exitstatus).to eq(0)
+        run_rux("-n", "2", env: {"RUX_HOME" => tmp_rux_home})
 
-        expect(File.exist?(temp_cache_dir)).to be true
-        matches = Dir.glob(File.join(temp_cache_dir, "*.json"))
+        expect(File.exist?(temp_runtime_dir)).to be true
+        matches = Dir.glob(File.join(temp_runtime_dir, "*.json"))
         expect(matches.size).to eq(1)
-        expect(matches.first).to match(%r{#{temp_cache_dir}/[a-f0-9]{8}\.json$})
-      end
-    end
-
-    it "uses a default of ~/.cache/rux/runtimes when no runtime-dir is specified" do
-      # We'll verify the default behavior by checking the output message
-      # without actually writing to the home directory
-      Dir.chdir(default_ruby_dir) do
-        output = `#{rux_binary} -n 2 --dry-run 2>&1`
-        expect($?.exitstatus).to eq(0)
-
-        # The dry-run output should show it would use the default location
-        expect(output).to include("Using")
-        expect(output).to include("execution")
+        expect(matches.first).to match(%r{#{temp_runtime_dir}/[a-f0-9]{8}\.json$})
       end
     end
   end
 
   context "runtime data collection" do
-    let(:temp_cache_dir) { Dir.mktmpdir }
+    around_with_tmp_rux_home
 
     it "saves runtime data after running specs" do
       Dir.chdir(default_ruby_dir) do
-        # Run rux with custom runtime dir
-        output = `#{rux_binary} -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
-        expect($?.exitstatus).to eq(0)
+        result = run_rux("-n", "2")
 
-        # Extract the runtime file path from output
-        runtime_file_match = output.match(/Runtime data saved to: (.+)/)
+        runtime_file_match = result.err.match(/Runtime data saved to: (.+)/)
         expect(runtime_file_match).not_to be_nil
         runtime_file = runtime_file_match[1].strip
 
         expect(File.exist?(runtime_file)).to be true
 
-        # Verify the content
         runtime_data = JSON.parse(File.read(runtime_file))
         expect(runtime_data).to be_a(Hash)
         expect(runtime_data.keys).to include("./spec/calculator_spec.rb")
         expect(runtime_data.values.all? { |v| v.is_a?(Numeric) && v > 0 }).to be true
 
         # Verify it's in the temp directory with a hash filename
-        expect(runtime_file).to match(%r{#{temp_cache_dir}/[a-f0-9]{8}\.json$})
+        expect(runtime_file).to match(%r{#{tmp_rux_home}/runtime/[a-f0-9]{8}\.json$})
       end
     end
 
     it "uses runtime data for grouping when available" do
-      Dir.chdir(default_ruby_dir) do
-        # First run to generate runtime data
-        `#{rux_binary} -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
-        expect($?.exitstatus).to eq(0)
+      chdir(default_ruby_dir) do
+        result = run_rux("-n", "2")
+        expect(result.err).to include("Using size-based grouped execution")
 
-        # Second run should use runtime data
-        output = `#{rux_binary} --dry-run -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
-        expect(output).to include("[dry-run] Using runtime-based grouped execution")
+        result = run_rux("-n", "2", "--debug", "--dry-run")
+        expect(result.err).to include("Using runtime-based grouped execution")
       end
     end
 
     it "falls back to size-based grouping when no runtime data exists" do
       Dir.chdir(default_ruby_dir) do
-        # Use a fresh temp directory to ensure no runtime data exists
-        fresh_temp_dir = Dir.mktmpdir
-
-        # Run with dry-run
-        output = `#{rux_binary} --dry-run -n 2 --runtime-dir #{fresh_temp_dir} 2>&1`
-        expect(output).to include("[dry-run] Using size-based grouped execution")
+        result = run_rux("--dry-run", "-n", "2")
+        expect(result.err).to include("[dry-run] Using size-based grouped execution")
       end
     end
   end

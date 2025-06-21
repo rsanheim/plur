@@ -1,7 +1,7 @@
 require "spec_helper"
 require "open3"
 
-RSpec.describe "rux dev:file_mapper comprehensive mappings" do
+RSpec.describe "rux dev:file_mapper comprehensive mappings", skip: "dev:file_mapper command removed" do
   def run_file_mapper(file)
     stdout, stderr, status = Open3.capture3("rux", "dev:file_mapper", file)
     raise "Command failed: #{stderr}" unless status.success?
@@ -56,8 +56,8 @@ RSpec.describe "rux dev:file_mapper comprehensive mappings" do
     {file: "app/models/namespace/deeply/nested/model.rb", expected: ["spec/models/namespace/deeply/nested/model_spec.rb"]}
   ]
 
-  mappings.each do |mapping|
-    it "maps #{mapping[:file]} correctly" do
+  it "maps files to specs" do
+    mappings.each do |mapping|
       output = run_file_mapper(mapping[:file])
 
       if mapping[:expected].empty?
@@ -70,7 +70,7 @@ RSpec.describe "rux dev:file_mapper comprehensive mappings" do
   end
 
   context "controller to multiple spec types mapping (future enhancement)" do
-    xit "maps controllers to controller specs AND request specs" do
+    it "maps controllers to controller specs AND request specs" do
       # This is a common Rails pattern where a controller has both:
       # - spec/controllers/users_controller_spec.rb (unit tests)
       # - spec/requests/users_spec.rb (integration tests)
@@ -85,7 +85,7 @@ RSpec.describe "rux dev:file_mapper comprehensive mappings" do
       # expect(output).to eq("app/controllers/users_controller.rb -> spec/controllers/users_controller_spec.rb, spec/requests/users_spec.rb")
     end
 
-    xit "maps models to model specs AND request specs" do
+    it "maps models to model specs AND request specs" do
       # Some teams test models via request specs too
       # Current implementation only maps to model specs
       output = run_file_mapper("app/models/user.rb")
@@ -93,20 +93,6 @@ RSpec.describe "rux dev:file_mapper comprehensive mappings" do
 
       # Future implementation might check for existence and return multiple:
       # expect(output).to eq("app/models/user.rb -> spec/models/user_spec.rb, spec/requests/users_spec.rb")
-    end
-  end
-
-  describe "view and template mappings (future enhancement)" do
-    xit "maps view files to view specs" do
-      # Views could map to view specs
-      run_file_mapper("app/views/users/index.html.erb")
-      # Future: expect(output).to eq("app/views/users/index.html.erb -> spec/views/users/index.html.erb_spec.rb")
-    end
-
-    xit "maps view files to controller specs" do
-      # Views could also trigger their controller specs
-      run_file_mapper("app/views/users/show.html.erb")
-      # Future: expect(output).to eq("app/views/users/show.html.erb -> spec/controllers/users_controller_spec.rb")
     end
   end
 end

@@ -3,6 +3,8 @@ package rspec
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFormatFailure(t *testing.T) {
@@ -58,9 +60,7 @@ func TestFormatFailure(t *testing.T) {
 			result := FormatFailure(tt.index, tt.failure)
 
 			for _, expected := range tt.expected {
-				if !strings.Contains(result, expected) {
-					t.Errorf("FormatFailure() output missing expected string:\n%q\nGot:\n%s", expected, result)
-				}
+				assert.Contains(t, result, expected, "FormatFailure() output missing expected string")
 			}
 
 			// Check specific indentation patterns
@@ -73,14 +73,11 @@ func TestFormatFailure(t *testing.T) {
 				// Check failure header (e.g., "  1) Description")
 				if strings.Contains(line, ") ") && strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "     ") {
 					// Should have exactly 2 spaces
-					if strings.HasPrefix(line, "   ") {
-						t.Errorf("Failure header has incorrect indentation: %q", line)
-					}
+					assert.False(t, strings.HasPrefix(line, "   "), "Failure header has incorrect indentation: %q", line)
 				} else if strings.Contains(line, "Failure/Error:") {
 					// Should have exactly 5 spaces
-					if !strings.HasPrefix(line, "     ") || strings.HasPrefix(line, "      ") {
-						t.Errorf("Failure/Error line has incorrect indentation: %q", line)
-					}
+					assert.True(t, strings.HasPrefix(line, "     "), "Failure/Error line should start with 5 spaces: %q", line)
+					assert.False(t, strings.HasPrefix(line, "      "), "Failure/Error line should not have 6+ spaces: %q", line)
 				} else if strings.HasPrefix(line, "       ") && (strings.Contains(line, "expected:") || strings.Contains(line, "got:")) {
 					// These are correctly indented with 7 spaces
 					continue
@@ -109,9 +106,7 @@ rspec spec/calculator_spec.rb:20 # Calculator#subtract returns the difference
 `
 
 	result := FormatFailedExamples(failures)
-	if result != expected {
-		t.Errorf("FormatFailedExamples() = %q, want %q", result, expected)
-	}
+	assert.Equal(t, expected, result, "FormatFailedExamples()")
 }
 
 func TestExtractFailures(t *testing.T) {
@@ -149,21 +144,11 @@ func TestExtractFailures(t *testing.T) {
 
 	failures := ExtractFailures(examples)
 
-	if len(failures) != 1 {
-		t.Fatalf("ExtractFailures() returned %d failures, want 1", len(failures))
-	}
+	assert.Len(t, failures, 1, "ExtractFailures() should return 1 failure")
 
 	failure := failures[0]
-	if failure.Description != "Calculator#subtract returns the difference" {
-		t.Errorf("Wrong description: got %q", failure.Description)
-	}
-	if failure.FilePath != "spec/calculator_spec.rb" {
-		t.Errorf("Wrong file path: got %q", failure.FilePath)
-	}
-	if failure.LineNumber != 20 {
-		t.Errorf("Wrong line number: got %d", failure.LineNumber)
-	}
-	if failure.ErrorClass != "RSpec::Expectations::ExpectationNotMetError" {
-		t.Errorf("Wrong error class: got %q", failure.ErrorClass)
-	}
+	assert.Equal(t, "Calculator#subtract returns the difference", failure.Description, "Wrong description")
+	assert.Equal(t, "spec/calculator_spec.rb", failure.FilePath, "Wrong file path")
+	assert.Equal(t, 20, failure.LineNumber, "Wrong line number")
+	assert.Equal(t, "RSpec::Expectations::ExpectationNotMetError", failure.ErrorClass, "Wrong error class")
 }

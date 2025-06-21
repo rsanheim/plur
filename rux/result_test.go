@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/rux/rspec"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildTestSummary(t *testing.T) {
@@ -17,6 +18,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
+			FileLoadTime: 50 * time.Millisecond,
 			Failures:     []rspec.FailureDetail{},
 		},
 		{
@@ -25,6 +27,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 5,
 			FailureCount: 2,
 			Duration:     200 * time.Millisecond,
+			FileLoadTime: 75 * time.Millisecond,
 			Failures: []rspec.FailureDetail{
 				{
 					Description: "Controller GET /index returns 200",
@@ -44,6 +47,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 0,
 			FailureCount: 0,
 			Duration:     50 * time.Millisecond,
+			FileLoadTime: 25 * time.Millisecond,
 			Error:        fmt.Errorf("Failed to load spec file"),
 		},
 	}
@@ -51,42 +55,20 @@ func TestBuildTestSummary(t *testing.T) {
 	wallTime := 250 * time.Millisecond
 	summary := BuildTestSummary(results, wallTime)
 
-	// Test the summary values
-	if summary.TotalExamples != 15 {
-		t.Errorf("Expected 15 total examples, got %d", summary.TotalExamples)
-	}
+	assert := assert.New(t)
+	assert.Equal(15, summary.TotalExamples)
+	assert.Equal(2, summary.TotalFailures, "total failures")
+	assert.Equal(2, len(summary.AllFailures), "failure details")
 
-	if summary.TotalFailures != 2 {
-		t.Errorf("Expected 2 total failures, got %d", summary.TotalFailures)
-	}
+	assert.Equal(350*time.Millisecond, summary.TotalCPUTime, "total CPU time")
+	assert.Equal(wallTime, summary.WallTime, "wall time")
+	assert.Equal(75*time.Millisecond, summary.TotalFileLoadTime, "file load time should be the max of all workers")
 
-	if len(summary.AllFailures) != 2 {
-		t.Errorf("Expected 2 failure details, got %d", len(summary.AllFailures))
-	}
+	assert.True(summary.HasFailures, "should have failures")
+	assert.False(summary.Success, "should not be successful when there are failures")
 
-	if summary.TotalCPUTime != 350*time.Millisecond {
-		t.Errorf("Expected 350ms total CPU time, got %v", summary.TotalCPUTime)
-	}
-
-	if summary.WallTime != wallTime {
-		t.Errorf("Expected %v wall time, got %v", wallTime, summary.WallTime)
-	}
-
-	if !summary.HasFailures {
-		t.Error("Expected HasFailures to be true")
-	}
-
-	if summary.Success {
-		t.Error("Expected Success to be false when there are failures")
-	}
-
-	if len(summary.ErroredFiles) != 1 {
-		t.Errorf("Expected 1 errored file, got %d", len(summary.ErroredFiles))
-	}
-
-	if summary.ErroredFiles[0].SpecFile != "spec/broken_spec.rb" {
-		t.Errorf("Expected errored file to be spec/broken_spec.rb, got %s", summary.ErroredFiles[0].SpecFile)
-	}
+	assert.Len(summary.ErroredFiles, 1, "errored files")
+	assert.Equal("spec/broken_spec.rb", summary.ErroredFiles[0].SpecFile, "errored file name")
 }
 
 // Test that summary correctly identifies when there are no failures
@@ -98,6 +80,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
+			FileLoadTime: 40 * time.Millisecond,
 		},
 		{
 			SpecFile:     "spec/controller_spec.rb",
@@ -105,24 +88,37 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 			ExampleCount: 5,
 			FailureCount: 0,
 			Duration:     200 * time.Millisecond,
+			FileLoadTime: 60 * time.Millisecond,
 		},
 	}
 
 	summary := BuildTestSummary(results, 250*time.Millisecond)
 
-	if summary.HasFailures {
-		t.Error("Expected HasFailures to be false when all tests pass")
+	assert.Equal(t, 15, summary.TotalExamples)
+	assert.Equal(t, 0, summary.TotalFailures)
+	assert.False(t, summary.HasFailures, "should have no failures when all tests pass")
+	assert.True(t, summary.Success, "should be successful when all tests pass")
+	assert.Empty(t, summary.AllFailures, "should have no failures")
+	assert.Empty(t, summary.ErroredFiles, "should have no errored files")
+	assert.Equal(t, "", summary.FormattedSummary, "summary with multiple results should be empty")
+}
+
+func TestSingleTestResultIsSingleWorkerMode(t *testing.T) {
+	results := []TestResult{
+		{
+			SpecFile:         "spec/model_spec.rb",
+			Success:          true,
+			ExampleCount:     10,
+			FailureCount:     0,
+			Duration:         100 * time.Millisecond,
+			FileLoadTime:     30 * time.Millisecond,
+			FormattedSummary: "10 examples, 0 failures",
+		},
 	}
 
-	if !summary.Success {
-		t.Error("Expected Success to be true when all tests pass")
-	}
+	summary := BuildTestSummary(results, 100*time.Millisecond)
 
-	if len(summary.AllFailures) != 0 {
-		t.Errorf("Expected no failures, got %d", len(summary.AllFailures))
-	}
-
-	if len(summary.ErroredFiles) != 0 {
-		t.Errorf("Expected no errored files, got %d", len(summary.ErroredFiles))
-	}
+	assert.Equal(t, 10, summary.TotalExamples)
+	assert.True(t, summary.Success)
+	assert.Equal(t, summary.FormattedSummary, "10 examples, 0 failures")
 }
