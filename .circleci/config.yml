@@ -30,7 +30,8 @@ jobs:
             source $BASH_ENV
             go version
 
-      - ruby/install-deps
+      - ruby/install-deps:
+          include-branch-in-cache-key: false
       - run:
           name: Build rux
           command: bin/rake build
