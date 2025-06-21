@@ -31,6 +31,23 @@ This document outlines the plan to add Minitest support to rux while establishin
 
 ## Implementation Phases
 
+### Phase 0: Create more fixture projects for testing and verification
+
+* create `fixtures/projects/minitest-success` project
+    * A basic test project using latest minitest in a 'stock' way
+    * Add some some basic tests that all pass
+* create `fixtures/projects/minitest-failures` project
+    * A basic test project using latest minitest in a 'stock' way
+    * Add a mix of tests, some failing and some failing
+    * For verifying failure detection and output
+* create `fixtures/projects/testunit-success` project
+    * A basic test project using latest ruby test-unit in a 'stock' way
+    * Add some some basic tests that all pass
+* create `fixtures/projects/testunit-failures` project
+    * A basic test project using latest test-unit in a 'stock' way
+    * Add a mix of tests, some failing and some failing
+    * For verifying failure detection and output
+
 ### Phase 1: Decouple Core Types from RSpec
 
 **Goal**: Remove `rspec` package imports from core types
