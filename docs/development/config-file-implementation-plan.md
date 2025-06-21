@@ -14,6 +14,9 @@ Add TOML configuration file support to rux to allow persistent configuration and
 - Kong's Configuration loader can populate CLI struct fields directly from config files
 - No need for separate config structs - reuse existing CLI struct
 
+## References
+* ruby-lsp has done a lot of work on discovering `TestStyle` and the right command to run tests - https://github.com/Shopify/ruby-lsp/blob/main/lib/ruby_lsp/listeners/test_style.rb
+
 ## Progress Update (2025-06-21)
 
 ### Phase 1: CLI Flag Support ✅ COMPLETED
