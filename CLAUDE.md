@@ -31,7 +31,21 @@ rux --dry-run            # Preview what will run
 rux --trace              # Performance profiling
 rux doctor               # Debug installation issues
 rux watch                # Auto-run tests on file changes (experimental)
+rux spec --command=bin/rspec  # Override default test command
 ```
+
+### Configuration Files
+
+Rux supports TOML configuration files for persistent settings:
+
+```toml
+# .rux.toml or ~/.rux.toml
+command = "bin/rspec"    # Override default "bundle exec rspec"
+workers = 4              # Number of parallel workers
+color = true             # Enable colored output
+```
+
+Configuration precedence: CLI flags > `.rux.toml` (local) > `~/.rux.toml` (global) > defaults
 
 
 ### Common Fixes

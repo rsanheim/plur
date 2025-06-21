@@ -16,6 +16,7 @@ type Config struct {
 	DryRun       bool
 	TraceEnabled bool
 	WorkerCount  int
+	SpecCommand  string
 }
 
 type ConfigPaths struct {
