@@ -41,4 +41,24 @@ module RuxHomeHelper
   def run_rux_allowing_errors(*args, env: {})
     run_rux(*args, allow_error: true, env: env)
   end
+
+  # Run rux using Open3.capture3 without argument escaping
+  # Useful for testing glob expansion and shell metacharacters
+  # Returns TTY::Command::Result for consistency with run_rux
+  def run_rux_capture3(*args, allow_error: false, env: {})
+    stdout, stderr, status = Open3.capture3(env, "rux", *args)
+    
+    result = TTY::Command::Result.new(
+      stdout,
+      stderr,
+      status.exitstatus
+    )
+    
+    # Raise if command failed and allow_error is false
+    if !allow_error && status.exitstatus != 0
+      raise TTY::Command::ExitError.new("rux command failed", result)
+    end
+    
+    result
+  end
 end
