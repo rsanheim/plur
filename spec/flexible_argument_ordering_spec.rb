@@ -1,29 +1,24 @@
 require "spec_helper"
-require "open3"
 
 RSpec.describe "Flexible argument ordering" do
-  let(:rux_path) { File.expand_path("../rux/rux", __dir__) }
-
   context "with --no-color flag" do
     it "works with --no-color before file arguments" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} --no-color --dry-run spec/calculator_spec.rb")
+        result = run_rux("--no-color", "--dry-run", "spec/calculator_spec.rb")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 1 spec files")
-        expect(output).to include("--no-color")
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found 1 spec files")
+        expect(result.err).to include("--no-color")
       end
     end
 
     it "works with --no-color after file arguments" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb --no-color --dry-run")
+        result = run_rux("spec/calculator_spec.rb", "--no-color", "--dry-run")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 1 spec files")
-        expect(output).to include("--no-color")
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found 1 spec files")
+        expect(result.err).to include("--no-color")
       end
     end
   end
@@ -31,31 +26,28 @@ RSpec.describe "Flexible argument ordering" do
   context "with -n/--workers flag" do
     it "works with -n before file arguments" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} -n 4 --dry-run spec/calculator_spec.rb")
+        result = run_rux("-n", "4", "--dry-run", "spec/calculator_spec.rb")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 1 spec files")
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found 1 spec files")
       end
     end
 
     it "works with -n after file arguments" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb -n 4 --dry-run")
+        result = run_rux("spec/calculator_spec.rb", "-n", "4", "--dry-run")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 1 spec files")
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found 1 spec files")
       end
     end
 
     it "works with --workers after file arguments" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb --workers 4 --dry-run")
+        result = run_rux("spec/calculator_spec.rb", "--workers", "4", "--dry-run")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 1 spec files")
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found 1 spec files")
       end
     end
   end
@@ -65,32 +57,29 @@ RSpec.describe "Flexible argument ordering" do
 
     it "expands spec/ directory before flags" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} spec/ --dry-run")
+        result = run_rux("spec/", "--dry-run")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found #{expected_spec_files} spec files")
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found #{expected_spec_files} spec files")
       end
     end
 
     it "expands spec/ directory after flags" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} --dry-run spec/")
+        result = run_rux("--dry-run", "spec/")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found #{expected_spec_files} spec files")
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found #{expected_spec_files} spec files")
       end
     end
 
     it "expands spec/ directory with --no-color after" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} spec/ --no-color --dry-run")
+        result = run_rux("spec/", "--no-color", "--dry-run")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found #{expected_spec_files} spec files")
-        expect(output).to include("--no-color")
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found #{expected_spec_files} spec files")
+        expect(result.err).to include("--no-color")
       end
     end
   end
@@ -98,25 +87,23 @@ RSpec.describe "Flexible argument ordering" do
   context "with multiple flags and arguments" do
     it "handles complex argument ordering with flags after files" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} spec/calculator_spec.rb spec/counter_spec.rb --no-color -n 2 --dry-run")
+        result = run_rux("spec/calculator_spec.rb", "spec/counter_spec.rb", "--no-color", "-n", "2", "--dry-run")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 2 spec files")
-        expect(output).to include("--no-color")
-        expect(output).to include("groups") # Should show grouping with 2 workers
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found 2 spec files")
+        expect(result.err).to include("--no-color")
+        expect(result.err).to include("groups") # Should show grouping with 2 workers
       end
     end
 
     it "handles complex argument ordering with flags before files" do
       Dir.chdir(project_fixture("default-ruby")) do
-        output, status = Open3.capture2e("#{rux_path} --no-color -n 2 --dry-run spec/calculator_spec.rb spec/counter_spec.rb")
+        result = run_rux("--no-color", "-n", "2", "--dry-run", "spec/calculator_spec.rb", "spec/counter_spec.rb")
 
-        expect(status.success?).to be true
-        expect(output).to include("rux version")
-        expect(output).to include("[dry-run] Found 2 spec files")
-        expect(output).to include("--no-color")
-        expect(output).to include("groups") # Should show grouping with 2 workers
+        expect(result.out).to include("rux version")
+        expect(result.err).to include("[dry-run] Found 2 spec files")
+        expect(result.err).to include("--no-color")
+        expect(result.err).to include("groups") # Should show grouping with 2 workers
       end
     end
   end

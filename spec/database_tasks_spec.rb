@@ -36,8 +36,8 @@ RSpec.describe "Rux database tasks" do
         expect(File.exist?("storage/test3.sqlite3")).to be true
 
         # Run migrations
-        _, stderr, status = Open3.capture3(rux_binary, "db", "migrate", "-n", "3")
-        expect(status.success?).to eq(true), "db:migrate failed: #{stderr}"
+        result = run_rux("db", "migrate", "-n", "3")
+        expect(result.exit_status).to eq(0), "db:migrate failed: #{result.err}"
       end
     end
   end

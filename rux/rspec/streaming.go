@@ -11,6 +11,7 @@ type StreamingMessage struct {
 	Type    string            `json:"type"`
 	Example *StreamingExample `json:"example,omitempty"`
 	Summary *LoadSummary      `json:"summary,omitempty"` // For load_summary message type
+	Message string            `json:"message,omitempty"` // For message type (errors, warnings)
 
 	// Fields for dump_failures and dump_summary messages
 	FormattedOutput     string  `json:"formatted_output,omitempty"`

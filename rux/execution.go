@@ -80,12 +80,22 @@ func (e *TestExecutor) executeTests() error {
 
 	results, wallTime := RunSpecsInParallel(e.config, e.specFiles, e.runtimeTracker)
 
-	// Save runtime data
-	if err := e.runtimeTracker.SaveToFile(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
-	} else {
-		if runtimePath, err := GetRuntimeFilePath(); err == nil {
-			fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", runtimePath)
+	// Save runtime data only if some tests actually ran
+	hasValidRuntimeData := false
+	for _, result := range results {
+		if result.State != StateError && result.ExampleCount > 0 {
+			hasValidRuntimeData = true
+			break
+		}
+	}
+
+	if hasValidRuntimeData {
+		if err := e.runtimeTracker.SaveToFile(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
+		} else {
+			if runtimePath, err := GetRuntimeFilePath(); err == nil {
+				fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", runtimePath)
+			}
 		}
 	}
 

@@ -6,7 +6,7 @@ RSpec.describe "single failure golden test" do
   end
 
   def run_rux(file_or_glob, *args)
-    cmd_array = %W[#{rux_binary} #{file_or_glob}]
+    cmd_array = %W[rux #{file_or_glob}]
     cmd_array += args if args.any?
     Open3.capture3(*cmd_array)
   end

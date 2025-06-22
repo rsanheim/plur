@@ -3,12 +3,6 @@ require "tmpdir"
 require "fileutils"
 
 RSpec.describe "Rux parallel execution" do
-  let(:rux_binary) { File.join(__dir__, "..", "rux", "rux") }
-
-  before do
-    expect(File.exist?(rux_binary)).to be(true)
-  end
-
   describe "environment variables" do
     it "sets TEST_ENV_NUMBER for each worker" do
       Dir.mktmpdir do |tmpdir|
@@ -36,15 +30,14 @@ RSpec.describe "Rux parallel execution" do
           gem 'rspec', '~> 3.0'
         GEMFILE
 
-        Dir.chdir(tmpdir) do
+        chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
-          output = `#{rux_binary} -n 3 2>&1`
+          result = run_rux("-n", "3")
 
           # With 3 workers and 3 spec files, each should run with different TEST_ENV_NUMBER
           # Just verify it runs successfully
-          expect(output).to include("3 examples, 0 failures")
-          expect($?.exitstatus).to eq(0)
+          expect(result.out).to include("3 examples, 0 failures")
         end
       end
     end
@@ -72,14 +65,14 @@ RSpec.describe "Rux parallel execution" do
           gem 'rspec', '~> 3.0'
         GEMFILE
 
-        Dir.chdir(tmpdir) do
+        chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
-          output = `#{rux_binary} -n 4 2>&1`
+          result = run_rux("-n", "4")
 
           # Now it should actually use 4 workers
-          expect(output).to include("using 4 workers")
-          expect(output).to include("4 examples, 0 failures")
+          expect(result.out).to include("using 4 workers")
+          expect(result.out).to include("4 examples, 0 failures")
         end
       end
     end
@@ -110,16 +103,16 @@ RSpec.describe "Rux parallel execution" do
           gem 'rspec', '~> 3.0'
         GEMFILE
 
-        Dir.chdir(tmpdir) do
+        chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
-          output = `#{rux_binary} -n 3 2>&1`
+          result = run_rux("-n", "3")
 
           # Should see organized output with all tests passing
-          expect(output).to include("15 examples, 0 failures")
+          expect(result.out).to include("15 examples, 0 failures")
 
           # Progress dots should appear on one line (not interleaved)
-          progress_lines = output.split("\n").select { |l| l =~ /^\e?\[?3?2?m?\.\e?\[?0?m?/ || l =~ /^\.+$/ }
+          progress_lines = result.out.split("\n").select { |l| l =~ /^\e?\[?3?2?m?\.\e?\[?0?m?/ || l =~ /^\.+$/ }
           expect(progress_lines.size).to be <= 2 # At most "Running..." line and one progress line
         end
       end
@@ -153,17 +146,17 @@ RSpec.describe "Rux parallel execution" do
           gem 'rspec', '~> 3.0'
         GEMFILE
 
-        Dir.chdir(tmpdir) do
+        chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
-          output = `#{rux_binary} --color 2>&1`
+          result = run_rux_allowing_errors("--color")
 
           # Should see progress dots and F's with colors
-          expect(output).to match(/\e\[32m\.\e\[0m/) # Green dots
-          expect(output).to match(/\e\[31mF\e\[0m/) # Red F's
+          expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots
+          expect(result.out).to match(/\e\[31mF\e\[0m/) # Red F's
 
           # Should see summary
-          expect(output).to include("7 examples, 2 failures")
+          expect(result.out).to include("7 examples, 2 failures")
         end
       end
     end

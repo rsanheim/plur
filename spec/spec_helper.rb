@@ -35,10 +35,6 @@ RSpec.configure do |config|
     end
   end
 
-  def rux_binary
-    @rux_binary ||= File.join(__dir__, "..", "rux", "rux")
-  end
-
   def default_ruby_dir
     @default_ruby_dir ||= project_fixture("default-ruby")
   end
