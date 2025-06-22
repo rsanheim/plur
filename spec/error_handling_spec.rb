@@ -9,15 +9,15 @@ RSpec.describe "Rux error handling" do
       # Run rux and capture output
       chdir(fixture_dir) do
         env = {"PATH" => "#{fixture_dir}:$PATH"}
-        stdout, stderr, status = Open3.capture3(env, "#{rux_binary} test_spec.rb")
-        expect(status.exitstatus).not_to eq(0)
+        result = run_rux_allowing_errors("test_spec.rb", env: env)
+        expect(result.exit_status).not_to eq(0)
 
         # TODO we gotta implement error counts
-        # expect(stdout).to include("1 error")
+        # expect(result.out).to include("1 error")
 
         # Most importantly, should NOT show raw JSON parsing error
-        expect(stderr).not_to include("failed to parse JSON: unexpected end of JSON input")
-        expect(stdout).not_to include("failed to parse JSON: unexpected end of JSON input")
+        expect(result.err).not_to include("failed to parse JSON: unexpected end of JSON input")
+        expect(result.out).not_to include("failed to parse JSON: unexpected end of JSON input")
       end
     end
   end
@@ -25,11 +25,11 @@ RSpec.describe "Rux error handling" do
   context "when spec directory doesn't exist" do
     it "handles missing spec directory gracefully" do
       Dir.mktmpdir do |tmpdir|
-        Dir.chdir(tmpdir) do
-          output = `#{rux_binary} 2>&1`
+        chdir(tmpdir) do
+          result = run_rux_allowing_errors
 
           # Should handle gracefully and show appropriate message
-          expect(output).to include("no spec files found").or include("ERROR")
+          expect(result.out + result.err).to include("no spec files found").or include("ERROR")
         end
       end
     end
