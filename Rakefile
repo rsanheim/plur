@@ -33,11 +33,10 @@ desc "Install rux to GOPATH/bin"
 task :install do
   if ENV["CI"] && system("which rux")
     puts "[install] Rux already installed"
-    return true
-  end
-
-  Dir.chdir(Plur.config.rux_dir) do
-    sh %(go install -mod=mod)
+  else
+    Dir.chdir(Plur.config.rux_dir) do
+      sh %(go install -mod=mod)
+    end
   end
   puts "[install] Installed rux with version: #{`rux --version`.strip}"
 end
