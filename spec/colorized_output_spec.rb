@@ -5,25 +5,24 @@ RSpec.describe "Rux colorized output" do
   let(:expected_output) { File.read(fixture_path) }
 
   before do
-    expect(File.exist?(rux_binary)).to be(true)
     expect(File.exist?(fixture_path)).to be(true)
   end
 
   context "with color enabled (default)" do
     it "outputs red F for failures matching rspec format" do
       failing_specs_path = project_fixture("failing_specs")
-      Dir.chdir(failing_specs_path) do
-        output = `FORCE_COLOR=1 #{rux_binary} --color spec/mixed_results_spec.rb 2>&1`
+      chdir(failing_specs_path) do
+        result = run_rux_allowing_errors("--color", "spec/mixed_results_spec.rb", env: { "FORCE_COLOR" => "1" })
 
         # Check that we have red F's for failures
-        expect(output).to include("\e[31mF\e[0m")
+        expect(result.out).to include("\e[31mF\e[0m")
 
         # Check that we have green dots for passes
-        expect(output).to include("\e[32m.\e[0m")
+        expect(result.out).to include("\e[32m.\e[0m")
 
         # Mixed results should have both passes and failures
-        expect(output.scan("\e[31mF\e[0m").size).to be >= 2
-        expect(output.scan("\e[32m.\e[0m").size).to be >= 3
+        expect(result.out.scan("\e[31mF\e[0m").size).to be >= 2
+        expect(result.out.scan("\e[32m.\e[0m").size).to be >= 3
       end
     end
   end
@@ -31,15 +30,15 @@ RSpec.describe "Rux colorized output" do
   context "with --no-color flag" do
     it "outputs plain text without ANSI codes" do
       failing_specs_path = project_fixture("failing_specs")
-      Dir.chdir(failing_specs_path) do
-        output = `#{rux_binary} --no-color spec/mixed_results_spec.rb 2>&1`
+      chdir(failing_specs_path) do
+        result = run_rux_allowing_errors("--no-color", "spec/mixed_results_spec.rb")
 
         # Should not contain any ANSI escape sequences
-        expect(output).not_to match(/\e\[\d+m/)
+        expect(result.out).not_to match(/\e\[\d+m/)
 
         # Should still show F for failures and . for passes
-        expect(output).to include("F")
-        expect(output).to include(".")
+        expect(result.out).to include("F")
+        expect(result.out).to include(".")
       end
     end
   end
@@ -47,15 +46,15 @@ RSpec.describe "Rux colorized output" do
   context "with --no-colour flag (British spelling)" do
     it "outputs plain text without ANSI codes" do
       failing_specs_path = project_fixture("failing_specs")
-      Dir.chdir(failing_specs_path) do
-        output = `#{rux_binary} --no-colour spec/mixed_results_spec.rb 2>&1`
+      chdir(failing_specs_path) do
+        result = run_rux_allowing_errors("--no-colour", "spec/mixed_results_spec.rb")
 
         # Should not contain any ANSI escape sequences
-        expect(output).not_to match(/\e\[\d+m/)
+        expect(result.out).not_to match(/\e\[\d+m/)
 
         # Should still show F for failures and . for passes
-        expect(output).to include("F")
-        expect(output).to include(".")
+        expect(result.out).to include("F")
+        expect(result.out).to include(".")
       end
     end
   end
