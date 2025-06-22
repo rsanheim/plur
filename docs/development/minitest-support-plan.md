@@ -7,7 +7,7 @@
 - Implemented helper methods using inline Ruby script approach
 - Discovered that minitest `-v` flag provides test-level granularity
 
-**Phase 1**: ✅ COMPLETED (2024-12-22)
+**Phase 1**: ✅ COMPLETED (2024-12-22) -> not done - need to redo after changes in main
 - Created framework-agnostic types (TestFile, TestFailure)
 - Updated TestResult to remove RSpec dependencies
 - Updated TestSummary to use new TestFailure type
@@ -15,7 +15,7 @@
 - Updated all code references throughout codebase
 - All tests passing with backward compatibility maintained
 
-**Cleanup**: ✅ COMPLETED (2024-12-22)
+**Cleanup**: ✅ COMPLETED (2024-12-22) - not done - need to redo
 - Removed unused rspec/conversion.go file
 - Removed circular reference Result field from TestFile struct
 - Renamed OutputMessage.SpecFile to Files for clarity
