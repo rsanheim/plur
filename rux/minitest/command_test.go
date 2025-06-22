@@ -27,7 +27,7 @@ func TestBuildCommand(t *testing.T) {
 			options: BuildOptions{},
 			expected: []string{
 				"ruby", "-Itest", "-e",
-				"['test/models/user_test.rb', 'test/models/post_test.rb'].each { |f| require f }",
+				"[\"models/user_test\", \"models/post_test\"].each { |f| require f }",
 			},
 		},
 		{
@@ -60,7 +60,7 @@ func TestBuildCommand(t *testing.T) {
 			},
 			expected: []string{
 				"ruby", "-Itest", "-v", "-e",
-				"['test/models/user_test.rb', 'test/models/post_test.rb'].each { |f| require f }",
+				"[\"models/user_test\", \"models/post_test\"].each { |f| require f }",
 				"--", "--seed", "1234",
 			},
 		},
