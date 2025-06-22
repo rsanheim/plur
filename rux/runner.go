@@ -571,7 +571,7 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 		for scanner.Scan() {
 			line := scanner.Text()
 			outputBuilder.WriteString(line + "\n")
-			
+
 			// Send progress indicators to output channel
 			// Minitest outputs progress indicators on lines containing only dots, F, E, S characters
 			if outputChan != nil && isProgressLine(line) {
@@ -690,13 +690,13 @@ func isProgressLine(line string) bool {
 	if trimmed == "" {
 		return false
 	}
-	
+
 	// Check if all characters are progress indicators
 	for _, char := range trimmed {
 		if char != '.' && char != 'F' && char != 'E' && char != 'S' {
 			return false
 		}
 	}
-	
+
 	return true
 }

@@ -14,7 +14,7 @@ func TestParseOutput(t *testing.T) {
 	}{
 		{
 			name:   "basic success output",
-			output: "10 tests, 20 assertions, 0 failures, 0 errors",
+			output: "10 runs, 20 assertions, 0 failures, 0 errors",
 			expected: &OutputSummary{
 				Tests:      10,
 				Assertions: 20,
@@ -25,7 +25,7 @@ func TestParseOutput(t *testing.T) {
 		},
 		{
 			name:   "output with failures",
-			output: "15 tests, 25 assertions, 2 failures, 1 error",
+			output: "15 runs, 25 assertions, 2 failures, 1 error",
 			expected: &OutputSummary{
 				Tests:      15,
 				Assertions: 25,
@@ -36,7 +36,7 @@ func TestParseOutput(t *testing.T) {
 		},
 		{
 			name:   "output with skips",
-			output: "5 tests, 10 assertions, 0 failures, 0 errors, 3 skips",
+			output: "5 runs, 10 assertions, 0 failures, 0 errors, 3 skips",
 			expected: &OutputSummary{
 				Tests:      5,
 				Assertions: 10,
@@ -47,7 +47,7 @@ func TestParseOutput(t *testing.T) {
 		},
 		{
 			name:   "singular forms",
-			output: "1 test, 1 assertion, 1 failure, 1 error, 1 skip",
+			output: "1 run, 1 assertion, 1 failure, 1 error, 1 skip",
 			expected: &OutputSummary{
 				Tests:      1,
 				Assertions: 1,
@@ -58,7 +58,7 @@ func TestParseOutput(t *testing.T) {
 		},
 		{
 			name:   "output with ANSI color codes",
-			output: "10 tests, 20 assertions, 0 \x1b[31mfailures, 0 errors",
+			output: "10 runs, 20 assertions, 0 \x1b[31mfailures, 0 errors",
 			expected: &OutputSummary{
 				Tests:      10,
 				Assertions: 20,
@@ -74,7 +74,7 @@ Started
 ..............
 Finished in 0.145069 seconds.
 
-10 tests, 20 assertions, 0 failures, 0 errors`,
+10 runs, 20 assertions, 0 failures, 0 errors`,
 			expected: &OutputSummary{
 				Tests:      10,
 				Assertions: 20,
@@ -174,7 +174,7 @@ Expected: "John"
 UserTest#test_email_format [test/models/user_test.rb:15]:
 NoMethodError: undefined method 'email' for nil:NilClass
 
-3 tests, 3 assertions, 1 failure, 1 error, 0 skips`
+3 runs, 3 assertions, 1 failure, 1 error, 0 skips`
 
 	failures := ExtractFailureMessages(output)
 
