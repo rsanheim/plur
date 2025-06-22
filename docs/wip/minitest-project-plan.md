@@ -1,4 +1,4 @@
-# Minitest Support - TODOs and Success Criteria
+# Minitest Support - Project Plan
 
 ## Implementation Phases
 

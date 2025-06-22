@@ -1,4 +1,4 @@
-# Runner Refactoring Analysis: Decoupling RSpec Logic
+# Old Runner Analysis: Decoupling RSpec Logic
 
 ## Current State: Heavy RSpec Coupling in Runner
 
