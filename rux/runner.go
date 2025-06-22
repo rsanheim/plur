@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/rux/logger"
+	"github.com/rsanheim/rux/minitest"
 	"github.com/rsanheim/rux/rspec"
 	"github.com/rsanheim/rux/tracing"
 )
@@ -169,8 +170,19 @@ func convertRSpecFailures(testFile *TestFile, rspecFailures []rspec.FailureDetai
 	return failures
 }
 
-// RunSpecFile executes multiple spec files in a single RSpec process
-func RunSpecFile(ctx context.Context, config *Config, specFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
+// RunSpecFile executes multiple test files in a single test process
+func RunSpecFile(ctx context.Context, config *Config, testFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
+	// Dispatch to framework-specific implementation
+	switch config.Framework {
+	case FrameworkMinitest:
+		return RunMinitestFiles(ctx, config, testFiles, workerIndex, dryRun, outputChan)
+	default:
+		return RunRSpecFiles(ctx, config, testFiles, workerIndex, dryRun, outputChan)
+	}
+}
+
+// RunRSpecFiles executes multiple spec files in a single RSpec process
+func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
@@ -483,4 +495,115 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 	fmt.Println()
 
 	return allResults, time.Since(start)
+}
+
+// RunMinitestFiles executes multiple test files in a single Minitest process
+func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
+	defer tracing.StartRegionWithWorker(ctx, "run_minitest_files", workerIndex, strings.Join(testFiles, ","))()
+	start := time.Now()
+
+	// Create TestFile for the primary file (or combined representation)
+	var testFile *TestFile
+	if len(testFiles) > 0 {
+		testFile = &TestFile{
+			Path:     testFiles[0], // Use first file as primary
+			Filename: filepath.Base(testFiles[0]),
+		}
+	} else {
+		testFile = &TestFile{
+			Path:     "unknown",
+			Filename: "unknown",
+		}
+	}
+
+	// Build command using the appropriate builder
+	builder := NewCommandBuilder(config.Framework)
+	args := builder.BuildCommand(testFiles, config)
+
+	// Log the command in debug mode
+	logger.Logger.Debug("executing minitest command", "worker", workerIndex, "command", strings.Join(args, " "))
+
+	if dryRun {
+		return TestResult{
+			File:     testFile,
+			State:    StateSuccess,
+			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
+			Error:    nil,
+			Duration: time.Since(start),
+		}
+	}
+
+	// Create command with context for timeout handling
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+
+	// Set up environment variables for parallel testing
+	testEnvNumber := GetTestEnvNumber(workerIndex)
+	cmd.Env = append(os.Environ(),
+		"TEST_ENV_NUMBER="+testEnvNumber,
+		"PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"),
+	)
+
+	// Capture output
+	output, err := cmd.CombinedOutput()
+	
+	// Determine success based on exit code
+	exitCode := 0
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		exitCode = exitErr.ExitCode()
+	}
+	success := exitCode == 0
+
+	// Parse minitest output
+	outputStr := string(output)
+	summary, failures := parseMinitestOutput(outputStr)
+	
+	// Determine the state based on the execution outcome
+	state := StateSuccess
+	if err != nil && summary.Tests == 0 {
+		// Couldn't run tests at all
+		state = StateError
+	} else if !success {
+		state = StateFailed
+	}
+
+	// Convert minitest failures to generic failures
+	genericFailures := make([]TestFailure, len(failures))
+	for i, f := range failures {
+		genericFailures[i] = TestFailure{
+			File:        testFile,
+			Description: f.Description,
+			LineNumber:  f.LineNumber,
+			Message:     f.Message,
+			Backtrace:   f.Backtrace,
+		}
+	}
+
+	return TestResult{
+		File:         testFile,
+		State:        state,
+		Output:       outputStr,
+		Error:        err,
+		Duration:     time.Since(start),
+		Failures:     genericFailures,
+		ExampleCount: summary.Tests,
+		FailureCount: summary.Failures + summary.Errors,
+		// For minitest, we'll store the summary in FormattedSummary
+		FormattedSummary: fmt.Sprintf("%d tests, %d assertions, %d failures, %d errors, %d skips",
+			summary.Tests, summary.Assertions, summary.Failures, summary.Errors, summary.Skips),
+	}
+}
+
+// parseMinitestOutput parses minitest output and extracts summary and failures
+func parseMinitestOutput(output string) (*minitest.OutputSummary, []minitest.FailureDetail) {
+	// Parse the output to get summary
+	summary, err := minitest.ParseOutput(output)
+	if err != nil || summary == nil {
+		// Return empty summary if parsing fails
+		summary = &minitest.OutputSummary{}
+	}
+	
+	// Extract failures from output
+	failures := minitest.ExtractFailures(output)
+	
+	return summary, failures
 }

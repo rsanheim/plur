@@ -24,9 +24,9 @@ func TestFindSpecFilesRunner(t *testing.T) {
 	os.Chdir(tempDir)
 
 	// Test empty directory
-	files, err := FindSpecFiles()
-	assert.NoError(t, err, "FindSpecFiles() should not return error")
-	assert.Empty(t, files, "FindSpecFiles() should return empty slice for empty directory")
+	files, err := FindTestFiles(FrameworkRSpec)
+	assert.NoError(t, err, "FindTestFiles() should not return error")
+	assert.Empty(t, files, "FindTestFiles() should return empty slice for empty directory")
 
 	// Create complex directory structure
 	os.MkdirAll("spec/models", 0755)
@@ -48,8 +48,8 @@ func TestFindSpecFilesRunner(t *testing.T) {
 		f.Close()
 	}
 
-	files, err = FindSpecFiles()
-	assert.NoError(t, err, "FindSpecFiles() should not return error")
+	files, err = FindTestFiles(FrameworkRSpec)
+	assert.NoError(t, err, "FindTestFiles() should not return error")
 
 	expectedFiles := 5 // Only *_spec.rb files
 	assert.Len(t, files, expectedFiles, "FindSpecFiles() should find exactly 5 spec files")

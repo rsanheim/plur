@@ -61,24 +61,29 @@ func (r *SpecCmd) Run(parent *RuxCLI) error {
 
 	defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
-	// Discover spec files
-	var specFiles []string
+	// Discover test files
+	var testFiles []string
 	var err error
 	if len(r.Patterns) > 0 {
-		specFiles, err = ExpandGlobPatterns(r.Patterns)
+		testFiles, err = ExpandGlobPatterns(r.Patterns, framework)
 		if err != nil {
 			return err
 		}
-		if len(specFiles) == 0 {
-			return fmt.Errorf("no spec files found matching provided patterns")
+		if len(testFiles) == 0 {
+			return fmt.Errorf("no test files found matching provided patterns")
 		}
 	} else {
-		specFiles, err = FindSpecFiles()
+		testFiles, err = FindTestFiles(framework)
 		if err != nil {
 			return err
 		}
-		if len(specFiles) == 0 {
-			return fmt.Errorf("no spec files found")
+		if len(testFiles) == 0 {
+			suffix := getTestFileSuffix(framework)
+			dir := "spec"
+			if framework == FrameworkMinitest {
+				dir = "test"
+			}
+			return fmt.Errorf("no test files found (looking for *%s in %s/)", suffix, dir)
 		}
 	}
 
@@ -91,7 +96,7 @@ func (r *SpecCmd) Run(parent *RuxCLI) error {
 	}
 
 	// Create and run executor
-	executor := NewTestExecutor(config, specFiles)
+	executor := NewTestExecutor(config, testFiles)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {
