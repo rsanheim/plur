@@ -120,7 +120,7 @@ jobs:
       - run:
           name: Run integration tests
           command: |
-            bin/rake test:integration
+            bin/rake test:integration_ci
       # - run:
       #     name: Run benchmarks default benchmark suite
       #     command: ./script/bench

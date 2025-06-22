@@ -85,6 +85,12 @@ namespace :test do
     puts "[test:integration] Running ruby integration suite with rux..."
     sh "rux", "-n", RUX_CORES.to_s
   end
+
+  desc "Run integration tests in root spec directory (CI version without install)"
+  task integration_ci: [] do
+    puts "[test:integration] Running ruby integration suite with rux..."
+    sh "rux", "-n", RUX_CORES.to_s
+  end
 end
 
 namespace :lint do
