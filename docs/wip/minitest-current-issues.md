@@ -1,49 +1,68 @@
 # Minitest Support - Current Issues and Design Problems
 
-## Status as of 2025-06-22
+## Status as of 2025-06-22 (UPDATED)
 
 ### Recent Commits
+- `25b79bca6` Update glob pattern tests to expect 'test files' instead of 'spec files'
+- `f9a954d3e` Fix minitest failure integration test expectations
+- `d67b9cc02` Fix minitest output streaming and parsing
+- `12375da85` Fix minitest command builder tests
 - `c3133e631` Add minitest integration tests and fix command building
-- `592de6254` Implement basic minitest execution
-- `11ae346de` Refactor command building with CommandBuilder interface
-- `ab8bcb964` Add minitest module with parser and command builder
-- `fff099f0b` Add framework type support for minitest
 
-## Known Issues
+## Fixed Issues ✅
 
-### 1. Output Capture Problem
-**Issue**: Minitest output shows "0 tests, 0 assertions..." instead of actual results
+### 1. ~~Output Capture Problem~~ FIXED
+**Previous Issue**: Minitest output showed "0 tests, 0 assertions..." instead of actual results
 
-**Root Cause**: In `RunMinitestFiles` (runner.go:501-594):
-- Uses `cmd.CombinedOutput()` which waits for entire command to finish
-- No real-time output streaming like RSpec implementation
-- Initial empty summary is captured before actual test output
+**Solution Implemented**:
+- Changed from `cmd.CombinedOutput()` to streaming with pipes
+- Now uses stdout/stderr pipes like RSpec implementation
+- Captures output line-by-line in real-time
+- Parser updated to look for "runs" instead of "tests"
 
-**Manual Test Results**:
-```bash
-# What rux shows:
-0 tests, 0 assertions, 0 failures, 0 errors, 0 skips
+### 2. ~~Progress Reporting Not Implemented~~ FIXED
+**Previous Issue**: No dots (`.`, `F`, `E`) appeared during test execution
 
-# What actually runs:
-8 runs, 23 assertions, 0 failures, 0 errors, 0 skips
-```
+**Solution Implemented**:
+- Added `isProgressLine()` function to detect lines with only progress indicators
+- Streams progress indicators to output channel in real-time
+- Properly handles mixed output (progress indicators + test names)
+- Now shows colored dots/F/E/S during execution
 
-### 2. Progress Reporting Not Implemented
-**Issue**: No dots (`.`, `F`, `E`) appear during test execution
+### 3. ~~Integration Test Failures~~ FIXED
+**Previous Issues**:
+1. minitest-success tests expected "X runs" but got "0 tests" - FIXED
+2. minitest-failures tests didn't capture error output properly - FIXED
 
-**Root Cause**:
-- RSpec uses custom JSON formatter for streaming
-- Minitest outputs plain text progress indicators
-- Current implementation doesn't scan output line-by-line
+**Solutions**:
+- Updated parser regex to match "runs" instead of "tests"
+- Fixed test expectations to look for output in stdout (not stderr)
+- Updated failure detection to look for "Failures:" (plural)
 
-**Design Challenge**:
-- RSpec has structured JSON output with clear message types
-- Minitest has unstructured text output that needs parsing
-- Need to detect progress indicators mixed with other output
+## Remaining Design Challenges
 
-### 3. Integration Test Failures
-1. **minitest-success tests**: Expect "X runs" but get "0 tests"
-2. **minitest-failures tests**: Don't capture error output properly
+### 1. Type Duplication
+**Issue**: Notification types are duplicated in multiple packages
+- `rspec/parser.go` defines all notification types
+- `minitest/notification_parser.go` defines the same types again
+- Main `notifications.go` has the canonical definitions
+
+**Impact**: Code duplication, potential for drift
+
+**Proposed Solution**: 
+- Remove duplicated types from parser packages
+- Import from main package or create shared types package
+
+### 2. Parser Integration Not Complete
+**Issue**: We have parsers but aren't using them yet
+- `RunRSpecFiles` still has inline parsing logic
+- `RunMinitestFiles` doesn't use the notification parser
+- No accumulator to collect notifications
+
+**Proposed Solution**:
+- Create NotificationAccumulator
+- Refactor runners to use parsers
+- Extract common streaming logic
 
 ## Design Differences: RSpec vs Minitest
 

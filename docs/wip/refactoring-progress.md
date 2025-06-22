@@ -18,14 +18,20 @@
 - Fixed progress parsing to only look at lines with progress indicators (not every 'F' in output)
 
 ### Test Fixes ✅
-- Fixed minitest command builder tests to match actual behavior
+- Fixed minitest command builder tests to match actual behavior  
 - Updated minitest integration test expectations (Failures: not Failure:, stdout not stderr)
 - Updated glob pattern tests to expect "test files" instead of "spec files"
+- Fixed minitest parser Go tests to expect "runs" instead of "tests"
+
+### Code Consolidation ✅
+- Consolidated command builders into single `command_builder.go` file
+- Removed separate `rspec_command_builder.go` and `minitest_command_builder.go`
 
 ## Current Status
-- All minitest integration tests are passing
-- Down to 1 flaky performance test failure (not related to our changes)
+- All tests passing (Ruby integration tests and Go tests)
+- Only 1 flaky performance test remains (unrelated to our changes)
 - Minitest now properly streams output and shows progress indicators
+- Command builders are consolidated and cleaner
 
 ## Next Steps
 

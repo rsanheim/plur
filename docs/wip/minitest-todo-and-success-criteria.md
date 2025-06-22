@@ -33,49 +33,67 @@
    - Updated RunSpecFile to use command builders
    - Framework-specific command building now properly dispatched
 
-4. **Basic Execution First** ⚠️ PARTIALLY COMPLETE
+4. **Basic Execution First** ✅ COMPLETED (2025-06-22)
    - ✅ Tests execute successfully with proper command building
    - ✅ No runtime tracking (as planned)
    - ✅ Duration tracked from Go side
-   - ❌ Output capture not working properly (shows "0 tests, 0 assertions...")
-   - ❌ Progress reporting (dots) not implemented
+   - ✅ Output capture fixed with streaming implementation
+   - ✅ Progress reporting (dots) implemented
 
-5. **Output Parsing** 🔄 NEEDS WORK
+5. **Output Parsing** ✅ COMPLETED (2025-06-22)
    - ✅ ANSI code stripping implemented
    - ✅ Summary line parsing implemented
-   - ❌ Real-time output streaming not working
-   - ❌ Progress indicators not captured
+   - ✅ Real-time output streaming working
+   - ✅ Progress indicators captured and displayed
 
-### Phase 3: Runtime Tracking & Refinements (FUTURE)
+### Phase 3: Event-Based Refactoring (IN PROGRESS)
+
+1. **Core Types** ✅ COMPLETED
+   - Created notifications.go with TestEvent enum
+   - Created TestNotification interface
+   - Created concrete notification types
+
+2. **Framework Parsers** ✅ COMPLETED
+   - Created rspec/parser.go with JSON parsing
+   - Created minitest/notification_parser.go with text parsing
+   - Both implement TestOutputParser interface
+
+3. **Notification Accumulator** 🔄 NEXT
+   - Create accumulator to collect events
+   - Build TestResult from accumulated notifications
+
+4. **Parser Integration** 🔄 TODO
+   - Update RunRSpecFiles to use parser
+   - Update RunMinitestFiles to use parser
+   - Extract common streaming logic
+
+### Phase 4: Runtime Tracking & Refinements (FUTURE)
 1. Add runtime tracking from Go side (measure per-file execution)
 2. Create generic Example type to replace rspec.Example
 3. Convert RuntimeTracker to use generic types
 4. Consider verbose mode for progress reporting (future)
 
-## Next Steps to Fix Output Issues
+## Fixed Issues ✅
 
-1. **Implement Output Streaming in RunMinitestFiles**:
-   - Replace `cmd.CombinedOutput()` with stdout/stderr pipes
-   - Use `bufio.Scanner` to read output line-by-line
-   - Similar to RSpec implementation but parse plain text instead of JSON
+1. **Output Streaming in RunMinitestFiles** ✅:
+   - Replaced `cmd.CombinedOutput()` with stdout/stderr pipes
+   - Uses `bufio.Scanner` to read output line-by-line
+   - Similar to RSpec implementation but parses plain text
 
-2. **Add Progress Detection**:
-   - Scan for minitest progress indicators in output
-   - Look for patterns like:
-     - Single dot (`.`) for passing test
-     - `F` for failure
-     - `E` for error
-     - `in test_method_name` for current test
-   - Send OutputMessage events to outputChan for each indicator
+2. **Progress Detection** ✅:
+   - Added `isProgressLine()` function
+   - Detects lines with only progress indicators
+   - Sends OutputMessage events for dots/F/E/S
 
-3. **Fix Output Accumulation**:
-   - Build output string while streaming
-   - Parse summary line when detected
-   - Keep both real-time parsing and final summary
+3. **Output Accumulation** ✅:
+   - Builds output string while streaming
+   - Parses summary with updated regex ("runs" not "tests")
+   - Maintains real-time progress and final summary
 
-4. **Update Integration Tests**:
-   - Change expectation from "tests" to "runs" in summary
-   - Adjust error output expectations for minitest format
+4. **Integration Tests** ✅:
+   - Updated expectations to match "runs" in summary
+   - Fixed error output expectations
+   - All minitest integration tests passing
 
 ## Success Criteria
 
@@ -85,14 +103,15 @@
 - Clean separation between generic types and RSpec-specific types ✅
 - All tests passing ✅
 
-### Phase 2 - Minitest Support (IN PROGRESS):
+### Phase 2 - Minitest Support (COMPLETED ✅):
 - ✅ `-t minitest` flag works correctly
 - ✅ Auto-detection identifies test/ directories
 - ✅ Command building follows parallel_tests pattern
-- ⚠️ Minitest projects run but output capture needs fixing
-- ❌ Progress reporting (dots) not implemented
-- ❌ Standard minitest output not captured properly
+- ✅ Minitest projects run with proper output capture
+- ✅ Progress reporting (dots) implemented
+- ✅ Standard minitest output captured and displayed
 - ✅ Existing RSpec functionality unchanged
+- ✅ All integration tests passing
 
 ### Phase 3 - Runtime & Refinements:
 - Runtime tracking works for both frameworks
