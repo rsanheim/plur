@@ -50,21 +50,20 @@ RSpec.describe "Rux error handling" do
 
         chdir(tmpdir) do
           result = run_rux_allowing_errors("invalid_spec.rb")
-          
+
           # Should exit with error
           expect(result.exit_status).not_to eq(0)
-          
-          # CURRENT BEHAVIOR (problematic):
-          # - Shows "0 examples, 0 failures, 1 error occurred outside of examples"
-          # - Doesn't show the actual Ruby syntax error
-          # - Still saves runtime data
+
+          # Shows "0 examples, 0 failures, 1 error occurred outside of examples"
           expect(result.out).to include("0 examples, 0 failures, 1 error occurred outside of examples")
-          
-          # TODO: Should show the actual syntax error from Ruby
-          # expect(result.err).to include("syntax error")
-          
-          # TODO: Should not save runtime data when tests fail to start
-          expect(result.err).to include("Runtime data saved to:")
+
+          # Shows the actual syntax error from Ruby
+          expect(result.out).to include("SyntaxError")
+          # Ruby error messages vary by version, so just check for "syntax error"
+          expect(result.out.downcase).to include("syntax error")
+
+          # Should NOT save runtime data when tests fail to start
+          expect(result.err).not_to include("Runtime data saved to:")
         end
       end
     end
@@ -132,17 +131,17 @@ RSpec.describe "Rux error handling" do
           result1 = run_rux_allowing_errors("test_failure_spec.rb")
           puts "Exit code: #{result1.exit_status}"
           puts "Output: #{result1.out.lines.grep(/examples?.*failures?/).first}"
-          
+
           puts "\n=== Test 2: Unhandled exception ==="
           result2 = run_rux_allowing_errors("exception_spec.rb")
           puts "Exit code: #{result2.exit_status}"
           puts "Output: #{result2.out.lines.grep(/examples?.*failures?/).first}"
-          
+
           puts "\n=== Test 3: Syntax error in spec ==="
           result3 = run_rux_allowing_errors("syntax_error_spec.rb")
           puts "Exit code: #{result3.exit_status}"
           puts "Output: #{result3.out.lines.grep(/examples?.*failures?.*error/).first}"
-          
+
           puts "\n=== Test 4: Syntax error in code under test ==="
           result4 = run_rux_allowing_errors("calculator_spec.rb")
           puts "Exit code: #{result4.exit_status}"
@@ -153,11 +152,11 @@ RSpec.describe "Rux error handling" do
           expect(result2.exit_status).to eq(1)
           expect(result3.exit_status).to eq(1)
           expect(result4.exit_status).to eq(1)
-          
+
           # Test failures and exceptions show examples
           expect(result1.out).to match(/2 examples, 1 failure/)
           expect(result2.out).to match(/2 examples, 1 failure/)
-          
+
           # Syntax errors show 0 examples with errors
           expect(result3.out).to match(/0 examples, 0 failures, 1 error/)
           expect(result4.out).to match(/0 examples, 0 failures, 1 error/)
@@ -177,16 +176,16 @@ RSpec.describe "Rux error handling" do
 
         chdir(tmpdir) do
           result = run_rux_allowing_errors("--command=nonexistentcommand", "dummy_spec.rb", "--debug")
-          
+
           puts "\n=== Command not found (with debug) ==="
           puts "Exit code: #{result.exit_status}"
           puts "STDOUT:\n#{result.out}"
           puts "STDERR:\n#{result.err}"
-          
+
           expect(result.exit_status).to eq(1)
           # Currently shows "0 examples, 0 failures" which is misleading
           expect(result.out).to include("0 examples, 0 failures")
-          
+
           # Check if there's any error indication in debug output
           # expect(result.err).to include("failed to start command")
         end

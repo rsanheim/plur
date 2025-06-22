@@ -107,8 +107,10 @@ RSpec.describe "Rux CLI behavior" do
         result = run_rux_allowing_errors("spec", "--debug", "--command=rspecx")
         expect(result).to_not be_success
         expect(result.exit_status).to be_nonzero
-        expect(result.err).to include("rspecx")
-        expect(result.err).to include("not found")
+        # Error messages are displayed after the summary
+        expect(result.out).to include("Error: failed to start command")
+        expect(result.out).to include("rspecx")
+        expect(result.out).to include("not found")
       end
     end
 

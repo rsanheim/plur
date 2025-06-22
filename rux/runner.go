@@ -17,9 +17,19 @@ import (
 	"github.com/rsanheim/rux/tracing"
 )
 
+// TestState represents the state of a test execution
+type TestState string
+
+const (
+	StateSuccess TestState = "success" // All tests passed
+	StateFailed  TestState = "failed"  // Some tests failed/exceptions
+	StateError   TestState = "error"   // Fatal error, couldn't run tests
+)
+
 // TestResult represents the result of running a single spec file
 type TestResult struct {
 	SpecFile     string
+	State        TestState
 	Success      bool
 	Output       string
 	Error        error
@@ -124,10 +134,17 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 
 // errorResult creates a TestResult for error cases
 func errorResult(specFiles []string, err error, start time.Time) TestResult {
+	// Extract error message for output
+	errorOutput := ""
+	if err != nil {
+		errorOutput = fmt.Sprintf("Error: %v\n", err)
+	}
+
 	return TestResult{
 		SpecFile: strings.Join(specFiles, ","),
+		State:    StateError,
 		Success:  false,
-		Output:   "",
+		Output:   errorOutput,
 		Error:    err,
 		Duration: time.Since(start),
 	}
@@ -161,6 +178,7 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 	if dryRun {
 		return TestResult{
 			SpecFile: strings.Join(specFiles, " "),
+			State:    StateSuccess,
 			Success:  true,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
 			Error:    nil,
@@ -263,6 +281,11 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 					streamingResults.FormattedFailures = msg.FormattedOutput
 				case "dump_summary":
 					streamingResults.FormattedSummary = msg.FormattedOutput
+				case "message":
+					// Error messages, warnings, etc.
+					if msg.Message != "" {
+						outputBuilder.WriteString(msg.Message + "\n")
+					}
 				case "close":
 					// End of test run
 				}
@@ -310,10 +333,26 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 	jsonOutput := streamingResults.ConvertToJSONOutput()
 	failures := rspec.ExtractFailures(jsonOutput.Examples)
 
+	// Determine the state based on the execution outcome
+	state := StateSuccess
+	output := outputBuilder.String()
+
+	// Check if this is an execution error (couldn't run tests)
+	if err != nil && streamingResults.ExampleCount == 0 &&
+		(strings.Contains(output, "error occurred outside of examples") ||
+			strings.Contains(streamingResults.FormattedSummary, "error occurred outside of examples")) {
+		state = StateError
+		// For execution errors, keep the full output which contains error details
+		// The FormattedSummary only contains the summary line, not the error details
+	} else if !success {
+		state = StateFailed
+	}
+
 	return TestResult{
 		SpecFile:          strings.Join(specFiles, " "),
+		State:             state,
 		Success:           success,
-		Output:            outputBuilder.String(),
+		Output:            output,
 		Error:             err,
 		Duration:          time.Since(start),
 		FileLoadTime:      time.Duration(streamingResults.LoadTime * float64(time.Second)),
@@ -411,8 +450,8 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 	var allResults []TestResult
 	for result := range results {
 		allResults = append(allResults, result)
-		// Track runtime data if tracker is available
-		if runtimeTracker != nil && result.JSONOutput != nil {
+		// Track runtime data if tracker is available and tests actually ran
+		if runtimeTracker != nil && result.State != StateError && result.JSONOutput != nil {
 			for _, example := range result.JSONOutput.Examples {
 				runtimeTracker.AddExample(example)
 			}

@@ -137,14 +137,31 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 	}
 	fmt.Println()
 
-	// RJS 2025-05-28 - this doesn't seem right - we are printing 'errors' when the spec is a legit failure
-	// we probalby need proper error handling (i.e. an exception)
-	//
-	// Show any spec files that had errors running
-	// if len(summary.ErroredFiles) > 0 {
-	// 	fmt.Println()
-	// 	for _, result := range summary.ErroredFiles {
-	// 		fmt.Printf("ERROR running %s: %v\n", result.SpecFile, result.Error)
-	// 	}
-	// }
+	// Show any spec files that had execution errors (not test failures)
+	if len(summary.ErroredFiles) > 0 {
+		hasExecutionErrors := false
+		for _, result := range summary.ErroredFiles {
+			if result.State == StateError {
+				hasExecutionErrors = true
+				break
+			}
+		}
+
+		if hasExecutionErrors {
+			fmt.Println()
+			for _, result := range summary.ErroredFiles {
+				if result.State == StateError {
+					// Display the error output which contains the actual error details
+					if result.Output != "" {
+						// Output contains the full error details from RSpec
+						fmt.Print(result.Output)
+					}
+					// Always show the Go error for debugging
+					if result.Error != nil {
+						fmt.Printf("ERROR running %s: %v\n", result.SpecFile, result.Error)
+					}
+				}
+			}
+		}
+	}
 }

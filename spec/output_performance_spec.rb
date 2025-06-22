@@ -22,7 +22,7 @@ RSpec.describe "Rux output performance" do
     it "maintains colored output when supported" do
       Dir.chdir(default_ruby_dir) do
         # Force color output
-        result = run_rux("-n", "4", env: { "FORCE_COLOR" => "1" })
+        result = run_rux("-n", "4", env: {"FORCE_COLOR" => "1"})
 
         # Should contain ANSI color codes for green dots
         expect(result.out).to include("\e[32m.\e[0m")
