@@ -29,8 +29,8 @@ task build: ["vendor:build", "lint:go"] do
   end
 end
 
-desc "Build and install rux to GOPATH/bin"
-task install: ["build"] do
+desc "Install rux to GOPATH/bin"
+task :install do
   Dir.chdir(Plur.config.rux_dir) do
     sh %(go install -mod=mod)
   end
@@ -53,11 +53,11 @@ namespace :test do
     end
   end
 
-  desc "Run our default-ruby fixture project with rux"
-  task ruby: %i[build default_ruby]
+  desc "Run default-ruby fixture project with rux"
+  task ruby: %i[default_ruby]
 
-  desc "Run our default-ruby fixture project with rux"
-  task :default_ruby do
+  desc "Run default-ruby fixture project with rux"
+  task default_ruby: :install do
     Dir.chdir(Plur.config.default_ruby_dir) do
       puts "[test:default_ruby] Running default-ruby specs with rux..."
       sh "rux", "-n", RUX_CORES.to_s
@@ -73,7 +73,7 @@ namespace :test do
   end
 
   desc "Run default-rails specs using rux"
-  task default_rails: [:build] do
+  task default_rails: :install do
     Dir.chdir(Plur.config.default_rails_dir) do
       puts "[test:default_rails] Running default-rails specs with rux..."
       sh "rux", "-n", RUX_CORES.to_s
@@ -81,7 +81,7 @@ namespace :test do
   end
 
   desc "Run integration tests in root spec directory"
-  task :integration do
+  task integration: :install do
     puts "[test:integration] Running ruby integration suite with rux..."
     sh "rux", "-n", RUX_CORES.to_s
   end

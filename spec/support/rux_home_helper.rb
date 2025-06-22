@@ -37,4 +37,8 @@ module RuxHomeHelper
       cmd.run(:rux, *args, env: env)
     end
   end
+
+  def run_rux_allowing_errors(*args, env: {})
+    run_rux(*args, allow_error: true, env: env)
+  end
 end
