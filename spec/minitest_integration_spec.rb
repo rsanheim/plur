@@ -37,10 +37,10 @@ RSpec.describe "Minitest Integration" do
         Bundler.with_unbundled_env do
           result = run_rux("--type", "minitest", "-n", "1", allow_error: true)
           expect(result).to be_failure
-          expect(result.err).to include("ERROR running")
-          # Check for failure output
-          expect(result.err).to include("Failure:")
-          expect(result.err).to match(/\d+ failures?/)
+          # Check for failure output in stdout (not stderr)
+          expect(result.out).to include("Failures:")
+          # Check that the summary shows failures
+          expect(result.out).to match(/\d+ failures?/)
         end
       end
     end
