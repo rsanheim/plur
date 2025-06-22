@@ -1,4 +1,4 @@
-# Test Execution Refactoring Plan
+# Refactor to TestEvent / TestNotification
 
 ## Overview
 Refactor test execution to use an event-based abstraction that decouples framework-specific logic from generic test running concerns.
