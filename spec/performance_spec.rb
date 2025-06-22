@@ -3,41 +3,34 @@ require "tmpdir"
 require "benchmark"
 
 RSpec.describe "Rux performance" do
-  before do
-    expect(File.exist?(rux_binary)).to be(true)
-  end
-
   let(:expected_spec_files) { 12 }
 
   describe "parallelization efficiency" do
     it "chooses optimal execution strategy based on file count" do
-      Dir.chdir(default_ruby_dir) do
+      chdir(default_ruby_dir) do
         # With grouping optimization, for small test suites a single worker
         # might be faster as it avoids process spawn overhead
-        single_output = `#{rux_binary} -n 1 2>&1`
-        default_output = `#{rux_binary} 2>&1`
-
-        # Both should complete successfully
-        expect($?.exitstatus).to eq(0)
+        single_result = run_rux("-n", "1")
+        default_result = run_rux
 
         # Should use grouped execution when appropriate (either runtime or size-based)
-        expect(single_output).to match(/Using (runtime-based|size-based) grouped execution: #{expected_spec_files} files across 1 workers/)
+        expect(single_result.err).to match(/Using (runtime-based|size-based) grouped execution: #{expected_spec_files} files across 1 workers/)
 
         # Verify all examples run in both cases
-        expect(single_output).to match(/\d+ examples, 0 failures/)
-        expect(default_output).to match(/\d+ examples, 0 failures/)
+        expect(single_result.out).to match(/\d+ examples, 0 failures/)
+        expect(default_result.out).to match(/\d+ examples, 0 failures/)
       end
     end
 
     it "shows wall time vs CPU time to demonstrate parallelization" do
-      Dir.chdir(default_ruby_dir) do
-        output = `#{rux_binary} 2>&1`
+      chdir(default_ruby_dir) do
+        result = run_rux
 
         # Should show both wall time and CPU time
-        expect(output).to match(/Finished in [\d.]+ seconds \(files took [\d.]+ seconds to load\)/)
+        expect(result.out).to match(/Finished in [\d.]+ seconds \(files took [\d.]+ seconds to load\)/)
 
         # Extract times from output
-        if output =~ /Finished in ([\d.]+) seconds/
+        if result.out =~ /Finished in ([\d.]+) seconds/
           wall_time = $1.to_f
 
           # Wall time should be reasonable
@@ -65,12 +58,12 @@ RSpec.describe "Rux performance" do
           gem 'rspec', '~> 3.0'
         GEMFILE
 
-        Dir.chdir(tmpdir) do
+        chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
           # Measure rux time
           rux_time = Benchmark.realtime do
-            system("#{rux_binary} simple_spec.rb", out: File::NULL, err: File::NULL)
+            system("rux simple_spec.rb", out: File::NULL, err: File::NULL)
           end
 
           # Measure direct rspec time
@@ -88,14 +81,14 @@ RSpec.describe "Rux performance" do
 
   describe "worker optimization" do
     it "chooses reasonable default worker count" do
-      Dir.chdir(default_ruby_dir) do
-        output = `#{rux_binary} 2>&1`
+      chdir(default_ruby_dir) do
+        result = run_rux
 
         # Should show worker count and available cores
-        expect(output).to match(/using \d+ workers \(\d+ cores available\)/)
+        expect(result.out).to match(/using \d+ workers \(\d+ cores available\)/)
 
         # Extract values
-        if output =~ /using (\d+) workers \((\d+) cores available\)/
+        if result.out =~ /using (\d+) workers \((\d+) cores available\)/
           workers = $1.to_i
           cores = $2.to_i
 
