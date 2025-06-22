@@ -2,16 +2,32 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rsanheim/rux/rspec"
 )
 
+// TestFile represents a test file
+type TestFile struct {
+	Path     string // Full path to the file
+	Filename string // Just the filename
+}
+
+// TestFailure represents framework-agnostic failure details
+type TestFailure struct {
+	File        *TestFile
+	Description string
+	LineNumber  int
+	Message     string
+	Backtrace   []string
+}
+
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
 	TotalExamples     int
 	TotalFailures     int
-	AllFailures       []rspec.FailureDetail
+	AllFailures       []TestFailure
 	TotalCPUTime      time.Duration
 	WallTime          time.Duration
 	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
@@ -99,7 +115,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 		fmt.Println("\nFailures:")
 
 		for i, failure := range summary.AllFailures {
-			fmt.Print(rspec.FormatFailure(i+1, failure))
+			fmt.Print(FormatTestFailure(i+1, failure))
 			fmt.Println() // Extra line between failures
 		}
 	}
@@ -131,7 +147,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 		// Print failed examples summary
 		if len(summary.AllFailures) > 0 {
 			fmt.Println("\nFailed examples:")
-			fmt.Print(rspec.FormatFailedExamples(summary.AllFailures))
+			fmt.Print(FormatFailedExamples(summary.AllFailures))
 		}
 	}
 	fmt.Println()
@@ -157,10 +173,61 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 					}
 					// Always show the Go error for debugging
 					if result.Error != nil {
-						fmt.Printf("ERROR running %s: %v\n", result.SpecFile, result.Error)
+						fmt.Printf("ERROR running %s: %v\n", result.File.Path, result.Error)
 					}
 				}
 			}
 		}
 	}
+}
+
+// FormatTestFailure formats a single test failure for display
+func FormatTestFailure(index int, failure TestFailure) string {
+	var sb strings.Builder
+
+	// Header line with failure number and description
+	sb.WriteString(fmt.Sprintf("  %d) %s\n", index, failure.Description))
+
+	// Error/Failure line
+	sb.WriteString("     Failure/Error: ")
+
+	// Try to extract the failing line from the source file
+	failingLine := rspec.ExtractFailingLine(failure.File.Path, failure.LineNumber)
+	if failingLine != "" {
+		sb.WriteString(failingLine)
+		sb.WriteString("\n")
+	} else {
+		// If we can't read the file, just continue without the line
+		sb.WriteString("\n")
+	}
+
+	// Error message
+	// For expectation failures, the message is already formatted with proper indentation
+	lines := strings.Split(strings.TrimSpace(failure.Message), "\n")
+	for _, line := range lines {
+		if line != "" {
+			sb.WriteString("       " + line + "\n")
+		}
+	}
+
+	// Backtrace (first line only, like RSpec does)
+	if len(failure.Backtrace) > 0 {
+		sb.WriteString(fmt.Sprintf("     # %s", failure.Backtrace[0]))
+	}
+
+	return sb.String()
+}
+
+// FormatFailedExamples formats the list of failed examples
+func FormatFailedExamples(failures []TestFailure) string {
+	var sb strings.Builder
+
+	for _, failure := range failures {
+		sb.WriteString(fmt.Sprintf("rspec %s:%d # %s\n",
+			failure.File.Path,
+			failure.LineNumber,
+			failure.Description))
+	}
+
+	return sb.String()
 }

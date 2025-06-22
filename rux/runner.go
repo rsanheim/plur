@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -28,14 +29,14 @@ const (
 
 // TestResult represents the result of running a single spec file
 type TestResult struct {
-	SpecFile     string
+	File         *TestFile
 	State        TestState
 	Output       string
 	Error        error
 	Duration     time.Duration
 	FileLoadTime time.Duration // Time to load spec files before running tests
 	JSONOutput   *rspec.JSONOutput
-	Failures     []rspec.FailureDetail
+	Failures     []TestFailure
 	ExampleCount int
 	FailureCount int
 
@@ -54,7 +55,7 @@ type OutputMessage struct {
 	WorkerID int
 	Type     string // "dot", "failure", "pending", "error", "stderr"
 	Content  string // For error messages
-	SpecFile string // For stderr messages
+	Files    string // For stderr messages - comma-separated list of files
 }
 
 // GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
@@ -128,7 +129,7 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 				os.Stdout.Write(plainStar)
 			}
 		case "stderr":
-			fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.SpecFile, msg.Content)
+			fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.Files, msg.Content)
 		case "error":
 			// For JSON parse errors or other output
 			fmt.Fprintln(os.Stderr, msg.Content)
@@ -137,7 +138,7 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 }
 
 // errorResult creates a TestResult for error cases
-func errorResult(specFiles []string, err error, start time.Time) TestResult {
+func errorResult(testFile *TestFile, err error, start time.Time) TestResult {
 	// Extract error message for output
 	errorOutput := ""
 	if err != nil {
@@ -145,7 +146,7 @@ func errorResult(specFiles []string, err error, start time.Time) TestResult {
 	}
 
 	return TestResult{
-		SpecFile: strings.Join(specFiles, ","),
+		File:     testFile,
 		State:    StateError,
 		Output:   errorOutput,
 		Error:    err,
@@ -153,10 +154,39 @@ func errorResult(specFiles []string, err error, start time.Time) TestResult {
 	}
 }
 
+// convertRSpecFailures converts RSpec-specific failures to generic TestFailure
+func convertRSpecFailures(testFile *TestFile, rspecFailures []rspec.FailureDetail) []TestFailure {
+	failures := make([]TestFailure, len(rspecFailures))
+	for i, f := range rspecFailures {
+		failures[i] = TestFailure{
+			File:        testFile,
+			Description: f.Description,
+			LineNumber:  f.LineNumber,
+			Message:     f.Message,
+			Backtrace:   f.Backtrace,
+		}
+	}
+	return failures
+}
+
 // RunSpecFile executes multiple spec files in a single RSpec process
 func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, specCommand string, outputChan chan<- OutputMessage) TestResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
+
+	// Create TestFile for the primary file (or combined representation)
+	var testFile *TestFile
+	if len(specFiles) > 0 {
+		testFile = &TestFile{
+			Path:     specFiles[0], // Use first file as primary
+			Filename: filepath.Base(specFiles[0]),
+		}
+	} else {
+		testFile = &TestFile{
+			Path:     "unknown",
+			Filename: "unknown",
+		}
+	}
 
 	// Build args with streaming JSON formatter
 	// Split the command string into parts
@@ -180,7 +210,7 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 
 	if dryRun {
 		return TestResult{
-			SpecFile: strings.Join(specFiles, " "),
+			File:     testFile,
 			State:    StateSuccess,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
 			Error:    nil,
@@ -202,12 +232,12 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(specFiles, fmt.Errorf("failed to create stdout pipe: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(specFiles, fmt.Errorf("failed to create stderr pipe: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
 	}
 
 	// Start the command
@@ -216,7 +246,7 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 		err = cmd.Start()
 	}()
 	if err != nil {
-		return errorResult(specFiles, fmt.Errorf("failed to start command: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
 	var outputBuilder strings.Builder
@@ -313,7 +343,7 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 				WorkerID: workerIndex,
 				Type:     "stderr",
 				Content:  line,
-				SpecFile: strings.Join(specFiles, ","),
+				Files:    strings.Join(specFiles, ","),
 			}
 		}
 	}()
@@ -333,7 +363,10 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 
 	// Convert streaming results to RSpec JSON format
 	jsonOutput := streamingResults.ConvertToJSONOutput()
-	failures := rspec.ExtractFailures(jsonOutput.Examples)
+	rspecFailures := rspec.ExtractFailures(jsonOutput.Examples)
+
+	// Convert RSpec failures to generic failures
+	failures := convertRSpecFailures(testFile, rspecFailures)
 
 	// Determine the state based on the execution outcome
 	state := StateSuccess
@@ -351,7 +384,7 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 	}
 
 	return TestResult{
-		SpecFile:          strings.Join(specFiles, " "),
+		File:              testFile,
 		State:             state,
 		Output:            output,
 		Error:             err,
