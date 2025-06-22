@@ -60,6 +60,15 @@ plugins:
   - search
   - social
   - awesome-pages
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      timezone: America/Chicago
+      locale: en
+      fallback_to_build_date: false
+      exclude:
+        - index.md
+      enabled: true
 
 extra:
   social:
