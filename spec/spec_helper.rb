@@ -51,6 +51,14 @@ RSpec.configure do |config|
     Pathname.new(__dir__).parent.join("fixtures", "projects", name)
   end
 
+  def project_fixture!(name)
+    project_fixture(name).tap do |path|
+      unless path.exist?
+        raise "Project fixture does not exist for #{name} at path: #{path}"
+      end
+    end
+  end
+
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
   end

@@ -134,12 +134,16 @@ func errorResult(specFiles []string, err error, start time.Time) TestResult {
 }
 
 // RunSpecFile executes multiple spec files in a single RSpec process
-func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, outputChan chan<- OutputMessage) TestResult {
+func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, specCommand string, outputChan chan<- OutputMessage) TestResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
 	// Build args with streaming JSON formatter
-	args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+	// Split the command string into parts
+	args := strings.Fields(specCommand)
+
+	// Add formatter arguments
+	args = append(args, "-r", formatterPath, "--format", "Rux::JsonRowsFormatter")
 
 	// Add color flags based on preference
 	if !colorOutput {
@@ -150,6 +154,9 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 	}
 	// Add all spec files
 	args = append(args, specFiles...)
+
+	// Log the command in debug mode
+	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
 
 	if dryRun {
 		return TestResult{
@@ -386,7 +393,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunSpecFile(ctx, config.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, outputChan)
+			result := RunSpecFile(ctx, config.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, config.SpecCommand, outputChan)
 			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success)
 			results <- result
 		}(i, group.Files)

@@ -104,7 +104,11 @@ func (e *TestExecutor) executeTests() error {
 
 // buildRSpecArgs constructs the RSpec command arguments
 func (e *TestExecutor) buildRSpecArgs(formatterPath string, files []string) []string {
-	args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+	// Split the command string into parts
+	args := strings.Fields(e.config.SpecCommand)
+
+	// Add formatter arguments
+	args = append(args, "-r", formatterPath, "--format", "Rux::JsonRowsFormatter")
 
 	// Add color flags based on preference
 	if !e.config.ColorOutput {

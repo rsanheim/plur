@@ -1,0 +1,16 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    power_assert (2.0.5)
+    test-unit (3.6.8)
+      power_assert
+
+PLATFORMS
+  arm64-darwin-24
+  ruby
+
+DEPENDENCIES
+  test-unit (~> 3.6)
+
+BUNDLED WITH
+   2.6.9

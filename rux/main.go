@@ -7,12 +7,14 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
+	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/tracing"
 )
 
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
+	Command  string   `help:"Test command to run" default:"bundle exec rspec"`
 }
 
 func (r *SpecCmd) Run(parent *RuxCLI) error {
@@ -25,7 +27,10 @@ func (r *SpecCmd) Run(parent *RuxCLI) error {
 		DryRun:       parent.DryRun,
 		TraceEnabled: parent.Trace,
 		WorkerCount:  GetWorkerCount(parent.Workers),
+		SpecCommand:  r.Command,
 	}
+
+	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns)
 
 	// Initialize tracing if enabled
 	if config.TraceEnabled {
@@ -86,8 +91,9 @@ type WatchCmd struct {
 
 type WatchRunCmd struct {
 	// Flags for watch command
-	Timeout  int `help:"Exit after specified seconds (default: run until Ctrl-C)"`
-	Debounce int `help:"Debounce delay in milliseconds" default:"100"`
+	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
+	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
+	Command  string `help:"Test command to run" default:"bundle exec rspec"`
 }
 
 func (w *WatchRunCmd) Run(parent *RuxCLI) error {
@@ -100,6 +106,7 @@ func (w *WatchRunCmd) Run(parent *RuxCLI) error {
 		DryRun:       parent.DryRun,
 		TraceEnabled: parent.Trace,
 		WorkerCount:  GetWorkerCount(parent.Workers),
+		WatchCommand: w.Command,
 	}
 
 	// Auto-install watcher binary if needed
@@ -235,6 +242,7 @@ func main() {
 	ctx := kong.Parse(&cli,
 		kong.Name("rux"),
 		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
+		kong.Configuration(kongtoml.Loader, ".rux.toml", "~/.rux.toml"),
 		kong.Vars{
 			"cache_dir": configPaths.CacheDir,
 		})

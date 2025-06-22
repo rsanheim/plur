@@ -9,6 +9,17 @@ RSpec.describe "Rux CLI behavior" do
       expect(status.success?).to be true
       output = stdout + stderr
       expect(output).to include("[dry-run]")
+      expect(output).to include("bundle exec rspec")
+    end
+
+    it "shows overridden command if defined" do
+      stdout, stderr, status = Open3.capture3(rux_binary, "spec", "--dry-run", "--command=bin/rspec")
+
+      expect(status.success?).to be true
+      output = stdout + stderr
+      expect(output).to include("[dry-run]")
+      expect(output).to include("bin/rspec")
+      expect(output).to_not include("bundle exec rspec")
     end
 
     it "runs dry-run with specific spec file" do
@@ -93,6 +104,27 @@ RSpec.describe "Rux CLI behavior" do
         stdout, _, status = Open3.capture3(rux_binary, "spec/calculator_spec.rb")
 
         expect(status.success?).to be true
+        expect(stdout).to include("examples, 0 failures")
+      end
+    end
+
+    it "shows the actual command(s) run when --debug is enabled" do
+      Dir.chdir(default_ruby_dir) do
+        stdout, stderr, status = Open3.capture3(rux_binary, "spec", "--debug", "spec/calculator_spec.rb")
+
+        expect(status.success?).to be true
+        expect(stderr).to include("bundle exec rspec")
+        expect(stdout).to include("examples, 0 failures")
+      end
+    end
+
+    it "uses the configured command if defined" do
+      Dir.chdir(default_ruby_dir) do
+        stdout, stderr, status = Open3.capture3(rux_binary, "spec", "--debug", "--command=rspec")
+
+        expect(status.success?).to be true
+        expect(stderr).to include("rspec -r")
+        expect(stderr).not_to include("bundle exec")
         expect(stdout).to include("examples, 0 failures")
       end
     end
