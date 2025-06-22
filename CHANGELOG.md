@@ -1,5 +1,12 @@
 # rux CHANGELOG
 
+## v0.7.5 - 2025-06-22
+
+* Use installed rux for integration specs; update specs [#58](https://github.com/rsanheim/rux-meta/pull/58)
+* Simple config file [#56](https://github.com/rsanheim/rux-meta/pull/56)
+* clean up benchmark more [#55](https://github.com/rsanheim/rux-meta/pull/55)
+* Moving more stuff to plur [#54](https://github.com/rsanheim/rux-meta/pull/54)
+
 ## v0.7.2 - 2025-06-21
 
 * Benchmark cleanup [#53](https://github.com/rsanheim/rux-meta/pull/53)
