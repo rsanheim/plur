@@ -1,9 +1,9 @@
 # Minitest Support & Framework Abstraction Plan
 
 > **Note**: This document contains the original analysis and plan. For current implementation status, see:
-> - [Current TODOs and Success Criteria](../wip/minitest-todo-and-success-criteria.md)
-> - [Current Issues and Design Problems](../wip/minitest-current-issues.md)
-> - [Implementation Summary](../wip/minitest-implementation-summary.md)
+> - [Minitest PRD](../wip/minitest-prd.md)
+> - [Current TODOs](../wip/minitest-todo.md)
+> - [Implementation Guide](../wip/minitest-implementation-guide.md)
 
 ## Current Status
 

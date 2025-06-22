@@ -32,7 +32,7 @@ Create framework-agnostic types to support multiple test frameworks:
 - Framework detection and routing
 - Command builder abstraction
 
-[Deep dive: Framework abstraction design](test-event-architecture.md#framework-abstraction)
+[Deep dive: Framework abstraction design](test-event-architecture.md)
 
 ### Phase 2: Basic Minitest Support (✅ COMPLETED)  
 Implement core Minitest functionality:
@@ -41,7 +41,7 @@ Implement core Minitest functionality:
 - Output capture and streaming
 - Integration tests
 
-[Deep dive: Minitest implementation details](minitest-integration-details.md)
+[Deep dive: Minitest implementation details](minitest-implementation-guide.md)
 
 ### Phase 3: Event-Based Refactoring (🔄 IN PROGRESS)
 Refactor to use event-driven architecture for better extensibility:

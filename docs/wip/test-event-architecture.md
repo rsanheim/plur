@@ -216,7 +216,7 @@ func (p *MinitestOutputParser) ParseLine(line string) ([]TestNotification, bool)
 }
 ```
 
-## Accumulator Design
+## Accumulator Design {#accumulator}
 
 The NotificationAccumulator collects notifications and builds the final test result:
 

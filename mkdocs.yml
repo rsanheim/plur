@@ -1,5 +1,6 @@
 site_name: Rux Documentation
 site_description: Fast parallel test runner for Ruby/RSpec
+site_url: https://github.com/rsanheim/rux-meta
 repo_name: rsanheim/rux-meta
 repo_url: https://github.com/rsanheim/rux-meta
 
@@ -46,6 +47,9 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.tasklist:
+      custom_checkbox: true
+      clickable_checkbox: true
   - tables
   - toc:
       permalink: true
@@ -69,6 +73,17 @@ plugins:
       exclude:
         - index.md
       enabled: true
+
+validation:
+  nav:
+    omitted_files: info
+    not_found: warn
+    absolute_links: info
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: info
+    unrecognized_links: info
 
 extra:
   social:
