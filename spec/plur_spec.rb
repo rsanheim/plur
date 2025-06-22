@@ -38,10 +38,10 @@ RSpec.describe Plur::Config do
       expect(config.watcher_dir.to_s).to include("embedded/watcher")
     end
 
-    it "defines rux_binary as a Pathname" do
-      expect(config.rux_binary).to be_a(Pathname)
-      expect(config.rux_binary.basename.to_s).to eq("rux")
-      expect(config.rux_binary.dirname).to eq(config.rux_dir)
+    it "defines local_rux_binary as a Pathname" do
+      expect(config.local_rux_binary).to be_a(Pathname)
+      expect(config.local_rux_binary.basename.to_s).to eq("rux")
+      expect(config.local_rux_binary.dirname).to eq(config.rux_dir)
     end
   end
 
@@ -54,8 +54,8 @@ RSpec.describe Plur::Config do
       expect(config.watcher_dir.to_s).to start_with(config.rux_dir.to_s)
     end
 
-    it "has rux_binary inside rux_dir" do
-      expect(config.rux_binary.to_s).to start_with(config.rux_dir.to_s)
+    it "has local_rux_binary inside rux_dir" do
+      expect(config.local_rux_binary.to_s).to start_with(config.rux_dir.to_s)
     end
   end
 end

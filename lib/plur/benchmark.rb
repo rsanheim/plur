@@ -44,7 +44,7 @@ module Plur
       def initialize(config)
         @config = config
         @original_dir = Dir.pwd
-        check_rux_binary!
+        check_local_rux_binary!
         @git_sha = get_git_sha
         @rux_version = get_rux_version
       end
@@ -97,7 +97,7 @@ module Plur
         json_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.json").to_s
         markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
 
-        rux_cmd = "#{Plur.config.rux_binary} -n #{config.workers}"
+        rux_cmd = "#{Plur.config.local_rux_binary} -n #{config.workers}"
         rux_cmd += " --trace" if config.trace
 
         hyperfine_cmd = [
@@ -171,15 +171,15 @@ module Plur
       end
 
       def get_rux_version
-        `#{Plur.config.rux_binary} --version 2>/dev/null`.strip
+        `#{Plur.config.local_rux_binary} --version 2>/dev/null`.strip
       rescue
         "rux version unknown"
       end
 
-      def check_rux_binary!
-        unless File.exist?(Plur.config.rux_binary)
+      def check_local_rux_binary!
+        unless File.exist?(Plur.config.local_rux_binary)
           puts <<~ERROR
-            Error: Rux binary not found at #{Plur.config.rux_binary}
+            Error: Local rux binary not found at #{Plur.config.local_rux_binary}
             
             Please build rux first by running:
               bin/rake build
