@@ -1,37 +1,31 @@
 require "spec_helper"
 
 RSpec.describe "Rux output performance" do
-  before do
-    expect(File.exist?(rux_binary)).to be(true)
-  end
-
   describe "concurrent output handling" do
     it "produces valid output with high worker count" do
       Dir.chdir(default_ruby_dir) do
         # Run with many workers to stress-test the output handling
-        output = `#{rux_binary} -n 8 2>&1`
+        result = run_rux("-n", "8")
 
         # Count the dots in output
-        dot_count = output.scan(".").count
+        dot_count = result.out.scan(".").count
 
         # Should have at least some dots (examples)
         expect(dot_count).to be > 0
 
         # Output should still be valid
-        expect(output).to include("examples")
-        expect(output).to include("failures")
-        expect($?.exitstatus).to eq(0)
+        expect(result.out).to include("examples")
+        expect(result.out).to include("failures")
       end
     end
 
     it "maintains colored output when supported" do
       Dir.chdir(default_ruby_dir) do
         # Force color output
-        output = `FORCE_COLOR=1 #{rux_binary} -n 4 2>&1`
+        result = run_rux("-n", "4", env: { "FORCE_COLOR" => "1" })
 
         # Should contain ANSI color codes for green dots
-        expect(output).to include("\e[32m.\e[0m")
-        expect($?.exitstatus).to eq(0)
+        expect(result.out).to include("\e[32m.\e[0m")
       end
     end
 
@@ -60,13 +54,13 @@ RSpec.describe "Rux output performance" do
 
         Dir.chdir(tmpdir) do
           # Run specs that include failures
-          output = `#{rux_binary} -n 2 mixed_spec.rb 2>&1`
+          result = run_rux("-n", "2", "mixed_spec.rb", allow_error: true)
 
           # Should show both dots and F's
-          expect(output).to match(/[.F]+/)
+          expect(result.out).to match(/[.F]+/)
 
-          # Should still complete successfully (exit 1 for failures)
-          expect($?.exitstatus).to eq(1)
+          # Should exit with status 1 for failures
+          expect(result.status).to eq(1)
         end
       end
     end

@@ -102,31 +102,6 @@ RSpec.describe "Rux general integration" do
 
   # TODO: Re-enable when we implement JSON file output with streaming formatter
   # describe "JSON output" do
-  #   it "saves detailed test results when --json flag is used" do
-  #     Dir.chdir(default_ruby_dir) do
-  #       # Clean up any existing JSON files first
-  #       FileUtils.rm_f(Dir.glob("tmp/rux-results-*.json"))
-  #
-  #       # Run with --json flag
-  #       output = `#{rux_binary} --json spec/calculator_spec.rb 2>&1`
-  #
-  #       # Check that JSON files were created in the project's tmp directory
-  #       json_files = Dir.glob("tmp/rux-results-*.json")
-  #       expect(json_files).not_to be_empty
-  #
-  #       # Verify JSON content is valid
-  #       json_content = File.read(json_files.first)
-  #       parsed = JSON.parse(json_content)
-  #
-  #       expect(parsed).to have_key("version")
-  #       expect(parsed).to have_key("examples")
-  #       expect(parsed).to have_key("summary")
-  #
-  #       # Clean up
-  #       FileUtils.rm_f(json_files)
-  #     end
-  #   end
-  # end
 
   describe "auto bundle install" do
     it "runs bundle install before tests with --auto flag" do
