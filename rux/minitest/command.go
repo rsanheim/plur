@@ -9,7 +9,12 @@ import (
 // Following the parallel_tests pattern: ruby -Itest -e "require files"
 func BuildCommand(files []string, options BuildOptions) []string {
 	// Base command
-	cmd := []string{"ruby", "-Itest"}
+	var cmd []string
+	if options.UseBundler {
+		cmd = []string{"bundle", "exec", "ruby", "-Itest"}
+	} else {
+		cmd = []string{"ruby", "-Itest"}
+	}
 	
 	// Add verbose flag if requested
 	if options.Verbose {
@@ -48,4 +53,5 @@ func BuildCommand(files []string, options BuildOptions) []string {
 type BuildOptions struct {
 	Verbose     bool     // Add -v flag for verbose output
 	TestOptions []string // Additional options to pass to minitest
+	UseBundler  bool     // Whether to use bundle exec
 }

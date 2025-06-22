@@ -9,12 +9,13 @@ type MinitestCommandBuilder struct{}
 
 // BuildCommand constructs the Minitest command arguments
 func (m *MinitestCommandBuilder) BuildCommand(files []string, config *Config) []string {
-	// For minitest, we use ruby -Itest pattern
-	// The config.SpecCommand is ignored for minitest (we could add a TestCommand field later)
+	// For minitest, we could use config.Command if it's set to something like "bundle exec ruby"
+	// Otherwise default to "ruby -Itest"
 	
 	options := minitest.BuildOptions{
 		Verbose:     false, // Don't use verbose mode for now, as per our plan
 		TestOptions: []string{},
+		UseBundler:  true,  // Use bundle exec by default
 	}
 	
 	// Minitest doesn't have built-in color control like RSpec
