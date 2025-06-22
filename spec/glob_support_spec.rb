@@ -90,7 +90,7 @@ RSpec.describe "rux glob pattern support" do
           expect(result.success?).to be false  # Fails when no spec files found
           expect(result.err).to include("Warning: spec/helper.rb does not end with _spec.rb")
           # Kong logs errors through the logger with a specific format
-          expect(result.out + result.err).to include("no spec files found matching provided patterns")
+          expect(result.out + result.err).to include("no test files found matching provided patterns")
         ensure
           File.delete("spec/helper.rb") if File.exist?("spec/helper.rb")
         end
@@ -111,7 +111,7 @@ RSpec.describe "rux glob pattern support" do
         result = run_rux_allowing_errors("--dry-run", "spec/xyz*_spec.rb")
 
         expect(result.success?).to be false
-        expect(result.out + result.err).to include("no spec files found matching provided patterns")
+        expect(result.out + result.err).to include("no test files found matching provided patterns")
       end
     end
   end
