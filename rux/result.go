@@ -45,18 +45,17 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 			summary.TotalFileLoadTime = result.FileLoadTime
 		}
 
-		if len(result.Failures) > 0 {
+		// Check the result state to determine success/failure
+		switch result.State {
+		case StateFailed:
+			summary.HasFailures = true
+			summary.Success = false
 			summary.AllFailures = append(summary.AllFailures, result.Failures...)
+		case StateError:
 			summary.HasFailures = true
 			summary.Success = false
-		}
-
-		if !result.Success {
-			summary.HasFailures = true
-			summary.Success = false
-			if result.Error != nil {
-				summary.ErroredFiles = append(summary.ErroredFiles, result)
-			}
+			summary.ErroredFiles = append(summary.ErroredFiles, result)
+			// StateSuccess requires no action - summary.Success defaults to true
 		}
 
 		// Collect formatted failures (concatenate them)

@@ -14,7 +14,7 @@ func TestBuildTestSummary(t *testing.T) {
 	results := []TestResult{
 		{
 			SpecFile:     "spec/model_spec.rb",
-			Success:      true,
+			State:        StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
@@ -23,7 +23,7 @@ func TestBuildTestSummary(t *testing.T) {
 		},
 		{
 			SpecFile:     "spec/controller_spec.rb",
-			Success:      false,
+			State:        StateFailed,
 			ExampleCount: 5,
 			FailureCount: 2,
 			Duration:     200 * time.Millisecond,
@@ -43,7 +43,7 @@ func TestBuildTestSummary(t *testing.T) {
 		},
 		{
 			SpecFile:     "spec/broken_spec.rb",
-			Success:      false,
+			State:        StateError,
 			ExampleCount: 0,
 			FailureCount: 0,
 			Duration:     50 * time.Millisecond,
@@ -76,7 +76,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 	results := []TestResult{
 		{
 			SpecFile:     "spec/model_spec.rb",
-			Success:      true,
+			State:        StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
@@ -84,7 +84,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 		},
 		{
 			SpecFile:     "spec/controller_spec.rb",
-			Success:      true,
+			State:        StateSuccess,
 			ExampleCount: 5,
 			FailureCount: 0,
 			Duration:     200 * time.Millisecond,
@@ -107,7 +107,7 @@ func TestSingleTestResultIsSingleWorkerMode(t *testing.T) {
 	results := []TestResult{
 		{
 			SpecFile:         "spec/model_spec.rb",
-			Success:          true,
+			State:            StateSuccess,
 			ExampleCount:     10,
 			FailureCount:     0,
 			Duration:         100 * time.Millisecond,

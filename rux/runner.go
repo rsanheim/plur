@@ -30,7 +30,6 @@ const (
 type TestResult struct {
 	SpecFile     string
 	State        TestState
-	Success      bool
 	Output       string
 	Error        error
 	Duration     time.Duration
@@ -43,6 +42,11 @@ type TestResult struct {
 	// Formatted output from RSpec
 	FormattedFailures string
 	FormattedSummary  string
+}
+
+// Success returns true if the test execution was successful (no failures or errors)
+func (r TestResult) Success() bool {
+	return r.State == StateSuccess
 }
 
 // OutputMessage represents a message to be output
@@ -143,7 +147,6 @@ func errorResult(specFiles []string, err error, start time.Time) TestResult {
 	return TestResult{
 		SpecFile: strings.Join(specFiles, ","),
 		State:    StateError,
-		Success:  false,
 		Output:   errorOutput,
 		Error:    err,
 		Duration: time.Since(start),
@@ -179,7 +182,6 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 		return TestResult{
 			SpecFile: strings.Join(specFiles, " "),
 			State:    StateSuccess,
-			Success:  true,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
 			Error:    nil,
 			Duration: time.Since(start),
@@ -351,7 +353,6 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 	return TestResult{
 		SpecFile:          strings.Join(specFiles, " "),
 		State:             state,
-		Success:           success,
 		Output:            output,
 		Error:             err,
 		Duration:          time.Since(start),
@@ -433,7 +434,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
 			result := RunSpecFile(ctx, config.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, config.SpecCommand, outputChan)
-			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success)
+			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success())
 			results <- result
 		}(i, group.Files)
 	}
