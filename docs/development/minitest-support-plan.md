@@ -166,10 +166,14 @@ Based on parallel_tests analysis and decisions:
    - Added auto-detection based on test/ vs spec/ directories
    - TOML config support via `spec.type = "minitest"`
 
-2. **Create Minitest Module** (`rux/minitest/`)
-   - Output parser for standard minitest format (not verbose)
-   - Parse: `"X tests, Y assertions, Z failures, W errors"`
+2. **Create Minitest Module** (`rux/minitest/`) ✅ COMPLETED
+   - Created output parser for standard minitest format (not verbose)
+   - Parses: `"X tests, Y assertions, Z failures, W errors, Z skips"`
+   - Strips ANSI color codes like parallel_tests
    - Command builder using `ruby -Itest` pattern
+   - Single file: `ruby -Itest test/file.rb`
+   - Multiple files: `ruby -Itest -e "[files].each { |f| require f }"`
+   - Extracts failure messages for reporting
 
 3. **Refactor Command Building**
    - Extract CommandBuilder interface
