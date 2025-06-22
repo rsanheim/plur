@@ -26,15 +26,15 @@ var (
 func ParseOutput(output string) (*OutputSummary, error) {
 	// Strip ANSI color codes first
 	cleanOutput := ansiPattern.ReplaceAllString(output, "")
-	
+
 	// Look for summary line
 	matches := summaryPattern.FindStringSubmatch(cleanOutput)
 	if matches == nil {
 		return nil, nil // No summary found yet
 	}
-	
+
 	summary := &OutputSummary{}
-	
+
 	// Parse the numbers
 	if len(matches) > 1 {
 		summary.Tests, _ = strconv.Atoi(matches[1])
@@ -51,7 +51,7 @@ func ParseOutput(output string) (*OutputSummary, error) {
 	if len(matches) > 5 && matches[5] != "" {
 		summary.Skips, _ = strconv.Atoi(matches[5])
 	}
-	
+
 	return summary, nil
 }
 
@@ -65,10 +65,10 @@ func (s *OutputSummary) IsSuccessful() bool {
 func ExtractFailureMessages(output string) []string {
 	// Strip ANSI codes
 	cleanOutput := ansiPattern.ReplaceAllString(output, "")
-	
+
 	var failures []string
 	lines := strings.Split(cleanOutput, "\n")
-	
+
 	// Look for lines that indicate failures
 	// Minitest failure output typically includes:
 	// 1) Failure:
@@ -76,7 +76,7 @@ func ExtractFailureMessages(output string) []string {
 	// Expected...
 	inFailure := false
 	var currentFailure strings.Builder
-	
+
 	for _, line := range lines {
 		if strings.Contains(line, ") Failure:") || strings.Contains(line, ") Error:") {
 			// Start of a new failure
@@ -102,11 +102,11 @@ func ExtractFailureMessages(output string) []string {
 			}
 		}
 	}
-	
+
 	// Don't forget the last failure if we're still in one
 	if inFailure && currentFailure.Len() > 0 {
 		failures = append(failures, currentFailure.String())
 	}
-	
+
 	return failures
 }

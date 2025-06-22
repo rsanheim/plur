@@ -1,7 +1,6 @@
-require_relative 'spec_helper'
+require_relative "spec_helper"
 
 RSpec.describe "Minitest Integration" do
-
   context "with minitest-success project" do
     let(:project_dir) { project_fixture!("minitest-success") }
 

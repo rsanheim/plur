@@ -68,7 +68,7 @@ func TestParseOutput(t *testing.T) {
 			},
 		},
 		{
-			name:   "output with surrounding text",
+			name: "output with surrounding text",
 			output: `Loaded suite test
 Started
 ..............
@@ -177,12 +177,12 @@ NoMethodError: undefined method 'email' for nil:NilClass
 3 tests, 3 assertions, 1 failure, 1 error, 0 skips`
 
 	failures := ExtractFailureMessages(output)
-	
+
 	assert.Equal(t, 2, len(failures))
 	assert.Contains(t, failures[0], "1) Failure:")
 	assert.Contains(t, failures[0], "UserTest#test_name_validation")
 	assert.Contains(t, failures[0], "Expected: \"John\"")
-	
+
 	assert.Contains(t, failures[1], "2) Error:")
 	assert.Contains(t, failures[1], "UserTest#test_email_format")
 	assert.Contains(t, failures[1], "NoMethodError")

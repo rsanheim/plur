@@ -14,19 +14,19 @@ func TestBuildCommand(t *testing.T) {
 		expected []string
 	}{
 		{
-			name:  "single file",
-			files: []string{"test/models/user_test.rb"},
+			name:    "single file",
+			files:   []string{"test/models/user_test.rb"},
 			options: BuildOptions{},
 			expected: []string{
 				"ruby", "-Itest", "test/models/user_test.rb",
 			},
 		},
 		{
-			name:  "multiple files",
-			files: []string{"test/models/user_test.rb", "test/models/post_test.rb"},
+			name:    "multiple files",
+			files:   []string{"test/models/user_test.rb", "test/models/post_test.rb"},
 			options: BuildOptions{},
 			expected: []string{
-				"ruby", "-Itest", "-e", 
+				"ruby", "-Itest", "-e",
 				"['test/models/user_test.rb', 'test/models/post_test.rb'].each { |f| require f }",
 			},
 		},
@@ -47,7 +47,7 @@ func TestBuildCommand(t *testing.T) {
 				TestOptions: []string{"-n", "test_name_validation"},
 			},
 			expected: []string{
-				"ruby", "-Itest", "test/models/user_test.rb", 
+				"ruby", "-Itest", "test/models/user_test.rb",
 				"--", "-n", "test_name_validation",
 			},
 		},

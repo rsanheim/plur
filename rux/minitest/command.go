@@ -15,12 +15,12 @@ func BuildCommand(files []string, options BuildOptions) []string {
 	} else {
 		cmd = []string{"ruby", "-Itest"}
 	}
-	
+
 	// Add verbose flag if requested
 	if options.Verbose {
 		cmd = append(cmd, "-v")
 	}
-	
+
 	// Build the require statement for multiple files
 	if len(files) == 1 {
 		// Single file: just run it directly
@@ -39,13 +39,13 @@ func BuildCommand(files []string, options BuildOptions) []string {
 		requireList := strings.Join(requires, ", ")
 		cmd = append(cmd, "-e", fmt.Sprintf("[%s].each { |f| require f }", requireList))
 	}
-	
+
 	// Add any additional test options
 	if len(options.TestOptions) > 0 {
 		cmd = append(cmd, "--")
 		cmd = append(cmd, options.TestOptions...)
 	}
-	
+
 	return cmd
 }
 

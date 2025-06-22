@@ -545,7 +545,7 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 
 	// Capture output
 	output, err := cmd.CombinedOutput()
-	
+
 	// Determine success based on exit code
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
@@ -556,7 +556,7 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	// Parse minitest output
 	outputStr := string(output)
 	summary, failures := parseMinitestOutput(outputStr)
-	
+
 	// Determine the state based on the execution outcome
 	state := StateSuccess
 	if err != nil && summary.Tests == 0 {
@@ -601,9 +601,9 @@ func parseMinitestOutput(output string) (*minitest.OutputSummary, []minitest.Fai
 		// Return empty summary if parsing fails
 		summary = &minitest.OutputSummary{}
 	}
-	
+
 	// Extract failures from output
 	failures := minitest.ExtractFailures(output)
-	
+
 	return summary, failures
 }
