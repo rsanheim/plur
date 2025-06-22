@@ -16,8 +16,8 @@ type OutputSummary struct {
 }
 
 var (
-	// Pattern to match minitest summary line: "10 tests, 20 assertions, 0 failures, 0 errors, 0 skips"
-	summaryPattern = regexp.MustCompile(`(\d+) tests?, (\d+) assertions?, (\d+) failures?, (\d+) errors?(?:, (\d+) skips?)?`)
+	// Pattern to match minitest summary line: "10 runs, 20 assertions, 0 failures, 0 errors, 0 skips"
+	summaryPattern = regexp.MustCompile(`(\d+) runs?, (\d+) assertions?, (\d+) failures?, (\d+) errors?(?:, (\d+) skips?)?`)
 	// Pattern to remove ANSI color codes
 	ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 )

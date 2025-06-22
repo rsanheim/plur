@@ -543,8 +543,83 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 		"PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"),
 	)
 
-	// Capture output
-	output, err := cmd.CombinedOutput()
+	// Set up stdout and stderr pipes
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
+	}
+
+	// Start the command
+	err = cmd.Start()
+	if err != nil {
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
+	}
+
+	var outputBuilder strings.Builder
+	var wg sync.WaitGroup
+
+	// Stream stdout
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			outputBuilder.WriteString(line + "\n")
+			
+			// Send progress indicators to output channel
+			// Minitest outputs progress indicators on lines containing only dots, F, E, S characters
+			if outputChan != nil && isProgressLine(line) {
+				for _, char := range line {
+					switch char {
+					case '.':
+						outputChan <- OutputMessage{
+							WorkerID: workerIndex,
+							Type:     "dot",
+						}
+					case 'F', 'E':
+						outputChan <- OutputMessage{
+							WorkerID: workerIndex,
+							Type:     "failure",
+						}
+					case 'S':
+						outputChan <- OutputMessage{
+							WorkerID: workerIndex,
+							Type:     "pending",
+						}
+					}
+				}
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			logger.Logger.Error("error reading stdout", "error", err, "worker", workerIndex)
+		}
+	}()
+
+	// Stream stderr
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			outputBuilder.WriteString(line + "\n")
+		}
+		if err := scanner.Err(); err != nil {
+			logger.Logger.Error("error reading stderr", "error", err, "worker", workerIndex)
+		}
+	}()
+
+	// Wait for all output to be captured
+	wg.Wait()
+
+	// Wait for the command to complete
+	err = cmd.Wait()
 
 	// Determine success based on exit code
 	exitCode := 0
@@ -554,7 +629,7 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	success := exitCode == 0
 
 	// Parse minitest output
-	outputStr := string(output)
+	outputStr := outputBuilder.String()
 	summary, failures := parseMinitestOutput(outputStr)
 
 	// Determine the state based on the execution outcome
@@ -588,7 +663,7 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 		ExampleCount: summary.Tests,
 		FailureCount: summary.Failures + summary.Errors,
 		// For minitest, we'll store the summary in FormattedSummary
-		FormattedSummary: fmt.Sprintf("%d tests, %d assertions, %d failures, %d errors, %d skips",
+		FormattedSummary: fmt.Sprintf("%d runs, %d assertions, %d failures, %d errors, %d skips",
 			summary.Tests, summary.Assertions, summary.Failures, summary.Errors, summary.Skips),
 	}
 }
@@ -606,4 +681,22 @@ func parseMinitestOutput(output string) (*minitest.OutputSummary, []minitest.Fai
 	failures := minitest.ExtractFailures(output)
 
 	return summary, failures
+}
+
+// isProgressLine checks if a line contains only minitest progress indicators
+func isProgressLine(line string) bool {
+	// Remove any whitespace
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return false
+	}
+	
+	// Check if all characters are progress indicators
+	for _, char := range trimmed {
+		if char != '.' && char != 'F' && char != 'E' && char != 'S' {
+			return false
+		}
+	}
+	
+	return true
 }

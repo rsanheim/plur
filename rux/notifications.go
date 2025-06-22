@@ -1,0 +1,73 @@
+package main
+
+import "time"
+
+// TestEvent represents the type of test event
+type TestEvent string
+
+const (
+	TestPassed    TestEvent = "test_passed"
+	TestFailed    TestEvent = "test_failed"
+	TestPending   TestEvent = "test_pending"
+	TestStarted   TestEvent = "test_started"
+	SuiteStarted  TestEvent = "suite_started"
+	SuiteFinished TestEvent = "suite_finished"
+	RawOutput     TestEvent = "raw_output"
+)
+
+// TestNotification is the interface that all notifications implement
+type TestNotification interface {
+	GetEvent() TestEvent
+	GetTestID() string
+}
+
+// TestCaseNotification represents events for individual test cases
+type TestCaseNotification struct {
+	Event           TestEvent
+	TestID          string
+	Description     string
+	FullDescription string
+	Location        string // e.g. "./spec/foo_spec.rb:42"
+	FilePath        string
+	LineNumber      int
+	Status          string // Original status from framework
+	Duration        time.Duration
+
+	// Only populated for failures
+	Exception *TestException
+
+	// Only populated for pending tests
+	PendingMessage string
+}
+
+func (n TestCaseNotification) GetEvent() TestEvent { return n.Event }
+func (n TestCaseNotification) GetTestID() string   { return n.TestID }
+
+// TestException contains failure information
+type TestException struct {
+	Class     string
+	Message   string
+	Backtrace []string
+}
+
+// SuiteNotification represents suite-level events
+type SuiteNotification struct {
+	Event        TestEvent
+	TestCount    int
+	FailureCount int
+	PendingCount int
+	LoadTime     time.Duration
+	Duration     time.Duration
+}
+
+func (n SuiteNotification) GetEvent() TestEvent { return n.Event }
+func (n SuiteNotification) GetTestID() string   { return "" } // Suite events don't have test IDs
+
+// OutputNotification represents raw output that doesn't match patterns
+type OutputNotification struct {
+	Event   TestEvent // Always RawOutput
+	Content string
+}
+
+func (n OutputNotification) GetEvent() TestEvent { return n.Event }
+func (n OutputNotification) GetTestID() string   { return "" }
