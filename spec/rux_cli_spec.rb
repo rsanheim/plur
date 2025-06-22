@@ -1,5 +1,4 @@
 require "spec_helper"
-require "open3"
 
 RSpec.describe "Rux CLI behavior" do
   CALCULATOR_SPEC_EXAMPLES = 5
@@ -8,7 +7,7 @@ RSpec.describe "Rux CLI behavior" do
     it "runs dry-run with no arguments" do
       result = run_rux("--dry-run")
 
-      expect(result.err).to match(%r|\[dry-run\] Found \d+ spec files, running in parallel|)
+      expect(result.err).to match(%r{\[dry-run\] Found \d+ spec files, running in parallel})
       expect(result.err).to include("rspec")
     end
 
@@ -31,7 +30,7 @@ RSpec.describe "Rux CLI behavior" do
 
     it "runs dry-run with multiple spec files" do
       Dir.chdir(default_ruby_dir) do
-        result = run_rux( "--dry-run", "spec/calculator_spec.rb", "spec/rux_ruby_spec.rb")
+        result = run_rux("--dry-run", "spec/calculator_spec.rb", "spec/rux_ruby_spec.rb")
 
         expect(result.err).to include("[dry-run]")
         expect(result.err).to include("calculator_spec.rb")

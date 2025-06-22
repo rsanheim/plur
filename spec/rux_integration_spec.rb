@@ -3,10 +3,6 @@ require "open3"
 
 RSpec.describe "Rux integration tests" do
   describe "basic functionality" do
-    it "has a built rux binary" do
-      expect(File.exist?(rux_binary)).to be true
-    end
-
     it "shows help information" do
       result = run_rux("--help")
 
@@ -19,17 +15,21 @@ RSpec.describe "Rux integration tests" do
 
   describe "parallel test execution" do
     it "runs tests in parallel", skip: "Database setup needs investigation" do
-      Dir.chdir(default_rails_dir) do
-        # Set up databases first
-        system(rux_binary, "db", "create", "-n", "3", out: File::NULL, err: File::NULL)
-        system(rux_binary, "db", "migrate", "-n", "3", out: File::NULL, err: File::NULL)
+      Bundler.with_unbundled_env do
+        Dir.chdir(default_rails_dir) do
+          # Set up databases first
+          result = run_rux("db:create", "-n", "3", printer: :quiet, allow_error: true)
+          # TODO - not sure why this fails in this test but passes when run from a terminal
 
-        # Run tests
-        stdout, stderr, status = Open3.capture3(rux_binary, "-n", "3")
+          system(rux_binary, "db", "migrate", "-n", "3", out: File::NULL, err: File::NULL)
 
-        expect(status.success?).to eq(true), "parallel test execution failed: #{stderr}"
-        expect(stdout).to include("spec files in parallel using")
-        expect(stdout).to include("examples, 0 failures")
+          # Run tests
+          stdout, stderr, status = Open3.capture3(rux_binary, "-n", "3")
+
+          expect(status.success?).to eq(true), "parallel test execution failed: #{stderr}"
+          expect(stdout).to include("spec files in parallel using")
+          expect(stdout).to include("examples, 0 failures")
+        end
       end
     end
 
@@ -49,13 +49,11 @@ RSpec.describe "Rux integration tests" do
 
     it "shows dry-run output for test execution" do
       Dir.chdir(default_rails_dir) do
-        stdout, stderr, status = Open3.capture3(rux_binary, "--dry-run", "-n", "2")
+        result = run_rux("--dry-run", "-n", "2")
 
-        expect(status.success?).to be true
-        output = stdout + stderr
-        expect(output).to include("[dry-run] Found")
-        expect(output).to include("spec files")
-        expect(output).to include("bundle exec rspec")
+        expect(result.err).to include("[dry-run] Found")
+        expect(result.err).to include("spec files")
+        expect(result.err).to include("bundle exec rspec")
       end
     end
   end

@@ -29,8 +29,8 @@ module RuxHomeHelper
   # @param allow_error [Boolean] whether to allow the command to fail
   # @param env [Hash] environment variables
   # @return [TTY::Command::Result] with stdout, stderr, and exit status
-  def run_rux(*args, allow_error: false, env: {})
-    cmd = TTY::Command.new(uuid: false, printer: :null)
+  def run_rux(*args, allow_error: false, printer: :null, env: {})
+    cmd = TTY::Command.new(uuid: false, printer: printer)
     if allow_error
       cmd.run!(:rux, *args, env: env)
     else
