@@ -1,5 +1,10 @@
 # Minitest Support & Framework Abstraction Plan
 
+> **Note**: This document contains the original analysis and plan. For current implementation status, see:
+> - [Current TODOs and Success Criteria](../wip/minitest-todo-and-success-criteria.md)
+> - [Current Issues and Design Problems](../wip/minitest-current-issues.md)
+> - [Implementation Summary](../wip/minitest-implementation-summary.md)
+
 ## Current Status
 
 **Phase 0**: ✅ COMPLETED (2024-12-21)
@@ -156,17 +161,17 @@ type = "minitest"  # or "rspec"
 - `result.go` - Uses rspec.ExtractFailingLine (consider utilities package)
 - `runner.go` - Has rspec imports for parsing and conversion
 
-### Phase 2: Add Minitest Support (IMMEDIATE PRIORITY)
+### Phase 2: Add Minitest Support (IN PROGRESS)
 Based on parallel_tests analysis and decisions:
 
-1. **Add Framework Type Support** ✅ COMPLETED
+1. **Add Framework Type Support** ✅ COMPLETED (2025-06-22)
    - Added TestFramework enum ("rspec", "minitest") 
    - Added `-t | --type` flag to spec and watch commands
    - Updated Config struct with Framework field
    - Added auto-detection based on test/ vs spec/ directories
    - TOML config support via `spec.type = "minitest"`
 
-2. **Create Minitest Module** (`rux/minitest/`) ✅ COMPLETED
+2. **Create Minitest Module** (`rux/minitest/`) ✅ COMPLETED (2025-06-22)
    - Created output parser for standard minitest format (not verbose)
    - Parses: `"X tests, Y assertions, Z failures, W errors, Z skips"`
    - Strips ANSI color codes like parallel_tests
@@ -175,22 +180,26 @@ Based on parallel_tests analysis and decisions:
    - Multiple files: `ruby -Itest -e "[files].each { |f| require f }"`
    - Extracts failure messages for reporting
 
-3. **Refactor Command Building** ✅ COMPLETED
+3. **Refactor Command Building** ✅ COMPLETED (2025-06-22)
    - Extracted CommandBuilder interface
    - RSpecCommandBuilder: uses existing formatter and color logic
    - MinitestCommandBuilder: uses `ruby -Itest` pattern from minitest package
    - Updated RunSpecFile to use command builders
    - Framework-specific command building now properly dispatched
 
-4. **Basic Execution First**
-   - No runtime tracking initially
-   - Track duration from Go side (before/after execution)
-   - Focus on getting tests running in parallel
+4. **Basic Execution First** ⚠️ PARTIALLY COMPLETE
+   - ✅ Tests execute successfully with proper command building
+   - ✅ No runtime tracking (as planned)
+   - ✅ Duration tracked from Go side
+   - ❌ Output capture not working properly (shows "0 tests, 0 assertions...")
+   - ❌ Progress reporting (dots) not implemented
 
-5. **Output Parsing**
-   - Strip ANSI codes like parallel_tests
-   - Extract test counts from summary line
-   - Convert to TestResult format
+5. **Output Parsing** 🔄 NEEDS WORK
+   - ✅ ANSI code stripping implemented
+   - ✅ Summary line parsing implemented
+   - ❌ Real-time output streaming not working
+   - ❌ Progress indicators not captured
+
 
 ### Phase 3: Runtime Tracking & Refinements
 1. Add runtime tracking from Go side (measure per-file execution)
@@ -218,13 +227,14 @@ Based on parallel_tests analysis and decisions:
 - Clean separation between generic types and RSpec-specific types ✅
 - All tests passing ✅
 
-### Phase 2 - Minitest Support (IMMEDIATE NEXT):
-- Minitest projects can run with same parallelization as RSpec
-- `-t minitest` flag works correctly
-- Auto-detection identifies test/ directories
-- Standard minitest output parsed correctly
-- Test counts and failures extracted accurately
-- Existing RSpec functionality unchanged
+### Phase 2 - Minitest Support (IN PROGRESS):
+- ✅ `-t minitest` flag works correctly
+- ✅ Auto-detection identifies test/ directories
+- ✅ Command building follows parallel_tests pattern
+- ⚠️ Minitest projects run but output capture needs fixing
+- ❌ Progress reporting (dots) not implemented
+- ❌ Standard minitest output not captured properly
+- ✅ Existing RSpec functionality unchanged
 
 ### Phase 3 - Runtime & Refinements:
 - Runtime tracking works for both frameworks
