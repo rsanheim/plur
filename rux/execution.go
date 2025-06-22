@@ -61,7 +61,7 @@ func (e *TestExecutor) executeDryRun() error {
 
 	// Display what would be executed
 	for i, group := range groups {
-		args := e.buildRSpecArgs(e.config.ConfigPaths.JSONRowsFormatter, group.Files)
+		args := e.buildTestCommand(group.Files)
 		fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
 	}
 
@@ -112,21 +112,8 @@ func (e *TestExecutor) executeTests() error {
 	return nil
 }
 
-// buildRSpecArgs constructs the RSpec command arguments
-func (e *TestExecutor) buildRSpecArgs(formatterPath string, files []string) []string {
-	// Split the command string into parts
-	args := strings.Fields(e.config.SpecCommand)
-
-	// Add formatter arguments
-	args = append(args, "-r", formatterPath, "--format", "Rux::JsonRowsFormatter")
-
-	// Add color flags based on preference
-	if !e.config.ColorOutput {
-		args = append(args, "--no-color")
-	} else {
-		args = append(args, "--force-color", "--tty")
-	}
-
-	args = append(args, files...)
-	return args
+// buildTestCommand constructs the test command arguments based on the framework
+func (e *TestExecutor) buildTestCommand(files []string) []string {
+	builder := NewCommandBuilder(e.config.Framework)
+	return builder.BuildCommand(files, e.config)
 }

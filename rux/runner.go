@@ -170,7 +170,7 @@ func convertRSpecFailures(testFile *TestFile, rspecFailures []rspec.FailureDetai
 }
 
 // RunSpecFile executes multiple spec files in a single RSpec process
-func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, specCommand string, outputChan chan<- OutputMessage) TestResult {
+func RunSpecFile(ctx context.Context, config *Config, specFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
@@ -188,22 +188,9 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 		}
 	}
 
-	// Build args with streaming JSON formatter
-	// Split the command string into parts
-	args := strings.Fields(specCommand)
-
-	// Add formatter arguments
-	args = append(args, "-r", formatterPath, "--format", "Rux::JsonRowsFormatter")
-
-	// Add color flags based on preference
-	if !colorOutput {
-		args = append(args, "--no-color")
-	} else {
-		// Force color output even when not a TTY (since we're piping)
-		args = append(args, "--force-color", "--tty")
-	}
-	// Add all spec files
-	args = append(args, specFiles...)
+	// Build command using the appropriate builder
+	builder := NewCommandBuilder(config.Framework)
+	args := builder.BuildCommand(specFiles, config)
 
 	// Log the command in debug mode
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
@@ -466,7 +453,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunSpecFile(ctx, config.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, config.SpecCommand, outputChan)
+			result := RunSpecFile(ctx, config, files, workerIndex, dryRun, outputChan)
 			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success())
 			results <- result
 		}(i, group.Files)

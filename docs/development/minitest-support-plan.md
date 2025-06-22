@@ -175,10 +175,12 @@ Based on parallel_tests analysis and decisions:
    - Multiple files: `ruby -Itest -e "[files].each { |f| require f }"`
    - Extracts failure messages for reporting
 
-3. **Refactor Command Building**
-   - Extract CommandBuilder interface
-   - RSpecCommandBuilder: current logic
-   - MinitestCommandBuilder: `ruby -Itest -e "require files"`
+3. **Refactor Command Building** ✅ COMPLETED
+   - Extracted CommandBuilder interface
+   - RSpecCommandBuilder: uses existing formatter and color logic
+   - MinitestCommandBuilder: uses `ruby -Itest` pattern from minitest package
+   - Updated RunSpecFile to use command builders
+   - Framework-specific command building now properly dispatched
 
 4. **Basic Execution First**
    - No runtime tracking initially
