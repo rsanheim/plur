@@ -15,9 +15,27 @@ import (
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
 	Command  string   `help:"Test command to run" default:"bundle exec rspec"`
+	Type     string   `short:"t" help:"Test framework type (rspec|minitest)" default:""`
 }
 
 func (r *SpecCmd) Run(parent *RuxCLI) error {
+	// Parse and validate framework type
+	var framework TestFramework
+	if r.Type == "" {
+		// Auto-detect if not specified
+		framework = DetectTestFramework()
+		logger.Logger.Debug("Auto-detected test framework", "framework", framework)
+	} else {
+		switch r.Type {
+		case "rspec":
+			framework = FrameworkRSpec
+		case "minitest":
+			framework = FrameworkMinitest
+		default:
+			return fmt.Errorf("invalid test framework type: %s (must be 'rspec' or 'minitest')", r.Type)
+		}
+	}
+
 	// Build config from parent
 	paths := InitConfigPaths()
 	config := &Config{
@@ -28,9 +46,10 @@ func (r *SpecCmd) Run(parent *RuxCLI) error {
 		TraceEnabled: parent.Trace,
 		WorkerCount:  GetWorkerCount(parent.Workers),
 		SpecCommand:  r.Command,
+		Framework:    framework,
 	}
 
-	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns)
+	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns, "framework", framework)
 
 	// Initialize tracing if enabled
 	if config.TraceEnabled {
@@ -94,9 +113,27 @@ type WatchRunCmd struct {
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
 	Command  string `help:"Test command to run" default:"bundle exec rspec"`
+	Type     string `short:"t" help:"Test framework type (rspec|minitest)" default:""`
 }
 
 func (w *WatchRunCmd) Run(parent *RuxCLI) error {
+	// Parse and validate framework type
+	var framework TestFramework
+	if w.Type == "" {
+		// Auto-detect if not specified
+		framework = DetectTestFramework()
+		logger.Logger.Debug("Auto-detected test framework", "framework", framework)
+	} else {
+		switch w.Type {
+		case "rspec":
+			framework = FrameworkRSpec
+		case "minitest":
+			framework = FrameworkMinitest
+		default:
+			return fmt.Errorf("invalid test framework type: %s (must be 'rspec' or 'minitest')", w.Type)
+		}
+	}
+
 	// Build config from parent
 	paths := InitConfigPaths()
 	config := &Config{
@@ -107,6 +144,7 @@ func (w *WatchRunCmd) Run(parent *RuxCLI) error {
 		TraceEnabled: parent.Trace,
 		WorkerCount:  GetWorkerCount(parent.Workers),
 		WatchCommand: w.Command,
+		Framework:    framework,
 	}
 
 	// Auto-install watcher binary if needed
@@ -247,7 +285,7 @@ func main() {
 			"cache_dir": configPaths.CacheDir,
 		})
 
-	logger.Logger.Debug("running kong CLI", "args", os.Args, "ctx", ctx)
+	logger.Logger.Debug("running rux", "args", os.Args[1:], "command", ctx.Command())
 	err := ctx.Run(ctx)
 	if err != nil {
 		logger.Logger.Error("Command failed", "error", err)

@@ -8,6 +8,14 @@ import (
 	"github.com/rsanheim/rux/rspec"
 )
 
+// TestFramework represents the test framework type
+type TestFramework string
+
+const (
+	FrameworkRSpec    TestFramework = "rspec"
+	FrameworkMinitest TestFramework = "minitest"
+)
+
 // Config holds top level config for rux
 type Config struct {
 	Auto         bool
@@ -18,6 +26,7 @@ type Config struct {
 	WorkerCount  int
 	SpecCommand  string
 	WatchCommand string
+	Framework    TestFramework
 }
 
 type ConfigPaths struct {
@@ -75,4 +84,20 @@ func InitConfigPaths() *ConfigPaths {
 	}
 
 	return &configPaths
+}
+
+// DetectTestFramework attempts to detect the test framework based on directory structure
+func DetectTestFramework() TestFramework {
+	// Check for test/ directory (minitest)
+	if _, err := os.Stat("test"); err == nil {
+		return FrameworkMinitest
+	}
+
+	// Check for spec/ directory (rspec)
+	if _, err := os.Stat("spec"); err == nil {
+		return FrameworkRSpec
+	}
+
+	// Default to RSpec for backward compatibility
+	return FrameworkRSpec
 }

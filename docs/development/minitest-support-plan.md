@@ -159,10 +159,12 @@ type = "minitest"  # or "rspec"
 ### Phase 2: Add Minitest Support (IMMEDIATE PRIORITY)
 Based on parallel_tests analysis and decisions:
 
-1. **Add Framework Type Support**
-   - Add TestFramework enum and `-t | --type` flag
-   - Update Config struct with Framework field
-   - Add framework to TOML config support
+1. **Add Framework Type Support** ✅ COMPLETED
+   - Added TestFramework enum ("rspec", "minitest") 
+   - Added `-t | --type` flag to spec and watch commands
+   - Updated Config struct with Framework field
+   - Added auto-detection based on test/ vs spec/ directories
+   - TOML config support via `spec.type = "minitest"`
 
 2. **Create Minitest Module** (`rux/minitest/`)
    - Output parser for standard minitest format (not verbose)
