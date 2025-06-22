@@ -12,7 +12,7 @@ RSpec.describe "Rux colorized output" do
     it "outputs red F for failures matching rspec format" do
       failing_specs_path = project_fixture("failing_specs")
       chdir(failing_specs_path) do
-        result = run_rux_allowing_errors("--color", "spec/mixed_results_spec.rb", env: { "FORCE_COLOR" => "1" })
+        result = run_rux_allowing_errors("--color", "spec/mixed_results_spec.rb", env: {"FORCE_COLOR" => "1"})
 
         # Check that we have red F's for failures
         expect(result.out).to include("\e[31mF\e[0m")

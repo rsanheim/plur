@@ -47,18 +47,18 @@ module RuxHomeHelper
   # Returns TTY::Command::Result for consistency with run_rux
   def run_rux_capture3(*args, allow_error: false, env: {})
     stdout, stderr, status = Open3.capture3(env, "rux", *args)
-    
+
     result = TTY::Command::Result.new(
       stdout,
       stderr,
       status.exitstatus
     )
-    
+
     # Raise if command failed and allow_error is false
     if !allow_error && status.exitstatus != 0
       raise TTY::Command::ExitError.new("rux command failed", result)
     end
-    
+
     result
   end
 end

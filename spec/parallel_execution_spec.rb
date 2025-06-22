@@ -3,7 +3,6 @@ require "tmpdir"
 require "fileutils"
 
 RSpec.describe "Rux parallel execution" do
-
   describe "environment variables" do
     it "sets TEST_ENV_NUMBER for each worker" do
       Dir.mktmpdir do |tmpdir|

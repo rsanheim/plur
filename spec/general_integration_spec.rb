@@ -54,7 +54,7 @@ RSpec.describe "Rux general integration" do
 
     it "respects PARALLEL_TEST_PROCESSORS environment variable" do
       chdir(default_ruby_dir) do
-        result = run_rux(env: { "PARALLEL_TEST_PROCESSORS" => "3" })
+        result = run_rux(env: {"PARALLEL_TEST_PROCESSORS" => "3"})
 
         expect(result.out).to include("using 3 workers")
       end
@@ -62,7 +62,7 @@ RSpec.describe "Rux general integration" do
 
     it "prioritizes -n flag over environment variable" do
       chdir(default_ruby_dir) do
-        result = run_rux("-n", "5", env: { "PARALLEL_TEST_PROCESSORS" => "3" })
+        result = run_rux("-n", "5", env: {"PARALLEL_TEST_PROCESSORS" => "3"})
 
         expect(result.out).to include("using 5 workers")
       end

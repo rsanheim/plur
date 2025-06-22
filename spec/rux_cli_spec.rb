@@ -1,7 +1,7 @@
 require "spec_helper"
 
 RSpec.describe "Rux CLI behavior" do
-  CALCULATOR_SPEC_EXAMPLES = 5
+  let(:calculator_spec_examples) { 5 }
 
   describe "dry-run functionality" do
     it "runs dry-run with no arguments" do
@@ -78,7 +78,7 @@ RSpec.describe "Rux CLI behavior" do
       Dir.chdir(default_ruby_dir) do
         result = run_rux("spec/calculator_spec.rb")
 
-        expect(result.out).to include("#{CALCULATOR_SPEC_EXAMPLES} examples, 0 failures")
+        expect(result.out).to include("#{calculator_spec_examples} examples, 0 failures")
       end
     end
 
@@ -87,7 +87,7 @@ RSpec.describe "Rux CLI behavior" do
         result = run_rux("spec", "--debug", "spec/calculator_spec.rb")
 
         expect(result.err).to include("bundle exec rspec")
-        expect(result.out).to include("#{CALCULATOR_SPEC_EXAMPLES} examples, 0 failures")
+        expect(result.out).to include("#{calculator_spec_examples} examples, 0 failures")
       end
     end
 
