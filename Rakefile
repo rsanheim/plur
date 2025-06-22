@@ -31,6 +31,11 @@ end
 
 desc "Install rux to GOPATH/bin"
 task :install do
+  if ENV["CI"] && system("which rux")
+    puts "[install] Rux already installed"
+    return true
+  end
+
   Dir.chdir(Plur.config.rux_dir) do
     sh %(go install -mod=mod)
   end
@@ -82,12 +87,6 @@ namespace :test do
 
   desc "Run integration tests in root spec directory"
   task integration: :install do
-    puts "[test:integration] Running ruby integration suite with rux..."
-    sh "rux", "-n", RUX_CORES.to_s
-  end
-
-  desc "Run integration tests in root spec directory (CI version without install)"
-  task integration_ci: [] do
     puts "[test:integration] Running ruby integration suite with rux..."
     sh "rux", "-n", RUX_CORES.to_s
   end
