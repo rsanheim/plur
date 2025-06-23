@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Check if uv is installed
+if ! command -v uv &> /dev/null; then
+    echo "Error: uv is not installed."
+    echo "Install it with: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    exit 1
+fi
+
+# Create and activate virtual environment if it doesn't exist
+if [ ! -d ".venv" ]; then
+    echo "Creating virtual environment..."
+    uv venv
+fi
+
+# Check if dependencies are installed
+if ! uv run mkdocs --version &> /dev/null; then
+    echo "Installing MkDocs and dependencies..."
+    uv pip install -r requirements.txt
+fi
+
+echo ">>> Checking markdown links..."
+
+# First, run MkDocs build with strict validation
+echo ""
+echo ">>> Running MkDocs validation..."
+if uv run mkdocs build --strict > /tmp/mkdocs-build.log 2>&1; then
+    echo "✓ MkDocs validation passed"
+else
+    echo "✗ MkDocs validation failed"
+    echo ""
+    echo "MkDocs errors:"
+    grep -E "WARNING|ERROR" /tmp/mkdocs-build.log || cat /tmp/mkdocs-build.log
+    exit_code=1
+fi
+
+# Run linkcheckmd on the docs directory
+# Note: linkcheckmd may report directory links as issues when they're actually valid
+echo ""
+echo ">>> Running linkcheckmd..."
+if uv run python -m linkcheckmd docs/ 2>&1 | grep -v "seconds to check links"; then
+    # Check if there were actual errors (not just the summary line)
+    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+        echo "✓ linkcheckmd passed"
+    else
+        echo "✗ linkcheckmd found broken links"
+        echo "Note: Directory links (e.g., 'architecture/') may be falsely reported as broken"
+        exit_code=1
+    fi
+else
+    echo "✓ linkcheckmd passed"
+fi
+
+# Summary
+echo ""
+if [ "${exit_code:-0}" -eq 0 ]; then
+    echo "✓ All link checks passed!"
+else
+    echo "✗ Link validation failed. Please fix the broken links above."
+    exit 1
+fi
