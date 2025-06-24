@@ -10,7 +10,7 @@ import (
 )
 
 func TestTestCollector_AddNotification(t *testing.T) {
-	accumulator := NewTestCollector()
+	collector := NewTestCollector()
 
 	// Test adding a passed test
 	passedTest := types.TestCaseNotification{
@@ -23,7 +23,7 @@ func TestTestCollector_AddNotification(t *testing.T) {
 		LineNumber:      10,
 		Duration:        100 * time.Millisecond,
 	}
-	accumulator.AddNotification(passedTest)
+	collector.AddNotification(passedTest)
 
 	// Test adding a failed test
 	failedTest := types.TestCaseNotification{
@@ -41,7 +41,7 @@ func TestTestCollector_AddNotification(t *testing.T) {
 			Backtrace: []string{"spec/example_spec.rb:20:in `block (2 levels) in <top (required)>'"},
 		},
 	}
-	accumulator.AddNotification(failedTest)
+	collector.AddNotification(failedTest)
 
 	// Test adding a pending test
 	pendingTest := types.TestCaseNotification{
@@ -54,7 +54,7 @@ func TestTestCollector_AddNotification(t *testing.T) {
 		LineNumber:      30,
 		PendingMessage:  "Not yet implemented",
 	}
-	accumulator.AddNotification(pendingTest)
+	collector.AddNotification(pendingTest)
 
 	// Test adding suite finished notification
 	suiteFinished := types.SuiteNotification{
@@ -65,25 +65,25 @@ func TestTestCollector_AddNotification(t *testing.T) {
 		LoadTime:     200 * time.Millisecond,
 		Duration:     1 * time.Second,
 	}
-	accumulator.AddNotification(suiteFinished)
+	collector.AddNotification(suiteFinished)
 
 	// Test adding raw output
 	rawOutput := types.OutputNotification{
 		Event:   types.RawOutput,
 		Content: "Some test output",
 	}
-	accumulator.AddNotification(rawOutput)
+	collector.AddNotification(rawOutput)
 
-	// Verify accumulator state
-	assert.Len(t, accumulator.GetTests(), 3)
-	assert.Len(t, accumulator.GetFailures(), 1)
-	assert.Len(t, accumulator.GetPending(), 1)
-	assert.NotNil(t, accumulator.GetSuiteInfo())
-	assert.Equal(t, "Some test output\n", accumulator.rawOutput.String())
+	// Verify collector state
+	assert.Len(t, collector.GetTests(), 3)
+	assert.Len(t, collector.GetFailures(), 1)
+	assert.Len(t, collector.GetPending(), 1)
+	assert.NotNil(t, collector.GetSuiteInfo())
+	assert.Equal(t, "Some test output\n", collector.rawOutput.String())
 }
 
 func TestTestCollector_BuildResult(t *testing.T) {
-	accumulator := NewTestCollector()
+	collector := NewTestCollector()
 
 	testFile := &TestFile{
 		Path:     "spec/example_spec.rb",
@@ -91,7 +91,7 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	}
 
 	// Add a passing test
-	accumulator.AddNotification(types.TestCaseNotification{
+	collector.AddNotification(types.TestCaseNotification{
 		Event:           types.TestPassed,
 		TestID:          "test-1",
 		FullDescription: "Example passes",
@@ -99,7 +99,7 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	})
 
 	// Add a failing test
-	accumulator.AddNotification(types.TestCaseNotification{
+	collector.AddNotification(types.TestCaseNotification{
 		Event:           types.TestFailed,
 		TestID:          "test-2",
 		FullDescription: "Example fails",
@@ -111,24 +111,24 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	})
 
 	// Add suite info
-	accumulator.AddNotification(types.SuiteNotification{
+	collector.AddNotification(types.SuiteNotification{
 		Event:    types.SuiteFinished,
 		LoadTime: 100 * time.Millisecond,
 	})
 
 	// Add some output
-	accumulator.AddNotification(types.OutputNotification{
+	collector.AddNotification(types.OutputNotification{
 		Event:   types.RawOutput,
 		Content: "Test output line 1",
 	})
-	accumulator.AddNotification(types.OutputNotification{
+	collector.AddNotification(types.OutputNotification{
 		Event:   types.RawOutput,
 		Content: "Test output line 2",
 	})
 
 	// Build result
 	duration := 500 * time.Millisecond
-	result := accumulator.BuildResult(testFile, duration)
+	result := collector.BuildResult(testFile, duration)
 
 	// Verify result
 	require.Equal(t, testFile, result.File)
@@ -150,7 +150,7 @@ func TestTestCollector_BuildResult(t *testing.T) {
 }
 
 func TestTestCollector_BuildResult_Success(t *testing.T) {
-	accumulator := NewTestCollector()
+	collector := NewTestCollector()
 
 	testFile := &TestFile{
 		Path:     "spec/example_spec.rb",
@@ -158,16 +158,16 @@ func TestTestCollector_BuildResult_Success(t *testing.T) {
 	}
 
 	// Add only passing tests
-	accumulator.AddNotification(types.TestCaseNotification{
+	collector.AddNotification(types.TestCaseNotification{
 		Event:  types.TestPassed,
 		TestID: "test-1",
 	})
-	accumulator.AddNotification(types.TestCaseNotification{
+	collector.AddNotification(types.TestCaseNotification{
 		Event:  types.TestPassed,
 		TestID: "test-2",
 	})
 
-	result := accumulator.BuildResult(testFile, 100*time.Millisecond)
+	result := collector.BuildResult(testFile, 100*time.Millisecond)
 
 	assert.Equal(t, StateSuccess, result.State)
 	assert.Equal(t, 2, result.ExampleCount)

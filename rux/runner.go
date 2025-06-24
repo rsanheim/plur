@@ -251,9 +251,9 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
-	// Create parser and accumulator for event-based processing
+	// Create parser and collector for event-based processing
 	parser := NewRSpecOutputParser()
-	accumulator := NewTestCollector()
+	collector := NewTestCollector()
 	var stderrBuilder strings.Builder
 	var wg sync.WaitGroup
 
@@ -281,7 +281,7 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 
 			// Process each notification
 			for _, notification := range notifications {
-				accumulator.AddNotification(notification)
+				collector.AddNotification(notification)
 
 				// Send progress updates to output channel
 				switch notification.GetEvent() {
@@ -341,8 +341,8 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 	// Wait for output streaming to complete
 	wg.Wait()
 
-	// Build the final result from the accumulator
-	result := accumulator.BuildResult(testFile, time.Since(start))
+	// Build the final result from the collector
+	result := collector.BuildResult(testFile, time.Since(start))
 
 	// Determine success based on exit code
 	exitCode := 0
