@@ -28,6 +28,15 @@ func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 		msgType, _ := msg["type"].(string)
 
 		switch msgType {
+		case "message":
+			// Handle error messages from RSpec (e.g., syntax errors, load errors)
+			if message, ok := msg["message"].(string); ok && message != "" {
+				notifications = append(notifications, types.OutputNotification{
+					Event:   types.RawOutput,
+					Content: message,
+				})
+			}
+
 		case "load_summary":
 			if summary, ok := msg["summary"].(map[string]interface{}); ok {
 				count := getInt(summary, "count")
@@ -48,6 +57,14 @@ func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 				}
 			}
 
+		case "dump_failures":
+			// Handle formatted failure output from RSpec
+			if formattedOutput, ok := msg["formatted_output"].(string); ok && formattedOutput != "" {
+				notifications = append(notifications, types.FormattedFailuresNotification{
+					Content: formattedOutput,
+				})
+			}
+
 		case "dump_summary":
 			count := getInt(msg, "example_count")
 			failures := getInt(msg, "failure_count")
@@ -61,6 +78,13 @@ func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 				PendingCount: pending,
 				Duration:     time.Duration(duration * float64(time.Second)),
 			})
+
+			// Also handle formatted summary output if present
+			if formattedOutput, ok := msg["formatted_output"].(string); ok && formattedOutput != "" {
+				notifications = append(notifications, types.FormattedSummaryNotification{
+					Content: formattedOutput,
+				})
+			}
 		}
 
 		return notifications, true // Line was consumed
