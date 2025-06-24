@@ -406,6 +406,7 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		ExampleCount:      result.ExampleCount,
 		FailureCount:      result.FailureCount,
 		PendingCount:      result.PendingCount,
+		Tests:             result.Tests,
 		FormattedFailures: result.FormattedFailures,
 		FormattedSummary:  result.FormattedSummary,
 	}
@@ -497,9 +498,9 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 	for result := range results {
 		allResults = append(allResults, result)
 		// Track runtime data if tracker is available and tests actually ran
-		if runtimeTracker != nil && result.State != StateError && result.JSONOutput != nil {
-			for _, example := range result.JSONOutput.Examples {
-				runtimeTracker.AddExample(example)
+		if runtimeTracker != nil && result.State != StateError && len(result.Tests) > 0 {
+			for _, test := range result.Tests {
+				runtimeTracker.AddTestNotification(test)
 			}
 		}
 	}

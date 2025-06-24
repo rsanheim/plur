@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/rsanheim/rux/rspec"
+	"github.com/rsanheim/rux/types"
 )
 
 // RuntimeTracker accumulates runtime data for spec files
@@ -33,10 +33,10 @@ func (rt *RuntimeTracker) AddRuntime(filePath string, runtime float64) {
 	rt.runtimes[filePath] += runtime
 }
 
-// AddExample adds runtime from an RSpec example
-func (rt *RuntimeTracker) AddExample(example rspec.Example) {
-	if example.FilePath != "" && example.RunTime > 0 {
-		rt.AddRuntime(example.FilePath, example.RunTime)
+// AddTestNotification adds runtime from a test notification
+func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotification) {
+	if notification.FilePath != "" && notification.Duration > 0 {
+		rt.AddRuntime(notification.FilePath, notification.Duration.Seconds())
 	}
 }
 

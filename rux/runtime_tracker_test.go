@@ -3,8 +3,9 @@ package main
 import (
 	"os"
 	"testing"
+	"time"
 
-	"github.com/rsanheim/rux/rspec"
+	"github.com/rsanheim/rux/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,18 +24,18 @@ func TestRuntimeTracker(t *testing.T) {
 		assert.Equal(t, 2.0, runtimes["spec/bar_spec.rb"], "bar_spec.rb runtime should be correct")
 	})
 
-	t.Run("AddExample extracts runtime from RSpec example", func(t *testing.T) {
+	t.Run("AddTestNotification extracts runtime from test notification", func(t *testing.T) {
 		rt := NewRuntimeTracker()
 
-		example := rspec.Example{
+		notification := types.TestCaseNotification{
 			FilePath: "spec/test_spec.rb",
-			RunTime:  0.123,
+			Duration: time.Duration(123 * time.Millisecond),
 		}
 
-		rt.AddExample(example)
+		rt.AddTestNotification(notification)
 
 		runtimes := rt.GetRuntimes()
-		assert.Equal(t, 0.123, runtimes["spec/test_spec.rb"], "test_spec.rb runtime should be extracted from example")
+		assert.InDelta(t, 0.123, runtimes["spec/test_spec.rb"], 0.001, "test_spec.rb runtime should be extracted from notification")
 	})
 
 	t.Run("SaveToFile creates runtime.json", func(t *testing.T) {
