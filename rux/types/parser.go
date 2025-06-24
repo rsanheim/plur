@@ -1,4 +1,4 @@
-package main
+package types
 
 // TestOutputParser is the interface for parsing test framework output
 type TestOutputParser interface {

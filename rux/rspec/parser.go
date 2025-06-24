@@ -5,75 +5,16 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/rsanheim/rux/types"
 )
-
-// Import the main package types - this will need adjustment after we reorganize
-type TestEvent string
-
-const (
-	TestPassed    TestEvent = "test_passed"
-	TestFailed    TestEvent = "test_failed"
-	TestPending   TestEvent = "test_pending"
-	TestStarted   TestEvent = "test_started"
-	SuiteStarted  TestEvent = "suite_started"
-	SuiteFinished TestEvent = "suite_finished"
-	RawOutput     TestEvent = "raw_output"
-)
-
-type TestNotification interface {
-	GetEvent() TestEvent
-	GetTestID() string
-}
-
-type TestCaseNotification struct {
-	Event           TestEvent
-	TestID          string
-	Description     string
-	FullDescription string
-	Location        string
-	FilePath        string
-	LineNumber      int
-	Status          string
-	Duration        time.Duration
-	Exception       *TestException
-	PendingMessage  string
-}
-
-func (n TestCaseNotification) GetEvent() TestEvent { return n.Event }
-func (n TestCaseNotification) GetTestID() string   { return n.TestID }
-
-type TestException struct {
-	Class     string
-	Message   string
-	Backtrace []string
-}
-
-type SuiteNotification struct {
-	Event        TestEvent
-	TestCount    int
-	FailureCount int
-	PendingCount int
-	LoadTime     time.Duration
-	Duration     time.Duration
-}
-
-func (n SuiteNotification) GetEvent() TestEvent { return n.Event }
-func (n SuiteNotification) GetTestID() string   { return "" }
-
-type OutputNotification struct {
-	Event   TestEvent
-	Content string
-}
-
-func (n OutputNotification) GetEvent() TestEvent { return n.Event }
-func (n OutputNotification) GetTestID() string   { return "" }
 
 // OutputParser parses RSpec JSON output into notifications
 type OutputParser struct{}
 
 // ParseLine parses a single line of RSpec output
-func (p *OutputParser) ParseLine(line string) ([]TestNotification, bool) {
-	notifications := []TestNotification{}
+func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
+	notifications := []types.TestNotification{}
 
 	// Check if it's a JSON line
 	if strings.HasPrefix(line, "RUX_JSON:") {
@@ -92,8 +33,8 @@ func (p *OutputParser) ParseLine(line string) ([]TestNotification, bool) {
 				count := getInt(summary, "count")
 				loadTime := getFloat(summary, "load_time")
 
-				notifications = append(notifications, SuiteNotification{
-					Event:     SuiteStarted,
+				notifications = append(notifications, types.SuiteNotification{
+					Event:     types.SuiteStarted,
 					TestCount: count,
 					LoadTime:  time.Duration(loadTime * float64(time.Second)),
 				})
@@ -113,8 +54,8 @@ func (p *OutputParser) ParseLine(line string) ([]TestNotification, bool) {
 			pending := getInt(msg, "pending_count")
 			duration := getFloat(msg, "duration")
 
-			notifications = append(notifications, SuiteNotification{
-				Event:        SuiteFinished,
+			notifications = append(notifications, types.SuiteNotification{
+				Event:        types.SuiteFinished,
 				TestCount:    count,
 				FailureCount: failures,
 				PendingCount: pending,
@@ -127,8 +68,8 @@ func (p *OutputParser) ParseLine(line string) ([]TestNotification, bool) {
 
 	// Not a JSON line - return as raw output
 	if line != "" {
-		notifications = append(notifications, OutputNotification{
-			Event:   RawOutput,
+		notifications = append(notifications, types.OutputNotification{
+			Event:   types.RawOutput,
 			Content: line,
 		})
 	}
@@ -136,7 +77,7 @@ func (p *OutputParser) ParseLine(line string) ([]TestNotification, bool) {
 	return notifications, false // Line was not consumed
 }
 
-func (p *OutputParser) parseExample(msgType string, example map[string]interface{}) TestNotification {
+func (p *OutputParser) parseExample(msgType string, example map[string]interface{}) types.TestNotification {
 	desc := getString(example, "description")
 	fullDesc := getString(example, "full_description")
 	location := getString(example, "location")
@@ -151,17 +92,17 @@ func (p *OutputParser) parseExample(msgType string, example map[string]interface
 	}
 
 	// Map RSpec type to our TestEvent
-	var event TestEvent
+	var event types.TestEvent
 	switch msgType {
 	case "example_passed":
-		event = TestPassed
+		event = types.TestPassed
 	case "example_failed":
-		event = TestFailed
+		event = types.TestFailed
 	case "example_pending":
-		event = TestPending
+		event = types.TestPending
 	}
 
-	notification := TestCaseNotification{
+	notification := types.TestCaseNotification{
 		Event:           event,
 		TestID:          testID,
 		Description:     desc,
@@ -176,7 +117,7 @@ func (p *OutputParser) parseExample(msgType string, example map[string]interface
 	// Handle failure details
 	if msgType == "example_failed" {
 		if exception, ok := example["exception"].(map[string]interface{}); ok {
-			notification.Exception = &TestException{
+			notification.Exception = &types.TestException{
 				Class:   getString(exception, "class"),
 				Message: getString(exception, "message"),
 			}

@@ -5,69 +5,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/rsanheim/rux/types"
 )
-
-// Import the main package types - this will need adjustment after we reorganize
-type TestEvent string
-
-const (
-	TestPassed    TestEvent = "test_passed"
-	TestFailed    TestEvent = "test_failed"
-	TestPending   TestEvent = "test_pending"
-	TestStarted   TestEvent = "test_started"
-	SuiteStarted  TestEvent = "suite_started"
-	SuiteFinished TestEvent = "suite_finished"
-	RawOutput     TestEvent = "raw_output"
-)
-
-type TestNotification interface {
-	GetEvent() TestEvent
-	GetTestID() string
-}
-
-type TestCaseNotification struct {
-	Event           TestEvent
-	TestID          string
-	Description     string
-	FullDescription string
-	Location        string
-	FilePath        string
-	LineNumber      int
-	Status          string
-	Duration        time.Duration
-	Exception       *TestException
-	PendingMessage  string
-}
-
-func (n TestCaseNotification) GetEvent() TestEvent { return n.Event }
-func (n TestCaseNotification) GetTestID() string   { return n.TestID }
-
-type TestException struct {
-	Class     string
-	Message   string
-	Backtrace []string
-}
-
-type SuiteNotification struct {
-	Event        TestEvent
-	TestCount    int
-	FailureCount int
-	PendingCount int
-	LoadTime     time.Duration
-	Duration     time.Duration
-}
-
-func (n SuiteNotification) GetEvent() TestEvent { return n.Event }
-func (n SuiteNotification) GetTestID() string   { return "" }
-
-type OutputNotification struct {
-	Event   TestEvent
-	Content string
-}
-
-func (n OutputNotification) GetEvent() TestEvent { return n.Event }
-func (n OutputNotification) GetTestID() string   { return "" }
 
 // NotificationParser parses minitest text output into notifications
 type NotificationParser struct {
@@ -79,15 +19,15 @@ type NotificationParser struct {
 }
 
 // ParseLine parses a single line of minitest output
-func (p *NotificationParser) ParseLine(line string) ([]TestNotification, bool) {
-	notifications := []TestNotification{}
+func (p *NotificationParser) ParseLine(line string) ([]types.TestNotification, bool) {
+	notifications := []types.TestNotification{}
 
 	// Check for test execution start
 	if strings.Contains(line, "in test_") {
 		if match := regexp.MustCompile(`in (test_\w+)`).FindStringSubmatch(line); match != nil {
 			p.currentTest = match[1]
-			notifications = append(notifications, TestCaseNotification{
-				Event:       TestStarted,
+			notifications = append(notifications, types.TestCaseNotification{
+				Event:       types.TestStarted,
 				TestID:      p.currentTest,
 				Description: p.currentTest,
 				Status:      "running",
@@ -105,8 +45,8 @@ func (p *NotificationParser) ParseLine(line string) ([]TestNotification, bool) {
 				testID = fmt.Sprintf("test_%d", p.testCounter)
 			}
 
-			notifications = append(notifications, TestCaseNotification{
-				Event:       TestPassed,
+			notifications = append(notifications, types.TestCaseNotification{
+				Event:       types.TestPassed,
 				TestID:      testID,
 				Description: testID,
 				Status:      "passed",
@@ -130,8 +70,8 @@ func (p *NotificationParser) ParseLine(line string) ([]TestNotification, bool) {
 				testID = fmt.Sprintf("test_%d", p.testCounter)
 			}
 
-			notifications = append(notifications, TestCaseNotification{
-				Event:          TestPending,
+			notifications = append(notifications, types.TestCaseNotification{
+				Event:          types.TestPending,
 				TestID:         testID,
 				Description:    testID,
 				Status:         "skipped",
@@ -158,8 +98,8 @@ func (p *NotificationParser) ParseLine(line string) ([]TestNotification, bool) {
 				lineNum, _ := strconv.Atoi(match[4])
 				location := fmt.Sprintf("%s:%d", filePath, lineNum)
 
-				notification := TestCaseNotification{
-					Event:           TestFailed,
+				notification := types.TestCaseNotification{
+					Event:           types.TestFailed,
 					TestID:          location,
 					Description:     testName,
 					FullDescription: fmt.Sprintf("%s#%s", className, testName),
@@ -167,7 +107,7 @@ func (p *NotificationParser) ParseLine(line string) ([]TestNotification, bool) {
 					FilePath:        filePath,
 					LineNumber:      lineNum,
 					Status:          "failed",
-					Exception: &TestException{
+					Exception: &types.TestException{
 						Message: strings.TrimSpace(failureText),
 					},
 				}
@@ -203,8 +143,8 @@ func (p *NotificationParser) ParseLine(line string) ([]TestNotification, bool) {
 		errors, _ := strconv.Atoi(match[4])
 		skips, _ := strconv.Atoi(match[5])
 
-		notifications = append(notifications, SuiteNotification{
-			Event:        SuiteFinished,
+		notifications = append(notifications, types.SuiteNotification{
+			Event:        types.SuiteFinished,
 			TestCount:    runs,
 			FailureCount: failures + errors,
 			PendingCount: skips,

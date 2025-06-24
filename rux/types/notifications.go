@@ -1,4 +1,4 @@
-package main
+package types
 
 import "time"
 
@@ -71,3 +71,19 @@ type OutputNotification struct {
 
 func (n OutputNotification) GetEvent() TestEvent { return n.Event }
 func (n OutputNotification) GetTestID() string   { return "" }
+
+// FormattedFailuresNotification is a special notification for RSpec's formatted failure output
+type FormattedFailuresNotification struct {
+	Content string
+}
+
+func (n FormattedFailuresNotification) GetEvent() TestEvent { return RawOutput }
+func (n FormattedFailuresNotification) GetTestID() string   { return "" }
+
+// FormattedSummaryNotification is a special notification for RSpec's formatted summary
+type FormattedSummaryNotification struct {
+	Content string
+}
+
+func (n FormattedSummaryNotification) GetEvent() TestEvent { return RawOutput }
+func (n FormattedSummaryNotification) GetTestID() string   { return "" }

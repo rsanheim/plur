@@ -218,10 +218,10 @@ func (p *MinitestOutputParser) ParseLine(line string) ([]TestNotification, bool)
 
 ## Accumulator Design {#accumulator}
 
-The NotificationAccumulator collects notifications and builds the final test result:
+The TestCollector collects notifications and builds the final test result:
 
 ```go
-type NotificationAccumulator struct {
+type TestCollector struct {
     tests        []TestCaseNotification
     failures     []TestCaseNotification
     pending      []TestCaseNotification
@@ -229,7 +229,7 @@ type NotificationAccumulator struct {
     rawOutput    strings.Builder
 }
 
-func (a *NotificationAccumulator) AddNotification(n TestNotification) {
+func (a *TestCollector) AddNotification(n TestNotification) {
     switch n.GetEvent() {
     case TestPassed, TestFailed, TestPending:
         if tc, ok := n.(TestCaseNotification); ok {
@@ -249,7 +249,7 @@ func (a *NotificationAccumulator) AddNotification(n TestNotification) {
     }
 }
 
-func (a *NotificationAccumulator) BuildResult(file string, duration time.Duration) TestResult {
+func (a *TestCollector) BuildResult(file string, duration time.Duration) TestResult {
     return TestResult{
         File:         file,
         Output:       a.rawOutput.String(),
@@ -280,7 +280,7 @@ func RunTestFiles(ctx context.Context, config *Config, files []string,
     }
     
     // Create accumulator
-    accumulator := NewNotificationAccumulator()
+    accumulator := NewTestCollector()
     
     // Setup command and pipes for streaming
     cmd := buildTestCommand(config, files)
@@ -331,7 +331,7 @@ func RunTestFiles(ctx context.Context, config *Config, files []string,
 - Added comprehensive unit tests
 
 ### Phase 3: Accumulator 🚧 IN PROGRESS
-- Create NotificationAccumulator struct
+- Create TestCollector struct
 - Implement notification collection logic
 - Build TestResult from accumulated data
 

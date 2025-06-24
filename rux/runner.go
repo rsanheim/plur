@@ -17,6 +17,7 @@ import (
 	"github.com/rsanheim/rux/minitest"
 	"github.com/rsanheim/rux/rspec"
 	"github.com/rsanheim/rux/tracing"
+	"github.com/rsanheim/rux/types"
 )
 
 // TestState represents the state of a test execution
@@ -40,6 +41,8 @@ type TestResult struct {
 	Failures     []TestFailure
 	ExampleCount int
 	FailureCount int
+	PendingCount int
+	Tests        []types.TestCaseNotification // All test notifications
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -248,11 +251,13 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
-	var outputBuilder strings.Builder
+	// Create parser and accumulator for event-based processing
+	parser := NewRSpecOutputParser()
+	accumulator := NewTestCollector()
+	var stderrBuilder strings.Builder
 	var wg sync.WaitGroup
-	streamingResults := &rspec.StreamingResults{}
 
-	// Stream stdout and parse JSON messages in real-time
+	// Stream stdout and parse using event-based architecture
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -271,61 +276,44 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 					"time_since_spawn", time.Since(start).Seconds()*1000)
 			}
 
-			msg, err := rspec.ParseStreamingMessage(line)
+			// Parse line into notifications
+			notifications, _ := parser.ParseLine(line)
 
-			if os.Getenv("RUX_DEBUG") == "1" {
-				dump(msg)
-			}
+			// Process each notification
+			for _, notification := range notifications {
+				accumulator.AddNotification(notification)
 
-			if msg != nil {
-				// Handle different message types
-				switch msg.Type {
-				case "load_summary":
-					// Both rux and turbo_tests use this format
-					if msg.Summary != nil {
-						streamingResults.LoadTime = msg.Summary.FileLoadTime
-						tracing.LogEvent(ctx, "rspec_loaded",
-							"worker_id", workerIndex,
-							"spec_files", len(specFiles),
-							"load_time", msg.Summary.FileLoadTime,
-							"time_since_spawn", time.Since(start).Seconds()*1000)
-					}
-				case "example_passed":
-					streamingResults.AddExample(*msg)
+				// Send progress updates to output channel
+				switch notification.GetEvent() {
+				case types.TestPassed:
 					outputChan <- OutputMessage{
 						WorkerID: workerIndex,
 						Type:     "dot",
 					}
-				case "example_failed":
-					streamingResults.AddExample(*msg)
+				case types.TestFailed:
 					outputChan <- OutputMessage{
 						WorkerID: workerIndex,
 						Type:     "failure",
 					}
-				case "example_pending":
-					streamingResults.AddExample(*msg)
+				case types.TestPending:
 					outputChan <- OutputMessage{
 						WorkerID: workerIndex,
 						Type:     "pending",
 					}
-				case "dump_failures":
-					streamingResults.FormattedFailures = msg.FormattedOutput
-				case "dump_summary":
-					streamingResults.FormattedSummary = msg.FormattedOutput
-				case "message":
-					// Error messages, warnings, etc.
-					if msg.Message != "" {
-						outputBuilder.WriteString(msg.Message + "\n")
+				case types.SuiteStarted:
+					if suite, ok := notification.(types.SuiteNotification); ok && suite.LoadTime > 0 {
+						tracing.LogEvent(ctx, "rspec_loaded",
+							"worker_id", workerIndex,
+							"spec_files", len(specFiles),
+							"load_time", suite.LoadTime.Seconds(),
+							"time_since_spawn", time.Since(start).Seconds()*1000)
 					}
-				case "close":
-					// End of test run
 				}
-			} else if err != nil {
-				// JSON parsing error - log it
-				outputBuilder.WriteString(fmt.Sprintf("JSON parse error: %v for line: %s\n", err, line))
-			} else {
-				// Non-JSON output (warnings, errors, etc.)
-				outputBuilder.WriteString(line + "\n")
+			}
+
+			// Debug output if enabled
+			if os.Getenv("RUX_DEBUG") == "1" && len(notifications) > 0 {
+				dump(notifications)
 			}
 		}
 	}()
@@ -337,7 +325,7 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
-			outputBuilder.WriteString("STDERR: " + line + "\n")
+			stderrBuilder.WriteString("STDERR: " + line + "\n")
 			outputChan <- OutputMessage{
 				WorkerID: workerIndex,
 				Type:     "stderr",
@@ -353,6 +341,9 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 	// Wait for output streaming to complete
 	wg.Wait()
 
+	// Build the final result from the accumulator
+	result := accumulator.BuildResult(testFile, time.Since(start))
+
 	// Determine success based on exit code
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
@@ -360,24 +351,45 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 	}
 	success := exitCode == 0
 
-	// Convert streaming results to RSpec JSON format
-	jsonOutput := streamingResults.ConvertToJSONOutput()
-	rspecFailures := rspec.ExtractFailures(jsonOutput.Examples)
+	// Convert accumulated results to RSpec JSON format for compatibility
+	jsonOutput := result.JSONOutput
+	if jsonOutput == nil {
+		jsonOutput = &rspec.JSONOutput{
+			Version:  "3.13.0",
+			Examples: []rspec.Example{},
+			Summary: rspec.Summary{
+				Duration:     result.Duration.Seconds(),
+				ExampleCount: result.ExampleCount,
+				FailureCount: result.FailureCount,
+				PendingCount: result.PendingCount,
+			},
+		}
+	}
 
-	// Convert RSpec failures to generic failures
-	failures := convertRSpecFailures(testFile, rspecFailures)
+	// Extract failures from the accumulated test results
+	var failures []TestFailure
+	for _, test := range result.Tests {
+		if test.Event == types.TestFailed && test.Exception != nil {
+			failures = append(failures, TestFailure{
+				File:        testFile,
+				Description: test.FullDescription,
+				LineNumber:  test.LineNumber,
+				Message:     test.Exception.Message,
+				Backtrace:   test.Exception.Backtrace,
+			})
+		}
+	}
 
 	// Determine the state based on the execution outcome
 	state := StateSuccess
-	output := outputBuilder.String()
+	output := result.Output + stderrBuilder.String()
 
 	// Check if this is an execution error (couldn't run tests)
-	if err != nil && streamingResults.ExampleCount == 0 &&
+	if err != nil && result.ExampleCount == 0 &&
 		(strings.Contains(output, "error occurred outside of examples") ||
-			strings.Contains(streamingResults.FormattedSummary, "error occurred outside of examples")) {
+			strings.Contains(result.FormattedSummary, "error occurred outside of examples")) {
 		state = StateError
 		// For execution errors, keep the full output which contains error details
-		// The FormattedSummary only contains the summary line, not the error details
 	} else if !success {
 		state = StateFailed
 	}
@@ -388,13 +400,14 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		Output:            output,
 		Error:             err,
 		Duration:          time.Since(start),
-		FileLoadTime:      time.Duration(streamingResults.LoadTime * float64(time.Second)),
+		FileLoadTime:      result.FileLoadTime,
 		JSONOutput:        jsonOutput,
 		Failures:          failures,
-		ExampleCount:      streamingResults.ExampleCount,
-		FailureCount:      streamingResults.FailureCount,
-		FormattedFailures: streamingResults.FormattedFailures,
-		FormattedSummary:  streamingResults.FormattedSummary,
+		ExampleCount:      result.ExampleCount,
+		FailureCount:      result.FailureCount,
+		PendingCount:      result.PendingCount,
+		FormattedFailures: result.FormattedFailures,
+		FormattedSummary:  result.FormattedSummary,
 	}
 }
 
