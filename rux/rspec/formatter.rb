@@ -32,9 +32,11 @@ module Rux
 
     def start(notification)
       output_row(
-        type: :start,
-        count: notification.count,
-        load_time: notification.load_time
+        type: :load_summary,
+        summary: {
+          count: notification.count,
+          load_time: notification.load_time
+        }
       )
     end
 

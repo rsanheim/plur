@@ -7,10 +7,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/urfave/cli/v2"
+	"github.com/rsanheim/rux/watch"
 )
 
-func runDoctor(ctx *cli.Context) error {
+func runDoctorWithConfig(config *Config) error {
 	fmt.Println("Rux Doctor")
 	fmt.Println("==========")
 	fmt.Println()
@@ -20,6 +20,9 @@ func runDoctor(ctx *cli.Context) error {
 	fmt.Printf("Build Date:      %s\n", date)
 	fmt.Printf("Git Commit:      %s\n", commit)
 	fmt.Printf("Built By:        %s\n", builtBy)
+
+	// CLI Framework info
+	fmt.Printf("CLI Framework:   Kong\n")
 	fmt.Println()
 
 	// System info
@@ -67,7 +70,7 @@ func runDoctor(ctx *cli.Context) error {
 
 	// Watcher info
 	fmt.Println("File Watcher:")
-	watcherPath, err := getWatcherBinaryPath()
+	watcherPath, err := watch.GetWatcherBinaryPath(config.ConfigPaths.BinDir)
 	if err != nil {
 		fmt.Printf("  Status:         Not available (%v)\n", err)
 		fmt.Printf("  Platform:       %s/%s\n", runtime.GOOS, runtime.GOARCH)
@@ -75,8 +78,8 @@ func runDoctor(ctx *cli.Context) error {
 		fmt.Printf("  Status:         Available\n")
 		fmt.Printf("  Binary Path:    %s\n", watcherPath)
 
-		// Try to get watcher version
-		watcherVersion, err := getCommandOutput(watcherPath, "--version")
+		// Try to get e-dant watcher version
+		edantWatcherVersion, err := getCommandOutput(watcherPath, "--version")
 		if err != nil {
 			// e-dant/watcher doesn't have --version, so check if binary exists
 			if _, statErr := os.Stat(watcherPath); statErr == nil {
@@ -85,14 +88,14 @@ func runDoctor(ctx *cli.Context) error {
 				fmt.Printf("  Version:        error: %v\n", err)
 			}
 		} else {
-			fmt.Printf("  Version:        %s\n", strings.TrimSpace(watcherVersion))
+			fmt.Printf("  Version:        %s\n", strings.TrimSpace(edantWatcherVersion))
 		}
 		fmt.Printf("  Platform:       %s/%s\n", runtime.GOOS, runtime.GOARCH)
 	}
 	fmt.Println()
 
 	// Cache info
-	cacheDir := ruxConfig.ConfigPaths.CacheDir
+	cacheDir := config.ConfigPaths.CacheDir
 	fmt.Printf("Cache Directory:  %s\n", cacheDir)
 
 	// Runtime data

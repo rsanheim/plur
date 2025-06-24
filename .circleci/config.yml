@@ -29,8 +29,8 @@ jobs:
             echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
             source $BASH_ENV
             go version
-
-      - ruby/install-deps
+      - ruby/install-deps:
+          include-branch-in-cache-key: false
       - run:
           name: Build rux
           command: bin/rake build
@@ -47,32 +47,7 @@ jobs:
           paths:
             - rux/rux
 
-  test-ruby:
-    docker:
-      - image: cimg/ruby:3.4.4
-    resource_class: medium
-    working_directory: ~/project/
-    steps:
-      - checkout
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Install rux from workspace
-          command: |
-            sudo cp ~/workspace/rux/rux /usr/local/bin/
-            sudo chmod +x /usr/local/bin/rux
-            rux --help
-      - ruby/install-deps
-      - run:
-          name: Run ruby linting
-          command: |
-            bin/rake lint:ruby
-      - run:
-          name: Run Ruby tests with rux
-          command: |
-            bin/rake test:default_ruby
-
-  test-integration:
+  test-ruby-integration:
     docker:
       - image: cimg/ruby:3.4.4
     resource_class: large
@@ -87,7 +62,16 @@ jobs:
             sudo cp ~/workspace/rux/rux /usr/local/bin/
             sudo chmod +x /usr/local/bin/rux
             cp ~/workspace/rux/rux ./rux
-      - ruby/install-deps
+      - ruby/install-deps:
+          include-branch-in-cache-key: false
+      - run:
+          name: Run ruby linting
+          command: |
+            bin/rake lint:ruby
+      - run:
+          name: Run Ruby tests with rux
+          command: |
+            bin/rake test:default_ruby
       - restore_cache:
           key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
       - run:
@@ -127,9 +111,6 @@ workflows:
   test-all:
     jobs:
       - build-and-test-go
-      - test-ruby:
-          requires:
-            - build-and-test-go
-      - test-integration:
+      - test-ruby-integration:
           requires:
             - build-and-test-go

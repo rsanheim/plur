@@ -6,351 +6,251 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alecthomas/kong"
+	kongtoml "github.com/alecthomas/kong-toml"
+	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/tracing"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/term"
 )
 
-var configPaths = InitConfigPaths()
-var ruxConfig *Config
-
-func createApp() *cli.App {
-	return &cli.App{
-		Name:    "rux",
-		Usage:   "A fast Go-based test runner for Ruby/RSpec",
-		Version: GetVersionInfo(),
-		Before: func(ctx *cli.Context) error {
-			// Initialize logging globally before any command runs
-			debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
-			InitLogger(ctx.Bool("verbose"), debug)
-
-			ruxConfig = BuildConfig(ctx, configPaths)
-			Logger.Debug("initial config", "config", ruxConfig)
-
-			return nil
-		},
-		Commands: []*cli.Command{
-			{
-				Name:  "watch",
-				Usage: "Watch for file changes and run tests automatically",
-				Flags: []cli.Flag{
-					&cli.IntFlag{
-						Name:  "timeout",
-						Usage: "Exit after specified seconds (default: run until Ctrl-C)",
-					},
-					&cli.IntFlag{
-						Name:  "debounce",
-						Usage: "Debounce delay in milliseconds (default: 100)",
-						Value: 100,
-					},
-					&cli.BoolFlag{
-						Name:  "verbose",
-						Usage: "Enable verbose output for debugging",
-					},
-				},
-				Action: func(ctx *cli.Context) error {
-					return runWatch(ctx)
-				},
-			},
-			{
-				Name:  "doctor",
-				Usage: "Show diagnostic information about rux installation",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:  "verbose",
-						Usage: "Enable verbose output for debugging",
-					},
-				},
-				Action: func(ctx *cli.Context) error {
-					return runDoctor(ctx)
-				},
-			},
-			{
-				Name:      "dev:file_mapper",
-				Usage:     "Test file mapping - shows which specs would run for given files",
-				ArgsUsage: "[files...]",
-				Action: func(ctx *cli.Context) error {
-					return runFileMapper(ctx)
-				},
-			},
-			{
-				Name:  "db:setup",
-				Usage: "Setup test databases in parallel",
-				Flags: []cli.Flag{
-					&cli.IntFlag{
-						Name:    "n",
-						Aliases: []string{"workers"},
-						Usage:   "Number of parallel workers",
-					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
-					},
-				},
-				Action: func(ctx *cli.Context) error {
-					return runDatabaseTask("db:setup", ctx)
-				},
-			},
-			{
-				Name:  "db:create",
-				Usage: "Create test databases in parallel",
-				Flags: []cli.Flag{
-					&cli.IntFlag{
-						Name:    "n",
-						Aliases: []string{"workers"},
-						Usage:   "Number of parallel workers",
-					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
-					},
-				},
-				Action: func(ctx *cli.Context) error {
-					return runDatabaseTask("db:create", ctx)
-				},
-			},
-			{
-				Name:  "db:migrate",
-				Usage: "Migrate test databases in parallel",
-				Flags: []cli.Flag{
-					&cli.IntFlag{
-						Name:    "n",
-						Aliases: []string{"workers"},
-						Usage:   "Number of parallel workers",
-					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
-					},
-				},
-				Action: func(ctx *cli.Context) error {
-					return runDatabaseTask("db:migrate", ctx)
-				},
-			},
-			{
-				Name:  "db:test:prepare",
-				Usage: "Prepare test databases in parallel",
-				Flags: []cli.Flag{
-					&cli.IntFlag{
-						Name:    "n",
-						Aliases: []string{"workers"},
-						Usage:   "Number of parallel workers",
-					},
-					&cli.BoolFlag{
-						Name:  "dry-run",
-						Usage: "Show what would be executed without running",
-					},
-				},
-				Action: func(ctx *cli.Context) error {
-					return runDatabaseTask("db:test:prepare", ctx)
-				},
-			},
-		},
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "dry-run",
-				Usage: "Print what would be executed without running",
-			},
-			&cli.BoolFlag{
-				Name:  "auto",
-				Usage: "Run bundle install if necessary before running tests",
-			},
-			&cli.BoolFlag{
-				Name:  "json",
-				Usage: "Save detailed test results to JSON files",
-			},
-			&cli.BoolFlag{
-				Name:    "color",
-				Aliases: []string{"colour"},
-				Usage:   "Force colorized output (default: auto-detect TTY)",
-				Value:   true,
-			},
-			&cli.BoolFlag{
-				Name:    "no-color",
-				Aliases: []string{"no-colour"},
-				Usage:   "Disable colorized output",
-			},
-			&cli.IntFlag{
-				Name:    "n",
-				Aliases: []string{"workers"},
-				Usage:   "Number of parallel workers (default: cores-2, env: PARALLEL_TEST_PROCESSORS)",
-			},
-			&cli.BoolFlag{
-				Name:  "trace",
-				Usage: "Enable performance tracing to analyze execution time",
-			},
-			&cli.StringFlag{
-				Name:  "runtime-dir",
-				Usage: "Directory to store runtime data (default: ~/.cache/rux/runtimes)",
-			},
-			&cli.BoolFlag{
-				Name:  "verbose",
-				Usage: "Enable verbose output for debugging",
-			},
-			&cli.BoolFlag{
-				Name:  "debug",
-				Usage: "Enable debug output (includes verbose)",
-			},
-		},
-		Action: func(ctx *cli.Context) error {
-			// Initialize tracing if enabled
-			if ctx.Bool("trace") {
-				if err := tracing.Init(true); err != nil {
-					return fmt.Errorf("failed to initialize tracer: %v", err)
-				}
-				defer tracing.Close()
-			}
-
-			defer tracing.StartRegion(context.Background(), "main.total_execution")()
-
-			// Discover spec files for the main command
-			specFiles, err := discoverSpecFiles(ctx)
-			if err != nil {
-				return err
-			}
-
-			// Run bundle install if --auto flag is set
-			if ruxConfig.Auto && !ruxConfig.DryRun {
-				depManager := NewDependencyManager()
-				if err := depManager.InstallDependencies(); err != nil {
-					return err
-				}
-			}
-
-			// Create and run executor
-			executor := NewTestExecutor(ruxConfig, specFiles)
-			if err := executor.Execute(); err != nil {
-				// Exit with error code 1 for test failures
-				if strings.Contains(err.Error(), "test run failed") {
-					os.Exit(1)
-				}
-				return err
-			}
-
-			return nil
-		},
-	}
+type SpecCmd struct {
+	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
+	Command  string   `help:"Test command to run" default:"bundle exec rspec"`
 }
 
-func runDatabaseTask(task string, ctx *cli.Context) error {
-	workerCount := GetWorkerCount(ctx.Int("n"))
-	dryRun := ctx.Bool("dry-run")
-
-	return RunDatabaseTask(task, workerCount, dryRun)
-}
-
-// shouldUseColor determines if colorized output should be used
-func shouldUseColor(ctx *cli.Context) bool {
-	// If --no-color or --no-colour is set, disable color
-	if ctx.Bool("no-color") {
-		return false
+func (r *SpecCmd) Run(parent *RuxCLI) error {
+	// Build config from parent
+	paths := InitConfigPaths()
+	config := &Config{
+		Auto:         parent.Auto,
+		ColorOutput:  parent.Color,
+		ConfigPaths:  paths,
+		DryRun:       parent.DryRun,
+		TraceEnabled: parent.Trace,
+		WorkerCount:  GetWorkerCount(parent.Workers),
+		SpecCommand:  r.Command,
 	}
 
-	// If --color or --colour is set, enable color
-	if ctx.Bool("color") {
-		return true
+	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns)
+
+	// Initialize tracing if enabled
+	if config.TraceEnabled {
+		if err := tracing.Init(true); err != nil {
+			return fmt.Errorf("failed to initialize tracer: %v", err)
+		}
+		defer tracing.Close()
 	}
 
-	// Auto-detect: use color if output is a TTY and FORCE_COLOR is set or TTY is detected
-	if os.Getenv("FORCE_COLOR") != "" {
-		return true
-	}
+	defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
-	return term.IsTerminal(int(os.Stdout.Fd()))
-}
-
-// reorderArgs moves flags before positional arguments to work around urfave/cli v2 limitation
-// This allows both `rux --no-color spec/` and `rux spec/ --no-color` to work
-func reorderArgs(args []string) []string {
-	if len(args) <= 1 {
-		return args
-	}
-
-	// Check if we have a subcommand (watch, doctor, etc)
-	hasSubcommand := false
-	subcommandIndex := -1
-	for i := 1; i < len(args); i++ {
-		if !strings.HasPrefix(args[i], "-") {
-			// This might be a subcommand
-			for _, cmd := range []string{"watch", "doctor", "db:setup", "db:create", "db:migrate", "db:test:prepare"} {
-				if args[i] == cmd {
-					hasSubcommand = true
-					subcommandIndex = i
-					break
-				}
-			}
-			if hasSubcommand {
-				break
-			}
+	// Discover spec files
+	var specFiles []string
+	var err error
+	if len(r.Patterns) > 0 {
+		specFiles, err = ExpandGlobPatterns(r.Patterns)
+		if err != nil {
+			return err
+		}
+		if len(specFiles) == 0 {
+			return fmt.Errorf("no spec files found matching provided patterns")
+		}
+	} else {
+		specFiles, err = FindSpecFiles()
+		if err != nil {
+			return err
+		}
+		if len(specFiles) == 0 {
+			return fmt.Errorf("no spec files found")
 		}
 	}
 
-	// If we have a subcommand, don't reorder after it
-	if hasSubcommand {
-		// Only reorder global flags before the subcommand
-		result := []string{args[0]}
-		var globalFlags []string
-		var beforeSubcommand []string
-
-		for i := 1; i < subcommandIndex; i++ {
-			if strings.HasPrefix(args[i], "-") {
-				globalFlags = append(globalFlags, args[i])
-				// Handle flag values
-				if i+1 < subcommandIndex && !strings.HasPrefix(args[i+1], "-") {
-					i++
-					globalFlags = append(globalFlags, args[i])
-				}
-			} else {
-				beforeSubcommand = append(beforeSubcommand, args[i])
-			}
-		}
-
-		result = append(result, globalFlags...)
-		result = append(result, beforeSubcommand...)
-		// Add subcommand and everything after it unchanged
-		result = append(result, args[subcommandIndex:]...)
-		return result
-	}
-
-	// Original logic for when there's no subcommand
-	cmd := args[0]
-	var flags []string
-	var positional []string
-
-	for i := 1; i < len(args); i++ {
-		arg := args[i]
-
-		if strings.HasPrefix(arg, "-") {
-			flags = append(flags, arg)
-			// Check if this flag takes a value
-			if (arg == "-n" || arg == "--workers" || arg == "--runtime-dir") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-				i++
-				flags = append(flags, args[i])
-			}
-		} else {
-			positional = append(positional, arg)
+	// Run bundle install if --auto flag is set
+	if config.Auto && !config.DryRun {
+		depManager := NewDependencyManager()
+		if err := depManager.InstallDependencies(); err != nil {
+			return err
 		}
 	}
 
-	result := []string{cmd}
-	result = append(result, flags...)
-	result = append(result, positional...)
-	return result
+	// Create and run executor
+	executor := NewTestExecutor(config, specFiles)
+	if err := executor.Execute(); err != nil {
+		// Exit with error code 1 for test failures
+		if strings.Contains(err.Error(), "test run failed") {
+			os.Exit(1)
+		}
+		return err
+	}
+
+	return nil
+}
+
+type WatchCmd struct {
+	Run     WatchRunCmd     `cmd:"" default:"" help:"Run watch mode"`
+	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
+}
+
+type WatchRunCmd struct {
+	// Flags for watch command
+	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
+	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
+	Command  string `help:"Test command to run" default:"bundle exec rspec"`
+}
+
+func (w *WatchRunCmd) Run(parent *RuxCLI) error {
+	// Build config from parent
+	paths := InitConfigPaths()
+	config := &Config{
+		Auto:         parent.Auto,
+		ColorOutput:  parent.Color,
+		ConfigPaths:  paths,
+		DryRun:       parent.DryRun,
+		TraceEnabled: parent.Trace,
+		WorkerCount:  GetWorkerCount(parent.Workers),
+		WatchCommand: w.Command,
+	}
+
+	// Auto-install watcher binary if needed
+	if err := runWatchInstall(false); err != nil {
+		return err
+	}
+
+	return runWatchWithConfig(config, w.Timeout, w.Debounce)
+}
+
+type WatchInstallCmd struct{}
+
+func (w *WatchInstallCmd) Run(parent *RuxCLI) error {
+	return runWatchInstall(true)
+}
+
+type DoctorCmd struct{}
+
+func (d *DoctorCmd) Run(parent *RuxCLI) error {
+	// Build config from parent
+	paths := InitConfigPaths()
+	config := &Config{
+		Auto:         parent.Auto,
+		ColorOutput:  parent.Color,
+		ConfigPaths:  paths,
+		DryRun:       parent.DryRun,
+		TraceEnabled: parent.Trace,
+		WorkerCount:  GetWorkerCount(parent.Workers),
+	}
+	return runDoctorWithConfig(config)
+}
+
+type DBSetupCmd struct{}
+
+func (d *DBSetupCmd) Run(parent *RuxCLI) error {
+	config := &Config{
+		DryRun: parent.DryRun,
+	}
+	// Use parent.Workers since Kong parses -n as a global flag
+	workerCount := GetWorkerCount(parent.Workers)
+	return RunDatabaseTask("db:setup", workerCount, config.DryRun)
+}
+
+type DBCreateCmd struct{}
+
+func (d *DBCreateCmd) Run(parent *RuxCLI) error {
+	config := &Config{
+		DryRun: parent.DryRun,
+	}
+	// Use parent.Workers since Kong parses -n as a global flag
+	workerCount := GetWorkerCount(parent.Workers)
+	return RunDatabaseTask("db:create", workerCount, config.DryRun)
+}
+
+type DBMigrateCmd struct{}
+
+func (d *DBMigrateCmd) Run(parent *RuxCLI) error {
+	config := &Config{
+		DryRun: parent.DryRun,
+	}
+	// Use parent.Workers since Kong parses -n as a global flag
+	workerCount := GetWorkerCount(parent.Workers)
+	return RunDatabaseTask("db:migrate", workerCount, config.DryRun)
+}
+
+type DBPrepareCmd struct{}
+
+func (d *DBPrepareCmd) Run(parent *RuxCLI) error {
+	config := &Config{
+		DryRun: parent.DryRun,
+	}
+	// Use parent.Workers since Kong parses -n as a global flag
+	workerCount := GetWorkerCount(parent.Workers)
+	return RunDatabaseTask("db:test:prepare", workerCount, config.DryRun)
+}
+
+type RuxCLI struct {
+	// Commands
+	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
+	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Rux installation and environment"`
+	DBSetup   DBSetupCmd   `cmd:"" name:"db:setup" help:"Setup test databases"`
+	DBCreate  DBCreateCmd  `cmd:"" name:"db:create" help:"Create test databases"`
+	DBMigrate DBMigrateCmd `cmd:"" name:"db:migrate" help:"Migrate test databases"`
+	DBPrepare DBPrepareCmd `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
+
+	// Global flags
+	Auto       bool   `help:"Automatically run bundle install before tests" default:"false"`
+	Verbose    bool   `help:"Enable verbose output for debugging" default:"false"`
+	Debug      bool   `help:"Enable debug output (includes verbose)" default:"false"`
+	DryRun     bool   `help:"Print what would be executed without running" default:"false"`
+	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
+	Color      bool   `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
+	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" hidden:""`
+	RuntimeDir string `help:"Custom directory for runtime data" default:""`
+	CacheDir   string `help:"Directory for caching runtime data" default:"${cache_dir}"`
+	Trace      bool   `help:"Enable performance tracing (saves to ./rux_trace_*.json)" default:"false"`
+	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" default:"0"`
+	Version    bool   `help:"Show version information"`
+}
+
+func (r *RuxCLI) AfterApply() error {
+	// Handle version flag
+	if r.Version {
+		fmt.Println(GetVersionInfo())
+		os.Exit(0)
+	}
+
+	// Sync British spelling to American spelling
+	// If --no-colour is used, r.Colour is false and we need to set r.Color to false
+	// If --colour is used, r.Colour is true and we need to set r.Color to true
+	// The issue is that Kong sets the flag based on what's explicitly provided
+	// TODO: This is a limitation of Kong - we can't distinguish between
+	// "not set" vs "explicitly set to false"
+
+	// For now, we'll check if the args contain --no-colour
+	for _, arg := range os.Args {
+		if arg == "--no-colour" {
+			r.Color = false
+			break
+		}
+	}
+
+	debug := r.Debug || os.Getenv("RUX_DEBUG") == "1"
+	logger.InitLogger(r.Verbose, debug)
+
+	return nil
 }
 
 func main() {
-	// Check KONG=1 environment variable to use kong CLI
-	if os.Getenv("KONG") == "1" {
-		runKongCLI()
-		return
-	}
+	var cli RuxCLI
+	configPaths := InitConfigPaths()
+	ctx := kong.Parse(&cli,
+		kong.Name("rux"),
+		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
+		kong.Configuration(kongtoml.Loader, ".rux.toml", "~/.rux.toml"),
+		kong.Vars{
+			"cache_dir": configPaths.CacheDir,
+		})
 
-	// Default to urfave/cli
-	app := createApp()
-	// Reorder arguments to put flags before positional args
-	args := reorderArgs(os.Args)
-	if err := app.Run(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	logger.Logger.Debug("running kong CLI", "args", os.Args, "ctx", ctx)
+	err := ctx.Run(ctx)
+	if err != nil {
+		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)
 	}
 }

@@ -1,67 +1,57 @@
 require "spec_helper"
-require "open3"
 
 RSpec.describe "Rux CLI behavior" do
+  let(:calculator_spec_examples) { 5 }
+
   describe "dry-run functionality" do
     it "runs dry-run with no arguments" do
-      stdout, stderr, status = Open3.capture3(rux_binary, "--dry-run")
+      result = run_rux("--dry-run")
 
-      expect(status.success?).to be true
-      output = stdout + stderr
-      expect(output).to include("[dry-run]")
+      expect(result.err).to match(%r{\[dry-run\] Found \d+ spec files, running in parallel})
+      expect(result.err).to include("rspec")
+    end
+
+    it "shows overridden command if defined" do
+      result = run_rux("spec", "--dry-run", "--command=bin/rspec")
+
+      expect(result.err).to include("[dry-run]")
+      expect(result.err).to include("bin/rspec")
+      expect(result.err).to_not include("bundle exec rspec")
     end
 
     it "runs dry-run with specific spec file" do
-      Dir.chdir(default_ruby_dir) do
-        stdout, stderr, status = Open3.capture3(rux_binary, "--dry-run", "spec/calculator_spec.rb")
+      chdir(default_ruby_dir) do
+        result = run_rux("--dry-run", "spec/calculator_spec.rb")
 
-        expect(status.success?).to be true
-        output = stdout + stderr
-        expect(output).to include("[dry-run]")
-        expect(output).to include("calculator_spec.rb")
+        expect(result.err).to include("[dry-run]")
+        expect(result.err).to include("calculator_spec.rb")
       end
     end
 
     it "runs dry-run with multiple spec files" do
       Dir.chdir(default_ruby_dir) do
-        stdout, stderr, status = Open3.capture3(
-          rux_binary,
-          "--dry-run",
-          "spec/calculator_spec.rb",
-          "spec/rux_ruby_spec.rb"
-        )
+        result = run_rux("--dry-run", "spec/calculator_spec.rb", "spec/rux_ruby_spec.rb")
 
-        expect(status.success?).to be true
-        output = stdout + stderr
-        expect(output).to include("[dry-run]")
-        expect(output).to include("calculator_spec.rb")
-        expect(output).to include("rux_ruby_spec.rb")
+        expect(result.err).to include("[dry-run]")
+        expect(result.err).to include("calculator_spec.rb")
+        expect(result.err).to include("rux_ruby_spec.rb")
       end
     end
 
     it "runs dry-run with --auto flag" do
       Dir.chdir(default_ruby_dir) do
-        stdout, stderr, status = Open3.capture3(
-          rux_binary,
-          "--dry-run",
-          "--auto",
-          "spec/calculator_spec.rb"
-        )
+        result = run_rux("--dry-run", "--auto", "spec/calculator_spec.rb")
 
-        expect(status.success?).to be true
-        output = stdout + stderr
-        expect(output).to include("[dry-run]")
+        expect(result.err).to include("[dry-run]")
       end
     end
 
     it "runs dry-run with auto-discovery in rux-ruby" do
-      Dir.chdir(default_ruby_dir) do
-        stdout, stderr, status = Open3.capture3(rux_binary, "--dry-run")
+      chdir(default_ruby_dir) do
+        result = run_rux("--dry-run")
 
-        expect(status.success?).to be true
-        output = stdout + stderr
-        expect(output).to include("[dry-run]")
-        expect(output).to match(/Found \d+ spec files/)
+        expect(result.err).to include("[dry-run]")
+        expect(result.err).to match(/Found \d+ spec files/)
       end
     end
   end
@@ -69,42 +59,67 @@ RSpec.describe "Rux CLI behavior" do
   describe "actual test execution" do
     it "runs all specs in parallel with auto-discovery" do
       Dir.chdir(default_ruby_dir) do
-        stdout, _, status = Open3.capture3(rux_binary)
+        result = run_rux
 
-        expect(status.success?).to be true
-        expect(stdout).to include("Running")
-        expect(stdout).to include("spec files in parallel")
-        expect(stdout).to include("examples, 0 failures")
+        expect(result.out).to match(/Running \d+ spec files in parallel/)
+        expect(result.out).to include("66 examples, 0 failures")
       end
     end
 
     it "runs with --auto flag (bundle install + run)" do
       Dir.chdir(default_ruby_dir) do
-        stdout, _, status = Open3.capture3(rux_binary, "--auto")
-
-        expect(status.success?).to be true
-        # Should either say "Installing dependencies" or skip if already installed
-        expect(stdout).to include("examples, 0 failures")
+        result = run_rux("--auto")
+        expect(result.out).to include("Bundle complete!")
+        expect(result.out).to include("examples, 0 failures")
       end
     end
 
     it "runs specific spec file" do
       Dir.chdir(default_ruby_dir) do
-        stdout, _, status = Open3.capture3(rux_binary, "spec/calculator_spec.rb")
+        result = run_rux("spec/calculator_spec.rb")
 
-        expect(status.success?).to be true
-        expect(stdout).to include("examples, 0 failures")
+        expect(result.out).to include("#{calculator_spec_examples} examples, 0 failures")
+      end
+    end
+
+    it "shows the actual command(s) run when --debug is enabled" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_rux("spec", "--debug", "spec/calculator_spec.rb")
+
+        expect(result.err).to include("bundle exec rspec")
+        expect(result.out).to include("#{calculator_spec_examples} examples, 0 failures")
+      end
+    end
+
+    it "uses the configured command if defined" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_rux("spec", "--debug", "--command=rspec")
+
+        expect(result.err).to include("rspec -r")
+        expect(result.err).not_to include("bundle exec")
+        expect(result.out).to include("examples, 0 failures")
+      end
+    end
+
+    # TODO - we need better handling and feedback here if a command does not exist
+    it "errors if configured command is not found" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_rux_allowing_errors("spec", "--debug", "--command=rspecx")
+        expect(result).to_not be_success
+        expect(result.exit_status).to be_nonzero
+        # Error messages are displayed after the summary
+        expect(result.out).to include("Error: failed to start command")
+        expect(result.out).to include("rspecx")
+        expect(result.out).to include("not found")
       end
     end
 
     it "provides interleaved output from parallel execution" do
       Dir.chdir(default_ruby_dir) do
-        stdout, _, status = Open3.capture3(rux_binary, "-n", "2")
+        result = run_rux("-n", "2")
 
-        expect(status.success?).to be true
-        # The dots should appear as tests complete
-        expect(stdout).to match(/\.+/)
-        expect(stdout).to include("examples, 0 failures")
+        expect(result.out).to match(/\.+/)
+        expect(result.out).to include("examples, 0 failures")
       end
     end
   end

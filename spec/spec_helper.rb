@@ -1,4 +1,5 @@
 require "fileutils"
+require "json"
 require "open3"
 require "ostruct"
 require "pathname"
@@ -20,16 +21,18 @@ DEFAULT_RUX_WATCH_TIMEOUT = 2
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
+  config.include RuxHomeHelper
+  config.extend RuxHomeHelper::ClassMethods
+
+  config.filter_run_when_matching :focus
+  config.disable_monkey_patching!
   config.filter_run_excluding :skip_if_ci if ENV["CI"]
+  config.shared_context_metadata_behavior = :apply_to_host_groups
 
   def chdir(path)
     Dir.chdir(path) do
       yield
     end
-  end
-
-  def rux_binary
-    @rux_binary ||= File.join(__dir__, "..", "rux", "rux")
   end
 
   def default_ruby_dir
@@ -44,8 +47,13 @@ RSpec.configure do |config|
     Pathname.new(__dir__).parent.join("fixtures", "projects", name)
   end
 
-  config.filter_run_when_matching :focus
-  config.disable_monkey_patching!
+  def project_fixture!(name)
+    project_fixture(name).tap do |path|
+      unless path.exist?
+        raise "Project fixture does not exist for #{name} at path: #{path}"
+      end
+    end
+  end
 
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
@@ -54,8 +62,6 @@ RSpec.configure do |config|
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
   end
-
-  config.shared_context_metadata_behavior = :apply_to_host_groups
 
   # Restore default-ruby state after the entire test suite
   config.after(:suite) do

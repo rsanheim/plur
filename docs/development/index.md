@@ -7,4 +7,3 @@ Guides for contributing to and developing Rux.
 - [Contributing](contributing.md) - How to contribute to the project
 - [Testing](testing.md) - Running and writing tests
 - [Release Process](release-process.md) - How releases are managed
-- [Go Vendoring](go-vendoring.md) - Go module vendoring and CI setup

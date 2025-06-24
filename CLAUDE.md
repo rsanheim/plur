@@ -31,18 +31,22 @@ rux --dry-run            # Preview what will run
 rux --trace              # Performance profiling
 rux doctor               # Debug installation issues
 rux watch                # Auto-run tests on file changes (experimental)
+rux spec --command=bin/rspec  # Override default test command
 ```
 
-### Kong CLI (Experimental)
-```bash
-./rux-kong               # Use Kong-based CLI (sets KONG=1 automatically)
-./rux-kong --help        # Show Kong CLI help and available flags
-./rux-kong -n 4          # Run with Kong CLI using 4 workers
-./rux-kong watch         # Watch mode with Kong CLI
+### Configuration Files
 
-# Kong CLI is experimental - tracks the same functionality but with
-# cleaner argument parsing via github.com/alecthomas/kong
+Rux supports TOML configuration files for persistent settings:
+
+```toml
+# .rux.toml or ~/.rux.toml
+command = "bin/rspec"    # Override default "bundle exec rspec"
+workers = 4              # Number of parallel workers
+color = true             # Enable colored output
 ```
+
+Configuration precedence: CLI flags > `.rux.toml` (local) > `~/.rux.toml` (global) > defaults
+
 
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root
@@ -78,6 +82,16 @@ ALWAYS use integration specs as guardrails:
 - `spec/doctor_spec.rb` - Doctor command with backspin
 
 Run via: `bin/rake test:ruby` or `bundle exec rspec spec/[file]`
+
+### Go Testing Guidelines
+- Use testify assertions (`assert` and `require`) for all new Go tests
+- `require` for critical assertions that should stop the test
+- `assert` for non-critical assertions that can continue
+- Only add descriptive messages when the assertion itself isn't self-explanatory (e.g., complex conditions or domain-specific checks)
+
+## Kong CLI Patterns
+
+**IMPORTANT**: When implementing Kong subcommands, be aware that Kong executes commands in reverse order (from deepest subcommand up to parent). Parent commands must check the context to avoid running when a subcommand is invoked. See `docs/development/kong-cli-patterns.md` for critical implementation details.
 
 ## GitHub MCP Server Integration
 
@@ -140,3 +154,8 @@ Keep documentation focused on the **current state** of the project:
 - Remove inline references to "coming soon", "will support", etc.
 - Future plans belong only in `docs/overview/roadmap.md`
 - When features are implemented, move them from roadmap to main docs
+
+## Output Formatting
+
+- No ANSI color codes in output (keep it plain text)
+- Use simple ASCII for emphasis: `>>>`, `✓`, `✗`

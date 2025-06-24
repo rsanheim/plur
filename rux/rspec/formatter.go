@@ -17,7 +17,6 @@ var jsonRowsFormatterCode string
 func GetFormatterPath(formattersPath string) (string, error) {
 	formatterPath := filepath.Join(formattersPath, "json_rows_formatter.rb")
 
-	// Check if formatter already exists and has the same content
 	if existingContent, err := os.ReadFile(formatterPath); err == nil {
 		if string(existingContent) == jsonRowsFormatterCode {
 			return formatterPath, nil

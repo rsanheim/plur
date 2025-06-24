@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/rsanheim/rux/rspec"
-	"github.com/urfave/cli/v2"
 )
 
 // Config holds top level config for rux
@@ -17,10 +16,13 @@ type Config struct {
 	DryRun       bool
 	TraceEnabled bool
 	WorkerCount  int
+	SpecCommand  string
+	WatchCommand string
 }
 
 type ConfigPaths struct {
 	RuxHome           string // ~/.rux or $RUX_HOME
+	BinDir            string
 	CacheDir          string
 	RuntimeDir        string
 	FormatterDir      string
@@ -44,11 +46,12 @@ func InitConfigPaths() *ConfigPaths {
 		os.Exit(1)
 	}
 
+	binDir := filepath.Join(ruxHome, "bin")
 	cacheDir := filepath.Join(ruxHome, "cache")
 	runtimeDir := filepath.Join(ruxHome, "runtime")
 	formatterDir := filepath.Join(ruxHome, "formatter")
 
-	paths := []string{cacheDir, runtimeDir, formatterDir}
+	paths := []string{binDir, cacheDir, runtimeDir, formatterDir}
 	for _, path := range paths {
 		if os.MkdirAll(path, 0755) != nil {
 			fmt.Fprintf(os.Stderr, "failed to create %s directory: %v\n", path, err)
@@ -64,6 +67,7 @@ func InitConfigPaths() *ConfigPaths {
 
 	configPaths := ConfigPaths{
 		RuxHome:           ruxHome,
+		BinDir:            binDir,
 		CacheDir:          cacheDir,
 		RuntimeDir:        runtimeDir,
 		FormatterDir:      formatterDir,
@@ -71,15 +75,4 @@ func InitConfigPaths() *ConfigPaths {
 	}
 
 	return &configPaths
-}
-
-func BuildConfig(ctx *cli.Context, paths *ConfigPaths) *Config {
-	return &Config{
-		Auto:         ctx.Bool("auto"),
-		ColorOutput:  shouldUseColor(ctx),
-		ConfigPaths:  paths,
-		DryRun:       ctx.Bool("dry-run"),
-		TraceEnabled: ctx.Bool("trace"),
-		WorkerCount:  GetWorkerCount(ctx.Int("n")),
-	}
 }

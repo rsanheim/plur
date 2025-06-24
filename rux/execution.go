@@ -1,14 +1,10 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
-	"runtime/trace"
 	"strings"
-
-	"github.com/urfave/cli/v2"
 )
 
 // TestExecutor orchestrates the execution of tests
@@ -84,12 +80,22 @@ func (e *TestExecutor) executeTests() error {
 
 	results, wallTime := RunSpecsInParallel(e.config, e.specFiles, e.runtimeTracker)
 
-	// Save runtime data
-	if err := e.runtimeTracker.SaveToFile(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
-	} else {
-		if runtimePath, err := GetRuntimeFilePath(); err == nil {
-			fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", runtimePath)
+	// Save runtime data only if some tests actually ran
+	hasValidRuntimeData := false
+	for _, result := range results {
+		if result.State != StateError && result.ExampleCount > 0 {
+			hasValidRuntimeData = true
+			break
+		}
+	}
+
+	if hasValidRuntimeData {
+		if err := e.runtimeTracker.SaveToFile(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
+		} else {
+			if runtimePath, err := GetRuntimeFilePath(); err == nil {
+				fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", runtimePath)
+			}
 		}
 	}
 
@@ -108,7 +114,11 @@ func (e *TestExecutor) executeTests() error {
 
 // buildRSpecArgs constructs the RSpec command arguments
 func (e *TestExecutor) buildRSpecArgs(formatterPath string, files []string) []string {
-	args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+	// Split the command string into parts
+	args := strings.Fields(e.config.SpecCommand)
+
+	// Add formatter arguments
+	args = append(args, "-r", formatterPath, "--format", "Rux::JsonRowsFormatter")
 
 	// Add color flags based on preference
 	if !e.config.ColorOutput {
@@ -119,36 +129,4 @@ func (e *TestExecutor) buildRSpecArgs(formatterPath string, files []string) []st
 
 	args = append(args, files...)
 	return args
-}
-
-// discoverSpecFiles determines which spec files to run based on CLI context
-func discoverSpecFiles(ctx *cli.Context) ([]string, error) {
-	var specFiles []string
-	var err error
-
-	trace.WithRegion(context.Background(), "file_discovery", func() {
-		if ctx.NArg() > 0 {
-			// Expand glob patterns from provided arguments
-			specFiles, err = ExpandGlobPatterns(ctx.Args().Slice())
-			if err != nil {
-				return
-			}
-			if len(specFiles) == 0 {
-				err = fmt.Errorf("no spec files found matching provided patterns")
-				return
-			}
-		} else {
-			// Auto-discover spec files
-			specFiles, err = FindSpecFiles()
-			if err != nil {
-				return
-			}
-			if len(specFiles) == 0 {
-				err = fmt.Errorf("no spec files found")
-				return
-			}
-		}
-	})
-
-	return specFiles, err
 }

@@ -2,8 +2,10 @@ require "spec_helper"
 
 RSpec.describe "rux doctor command" do
   def run_rux_doctor(*args)
-    cmd_array = %W[#{rux_binary} doctor]
+    # Use Open3 directly to match Backspin's expected format
+    cmd_array = ["rux", "doctor"]
     cmd_array += args if args.any?
+
     Open3.capture3(*cmd_array)
   end
 
@@ -15,6 +17,7 @@ RSpec.describe "rux doctor command" do
       .gsub(/Build Date:\s+.+/, "Build Date:      [BUILD_DATE]")
       .gsub(/Git Commit:\s+.+/, "Git Commit:      [COMMIT]")
       .gsub(/Built By:\s+.+/, "Built By:        [BUILT_BY]")
+      .gsub(/CLI Framework:\s+.+/, "CLI Framework:   [CLI_FRAMEWORK]")
       .gsub(/CPU Count:\s+\d+/, "CPU Count:        [CPU_COUNT]")
       .gsub(/Go Version:\s+.+/, "Go Version:       [GO_VERSION]")
       .gsub(/Working Dir:\s+.+/, "Working Dir:      [WORKING_DIR]")

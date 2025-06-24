@@ -12,11 +12,6 @@ var (
 	builtBy = "unknown"
 )
 
-// GetVersion returns the version string
-func GetVersion() string {
-	return version
-}
-
 // GetVersionInfo returns the full version information
 func GetVersionInfo() string {
 	// Try to get module version from runtime if not set by ldflags
