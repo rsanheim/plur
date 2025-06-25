@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -14,7 +13,6 @@ import (
 	"time"
 
 	"github.com/rsanheim/rux/logger"
-	"github.com/rsanheim/rux/minitest"
 	"github.com/rsanheim/rux/rspec"
 	"github.com/rsanheim/rux/tracing"
 	"github.com/rsanheim/rux/types"
@@ -252,94 +250,17 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 	}
 
 	// Create parser and collector for event-based processing
-	parser := NewRSpecOutputParser()
+	parser, err := NewTestOutputParser(config.Framework)
+	if err != nil {
+		return errorResult(testFile, err, start)
+	}
 	collector := NewTestCollector()
-	var stderrBuilder strings.Builder
-	var wg sync.WaitGroup
 
-	// Stream stdout and parse using event-based architecture
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stdout)
-
-		firstOutput := true
-		for scanner.Scan() {
-			line := scanner.Text()
-
-			if firstOutput {
-				// Trace time to first output
-				firstOutput = false
-				tracing.LogEvent(ctx, "ruby_first_output",
-					"worker_id", workerIndex,
-					"spec_files", len(specFiles),
-					"time_since_spawn", time.Since(start).Seconds()*1000)
-			}
-
-			// Parse line into notifications
-			notifications, _ := parser.ParseLine(line)
-
-			// Process each notification
-			for _, notification := range notifications {
-				collector.AddNotification(notification)
-
-				// Send progress updates to output channel
-				switch notification.GetEvent() {
-				case types.TestPassed:
-					outputChan <- OutputMessage{
-						WorkerID: workerIndex,
-						Type:     "dot",
-					}
-				case types.TestFailed:
-					outputChan <- OutputMessage{
-						WorkerID: workerIndex,
-						Type:     "failure",
-					}
-				case types.TestPending:
-					outputChan <- OutputMessage{
-						WorkerID: workerIndex,
-						Type:     "pending",
-					}
-				case types.SuiteStarted:
-					if suite, ok := notification.(types.SuiteNotification); ok && suite.LoadTime > 0 {
-						tracing.LogEvent(ctx, "rspec_loaded",
-							"worker_id", workerIndex,
-							"spec_files", len(specFiles),
-							"load_time", suite.LoadTime.Seconds(),
-							"time_since_spawn", time.Since(start).Seconds()*1000)
-					}
-				}
-			}
-
-			// Debug output if enabled
-			if os.Getenv("RUX_DEBUG") == "1" && len(notifications) > 0 {
-				dump(notifications)
-			}
-		}
-	}()
-
-	// Stream stderr in real-time
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			line := scanner.Text()
-			stderrBuilder.WriteString("STDERR: " + line + "\n")
-			outputChan <- OutputMessage{
-				WorkerID: workerIndex,
-				Type:     "stderr",
-				Content:  line,
-				Files:    strings.Join(specFiles, ","),
-			}
-		}
-	}()
+	// Stream output through parser and collector
+	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, config.Framework, start)
 
 	// Wait for command to complete
 	err = cmd.Wait()
-
-	// Wait for output streaming to complete
-	wg.Wait()
 
 	// Build the final result from the collector
 	result := collector.BuildResult(testFile, time.Since(start))
@@ -382,7 +303,7 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 
 	// Determine the state based on the execution outcome
 	state := StateSuccess
-	output := result.Output + stderrBuilder.String()
+	output := result.Output + stderrOutput
 
 	// Check if this is an execution error (couldn't run tests)
 	if err != nil && result.ExampleCount == 0 &&
@@ -574,65 +495,17 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
-	var outputBuilder strings.Builder
-	var wg sync.WaitGroup
+	// Create parser and collector for event-based processing
+	parser, err := NewTestOutputParser(config.Framework)
+	if err != nil {
+		return errorResult(testFile, err, start)
+	}
+	collector := NewTestCollector()
 
-	// Stream stdout
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			line := scanner.Text()
-			outputBuilder.WriteString(line + "\n")
+	// Stream output through parser and collector
+	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, config.Framework, start)
 
-			// Send progress indicators to output channel
-			// Minitest outputs progress indicators on lines containing only dots, F, E, S characters
-			if outputChan != nil && isProgressLine(line) {
-				for _, char := range line {
-					switch char {
-					case '.':
-						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     "dot",
-						}
-					case 'F', 'E':
-						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     "failure",
-						}
-					case 'S':
-						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     "pending",
-						}
-					}
-				}
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			logger.Logger.Error("error reading stdout", "error", err, "worker", workerIndex)
-		}
-	}()
-
-	// Stream stderr
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			line := scanner.Text()
-			outputBuilder.WriteString(line + "\n")
-		}
-		if err := scanner.Err(); err != nil {
-			logger.Logger.Error("error reading stderr", "error", err, "worker", workerIndex)
-		}
-	}()
-
-	// Wait for all output to be captured
-	wg.Wait()
-
-	// Wait for the command to complete
+	// Wait for command to complete
 	err = cmd.Wait()
 
 	// Determine success based on exit code
@@ -642,75 +515,26 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	}
 	success := exitCode == 0
 
-	// Parse minitest output
-	outputStr := outputBuilder.String()
-	summary, failures := parseMinitestOutput(outputStr)
+	// Build the final result from the collector
+	result := collector.BuildResult(testFile, time.Since(start))
 
 	// Determine the state based on the execution outcome
 	state := StateSuccess
-	if err != nil && summary.Tests == 0 {
+	output := result.Output + stderrOutput
+
+	if err != nil && result.ExampleCount == 0 {
 		// Couldn't run tests at all
 		state = StateError
 	} else if !success {
 		state = StateFailed
 	}
 
-	// Convert minitest failures to generic failures
-	genericFailures := make([]TestFailure, len(failures))
-	for i, f := range failures {
-		genericFailures[i] = TestFailure{
-			File:        testFile,
-			Description: f.Description,
-			LineNumber:  f.LineNumber,
-			Message:     f.Message,
-			Backtrace:   f.Backtrace,
-		}
-	}
+	// Update result with final state and output
+	result.State = state
+	result.Output = output
+	result.Error = err
 
-	return TestResult{
-		File:         testFile,
-		State:        state,
-		Output:       outputStr,
-		Error:        err,
-		Duration:     time.Since(start),
-		Failures:     genericFailures,
-		ExampleCount: summary.Tests,
-		FailureCount: summary.Failures + summary.Errors,
-		// For minitest, we'll store the summary in FormattedSummary
-		FormattedSummary: fmt.Sprintf("%d runs, %d assertions, %d failures, %d errors, %d skips",
-			summary.Tests, summary.Assertions, summary.Failures, summary.Errors, summary.Skips),
-	}
+	return result
 }
 
-// parseMinitestOutput parses minitest output and extracts summary and failures
-func parseMinitestOutput(output string) (*minitest.OutputSummary, []minitest.FailureDetail) {
-	// Parse the output to get summary
-	summary, err := minitest.ParseOutput(output)
-	if err != nil || summary == nil {
-		// Return empty summary if parsing fails
-		summary = &minitest.OutputSummary{}
-	}
 
-	// Extract failures from output
-	failures := minitest.ExtractFailures(output)
-
-	return summary, failures
-}
-
-// isProgressLine checks if a line contains only minitest progress indicators
-func isProgressLine(line string) bool {
-	// Remove any whitespace
-	trimmed := strings.TrimSpace(line)
-	if trimmed == "" {
-		return false
-	}
-
-	// Check if all characters are progress indicators
-	for _, char := range trimmed {
-		if char != '.' && char != 'F' && char != 'E' && char != 'S' {
-			return false
-		}
-	}
-
-	return true
-}

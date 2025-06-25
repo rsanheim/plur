@@ -9,8 +9,8 @@ import (
 	"github.com/rsanheim/rux/types"
 )
 
-// NotificationParser parses minitest text output into notifications
-type NotificationParser struct {
+// OutputParser parses minitest text output into notifications
+type OutputParser struct {
 	currentTest     string
 	currentLocation string
 	inFailure       bool
@@ -19,7 +19,7 @@ type NotificationParser struct {
 }
 
 // ParseLine parses a single line of minitest output
-func (p *NotificationParser) ParseLine(line string) ([]types.TestNotification, bool) {
+func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	notifications := []types.TestNotification{}
 
 	// Check for test execution start
