@@ -41,24 +41,20 @@ func streamTestOutput(
 			line := scanner.Text()
 
 			if firstOutput {
-				// Trace time to first output
+				// tracing Removed
 				firstOutput = false
-				tracing.LogEvent(ctx, "ruby_first_output",
-					"worker_id", workerIndex,
-					"test_files", len(testFiles),
-					"framework", string(framework),
-					"time_since_spawn", time.Since(start).Seconds()*1000)
 			}
 
 			// Parse line into notifications
 			notifications, consumed := parser.ParseLine(line)
-			
+
 			// If line wasn't consumed by parser, add it as raw output
 			if !consumed {
 				collector.AddNotification(types.OutputNotification{
 					Content: line,
 				})
 			}
+			logger.Logger.Debug("after parseLine", "notifications", notifications)
 
 			// Process each notification
 			for _, notification := range notifications {
@@ -73,6 +69,13 @@ func streamTestOutput(
 							Type:     "dot",
 						}
 					case types.TestFailed:
+						outputChan <- OutputMessage{
+							WorkerID: workerIndex,
+							Type:     "failure",
+						}
+					// TODO: we need to handle error progress indicators from minitest here (i.e. "E")
+					// not sure if we can change outputAggregator to do that correctly without breaking RSpec
+					case types.TestError:
 						outputChan <- OutputMessage{
 							WorkerID: workerIndex,
 							Type:     "failure",

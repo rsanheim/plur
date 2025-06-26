@@ -6,158 +6,127 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/types"
 )
 
 // OutputParser parses minitest text output into notifications
 type OutputParser struct {
-	currentTest     string
-	currentLocation string
-	inFailure       bool
-	failureBuffer   strings.Builder
-	testCounter     int
+	inFailure     bool
+	testsRunning  bool
+	failureBuffer strings.Builder
+	testCounter   int
 }
 
 // ParseLine parses a single line of minitest output
 func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
+	logger.Logger.Debug("[ParseLine]", "line", line)
+
 	notifications := []types.TestNotification{}
 
-	// Check for test execution start
-	if strings.Contains(line, "in test_") {
-		if match := regexp.MustCompile(`in (test_\w+)`).FindStringSubmatch(line); match != nil {
-			p.currentTest = match[1]
-			notifications = append(notifications, types.TestCaseNotification{
-				Event:       types.TestStarted,
-				TestID:      p.currentTest,
-				Description: p.currentTest,
-				Status:      "running",
-			})
-		}
+	// skip empty lines
+	if line == "" {
+		return notifications, false
 	}
 
-	// Check for progress indicators
-	for _, char := range line {
-		switch char {
-		case '.':
-			p.testCounter++
-			testID := p.currentTest
-			if testID == "" {
-				testID = fmt.Sprintf("test_%d", p.testCounter)
-			}
-
-			notifications = append(notifications, types.TestCaseNotification{
-				Event:       types.TestPassed,
-				TestID:      testID,
-				Description: testID,
-				Status:      "passed",
-				Location:    p.currentLocation,
-			})
-
-		case 'F':
-			p.testCounter++
-			p.inFailure = true
-			p.failureBuffer.Reset()
-
-		case 'E':
-			p.testCounter++
-			p.inFailure = true
-			p.failureBuffer.Reset()
-
-		case 'S':
-			p.testCounter++
-			testID := p.currentTest
-			if testID == "" {
-				testID = fmt.Sprintf("test_%d", p.testCounter)
-			}
-
-			notifications = append(notifications, types.TestCaseNotification{
-				Event:          types.TestPending,
-				TestID:         testID,
-				Description:    testID,
-				Status:         "skipped",
-				Location:       p.currentLocation,
-				PendingMessage: "Skipped",
-			})
-		}
+	// Tests are starting, progress will begin.
+	if strings.HasPrefix(line, "# Running:") {
+		p.testsRunning = true
+		notifications = append(notifications, types.SuiteNotification{
+			Event: types.SuiteStarted,
+		})
+		return notifications, false
 	}
 
-	// Handle failure details
-	if p.inFailure {
-		p.failureBuffer.WriteString(line + "\n")
-
-		// Check if we've captured the whole failure
-		if line == "" || strings.HasPrefix(line, "bin/rails test") {
-			// Parse the failure
-			failureText := p.failureBuffer.String()
-
-			// Extract test name and location
-			if match := regexp.MustCompile(`(\w+Test)#(test_\w+) \[(.+):(\d+)\]`).FindStringSubmatch(failureText); match != nil {
-				className := match[1]
-				testName := match[2]
-				filePath := match[3]
-				lineNum, _ := strconv.Atoi(match[4])
-				location := fmt.Sprintf("%s:%d", filePath, lineNum)
-
-				notification := types.TestCaseNotification{
-					Event:           types.TestFailed,
-					TestID:          location,
-					Description:     testName,
-					FullDescription: fmt.Sprintf("%s#%s", className, testName),
-					Location:        location,
-					FilePath:        filePath,
-					LineNumber:      lineNum,
-					Status:          "failed",
-					Exception: &types.TestException{
-						Message: strings.TrimSpace(failureText),
-					},
-				}
-
-				// Try to extract exception class from error messages
-				if strings.Contains(failureText, "Error:") {
-					if errorMatch := regexp.MustCompile(`(\w+Error):`).FindStringSubmatch(failureText); errorMatch != nil {
-						notification.Exception.Class = errorMatch[1]
-					}
-				} else if strings.Contains(failureText, "Failure:") {
-					notification.Exception.Class = "AssertionFailure"
-				}
-
-				// Extract backtrace
-				lines := strings.Split(failureText, "\n")
-				for _, l := range lines {
-					if strings.Contains(l, ".rb:") && strings.TrimSpace(l) != "" {
-						notification.Exception.Backtrace = append(notification.Exception.Backtrace, strings.TrimSpace(l))
-					}
-				}
-
-				notifications = append(notifications, notification)
-			}
-
-			p.inFailure = false
-		}
+	// We know the suite is done and progress is done being reported
+	if strings.HasPrefix(line, "Finished in") {
+		p.testsRunning = false
+		return notifications, false
 	}
 
+	// If we get down here, we can try to parse progress
+	if p.testsRunning {
+		notifications = p.parseProgressLine(line)
+		return notifications, false
+	}
+
+	return notifications, false // Minitest output is always preserved
+}
+
+func (p *OutputParser) parseSummaryLine(line string) types.TestNotification {
 	// Check for summary line
 	if match := regexp.MustCompile(`(\d+) runs?, (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`).FindStringSubmatch(line); match != nil {
 		runs, _ := strconv.Atoi(match[1])
 		failures, _ := strconv.Atoi(match[3])
 		errors, _ := strconv.Atoi(match[4])
 		skips, _ := strconv.Atoi(match[5])
-
-		notifications = append(notifications, types.SuiteNotification{
+		finishNotification := types.SuiteNotification{
 			Event:        types.SuiteFinished,
 			TestCount:    runs,
 			FailureCount: failures + errors,
 			PendingCount: skips,
-		})
+		}
+		return finishNotification
 	}
+	finishNotification := types.SuiteNotification{
+		Event: types.SuiteFinished,
+	}
+	return finishNotification
+}
 
-	// Check for duration line
-	if match := regexp.MustCompile(`Finished in (\d+\.\d+)s`).FindStringSubmatch(line); match != nil {
-		if duration, err := strconv.ParseFloat(match[1], 64); err == nil {
-			// Could enhance SuiteNotification with this info
-			_ = duration
+func (p *OutputParser) parseProgressLine(line string) []types.TestNotification {
+	notifications := []types.TestNotification{}
+
+	// Check for progress indicators
+	for _, char := range line {
+		switch char {
+		case '.':
+			p.testCounter++
+			testID := fmt.Sprintf("test_%d", p.testCounter)
+
+			notifications = append(notifications, types.TestCaseNotification{
+				Event:       types.TestPassed,
+				TestID:      testID,
+				Description: testID,
+				Status:      "passed",
+			})
+
+		case 'F':
+			p.testCounter++
+			testID := fmt.Sprintf("test_%d", p.testCounter)
+
+			notifications = append(notifications, types.TestCaseNotification{
+				Event:       types.TestFailed,
+				TestID:      testID,
+				Description: testID,
+				Status:      "failed",
+			})
+
+		case 'E':
+			p.testCounter++
+			testID := fmt.Sprintf("test_%d", p.testCounter)
+
+			notifications = append(notifications, types.TestCaseNotification{
+				Event:       types.TestError,
+				TestID:      testID,
+				Description: testID,
+				Status:      "error",
+			})
+
+		case 'S':
+			p.testCounter++
+			testID := fmt.Sprintf("test_%d", p.testCounter)
+
+			notifications = append(notifications, types.TestCaseNotification{
+				Event:          types.TestPending,
+				TestID:         testID,
+				Description:    testID,
+				Status:         "skipped",
+				PendingMessage: "Skipped",
+			})
+		default:
+			// do nothing for now
 		}
 	}
-
-	return notifications, false // Minitest output is always preserved
+	return notifications
 }

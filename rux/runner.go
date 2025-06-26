@@ -536,5 +536,3 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 
 	return result
 }
-
-
