@@ -73,6 +73,8 @@ plugins:
       exclude:
         - index.md
       enabled: true
+  - panzoom:
+      full_screen: true
 
 validation:
   nav:
@@ -89,3 +91,6 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/rsanheim/rux-meta
+
+extra_css:
+  - stylesheets/extra.css
