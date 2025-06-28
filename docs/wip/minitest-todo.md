@@ -58,19 +58,38 @@ This is the single source of truth for all Minitest support tasks. Tasks are org
 - [x] Updated RunMinitestFiles to use factory and shared helper
 - [x] Removed `parseMinitestOutput()` and `isProgressLine()` functions
 - [x] Removed unused imports and dead code
-
-**Outstanding Issues:**
-- [ ] Output format mismatch - showing RSpec-style instead of minitest-style
-- [x] Failures not being detected properly in minitest-failures tests → **FIXED** (2025-06-27)
-- [ ] Framework context lost by the time we print results
-
-See [Refactoring Summary](minitest-refactoring-summary.md) for detailed analysis.
-
-### Code Organization [COMPLETE]
 - [x] Fix package structure (notification types duplicated in 3 places) → Moved to `types` package
 - [x] Move parsers to appropriate packages → Parser interface in `types` package
 - [x] Consolidate duplicate type definitions → All using shared `types` package
 - [x] Clean up dead code from refactoring → Removed duplicate functions and types
+- [x] Failures not being detected properly in minitest-failures tests → **FIXED** (2025-06-27)
+
+**Outstanding Issues:**
+- [ ] Add a -C global flag to rux to change the working dir. (It should behave much like "git -C xxx") This should be done before doing anything else - very early (via Kong hook?) and done via Go's` `os.Chdir()`. This should NOT pollute or trickle down into command execution, test commands or watch commands should 'just work' based on the new changed dir. This should make executing rux for all our various sub projects fixtures much easier.
+
+Example:
+  ```
+  # these commands are the same as `cd ~/src/oss/rux-meta/fixtures/minitest-success && rux test/calculator_test.rb`
+  > rux -C ~/src/oss/rux-meta/fixtures/minitest-success test/calculator_test.rb
+  > rux -C fixtures/minitest-failures test/calculator_test.rb
+  > rux -C fixtures/minitest-failures # this executes the default command in the changed dir
+  ```
+
+- [ ] Fix "Running" prelude output for minitest tests - we still say 'spec files' when its 'test files'. Also, if its really 1 spec or test file, we should never say "in parallel" - that doesn't make sense. If its one file we can't parallelize.
+
+Example: 
+  ```
+    > rux test/calculator_test.rb 
+    rux version v0.7.6-0.20250628065354-2392e7f82dde
+    Running 1 spec files in parallel using 1 workers (20 cores available)...
+    Using size-based grouped execution: 1 file across 18 workers
+  ```
+
+- [ ] Create an enum for "dot", "fail", "error", etc - and use that everywhere for progress tracking. No more repeating those strings throughout for progress tracking.
+- [ ] Finally -> Fix `bin/rspec spec/minitest_integration_spec.rb` - this is the last failing spec, and it will drive us to get the output format right.
+  - [ ] make sure this is done as simple as possible, and the rest of the suite MUST continue to pass
+  - [ ] Output format mismatch - showing RSpec-style instead of minitest-style
+- [ ] Framework context lost by the time we print results (Rob: I'm not sure what this means)
 
 ## Phase 4: Future Enhancements
 
