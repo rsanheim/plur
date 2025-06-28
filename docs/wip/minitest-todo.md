@@ -153,10 +153,40 @@ The parser now correctly:
 - Maintains the raw output for display
 - Creates notifications that integrate with the existing event system
 
+### Double-Counting Fix Implementation: ✅ COMPLETE
+
+Successfully fixed the critical issue where failures were being counted twice:
+
+1. **Refactored to State Machine** - Replaced multiple boolean flags with a clean state machine
+2. **Added ProgressCounts** - Track test progress separately from actual results
+3. **Index-Based Tracking** - Map progress indicators to test notifications by index
+4. ~~**In-Place Updates** - Update existing notifications with failure details~~ **REPLACED**
+5. **Test-Driven Development** - Created comprehensive tests before implementation
+
+### ProgressEvent Refactoring: ✅ COMPLETE (2025-06-27)
+
+Implemented a cleaner approach using ProgressEvent for real-time display:
+
+1. **Created ProgressEvent Type** - Minimal type for progress indicators only
+2. **Separated Concerns** - Progress events for display, test notifications for results
+3. **Eliminated Duplicates** - No more duplicate notifications or filtering needed
+4. **Cleaner Architecture** - Removed all complex filtering logic from collectors and display
+
+The parser now:
+- Emits ProgressEvents during progress parsing for real-time feedback
+- Creates complete TestCaseNotifications only during failure parsing and summary
+- Correctly reports test counts (7 tests, 4 failures for single file)
+- No duplicate display entries
+- All Go tests passing
+- Integration tests correctly show proper counts
+
 ### Remaining Issues:
 - Output format still shows RSpec-style summaries instead of minitest-style
 - Need to handle Error exceptions differently from assertion Failures
 - Framework context needs to be passed through to PrintResults
+- Multi-file minitest runs show "Failure number out of range" errors
+  - Failure numbering continues across files but parser instances are per-file
+  - This doesn't affect correctness but shows error logs
 
 ---
 
