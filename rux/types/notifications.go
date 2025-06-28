@@ -14,6 +14,7 @@ const (
 	SuiteStarted  TestEvent = "suite_started"
 	SuiteFinished TestEvent = "suite_finished"
 	RawOutput     TestEvent = "raw_output"
+	Progress      TestEvent = "progress" // Progress indicator for real-time display
 )
 
 // TestNotification is the interface that all notifications implement
@@ -88,3 +89,14 @@ type FormattedSummaryNotification struct {
 
 func (n FormattedSummaryNotification) GetEvent() TestEvent { return RawOutput }
 func (n FormattedSummaryNotification) GetTestID() string   { return "" }
+
+// ProgressEvent represents a progress indicator for real-time display only
+// This is not a test result, just a display notification
+type ProgressEvent struct {
+	Event     TestEvent // Always Progress
+	Character string    // '.', 'F', 'E', 'S'
+	Index     int       // Position in test run (0-based)
+}
+
+func (n ProgressEvent) GetEvent() TestEvent { return n.Event }
+func (n ProgressEvent) GetTestID() string   { return "" }

@@ -60,7 +60,7 @@ func (a *TestCollector) AddNotification(n types.TestNotification) {
 // BuildResult creates a TestResult from collected notifications
 func (a *TestCollector) BuildResult(testFile *TestFile, duration time.Duration) TestResult {
 	// Convert TestCaseNotification failures to TestFailure format
-	failures := make([]TestFailure, 0, len(a.failures))
+	failures := make([]TestFailure, 0)
 	for _, notification := range a.failures {
 		failure := TestFailure{
 			File:        testFile,
@@ -95,9 +95,21 @@ func (a *TestCollector) BuildResult(testFile *TestFile, duration time.Duration) 
 		result.State = StateFailed
 	}
 
-	// If we have suite info, use its load time
+	// If we have suite info, use its values
 	if a.suiteInfo != nil {
 		result.FileLoadTime = a.suiteInfo.LoadTime
+		// For minitest, use the test count from the summary if available
+		if a.suiteInfo.TestCount > 0 {
+			result.ExampleCount = a.suiteInfo.TestCount
+		}
+		// Use suite's failure count if available (includes both failures and errors)
+		if a.suiteInfo.FailureCount >= 0 {
+			result.FailureCount = a.suiteInfo.FailureCount
+		}
+		// Use suite's pending count if available
+		if a.suiteInfo.PendingCount >= 0 {
+			result.PendingCount = a.suiteInfo.PendingCount
+		}
 	}
 
 	return result

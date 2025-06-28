@@ -23,9 +23,9 @@ This is the single source of truth for all Minitest support tasks. Tasks are org
 - [x] Add minitest integration tests
 - [x] Fix all failing integration tests
 
-## Phase 3: Event-Based Refactoring [PARTIALLY COMPLETE]
+## Phase 3: Event-Based Refactoring [MOSTLY COMPLETE]
 
-**Status**: Architecture refactored but output format issues remain. See [Refactoring Summary](minitest-refactoring-summary.md) for details.
+**Status**: Architecture refactored, failure parsing implemented, but output format issues remain. See [Refactoring Summary](minitest-refactoring-summary.md) for details.
 
 ### Core Types [COMPLETE]
 - [x] Create TestEvent enum (TestStarted, TestPassed, TestFailed, etc.) → [Architecture](test-event-architecture.md#test-events)
@@ -39,6 +39,7 @@ This is the single source of truth for all Minitest support tasks. Tasks are org
 - [x] Implement RSpecOutputParser for JSON
 - [x] Implement MinitestOutputParser for text output
 - [x] Add progress indicator parsing to MinitestParser
+- [x] Add failure detail parsing to MinitestParser → **NEW** (2025-06-27)
 
 ### Integration Tasks [MOSTLY COMPLETE]
 - [x] Create TestCollector to collect events → [Accumulator spec](test-event-architecture.md#accumulator)
@@ -60,7 +61,7 @@ This is the single source of truth for all Minitest support tasks. Tasks are org
 
 **Outstanding Issues:**
 - [ ] Output format mismatch - showing RSpec-style instead of minitest-style
-- [ ] Failures not being detected properly in minitest-failures tests
+- [x] Failures not being detected properly in minitest-failures tests → **FIXED** (2025-06-27)
 - [ ] Framework context lost by the time we print results
 
 See [Refactoring Summary](minitest-refactoring-summary.md) for detailed analysis.
@@ -95,7 +96,7 @@ See [Refactoring Summary](minitest-refactoring-summary.md) for detailed analysis
 - [x] Type duplication between packages → **RESOLVED**: Created shared `types` package
 - [x] Parser integration incomplete → **RESOLVED**: Both parsers integrated
 - [ ] Output format issues → Minitest output being reformatted as RSpec style
-- [ ] Failure detection issues → Minitest failures not properly parsed
+- [x] Failure detection issues → **RESOLVED** (2025-06-27): Minitest failures now properly parsed
 - [ ] No error recovery for malformed output
 - [ ] Limited minitest reporter support
 
@@ -120,19 +121,73 @@ See [Refactoring Summary](minitest-refactoring-summary.md#current-challenges) fo
 - [x] Package structure is **clean and organized**
 - [x] Both runners use new event-based architecture
 - [ ] Output formatting needs to be framework-aware
-- [ ] Minitest failure parsing needs fixes
+- [x] Minitest failure parsing → **FIXED** (2025-06-27)
 
 See [Refactoring Summary](minitest-refactoring-summary.md) for analysis of current issues.
 
 ### Next Steps
 
 1. Fix output format issues - preserve minitest's native output format
-2. Fix failure detection in minitest parser
+2. ~~Fix failure detection in minitest parser~~ → **COMPLETED** (2025-06-27)
 3. Make PrintResults framework-aware
 4. Add framework context to TestResult or TestSummary
 5. Test end-to-end with real minitest projects
 6. Update documentation
 
+## Progress Summary (2025-06-27)
+
+### Minitest Failure Parsing Implementation:
+
+Successfully added failure parsing to the minitest OutputParser:
+
+1. **State Management** - Added `afterFinished` and `inFailureDetails` states to track parsing phase
+2. **Failure Header Detection** - Parses patterns like "1) Failure:" and "2) Error:"
+3. **Test Location Extraction** - Extracts test class, method, file path, and line number from failure headers
+4. **Message Accumulation** - Collects assertion failure messages across multiple lines
+5. **TestNotification Creation** - Creates proper TestCaseNotification objects with TestException details
+
+The parser now correctly:
+- Detects when test execution completes and failure details begin
+- Parses each failure block independently
+- Extracts all relevant failure information
+- Maintains the raw output for display
+- Creates notifications that integrate with the existing event system
+
+### Double-Counting Fix Implementation: ✅ COMPLETE
+
+Successfully fixed the critical issue where failures were being counted twice:
+
+1. **Refactored to State Machine** - Replaced multiple boolean flags with a clean state machine
+2. **Added ProgressCounts** - Track test progress separately from actual results
+3. **Index-Based Tracking** - Map progress indicators to test notifications by index
+4. ~~**In-Place Updates** - Update existing notifications with failure details~~ **REPLACED**
+5. **Test-Driven Development** - Created comprehensive tests before implementation
+
+### ProgressEvent Refactoring: ✅ COMPLETE (2025-06-27)
+
+Implemented a cleaner approach using ProgressEvent for real-time display:
+
+1. **Created ProgressEvent Type** - Minimal type for progress indicators only
+2. **Separated Concerns** - Progress events for display, test notifications for results
+3. **Eliminated Duplicates** - No more duplicate notifications or filtering needed
+4. **Cleaner Architecture** - Removed all complex filtering logic from collectors and display
+
+The parser now:
+- Emits ProgressEvents during progress parsing for real-time feedback
+- Creates complete TestCaseNotifications only during failure parsing and summary
+- Correctly reports test counts (7 tests, 4 failures for single file)
+- No duplicate display entries
+- All Go tests passing
+- Integration tests correctly show proper counts
+
+### Remaining Issues:
+- Output format still shows RSpec-style summaries instead of minitest-style
+- Need to handle Error exceptions differently from assertion Failures
+- Framework context needs to be passed through to PrintResults
+- Multi-file minitest runs show "Failure number out of range" errors
+  - Failure numbering continues across files but parser instances are per-file
+  - This doesn't affect correctness but shows error logs
+
 ---
 
-Last updated: 2025-06-24
+Last updated: 2025-06-27

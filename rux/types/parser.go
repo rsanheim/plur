@@ -5,4 +5,7 @@ type TestOutputParser interface {
 	// ParseLine parses a single line of output and returns notifications
 	// The bool indicates if the line was consumed (should not be included in raw output)
 	ParseLine(line string) ([]TestNotification, bool)
+	// NotificationToProgress converts a notification to a progress type
+	// If the notification is not a progress notification, the second return value is false
+	NotificationToProgress(notification TestNotification) (string, bool)
 }

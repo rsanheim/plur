@@ -112,8 +112,11 @@ func TestTestCollector_BuildResult(t *testing.T) {
 
 	// Add suite info
 	collector.AddNotification(types.SuiteNotification{
-		Event:    types.SuiteFinished,
-		LoadTime: 100 * time.Millisecond,
+		Event:        types.SuiteFinished,
+		LoadTime:     100 * time.Millisecond,
+		TestCount:    2,
+		FailureCount: 1,
+		PendingCount: 0,
 	})
 
 	// Add some output

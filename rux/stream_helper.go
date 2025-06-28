@@ -58,41 +58,29 @@ func streamTestOutput(
 
 			// Process each notification
 			for _, notification := range notifications {
+
+				progressType, isProgress := parser.NotificationToProgress(notification)
+				// Handle progress notifications and then continue to next notification
+				if isProgress {
+					if outputChan != nil {
+						outputChan <- OutputMessage{
+							WorkerID: workerIndex,
+							Type:     progressType,
+						}
+					}
+				}
+
+				// Add all notifications to collector (ProgressEvents will be ignored)
 				collector.AddNotification(notification)
 
-				// Send progress updates to output channel
-				if outputChan != nil {
-					switch notification.GetEvent() {
-					case types.TestPassed:
-						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     "dot",
-						}
-					case types.TestFailed:
-						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     "failure",
-						}
-					// TODO: we need to handle error progress indicators from minitest here (i.e. "E")
-					// not sure if we can change outputAggregator to do that correctly without breaking RSpec
-					case types.TestError:
-						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     "failure",
-						}
-					case types.TestPending:
-						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     "pending",
-						}
-					case types.SuiteStarted:
-						if suite, ok := notification.(types.SuiteNotification); ok && suite.LoadTime > 0 {
-							tracing.LogEvent(ctx, string(framework)+"_loaded",
-								"worker_id", workerIndex,
-								"test_files", len(testFiles),
-								"load_time", suite.LoadTime.Seconds(),
-								"time_since_spawn", time.Since(start).Seconds()*1000)
-						}
+				// Handle suite started events for tracing
+				if outputChan != nil && notification.GetEvent() == types.SuiteStarted {
+					if suite, ok := notification.(types.SuiteNotification); ok && suite.LoadTime > 0 {
+						tracing.LogEvent(ctx, string(framework)+"_loaded",
+							"worker_id", workerIndex,
+							"test_files", len(testFiles),
+							"load_time", suite.LoadTime.Seconds(),
+							"time_since_spawn", time.Since(start).Seconds()*1000)
 					}
 				}
 			}
