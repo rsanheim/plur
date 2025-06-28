@@ -58,42 +58,22 @@ func streamTestOutput(
 
 			// Process each notification
 			for _, notification := range notifications {
-				// Handle progress events separately - they don't go to collector
-				if progress, ok := notification.(types.ProgressEvent); ok {
+
+				progressType, isProgress := parser.NotificationToProgress(notification)
+				// Handle progress notifications and then continue to next notification
+				if isProgress {
 					if outputChan != nil {
-						// Send progress indicator based on character
-						switch progress.Character {
-						case ".":
-							outputChan <- OutputMessage{
-								WorkerID: workerIndex,
-								Type:     "dot",
-							}
-						case "F":
-							outputChan <- OutputMessage{
-								WorkerID: workerIndex,
-								Type:     "failure",
-							}
-						case "E":
-							outputChan <- OutputMessage{
-								WorkerID: workerIndex,
-								Type:     "failure", // Display errors as failures for now
-							}
-						case "S":
-							outputChan <- OutputMessage{
-								WorkerID: workerIndex,
-								Type:     "pending",
-							}
+						outputChan <- OutputMessage{
+							WorkerID: workerIndex,
+							Type:     progressType,
 						}
 					}
-					continue // Don't add progress events to collector
 				}
 
-				// Add non-progress notifications to collector
+				// Add all notifications to collector (ProgressEvents will be ignored)
 				collector.AddNotification(notification)
 
-				// Only handle suite events for non-progress notifications
-				// Test result notifications don't need progress output since we already
-				// displayed progress via ProgressEvents
+				// Handle suite started events for tracing
 				if outputChan != nil && notification.GetEvent() == types.SuiteStarted {
 					if suite, ok := notification.(types.SuiteNotification); ok && suite.LoadTime > 0 {
 						tracing.LogEvent(ctx, string(framework)+"_loaded",

@@ -12,6 +12,20 @@ import (
 // OutputParser parses RSpec JSON output into notifications
 type OutputParser struct{}
 
+func (p *OutputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
+	switch notification.GetEvent() {
+	case types.TestPassed:
+		return "dot", true
+	case types.TestFailed:
+		return "failure", true
+	case types.TestError:
+		return "error", true
+	case types.TestPending:
+		return "pending", true
+	}
+	return "", false
+}
+
 // ParseLine parses a single line of RSpec output
 func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	notifications := []types.TestNotification{}

@@ -51,6 +51,25 @@ type FailureInfo struct {
 	message    strings.Builder
 }
 
+// Converts a TestNotification to a progress type (just a string for now) for streaming to output
+func (p *OutputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
+	if notification.GetEvent() != types.Progress {
+		return "", false
+	}
+	event := notification.(types.ProgressEvent)
+	switch event.Character {
+	case ".":
+		return "dot", true
+	case "F":
+		return "failure", true
+	case "E":
+		return "error", true
+	case "S":
+		return "pending", true
+	}
+	return "", true
+}
+
 // ParseLine parses a single line of minitest output
 func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	logger.Logger.Debug("[ParseLine]", "line", line, "state", p.state)

@@ -23,6 +23,10 @@ func (p *RSpecParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	return p.parser.ParseLine(line)
 }
 
+func (p *RSpecParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
+	return p.parser.NotificationToProgress(notification)
+}
+
 // MinitestParser implements TestOutputParser for Minitest text output
 type MinitestParser struct {
 	parser *minitest.OutputParser
@@ -38,4 +42,8 @@ func NewMinitestParser() *MinitestParser {
 // ParseLine parses a single line of Minitest output
 func (p *MinitestParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	return p.parser.ParseLine(line)
+}
+
+func (p *MinitestParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
+	return p.parser.NotificationToProgress(notification)
 }
