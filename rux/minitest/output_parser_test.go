@@ -1,7 +1,6 @@
 package minitest
 
 import (
-	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -38,9 +37,9 @@ func TestOutputParser_StateTransitions(t *testing.T) {
 
 	// Transition to SummaryComplete
 	notifications, _ = parser.ParseLine("3 runs, 3 assertions, 0 failures, 0 errors, 0 skips")
-	require.Len(t, notifications, 4) // 3 passed tests + 1 suite finished
-	// Check last notification is suite finished
-	assert.Equal(t, types.SuiteFinished, notifications[len(notifications)-1].GetEvent())
+	require.Len(t, notifications, 1) // Just suite finished
+	// Check notification is suite finished
+	assert.Equal(t, types.SuiteFinished, notifications[0].GetEvent())
 	assert.Equal(t, SummaryComplete, parser.state)
 }
 
@@ -83,8 +82,7 @@ func TestOutputParser_ProgressParsing(t *testing.T) {
 		assert.Equal(t, 3, parser.progress.passed)
 		assert.Equal(t, 2, parser.progress.failed)
 
-		// Failure indices should be tracked
-		assert.Equal(t, []int{2, 4}, parser.failureIndices)
+		// We no longer track failure indices
 	})
 
 	t.Run("with errors and skips", func(t *testing.T) {
@@ -97,18 +95,15 @@ func TestOutputParser_ProgressParsing(t *testing.T) {
 		assert.Equal(t, "E", notifications[2].(types.ProgressEvent).Character)
 		assert.Equal(t, "S", notifications[3].(types.ProgressEvent).Character)
 
-		// Indices tracking
-		assert.Equal(t, []int{1}, parser.failureIndices)
-		assert.Equal(t, []int{2}, parser.errorIndices)
+		// We no longer track indices
 	})
 }
 
 func TestOutputParser_FailureDetailMatching(t *testing.T) {
 	// Setup: parser that has already processed progress line
 	parser := &OutputParser{
-		state:          TestsComplete,
-		failureIndices: []int{2, 4}, // 0-based indices
-		progress:       ProgressCounts{examples: 5, passed: 3, failed: 2},
+		state:    TestsComplete,
+		progress: ProgressCounts{examples: 5, passed: 3, failed: 2},
 	}
 
 	// Parse first failure header
@@ -131,7 +126,7 @@ func TestOutputParser_FailureDetailMatching(t *testing.T) {
 	// Check the created notification
 	failure := notifications[0].(types.TestCaseNotification)
 	assert.Equal(t, types.TestFailed, failure.Event)
-	assert.Equal(t, testID(3), failure.TestID) // Should match the first failure (index 2 + 1)
+	assert.Equal(t, "MixedResultsTest#test_email_validation", failure.TestID) // Uses actual test name
 	assert.Equal(t, "MixedResultsTest#test_email_validation", failure.Description)
 	assert.Equal(t, "test/mixed_results_test.rb:54", failure.Location)
 	assert.Equal(t, "Expected false to be truthy.", failure.Exception.Message)
@@ -191,10 +186,9 @@ func TestOutputParser_FullIntegration(t *testing.T) {
 	// 1 suite start
 	// 7 progress events (from "FFF..F.")
 	// 4 failure notifications (from failure details)
-	// 3 passed test notifications (from summary)
 	// 1 suite finish
-	// Total = 16 notifications
-	assert.Len(t, allNotifications, 16)
+	// Total = 13 notifications (no passed test notifications)
+	assert.Len(t, allNotifications, 13)
 
 	// Check progress events
 	assert.Len(t, progressEvents, 7)
@@ -207,12 +201,11 @@ func TestOutputParser_FullIntegration(t *testing.T) {
 	assert.Equal(t, "F", progressEvents[5].Character)
 	assert.Equal(t, ".", progressEvents[6].Character)
 
-	// Check test case notifications
-	assert.Len(t, testCases, 7) // 4 failures + 3 passed
+	// Check test case notifications - only failures now
+	assert.Len(t, testCases, 4) // 4 failures only
 
-	// Count failures and passed tests
+	// Count failures
 	failureCount := 0
-	passedCount := 0
 	for _, tc := range testCases {
 		if tc.Event == types.TestFailed {
 			failureCount++
@@ -221,12 +214,9 @@ func TestOutputParser_FullIntegration(t *testing.T) {
 			assert.NotEmpty(t, tc.Location)
 			assert.NotNil(t, tc.Exception)
 			assert.NotEmpty(t, tc.Exception.Message)
-		} else if tc.Event == types.TestPassed {
-			passedCount++
 		}
 	}
 	assert.Equal(t, 4, failureCount)
-	assert.Equal(t, 3, passedCount)
 
 	// Check suite summary
 	var suite types.SuiteNotification
@@ -239,9 +229,4 @@ func TestOutputParser_FullIntegration(t *testing.T) {
 	assert.Equal(t, 7, suite.TestCount)
 	assert.Equal(t, 4, suite.FailureCount)
 	assert.Equal(t, 0, suite.PendingCount)
-}
-
-// testID generates a test ID for the given index (1-based)
-func testID(index int) string {
-	return fmt.Sprintf("test_%d", index)
 }

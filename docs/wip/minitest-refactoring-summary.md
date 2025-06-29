@@ -1,77 +1,220 @@
-# Minitest Refactoring Summary
+# Minitest Refactoring - Architectural Analysis
 
-*Date: 2025-06-24*
+*Date: 2025-06-29*
 
-## What We've Accomplished
+## Current Status
 
-1. **Successfully refactored the architecture** - We've created a clean event-based system with:
-   - Parser factory that returns the right parser based on framework
-   - Shared streaming logic that both RSpec and Minitest use
-   - TestCollector that accumulates events into results
-   - Consistent naming (OutputParser for both frameworks)
+The minitest support has been successfully implemented with an event-based architecture. Key accomplishments include:
+- Parser factory pattern for framework-specific parsers
+- Shared streaming logic between RSpec and Minitest
+- TestCollector for accumulating test results
+- Framework-specific output formatting via FormatSummary
+- Removal of problematic index-based failure tracking
 
-2. **The plumbing works** - Tests are running, dots are appearing, the framework detection works.
+While functional, the implementation reveals deeper architectural issues that warrant examination.
 
-## Current Challenges
+## Deep Architectural Analysis
 
-### Challenge 1: Output Format Mismatch
-The integration tests expect minitest-style output ("12 runs, 5 assertions...") but are getting RSpec-style output ("12 examples, 0 failures"). This happens because:
-- The `PrintResults` function always formats output RSpec-style
-- It doesn't know which framework was used
-- For minitest, we should preserve and display the raw output
+### 1. Dual Representation Problem
 
-### Challenge 2: Failures Not Being Detected
-When running minitest-failures, we see:
-- Progress indicators: 24 green dots (should be mix of dots and F's)
-- Summary: "24 examples, 0 failures" (should show failures)
+The codebase maintains two parallel representations of test failures:
 
-The root cause seems to be that the minitest parser isn't properly handling failures. When I look at actual minitest output:
+```go
+// In types/notifications.go
+type TestCaseNotification struct {
+    Event      TestEvent
+    TestID     string
+    Exception  *TestException
+    // ... other fields
+}
+
+// In result.go
+type TestFailure struct {
+    File        *TestFile
+    Description string
+    Message     string
+    Backtrace   []string
+}
 ```
-...FFE
+
+The TestCollector unnecessarily converts notifications to failures, creating:
+- Duplication of data
+- Potential for inconsistencies
+- Extra mapping logic that could introduce bugs
+- Violation of DRY principle
+
+### 2. Leaky Abstractions
+
+Framework-specific concepts leak into supposedly generic packages:
+
+```go
+// In types/notifications.go - supposedly generic
+type FormattedFailuresNotification struct { ... }  // RSpec-specific
+type FormattedSummaryNotification struct { ... }   // RSpec-specific
+
+// In test_collector.go - supposedly generic
+func (a *TestCollector) GetFormattedFailures() string  // RSpec-specific
+func (a *TestCollector) GetFormattedSummary() string   // RSpec-specific
 ```
-The progress indicators come on one line, and our parser correctly iterates through them. But when it sees 'F' or 'E', it just sets `p.inFailure = true` but doesn't create a TestFailed notification immediately.
 
-### Challenge 3: Two-Phase Parsing Problem
-Minitest output has two distinct phases:
-1. Progress indicators (`.`, `F`, `E`, `S`)
-2. Detailed failure information that comes later
+This indicates the abstraction isn't truly generic - it's RSpec-biased with Minitest retrofitted.
 
-Our parser tries to match the failure details to the earlier progress indicators, but this matching isn't working correctly.
+### 3. Event System Misuse
 
-## Reflections on the Abstraction
+The notification system shows signs of misapplication:
 
-### What's Working Well
-1. **The TestCollector abstraction is solid** - It successfully accumulates notifications and builds results
-2. **The parser interface is clean** - Both parsers implement the same interface
-3. **The shared streaming logic works** - No duplication between frameworks
+```go
+// ProgressEvent implements TestNotification but gets ignored by collectors
+type ProgressEvent struct {
+    Event     TestEvent
+    Character string
+    Index     int
+}
+```
 
-### What's Challenging
-1. **Output format assumptions** - The system assumes we want to reformat output into a consistent style, but for minitest we want to preserve the original
-2. **Framework context loss** - By the time we get to `PrintResults`, we don't know which framework generated the results
-3. **Different parsing models** - RSpec gives us structured JSON; minitest gives us unstructured text that requires stateful parsing
+Issues:
+- Not all notifications are equal, but the interface treats them as such
+- Events are used for what's essentially a data transformation pipeline
+- The system would be simpler with direct data structures
 
-### The Real Issue
-The TestEvent/TestCollector abstraction was designed around RSpec's model where:
-- Each test event is self-contained
-- We get structured data (JSON)
-- We can reformat output consistently
+### 4. Framework Threading Anti-Pattern
 
-But minitest is different:
-- Progress indicators are separate from failure details  
-- We need to preserve raw output for the authentic minitest experience
-- The parsing is more stateful and context-dependent
+TestFramework is passed through multiple layers:
 
-## Potential Solutions
+```
+Config → Runner → Result → Summary → PrintResults
+```
 
-1. **Quick fix**: Pass framework type through to PrintResults and display raw output for minitest
-2. **Better fix**: Have the minitest parser create a FormattedSummaryNotification with the preserved output
-3. **Deeper fix**: Rethink how we handle output - maybe TestResult should include a framework field
+This is classic "tramp data" - data passed through many layers just to reach its destination. It suggests:
+- Missing abstraction (each component should know its framework)
+- Wrong architectural boundaries
+- Violation of "Tell, Don't Ask"
 
-The abstraction isn't wrong, but it's biased toward RSpec's structured approach. We need to make it more flexible for text-based test frameworks.
+### 5. Structural Issues
 
-## Key Insights
+**God Object: runner.go (542 lines)**
+- Contains routing, execution, result building, and parallel coordination
+- Violates Single Responsibility Principle
+- Should be split into focused components
 
-- The event-based architecture works, but we need to respect each framework's native output format
-- Minitest's text-based output requires more stateful parsing than RSpec's JSON
-- The system should preserve original output for frameworks that don't benefit from reformatting
-- Framework context needs to flow through the entire pipeline, not just the parsing phase
+**Parameter Explosion:**
+```go
+func streamTestOutput(ctx context.Context, stdout, stderr io.Reader, 
+    parser types.TestOutputParser, collector *TestCollector, 
+    outputChan chan<- OutputMessage, workerIndex int, 
+    testFiles []string, framework TestFramework, start time.Time)
+```
+10 parameters indicates missing abstraction - should use a context object.
+
+### 6. Missing Abstractions
+
+**No TestRunner Interface:**
+```go
+// This doesn't exist but should:
+type TestRunner interface {
+    Run(ctx context.Context, files []string) TestResult
+}
+```
+
+**No Complete OutputFormatter:**
+```go
+// FormatSummary is a start, but incomplete:
+type OutputFormatter interface {
+    FormatProgress(event ProgressEvent) string
+    FormatResult(result TestResult) string  
+    FormatSummary(summary TestSummary) string
+}
+```
+
+### 7. Inconsistent Abstraction Levels
+
+The code mixes different levels of abstraction:
+- Some functions work with `TestFile` objects
+- Others use raw string paths
+- Some use notifications, others use direct structs
+- Framework detection happens at multiple levels
+
+### 8. Type Proliferation
+
+Too many overlapping types create complexity:
+- TestNotification (interface)
+- TestCaseNotification
+- TestFailure  
+- TestResult
+- TestSummary
+- ProgressEvent
+- Various formatted notification types
+
+Each adds a translation layer and potential for bugs.
+
+## Architectural Smells
+
+### Over-Engineering
+- Event system for simple data transformation
+- Premature generalization for only 2 frameworks
+- Complex type hierarchies where simple structs would suffice
+
+### Coupling Issues
+- TestCollector knows about RSpec formatting
+- Parsers create framework-specific notification types
+- Output formatting logic scattered across multiple components
+
+### Missing Cohesion
+- Related functionality spread across files
+- No clear separation between parsing, transforming, formatting, and displaying
+
+## Impact Analysis
+
+These issues create:
+1. **Maintenance burden** - Changes require updates in multiple places
+2. **Bug potential** - Data translation between types can introduce errors
+3. **Complexity** - Developers must understand multiple overlapping concepts
+4. **Rigidity** - Hard to add new frameworks without following flawed patterns
+
+## Recommendations
+
+### 1. Simplify Type System
+- Eliminate TestFailure, use TestCaseNotification throughout
+- Remove framework-specific notification types
+- Use events only for real-time progress updates
+
+### 2. Create Proper Abstractions
+```go
+type TestRunner interface {
+    Run(ctx context.Context, files []string) TestResult
+    GetFormatter() OutputFormatter
+}
+
+type OutputFormatter interface {
+    FormatProgress(event ProgressEvent) string
+    FormatResult(result TestResult) string
+    FormatSummary(summary TestSummary) string
+}
+```
+
+### 3. Eliminate Framework Threading
+- Each parser/runner should encapsulate its framework knowledge
+- Results should carry their formatter, not framework enum
+- Use dependency injection instead of passing framework everywhere
+
+### 4. Refactor runner.go
+Split into:
+- `router.go` - Framework detection and routing
+- `executor.go` - Test execution logic
+- `coordinator.go` - Parallel execution coordination
+
+### 5. Consolidate Output Logic
+- Single place for all output formatting decisions
+- Clear pipeline: Parse → Transform → Format → Display
+- No formatting logic in parsers or collectors
+
+## Conclusion
+
+The current implementation works but carries significant technical debt. The event-based refactoring improved some aspects but revealed deeper architectural issues. The system would benefit from:
+
+1. Simpler, more direct data flow
+2. Clearer separation of concerns
+3. Fewer abstractions and types
+4. Better encapsulation of framework-specific logic
+
+The FormatSummary addition and index-tracking removal are good tactical improvements, but strategic architectural changes would yield greater long-term benefits.

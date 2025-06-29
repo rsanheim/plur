@@ -26,6 +26,38 @@ func (p *OutputParser) NotificationToProgress(notification types.TestNotificatio
 	return "", false
 }
 
+// FormatSummary formats a test summary in RSpec style
+func (p *OutputParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
+	summary := fmt.Sprintf("Finished in %.5f seconds (files took %.5f seconds to load)\n", wallTime, loadTime)
+
+	// Format example count
+	exampleText := "1 example"
+	if totalExamples != 1 {
+		exampleText = fmt.Sprintf("%d examples", totalExamples)
+	}
+
+	// Format failure count
+	failureText := "0 failures"
+	if totalFailures == 1 {
+		failureText = "1 failure"
+	} else if totalFailures > 1 {
+		failureText = fmt.Sprintf("%d failures", totalFailures)
+	}
+
+	// Format pending count if any
+	pendingText := ""
+	if totalPending > 0 {
+		if totalPending == 1 {
+			pendingText = ", 1 pending"
+		} else {
+			pendingText = fmt.Sprintf(", %d pending", totalPending)
+		}
+	}
+
+	summary += fmt.Sprintf("%s, %s%s", exampleText, failureText, pendingText)
+	return summary
+}
+
 // ParseLine parses a single line of RSpec output
 func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	notifications := []types.TestNotification{}

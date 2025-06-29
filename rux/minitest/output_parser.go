@@ -36,11 +36,6 @@ type OutputParser struct {
 	progress       ProgressCounts
 	failureBuffer  strings.Builder
 	currentFailure *FailureInfo // Accumulating failure details
-
-	// Index-based tracking for matching progress to details
-	failureIndices    []int // Indices of failed tests (0-based)
-	errorIndices      []int // Indices of error tests (0-based)
-	currentFailureNum int   // Current failure number being parsed (1-based)
 }
 
 // FailureInfo holds temporary failure details while parsing
@@ -68,6 +63,50 @@ func (p *OutputParser) NotificationToProgress(notification types.TestNotificatio
 		return "pending", true
 	}
 	return "", true
+}
+
+// FormatSummary formats a test summary in minitest style
+func (p *OutputParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
+	// Minitest doesn't typically show load time in the summary
+	// Format: "X runs, Y assertions, Z failures, W errors, V skips"
+
+	// For now, we can't distinguish between failures and errors from the summary data
+	// In minitest, totalFailures includes both failures and errors
+	// We'll need to track these separately in the future
+
+	runText := "1 run"
+	if totalExamples != 1 {
+		runText = fmt.Sprintf("%d runs", totalExamples)
+	}
+
+	// TODO: Track assertions count properly
+	// For now, assume at least one assertion per test
+	assertionText := "1 assertion"
+	if totalExamples != 1 {
+		assertionText = fmt.Sprintf("%d assertions", totalExamples)
+	}
+
+	failureText := "0 failures"
+	if totalFailures == 1 {
+		failureText = "1 failure"
+	} else if totalFailures > 1 {
+		failureText = fmt.Sprintf("%d failures", totalFailures)
+	}
+
+	// TODO: Track errors separately from failures
+	errorText := "0 errors"
+
+	skipText := "0 skips"
+	if totalPending == 1 {
+		skipText = "1 skip"
+	} else if totalPending > 1 {
+		skipText = fmt.Sprintf("%d skips", totalPending)
+	}
+
+	summary := fmt.Sprintf("\nFinished in %.6fs.\n", wallTime)
+	summary += fmt.Sprintf("%s, %s, %s, %s, %s", runText, assertionText, failureText, errorText, skipText)
+
+	return summary
 }
 
 // ParseLine parses a single line of minitest output
@@ -135,14 +174,13 @@ func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 		if line == "" || regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`).MatchString(line) {
 			// Create a new TestCaseNotification with failure details
 			if p.currentFailure != nil && p.currentFailure.testName != "" {
-				logger.Logger.Debug("Creating failure notification", "testName", p.currentFailure.testName, "failureNum", p.currentFailureNum)
+				logger.Logger.Debug("Creating failure notification", "testName", p.currentFailure.testName)
 				notification := p.createFailureNotification()
 				if notification != nil {
 					notifications = append(notifications, notification)
 				}
 			}
 			p.currentFailure = nil
-			p.currentFailureNum = 0
 
 			// If this was another failure header, parse it
 			if line != "" && p.parseFailureHeader(line) {
@@ -178,40 +216,16 @@ func (p *OutputParser) parseSummaryLine(line string) []types.TestNotification {
 		errors, _ := strconv.Atoi(match[4])
 		skips, _ := strconv.Atoi(match[5])
 
-		notifications := []types.TestNotification{}
-
-		// Create success notifications for tests that didn't fail
-		failureSet := make(map[int]bool)
-		for _, idx := range p.failureIndices {
-			failureSet[idx] = true
-		}
-		for _, idx := range p.errorIndices {
-			failureSet[idx] = true
-		}
-
-		// Create notifications for passed tests
-		for i := 0; i < runs; i++ {
-			if !failureSet[i] {
-				testID := fmt.Sprintf("test_%d", i+1)
-				notifications = append(notifications, types.TestCaseNotification{
-					Event:       types.TestPassed,
-					TestID:      testID,
-					Description: testID, // We don't have the actual test names for passed tests
-					Status:      "passed",
-				})
-			}
-		}
-
-		// Add suite finished notification
+		// Just create the suite finished notification
+		// We don't need individual test notifications anymore
 		finishNotification := types.SuiteNotification{
 			Event:        types.SuiteFinished,
 			TestCount:    runs,
 			FailureCount: failures + errors,
 			PendingCount: skips,
 		}
-		notifications = append(notifications, finishNotification)
 
-		return notifications
+		return []types.TestNotification{finishNotification}
 	}
 	return nil // Return nil if not a summary line
 }
@@ -236,18 +250,16 @@ func (p *OutputParser) parseProgressLine(line string) []types.TestNotification {
 
 		case 'F':
 			p.progress.failed++
-			p.failureIndices = append(p.failureIndices, index)
 			p.progress.examples++
 			notifications = append(notifications, types.ProgressEvent{
 				Event:     types.Progress,
 				Character: "F",
 				Index:     index,
 			})
-			logger.Logger.Debug("Progress: failed test", "index", index, "failureNum", len(p.failureIndices))
+			logger.Logger.Debug("Progress: failed test", "index", index)
 
 		case 'E':
 			p.progress.errors++
-			p.errorIndices = append(p.errorIndices, index)
 			p.progress.examples++
 			notifications = append(notifications, types.ProgressEvent{
 				Event:     types.Progress,
@@ -281,12 +293,10 @@ func (p *OutputParser) parseFailureHeader(line string) bool {
 	// Check for failure header pattern: "  N) Failure:" or "  N) Error:"
 	match := regexp.MustCompile(`^\s*(\d+)\)\s+(Failure|Error):\s*$`).FindStringSubmatch(line)
 	if match != nil {
-		failureNum, _ := strconv.Atoi(match[1])
 		failureType := match[2]
 
-		logger.Logger.Debug("Found failure header", "line", line, "num", failureNum, "type", failureType)
+		logger.Logger.Debug("Found failure header", "line", line, "type", failureType)
 		p.currentFailure = &FailureInfo{}
-		p.currentFailureNum = failureNum
 		return true
 	}
 	return false
@@ -311,23 +321,12 @@ func (p *OutputParser) parseFailureLocation(line string) bool {
 
 // createFailureNotification creates a new test notification with failure details
 func (p *OutputParser) createFailureNotification() types.TestNotification {
-	if p.currentFailure == nil || p.currentFailureNum == 0 {
+	if p.currentFailure == nil || p.currentFailure.testName == "" {
 		return nil
 	}
 
-	// Find the index of this failure
-	// currentFailureNum is 1-based, so the first failure (1) maps to failureIndices[0]
-	failureIndex := p.currentFailureNum - 1
-	if failureIndex >= len(p.failureIndices) {
-		logger.Logger.Error("Failure number out of range",
-			"failureNum", p.currentFailureNum,
-			"failureIndicesLen", len(p.failureIndices))
-		return nil
-	}
-
-	// Get the test index from our failure indices
-	testIndex := p.failureIndices[failureIndex]
-	testID := fmt.Sprintf("test_%d", testIndex+1)
+	// Use the actual test name as the TestID
+	testID := p.currentFailure.testName
 
 	// Create a new notification with failure details
 	notification := types.TestCaseNotification{
@@ -347,8 +346,6 @@ func (p *OutputParser) createFailureNotification() types.TestNotification {
 	}
 
 	logger.Logger.Debug("Created failure notification",
-		"testIndex", testIndex,
-		"failureNum", p.currentFailureNum,
 		"testID", notification.TestID,
 		"testName", notification.Description,
 		"location", notification.Location)

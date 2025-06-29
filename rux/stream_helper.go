@@ -54,8 +54,6 @@ func streamTestOutput(
 					Content: line,
 				})
 			}
-			logger.Logger.Debug("after parseLine", "notifications", notifications)
-
 			// Process each notification
 			for _, notification := range notifications {
 

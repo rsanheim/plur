@@ -65,15 +65,7 @@ This is the single source of truth for all Minitest support tasks. Tasks are org
 - [x] Failures not being detected properly in minitest-failures tests → **FIXED** (2025-06-27)
 
 **Outstanding Issues:**
-- [ ] Add a -C global flag to rux to change the working dir. (It should behave much like "git -C xxx") This should be done before doing anything else - very early (via Kong hook?) and done via Go's` `os.Chdir()`. This should NOT pollute or trickle down into command execution, test commands or watch commands should 'just work' based on the new changed dir. This should make executing rux for all our various sub projects fixtures much easier.
-
-Example:
-  ```
-  # these commands are the same as `cd ~/src/oss/rux-meta/fixtures/minitest-success && rux test/calculator_test.rb`
-  > rux -C ~/src/oss/rux-meta/fixtures/minitest-success test/calculator_test.rb
-  > rux -C fixtures/minitest-failures test/calculator_test.rb
-  > rux -C fixtures/minitest-failures # this executes the default command in the changed dir
-  ```
+- [x] Add a -C global flag to rux to change the working dir → **COMPLETE** (2025-06-28)
 
 - [ ] Fix "Running" prelude output for minitest tests - we still say 'spec files' when its 'test files'. Also, if its really 1 spec or test file, we should never say "in parallel" - that doesn't make sense. If its one file we can't parallelize.
 
@@ -86,10 +78,13 @@ Example:
   ```
 
 - [ ] Create an enum for "dot", "fail", "error", etc - and use that everywhere for progress tracking. No more repeating those strings throughout for progress tracking.
-- [ ] Finally -> Fix `bin/rspec spec/minitest_integration_spec.rb` - this is the last failing spec, and it will drive us to get the output format right.
-  - [ ] make sure this is done as simple as possible, and the rest of the suite MUST continue to pass
-  - [ ] Output format mismatch - showing RSpec-style instead of minitest-style
-- [ ] Framework context lost by the time we print results (Rob: I'm not sure what this means)
+- [x] Fix output format for minitest → **COMPLETE** (2025-06-28)
+  - Extended TestOutputParser interface with FormatSummary method
+  - Each parser provides framework-specific formatting
+  - RSpec shows: "X examples, Y failures"  
+  - Minitest shows: "X runs, Y assertions, Z failures, W errors, V skips"
+  - Framework tracked through TestResult to TestSummary
+- [x] Fix minitest integration spec → **COMPLETE** (2025-06-28)
 
 ## Phase 4: Future Enhancements
 
@@ -114,7 +109,7 @@ Example:
 
 - [x] Type duplication between packages → **RESOLVED**: Created shared `types` package
 - [x] Parser integration incomplete → **RESOLVED**: Both parsers integrated
-- [ ] Output format issues → Minitest output being reformatted as RSpec style
+- [x] Output format issues → **RESOLVED** (2025-06-28): Minitest output now shows native format
 - [x] Failure detection issues → **RESOLVED** (2025-06-27): Minitest failures now properly parsed
 - [ ] No error recovery for malformed output
 - [ ] Limited minitest reporter support
@@ -200,13 +195,29 @@ The parser now:
 - Integration tests correctly show proper counts
 
 ### Remaining Issues:
-- Output format still shows RSpec-style summaries instead of minitest-style
-- Need to handle Error exceptions differently from assertion Failures
-- Framework context needs to be passed through to PrintResults
-- Multi-file minitest runs show "Failure number out of range" errors
-  - Failure numbering continues across files but parser instances are per-file
-  - This doesn't affect correctness but shows error logs
+- [x] Output format shows RSpec-style summaries → **FIXED** (2025-06-28)
+- [ ] Need to handle Error exceptions differently from assertion Failures
+- [x] Framework context passed through to PrintResults → **COMPLETE** (2025-06-28)
+- [x] Multi-file minitest runs show "Failure number out of range" errors → **FIXED** (2025-06-28)
+  - Removed index-based failure correlation entirely
+  - Parser now uses actual test names as IDs
+  - No more tracking failures across files with indices
+
+## Progress Summary (2025-06-28)
+
+### Major Fixes:
+
+1. **Added -C Flag** - Change directory before running (like git -C)
+2. **Fixed Output Format** - Minitest now shows native format using FormatSummary method
+3. **Fixed "Failure number out of range"** - Removed problematic index-based tracking
+4. **All Integration Tests Pass** - Including minitest_integration_spec.rb
+
+### Architectural Improvements:
+
+1. **"Tell Don't Ask" Pattern** - Parsers tell the runner how to format output
+2. **Simplified Failure Tracking** - Use actual test names instead of generic indices
+3. **Framework Context** - Added Framework field to TestResult and TestSummary
 
 ---
 
-Last updated: 2025-06-27
+Last updated: 2025-06-28

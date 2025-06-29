@@ -247,11 +247,24 @@ type RuxCLI struct {
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
 	CacheDir   string `help:"Directory for caching runtime data" default:"${cache_dir}"`
 	Trace      bool   `help:"Enable performance tracing (saves to ./rux_trace_*.json)" default:"false"`
+	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" default:"0"`
 	Version    bool   `help:"Show version information"`
 }
 
 func (r *RuxCLI) AfterApply() error {
+	// Initialize logger early so we can use it
+	debug := r.Debug || os.Getenv("RUX_DEBUG") == "1"
+	logger.InitLogger(r.Verbose, debug)
+
+	// Change directory if -C flag is provided - do this first
+	if r.ChangeDir != "" {
+		if err := os.Chdir(r.ChangeDir); err != nil {
+			return fmt.Errorf("failed to change directory to %s: %v", r.ChangeDir, err)
+		}
+		logger.Logger.Debug("Changed directory", "dir", r.ChangeDir)
+	}
+
 	// Handle version flag
 	if r.Version {
 		fmt.Println(GetVersionInfo())
@@ -272,9 +285,6 @@ func (r *RuxCLI) AfterApply() error {
 			break
 		}
 	}
-
-	debug := r.Debug || os.Getenv("RUX_DEBUG") == "1"
-	logger.InitLogger(r.Verbose, debug)
 
 	return nil
 }

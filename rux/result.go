@@ -32,8 +32,10 @@ type TestSummary struct {
 	WallTime          time.Duration
 	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
 	HasFailures       bool
-	Success           bool         // True if no failures and no errors
-	ErroredFiles      []TestResult // Files that had errors running
+	Success           bool          // True if no failures and no errors
+	ErroredFiles      []TestResult  // Files that had errors running
+	Framework         TestFramework // The test framework used
+	TotalPending      int           // Total pending/skipped tests
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -51,10 +53,16 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 	// Track if we're in single-file mode (single worker)
 	singleWorkerMode := len(results) == 1
 
-	for _, result := range results {
+	for i, result := range results {
 		summary.TotalCPUTime += result.Duration
 		summary.TotalExamples += result.ExampleCount
 		summary.TotalFailures += result.FailureCount
+		summary.TotalPending += result.PendingCount
+
+		// Set framework from first result (all should be the same)
+		if i == 0 {
+			summary.Framework = result.Framework
+		}
 
 		// Track the maximum file load time (since workers run in parallel)
 		if result.FileLoadTime > summary.TotalFileLoadTime {
@@ -95,13 +103,22 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 
 	// Simple case: all tests passed
 	if summary.Success {
-		// Use formatted summary if available, otherwise fall back to manual formatting
+		// Use formatted summary if available, otherwise use parser formatting
 		if summary.FormattedSummary != "" {
 			fmt.Print(summary.FormattedSummary)
 		} else {
-			fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
-				summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
-			fmt.Printf("%s, 0 failures\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
+			// Use the parser to format the summary
+			parser, err := NewTestOutputParser(summary.Framework)
+			if err == nil {
+				formattedSummary := parser.FormatSummary(nil, summary.TotalExamples, summary.TotalFailures, summary.TotalPending,
+					summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
+				fmt.Print(formattedSummary)
+			} else {
+				// Fallback to generic formatting
+				fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
+					summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
+				fmt.Printf("%s, 0 failures\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
+			}
 		}
 		return
 	}
@@ -125,27 +142,42 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 		// Use RSpec's formatted summary (includes timing, totals, and failed examples list)
 		fmt.Print(summary.FormattedSummary)
 	} else {
-		// Fall back to manual formatting for parallel mode
-		fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
-			summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
-
-		if summary.TotalFailures > 0 {
-			// Check if terminal supports color and format accordingly
-			if colorOutput {
-				fmt.Printf("\033[31m%s, %s\033[0m\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)), pluralize(summary.TotalFailures, "1 failure", fmt.Sprintf("%d failures", summary.TotalFailures)))
+		// Use the parser to format the summary
+		parser, err := NewTestOutputParser(summary.Framework)
+		if err == nil {
+			formattedSummary := parser.FormatSummary(nil, summary.TotalExamples, summary.TotalFailures, summary.TotalPending,
+				summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
+			// Add color if needed for failures
+			if summary.TotalFailures > 0 && colorOutput {
+				fmt.Printf("\033[31m%s\033[0m\n", formattedSummary)
+			} else if summary.TotalFailures == 0 && colorOutput {
+				fmt.Printf("\033[32m%s\033[0m\n", formattedSummary)
 			} else {
-				fmt.Printf("%s, %s\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)), pluralize(summary.TotalFailures, "1 failure", fmt.Sprintf("%d failures", summary.TotalFailures)))
+				fmt.Println(formattedSummary)
 			}
 		} else {
-			if colorOutput {
-				fmt.Printf("\033[32m%s, 0 failures\033[0m\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
+			// Fallback to generic formatting
+			fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
+				summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
+
+			if summary.TotalFailures > 0 {
+				// Check if terminal supports color and format accordingly
+				if colorOutput {
+					fmt.Printf("\033[31m%s, %s\033[0m\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)), pluralize(summary.TotalFailures, "1 failure", fmt.Sprintf("%d failures", summary.TotalFailures)))
+				} else {
+					fmt.Printf("%s, %s\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)), pluralize(summary.TotalFailures, "1 failure", fmt.Sprintf("%d failures", summary.TotalFailures)))
+				}
 			} else {
-				fmt.Printf("%s, 0 failures\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
+				if colorOutput {
+					fmt.Printf("\033[32m%s, 0 failures\033[0m\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
+				} else {
+					fmt.Printf("%s, 0 failures\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
+				}
 			}
 		}
 
-		// Print failed examples summary
-		if len(summary.AllFailures) > 0 {
+		// Print failed examples summary (only for RSpec)
+		if len(summary.AllFailures) > 0 && summary.Framework == FrameworkRSpec {
 			fmt.Println("\nFailed examples:")
 			fmt.Print(FormatFailedExamples(summary.AllFailures))
 		}

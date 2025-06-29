@@ -41,6 +41,7 @@ type TestResult struct {
 	FailureCount int
 	PendingCount int
 	Tests        []types.TestCaseNotification // All test notifications
+	Framework    TestFramework                // The test framework used
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -140,7 +141,7 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 }
 
 // errorResult creates a TestResult for error cases
-func errorResult(testFile *TestFile, err error, start time.Time) TestResult {
+func errorResult(testFile *TestFile, err error, start time.Time, framework TestFramework) TestResult {
 	// Extract error message for output
 	errorOutput := ""
 	if err != nil {
@@ -148,11 +149,12 @@ func errorResult(testFile *TestFile, err error, start time.Time) TestResult {
 	}
 
 	return TestResult{
-		File:     testFile,
-		State:    StateError,
-		Output:   errorOutput,
-		Error:    err,
-		Duration: time.Since(start),
+		File:      testFile,
+		State:     StateError,
+		Output:    errorOutput,
+		Error:     err,
+		Duration:  time.Since(start),
+		Framework: framework,
 	}
 }
 
@@ -232,12 +234,12 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, config.Framework)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, config.Framework)
 	}
 
 	// Start the command
@@ -246,13 +248,13 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		err = cmd.Start()
 	}()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, config.Framework)
 	}
 
 	// Create parser and collector for event-based processing
 	parser, err := NewTestOutputParser(config.Framework)
 	if err != nil {
-		return errorResult(testFile, err, start)
+		return errorResult(testFile, err, start, config.Framework)
 	}
 	collector := NewTestCollector()
 
@@ -330,6 +332,7 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		Tests:             result.Tests,
 		FormattedFailures: result.FormattedFailures,
 		FormattedSummary:  result.FormattedSummary,
+		Framework:         config.Framework,
 	}
 }
 
@@ -481,24 +484,24 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, config.Framework)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, config.Framework)
 	}
 
 	// Start the command
 	err = cmd.Start()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, config.Framework)
 	}
 
 	// Create parser and collector for event-based processing
 	parser, err := NewTestOutputParser(config.Framework)
 	if err != nil {
-		return errorResult(testFile, err, start)
+		return errorResult(testFile, err, start, config.Framework)
 	}
 	collector := NewTestCollector()
 
@@ -533,6 +536,7 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	result.State = state
 	result.Output = output
 	result.Error = err
+	result.Framework = config.Framework
 
 	return result
 }

@@ -27,6 +27,11 @@ func (p *RSpecParser) NotificationToProgress(notification types.TestNotification
 	return p.parser.NotificationToProgress(notification)
 }
 
+// FormatSummary formats a test summary in RSpec style
+func (p *RSpecParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
+	return p.parser.FormatSummary(suite, totalExamples, totalFailures, totalPending, wallTime, loadTime)
+}
+
 // MinitestParser implements TestOutputParser for Minitest text output
 type MinitestParser struct {
 	parser *minitest.OutputParser
@@ -46,4 +51,9 @@ func (p *MinitestParser) ParseLine(line string) ([]types.TestNotification, bool)
 
 func (p *MinitestParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
 	return p.parser.NotificationToProgress(notification)
+}
+
+// FormatSummary formats a test summary in Minitest style
+func (p *MinitestParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
+	return p.parser.FormatSummary(suite, totalExamples, totalFailures, totalPending, wallTime, loadTime)
 }
