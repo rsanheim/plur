@@ -2,6 +2,8 @@
 
 This document provides a comprehensive view of how Rux processes Minitest test output, from the runner through all components including the parser, collector, and output aggregator.
 
+**Updated**: Reflects current architecture with WorkerResult, ProgressEvent, unified test representation, and framework-aware formatting.
+
 ## Full System Flow - Minitest Execution
 
 !!! tip "Viewing Large Diagrams"
@@ -65,13 +67,13 @@ sequenceDiagram
                         else testsRunning && has progress chars
                             Parser->>Parser: parseProgressLine()
                             alt char = '.'
-                                Parser-->>Stream: [TestPassed], false
+                                Parser-->>Stream: [ProgressEvent{'.'}], false
                             else char = 'F'
-                                Parser-->>Stream: [TestFailed], false
+                                Parser-->>Stream: [ProgressEvent{'F'}], false
                             else char = 'E'
-                                Parser-->>Stream: [TestError], false
+                                Parser-->>Stream: [ProgressEvent{'E'}], false
                             else char = 'S'
-                                Parser-->>Stream: [TestPending], false
+                                Parser-->>Stream: [ProgressEvent{'S'}], false
                             end
                         else Other lines
                             Parser-->>Stream: [], false
@@ -83,11 +85,11 @@ sequenceDiagram
                         loop For each notification
                             Stream->>Collector: AddNotification(notification)
                             
-                            alt TestPassed
+                            alt ProgressEvent with '.'
                                 Stream->>OutChan: {Type: "dot", WorkerID: i}
-                            else TestFailed/TestError
+                            else ProgressEvent with 'F' or 'E'
                                 Stream->>OutChan: {Type: "failure", WorkerID: i}
-                            else TestPending
+                            else ProgressEvent with 'S'
                                 Stream->>OutChan: {Type: "pending", WorkerID: i}
                             end
                         end
@@ -118,12 +120,12 @@ sequenceDiagram
             RunMini->>Collector: BuildResult(testFile, duration)
             
             Note over Collector: Accumulate counts from notifications
-            Collector-->>RunMini: TestResult{ExampleCount, FailureCount, Output, etc}
+            Collector-->>RunMini: WorkerResult{ExampleCount, FailureCount, Output, etc}
             
             RunMini->>RunMini: Convert to RSpec-compatible format
-            Note over RunMini: Currently loses framework context
+            Note over RunMini: Preserves framework context
             
-            RunMini-->>Worker: TestResult
+            RunMini-->>Worker: WorkerResult
         end
         
         Worker-->>Runner: Send result to results channel
@@ -134,12 +136,19 @@ sequenceDiagram
     Runner->>Console: Print newline after dots
     
     Runner->>Runner: Collect all results
-    Runner-->>Executor: []TestResult, wallTime
+    Runner-->>Executor: []WorkerResult, wallTime
     
     Executor->>Executor: BuildTestSummary(results)
+    Note over Executor: Summary includes Framework field
     Executor->>Console: PrintResults(summary)
     
-    Note over Console: Shows RSpec format:<br/>"X examples, Y failures"<br/>Not minitest format:<br/>"X runs, Y assertions..."
+    alt Framework = Minitest
+        Console->>Parser: NewTestOutputParser(Minitest)
+        Parser->>Parser: FormatSummary(...)
+        Console->>Console: Display minitest format:<br/>"X runs, Y assertions, Z failures..."
+    else Framework = RSpec
+        Console->>Console: Display RSpec format:<br/>"X examples, Y failures"
+    end
 ```
 
 ## Key Components
@@ -168,16 +177,18 @@ sequenceDiagram
 - Sends progress indicators to outputChan
 
 ### 5. **MinitestParser (minitest/output_parser.go)**
-- Simple state machine with `testsRunning` flag
-- Parses progress indicators (., F, E, S)
-- Always returns `consumed=false` to preserve output
-- Missing: Never calls `parseSummaryLine`
+- State machine with multiple states (parsingProgress, afterFinished, inFailureDetails)
+- Emits ProgressEvent for real-time display (., F, E, S)
+- Parses failure details after test execution
+- Creates complete TestCaseNotification objects with failure information
+- Implements FormatSummary for framework-specific output
 
 ### 6. **TestCollector**
 - Accumulates all notifications
-- Tracks counts (passed, failed, pending)
+- Separates progress tracking from test results
+- Stores complete TestCaseNotification objects
 - Stores raw output lines
-- BuildResult creates final TestResult
+- BuildResult creates final WorkerResult with framework context
 
 ### 7. **outputAggregator**
 - Reads from outputChan
@@ -186,21 +197,25 @@ sequenceDiagram
 - Runs concurrently with test execution
 
 ### 8. **PrintResults (result.go)**
-- Formats final summary
-- Currently hardcoded to RSpec style
-- Doesn't know which framework was used
-- Missing: Framework-aware formatting
+- Framework-aware formatting
+- Uses parser.FormatSummary for framework-specific output
+- Minitest shows: "X runs, Y assertions, Z failures, W errors, V skips"
+- RSpec shows: "X examples, Y failures"
+- Falls back to generic formatting if parser unavailable
 
-## Current Issues
+## Key Improvements Since Initial Implementation
 
-1. **Framework Context Lost**: By the time we reach PrintResults, we don't know if tests were RSpec or Minitest
-2. **Summary Line Not Parsed**: The minitest summary ("X runs, Y assertions...") is captured but not parsed
-3. **Output Format**: Always shows RSpec style regardless of framework
-4. **TestError Handling**: TODO comment indicates uncertainty about 'E' indicator handling
+1. **Framework Context Preserved**: WorkerResult and TestSummary include Framework field
+2. **Unified Test Representation**: Single TestCaseNotification type for all test results
+3. **Progress Events**: Separate ProgressEvent type for real-time display without duplication
+4. **Framework-Aware Formatting**: PrintResults uses parser.FormatSummary for native output
+5. **Complete Failure Parsing**: Minitest parser extracts full failure details
+6. **Better Naming**: TestResult renamed to WorkerResult to clarify it represents multiple files from one worker
 
-## Potential Solutions
+## Current Architecture Highlights
 
-1. Add Framework field to TestResult or TestSummary
-2. Call parseSummaryLine when appropriate
-3. Make PrintResults framework-aware
-4. Store and display raw minitest output for authentic experience
+1. **Event-Based Design**: Clean separation between parsing, accumulation, and display
+2. **Parser Factory Pattern**: Framework-specific parsers created via factory
+3. **Shared Streaming Logic**: Common output streaming for both frameworks
+4. **Tell Don't Ask**: Parsers tell the runner how to format output
+5. **No Type Proliferation**: Eliminated redundant TestFailure type

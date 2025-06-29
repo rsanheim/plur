@@ -461,36 +461,29 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, config.Framework)
 	}
 
-	// Start the command
 	err = cmd.Start()
 	if err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, config.Framework)
 	}
 
-	// Create parser and collector for event-based processing
 	parser, err := NewTestOutputParser(config.Framework)
 	if err != nil {
 		return errorResult(testFile, err, start, config.Framework)
 	}
 	collector := NewTestCollector()
 
-	// Stream output through parser and collector
 	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, config.Framework, start)
 
-	// Wait for command to complete
 	err = cmd.Wait()
 
-	// Determine success based on exit code
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
 	}
 	success := exitCode == 0
 
-	// Build the final result from the collector
 	result := collector.BuildResult(testFile, time.Since(start))
 
-	// Determine the state based on the execution outcome
 	state := StateSuccess
 	output := result.Output + stderrOutput
 
@@ -501,7 +494,6 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 		state = StateFailed
 	}
 
-	// Update result with final state and output
 	result.State = state
 	result.Output = output
 	result.Error = err
