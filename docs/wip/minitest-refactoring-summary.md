@@ -1,6 +1,4 @@
-# Minitest Refactoring - Architectural Analysis
-
-*Date: 2025-06-29*
+# Minitest Support - Architectural Analysis
 
 ## Current Status
 
@@ -10,14 +8,16 @@ The minitest support has been successfully implemented with an event-based archi
 - TestCollector for accumulating test results
 - Framework-specific output formatting via FormatSummary
 - Removal of problematic index-based failure tracking
+- Elimination of redundant TestFailure type
+- WorkerResult naming for clarity
 
-While functional, the implementation reveals deeper architectural issues that warrant examination.
+The implementation is functional but has opportunities for further architectural improvements.
 
-## Deep Architectural Analysis
+## Architectural Analysis
 
-### 1. Dual Representation Problem
+### 1. Unified Test Representation
 
-The codebase maintains two parallel representations of test failures:
+The codebase uses a single representation for all test results:
 
 ```go
 // In types/notifications.go
@@ -27,21 +27,12 @@ type TestCaseNotification struct {
     Exception  *TestException
     // ... other fields
 }
-
-// In result.go
-type TestFailure struct {
-    File        *TestFile
-    Description string
-    Message     string
-    Backtrace   []string
-}
 ```
 
-The TestCollector unnecessarily converts notifications to failures, creating:
-- Duplication of data
-- Potential for inconsistencies
-- Extra mapping logic that could introduce bugs
-- Violation of DRY principle
+All test failures, passes, and pending tests use `TestCaseNotification`, providing:
+- Single source of truth for test data
+- No conversion logic between types
+- Consistent data model across frameworks
 
 ### 2. Leaky Abstractions
 
@@ -134,18 +125,17 @@ The code mixes different levels of abstraction:
 - Some use notifications, others use direct structs
 - Framework detection happens at multiple levels
 
-### 8. Type Proliferation
+### 8. Type System
 
-Too many overlapping types create complexity:
+Current types in the system:
 - TestNotification (interface)
 - TestCaseNotification
-- TestFailure  
-- TestResult
+- WorkerResult (represents results from one worker)
 - TestSummary
 - ProgressEvent
 - Various formatted notification types
 
-Each adds a translation layer and potential for bugs.
+While there are multiple types, some proliferation remains that could be simplified further.
 
 ## Architectural Smells
 
@@ -171,23 +161,23 @@ These issues create:
 3. **Complexity** - Developers must understand multiple overlapping concepts
 4. **Rigidity** - Hard to add new frameworks without following flawed patterns
 
-## Recommendations
+## Recommendations for Further Improvement
 
-### 1. Simplify Type System
-- Eliminate TestFailure, use TestCaseNotification throughout
+### 1. Continue Simplifying Type System
 - Remove framework-specific notification types
 - Use events only for real-time progress updates
+- Consider consolidating formatted notification types
 
 ### 2. Create Proper Abstractions
 ```go
 type TestRunner interface {
-    Run(ctx context.Context, files []string) TestResult
+    Run(ctx context.Context, files []string) WorkerResult
     GetFormatter() OutputFormatter
 }
 
 type OutputFormatter interface {
     FormatProgress(event ProgressEvent) string
-    FormatResult(result TestResult) string
+    FormatResult(result WorkerResult) string
     FormatSummary(summary TestSummary) string
 }
 ```
@@ -210,11 +200,16 @@ Split into:
 
 ## Conclusion
 
-The current implementation works but carries significant technical debt. The event-based refactoring improved some aspects but revealed deeper architectural issues. The system would benefit from:
+The current implementation is functional and has undergone several improvements:
+- Event-based architecture provides a clean foundation
+- Single representation for test data (TestCaseNotification)
+- Clear worker-based parallelization model
+- Framework-specific formatting through FormatSummary
 
-1. Simpler, more direct data flow
-2. Clearer separation of concerns
-3. Fewer abstractions and types
-4. Better encapsulation of framework-specific logic
+Areas for continued improvement:
+1. Further simplification of the type system
+2. Better separation of concerns between components
+3. Stronger encapsulation of framework-specific logic
+4. Reducing parameter explosion in some functions
 
-The FormatSummary addition and index-tracking removal are good tactical improvements, but strategic architectural changes would yield greater long-term benefits.
+The system works well for both RSpec and Minitest, providing fast parallel test execution with proper output formatting.
