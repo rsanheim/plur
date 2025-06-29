@@ -142,14 +142,19 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	assert.Equal(t, 100*time.Millisecond, result.FileLoadTime)
 	assert.Equal(t, "Test output line 1\nTest output line 2\n", result.Output)
 
-	// Verify failures
-	require.Len(t, result.Failures, 1)
-	failure := result.Failures[0]
-	assert.Equal(t, testFile, failure.File)
-	assert.Equal(t, "Example fails", failure.Description)
+	// Verify failures through Tests array
+	var failures []types.TestCaseNotification
+	for _, test := range result.Tests {
+		if test.Event == types.TestFailed {
+			failures = append(failures, test)
+		}
+	}
+	require.Len(t, failures, 1)
+	failure := failures[0]
+	assert.Equal(t, "Example fails", failure.FullDescription)
 	assert.Equal(t, 20, failure.LineNumber)
-	assert.Equal(t, "Expected true to be false", failure.Message)
-	assert.Equal(t, []string{"spec/example_spec.rb:20"}, failure.Backtrace)
+	assert.Equal(t, "Expected true to be false", failure.Exception.Message)
+	assert.Equal(t, []string{"spec/example_spec.rb:20"}, failure.Exception.Backtrace)
 }
 
 func TestTestCollector_BuildResult_Success(t *testing.T) {
@@ -175,5 +180,12 @@ func TestTestCollector_BuildResult_Success(t *testing.T) {
 	assert.Equal(t, StateSuccess, result.State)
 	assert.Equal(t, 2, result.ExampleCount)
 	assert.Equal(t, 0, result.FailureCount)
-	assert.Len(t, result.Failures, 0)
+	// Verify no failures in Tests array
+	var failureCount int
+	for _, test := range result.Tests {
+		if test.Event == types.TestFailed {
+			failureCount++
+		}
+	}
+	assert.Equal(t, 0, failureCount)
 }

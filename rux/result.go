@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/rux/rspec"
+	"github.com/rsanheim/rux/types"
 )
 
 // TestFile represents a test file
@@ -14,28 +15,19 @@ type TestFile struct {
 	Filename string // Just the filename
 }
 
-// TestFailure represents framework-agnostic failure details
-type TestFailure struct {
-	File        *TestFile
-	Description string
-	LineNumber  int
-	Message     string
-	Backtrace   []string
-}
-
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
 	TotalExamples     int
 	TotalFailures     int
-	AllFailures       []TestFailure
+	AllFailures       []types.TestCaseNotification
 	TotalCPUTime      time.Duration
 	WallTime          time.Duration
 	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
 	HasFailures       bool
-	Success           bool          // True if no failures and no errors
-	ErroredFiles      []TestResult  // Files that had errors running
-	Framework         TestFramework // The test framework used
-	TotalPending      int           // Total pending/skipped tests
+	Success           bool           // True if no failures and no errors
+	ErroredFiles      []WorkerResult // Workers that had errors running tests
+	Framework         TestFramework  // The test framework used
+	TotalPending      int            // Total pending/skipped tests
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -43,10 +35,10 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
-		ErroredFiles: []TestResult{},
+		ErroredFiles: []WorkerResult{},
 		Success:      true, // Start assuming success
 	}
 
@@ -74,7 +66,12 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 		case StateFailed:
 			summary.HasFailures = true
 			summary.Success = false
-			summary.AllFailures = append(summary.AllFailures, result.Failures...)
+			// Filter and append only failed test notifications
+			for _, test := range result.Tests {
+				if test.Event == types.TestFailed {
+					summary.AllFailures = append(summary.AllFailures, test)
+				}
+			}
 		case StateError:
 			summary.HasFailures = true
 			summary.Success = false
@@ -214,17 +211,17 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 }
 
 // FormatTestFailure formats a single test failure for display
-func FormatTestFailure(index int, failure TestFailure) string {
+func FormatTestFailure(index int, failure types.TestCaseNotification) string {
 	var sb strings.Builder
 
 	// Header line with failure number and description
-	sb.WriteString(fmt.Sprintf("  %d) %s\n", index, failure.Description))
+	sb.WriteString(fmt.Sprintf("  %d) %s\n", index, failure.FullDescription))
 
 	// Error/Failure line
 	sb.WriteString("     Failure/Error: ")
 
 	// Try to extract the failing line from the source file
-	failingLine := rspec.ExtractFailingLine(failure.File.Path, failure.LineNumber)
+	failingLine := rspec.ExtractFailingLine(failure.FilePath, failure.LineNumber)
 	if failingLine != "" {
 		sb.WriteString(failingLine)
 		sb.WriteString("\n")
@@ -233,32 +230,34 @@ func FormatTestFailure(index int, failure TestFailure) string {
 		sb.WriteString("\n")
 	}
 
-	// Error message
-	// For expectation failures, the message is already formatted with proper indentation
-	lines := strings.Split(strings.TrimSpace(failure.Message), "\n")
-	for _, line := range lines {
-		if line != "" {
-			sb.WriteString("       " + line + "\n")
+	// Error message - check if Exception exists
+	if failure.Exception != nil {
+		// For expectation failures, the message is already formatted with proper indentation
+		lines := strings.Split(strings.TrimSpace(failure.Exception.Message), "\n")
+		for _, line := range lines {
+			if line != "" {
+				sb.WriteString("       " + line + "\n")
+			}
 		}
-	}
 
-	// Backtrace (first line only, like RSpec does)
-	if len(failure.Backtrace) > 0 {
-		sb.WriteString(fmt.Sprintf("     # %s", failure.Backtrace[0]))
+		// Backtrace (first line only, like RSpec does)
+		if len(failure.Exception.Backtrace) > 0 {
+			sb.WriteString(fmt.Sprintf("     # %s", failure.Exception.Backtrace[0]))
+		}
 	}
 
 	return sb.String()
 }
 
 // FormatFailedExamples formats the list of failed examples
-func FormatFailedExamples(failures []TestFailure) string {
+func FormatFailedExamples(failures []types.TestCaseNotification) string {
 	var sb strings.Builder
 
 	for _, failure := range failures {
 		sb.WriteString(fmt.Sprintf("rspec %s:%d # %s\n",
-			failure.File.Path,
+			failure.FilePath,
 			failure.LineNumber,
-			failure.Description))
+			failure.FullDescription))
 	}
 
 	return sb.String()

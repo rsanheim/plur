@@ -57,30 +57,12 @@ func (a *TestCollector) AddNotification(n types.TestNotification) {
 	}
 }
 
-// BuildResult creates a TestResult from collected notifications
-func (a *TestCollector) BuildResult(testFile *TestFile, duration time.Duration) TestResult {
-	// Convert TestCaseNotification failures to TestFailure format
-	failures := make([]TestFailure, 0)
-	for _, notification := range a.failures {
-		failure := TestFailure{
-			File:        testFile,
-			Description: notification.FullDescription,
-			LineNumber:  notification.LineNumber,
-		}
-
-		if notification.Exception != nil {
-			failure.Message = notification.Exception.Message
-			failure.Backtrace = notification.Exception.Backtrace
-		}
-
-		failures = append(failures, failure)
-	}
-
-	result := TestResult{
+// BuildResult creates a WorkerResult from collected notifications
+func (a *TestCollector) BuildResult(testFile *TestFile, duration time.Duration) WorkerResult {
+	result := WorkerResult{
 		File:              testFile,
 		Output:            a.rawOutput.String(),
 		Duration:          duration,
-		Failures:          failures,
 		ExampleCount:      len(a.tests),
 		FailureCount:      len(a.failures),
 		PendingCount:      len(a.pending),

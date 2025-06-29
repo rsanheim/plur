@@ -27,16 +27,15 @@ const (
 	StateError   TestState = "error"   // Fatal error, couldn't run tests
 )
 
-// TestResult represents the result of running a single spec file
-type TestResult struct {
-	File         *TestFile
+// WorkerResult represents the accumulated results from a worker executing one or more test files
+type WorkerResult struct {
+	File         *TestFile // Primary file (first file when multiple files are run together)
 	State        TestState
 	Output       string
 	Error        error
 	Duration     time.Duration
 	FileLoadTime time.Duration // Time to load spec files before running tests
 	JSONOutput   *rspec.JSONOutput
-	Failures     []TestFailure
 	ExampleCount int
 	FailureCount int
 	PendingCount int
@@ -49,7 +48,7 @@ type TestResult struct {
 }
 
 // Success returns true if the test execution was successful (no failures or errors)
-func (r TestResult) Success() bool {
+func (r WorkerResult) Success() bool {
 	return r.State == StateSuccess
 }
 
@@ -140,15 +139,15 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 	}
 }
 
-// errorResult creates a TestResult for error cases
-func errorResult(testFile *TestFile, err error, start time.Time, framework TestFramework) TestResult {
+// errorResult creates a WorkerResult for error cases
+func errorResult(testFile *TestFile, err error, start time.Time, framework TestFramework) WorkerResult {
 	// Extract error message for output
 	errorOutput := ""
 	if err != nil {
 		errorOutput = fmt.Sprintf("Error: %v\n", err)
 	}
 
-	return TestResult{
+	return WorkerResult{
 		File:      testFile,
 		State:     StateError,
 		Output:    errorOutput,
@@ -158,23 +157,8 @@ func errorResult(testFile *TestFile, err error, start time.Time, framework TestF
 	}
 }
 
-// convertRSpecFailures converts RSpec-specific failures to generic TestFailure
-func convertRSpecFailures(testFile *TestFile, rspecFailures []rspec.FailureDetail) []TestFailure {
-	failures := make([]TestFailure, len(rspecFailures))
-	for i, f := range rspecFailures {
-		failures[i] = TestFailure{
-			File:        testFile,
-			Description: f.Description,
-			LineNumber:  f.LineNumber,
-			Message:     f.Message,
-			Backtrace:   f.Backtrace,
-		}
-	}
-	return failures
-}
-
 // RunSpecFile executes multiple test files in a single test process
-func RunSpecFile(ctx context.Context, config *Config, testFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
+func RunSpecFile(ctx context.Context, config *Config, testFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) WorkerResult {
 	// Dispatch to framework-specific implementation
 	switch config.Framework {
 	case FrameworkMinitest:
@@ -185,7 +169,7 @@ func RunSpecFile(ctx context.Context, config *Config, testFiles []string, worker
 }
 
 // RunRSpecFiles executes multiple spec files in a single RSpec process
-func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
+func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) WorkerResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
@@ -211,7 +195,7 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
 
 	if dryRun {
-		return TestResult{
+		return WorkerResult{
 			File:     testFile,
 			State:    StateSuccess,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
@@ -289,20 +273,6 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		}
 	}
 
-	// Extract failures from the accumulated test results
-	var failures []TestFailure
-	for _, test := range result.Tests {
-		if test.Event == types.TestFailed && test.Exception != nil {
-			failures = append(failures, TestFailure{
-				File:        testFile,
-				Description: test.FullDescription,
-				LineNumber:  test.LineNumber,
-				Message:     test.Exception.Message,
-				Backtrace:   test.Exception.Backtrace,
-			})
-		}
-	}
-
 	// Determine the state based on the execution outcome
 	state := StateSuccess
 	output := result.Output + stderrOutput
@@ -317,7 +287,7 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		state = StateFailed
 	}
 
-	return TestResult{
+	return WorkerResult{
 		File:              testFile,
 		State:             state,
 		Output:            output,
@@ -325,7 +295,6 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		Duration:          time.Since(start),
 		FileLoadTime:      result.FileLoadTime,
 		JSONOutput:        jsonOutput,
-		Failures:          failures,
 		ExampleCount:      result.ExampleCount,
 		FailureCount:      result.FailureCount,
 		PendingCount:      result.PendingCount,
@@ -337,7 +306,7 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
+func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *RuntimeTracker) ([]WorkerResult, time.Duration) {
 	defer tracing.StartRegion(context.Background(), "run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
@@ -380,7 +349,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		}
 	}
 
-	results := make(chan TestResult, len(groups))
+	results := make(chan WorkerResult, len(groups))
 
 	// Create buffered channel for output messages
 	outputChan := make(chan OutputMessage, maxWorkers*10)
@@ -418,7 +387,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 	outputWg.Wait()
 
 	// Collect results
-	var allResults []TestResult
+	var allResults []WorkerResult
 	for result := range results {
 		allResults = append(allResults, result)
 		// Track runtime data if tracker is available and tests actually ran
@@ -436,7 +405,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 }
 
 // RunMinitestFiles executes multiple test files in a single Minitest process
-func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) TestResult {
+func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) WorkerResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_minitest_files", workerIndex, strings.Join(testFiles, ","))()
 	start := time.Now()
 
@@ -462,7 +431,7 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	logger.Logger.Debug("executing minitest command", "worker", workerIndex, "command", strings.Join(args, " "))
 
 	if dryRun {
-		return TestResult{
+		return WorkerResult{
 			File:     testFile,
 			State:    StateSuccess,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),

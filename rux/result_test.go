@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rsanheim/rux/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +16,7 @@ func TestBuildTestSummary(t *testing.T) {
 	brokenFile := &TestFile{Path: "spec/broken_spec.rb", Filename: "broken_spec.rb"}
 
 	// Create test results
-	results := []TestResult{
+	results := []WorkerResult{
 		{
 			File:         modelFile,
 			State:        StateSuccess,
@@ -23,7 +24,7 @@ func TestBuildTestSummary(t *testing.T) {
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
 			FileLoadTime: 50 * time.Millisecond,
-			Failures:     []TestFailure{},
+			Tests:        []types.TestCaseNotification{},
 		},
 		{
 			File:         controllerFile,
@@ -32,20 +33,26 @@ func TestBuildTestSummary(t *testing.T) {
 			FailureCount: 2,
 			Duration:     200 * time.Millisecond,
 			FileLoadTime: 75 * time.Millisecond,
-			Failures: []TestFailure{
+			Tests: []types.TestCaseNotification{
 				{
-					File:        controllerFile,
-					Description: "Controller GET /index returns 200",
-					LineNumber:  10,
-					Message:     "expected 200, got 404",
-					Backtrace:   []string{"spec/controller_spec.rb:10"},
+					Event:           types.TestFailed,
+					TestID:          "test-1",
+					FullDescription: "Controller GET /index returns 200",
+					LineNumber:      10,
+					Exception: &types.TestException{
+						Message:   "expected 200, got 404",
+						Backtrace: []string{"spec/controller_spec.rb:10"},
+					},
 				},
 				{
-					File:        controllerFile,
-					Description: "Controller POST /create creates resource",
-					LineNumber:  20,
-					Message:     "expected resource to be created",
-					Backtrace:   []string{"spec/controller_spec.rb:20"},
+					Event:           types.TestFailed,
+					TestID:          "test-2",
+					FullDescription: "Controller POST /create creates resource",
+					LineNumber:      20,
+					Exception: &types.TestException{
+						Message:   "expected resource to be created",
+						Backtrace: []string{"spec/controller_spec.rb:20"},
+					},
 				},
 			},
 		},
@@ -85,7 +92,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 	modelFile := &TestFile{Path: "spec/model_spec.rb", Filename: "model_spec.rb"}
 	controllerFile := &TestFile{Path: "spec/controller_spec.rb", Filename: "controller_spec.rb"}
 
-	results := []TestResult{
+	results := []WorkerResult{
 		{
 			File:         modelFile,
 			State:        StateSuccess,
@@ -115,10 +122,10 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 	assert.Equal(t, "", summary.FormattedSummary, "summary with multiple results should be empty")
 }
 
-func TestSingleTestResultIsSingleWorkerMode(t *testing.T) {
+func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 	modelFile := &TestFile{Path: "spec/model_spec.rb", Filename: "model_spec.rb"}
 
-	results := []TestResult{
+	results := []WorkerResult{
 		{
 			File:             modelFile,
 			State:            StateSuccess,
