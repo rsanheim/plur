@@ -9,25 +9,29 @@ import (
 
 // TestExecutor orchestrates the execution of tests
 type TestExecutor struct {
-	config         *Config
+	globalConfig   *GlobalConfig
+	specCmd        *SpecCmd
 	specFiles      []string
 	runtimeTracker *RuntimeTracker
+	commandBuilder CommandBuilder
 }
 
 // NewTestExecutor creates a new test executor
-func NewTestExecutor(config *Config, specFiles []string) *TestExecutor {
+func NewTestExecutor(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string) *TestExecutor {
 	return &TestExecutor{
-		config:         config,
+		globalConfig:   globalConfig,
+		specCmd:        specCmd,
 		specFiles:      specFiles,
 		runtimeTracker: NewRuntimeTracker(),
+		commandBuilder: NewCommandBuilder(specCmd.GetFramework()),
 	}
 }
 
 // Execute runs the test execution based on the configuration
 func (e *TestExecutor) Execute() error {
-	fmt.Printf("rux version %s\n", GetVersionInfo())
+	fmt.Printf("rux version version=%s\n", GetVersionInfo())
 
-	if e.config.DryRun {
+	if e.globalConfig.DryRun {
 		return e.executeDryRun()
 	}
 
@@ -36,7 +40,7 @@ func (e *TestExecutor) Execute() error {
 
 // executeDryRun handles the dry-run mode
 func (e *TestExecutor) executeDryRun() error {
-	if e.config.Auto {
+	if e.globalConfig.Auto {
 		fmt.Fprintln(os.Stderr, "[dry-run] bundle install")
 	}
 
@@ -52,10 +56,10 @@ func (e *TestExecutor) executeDryRun() error {
 	// Group files for execution
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(e.specFiles, e.config.WorkerCount, runtimeData)
+		groups = GroupSpecFilesByRuntime(e.specFiles, e.globalConfig.WorkerCount, runtimeData)
 		fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
 	} else {
-		groups = GroupSpecFilesBySize(e.specFiles, e.config.WorkerCount)
+		groups = GroupSpecFilesBySize(e.specFiles, e.globalConfig.WorkerCount)
 		fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
 	}
 
@@ -70,15 +74,15 @@ func (e *TestExecutor) executeDryRun() error {
 
 // executeTests handles the actual test execution
 func (e *TestExecutor) executeTests() error {
-	actualWorkers := e.config.WorkerCount
-	if len(e.specFiles) < e.config.WorkerCount {
+	actualWorkers := e.globalConfig.WorkerCount
+	if len(e.specFiles) < e.globalConfig.WorkerCount {
 		actualWorkers = len(e.specFiles)
 	}
 
 	fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
 		len(e.specFiles), actualWorkers, runtime.NumCPU())
 
-	results, wallTime := RunSpecsInParallel(e.config, e.specFiles, e.runtimeTracker)
+	results, wallTime := RunSpecsInParallel(e.globalConfig, e.specCmd, e.specFiles, e.runtimeTracker)
 
 	// Save runtime data only if some tests actually ran
 	hasValidRuntimeData := false
@@ -101,7 +105,7 @@ func (e *TestExecutor) executeTests() error {
 
 	// Build summary and print results
 	summary := BuildTestSummary(results, wallTime)
-	PrintResults(summary, e.config.ColorOutput)
+	PrintResults(summary, e.globalConfig.ColorOutput)
 
 	// Return error if tests failed
 	if !summary.Success {
@@ -114,6 +118,5 @@ func (e *TestExecutor) executeTests() error {
 
 // buildTestCommand constructs the test command arguments based on the framework
 func (e *TestExecutor) buildTestCommand(files []string) []string {
-	builder := NewCommandBuilder(e.config.Framework)
-	return builder.BuildCommand(files, e.config)
+	return e.commandBuilder.BuildCommand(files, e.globalConfig, e.specCmd.Command)
 }

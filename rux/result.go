@@ -96,15 +96,11 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary, colorOutput bool) {
-	// fmt.Println() // New line after progress dots
-
 	// Simple case: all tests passed
 	if summary.Success {
-		// Use formatted summary if available, otherwise use parser formatting
 		if summary.FormattedSummary != "" {
 			fmt.Print(summary.FormattedSummary)
 		} else {
-			// Use the parser to format the summary
 			parser, err := NewTestOutputParser(summary.Framework)
 			if err == nil {
 				formattedSummary := parser.FormatSummary(nil, summary.TotalExamples, summary.TotalFailures, summary.TotalPending,

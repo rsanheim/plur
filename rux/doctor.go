@@ -10,7 +10,7 @@ import (
 	"github.com/rsanheim/rux/watch"
 )
 
-func runDoctorWithConfig(config *Config) error {
+func runDoctorWithConfig(globalConfig *GlobalConfig) error {
 	fmt.Println("Rux Doctor")
 	fmt.Println("==========")
 	fmt.Println()
@@ -70,7 +70,7 @@ func runDoctorWithConfig(config *Config) error {
 
 	// Watcher info
 	fmt.Println("File Watcher:")
-	watcherPath, err := watch.GetWatcherBinaryPath(config.ConfigPaths.BinDir)
+	watcherPath, err := watch.GetWatcherBinaryPath(globalConfig.ConfigPaths.BinDir)
 	if err != nil {
 		fmt.Printf("  Status:         Not available (%v)\n", err)
 		fmt.Printf("  Platform:       %s/%s\n", runtime.GOOS, runtime.GOARCH)
@@ -95,7 +95,7 @@ func runDoctorWithConfig(config *Config) error {
 	fmt.Println()
 
 	// Cache info
-	cacheDir := config.ConfigPaths.CacheDir
+	cacheDir := globalConfig.ConfigPaths.CacheDir
 	fmt.Printf("Cache Directory:  %s\n", cacheDir)
 
 	// Runtime data

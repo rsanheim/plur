@@ -16,17 +16,18 @@ const (
 	FrameworkMinitest TestFramework = "minitest"
 )
 
-// Config holds top level config for rux
-type Config struct {
+// GlobalConfig holds settings that are truly global across all commands
+type GlobalConfig struct {
 	Auto         bool
 	ColorOutput  bool
 	ConfigPaths  *ConfigPaths
+	Debug        bool
+	Verbose      bool
 	DryRun       bool
 	TraceEnabled bool
 	WorkerCount  int
-	SpecCommand  string
-	WatchCommand string
-	Framework    TestFramework
+	RuntimeDir   string
+	JSON         string // JSON output file
 }
 
 type ConfigPaths struct {
@@ -84,6 +85,22 @@ func InitConfigPaths() *ConfigPaths {
 	}
 
 	return &configPaths
+}
+
+// ParseFrameworkType converts a string type to TestFramework enum
+func ParseFrameworkType(frameworkType string) TestFramework {
+	if frameworkType == "" {
+		return DetectTestFramework()
+	}
+	switch frameworkType {
+	case "rspec":
+		return FrameworkRSpec
+	case "minitest":
+		return FrameworkMinitest
+	default:
+		// Default to RSpec for backward compatibility
+		return FrameworkRSpec
+	}
 }
 
 // DetectTestFramework attempts to detect the test framework based on directory structure

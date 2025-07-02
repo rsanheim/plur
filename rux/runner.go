@@ -158,18 +158,19 @@ func errorResult(testFile *TestFile, err error, start time.Time, framework TestF
 }
 
 // RunSpecFile executes multiple test files in a single test process
-func RunSpecFile(ctx context.Context, config *Config, testFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) WorkerResult {
+func RunSpecFile(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
 	// Dispatch to framework-specific implementation
-	switch config.Framework {
+	framework := specCmd.GetFramework()
+	switch framework {
 	case FrameworkMinitest:
-		return RunMinitestFiles(ctx, config, testFiles, workerIndex, dryRun, outputChan)
+		return RunMinitestFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan)
 	default:
-		return RunRSpecFiles(ctx, config, testFiles, workerIndex, dryRun, outputChan)
+		return RunRSpecFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan)
 	}
 }
 
 // RunRSpecFiles executes multiple spec files in a single RSpec process
-func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) WorkerResult {
+func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
@@ -188,13 +189,13 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 	}
 
 	// Build command using the appropriate builder
-	builder := NewCommandBuilder(config.Framework)
-	args := builder.BuildCommand(specFiles, config)
+	builder := NewCommandBuilder(specCmd.GetFramework())
+	args := builder.BuildCommand(specFiles, globalConfig, specCmd.Command)
 
 	// Log the command in debug mode
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
 
-	if dryRun {
+	if globalConfig.DryRun {
 		return WorkerResult{
 			File:     testFile,
 			State:    StateSuccess,
@@ -218,12 +219,12 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, config.Framework)
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, specCmd.GetFramework())
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, config.Framework)
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, specCmd.GetFramework())
 	}
 
 	// Start the command
@@ -232,18 +233,18 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		err = cmd.Start()
 	}()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, config.Framework)
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, specCmd.GetFramework())
 	}
 
 	// Create parser and collector for event-based processing
-	parser, err := NewTestOutputParser(config.Framework)
+	parser, err := NewTestOutputParser(specCmd.GetFramework())
 	if err != nil {
-		return errorResult(testFile, err, start, config.Framework)
+		return errorResult(testFile, err, start, specCmd.GetFramework())
 	}
 	collector := NewTestCollector()
 
 	// Stream output through parser and collector
-	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, config.Framework, start)
+	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, specCmd.GetFramework(), start)
 
 	// Wait for command to complete
 	err = cmd.Wait()
@@ -301,12 +302,12 @@ func RunRSpecFiles(ctx context.Context, config *Config, specFiles []string, work
 		Tests:             result.Tests,
 		FormattedFailures: result.FormattedFailures,
 		FormattedSummary:  result.FormattedSummary,
-		Framework:         config.Framework,
+		Framework:         specCmd.GetFramework(),
 	}
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *RuntimeTracker) ([]WorkerResult, time.Duration) {
+func RunSpecsInParallel(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string, runtimeTracker *RuntimeTracker) ([]WorkerResult, time.Duration) {
 	defer tracing.StartRegion(context.Background(), "run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
@@ -318,9 +319,8 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		runtimeData = make(map[string]float64)
 	}
 
-	maxWorkers := config.WorkerCount
-	colorOutput := config.ColorOutput
-	dryRun := config.DryRun
+	maxWorkers := globalConfig.WorkerCount
+	colorOutput := globalConfig.ColorOutput
 
 	// Group files using runtime data if available, otherwise by size
 	var groups []FileGroup
@@ -372,7 +372,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunSpecFile(ctx, config, files, workerIndex, dryRun, outputChan)
+			result := RunSpecFile(ctx, globalConfig, specCmd, files, workerIndex, outputChan)
 			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success())
 			results <- result
 		}(i, group.Files)
@@ -405,7 +405,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 }
 
 // RunMinitestFiles executes multiple test files in a single Minitest process
-func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, workerIndex int, dryRun bool, outputChan chan<- OutputMessage) WorkerResult {
+func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_minitest_files", workerIndex, strings.Join(testFiles, ","))()
 	start := time.Now()
 
@@ -424,13 +424,13 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	}
 
 	// Build command using the appropriate builder
-	builder := NewCommandBuilder(config.Framework)
-	args := builder.BuildCommand(testFiles, config)
+	builder := NewCommandBuilder(specCmd.GetFramework())
+	args := builder.BuildCommand(testFiles, globalConfig, specCmd.Command)
 
 	// Log the command in debug mode
 	logger.Logger.Debug("executing minitest command", "worker", workerIndex, "command", strings.Join(args, " "))
 
-	if dryRun {
+	if globalConfig.DryRun {
 		return WorkerResult{
 			File:     testFile,
 			State:    StateSuccess,
@@ -453,26 +453,26 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, config.Framework)
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, specCmd.GetFramework())
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, config.Framework)
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, specCmd.GetFramework())
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, config.Framework)
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, specCmd.GetFramework())
 	}
 
-	parser, err := NewTestOutputParser(config.Framework)
+	parser, err := NewTestOutputParser(specCmd.GetFramework())
 	if err != nil {
-		return errorResult(testFile, err, start, config.Framework)
+		return errorResult(testFile, err, start, specCmd.GetFramework())
 	}
 	collector := NewTestCollector()
 
-	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, config.Framework, start)
+	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework(), start)
 
 	err = cmd.Wait()
 
@@ -497,7 +497,7 @@ func RunMinitestFiles(ctx context.Context, config *Config, testFiles []string, w
 	result.State = state
 	result.Output = output
 	result.Error = err
-	result.Framework = config.Framework
+	result.Framework = specCmd.GetFramework()
 
 	return result
 }

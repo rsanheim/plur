@@ -82,7 +82,16 @@ RSpec.describe "Rux CLI behavior" do
       end
     end
 
-    it "shows the actual command(s) run when --debug is enabled" do
+    it "uses debug mode for -d" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_rux("spec", "-d", "spec/calculator_spec.rb")
+
+        expect(result.err).to include("bundle exec rspec")
+        expect(result.out).to include("#{calculator_spec_examples} examples, 0 failures")
+      end
+    end
+
+    it "uses debug mode for --debug" do
       Dir.chdir(default_ruby_dir) do
         result = run_rux("spec", "--debug", "spec/calculator_spec.rb")
 
