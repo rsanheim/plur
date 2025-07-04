@@ -16,10 +16,6 @@ RSpec.describe "Command-specific configuration" do
     RUBY
   end
 
-  after do
-    FileUtils.rm_rf(test_dir)
-  end
-
   context "with command-specific TOML configuration" do
     before do
       File.write(File.join(test_dir, ".rux.toml"), <<~TOML)
