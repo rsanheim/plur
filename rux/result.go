@@ -102,12 +102,8 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 	}
 
 	// Print failures if any
-	if summary.HasFailures {
-		if summary.FormattedFailures != "" {
-			fmt.Print(summary.FormattedFailures)
-		} else if len(summary.AllFailures) > 0 {
-			fmt.Print(parser.FormatFailures(summary.AllFailures))
-		}
+	if summary.HasFailures && summary.FormattedFailures != "" {
+		fmt.Print(summary.FormattedFailures)
 	}
 
 	// Print summary

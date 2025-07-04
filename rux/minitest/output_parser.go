@@ -32,10 +32,11 @@ type ProgressCounts struct {
 
 // OutputParser parses minitest text output into notifications
 type OutputParser struct {
-	state          ParsingState
-	progress       ProgressCounts
-	failureBuffer  strings.Builder
-	currentFailure *FailureInfo // Accumulating failure details
+	state             ParsingState
+	progress          ProgressCounts
+	failureBuffer     strings.Builder
+	currentFailure    *FailureInfo // Accumulating failure details
+	collectedFailures []types.TestCaseNotification // All failures for formatting
 }
 
 // FailureInfo holds temporary failure details while parsing
@@ -178,6 +179,10 @@ func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 				notification := p.createFailureNotification()
 				if notification != nil {
 					notifications = append(notifications, notification)
+					// Also collect it for formatted output
+					if testCase, ok := notification.(types.TestCaseNotification); ok {
+						p.collectedFailures = append(p.collectedFailures, testCase)
+					}
 				}
 			}
 			p.currentFailure = nil
@@ -216,16 +221,32 @@ func (p *OutputParser) parseSummaryLine(line string) []types.TestNotification {
 		errors, _ := strconv.Atoi(match[4])
 		skips, _ := strconv.Atoi(match[5])
 
-		// Just create the suite finished notification
-		// We don't need individual test notifications anymore
+		notifications := []types.TestNotification{}
+
+		// If we have failures, emit a FormattedFailuresNotification
+		if len(p.collectedFailures) > 0 {
+			formattedFailures := p.FormatFailures(p.collectedFailures)
+			if formattedFailures != "" {
+				notifications = append(notifications, types.FormattedFailuresNotification{
+					Content: formattedFailures,
+				})
+			}
+		}
+
+		// Create the suite finished notification
 		finishNotification := types.SuiteNotification{
 			Event:        types.SuiteFinished,
 			TestCount:    runs,
 			FailureCount: failures + errors,
 			PendingCount: skips,
 		}
+		notifications = append(notifications, finishNotification)
 
-		return []types.TestNotification{finishNotification}
+		// Also emit a formatted summary notification
+		// Note: We don't have wallTime here, so the summary will be generated later in PrintResults
+		// This is just for consistency with RSpec's approach
+
+		return notifications
 	}
 	return nil // Return nil if not a summary line
 }
