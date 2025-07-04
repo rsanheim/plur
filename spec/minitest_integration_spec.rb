@@ -1,6 +1,14 @@
 require_relative "spec_helper"
 
 RSpec.describe "Minitest Integration" do
+  before(:all) do
+    chdir(project_fixture!("minitest-success")) do
+      Bundler.with_unbundled_env do
+        system("bundle install", exception: true)
+      end
+    end
+  end
+  
   context "with minitest-success project" do
     let(:project_dir) { project_fixture!("minitest-success") }
 
