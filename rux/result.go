@@ -112,6 +112,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 					summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
 				fmt.Printf("%s, 0 failures\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
 			}
+			fmt.Println()
 		}
 		return
 	}
