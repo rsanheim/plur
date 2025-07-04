@@ -15,22 +15,20 @@ import (
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
 	Command  string   `help:"Test command to run" default:"bundle exec rspec"`
+	Type     string   `short:"t" help:"Test framework type (rspec|minitest)" default:""`
+}
+
+// GetFramework returns the TestFramework enum based on the Type field
+func (s *SpecCmd) GetFramework() TestFramework {
+	return ParseFrameworkType(s.Type)
 }
 
 func (r *SpecCmd) Run(parent *RuxCLI) error {
-	// Build config from parent
-	paths := InitConfigPaths()
-	config := &Config{
-		Auto:         parent.Auto,
-		ColorOutput:  parent.Color,
-		ConfigPaths:  paths,
-		DryRun:       parent.DryRun,
-		TraceEnabled: parent.Trace,
-		WorkerCount:  GetWorkerCount(parent.Workers),
-		SpecCommand:  r.Command,
-	}
+	// Use the pre-built global config
+	config := parent.globalConfig
 
-	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns)
+	framework := r.GetFramework()
+	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns, "framework", framework)
 
 	// Initialize tracing if enabled
 	if config.TraceEnabled {
@@ -42,24 +40,29 @@ func (r *SpecCmd) Run(parent *RuxCLI) error {
 
 	defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
-	// Discover spec files
-	var specFiles []string
+	// Discover test files
+	var testFiles []string
 	var err error
 	if len(r.Patterns) > 0 {
-		specFiles, err = ExpandGlobPatterns(r.Patterns)
+		testFiles, err = ExpandGlobPatterns(r.Patterns, framework)
 		if err != nil {
 			return err
 		}
-		if len(specFiles) == 0 {
-			return fmt.Errorf("no spec files found matching provided patterns")
+		if len(testFiles) == 0 {
+			return fmt.Errorf("no test files found matching provided patterns")
 		}
 	} else {
-		specFiles, err = FindSpecFiles()
+		testFiles, err = FindTestFiles(framework)
 		if err != nil {
 			return err
 		}
-		if len(specFiles) == 0 {
-			return fmt.Errorf("no spec files found")
+		if len(testFiles) == 0 {
+			suffix := getTestFileSuffix(framework)
+			dir := "spec"
+			if framework == FrameworkMinitest {
+				dir = "test"
+			}
+			return fmt.Errorf("no test files found (looking for *%s in %s/)", suffix, dir)
 		}
 	}
 
@@ -72,7 +75,7 @@ func (r *SpecCmd) Run(parent *RuxCLI) error {
 	}
 
 	// Create and run executor
-	executor := NewTestExecutor(config, specFiles)
+	executor := NewTestExecutor(config, r, testFiles)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {
@@ -94,27 +97,24 @@ type WatchRunCmd struct {
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
 	Command  string `help:"Test command to run" default:"bundle exec rspec"`
+	Type     string `short:"t" help:"Test framework type (rspec|minitest)" default:""`
+}
+
+// GetFramework returns the TestFramework enum based on the Type field
+func (w *WatchRunCmd) GetFramework() TestFramework {
+	return ParseFrameworkType(w.Type)
 }
 
 func (w *WatchRunCmd) Run(parent *RuxCLI) error {
-	// Build config from parent
-	paths := InitConfigPaths()
-	config := &Config{
-		Auto:         parent.Auto,
-		ColorOutput:  parent.Color,
-		ConfigPaths:  paths,
-		DryRun:       parent.DryRun,
-		TraceEnabled: parent.Trace,
-		WorkerCount:  GetWorkerCount(parent.Workers),
-		WatchCommand: w.Command,
-	}
+	// Use the pre-built global config
+	config := parent.globalConfig
 
 	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}
 
-	return runWatchWithConfig(config, w.Timeout, w.Debounce)
+	return runWatchWithConfig(config, w)
 }
 
 type WatchInstallCmd struct{}
@@ -126,61 +126,40 @@ func (w *WatchInstallCmd) Run(parent *RuxCLI) error {
 type DoctorCmd struct{}
 
 func (d *DoctorCmd) Run(parent *RuxCLI) error {
-	// Build config from parent
-	paths := InitConfigPaths()
-	config := &Config{
-		Auto:         parent.Auto,
-		ColorOutput:  parent.Color,
-		ConfigPaths:  paths,
-		DryRun:       parent.DryRun,
-		TraceEnabled: parent.Trace,
-		WorkerCount:  GetWorkerCount(parent.Workers),
-	}
-	return runDoctorWithConfig(config)
+	// Use the pre-built global config
+	return runDoctorWithConfig(parent.globalConfig)
 }
 
 type DBSetupCmd struct{}
 
 func (d *DBSetupCmd) Run(parent *RuxCLI) error {
-	config := &Config{
-		DryRun: parent.DryRun,
-	}
-	// Use parent.Workers since Kong parses -n as a global flag
-	workerCount := GetWorkerCount(parent.Workers)
-	return RunDatabaseTask("db:setup", workerCount, config.DryRun)
+	// Use the pre-built global config
+	config := parent.globalConfig
+	return RunDatabaseTask("db:setup", config.WorkerCount, config.DryRun)
 }
 
 type DBCreateCmd struct{}
 
 func (d *DBCreateCmd) Run(parent *RuxCLI) error {
-	config := &Config{
-		DryRun: parent.DryRun,
-	}
-	// Use parent.Workers since Kong parses -n as a global flag
-	workerCount := GetWorkerCount(parent.Workers)
-	return RunDatabaseTask("db:create", workerCount, config.DryRun)
+	// Use the pre-built global config
+	config := parent.globalConfig
+	return RunDatabaseTask("db:create", config.WorkerCount, config.DryRun)
 }
 
 type DBMigrateCmd struct{}
 
 func (d *DBMigrateCmd) Run(parent *RuxCLI) error {
-	config := &Config{
-		DryRun: parent.DryRun,
-	}
-	// Use parent.Workers since Kong parses -n as a global flag
-	workerCount := GetWorkerCount(parent.Workers)
-	return RunDatabaseTask("db:migrate", workerCount, config.DryRun)
+	// Use the pre-built global config
+	config := parent.globalConfig
+	return RunDatabaseTask("db:migrate", config.WorkerCount, config.DryRun)
 }
 
 type DBPrepareCmd struct{}
 
 func (d *DBPrepareCmd) Run(parent *RuxCLI) error {
-	config := &Config{
-		DryRun: parent.DryRun,
-	}
-	// Use parent.Workers since Kong parses -n as a global flag
-	workerCount := GetWorkerCount(parent.Workers)
-	return RunDatabaseTask("db:test:prepare", workerCount, config.DryRun)
+	// Use the pre-built global config
+	config := parent.globalConfig
+	return RunDatabaseTask("db:test:prepare", config.WorkerCount, config.DryRun)
 }
 
 type RuxCLI struct {
@@ -196,7 +175,7 @@ type RuxCLI struct {
 	// Global flags
 	Auto       bool   `help:"Automatically run bundle install before tests" default:"false"`
 	Verbose    bool   `help:"Enable verbose output for debugging" default:"false"`
-	Debug      bool   `help:"Enable debug output (includes verbose)" default:"false"`
+	Debug      bool   `short:"d" help:"Enable debug output (includes verbose)" env:"RUX_DEBUG" default:"false"`
 	DryRun     bool   `help:"Print what would be executed without running" default:"false"`
 	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
 	Color      bool   `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
@@ -204,11 +183,27 @@ type RuxCLI struct {
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
 	CacheDir   string `help:"Directory for caching runtime data" default:"${cache_dir}"`
 	Trace      bool   `help:"Enable performance tracing (saves to ./rux_trace_*.json)" default:"false"`
-	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" default:"0"`
+	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
+	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 	Version    bool   `help:"Show version information"`
+
+	// Store the built global config
+	globalConfig *GlobalConfig `kong:"-"`
 }
 
 func (r *RuxCLI) AfterApply() error {
+	// Initialize logger early so we can use it
+	// Kong has already resolved r.Debug from CLI flag, env var, or config file
+	logger.InitLogger(r.Verbose, r.Debug)
+
+	// Change directory if -C flag is provided - do this first
+	if r.ChangeDir != "" {
+		if err := os.Chdir(r.ChangeDir); err != nil {
+			return fmt.Errorf("failed to change directory to %s: %v", r.ChangeDir, err)
+		}
+		logger.Logger.Debug("Changed directory", "dir", r.ChangeDir)
+	}
+
 	// Handle version flag
 	if r.Version {
 		fmt.Println(GetVersionInfo())
@@ -230,8 +225,19 @@ func (r *RuxCLI) AfterApply() error {
 		}
 	}
 
-	debug := r.Debug || os.Getenv("RUX_DEBUG") == "1"
-	logger.InitLogger(r.Verbose, debug)
+	// Build global config once
+	r.globalConfig = &GlobalConfig{
+		Auto:         r.Auto,
+		ColorOutput:  r.Color,
+		ConfigPaths:  InitConfigPaths(),
+		Debug:        r.Debug,
+		Verbose:      r.Verbose,
+		DryRun:       r.DryRun,
+		TraceEnabled: r.Trace,
+		WorkerCount:  GetWorkerCount(r.Workers),
+		RuntimeDir:   r.RuntimeDir,
+		JSON:         r.JSON,
+	}
 
 	return nil
 }
@@ -247,7 +253,7 @@ func main() {
 			"cache_dir": configPaths.CacheDir,
 		})
 
-	logger.Logger.Debug("running kong CLI", "args", os.Args, "ctx", ctx)
+	logger.Logger.Debug("running rux", "args", os.Args[1:], "command", ctx.Command())
 	err := ctx.Run(ctx)
 	if err != nil {
 		logger.Logger.Error("Command failed", "error", err)

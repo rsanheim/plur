@@ -1,615 +1,245 @@
 # Minitest Support & Framework Abstraction Plan
 
+> **Note**: This document contains the original analysis and plan. For current implementation status, see:
+> - [Minitest PRD](../wip/minitest-prd.md)
+> - [Current TODOs](../wip/minitest-todo.md)
+> - [Implementation Guide](../wip/minitest-implementation-guide.md)
+
 ## Current Status
 
 **Phase 0**: ✅ COMPLETED (2024-12-21)
-- All fixture projects created
-- Helper methods implemented using inline Ruby script approach
-- Ready to proceed with Phase 1
+- Created fixture projects for minitest and test-unit
+- Implemented helper methods using inline Ruby script approach
+- Discovered that minitest `-v` flag provides test-level granularity
 
-**Next Steps**: 
-1. Begin Phase 1 - Decouple Core Types from RSpec
-2. Create framework-agnostic types in Go
-3. Update TestResult and TestSummary structs
+**Phase 1**: ✅ COMPLETED (2025-06-22)
+- Created framework-agnostic types (TestFile, TestFailure)
+- Updated TestResult to use TestFile instead of string SpecFile
+- Updated TestSummary to use TestFailure instead of rspec.FailureDetail
+- Created conversion function (convertRSpecFailures) in runner.go
+- Updated all code references throughout codebase
+- Renamed OutputMessage.SpecFile to Files for clarity
+- Created FormatTestFailure and FormatFailedExamples functions
+- All tests passing with backward compatibility maintained
 
-## Overview
+**Cleanup Notes**:
+- Kept JSONOutput field temporarily for runtime tracking (to be refactored in Phase 2)
+- TestFile has both Path and Filename (consider removing Filename in future)
+- ExtractFailingLine exported from rspec package (consider moving to utilities)
+- RuntimeTracker still uses rspec.Example (convert in Phase 2)
 
-This document outlines the plan to add Minitest support to rux while establishing proper abstractions for supporting multiple test frameworks. The approach prioritizes incremental changes, maintains backward compatibility, and uses Minitest as a forcing function to drive better design.
+## How parallel_tests Handles Minitest
 
-## Current Architecture Analysis
+Based on analysis of the parallel_tests codebase, here's their approach:
 
-### Tight Coupling Points
+### Output Parsing
+- **No verbose mode**: They parse standard minitest output, not `-v` verbose output
+- **Pattern matching**: Look for summary line `"X tests, Y assertions, Z failures, W errors"`
+- **Simple regex**: `line =~ /\d+ failure(?!:)/` to identify result lines
+- **Color stripping**: Remove ANSI codes before parsing
 
-1. **TestResult struct** - Contains `rspec.FailureDetail` and `rspec.JSONOutput`
-2. **Runner** - Hardcodes RSpec formatter path and command structure  
-3. **Result formatting** - Calls `rspec.FormatFailure()` directly
-4. **File patterns** - Assumes `*_spec.rb` pattern
-5. **Output parsing** - Expects RSpec's JSON format
+### Command Execution
+```ruby
+# Single file approach would be:
+ruby -Itest test/models/user_test.rb
 
-### Strengths to Preserve
+# Multiple files (what parallel_tests does):
+ruby -Itest -e "%w[test/file1.rb test/file2.rb].each { |f| require %{./\#{f}} }"
+```
 
-- Streaming output model for real-time feedback
-- Parallel execution architecture
-- Runtime-based test distribution
-- Minimal dependencies
+### Runtime Tracking
+- Uses Ruby metaprogramming to hook into `Minitest::Runnable.run`
+- Tracks runtime per test file (not individual tests)
+- Format: `"test/models/user_test.rb:1.234"` (filename:seconds)
+- No custom formatter needed
 
-## Design Principles
+### Key Insight
+parallel_tests keeps it simple - no custom formatters, just parse the standard output and use Ruby hooks for timing. This validates our approach of starting simple.
 
-1. **Concrete First** - Build Minitest support, then extract abstractions
-2. **No Special Cases** - Avoid if/else proliferation for each framework
-3. **Maintain Performance** - Keep streaming and parallel execution unchanged
-4. **Backward Compatible** - Existing RSpec projects must work without changes
-5. **Progressive Disclosure** - Auto-detection with explicit override options
+## Core Type Refactoring
 
-## Implementation Phases
+### Phase 1 Implementation (COMPLETED)
 
-### Phase 0: Create more fixture projects for testing and verification ✅ COMPLETED
-
-* ✅ create `fixtures/projects/minitest-success` project
-    * A basic test project using latest minitest in a 'stock' way
-    * Add some some basic tests that all pass
-* ✅ create `fixtures/projects/minitest-failures` project
-    * A basic test project using latest minitest in a 'stock' way
-    * Add a mix of tests, some failing and some passing
-    * For verifying failure detection and output
-* ✅ create `fixtures/projects/testunit-success` project
-    * A basic test project using latest ruby test-unit in a 'stock' way
-    * Add some some basic tests that all pass
-* ✅ create `fixtures/projects/testunit-failures` project
-    * A basic test project using latest test-unit in a 'stock' way
-    * Add a mix of tests, some failing and some passing
-    * For verifying failure detection and output
-* ✅ create a spec helper method to run the tests in these projects using the default Ruby way, so we can compare against and see
-how they run by default
-
-#### Phase 0 Implementation Notes:
-- Created fixture projects with realistic test cases including edge cases, error handling, and skipped tests
-- Implemented `spec/support/fixture_runner.rb` using Open3.capture3 and TTY::Command::Result
-- Solved minitest's multiple file execution limitation using inline Ruby script approach from parallel_tests:
-  ```ruby
-  ruby -Itest -e "%w[test1.rb test2.rb].each { |f| require %{./#{f}} }"
-  ```
-- All fixture project specs passing in `spec/fixture_projects_spec.rb`
-
-### Phase 1: Decouple Core Types from RSpec
-
-**Goal**: Remove `rspec` package imports from core types
-
-**Specific Tasks**:
-1. Create new `result.go` file with framework-agnostic types
-2. Update `runner.go` to use new types instead of `rspec.FailureDetail` and `rspec.JSONOutput`
-3. Create conversion functions in `rspec` package to transform RSpec-specific types to generic ones
-4. Update all references throughout codebase
-5. Ensure backward compatibility - existing behavior must remain unchanged
-
-#### 1.1 Create Framework-Agnostic Types
+The following types have been implemented:
 
 ```go
-// result.go - NEW generic types
+// NEW - Represents a test file
+type TestFile struct {
+    Path     string      // Full path to the file
+    Filename string      // Just the filename (could be derived from Path)
+}
+
+// UPDATED - Framework-agnostic result
+type TestResult struct {
+    File         *TestFile
+    State        TestState    // StateSuccess, StateFailed, StateError
+    Output       string
+    Error        error
+    Duration     time.Duration
+    FileLoadTime time.Duration
+    JSONOutput   *rspec.JSONOutput  // Still RSpec-specific (Phase 2)
+    
+    // Counts
+    ExampleCount int
+    FailureCount int
+    
+    // Detailed failures
+    Failures []TestFailure
+    
+    // Raw formatted output from framework
+    FormattedFailures string
+    FormattedSummary  string
+}
+
+// NEW - Framework-agnostic failure details
 type TestFailure struct {
+    File        *TestFile
     Description string
-    FilePath    string
     LineNumber  int
     Message     string
     Backtrace   []string
 }
 
-type TestExample struct {
-    Description string
-    Status      string // "passed", "failed", "pending"
-    Duration    float64
-}
-```
-
-#### 1.2 Update TestResult
-
-```go
-// runner.go - UPDATED
-type TestResult struct {
-    SpecFile     string
-    Success      bool
-    Output       string
-    Error        error
-    Duration     time.Duration
-    FileLoadTime time.Duration
+// UPDATED - Already mostly framework-agnostic
+type TestSummary struct {
+    TotalExamples     int
+    TotalFailures     int
+    AllFailures       []TestFailure      // Changed from []rspec.FailureDetail
+    TotalCPUTime      time.Duration
+    WallTime          time.Duration
+    TotalFileLoadTime time.Duration
+    HasFailures       bool
+    Success           bool
+    ErroredFiles      []TestResult
     
-    // Framework-agnostic fields (was rspec-specific)
-    Failures     []TestFailure  // Changed from []rspec.FailureDetail
-    Examples     []TestExample  // New - for runtime tracking
-    ExampleCount int
-    FailureCount int
-    PendingCount int
-    
-    // Raw formatted output (framework provides this)
     FormattedFailures string
     FormattedSummary  string
 }
 ```
 
-#### 1.3 Update TestSummary
+## Framework Type Configuration
 
+### CLI and Config Design
 ```go
-// result.go - UPDATED
-type TestSummary struct {
-    TotalExamples     int
-    TotalFailures     int
-    AllFailures       []TestFailure // Changed from []rspec.FailureDetail
-    // ... rest unchanged
-}
-```
+// New type for framework selection
+type TestFramework string
 
-### Phase 2: Define Test Framework Interface
-
-**Goal**: Create abstraction for test framework operations
-
-#### 2.1 Core Framework Interface
-
-```go
-// framework/framework.go
-package framework
-
-type Framework interface {
-    // Identity
-    Name() string
-    DefaultCommand() string
-    
-    // Detection
-    DetectProject(dir string) bool
-    TestFilePattern() string  // e.g., "*_spec.rb" or "*_test.rb"
-    
-    // Execution
-    BuildCommand(files []string, options CommandOptions) []string
-    RequiresFormatter() bool
-    GetFormatterPath(formatterDir string) (string, error)
-    
-    // Output parsing
-    ParseStreamingOutput(line string) (*TestEvent, error)
-}
-
-type CommandOptions struct {
-    FormatterPath string
-    ColorOutput   bool
-    BaseCommand   string // Override from config
-}
-
-type TestEvent struct {
-    Type      EventType
-    Example   *TestExample
-    Failure   *TestFailure
-    LoadTime  float64
-    
-    // For formatted output events
-    FormattedOutput string
-    OutputType      string // "failures", "summary"
-}
-
-type EventType int
 const (
-    EventLoadComplete EventType = iota
-    EventExamplePassed
-    EventExampleFailed
-    EventExamplePending
-    EventFormattedOutput
-    EventRunComplete
+    FrameworkRSpec    TestFramework = "rspec"    // default
+    FrameworkMinitest TestFramework = "minitest"
 )
+
+// Add to Config struct:
+Framework TestFramework
+
+// CLI flags:
+-t, --type     Test framework type (rspec|minitest) [default: rspec]
+
+// TOML config:
+type = "minitest"  # or "rspec"
 ```
 
-#### 2.2 Framework Registry
+### Auto-Detection Logic
+1. Check for explicit `-t` flag or config setting (highest priority)
+2. Check directory structure:
+   - `test/` directory → minitest
+   - `spec/` directory → rspec
+3. Check Gemfile for framework gems (future enhancement)
+4. Default to rspec for backward compatibility
 
-```go
-// framework/registry.go
-var frameworks = map[string]Framework{
-    "rspec":    &RSpecFramework{},
-    "minitest": &MinitestFramework{},
-}
+## Implementation Approach
 
-func Get(name string) (Framework, error) {
-    if f, ok := frameworks[name]; ok {
-        return f, nil
-    }
-    return nil, fmt.Errorf("unknown framework: %s", name)
-}
+### Phase 1: Refactor Types ✅ COMPLETED
+1. Created framework-agnostic types (TestFile, TestFailure)
+2. Updated existing code to use new types
+3. Added conversion function (convertRSpecFailures) in runner.go
+4. All existing tests pass
 
-func Detect(dir string) Framework {
-    // Check each framework's DetectProject method
-    for _, f := range frameworks {
-        if f.DetectProject(dir) {
-            return f
-        }
-    }
-    return frameworks["rspec"] // Default
-}
-```
+### Remaining RSpec Dependencies After Phase 1:
+- `config.go` - GetFormatterPath (needed until Phase 2)
+- `runtime_tracker.go` - Uses rspec.Example (convert in Phase 3)
+- `result.go` - Uses rspec.ExtractFailingLine (consider utilities package)
+- `runner.go` - Has rspec imports for parsing and conversion
 
-### Phase 3: Implement RSpec Framework Adapter
+### Phase 2: Add Minitest Support (IN PROGRESS)
+Based on parallel_tests analysis and decisions:
 
-**Goal**: Move existing RSpec logic into framework implementation
+1. **Add Framework Type Support** ✅ COMPLETED (2025-06-22)
+   - Added TestFramework enum ("rspec", "minitest") 
+   - Added `-t | --type` flag to spec and watch commands
+   - Updated Config struct with Framework field
+   - Added auto-detection based on test/ vs spec/ directories
+   - TOML config support via `spec.type = "minitest"`
 
-#### 3.1 RSpec Framework Implementation
+2. **Create Minitest Module** (`rux/minitest/`) ✅ COMPLETED (2025-06-22)
+   - Created output parser for standard minitest format (not verbose)
+   - Parses: `"X tests, Y assertions, Z failures, W errors, Z skips"`
+   - Strips ANSI color codes like parallel_tests
+   - Command builder using `ruby -Itest` pattern
+   - Single file: `ruby -Itest test/file.rb`
+   - Multiple files: `ruby -Itest -e "[files].each { |f| require f }"`
+   - Extracts failure messages for reporting
 
-```go
-// framework/rspec.go
-type RSpecFramework struct{}
+3. **Refactor Command Building** ✅ COMPLETED (2025-06-22)
+   - Extracted CommandBuilder interface
+   - RSpecCommandBuilder: uses existing formatter and color logic
+   - MinitestCommandBuilder: uses `ruby -Itest` pattern from minitest package
+   - Updated RunSpecFile to use command builders
+   - Framework-specific command building now properly dispatched
 
-func (r *RSpecFramework) Name() string { return "rspec" }
-func (r *RSpecFramework) DefaultCommand() string { return "bundle exec rspec" }
+4. **Basic Execution First** ⚠️ PARTIALLY COMPLETE
+   - ✅ Tests execute successfully with proper command building
+   - ✅ No runtime tracking (as planned)
+   - ✅ Duration tracked from Go side
+   - ❌ Output capture not working properly (shows "0 tests, 0 assertions...")
+   - ❌ Progress reporting (dots) not implemented
 
-func (r *RSpecFramework) DetectProject(dir string) bool {
-    // Check for spec/ directory or .rspec file
-    specDir := filepath.Join(dir, "spec")
-    if _, err := os.Stat(specDir); err == nil {
-        return true
-    }
-    // ... check for .rspec, Gemfile with rspec-core, etc.
-    return false
-}
+5. **Output Parsing** 🔄 NEEDS WORK
+   - ✅ ANSI code stripping implemented
+   - ✅ Summary line parsing implemented
+   - ❌ Real-time output streaming not working
+   - ❌ Progress indicators not captured
 
-func (r *RSpecFramework) BuildCommand(files []string, opts CommandOptions) []string {
-    cmd := strings.Fields(opts.BaseCommand)
-    
-    if opts.FormatterPath != "" {
-        cmd = append(cmd, "-r", opts.FormatterPath, 
-                    "--format", "Rux::JsonRowsFormatter")
-    }
-    
-    if !opts.ColorOutput {
-        cmd = append(cmd, "--no-color")
-    } else {
-        cmd = append(cmd, "--force-color", "--tty")
-    }
-    
-    return append(cmd, files...)
-}
 
-func (r *RSpecFramework) ParseStreamingOutput(line string) (*TestEvent, error) {
-    // Adapt existing rspec.ParseStreamingMessage
-    msg, err := rspec.ParseStreamingMessage(line)
-    if err != nil || msg == nil {
-        return nil, err
-    }
-    
-    // Convert to generic TestEvent
-    return convertRSpecMessage(msg), nil
-}
-```
+### Phase 3: Runtime Tracking & Refinements
+1. Add runtime tracking from Go side (measure per-file execution)
+2. Create generic Example type to replace rspec.Example
+3. Convert RuntimeTracker to use generic types
+4. Consider verbose mode for progress reporting (future)
 
-### Phase 4: Add Minitest Support
+## Key Decisions
 
-**Goal**: Implement Minitest framework with JSON output
+1. **Start with basic execution** - Get minitest running first, add runtime tracking later (track from Go side, not Ruby hooks)
 
-#### 4.1 Minitest JSON Formatter (Ruby)
+2. **Simple output parsing** - Follow parallel_tests approach: parse standard output, not verbose mode
 
-```ruby
-# formatter/minitest_json_rows_formatter.rb
-require 'json'
-require 'minitest'
+3. **Use `ruby -Itest` pattern** - Consistent with parallel_tests, avoid Rails-specific commands for now
 
-module Rux
-  class MinitestJsonRowsFormatter < Minitest::StatisticsReporter
-    def start
-      super
-      io.puts "RUX_JSON:#{JSON.generate({type: 'start', count: options[:total]})}"
-    end
-    
-    def record(result)
-      event = {
-        type: status_type(result),
-        example: {
-          description: result.name,
-          full_description: "#{result.klass}##{result.name}",
-          location: result.source_location.join(':'),
-          file_path: result.source_location[0],
-          line_number: result.source_location[1],
-          status: result.result_code,
-          run_time: result.time
-        }
-      }
-      
-      if result.failure
-        event[:example][:exception] = format_exception(result.failure)
-      end
-      
-      io.puts "RUX_JSON:#{JSON.generate(event)}"
-    end
-    
-    def report
-      super
-      io.puts "RUX_JSON:#{JSON.generate({
-        type: 'summary',
-        example_count: count,
-        failure_count: failures,
-        skip_count: skips,
-        duration: total_time
-      })}"
-    end
-    
-    private
-    
-    def status_type(result)
-      case result.result_code
-      when '.' then 'example_passed'
-      when 'F' then 'example_failed'
-      when 'S' then 'example_pending'
-      when 'E' then 'example_failed'
-      end
-    end
-    
-    def format_exception(failure)
-      {
-        class: failure.error.class.name,
-        message: failure.message,
-        backtrace: failure.backtrace
-      }
-    end
-  end
-end
-```
+4. **Framework type flag** - Add `-t | --type` for explicit control, with auto-detection as convenience
 
-#### 4.2 Minitest Framework Implementation
-
-```go
-// framework/minitest.go
-type MinitestFramework struct{}
-
-func (m *MinitestFramework) Name() string { return "minitest" }
-func (m *MinitestFramework) DefaultCommand() string { return "ruby -Itest" }
-
-func (m *MinitestFramework) DetectProject(dir string) bool {
-    // Check for test/ directory
-    testDir := filepath.Join(dir, "test")
-    if _, err := os.Stat(testDir); err == nil {
-        // Look for test files
-        matches, _ := filepath.Glob(filepath.Join(testDir, "**/*_test.rb"))
-        return len(matches) > 0
-    }
-    return false
-}
-
-func (m *MinitestFramework) TestFilePattern() string {
-    return "*_test.rb"
-}
-
-func (m *MinitestFramework) BuildCommand(files []string, opts CommandOptions) []string {
-    cmd := strings.Fields(opts.BaseCommand)
-    
-    if opts.FormatterPath != "" {
-        // Require our formatter
-        cmd = append(cmd, "-r", opts.FormatterPath)
-        // Add minitest/autorun if not already in base command
-        if !strings.Contains(opts.BaseCommand, "minitest/autorun") {
-            cmd = append(cmd, "-r", "minitest/autorun")
-        }
-    }
-    
-    return append(cmd, files...)
-}
-
-func (m *MinitestFramework) ParseStreamingOutput(line string) (*TestEvent, error) {
-    // Similar structure to RSpec parser
-    if !strings.HasPrefix(line, "RUX_JSON:") {
-        return nil, nil
-    }
-    
-    var msg minitestMessage
-    if err := json.Unmarshal([]byte(line[8:]), &msg); err != nil {
-        return nil, err
-    }
-    
-    return convertMinitestMessage(&msg), nil
-}
-```
-
-### Phase 5: Update Core Components
-
-**Goal**: Wire framework abstraction through the system
-
-#### 5.1 Update Config
-
-```go
-// config.go
-type Config struct {
-    // ... existing fields ...
-    Framework    string // "rspec", "minitest", or auto-detect
-    SpecCommand  string
-    TestCommand  string // For minitest
-}
-```
-
-#### 5.2 Update SpecCmd
-
-```go
-// main.go
-func (r *SpecCmd) Run(parent *RuxCLI) error {
-    // ... existing setup ...
-    
-    // Detect or get configured framework
-    var fw framework.Framework
-    if config.Framework != "" {
-        fw, err = framework.Get(config.Framework)
-        if err != nil {
-            return err
-        }
-    } else {
-        fw = framework.Detect(".")
-    }
-    
-    logger.Logger.Debug("detected framework", "name", fw.Name())
-    
-    // Update file discovery based on framework
-    if len(r.Patterns) == 0 {
-        r.Patterns = []string{fmt.Sprintf("**/%s", fw.TestFilePattern())}
-    }
-    
-    // Pass framework to executor
-    executor := NewTestExecutor(config, specFiles, fw)
-    // ...
-}
-```
-
-#### 5.3 Update TestExecutor
-
-```go
-// execution.go
-type TestExecutor struct {
-    config    *Config
-    specFiles []string
-    framework framework.Framework
-}
-
-func (e *TestExecutor) buildCommand(files []string) []string {
-    baseCmd := e.config.SpecCommand
-    if baseCmd == "" {
-        baseCmd = e.framework.DefaultCommand()
-    }
-    
-    opts := framework.CommandOptions{
-        BaseCommand:   baseCmd,
-        ColorOutput:   e.config.ColorOutput,
-        FormatterPath: e.getFormatterPath(),
-    }
-    
-    return e.framework.BuildCommand(files, opts)
-}
-```
-
-#### 5.4 Update Runner
-
-```go
-// runner.go - Update RunSpecFile
-func RunSpecFile(ctx context.Context, framework framework.Framework, ...) TestResult {
-    // Build command using framework
-    args := /* use framework.BuildCommand */
-    
-    // In output parsing goroutine:
-    event, err := framework.ParseStreamingOutput(line)
-    if event != nil {
-        switch event.Type {
-        case framework.EventExamplePassed:
-            outputChan <- OutputMessage{Type: "dot"}
-            // ... handle event
-        }
-    }
-}
-```
-
-### Phase 6: Configuration Support
-
-**Goal**: Allow framework configuration via TOML
-
-```toml
-# .rux.toml
-
-# Explicit framework selection (optional, auto-detected if not set)
-framework = "minitest"
-
-# Framework-specific commands
-[spec]
-command = "bundle exec rspec"
-
-[test]  # New section for minitest
-command = "ruby -Itest"
-
-# Future: framework-specific options
-[frameworks.minitest]
-require_autorun = true
-test_dir = "test"
-
-[frameworks.rspec]
-require_spec_helper = true
-spec_dir = "spec"
-```
-
-## Testing Strategy
-
-### 1. Unit Tests
-- Test each framework implementation in isolation
-- Test framework detection logic
-- Test output parsing for each framework
-
-### 2. Integration Tests
-- Create minimal test projects for each framework
-- Test full execution flow
-- Verify output formatting matches expectations
-
-### 3. Compatibility Tests
-- Ensure existing RSpec projects work unchanged
-- Test projects with both RSpec and Minitest files
-- Verify configuration precedence
-
-### 4. Performance Tests
-- Ensure no regression in execution speed
-- Verify streaming behavior unchanged
-- Test parallel execution with both frameworks
-
-## Migration Strategy
-
-1. **Feature Branch**: All work on `minitest-support` branch
-2. **Incremental PRs**:
-   - PR 1: Decouple types (Phase 1)
-   - PR 2: Add framework interface (Phase 2)
-   - PR 3: RSpec adapter (Phase 3)
-   - PR 4: Minitest support (Phase 4)
-   - PR 5: Wire everything together (Phase 5)
-3. **Beta Testing**: Hidden `--framework` flag for early testing
-4. **Documentation**: Update before general release
-
-## Future Extensibility
-
-This architecture sets up support for:
-
-### Additional Ruby Frameworks
-- Test::Unit
-- Cucumber
-- Minitest::Spec
-
-### Other Languages
-- Go tests (`go test`)
-- JavaScript/Node (`jest`, `mocha`)
-- Python (`pytest`)
-
-### Framework-Specific Features
-- Custom test discovery
-- Framework-specific performance optimizations
-- Native parallel execution integration
-
-## Open Questions
-
-1. **Formatter Management**: Should each framework manage its own formatter installation?
-2. **Mixed Projects**: How to handle projects with both RSpec and Minitest?
-3. **File Mapping**: Should watch mode file mapping be framework-aware?
-4. **Output Unification**: How much should we normalize output across frameworks?
+5. **Prove abstraction early** - Implement minitest support in Phase 2 before more refactoring
 
 ## Success Criteria
 
-1. Minitest projects run with same parallelization as RSpec
-2. No performance regression for RSpec projects
-3. Configuration remains simple and optional
-4. Adding new frameworks requires minimal code changes
-5. Existing RSpec projects work without any changes
+### Phase 1 (COMPLETED ✅):
+- RSpec projects continue to work exactly as before ✅
+- No performance regression ✅
+- Clean separation between generic types and RSpec-specific types ✅
+- All tests passing ✅
 
-## Timeline Estimate
+### Phase 2 - Minitest Support (IN PROGRESS):
+- ✅ `-t minitest` flag works correctly
+- ✅ Auto-detection identifies test/ directories
+- ✅ Command building follows parallel_tests pattern
+- ⚠️ Minitest projects run but output capture needs fixing
+- ❌ Progress reporting (dots) not implemented
+- ❌ Standard minitest output not captured properly
+- ✅ Existing RSpec functionality unchanged
 
-- Phase 1-2: 1 week (refactoring)
-- Phase 3-4: 1 week (implementation)
-- Phase 5-6: 1 week (integration)
-- Testing & Documentation: 1 week
-
-Total: ~1 month for full implementation
-
----
-
-## Key Learnings from Phase 0
-
-1. **Minitest Multiple File Execution**: Minitest doesn't natively support running multiple test files from command line arguments (unlike RSpec). Must use inline Ruby script approach or require each file individually.
-
-2. **Command Construction Pattern**: The parallel_tests pattern works well:
-   ```bash
-   ruby -Itest -e "%w[file1.rb file2.rb].each { |f| require %{./#{f}} }"
-   ```
-
-3. **Test::Unit Compatibility**: Test::Unit uses the same limitation and solution as Minitest, making the implementation reusable.
-
-4. **TTY::Command vs Open3**: Open3.capture3 provides simpler command execution without auto-escaping complications. Can still return TTY::Command::Result for interface compatibility.
+### Phase 3 - Runtime & Refinements:
+- Runtime tracking works for both frameworks
+- Generic Example type replaces rspec.Example
+- Further framework abstractions as needed
 
 ---
 

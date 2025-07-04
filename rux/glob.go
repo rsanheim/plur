@@ -7,6 +7,18 @@ import (
 	"strings"
 )
 
+// FindTestFiles discovers all test files based on the framework
+func FindTestFiles(framework TestFramework) ([]string, error) {
+	switch framework {
+	case FrameworkRSpec:
+		return FindSpecFiles()
+	case FrameworkMinitest:
+		return FindMinitestFiles()
+	default:
+		return FindSpecFiles() // Default to RSpec
+	}
+}
+
 // FindSpecFiles discovers all spec files in the spec directory
 func FindSpecFiles() ([]string, error) {
 	var specFiles []string
@@ -42,9 +54,44 @@ func FindSpecFiles() ([]string, error) {
 	return specFiles, nil
 }
 
+// FindMinitestFiles discovers all test files in the test directory
+func FindMinitestFiles() ([]string, error) {
+	var testFiles []string
+
+	// Check if test directory exists
+	if _, err := os.Stat("test"); os.IsNotExist(err) {
+		return testFiles, nil // Return empty list if no test directory
+	}
+
+	// Walk the test directory recursively
+	err := filepath.WalkDir("test", func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip directories
+		if d.IsDir() {
+			return nil
+		}
+
+		// Check if file ends with _test.rb
+		if strings.HasSuffix(path, "_test.rb") {
+			testFiles = append(testFiles, path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error walking test directory: %v", err)
+	}
+
+	return testFiles, nil
+}
+
 // ExpandGlobPatterns takes a list of file paths/patterns and expands any glob patterns
 // Supports ** for recursive directory matching like Ruby's Dir.glob
-func ExpandGlobPatterns(patterns []string) ([]string, error) {
+func ExpandGlobPatterns(patterns []string, framework TestFramework) ([]string, error) {
 	var allFiles []string
 	seenFiles := make(map[string]bool)
 
@@ -53,7 +100,7 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 		if strings.ContainsAny(pattern, "*?[") {
 			// Handle ** for recursive matching
 			if strings.Contains(pattern, "**") {
-				matches, err := expandDoubleStarGlob(pattern)
+				matches, err := expandDoubleStarGlob(pattern, framework)
 				if err != nil {
 					return nil, fmt.Errorf("error expanding glob pattern %q: %v", pattern, err)
 				}
@@ -71,9 +118,9 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 					return nil, fmt.Errorf("error expanding glob pattern %q: %v", pattern, err)
 				}
 
-				// Filter to only include _spec.rb files
+				// Filter to only include test files based on framework
 				for _, match := range matches {
-					if strings.HasSuffix(match, "_spec.rb") && !seenFiles[match] {
+					if isTestFile(match, framework) && !seenFiles[match] {
 						allFiles = append(allFiles, match)
 						seenFiles[match] = true
 					}
@@ -87,9 +134,10 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 			}
 
 			if fileInfo.IsDir() {
-				// If it's a directory, expand to find all _spec.rb files within it
-				dirPattern := filepath.Join(pattern, "**", "*_spec.rb")
-				matches, err := expandDoubleStarGlob(dirPattern)
+				// If it's a directory, expand to find all test files within it
+				suffix := getTestFileSuffix(framework)
+				dirPattern := filepath.Join(pattern, "**", "*"+suffix)
+				matches, err := expandDoubleStarGlob(dirPattern, framework)
 				if err != nil {
 					return nil, fmt.Errorf("error expanding directory %q: %v", pattern, err)
 				}
@@ -100,12 +148,13 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 						seenFiles[match] = true
 					}
 				}
-			} else if strings.HasSuffix(pattern, "_spec.rb") && !seenFiles[pattern] {
+			} else if isTestFile(pattern, framework) && !seenFiles[pattern] {
 				allFiles = append(allFiles, pattern)
 				seenFiles[pattern] = true
 			} else {
-				// Warn about non-spec files
-				fmt.Fprintf(os.Stderr, "Warning: %s does not end with _spec.rb\n", pattern)
+				// Warn about non-test files
+				suffix := getTestFileSuffix(framework)
+				fmt.Fprintf(os.Stderr, "Warning: %s does not end with %s\n", pattern, suffix)
 			}
 		}
 	}
@@ -114,7 +163,7 @@ func ExpandGlobPatterns(patterns []string) ([]string, error) {
 }
 
 // expandDoubleStarGlob handles ** glob patterns for recursive directory matching
-func expandDoubleStarGlob(pattern string) ([]string, error) {
+func expandDoubleStarGlob(pattern string, framework TestFramework) ([]string, error) {
 	// Split pattern into parts
 	parts := strings.Split(pattern, "**")
 	if len(parts) != 2 {
@@ -163,14 +212,14 @@ func expandDoubleStarGlob(pattern string) ([]string, error) {
 			for i := range pathParts {
 				subPath := filepath.Join(pathParts[i:]...)
 				if matched, _ := filepath.Match(suffix, subPath); matched {
-					if strings.HasSuffix(path, "_spec.rb") {
+					if isTestFile(path, framework) {
 						matches = append(matches, path)
 						return nil
 					}
 				}
 			}
-		} else if strings.HasSuffix(path, "_spec.rb") {
-			// No suffix, just match all _spec.rb files
+		} else if isTestFile(path, framework) {
+			// No suffix, just match all test files
 			matches = append(matches, path)
 		}
 
@@ -182,4 +231,28 @@ func expandDoubleStarGlob(pattern string) ([]string, error) {
 	}
 
 	return matches, nil
+}
+
+// isTestFile checks if a file is a test file based on the framework
+func isTestFile(path string, framework TestFramework) bool {
+	switch framework {
+	case FrameworkRSpec:
+		return strings.HasSuffix(path, "_spec.rb")
+	case FrameworkMinitest:
+		return strings.HasSuffix(path, "_test.rb")
+	default:
+		return strings.HasSuffix(path, "_spec.rb")
+	}
+}
+
+// getTestFileSuffix returns the test file suffix for the framework
+func getTestFileSuffix(framework TestFramework) string {
+	switch framework {
+	case FrameworkRSpec:
+		return "_spec.rb"
+	case FrameworkMinitest:
+		return "_test.rb"
+	default:
+		return "_spec.rb"
+	}
 }

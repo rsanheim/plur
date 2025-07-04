@@ -5,44 +5,59 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/rux/rspec"
+	"github.com/rsanheim/rux/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildTestSummary(t *testing.T) {
+	// Create test files
+	modelFile := &TestFile{Path: "spec/model_spec.rb", Filename: "model_spec.rb"}
+	controllerFile := &TestFile{Path: "spec/controller_spec.rb", Filename: "controller_spec.rb"}
+	brokenFile := &TestFile{Path: "spec/broken_spec.rb", Filename: "broken_spec.rb"}
+
 	// Create test results
-	results := []TestResult{
+	results := []WorkerResult{
 		{
-			SpecFile:     "spec/model_spec.rb",
+			File:         modelFile,
 			State:        StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
 			FileLoadTime: 50 * time.Millisecond,
-			Failures:     []rspec.FailureDetail{},
+			Tests:        []types.TestCaseNotification{},
 		},
 		{
-			SpecFile:     "spec/controller_spec.rb",
+			File:         controllerFile,
 			State:        StateFailed,
 			ExampleCount: 5,
 			FailureCount: 2,
 			Duration:     200 * time.Millisecond,
 			FileLoadTime: 75 * time.Millisecond,
-			Failures: []rspec.FailureDetail{
+			Tests: []types.TestCaseNotification{
 				{
-					Description: "Controller GET /index returns 200",
-					Message:     "expected 200, got 404",
-					Backtrace:   []string{"spec/controller_spec.rb:10"},
+					Event:           types.TestFailed,
+					TestID:          "test-1",
+					FullDescription: "Controller GET /index returns 200",
+					LineNumber:      10,
+					Exception: &types.TestException{
+						Message:   "expected 200, got 404",
+						Backtrace: []string{"spec/controller_spec.rb:10"},
+					},
 				},
 				{
-					Description: "Controller POST /create creates resource",
-					Message:     "expected resource to be created",
-					Backtrace:   []string{"spec/controller_spec.rb:20"},
+					Event:           types.TestFailed,
+					TestID:          "test-2",
+					FullDescription: "Controller POST /create creates resource",
+					LineNumber:      20,
+					Exception: &types.TestException{
+						Message:   "expected resource to be created",
+						Backtrace: []string{"spec/controller_spec.rb:20"},
+					},
 				},
 			},
 		},
 		{
-			SpecFile:     "spec/broken_spec.rb",
+			File:         brokenFile,
 			State:        StateError,
 			ExampleCount: 0,
 			FailureCount: 0,
@@ -68,14 +83,18 @@ func TestBuildTestSummary(t *testing.T) {
 	assert.False(summary.Success, "should not be successful when there are failures")
 
 	assert.Len(summary.ErroredFiles, 1, "errored files")
-	assert.Equal("spec/broken_spec.rb", summary.ErroredFiles[0].SpecFile, "errored file name")
+	assert.Equal("spec/broken_spec.rb", summary.ErroredFiles[0].File.Path, "errored file name")
 }
 
 // Test that summary correctly identifies when there are no failures
 func TestBuildTestSummaryNoFailures(t *testing.T) {
-	results := []TestResult{
+	// Create test files
+	modelFile := &TestFile{Path: "spec/model_spec.rb", Filename: "model_spec.rb"}
+	controllerFile := &TestFile{Path: "spec/controller_spec.rb", Filename: "controller_spec.rb"}
+
+	results := []WorkerResult{
 		{
-			SpecFile:     "spec/model_spec.rb",
+			File:         modelFile,
 			State:        StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
@@ -83,7 +102,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 			FileLoadTime: 40 * time.Millisecond,
 		},
 		{
-			SpecFile:     "spec/controller_spec.rb",
+			File:         controllerFile,
 			State:        StateSuccess,
 			ExampleCount: 5,
 			FailureCount: 0,
@@ -103,10 +122,12 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 	assert.Equal(t, "", summary.FormattedSummary, "summary with multiple results should be empty")
 }
 
-func TestSingleTestResultIsSingleWorkerMode(t *testing.T) {
-	results := []TestResult{
+func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
+	modelFile := &TestFile{Path: "spec/model_spec.rb", Filename: "model_spec.rb"}
+
+	results := []WorkerResult{
 		{
-			SpecFile:         "spec/model_spec.rb",
+			File:             modelFile,
 			State:            StateSuccess,
 			ExampleCount:     10,
 			FailureCount:     0,

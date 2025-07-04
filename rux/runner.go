@@ -1,11 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -15,6 +15,7 @@ import (
 	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/rspec"
 	"github.com/rsanheim/rux/tracing"
+	"github.com/rsanheim/rux/types"
 )
 
 // TestState represents the state of a test execution
@@ -26,18 +27,20 @@ const (
 	StateError   TestState = "error"   // Fatal error, couldn't run tests
 )
 
-// TestResult represents the result of running a single spec file
-type TestResult struct {
-	SpecFile     string
+// WorkerResult represents the accumulated results from a worker executing one or more test files
+type WorkerResult struct {
+	File         *TestFile // Primary file (first file when multiple files are run together)
 	State        TestState
 	Output       string
 	Error        error
 	Duration     time.Duration
 	FileLoadTime time.Duration // Time to load spec files before running tests
 	JSONOutput   *rspec.JSONOutput
-	Failures     []rspec.FailureDetail
 	ExampleCount int
 	FailureCount int
+	PendingCount int
+	Tests        []types.TestCaseNotification // All test notifications
+	Framework    TestFramework                // The test framework used
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -45,7 +48,7 @@ type TestResult struct {
 }
 
 // Success returns true if the test execution was successful (no failures or errors)
-func (r TestResult) Success() bool {
+func (r WorkerResult) Success() bool {
 	return r.State == StateSuccess
 }
 
@@ -54,7 +57,7 @@ type OutputMessage struct {
 	WorkerID int
 	Type     string // "dot", "failure", "pending", "error", "stderr"
 	Content  string // For error messages
-	SpecFile string // For stderr messages
+	Files    string // For stderr messages - comma-separated list of files
 }
 
 // GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
@@ -128,7 +131,7 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 				os.Stdout.Write(plainStar)
 			}
 		case "stderr":
-			fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.SpecFile, msg.Content)
+			fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.Files, msg.Content)
 		case "error":
 			// For JSON parse errors or other output
 			fmt.Fprintln(os.Stderr, msg.Content)
@@ -136,51 +139,65 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 	}
 }
 
-// errorResult creates a TestResult for error cases
-func errorResult(specFiles []string, err error, start time.Time) TestResult {
+// errorResult creates a WorkerResult for error cases
+func errorResult(testFile *TestFile, err error, start time.Time, framework TestFramework) WorkerResult {
 	// Extract error message for output
 	errorOutput := ""
 	if err != nil {
 		errorOutput = fmt.Sprintf("Error: %v\n", err)
 	}
 
-	return TestResult{
-		SpecFile: strings.Join(specFiles, ","),
-		State:    StateError,
-		Output:   errorOutput,
-		Error:    err,
-		Duration: time.Since(start),
+	return WorkerResult{
+		File:      testFile,
+		State:     StateError,
+		Output:    errorOutput,
+		Error:     err,
+		Duration:  time.Since(start),
+		Framework: framework,
 	}
 }
 
-// RunSpecFile executes multiple spec files in a single RSpec process
-func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, workerIndex int, dryRun bool, colorOutput bool, specCommand string, outputChan chan<- OutputMessage) TestResult {
+// RunSpecFile executes multiple test files in a single test process
+func RunSpecFile(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
+	// Dispatch to framework-specific implementation
+	framework := specCmd.GetFramework()
+	switch framework {
+	case FrameworkMinitest:
+		return RunMinitestFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan)
+	default:
+		return RunRSpecFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan)
+	}
+}
+
+// RunRSpecFiles executes multiple spec files in a single RSpec process
+func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
 	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
-	// Build args with streaming JSON formatter
-	// Split the command string into parts
-	args := strings.Fields(specCommand)
-
-	// Add formatter arguments
-	args = append(args, "-r", formatterPath, "--format", "Rux::JsonRowsFormatter")
-
-	// Add color flags based on preference
-	if !colorOutput {
-		args = append(args, "--no-color")
+	// Create TestFile for the primary file (or combined representation)
+	var testFile *TestFile
+	if len(specFiles) > 0 {
+		testFile = &TestFile{
+			Path:     specFiles[0], // Use first file as primary
+			Filename: filepath.Base(specFiles[0]),
+		}
 	} else {
-		// Force color output even when not a TTY (since we're piping)
-		args = append(args, "--force-color", "--tty")
+		testFile = &TestFile{
+			Path:     "unknown",
+			Filename: "unknown",
+		}
 	}
-	// Add all spec files
-	args = append(args, specFiles...)
+
+	// Build command using the appropriate builder
+	builder := NewCommandBuilder(specCmd.GetFramework())
+	args := builder.BuildCommand(specFiles, globalConfig, specCmd.Command)
 
 	// Log the command in debug mode
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
 
-	if dryRun {
-		return TestResult{
-			SpecFile: strings.Join(specFiles, " "),
+	if globalConfig.DryRun {
+		return WorkerResult{
+			File:     testFile,
 			State:    StateSuccess,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
 			Error:    nil,
@@ -202,12 +219,12 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(specFiles, fmt.Errorf("failed to create stdout pipe: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, specCmd.GetFramework())
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(specFiles, fmt.Errorf("failed to create stderr pipe: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, specCmd.GetFramework())
 	}
 
 	// Start the command
@@ -216,113 +233,24 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 		err = cmd.Start()
 	}()
 	if err != nil {
-		return errorResult(specFiles, fmt.Errorf("failed to start command: %v", err), start)
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, specCmd.GetFramework())
 	}
 
-	var outputBuilder strings.Builder
-	var wg sync.WaitGroup
-	streamingResults := &rspec.StreamingResults{}
+	// Create parser and collector for event-based processing
+	parser, err := NewTestOutputParser(specCmd.GetFramework())
+	if err != nil {
+		return errorResult(testFile, err, start, specCmd.GetFramework())
+	}
+	collector := NewTestCollector()
 
-	// Stream stdout and parse JSON messages in real-time
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stdout)
-
-		firstOutput := true
-		for scanner.Scan() {
-			line := scanner.Text()
-
-			if firstOutput {
-				// Trace time to first output
-				firstOutput = false
-				tracing.LogEvent(ctx, "ruby_first_output",
-					"worker_id", workerIndex,
-					"spec_files", len(specFiles),
-					"time_since_spawn", time.Since(start).Seconds()*1000)
-			}
-
-			msg, err := rspec.ParseStreamingMessage(line)
-
-			if os.Getenv("RUX_DEBUG") == "1" {
-				dump(msg)
-			}
-
-			if msg != nil {
-				// Handle different message types
-				switch msg.Type {
-				case "load_summary":
-					// Both rux and turbo_tests use this format
-					if msg.Summary != nil {
-						streamingResults.LoadTime = msg.Summary.FileLoadTime
-						tracing.LogEvent(ctx, "rspec_loaded",
-							"worker_id", workerIndex,
-							"spec_files", len(specFiles),
-							"load_time", msg.Summary.FileLoadTime,
-							"time_since_spawn", time.Since(start).Seconds()*1000)
-					}
-				case "example_passed":
-					streamingResults.AddExample(*msg)
-					outputChan <- OutputMessage{
-						WorkerID: workerIndex,
-						Type:     "dot",
-					}
-				case "example_failed":
-					streamingResults.AddExample(*msg)
-					outputChan <- OutputMessage{
-						WorkerID: workerIndex,
-						Type:     "failure",
-					}
-				case "example_pending":
-					streamingResults.AddExample(*msg)
-					outputChan <- OutputMessage{
-						WorkerID: workerIndex,
-						Type:     "pending",
-					}
-				case "dump_failures":
-					streamingResults.FormattedFailures = msg.FormattedOutput
-				case "dump_summary":
-					streamingResults.FormattedSummary = msg.FormattedOutput
-				case "message":
-					// Error messages, warnings, etc.
-					if msg.Message != "" {
-						outputBuilder.WriteString(msg.Message + "\n")
-					}
-				case "close":
-					// End of test run
-				}
-			} else if err != nil {
-				// JSON parsing error - log it
-				outputBuilder.WriteString(fmt.Sprintf("JSON parse error: %v for line: %s\n", err, line))
-			} else {
-				// Non-JSON output (warnings, errors, etc.)
-				outputBuilder.WriteString(line + "\n")
-			}
-		}
-	}()
-
-	// Stream stderr in real-time
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			line := scanner.Text()
-			outputBuilder.WriteString("STDERR: " + line + "\n")
-			outputChan <- OutputMessage{
-				WorkerID: workerIndex,
-				Type:     "stderr",
-				Content:  line,
-				SpecFile: strings.Join(specFiles, ","),
-			}
-		}
-	}()
+	// Stream output through parser and collector
+	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, specCmd.GetFramework(), start)
 
 	// Wait for command to complete
 	err = cmd.Wait()
 
-	// Wait for output streaming to complete
-	wg.Wait()
+	// Build the final result from the collector
+	result := collector.BuildResult(testFile, time.Since(start))
 
 	// Determine success based on exit code
 	exitCode := 0
@@ -331,43 +259,55 @@ func RunSpecFile(ctx context.Context, formatterPath string, specFiles []string, 
 	}
 	success := exitCode == 0
 
-	// Convert streaming results to RSpec JSON format
-	jsonOutput := streamingResults.ConvertToJSONOutput()
-	failures := rspec.ExtractFailures(jsonOutput.Examples)
+	// Convert accumulated results to RSpec JSON format for compatibility
+	jsonOutput := result.JSONOutput
+	if jsonOutput == nil {
+		jsonOutput = &rspec.JSONOutput{
+			Version:  "3.13.0",
+			Examples: []rspec.Example{},
+			Summary: rspec.Summary{
+				Duration:     result.Duration.Seconds(),
+				ExampleCount: result.ExampleCount,
+				FailureCount: result.FailureCount,
+				PendingCount: result.PendingCount,
+			},
+		}
+	}
 
 	// Determine the state based on the execution outcome
 	state := StateSuccess
-	output := outputBuilder.String()
+	output := result.Output + stderrOutput
 
 	// Check if this is an execution error (couldn't run tests)
-	if err != nil && streamingResults.ExampleCount == 0 &&
+	if err != nil && result.ExampleCount == 0 &&
 		(strings.Contains(output, "error occurred outside of examples") ||
-			strings.Contains(streamingResults.FormattedSummary, "error occurred outside of examples")) {
+			strings.Contains(result.FormattedSummary, "error occurred outside of examples")) {
 		state = StateError
 		// For execution errors, keep the full output which contains error details
-		// The FormattedSummary only contains the summary line, not the error details
 	} else if !success {
 		state = StateFailed
 	}
 
-	return TestResult{
-		SpecFile:          strings.Join(specFiles, " "),
+	return WorkerResult{
+		File:              testFile,
 		State:             state,
 		Output:            output,
 		Error:             err,
 		Duration:          time.Since(start),
-		FileLoadTime:      time.Duration(streamingResults.LoadTime * float64(time.Second)),
+		FileLoadTime:      result.FileLoadTime,
 		JSONOutput:        jsonOutput,
-		Failures:          failures,
-		ExampleCount:      streamingResults.ExampleCount,
-		FailureCount:      streamingResults.FailureCount,
-		FormattedFailures: streamingResults.FormattedFailures,
-		FormattedSummary:  streamingResults.FormattedSummary,
+		ExampleCount:      result.ExampleCount,
+		FailureCount:      result.FailureCount,
+		PendingCount:      result.PendingCount,
+		Tests:             result.Tests,
+		FormattedFailures: result.FormattedFailures,
+		FormattedSummary:  result.FormattedSummary,
+		Framework:         specCmd.GetFramework(),
 	}
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *RuntimeTracker) ([]TestResult, time.Duration) {
+func RunSpecsInParallel(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string, runtimeTracker *RuntimeTracker) ([]WorkerResult, time.Duration) {
 	defer tracing.StartRegion(context.Background(), "run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
@@ -379,9 +319,8 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		runtimeData = make(map[string]float64)
 	}
 
-	maxWorkers := config.WorkerCount
-	colorOutput := config.ColorOutput
-	dryRun := config.DryRun
+	maxWorkers := globalConfig.WorkerCount
+	colorOutput := globalConfig.ColorOutput
 
 	// Group files using runtime data if available, otherwise by size
 	var groups []FileGroup
@@ -410,7 +349,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		}
 	}
 
-	results := make(chan TestResult, len(groups))
+	results := make(chan WorkerResult, len(groups))
 
 	// Create buffered channel for output messages
 	outputChan := make(chan OutputMessage, maxWorkers*10)
@@ -433,7 +372,7 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunSpecFile(ctx, config.ConfigPaths.JSONRowsFormatter, files, workerIndex, dryRun, colorOutput, config.SpecCommand, outputChan)
+			result := RunSpecFile(ctx, globalConfig, specCmd, files, workerIndex, outputChan)
 			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success())
 			results <- result
 		}(i, group.Files)
@@ -448,13 +387,13 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 	outputWg.Wait()
 
 	// Collect results
-	var allResults []TestResult
+	var allResults []WorkerResult
 	for result := range results {
 		allResults = append(allResults, result)
 		// Track runtime data if tracker is available and tests actually ran
-		if runtimeTracker != nil && result.State != StateError && result.JSONOutput != nil {
-			for _, example := range result.JSONOutput.Examples {
-				runtimeTracker.AddExample(example)
+		if runtimeTracker != nil && result.State != StateError && len(result.Tests) > 0 {
+			for _, test := range result.Tests {
+				runtimeTracker.AddTestNotification(test)
 			}
 		}
 	}
@@ -463,4 +402,102 @@ func RunSpecsInParallel(config *Config, specFiles []string, runtimeTracker *Runt
 	fmt.Println()
 
 	return allResults, time.Since(start)
+}
+
+// RunMinitestFiles executes multiple test files in a single Minitest process
+func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
+	defer tracing.StartRegionWithWorker(ctx, "run_minitest_files", workerIndex, strings.Join(testFiles, ","))()
+	start := time.Now()
+
+	// Create TestFile for the primary file (or combined representation)
+	var testFile *TestFile
+	if len(testFiles) > 0 {
+		testFile = &TestFile{
+			Path:     testFiles[0], // Use first file as primary
+			Filename: filepath.Base(testFiles[0]),
+		}
+	} else {
+		testFile = &TestFile{
+			Path:     "unknown",
+			Filename: "unknown",
+		}
+	}
+
+	// Build command using the appropriate builder
+	builder := NewCommandBuilder(specCmd.GetFramework())
+	args := builder.BuildCommand(testFiles, globalConfig, specCmd.Command)
+
+	// Log the command in debug mode
+	logger.Logger.Debug("executing minitest command", "worker", workerIndex, "command", strings.Join(args, " "))
+
+	if globalConfig.DryRun {
+		return WorkerResult{
+			File:     testFile,
+			State:    StateSuccess,
+			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
+			Error:    nil,
+			Duration: time.Since(start),
+		}
+	}
+
+	// Create command with context for timeout handling
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+
+	// Set up environment variables for parallel testing
+	testEnvNumber := GetTestEnvNumber(workerIndex)
+	cmd.Env = append(os.Environ(),
+		"TEST_ENV_NUMBER="+testEnvNumber,
+		"PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"),
+	)
+
+	// Set up stdout and stderr pipes
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, specCmd.GetFramework())
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, specCmd.GetFramework())
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, specCmd.GetFramework())
+	}
+
+	parser, err := NewTestOutputParser(specCmd.GetFramework())
+	if err != nil {
+		return errorResult(testFile, err, start, specCmd.GetFramework())
+	}
+	collector := NewTestCollector()
+
+	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework(), start)
+
+	err = cmd.Wait()
+
+	exitCode := 0
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		exitCode = exitErr.ExitCode()
+	}
+	success := exitCode == 0
+
+	result := collector.BuildResult(testFile, time.Since(start))
+
+	state := StateSuccess
+	output := result.Output + stderrOutput
+
+	if err != nil && result.ExampleCount == 0 {
+		// Couldn't run tests at all
+		state = StateError
+	} else if !success {
+		state = StateFailed
+	}
+
+	result.State = state
+	result.Output = output
+	result.Error = err
+	result.Framework = specCmd.GetFramework()
+
+	return result
 }
