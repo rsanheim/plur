@@ -8,7 +8,7 @@ RSpec.describe "Minitest Integration" do
       end
     end
   end
-  
+
   context "with minitest-success project" do
     let(:project_dir) { project_fixture!("minitest-success") }
 
