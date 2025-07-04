@@ -10,4 +10,10 @@ type TestOutputParser interface {
 	NotificationToProgress(notification TestNotification) (string, bool)
 	// FormatSummary formats a test summary in the framework-specific style
 	FormatSummary(suite *SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string
+	// FormatFailures formats individual failure details in the framework-specific style
+	FormatFailures(failures []TestCaseNotification) string
+	// FormatFailuresList formats a list of failures with file:line references for re-running
+	FormatFailuresList(failures []TestCaseNotification) string
+	// ColorizeSummary applies color to a summary based on success/failure state
+	ColorizeSummary(summary string, hasFailures bool) string
 }

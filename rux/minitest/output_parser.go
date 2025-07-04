@@ -352,3 +352,58 @@ func (p *OutputParser) createFailureNotification() types.TestNotification {
 
 	return notification
 }
+
+// FormatFailures formats individual failure details in Minitest style
+func (p *OutputParser) FormatFailures(failures []types.TestCaseNotification) string {
+	if len(failures) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString("\nFailures:\n")
+
+	for i, failure := range failures {
+		sb.WriteString(fmt.Sprintf("  %d) %s\n", i+1, failure.FullDescription))
+		sb.WriteString("     Failure/Error: ")
+		sb.WriteString("\n")
+
+		// Error message - check if Exception exists
+		if failure.Exception != nil {
+			// Format the message with proper indentation
+			lines := strings.Split(strings.TrimSpace(failure.Exception.Message), "\n")
+			for _, line := range lines {
+				if line != "" {
+					sb.WriteString("       " + line + "\n")
+				}
+			}
+
+			// Backtrace - Minitest shows more than one line typically
+			// TODO: Capture full backtrace in parser
+			if len(failure.Exception.Backtrace) > 0 {
+				for _, trace := range failure.Exception.Backtrace {
+					sb.WriteString(fmt.Sprintf("     # %s\n", trace))
+				}
+			}
+		}
+
+		if i < len(failures)-1 {
+			sb.WriteString("\n") // Extra line between failures
+		}
+	}
+
+	return sb.String()
+}
+
+// FormatFailuresList formats a list of failures with file:line references for re-running
+func (p *OutputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
+	// Minitest doesn't typically show a re-run command list like RSpec
+	return ""
+}
+
+// ColorizeSummary applies color to a summary based on success/failure state
+func (p *OutputParser) ColorizeSummary(summary string, hasFailures bool) string {
+	if hasFailures {
+		return fmt.Sprintf("\033[31m%s\033[0m", summary)
+	}
+	return fmt.Sprintf("\033[32m%s\033[0m", summary)
+}
