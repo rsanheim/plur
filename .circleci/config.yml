@@ -84,6 +84,14 @@ jobs:
           key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
           paths:
             - fixtures/projects/default-rails/vendor/bundle
+      - run:
+          name: Bundle install in all fixture projects
+          command: |
+            for project in fixtures/projects/*; do
+              cd $project
+              bundle install --path vendor/bundle
+              cd ../../
+            done
 
       - run:
           name: Run test_app specs with rux
