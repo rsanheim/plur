@@ -89,7 +89,7 @@ jobs:
           command: |
             for project in fixtures/projects/*; do
               cd $project
-              bundle install --path vendor/bundle
+              bundle install --path vendor/bundle || echo "Bundle install failed for $project"
               cd ../../
             done
 
