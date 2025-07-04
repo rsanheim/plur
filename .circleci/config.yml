@@ -85,15 +85,6 @@ jobs:
           paths:
             - fixtures/projects/default-rails/vendor/bundle
       - run:
-          name: Bundle install in all fixture projects
-          command: |
-            for project in fixtures/projects/*; do
-              cd $project
-              bundle install --path vendor/bundle || echo "Bundle install failed for $project"
-              cd ../../
-            done
-
-      - run:
           name: Run test_app specs with rux
           working_directory: fixtures/projects/default-rails
           command: |
