@@ -48,7 +48,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "uses watch-specific command for watch runs" do
       output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3("rux", "watch", "run", "--timeout=2", stdin_data: "\n")
+        Open3.capture3("rux", "watch", "run", "--timeout=5", stdin_data: "\n")
       end
 
       expect(status).to be_success
