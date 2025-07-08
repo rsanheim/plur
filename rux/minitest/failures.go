@@ -19,20 +19,9 @@ var (
 	testFileRegex = regexp.MustCompile(`(_test\.rb|test_.*\.rb)`)
 )
 
-// FailureDetail represents a single test failure from minitest output
-type FailureDetail struct {
-	Description string          // ArrayOperationsTest#test_average_precision_failure
-	Location    string          // test/array_operations_test.rb:47
-	FilePath    string          // test/array_operations_test.rb
-	LineNumber  int             // 47
-	Message     string          // Expected: 2.3333333333333335\n  Actual: 2.3333333333333335
-	Backtrace   []string        // optional: backtrace for errors (not failures)
-	State       types.TestState // either "failure" or "error"
-}
-
-// ExtractFailures parses minitest output and extracts failure details
-func ExtractFailures(output string) []FailureDetail {
-	var failures []FailureDetail
+// ExtractFailures parses minitest output and extracts failure details as test notifications
+func ExtractFailures(output string) []types.TestCaseNotification {
+	var notifications []types.TestCaseNotification
 
 	// Split on blank lines to get individual failure blocks
 	blocks := strings.Split(output, "\n\n")
@@ -62,43 +51,73 @@ func ExtractFailures(output string) []FailureDetail {
 			continue
 		}
 
-		failure := FailureDetail{
-			Description: testMatches[1],
-			State:       types.TestState(failureType),
+		notification := types.TestCaseNotification{
+			Event:           types.TestFailed,
+			TestID:          testMatches[1],
+			Description:     testMatches[1],
+			FullDescription: testMatches[1],
+			Status:          "failed",
 		}
 
 		// Set location fields if they exist
 		if len(testMatches) > 3 && testMatches[2] != "" {
-			failure.Location = testMatches[2] + ":" + testMatches[3]
-			failure.FilePath = testMatches[2]
-			failure.LineNumber = parseInt(testMatches[3])
+			notification.Location = testMatches[2] + ":" + testMatches[3]
+			notification.FilePath = testMatches[2]
+			notification.LineNumber = parseInt(testMatches[3])
 		}
 
 		// Process remaining lines
 		if len(lines) > 2 {
+			var message string
+			var backtrace []string
+
 			if failureType == "error" {
 				// First line after header is the error message
-				failure.Message = lines[2]
+				message = lines[2]
+				
+				// Extract error class if present (e.g., "ArgumentError: comparison of Integer with nil failed")
+				// Handle cases like "ActiveRecord::StatementInvalid: PG::ConnectionBad: connection is closed"
+				errorClass := "StandardError"
+				parts := strings.SplitN(message, ": ", 2)
+				if len(parts) >= 2 && parts[0] != "" {
+					errorClass = strings.TrimSpace(parts[0])
+				}
 
 				// Rest are backtrace
 				if len(lines) > 3 {
 					for _, line := range lines[3:] {
-						failure.Backtrace = append(failure.Backtrace, strings.TrimSpace(line))
+						backtrace = append(backtrace, strings.TrimSpace(line))
 					}
 
 					// Extract location from last test file in backtrace
-					failure.Location, failure.FilePath, failure.LineNumber = extractLocationFromBacktrace(failure.Backtrace)
+					location, filePath, lineNumber := extractLocationFromBacktrace(backtrace)
+					if location != "" {
+						notification.Location = location
+						notification.FilePath = filePath
+						notification.LineNumber = lineNumber
+					}
+				}
+
+				notification.Exception = &types.TestException{
+					Class:     errorClass,
+					Message:   message,
+					Backtrace: backtrace,
 				}
 			} else {
 				// For failures, all remaining lines are the message
-				failure.Message = strings.Join(lines[2:], "\n")
+				message = strings.Join(lines[2:], "\n")
+				notification.Exception = &types.TestException{
+					Class:     "Minitest::Assertion",
+					Message:   message,
+					Backtrace: []string{},
+				}
 			}
 		}
 
-		failures = append(failures, failure)
+		notifications = append(notifications, notification)
 	}
 
-	return failures
+	return notifications
 }
 
 // parseInt safely parses an integer, returning 0 on error
