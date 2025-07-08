@@ -4,27 +4,28 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/rsanheim/rux/types"
 )
 
-// FailureDetail represents a single test failure
+// FailureDetail represents a single test failure from minitest output
 type FailureDetail struct {
-	Description string
-	LineNumber  int
-	Message     string
-	Backtrace   []string
+	Description string          // ArrayOperationsTest#test_average_precision_failure
+	Location    string          // test/array_operations_test.rb:47
+	FilePath    string          // test/array_operations_test.rb
+	LineNumber  int             // 47
+	Message     string          // Expected: 2.3333333333333335\n  Actual: 2.3333333333333335
+	Backtrace   []string        // optional: backtrace for errors (not failures)
+	State       types.TestState // either "failure" or "error"
 }
 
-// ExtractFailures parses minitest output and extracts failure details
+/*
+ExtractFailures parses minitest output and extracts failure details
+For example, given output seen in ./failures-example.txt, we should get three FailureDetails, two 'failures' and one 'error'
+*/
 func ExtractFailures(output string) []FailureDetail {
 	var failures []FailureDetail
 	lines := strings.Split(output, "\n")
-
-	// Look for failure patterns in minitest output
-	// Minitest failures typically look like:
-	//   1) Failure:
-	// TestClassName#test_method_name [file_path:line_number]:
-	// Expected: expected_value
-	// Actual: actual_value
 
 	failureHeaderRegex := regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):$`)
 	testInfoRegex := regexp.MustCompile(`^(.+?)\s+\[(.+?):(\d+)\]:$`)

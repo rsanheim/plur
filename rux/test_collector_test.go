@@ -138,7 +138,7 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	assert.Equal(t, duration, result.Duration)
 	assert.Equal(t, 2, result.ExampleCount)
 	assert.Equal(t, 1, result.FailureCount)
-	assert.Equal(t, StateFailed, result.State)
+	assert.Equal(t, types.StateFailed, result.State)
 	assert.Equal(t, 100*time.Millisecond, result.FileLoadTime)
 	assert.Equal(t, "Test output line 1\nTest output line 2\n", result.Output)
 
@@ -177,7 +177,7 @@ func TestTestCollector_BuildResult_Success(t *testing.T) {
 
 	result := collector.BuildResult(testFile, 100*time.Millisecond)
 
-	assert.Equal(t, StateSuccess, result.State)
+	assert.Equal(t, types.StateSuccess, result.State)
 	assert.Equal(t, 2, result.ExampleCount)
 	assert.Equal(t, 0, result.FailureCount)
 	// Verify no failures in Tests array

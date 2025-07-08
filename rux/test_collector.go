@@ -67,14 +67,14 @@ func (a *TestCollector) BuildResult(testFile *TestFile, duration time.Duration) 
 		FailureCount:      len(a.failures),
 		PendingCount:      len(a.pending),
 		Tests:             a.tests,
-		State:             StateSuccess,
+		State:             types.StateSuccess,
 		FormattedFailures: a.formattedFailures,
 		FormattedSummary:  a.formattedSummary,
 	}
 
 	// Set state based on failures
 	if len(a.failures) > 0 {
-		result.State = StateFailed
+		result.State = types.StateFailed
 	}
 
 	// If we have suite info, use its values

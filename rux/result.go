@@ -61,7 +61,7 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 
 		// Check the result state to determine success/failure
 		switch result.State {
-		case StateFailed:
+		case types.StateFailed:
 			summary.HasFailures = true
 			summary.Success = false
 			// Filter and append only failed test notifications
@@ -70,7 +70,7 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 					summary.AllFailures = append(summary.AllFailures, test)
 				}
 			}
-		case StateError:
+		case types.StateError:
 			summary.HasFailures = true
 			summary.Success = false
 			summary.ErroredFiles = append(summary.ErroredFiles, result)
@@ -133,7 +133,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 
 	// Print errored files
 	for _, result := range summary.ErroredFiles {
-		if result.State == StateError && result.Output != "" {
+		if result.State == types.StateError && result.Output != "" {
 			fmt.Print(result.Output)
 		}
 	}

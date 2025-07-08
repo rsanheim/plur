@@ -19,7 +19,7 @@ func TestBuildTestSummary(t *testing.T) {
 	results := []WorkerResult{
 		{
 			File:         modelFile,
-			State:        StateSuccess,
+			State:        types.StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
@@ -28,7 +28,7 @@ func TestBuildTestSummary(t *testing.T) {
 		},
 		{
 			File:         controllerFile,
-			State:        StateFailed,
+			State:        types.StateFailed,
 			ExampleCount: 5,
 			FailureCount: 2,
 			Duration:     200 * time.Millisecond,
@@ -58,7 +58,7 @@ func TestBuildTestSummary(t *testing.T) {
 		},
 		{
 			File:         brokenFile,
-			State:        StateError,
+			State:        types.StateError,
 			ExampleCount: 0,
 			FailureCount: 0,
 			Duration:     50 * time.Millisecond,
@@ -95,7 +95,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 	results := []WorkerResult{
 		{
 			File:         modelFile,
-			State:        StateSuccess,
+			State:        types.StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
 			Duration:     100 * time.Millisecond,
@@ -103,7 +103,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 		},
 		{
 			File:         controllerFile,
-			State:        StateSuccess,
+			State:        types.StateSuccess,
 			ExampleCount: 5,
 			FailureCount: 0,
 			Duration:     200 * time.Millisecond,
@@ -128,7 +128,7 @@ func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 	results := []WorkerResult{
 		{
 			File:             modelFile,
-			State:            StateSuccess,
+			State:            types.StateSuccess,
 			ExampleCount:     10,
 			FailureCount:     0,
 			Duration:         100 * time.Millisecond,

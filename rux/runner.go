@@ -18,19 +18,10 @@ import (
 	"github.com/rsanheim/rux/types"
 )
 
-// TestState represents the state of a test execution
-type TestState string
-
-const (
-	StateSuccess TestState = "success" // All tests passed
-	StateFailed  TestState = "failed"  // Some tests failed/exceptions
-	StateError   TestState = "error"   // Fatal error, couldn't run tests
-)
-
 // WorkerResult represents the accumulated results from a worker executing one or more test files
 type WorkerResult struct {
 	File         *TestFile // Primary file (first file when multiple files are run together)
-	State        TestState
+	State        types.TestState
 	Output       string
 	Error        error
 	Duration     time.Duration
@@ -49,7 +40,7 @@ type WorkerResult struct {
 
 // Success returns true if the test execution was successful (no failures or errors)
 func (r WorkerResult) Success() bool {
-	return r.State == StateSuccess
+	return r.State == types.StateSuccess
 }
 
 // OutputMessage represents a message to be output
@@ -149,7 +140,7 @@ func errorResult(testFile *TestFile, err error, start time.Time, framework TestF
 
 	return WorkerResult{
 		File:      testFile,
-		State:     StateError,
+		State:     types.StateError,
 		Output:    errorOutput,
 		Error:     err,
 		Duration:  time.Since(start),
@@ -198,7 +189,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 	if globalConfig.DryRun {
 		return WorkerResult{
 			File:     testFile,
-			State:    StateSuccess,
+			State:    types.StateSuccess,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
 			Error:    nil,
 			Duration: time.Since(start),
@@ -275,17 +266,17 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 	}
 
 	// Determine the state based on the execution outcome
-	state := StateSuccess
+	state := types.StateSuccess
 	output := result.Output + stderrOutput
 
 	// Check if this is an execution error (couldn't run tests)
 	if err != nil && result.ExampleCount == 0 &&
 		(strings.Contains(output, "error occurred outside of examples") ||
 			strings.Contains(result.FormattedSummary, "error occurred outside of examples")) {
-		state = StateError
+		state = types.StateError
 		// For execution errors, keep the full output which contains error details
 	} else if !success {
-		state = StateFailed
+		state = types.StateFailed
 	}
 
 	return WorkerResult{
@@ -391,7 +382,7 @@ func RunSpecsInParallel(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles 
 	for result := range results {
 		allResults = append(allResults, result)
 		// Track runtime data if tracker is available and tests actually ran
-		if runtimeTracker != nil && result.State != StateError && len(result.Tests) > 0 {
+		if runtimeTracker != nil && result.State != types.StateError && len(result.Tests) > 0 {
 			for _, test := range result.Tests {
 				runtimeTracker.AddTestNotification(test)
 			}
@@ -433,7 +424,7 @@ func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *
 	if globalConfig.DryRun {
 		return WorkerResult{
 			File:     testFile,
-			State:    StateSuccess,
+			State:    types.StateSuccess,
 			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
 			Error:    nil,
 			Duration: time.Since(start),
@@ -484,14 +475,14 @@ func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *
 
 	result := collector.BuildResult(testFile, time.Since(start))
 
-	state := StateSuccess
+	state := types.StateSuccess
 	output := result.Output + stderrOutput
 
 	if err != nil && result.ExampleCount == 0 {
 		// Couldn't run tests at all
-		state = StateError
+		state = types.StateError
 	} else if !success {
-		state = StateFailed
+		state = types.StateFailed
 	}
 
 	result.State = state

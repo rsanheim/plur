@@ -5,6 +5,8 @@ import (
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/rsanheim/rux/types"
 )
 
 // TestExecutor orchestrates the execution of tests
@@ -87,7 +89,7 @@ func (e *TestExecutor) executeTests() error {
 	// Save runtime data only if some tests actually ran
 	hasValidRuntimeData := false
 	for _, result := range results {
-		if result.State != StateError && result.ExampleCount > 0 {
+		if result.State != types.StateError && result.ExampleCount > 0 {
 			hasValidRuntimeData = true
 			break
 		}
@@ -105,6 +107,7 @@ func (e *TestExecutor) executeTests() error {
 
 	// Build summary and print results
 	summary := BuildTestSummary(results, wallTime)
+	fmt.Println("Summary", summary)
 	PrintResults(summary, e.globalConfig.ColorOutput)
 
 	// Return error if tests failed
