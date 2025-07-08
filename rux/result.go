@@ -26,6 +26,7 @@ type TestSummary struct {
 	ErroredFiles      []WorkerResult // Workers that had errors running tests
 	Framework         TestFramework  // The test framework used
 	TotalPending      int            // Total pending/skipped tests
+	AllResults        []WorkerResult // All worker results for accessing raw output
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -37,7 +38,8 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
-		Success:      true, // Start assuming success
+		AllResults:   results, // Store all results for raw output access
+		Success:      true,    // Start assuming success
 	}
 
 	// Track if we're in single-file mode (single worker)
@@ -101,8 +103,17 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 		return
 	}
 
-	// Print failures if any
-	if summary.HasFailures && summary.FormattedFailures != "" {
+	// For minitest with failures, print the raw output which contains failure details
+	if summary.Framework == FrameworkMinitest && summary.HasFailures {
+		// Collect all output from failed workers
+		for _, result := range summary.AllResults {
+			if result.State == types.StateFailed && result.Output != "" {
+				// The raw output contains the failure details
+				fmt.Print(result.Output)
+			}
+		}
+	} else if summary.HasFailures && summary.FormattedFailures != "" {
+		// For RSpec, use the formatted failures
 		fmt.Print(summary.FormattedFailures)
 	}
 
@@ -124,7 +135,8 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 
 	// Print failed examples list only if we didn't get a formatted summary
 	// (RSpec's formatted summary already includes the failed examples list)
-	if !hasFormattedSummary {
+	if !hasFormattedSummary && summary.Framework != FrameworkMinitest {
+		// Skip for minitest since we already printed the raw output
 		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
 			fmt.Println("\nFailed examples:")
 			fmt.Print(failedList)

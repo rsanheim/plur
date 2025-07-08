@@ -107,7 +107,6 @@ func (e *TestExecutor) executeTests() error {
 
 	// Build summary and print results
 	summary := BuildTestSummary(results, wallTime)
-	fmt.Println("Summary", summary)
 	PrintResults(summary, e.globalConfig.ColorOutput)
 
 	// Return error if tests failed
