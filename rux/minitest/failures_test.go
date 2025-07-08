@@ -9,7 +9,7 @@ import (
 
 func TestExtractFailures_FirstFailure(t *testing.T) {
 	assert := assert.New(t)
-	
+
 	input := `  1) Failure:
 ArrayOperationsTest#test_average_calculation_failure [test/array_operations_test.rb:33]:
 Expected: 3
@@ -30,7 +30,7 @@ Expected: 3
 
 func TestExtractFailures_ErrorWithBacktrace(t *testing.T) {
 	assert := assert.New(t)
-	
+
 	input := `  3) Error:
 ArrayOperationsTest#test_find_max_with_nil:
 ArgumentError: comparison of Integer with nil failed
@@ -57,7 +57,7 @@ ArgumentError: comparison of Integer with nil failed
 
 func TestExtractFailures_ErrorWithoutTestFile(t *testing.T) {
 	assert := assert.New(t)
-	
+
 	input := `  1) Error:
 DatabaseTest#test_connection_error:
 NoMethodError: undefined method 'connect' for nil:NilClass
@@ -84,7 +84,7 @@ NoMethodError: undefined method 'connect' for nil:NilClass
 
 func TestExtractFailures_ErrorWithTestPrefixFile(t *testing.T) {
 	assert := assert.New(t)
-	
+
 	input := `  1) Error:
 TestDatabase#test_transaction_rollback:
 ActiveRecord::StatementInvalid: PG::ConnectionBad: connection is closed
@@ -108,7 +108,7 @@ ActiveRecord::StatementInvalid: PG::ConnectionBad: connection is closed
 
 func TestExtractFailures_CompleteExample(t *testing.T) {
 	assert := assert.New(t)
-	
+
 	input := `  1) Failure:
 ArrayOperationsTest#test_average_calculation_failure [test/array_operations_test.rb:33]:
 Expected: 3
