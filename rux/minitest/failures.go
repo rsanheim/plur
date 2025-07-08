@@ -74,7 +74,7 @@ func ExtractFailures(output string) []types.TestCaseNotification {
 			if failureType == "error" {
 				// First line after header is the error message
 				message = lines[2]
-				
+
 				// Extract error class if present (e.g., "ArgumentError: comparison of Integer with nil failed")
 				// Handle cases like "ActiveRecord::StatementInvalid: PG::ConnectionBad: connection is closed"
 				errorClass := "StandardError"
