@@ -35,7 +35,7 @@ type OutputParser struct {
 	state             ParsingState
 	progress          ProgressCounts
 	failureBuffer     strings.Builder
-	currentFailure    *FailureInfo // Accumulating failure details
+	currentFailure    *FailureInfo                 // Accumulating failure details
 	collectedFailures []types.TestCaseNotification // All failures for formatting
 }
 
