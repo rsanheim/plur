@@ -9,7 +9,7 @@ require (
 	github.com/alecthomas/kong-toml v0.2.0
 )
 
-require github.com/pelletier/go-toml v1.9.5
+require github.com/pelletier/go-toml v1.9.5 // indirect
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

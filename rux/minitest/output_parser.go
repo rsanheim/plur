@@ -10,6 +10,11 @@ import (
 	"github.com/rsanheim/rux/types"
 )
 
+var (
+	summaryRegex           = regexp.MustCompile(`(\d+) runs?, (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`)
+	failureHeaderLineRegex = regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`)
+)
+
 // OutputParser parses minitest text output into notifications
 type OutputParser struct {
 	collectingFailures bool                         // Whether we're collecting failure text
@@ -123,7 +128,7 @@ func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 
 func (p *OutputParser) parseSummaryLine(line string) []types.TestNotification {
 	// Check for summary line
-	if match := regexp.MustCompile(`(\d+) runs?, (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`).FindStringSubmatch(line); match != nil {
+	if match := summaryRegex.FindStringSubmatch(line); match != nil {
 		runs, _ := strconv.Atoi(match[1])
 		failures, _ := strconv.Atoi(match[3])
 		errors, _ := strconv.Atoi(match[4])
@@ -195,11 +200,11 @@ func containsProgressChars(line string) bool {
 }
 
 func isFailureHeaderLine(line string) bool {
-	return regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`).MatchString(line)
+	return failureHeaderLineRegex.MatchString(line)
 }
 
 func isSummaryLine(line string) bool {
-	return regexp.MustCompile(`(\d+) runs?, (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`).MatchString(line)
+	return summaryRegex.MatchString(line)
 }
 
 // FormatFailures returns empty string since minitest formats its own failures
