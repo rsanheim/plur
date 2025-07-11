@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	summaryRegex           = regexp.MustCompile(`(\d+) runs?, (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`)
+	summaryRegex           = regexp.MustCompile(`(\d+) (?:runs?|tests?), (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`)
 	failureHeaderLineRegex = regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`)
 )
 

@@ -131,6 +131,52 @@ func TestOutputParser_FailureDetailMatching(t *testing.T) {
 	assert.Equal("Expected false to be truthy.", failure.Exception.Message)
 }
 
+func TestOutputParser_BothSummaryFormats(t *testing.T) {
+	t.Run("runs format", func(t *testing.T) {
+		assert := assert.New(t)
+		parser := &OutputParser{}
+		
+		// Standard minitest output uses "runs"
+		notifications, _ := parser.ParseLine("5 runs, 13 assertions, 0 failures, 0 errors, 0 skips")
+		assert.Len(notifications, 1)
+		suite := notifications[0].(types.SuiteNotification)
+		assert.Equal(types.SuiteFinished, suite.Event)
+		assert.Equal(5, suite.TestCount)
+		assert.Equal(0, suite.FailureCount)
+		assert.Equal(0, suite.PendingCount)
+	})
+
+	t.Run("tests format", func(t *testing.T) {
+		assert := assert.New(t)
+		parser := &OutputParser{}
+		
+		// Minitest::Reporters output uses "tests"
+		notifications, _ := parser.ParseLine("2 tests, 2 assertions, 0 failures, 0 errors, 0 skips")
+		assert.Len(notifications, 1)
+		suite := notifications[0].(types.SuiteNotification)
+		assert.Equal(types.SuiteFinished, suite.Event)
+		assert.Equal(2, suite.TestCount)
+		assert.Equal(0, suite.FailureCount)
+		assert.Equal(0, suite.PendingCount)
+	})
+
+	t.Run("singular forms", func(t *testing.T) {
+		assert := assert.New(t)
+		parser := &OutputParser{}
+		
+		// Test singular "run"
+		notifications, _ := parser.ParseLine("1 run, 1 assertion, 0 failures, 0 errors, 0 skips")
+		assert.Len(notifications, 1)
+		
+		// Test singular "test"
+		notifications, _ = parser.ParseLine("1 test, 1 assertion, 1 failure, 0 errors, 0 skips")
+		assert.Len(notifications, 1)
+		suite := notifications[0].(types.SuiteNotification)
+		assert.Equal(1, suite.TestCount)
+		assert.Equal(1, suite.FailureCount)
+	})
+}
+
 func TestOutputParser_FullIntegration(t *testing.T) {
 	assert := assert.New(t)
 	parser := &OutputParser{}
