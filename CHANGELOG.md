@@ -1,5 +1,8 @@
 # rux CHANGELOG
 
+## v0.8.1 - 2025-07-11
+
+* release process needs work 
 
 ## v0.8.0 - 2025-07-11
 
