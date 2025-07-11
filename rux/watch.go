@@ -27,7 +27,7 @@ func runWatchInstall(force bool) error {
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.RuxHome, force)
 }
 
-func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
+func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error {
 	// Log startup info
 	logger.Logger.Info("rux watch starting!", "version", GetVersionInfo())
 
@@ -35,9 +35,9 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 	fileMapper := watch.NewFileMapper()
 
 	// Create debouncer with configurable delay
-	debounceDelay := time.Duration(debounceMs) * time.Millisecond
+	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
 	debouncer := watch.NewDebouncer(debounceDelay)
-	logger.LogDebug("Debounce delay", "ms", debounceMs)
+	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
 
 	// Determine which directories to watch
 	watchDirs := watch.GetWatchDirectories()
@@ -54,14 +54,14 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 	logger.Logger.Info("rux configuration info",
 		"project", projectName,
 		"directories", watchDirs,
-		"debounce", debounceMs,
-		"timeout", timeout)
-	if timeout > 0 {
-		logger.LogDebug("rux in timeout mode - with auto exit after " + fmt.Sprintf("%d", timeout) + " seconds")
+		"debounce", watchCmd.Debounce,
+		"timeout", watchCmd.Timeout)
+	if watchCmd.Timeout > 0 {
+		logger.LogDebug("rux in timeout mode - with auto exit after " + fmt.Sprintf("%d", watchCmd.Timeout) + " seconds")
 	}
 
 	// Get the watcher binary path
-	watcherPath, err := watch.GetWatcherBinaryPath(config.ConfigPaths.BinDir)
+	watcherPath, err := watch.GetWatcherBinaryPath(globalConfig.ConfigPaths.BinDir)
 	if err != nil {
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}
@@ -73,7 +73,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 	watcherConfig := &watch.ManagerConfig{
 		Directories:    watchDirs,
 		DebounceDelay:  debounceDelay,
-		TimeoutSeconds: timeout,
+		TimeoutSeconds: watchCmd.Timeout,
 	}
 
 	// Create and start the watcher manager
@@ -85,8 +85,8 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 
 	// Set up timeout if specified
 	var timeoutChan <-chan time.Time
-	if timeout > 0 {
-		timeoutChan = time.After(time.Duration(timeout) * time.Second)
+	if watchCmd.Timeout > 0 {
+		timeoutChan = time.After(time.Duration(watchCmd.Timeout) * time.Second)
 	}
 
 	// Set up signal handling for graceful shutdown
@@ -116,7 +116,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 	fmt.Println()
 	fmt.Print("rux> ")
 
-	// Process events with timeout
+	// Process events with watchCmd.Timeout
 	for {
 		select {
 		case input := <-stdinChan:
@@ -125,7 +125,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 				// User pressed Enter - run all specs
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
-				runSpecsOrDirectory("spec")
+				runSpecsOrDirectory("spec", watchCmd.Command)
 				fmt.Print("\nrux> ")
 			case "exit":
 				// User typed exit command
@@ -197,7 +197,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 				// Run each unique spec
 				for spec := range uniqueSpecs {
 					logger.LogDebug("rux", "event", "run_spec", "path", "./"+spec)
-					runSpecsOrDirectory(spec)
+					runSpecsOrDirectory(spec, watchCmd.Command)
 				}
 
 				go func() {
@@ -210,7 +210,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 			return fmt.Errorf("watcher error: %v", err)
 
 		case <-timeoutChan:
-			logger.Logger.Info("rux timeout reached, exiting!", "event", "timeout", "timeout", timeout)
+			logger.Logger.Info("rux timeout reached, exiting!", "event", "timeout", "timeout", watchCmd.Timeout)
 			fmt.Println("\nTimeout reached, exiting!")
 			return nil
 
@@ -223,7 +223,7 @@ func runWatchWithConfig(config *Config, timeout int, debounceMs int) error {
 
 // Simple implementation using direct rspec call for now
 // We'll integrate with rux runner properly later
-func runSpecsOrDirectory(specPath string) {
+func runSpecsOrDirectory(specPath string, command string) {
 	var cmd *exec.Cmd
 
 	if _, err := os.Stat(specPath); errors.Is(err, os.ErrNotExist) {
@@ -231,7 +231,9 @@ func runSpecsOrDirectory(specPath string) {
 		return
 	}
 
-	args := []string{"bundle", "exec", "rspec", "--format", "progress", specPath}
+	// Split the command string into parts
+	cmdParts := strings.Fields(command)
+	args := append(cmdParts, "--format", "progress", specPath)
 	cmd_string := strings.Join(args, " ")
 
 	fmt.Println("running:", cmd_string)

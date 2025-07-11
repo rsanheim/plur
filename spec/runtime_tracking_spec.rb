@@ -81,13 +81,13 @@ RSpec.describe "Rux runtime tracking" do
         File.write(File.join(temp_cache_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
 
         # Run dry-run to see grouping
-        output = `#{rux_binary} --dry-run -n 2 --runtime-dir #{temp_cache_dir} 2>&1`
+        result = run_rux("--dry-run", "-n", "2", "--runtime-dir", temp_cache_dir)
 
         # The slow file should be in its own group or with minimal other files
-        expect(output).to include("Using runtime-based grouped execution")
+        expect(result.err).to include("Using runtime-based grouped execution")
 
         # Extract worker assignments
-        worker_lines = output.lines.select { |l| l.include?("[dry-run] Worker") }
+        worker_lines = result.err.lines.select { |l| l.include?("[dry-run] Worker") }
         expect(worker_lines.size).to eq(2)
 
         # Both workers should have files, but runtime distribution should be balanced

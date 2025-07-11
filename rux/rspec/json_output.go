@@ -123,7 +123,7 @@ func FormatFailure(index int, failure FailureDetail) string {
 	sb.WriteString("     Failure/Error: ")
 
 	// Try to extract the failing line from the source file
-	failingLine := extractFailingLine(failure.FilePath, failure.LineNumber)
+	failingLine := ExtractFailingLine(failure.FilePath, failure.LineNumber)
 	if failingLine != "" {
 		sb.WriteString(failingLine)
 		sb.WriteString("\n")
@@ -155,13 +155,13 @@ func FormatFailure(index int, failure FailureDetail) string {
 	return sb.String()
 }
 
-// extractFailingLine reads the specified line from a file
+// ExtractFailingLine reads the specified line from a file
 //
 // This manual extraction is necessary because RSpec's JSON output only provides
 // the line number where the test is defined, not the actual failing assertion.
 // We need to read the source file and find the likely failing line within the test body.
 // This is a heuristic approach that looks for common patterns like 'expect', 'raise', etc.
-func extractFailingLine(filePath string, lineNumber int) string {
+func ExtractFailingLine(filePath string, lineNumber int) string {
 	// For RSpec failures, we want to extract the actual failing line from within the test
 	// The lineNumber points to the test definition, but the error is usually inside
 	file, err := os.Open(filePath)

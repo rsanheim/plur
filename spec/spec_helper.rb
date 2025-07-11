@@ -35,10 +35,6 @@ RSpec.configure do |config|
     end
   end
 
-  def rux_binary
-    @rux_binary ||= File.join(__dir__, "..", "rux", "rux")
-  end
-
   def default_ruby_dir
     @default_ruby_dir ||= project_fixture("default-ruby")
   end
@@ -49,6 +45,14 @@ RSpec.configure do |config|
 
   def project_fixture(name)
     Pathname.new(__dir__).parent.join("fixtures", "projects", name)
+  end
+
+  def project_fixture!(name)
+    project_fixture(name).tap do |path|
+      unless path.exist?
+        raise "Project fixture does not exist for #{name} at path: #{path}"
+      end
+    end
   end
 
   config.expect_with :rspec do |expectations|

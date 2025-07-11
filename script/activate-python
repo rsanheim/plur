@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Source this file to activate the Python environment
+# Usage: source script/activate-python
+
+# Check if uv is installed
+if ! command -v uv &> /dev/null; then
+    echo "Error: uv is not installed."
+    echo "Install it with: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    return 1 2>/dev/null || exit 1
+fi
+
+# Create virtual environment if it doesn't exist
+if [ ! -d ".venv" ]; then
+    echo "Creating virtual environment..."
+    uv venv
+fi
+
+# Install dependencies if needed
+if ! .venv/bin/python -m mkdocs --version &> /dev/null 2>&1; then
+    echo "Installing dependencies..."
+    uv pip install -r requirements.txt
+fi
+
+# Activate the virtual environment
+echo "Activating Python environment..."
+source .venv/bin/activate
+
+echo "Python environment activated. You can now run:"
+echo "  mkdocs serve"
+echo "  mkdocs build"
+echo "  linkcheckmd docs/"
+echo ""
+echo "To deactivate, run: deactivate"

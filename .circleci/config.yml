@@ -47,33 +47,7 @@ jobs:
           paths:
             - rux/rux
 
-  test-ruby:
-    docker:
-      - image: cimg/ruby:3.4.4
-    resource_class: medium
-    working_directory: ~/project/
-    steps:
-      - checkout
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Install rux from workspace
-          command: |
-            sudo cp ~/workspace/rux/rux /usr/local/bin/
-            sudo chmod +x /usr/local/bin/rux
-            rux --help
-      - ruby/install-deps:
-          include-branch-in-cache-key: false
-      - run:
-          name: Run ruby linting
-          command: |
-            bin/rake lint:ruby
-      - run:
-          name: Run Ruby tests with rux
-          command: |
-            bin/rake test:default_ruby
-
-  test-integration:
+  test-ruby-integration:
     docker:
       - image: cimg/ruby:3.4.4
     resource_class: large
@@ -90,6 +64,14 @@ jobs:
             cp ~/workspace/rux/rux ./rux
       - ruby/install-deps:
           include-branch-in-cache-key: false
+      - run:
+          name: Run ruby linting
+          command: |
+            bin/rake lint:ruby
+      - run:
+          name: Run Ruby tests with rux
+          command: |
+            bin/rake test:default_ruby
       - restore_cache:
           key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
       - run:
@@ -102,7 +84,6 @@ jobs:
           key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
           paths:
             - fixtures/projects/default-rails/vendor/bundle
-
       - run:
           name: Run test_app specs with rux
           working_directory: fixtures/projects/default-rails
@@ -129,9 +110,6 @@ workflows:
   test-all:
     jobs:
       - build-and-test-go
-      - test-ruby:
-          requires:
-            - build-and-test-go
-      - test-integration:
+      - test-ruby-integration:
           requires:
             - build-and-test-go

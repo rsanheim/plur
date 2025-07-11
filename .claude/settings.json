@@ -124,8 +124,14 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pkg.go.dev)",
       "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(./script/lint:*)",
       "Bash(./script/rux-bench:*)"
     ],
     "deny": []
-  }
+  },
+  "includeCoAuthoredBy": false,
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "github"
+  ]
 }

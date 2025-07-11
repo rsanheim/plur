@@ -8,7 +8,7 @@ require_relative "../../plur"
 module Plur
   module Benchmark
     class Config
-      attr_accessor :workers, :warmup, :runs, :min_runs, :max_runs, :projects, :trace, :save_results,
+      attr_accessor :workers, :warmup, :runs, :min_runs, :max_runs, :projects, :save_results,
         :show_output, :checkpoint, :results_dir, :timestamp
 
       def initialize
@@ -44,7 +44,7 @@ module Plur
       def initialize(config)
         @config = config
         @original_dir = Dir.pwd
-        check_rux_binary!
+        check_local_rux_binary!
         @git_sha = get_git_sha
         @rux_version = get_rux_version
       end
@@ -84,10 +84,6 @@ module Plur
 
           result = run_hyperfine(project_name)
 
-          if config.trace
-            analyze_traces(project_name)
-          end
-
           result
         end
       end
@@ -97,8 +93,7 @@ module Plur
         json_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.json").to_s
         markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
 
-        rux_cmd = "#{Plur.config.rux_binary} -n #{config.workers}"
-        rux_cmd += " --trace" if config.trace
+        rux_cmd = "#{Plur.config.local_rux_binary} -n #{config.workers}"
 
         hyperfine_cmd = [
           "hyperfine",
@@ -126,7 +121,6 @@ module Plur
 
         puts "Running benchmarks with #{config.workers} workers, #{config.warmup} warmup runs, #{config.runs} runs"
         puts "Rux version: #{rux_version}"
-        puts "Tracing: ENABLED" if config.trace
         puts "===================="
 
         system(*hyperfine_cmd)
@@ -154,11 +148,6 @@ module Plur
         puts "Warning: Could not add version to JSON: #{e.message}"
       end
 
-      def analyze_traces(project_name)
-        # Implementation for trace analysis
-        # This would be ported from the bash script
-      end
-
       def create_checkpoint(results)
         checkpoint = Checkpoint.new(config, results, git_sha, rux_version)
         checkpoint.create
@@ -171,15 +160,15 @@ module Plur
       end
 
       def get_rux_version
-        `#{Plur.config.rux_binary} --version 2>/dev/null`.strip
+        `#{Plur.config.local_rux_binary} --version 2>/dev/null`.strip
       rescue
         "rux version unknown"
       end
 
-      def check_rux_binary!
-        unless File.exist?(Plur.config.rux_binary)
+      def check_local_rux_binary!
+        unless File.exist?(Plur.config.local_rux_binary)
           puts <<~ERROR
-            Error: Rux binary not found at #{Plur.config.rux_binary}
+            Error: Local rux binary not found at #{Plur.config.local_rux_binary}
             
             Please build rux first by running:
               bin/rake build

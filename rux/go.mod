@@ -4,7 +4,12 @@ go 1.23.0
 
 toolchain go1.24.2
 
-require github.com/alecthomas/kong v1.11.0
+require (
+	github.com/alecthomas/kong v1.11.0
+	github.com/alecthomas/kong-toml v0.2.0
+)
+
+require github.com/pelletier/go-toml v1.9.5 // indirect
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

@@ -1,5 +1,32 @@
 # rux CHANGELOG
 
+
+## v0.8.2 - 2025-07-11
+
+* Removing tracing [#67](https://github.com/rsanheim/rux-meta/pull/67)
+* Clean up WIP docs [#66](https://github.com/rsanheim/rux-meta/pull/66)
+
+## v0.8.1 - 2025-07-11
+
+* release process needs work 
+
+## v0.8.0 - 2025-07-11
+
+* Minitest clean up [#65](https://github.com/rsanheim/rux-meta/pull/65)
+* Minitest support - simplify reporting; support minitest-reporters [#64](https://github.com/rsanheim/rux-meta/pull/64)
+* new line after results [#63](https://github.com/rsanheim/rux-meta/pull/63)
+* Refactoring test handling 2 [#59](https://github.com/rsanheim/rux-meta/pull/59)
+* Minitest 3 [#62](https://github.com/rsanheim/rux-meta/pull/62)
+* Bundler overhead findings [#61](https://github.com/rsanheim/rux-meta/pull/61)
+* Backport mkdocs improvements [#60](https://github.com/rsanheim/rux-meta/pull/60)
+
+## v0.7.5 - 2025-06-22
+
+* Use installed rux for integration specs; update specs [#58](https://github.com/rsanheim/rux-meta/pull/58)
+* Simple config file [#56](https://github.com/rsanheim/rux-meta/pull/56)
+* clean up benchmark more [#55](https://github.com/rsanheim/rux-meta/pull/55)
+* Moving more stuff to plur [#54](https://github.com/rsanheim/rux-meta/pull/54)
+
 ## v0.7.2 - 2025-06-21
 
 * Benchmark cleanup [#53](https://github.com/rsanheim/rux-meta/pull/53)

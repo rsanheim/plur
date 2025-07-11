@@ -15,7 +15,6 @@ RSpec.describe Plur::Benchmark do
         expect(config.min_runs).to be_nil
         expect(config.max_runs).to be_nil
         expect(config.projects).to eq([])
-        expect(config.trace).to be false
         expect(config.save_results).to be true
         expect(config.show_output).to be false
         expect(config.checkpoint).to be false
@@ -57,7 +56,7 @@ RSpec.describe Plur::Benchmark do
 
     before do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with(Plur.config.rux_binary).and_return(true)
+      allow(File).to receive(:exist?).with(Plur.config.local_rux_binary).and_return(true)
       allow(runner).to receive(:system).and_return(true)
       allow(runner).to receive(:get_git_sha).and_return("abc123")
       allow(runner).to receive(:get_rux_version).and_return("rux version 1.0.0")
@@ -97,7 +96,7 @@ RSpec.describe Plur::Benchmark do
           expect(args).to include("--warmup", "2")
           expect(args).to include("--runs", "5")
           expect(args).to include("turbo_tests -n #{config.workers}")
-          expect(args).to include("#{Plur.config.rux_binary} -n #{config.workers}")
+          expect(args).to include("#{Plur.config.local_rux_binary} -n #{config.workers}")
           true
         end
 
@@ -112,18 +111,6 @@ RSpec.describe Plur::Benchmark do
           expect(args).to include("--min-runs", "3")
           expect(args).to include("--max-runs", "10")
           expect(args).not_to include("--runs")
-          true
-        end
-
-        runner.send(:benchmark_project, "./fixtures/projects/default-ruby")
-      end
-
-      it "includes trace flag when enabled" do
-        config.trace = true
-
-        expect(runner).to receive(:system) do |*args|
-          rux_command = args.find { |arg| arg.include?(Plur.config.rux_binary.to_s) }
-          expect(rux_command).to include("--trace")
           true
         end
 
@@ -159,13 +146,13 @@ RSpec.describe Plur::Benchmark do
     describe "#get_rux_version" do
       it "returns rux version when available" do
         runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("#{Plur.config.rux_binary} --version 2>/dev/null").and_return("rux version 1.0.0\n")
+        allow(runner).to receive(:`).with("#{Plur.config.local_rux_binary} --version 2>/dev/null").and_return("rux version 1.0.0\n")
         expect(runner.send(:get_rux_version)).to eq("rux version 1.0.0")
       end
 
       it "returns unknown when rux fails" do
         runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("#{Plur.config.rux_binary} --version 2>/dev/null").and_raise(StandardError)
+        allow(runner).to receive(:`).with("#{Plur.config.local_rux_binary} --version 2>/dev/null").and_raise(StandardError)
         expect(runner.send(:get_rux_version)).to eq("rux version unknown")
       end
     end
@@ -214,12 +201,10 @@ RSpec.describe Plur::Benchmark do
     it "parses boolean flags" do
       config = Plur::Benchmark::Config.new
 
-      config.trace = true
       config.checkpoint = true
       config.show_output = true
       config.save_results = false
 
-      expect(config.trace).to be true
       expect(config.checkpoint).to be true
       expect(config.show_output).to be true
       expect(config.save_results).to be false

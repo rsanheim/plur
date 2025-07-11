@@ -10,7 +10,7 @@ module Plur
   class Config
     include Singleton
 
-    attr_reader :edant_watcher_version, :root_dir, :rux_dir, :watcher_dir, :rux_binary,
+    attr_reader :edant_watcher_version, :root_dir, :rux_dir, :watcher_dir, :local_rux_binary,
       :fixtures_dir, :default_ruby_dir, :default_rails_dir
 
     def initialize
@@ -28,12 +28,12 @@ module Plur
       @default_rails_dir = @fixtures_dir.join("default-rails")
 
       # Binary paths
-      @rux_binary = @rux_dir.join("rux")
+      @local_rux_binary = @rux_dir.join("rux")
     end
 
     # Runtime configuration
     def rux_cores
-      ENV["CI"] ? 3 : 8
+      ENV["CI"] ? 4 : 8
     end
   end
 

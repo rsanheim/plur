@@ -1,0 +1,18 @@
+/* Mermaid diagram styling */
+.mermaid {
+    max-width: 100%;
+    overflow: auto;
+}
+
+/* Ensure diagrams have enough space */
+.md-content .mermaid {
+    margin: 1em 0;
+}
+
+/* Optional: Add a border to make diagrams stand out */
+.mermaid svg {
+    border: 1px solid var(--md-default-fg-color--lightest);
+    border-radius: 4px;
+    padding: 1em;
+    background-color: var(--md-code-bg-color);
+}

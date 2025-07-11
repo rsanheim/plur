@@ -4,20 +4,29 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rsanheim/rux/rspec"
+	"github.com/rsanheim/rux/types"
 )
+
+// TestFile represents a test file
+type TestFile struct {
+	Path     string // Full path to the file
+	Filename string // Just the filename
+}
 
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
 	TotalExamples     int
 	TotalFailures     int
-	AllFailures       []rspec.FailureDetail
+	AllFailures       []types.TestCaseNotification
 	TotalCPUTime      time.Duration
 	WallTime          time.Duration
 	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
 	HasFailures       bool
-	Success           bool         // True if no failures and no errors
-	ErroredFiles      []TestResult // Files that had errors running
+	Success           bool           // True if no failures and no errors
+	ErroredFiles      []WorkerResult // Workers that had errors running tests
+	Framework         TestFramework  // The test framework used
+	TotalPending      int            // Total pending/skipped tests
+	AllResults        []WorkerResult // All worker results for accessing raw output
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -25,38 +34,49 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
-		ErroredFiles: []TestResult{},
-		Success:      true, // Start assuming success
+		ErroredFiles: []WorkerResult{},
+		AllResults:   results, // Store all results for raw output access
+		Success:      true,    // Start assuming success
 	}
 
 	// Track if we're in single-file mode (single worker)
 	singleWorkerMode := len(results) == 1
 
-	for _, result := range results {
+	for i, result := range results {
 		summary.TotalCPUTime += result.Duration
 		summary.TotalExamples += result.ExampleCount
 		summary.TotalFailures += result.FailureCount
+		summary.TotalPending += result.PendingCount
+
+		// Set framework from first result (all should be the same)
+		if i == 0 {
+			summary.Framework = result.Framework
+		}
 
 		// Track the maximum file load time (since workers run in parallel)
 		if result.FileLoadTime > summary.TotalFileLoadTime {
 			summary.TotalFileLoadTime = result.FileLoadTime
 		}
 
-		if len(result.Failures) > 0 {
-			summary.AllFailures = append(summary.AllFailures, result.Failures...)
+		// Check the result state to determine success/failure
+		switch result.State {
+		case types.StateFailed:
 			summary.HasFailures = true
 			summary.Success = false
-		}
-
-		if !result.Success {
-			summary.HasFailures = true
-			summary.Success = false
-			if result.Error != nil {
-				summary.ErroredFiles = append(summary.ErroredFiles, result)
+			// Filter and append only failed test notifications
+			for _, test := range result.Tests {
+				if test.Event == types.TestFailed {
+					summary.AllFailures = append(summary.AllFailures, test)
+				}
 			}
+		case types.StateError:
+			summary.HasFailures = true
+			summary.Success = false
+			summary.ErroredFiles = append(summary.ErroredFiles, result)
+			// StateSuccess requires no action - summary.Success defaults to true
 		}
 
 		// Collect formatted failures (concatenate them)
@@ -76,75 +96,57 @@ func BuildTestSummary(results []TestResult, wallTime time.Duration) TestSummary 
 
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary, colorOutput bool) {
-	// fmt.Println() // New line after progress dots
-
-	// Simple case: all tests passed
-	if summary.Success {
-		// Use formatted summary if available, otherwise fall back to manual formatting
-		if summary.FormattedSummary != "" {
-			fmt.Print(summary.FormattedSummary)
-		} else {
-			fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
-				summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
-			fmt.Printf("%s, 0 failures\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
-		}
+	parser, err := NewTestOutputParser(summary.Framework)
+	if err != nil {
+		// Fallback to basic output
+		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
 		return
 	}
 
-	// Print failures if any
-	if summary.FormattedFailures != "" {
-		// Use RSpec's formatted failures (includes colors)
-		fmt.Print(summary.FormattedFailures)
-	} else if len(summary.AllFailures) > 0 {
-		// Fall back to manual formatting
-		fmt.Println("\nFailures:")
-
-		for i, failure := range summary.AllFailures {
-			fmt.Print(rspec.FormatFailure(i+1, failure))
-			fmt.Println() // Extra line between failures
+	// For minitest with failures, print the raw output which contains failure details
+	if summary.Framework == FrameworkMinitest && summary.HasFailures {
+		// Collect all output from failed workers
+		for _, result := range summary.AllResults {
+			if result.State == types.StateFailed && result.Output != "" {
+				// The raw output contains the failure details
+				fmt.Print(result.Output)
+			}
 		}
+	} else if summary.HasFailures && summary.FormattedFailures != "" {
+		// For RSpec, use the formatted failures
+		fmt.Print(summary.FormattedFailures)
 	}
 
 	// Print summary
-	if summary.FormattedSummary != "" {
-		// Use RSpec's formatted summary (includes timing, totals, and failed examples list)
-		fmt.Print(summary.FormattedSummary)
-	} else {
-		// Fall back to manual formatting for parallel mode
-		fmt.Printf("Finished in %.5f seconds (files took %.5f seconds to load)\n",
+	summaryText := summary.FormattedSummary
+	hasFormattedSummary := summaryText != ""
+	if !hasFormattedSummary {
+		summaryText = parser.FormatSummary(nil, summary.TotalExamples,
+			summary.TotalFailures, summary.TotalPending,
 			summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
-
-		if summary.TotalFailures > 0 {
-			// Check if terminal supports color and format accordingly
-			if colorOutput {
-				fmt.Printf("\033[31m%s, %s\033[0m\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)), pluralize(summary.TotalFailures, "1 failure", fmt.Sprintf("%d failures", summary.TotalFailures)))
-			} else {
-				fmt.Printf("%s, %s\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)), pluralize(summary.TotalFailures, "1 failure", fmt.Sprintf("%d failures", summary.TotalFailures)))
-			}
-		} else {
-			if colorOutput {
-				fmt.Printf("\033[32m%s, 0 failures\033[0m\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
-			} else {
-				fmt.Printf("%s, 0 failures\n", pluralize(summary.TotalExamples, "1 example", fmt.Sprintf("%d examples", summary.TotalExamples)))
-			}
-		}
-
-		// Print failed examples summary
-		if len(summary.AllFailures) > 0 {
-			fmt.Println("\nFailed examples:")
-			fmt.Print(rspec.FormatFailedExamples(summary.AllFailures))
-		}
 	}
+
+	if colorOutput && !hasFormattedSummary {
+		// Only colorize if we generated the summary ourselves
+		summaryText = parser.ColorizeSummary(summaryText, summary.HasFailures)
+	}
+	fmt.Print(summaryText)
 	fmt.Println()
 
-	// RJS 2025-05-28 - this doesn't seem right - we are printing 'errors' when the spec is a legit failure
-	// we probalby need proper error handling (i.e. an exception)
-	//
-	// Show any spec files that had errors running
-	// if len(summary.ErroredFiles) > 0 {
-	// 	fmt.Println()
-	// 	for _, result := range summary.ErroredFiles {
-	// 		fmt.Printf("ERROR running %s: %v\n", result.SpecFile, result.Error)
-	// 	}
-	// }
+	// Print failed examples list only if we didn't get a formatted summary
+	// (RSpec's formatted summary already includes the failed examples list)
+	if !hasFormattedSummary && summary.Framework != FrameworkMinitest {
+		// Skip for minitest since we already printed the raw output
+		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
+			fmt.Println("\nFailed examples:")
+			fmt.Print(failedList)
+		}
+	}
+
+	// Print errored files
+	for _, result := range summary.ErroredFiles {
+		if result.State == types.StateError && result.Output != "" {
+			fmt.Print(result.Output)
+		}
+	}
 }

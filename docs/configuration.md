@@ -46,11 +46,6 @@ Rux always uses dual formatters:
 export RUX_DEBUG=1
 rux
 
-# Trace mode (performance profiling)
-export RUX_TRACE=1
-rux
-# or
-rux --trace
 ```
 
 ## File Discovery
@@ -60,18 +55,6 @@ rux --trace
 - Recursively finds all `*_spec.rb` files
 - Starts from current directory
 - Excludes `vendor/` directory
-
-## Performance Tuning
-
-### Trace Output
-
-```bash
-# Enable tracing
-rux --trace
-
-# Trace files are saved to
-/tmp/rux-traces/rux-trace-{timestamp}-{pid}/
-```
 
 ## Watch Mode Configuration
 
@@ -88,10 +71,8 @@ Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with
 
 - `PARALLEL_TEST_PROCESSORS` - Number of workers
 - `RUX_DEBUG` - Enable debug output
-- `RUX_TRACE` - Enable performance tracing
 
 ## Next Steps
 
-- See [Performance Tracing](architecture/performance-tracing.md) for optimization
 - See [Usage](usage.md) for command examples
-- See [Development](development/) for contributing
+- See [Development](development/index.md) for contributing

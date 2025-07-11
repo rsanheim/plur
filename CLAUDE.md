@@ -27,11 +27,25 @@ bin/rake standard:fix    # Fix Ruby lint issues
 ```bash
 rux                      # Run tests (auto-detect workers)
 rux -n 4                 # Specify workers (often fastest)
+rux -C path/to/project   # Change to directory before running (like git -C)
 rux --dry-run            # Preview what will run
-rux --trace              # Performance profiling
 rux doctor               # Debug installation issues
 rux watch                # Auto-run tests on file changes (experimental)
+rux spec --command=bin/rspec  # Override default test command
 ```
+
+### Configuration Files
+
+Rux supports TOML configuration files for persistent settings:
+
+```toml
+# .rux.toml or ~/.rux.toml
+command = "bin/rspec"    # Override default "bundle exec rspec"
+workers = 4              # Number of parallel workers
+color = true             # Enable colored output
+```
+
+Configuration precedence: CLI flags > `.rux.toml` (local) > `~/.rux.toml` (global) > defaults
 
 
 ### Common Fixes
@@ -39,6 +53,7 @@ rux watch                # Auto-run tests on file changes (experimental)
 - **"go: inconsistent vendoring"** → `cd rux && go mod vendor`
 - **"watcher binary not found"** → Binary is embedded and extracted to ~/.cache/rux/bin/
 - **Tests fail in rake but pass alone** → Use `bin/rake` not `rake`
+- **Testing fixtures is cumbersome** → Use `rux -C fixtures/minitest-success` instead of `cd`
 
 ### Project Structure
 - `rux/` - Go source (main binary)

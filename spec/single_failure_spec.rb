@@ -1,30 +1,22 @@
+require "spec_helper"
+
 RSpec.describe "single failure" do
   def fixture_path(name)
     project_fixture(name)
   end
 
-  def capture(cmd_array)
-    Open3.capture3(*cmd_array)
-  end
-
-  def run_rux(file_or_glob, *args)
-    cmd_array = %W[#{rux_binary} #{file_or_glob}]
-    cmd_array += args if args.any?
-    capture(cmd_array)
-  end
-
   def run_rspec(file_or_glob, *args)
     cmd_array = %W[bundle exec rspec #{file_or_glob}]
     cmd_array += args if args.any?
-    capture(cmd_array)
+    Open3.capture3(*cmd_array)
   end
 
   it "prints correct summary counts" do
     chdir fixture_path("failing_specs") do
-      stdout, stderr, status = run_rux("--no-color", "spec/single_failure_spec.rb")
-      expect(status.exitstatus).to eq(1)
-      expect(stdout).to match(/1 failure\b/)
-      expect(stderr).to match(/1 file across (\d+) workers/)
+      result = run_rux_allowing_errors("--no-color", "spec/single_failure_spec.rb")
+      expect(result.exit_status).to eq(1)
+      expect(result.out).to match(/1 failure\b/)
+      expect(result.err).to match(/1 file across (\d+) workers/)
     end
   end
 
@@ -35,9 +27,9 @@ RSpec.describe "single failure" do
 
       backtrace_line = rspec_out.split("\n").find { |line| line.include?("./spec/single_failure_spec.rb:6") } # remove color codes
 
-      stdout, _, status = run_rux("spec/single_failure_spec.rb")
-      expect(status.exitstatus).to eq(1)
-      expect(stdout).to include(backtrace_line)
+      result = run_rux_allowing_errors("spec/single_failure_spec.rb")
+      expect(result.exit_status).to eq(1)
+      expect(result.out).to include(backtrace_line)
     end
   end
 
@@ -55,10 +47,10 @@ RSpec.describe "single failure" do
       rspec_out, _, rspec_status = run_rspec("spec/single_failure_spec.rb", "--force-color", "--tty")
       expect(rspec_status.exitstatus).to eq(1)
 
-      stdout, _, status = run_rux("spec/single_failure_spec.rb")
-      expect(status.exitstatus).to eq(1)
+      result = run_rux_allowing_errors("spec/single_failure_spec.rb")
+      expect(result.exit_status).to eq(1)
 
-      stdout_lines = make_summary_line_consistent(stdout).lines
+      stdout_lines = make_summary_line_consistent(result.out).lines
       stdout_without_preamble = stdout_lines[2..]
       rspec_stdout_lines = make_summary_line_consistent(rspec_out).lines
 
