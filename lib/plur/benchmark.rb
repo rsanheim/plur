@@ -8,7 +8,7 @@ require_relative "../../plur"
 module Plur
   module Benchmark
     class Config
-      attr_accessor :workers, :warmup, :runs, :min_runs, :max_runs, :projects, :trace, :save_results,
+      attr_accessor :workers, :warmup, :runs, :min_runs, :max_runs, :projects, :save_results,
         :show_output, :checkpoint, :results_dir, :timestamp
 
       def initialize
@@ -84,9 +84,6 @@ module Plur
 
           result = run_hyperfine(project_name)
 
-          if config.trace
-            analyze_traces(project_name)
-          end
 
           result
         end
@@ -98,7 +95,6 @@ module Plur
         markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
 
         rux_cmd = "#{Plur.config.local_rux_binary} -n #{config.workers}"
-        rux_cmd += " --trace" if config.trace
 
         hyperfine_cmd = [
           "hyperfine",
@@ -126,7 +122,6 @@ module Plur
 
         puts "Running benchmarks with #{config.workers} workers, #{config.warmup} warmup runs, #{config.runs} runs"
         puts "Rux version: #{rux_version}"
-        puts "Tracing: ENABLED" if config.trace
         puts "===================="
 
         system(*hyperfine_cmd)
@@ -154,10 +149,6 @@ module Plur
         puts "Warning: Could not add version to JSON: #{e.message}"
       end
 
-      def analyze_traces(project_name)
-        # Implementation for trace analysis
-        # This would be ported from the bash script
-      end
 
       def create_checkpoint(results)
         checkpoint = Checkpoint.new(config, results, git_sha, rux_version)

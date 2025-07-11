@@ -116,7 +116,7 @@ rux doctor
 ### Performance Tuning
 
 1. **Start with auto-detection**: Let Rux choose worker count
-2. **Measure and adjust**: Use `--trace` to identify bottlenecks
+2. **Measure and adjust**: Experiment with different worker counts
 3. **Consider test characteristics**:
    - Many small tests: More workers
    - Few large tests: Fewer workers

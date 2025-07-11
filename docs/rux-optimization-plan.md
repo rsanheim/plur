@@ -18,7 +18,7 @@ For the rux-ruby test suite (11 spec files, ~450ms total):
 - More process spawn overhead
 - More Ruby initialization overhead
 
-### 2. Overhead Breakdown (from tracing)
+### 2. Overhead Breakdown (from analysis)
 - Process spawn: ~1.3ms per process (negligible)
 - Ruby startup: ~31ms 
 - RSpec load: ~45ms
