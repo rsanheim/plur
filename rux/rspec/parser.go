@@ -230,3 +230,62 @@ func getFloat(m map[string]interface{}, key string) float64 {
 	}
 	return 0
 }
+
+// FormatFailures formats individual failure details in RSpec style
+func (p *OutputParser) FormatFailures(failures []types.TestCaseNotification) string {
+	// RSpec provides pre-formatted failures via FormattedFailuresNotification
+	// This method is only used as a fallback
+	if len(failures) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString("\nFailures:\n")
+
+	// Convert TestCaseNotification to FailureDetail and use existing formatter
+	for i, failure := range failures {
+		detail := FailureDetail{
+			Description: failure.FullDescription,
+			FilePath:    failure.FilePath,
+			LineNumber:  failure.LineNumber,
+		}
+
+		if failure.Exception != nil {
+			detail.ErrorClass = failure.Exception.Class
+			detail.Message = failure.Exception.Message
+			detail.Backtrace = failure.Exception.Backtrace
+		}
+
+		sb.WriteString(FormatFailure(i+1, detail))
+		sb.WriteString("\n") // Extra line between failures
+	}
+
+	return sb.String()
+}
+
+// FormatFailuresList formats a list of failures with file:line references for re-running
+func (p *OutputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
+	if len(failures) == 0 {
+		return ""
+	}
+
+	// Convert to FailureDetail and use existing formatter
+	var details []FailureDetail
+	for _, failure := range failures {
+		details = append(details, FailureDetail{
+			Description: failure.FullDescription,
+			FilePath:    failure.FilePath,
+			LineNumber:  failure.LineNumber,
+		})
+	}
+
+	return FormatFailedExamples(details)
+}
+
+// ColorizeSummary applies color to a summary based on success/failure state
+func (p *OutputParser) ColorizeSummary(summary string, hasFailures bool) string {
+	if hasFailures {
+		return fmt.Sprintf("\033[31m%s\033[0m", summary)
+	}
+	return fmt.Sprintf("\033[32m%s\033[0m", summary)
+}

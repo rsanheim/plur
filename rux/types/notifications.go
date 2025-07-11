@@ -2,6 +2,15 @@ package types
 
 import "time"
 
+// TestState represents the state of a test execution
+type TestState string
+
+const (
+	StateSuccess TestState = "success" // passing
+	StateFailed  TestState = "failed"  // failure - i.e. assertion failure
+	StateError   TestState = "error"   // error - i.e. exception
+)
+
 // TestEvent represents the type of test event
 type TestEvent string
 

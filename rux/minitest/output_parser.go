@@ -10,40 +10,17 @@ import (
 	"github.com/rsanheim/rux/types"
 )
 
-// ParsingState represents the current state of the parser
-type ParsingState int
-
-const (
-	Started ParsingState = iota
-	TestsRunning
-	TestsComplete
-	SummaryStarted
-	SummaryComplete
+var (
+	summaryRegex           = regexp.MustCompile(`(\d+) (?:runs?|tests?), (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`)
+	failureHeaderLineRegex = regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`)
 )
-
-// ProgressCounts tracks test progress indicators
-type ProgressCounts struct {
-	examples int // Total tests run
-	passed   int
-	failed   int
-	errors   int
-	pending  int
-}
 
 // OutputParser parses minitest text output into notifications
 type OutputParser struct {
-	state          ParsingState
-	progress       ProgressCounts
-	failureBuffer  strings.Builder
-	currentFailure *FailureInfo // Accumulating failure details
-}
-
-// FailureInfo holds temporary failure details while parsing
-type FailureInfo struct {
-	testName   string
-	fileName   string
-	lineNumber int
-	message    strings.Builder
+	collectingFailures bool                         // Whether we're collecting failure text
+	failureBuffer      strings.Builder              // Accumulates failure section
+	failures           []types.TestCaseNotification // Extracted failures for runtime tracking
+	progressCount      int                          // Track progress index
 }
 
 // Converts a TestNotification to a progress type (just a string for now) for streaming to output
@@ -111,121 +88,69 @@ func (p *OutputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 
 // ParseLine parses a single line of minitest output
 func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
-	logger.Logger.Debug("[ParseLine]", "line", line, "state", p.state)
+	logger.Logger.Debug("[ParseLine]", "line", line)
 
-	notifications := []types.TestNotification{}
-
-	switch p.state {
-	case Started:
-		// Looking for test start
-		if strings.HasPrefix(line, "# Running:") {
-			p.state = TestsRunning
-			notifications = append(notifications, types.SuiteNotification{
-				Event: types.SuiteStarted,
-			})
-			logger.Logger.Debug("Transitioned to TestsRunning")
-			return notifications, false
-		}
-
-	case TestsRunning:
-		// Check if tests completed
-		if strings.HasPrefix(line, "Finished in") {
-			p.state = TestsComplete
-			logger.Logger.Debug("Transitioned to TestsComplete")
-			return notifications, false
-		}
-		// Parse progress indicators and create notifications
-		if line != "" {
-			progressNotifications := p.parseProgressLine(line)
-			notifications = append(notifications, progressNotifications...)
-		}
-
-	case TestsComplete:
-		// Skip empty lines
-		if line == "" {
-			return notifications, false
-		}
-
-		// Check for summary line
-		if summaryNotifications := p.parseSummaryLine(line); summaryNotifications != nil {
-			notifications = append(notifications, summaryNotifications...)
-			p.state = SummaryComplete
-			logger.Logger.Debug("Transitioned to SummaryComplete")
-			return notifications, false
-		}
-
-		// Check if this is a failure header
-		if p.parseFailureHeader(line) {
-			p.state = SummaryStarted
-			logger.Logger.Debug("Transitioned to SummaryStarted")
-			return notifications, false
-		}
-
-	case SummaryStarted:
-		// Handle failure detail parsing
-		logger.Logger.Debug("In SummaryStarted state", "line", line)
-
-		// Check if this is the test location line
-		if p.parseFailureLocation(line) {
-			return notifications, false
-		}
-
-		// Check if we've reached the end of this failure (empty line or next failure)
-		if line == "" || regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`).MatchString(line) {
-			// Create a new TestCaseNotification with failure details
-			if p.currentFailure != nil && p.currentFailure.testName != "" {
-				logger.Logger.Debug("Creating failure notification", "testName", p.currentFailure.testName)
-				notification := p.createFailureNotification()
-				if notification != nil {
-					notifications = append(notifications, notification)
-				}
-			}
-			p.currentFailure = nil
-
-			// If this was another failure header, parse it
-			if line != "" && p.parseFailureHeader(line) {
-				// Stay in SummaryStarted state
-			} else if line == "" {
-				// Might be transitioning to summary line
-				p.state = TestsComplete
-				logger.Logger.Debug("Transitioned back to TestsComplete")
-			}
-		} else {
-			// Accumulate failure message
-			if p.currentFailure != nil {
-				if p.currentFailure.message.Len() > 0 {
-					p.currentFailure.message.WriteString("\n")
-				}
-				p.currentFailure.message.WriteString(line)
-			}
-		}
-
-	case SummaryComplete:
-		// Parser is done, ignore remaining lines
-		logger.Logger.Debug("Parser in SummaryComplete state, ignoring line")
+	// Emit suite started on "# Running:"
+	if strings.HasPrefix(line, "# Running:") {
+		return []types.TestNotification{types.SuiteNotification{Event: types.SuiteStarted}}, false
 	}
 
-	return notifications, false // Minitest output is always preserved
+	// Parse progress indicators (., F, E, S)
+	if containsProgressChars(line) {
+		return p.parseProgressLine(line), false
+	}
+
+	// Start collecting failures on first failure header
+	if !p.collectingFailures && isFailureHeaderLine(line) {
+		p.collectingFailures = true
+		p.failureBuffer.WriteString(line + "\n")
+		return nil, false // Preserve the line in output
+	}
+
+	// Continue collecting failure text until summary
+	if p.collectingFailures {
+		if isSummaryLine(line) {
+			// Extract failures for runtime tracking
+			p.failures = ExtractFailures(p.failureBuffer.String())
+			return p.parseSummaryLine(line), false
+		}
+		p.failureBuffer.WriteString(line + "\n")
+		return nil, false // Preserve the line in output
+	}
+
+	// Check for summary without failures
+	if isSummaryLine(line) {
+		return p.parseSummaryLine(line), false
+	}
+
+	return nil, false // Minitest output is always preserved
 }
 
 func (p *OutputParser) parseSummaryLine(line string) []types.TestNotification {
 	// Check for summary line
-	if match := regexp.MustCompile(`(\d+) runs?, (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`).FindStringSubmatch(line); match != nil {
+	if match := summaryRegex.FindStringSubmatch(line); match != nil {
 		runs, _ := strconv.Atoi(match[1])
 		failures, _ := strconv.Atoi(match[3])
 		errors, _ := strconv.Atoi(match[4])
 		skips, _ := strconv.Atoi(match[5])
 
-		// Just create the suite finished notification
-		// We don't need individual test notifications anymore
+		notifications := []types.TestNotification{}
+
+		// Emit individual TestCaseNotifications for runtime tracking
+		for _, failure := range p.failures {
+			notifications = append(notifications, failure)
+		}
+
+		// Create the suite finished notification
 		finishNotification := types.SuiteNotification{
 			Event:        types.SuiteFinished,
 			TestCount:    runs,
 			FailureCount: failures + errors,
 			PendingCount: skips,
 		}
+		notifications = append(notifications, finishNotification)
 
-		return []types.TestNotification{finishNotification}
+		return notifications
 	}
 	return nil // Return nil if not a summary line
 }
@@ -235,49 +160,15 @@ func (p *OutputParser) parseProgressLine(line string) []types.TestNotification {
 
 	// Check for progress indicators and create progress events
 	for _, char := range line {
-		index := p.progress.examples // 0-based index
-
 		switch char {
-		case '.':
-			p.progress.passed++
-			p.progress.examples++
+		case '.', 'F', 'E', 'S':
 			notifications = append(notifications, types.ProgressEvent{
 				Event:     types.Progress,
-				Character: ".",
-				Index:     index,
+				Character: string(char),
+				Index:     p.progressCount,
 			})
-			logger.Logger.Debug("Progress: passed test", "index", index)
-
-		case 'F':
-			p.progress.failed++
-			p.progress.examples++
-			notifications = append(notifications, types.ProgressEvent{
-				Event:     types.Progress,
-				Character: "F",
-				Index:     index,
-			})
-			logger.Logger.Debug("Progress: failed test", "index", index)
-
-		case 'E':
-			p.progress.errors++
-			p.progress.examples++
-			notifications = append(notifications, types.ProgressEvent{
-				Event:     types.Progress,
-				Character: "E",
-				Index:     index,
-			})
-			logger.Logger.Debug("Progress: error test", "index", index)
-
-		case 'S':
-			p.progress.pending++
-			p.progress.examples++
-			notifications = append(notifications, types.ProgressEvent{
-				Event:     types.Progress,
-				Character: "S",
-				Index:     index,
-			})
-			logger.Logger.Debug("Progress: pending test", "index", index)
-
+			p.progressCount++
+			logger.Logger.Debug("Progress", "char", string(char), "index", p.progressCount-1)
 		default:
 			// Ignore other characters
 			continue
@@ -287,68 +178,51 @@ func (p *OutputParser) parseProgressLine(line string) []types.TestNotification {
 	return notifications
 }
 
-// parseFailureHeader checks if a line is a failure header and extracts info
-// Example: "  1) Failure:"
-func (p *OutputParser) parseFailureHeader(line string) bool {
-	// Check for failure header pattern: "  N) Failure:" or "  N) Error:"
-	match := regexp.MustCompile(`^\s*(\d+)\)\s+(Failure|Error):\s*$`).FindStringSubmatch(line)
-	if match != nil {
-		failureType := match[2]
-
-		logger.Logger.Debug("Found failure header", "line", line, "type", failureType)
-		p.currentFailure = &FailureInfo{}
-		return true
+// Helper methods for line classification
+func containsProgressChars(line string) bool {
+	// Progress lines are typically just progress indicators without other text
+	// Avoid matching lines that happen to contain these characters in other contexts
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return false
 	}
-	return false
+
+	// Check if line consists only of progress characters
+	for _, char := range trimmed {
+		switch char {
+		case '.', 'F', 'E', 'S':
+			continue
+		default:
+			return false
+		}
+	}
+	return true
 }
 
-// parseFailureLocation extracts test name and location from failure line
-// Example: "MixedResultsTest#test_email_validation_mixed [test/mixed_results_test.rb:54]:"
-func (p *OutputParser) parseFailureLocation(line string) bool {
-	match := regexp.MustCompile(`^(\w+)#(\w+)\s+\[([^:]+):(\d+)\]:`).FindStringSubmatch(line)
-	if match != nil && p.currentFailure != nil {
-		p.currentFailure.testName = match[1] + "#" + match[2]
-		p.currentFailure.fileName = match[3]
-		p.currentFailure.lineNumber, _ = strconv.Atoi(match[4])
-		logger.Logger.Debug("Parsed failure location",
-			"testName", p.currentFailure.testName,
-			"fileName", p.currentFailure.fileName,
-			"lineNumber", p.currentFailure.lineNumber)
-		return true
-	}
-	return false
+func isFailureHeaderLine(line string) bool {
+	return failureHeaderLineRegex.MatchString(line)
 }
 
-// createFailureNotification creates a new test notification with failure details
-func (p *OutputParser) createFailureNotification() types.TestNotification {
-	if p.currentFailure == nil || p.currentFailure.testName == "" {
-		return nil
+func isSummaryLine(line string) bool {
+	return summaryRegex.MatchString(line)
+}
+
+// FormatFailures returns empty string since minitest formats its own failures
+func (p *OutputParser) FormatFailures(failures []types.TestCaseNotification) string {
+	// Minitest already formats failures in its output, so we don't reformat
+	return ""
+}
+
+// FormatFailuresList returns empty string since minitest doesn't use failure lists
+func (p *OutputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
+	// Minitest doesn't typically show a re-run command list like RSpec
+	return ""
+}
+
+// ColorizeSummary applies color to a summary based on success/failure state
+func (p *OutputParser) ColorizeSummary(summary string, hasFailures bool) string {
+	if hasFailures {
+		return fmt.Sprintf("\033[31m%s\033[0m", summary)
 	}
-
-	// Use the actual test name as the TestID
-	testID := p.currentFailure.testName
-
-	// Create a new notification with failure details
-	notification := types.TestCaseNotification{
-		Event:           types.TestFailed,
-		TestID:          testID,
-		Description:     p.currentFailure.testName,
-		FullDescription: p.currentFailure.testName,
-		Location:        fmt.Sprintf("%s:%d", p.currentFailure.fileName, p.currentFailure.lineNumber),
-		FilePath:        p.currentFailure.fileName,
-		LineNumber:      p.currentFailure.lineNumber,
-		Status:          "failed",
-		Exception: &types.TestException{
-			Class:     "Minitest::Assertion", // Minitest uses this for failures
-			Message:   strings.TrimSpace(p.currentFailure.message.String()),
-			Backtrace: []string{}, // TODO: Parse backtrace if needed
-		},
-	}
-
-	logger.Logger.Debug("Created failure notification",
-		"testID", notification.TestID,
-		"testName", notification.Description,
-		"location", notification.Location)
-
-	return notification
+	return fmt.Sprintf("\033[32m%s\033[0m", summary)
 }

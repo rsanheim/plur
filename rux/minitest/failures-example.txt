@@ -1,0 +1,16 @@
+  1) Failure:
+ArrayOperationsTest#test_average_calculation_failure [test/array_operations_test.rb:33]:
+Expected: 3
+  Actual: 2.5
+
+  2) Failure:
+ArrayOperationsTest#test_average_precision_failure [test/array_operations_test.rb:47]:
+Expected: 2.33
+  Actual: 2.3333333333333335
+
+  3) Error:
+ArrayOperationsTest#test_find_max_with_nil:
+ArgumentError: comparison of Integer with nil failed
+    test/array_operations_test.rb:14:in 'Array#max'
+    test/array_operations_test.rb:14:in 'ArrayOperations.find_max'
+    test/array_operations_test.rb:38:in 'ArrayOperationsTest#test_find_max_with_nil'

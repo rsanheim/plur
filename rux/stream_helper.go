@@ -51,6 +51,7 @@ func streamTestOutput(
 			// If line wasn't consumed by parser, add it as raw output
 			if !consumed {
 				collector.AddNotification(types.OutputNotification{
+					Event:   types.RawOutput,
 					Content: line,
 				})
 			}
