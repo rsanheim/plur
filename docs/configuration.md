@@ -94,4 +94,4 @@ Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with
 
 - See [Performance Tracing](architecture/performance-tracing.md) for optimization
 - See [Usage](usage.md) for command examples
-- See [Development](development/) for contributing
+- See [Development](development/index.md) for contributing

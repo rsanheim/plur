@@ -33,7 +33,7 @@ module Plur
 
     # Runtime configuration
     def rux_cores
-      ENV["CI"] ? 3 : 8
+      ENV["CI"] ? 4 : 8
     end
   end
 
