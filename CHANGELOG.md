@@ -1,5 +1,11 @@
 # rux CHANGELOG
 
+
+## v0.8.2 - 2025-07-11
+
+* Removing tracing [#67](https://github.com/rsanheim/rux-meta/pull/67)
+* Clean up WIP docs [#66](https://github.com/rsanheim/rux-meta/pull/66)
+
 ## v0.8.1 - 2025-07-11
 
 * release process needs work 
