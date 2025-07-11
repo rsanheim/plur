@@ -43,14 +43,12 @@ rux doctor
 - `-n, --workers NUMBER` - Number of parallel workers (default: auto-detect)
 - `--dry-run` - Show what would run without executing
 - `--auto` - Show auto-detected worker count and exit
-- `--trace` - Enable performance tracing
 - `-h, --help` - Show help
 - `-v, --version` - Show version
 
 ### Environment Variables
 
 - `PARALLEL_TEST_PROCESSORS` - Override number of workers
-- `RUX_TRACE` - Enable trace output (same as --trace)
 - `RUX_DEBUG` - Enable debug logging
 
 ## Parallelism
@@ -101,17 +99,6 @@ Rux shows execution time after each run:
 ```
 Finished in 12.34s (CPU: 45.67s)
 ```
-
-### Trace Mode
-
-Enable detailed performance tracing:
-```bash
-rux --trace
-# or
-RUX_TRACE=1 rux
-```
-
-Creates trace files in `/tmp/rux-traces/` for analysis.
 
 ### Debugging Test Failures
 

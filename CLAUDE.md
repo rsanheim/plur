@@ -29,7 +29,6 @@ rux                      # Run tests (auto-detect workers)
 rux -n 4                 # Specify workers (often fastest)
 rux -C path/to/project   # Change to directory before running (like git -C)
 rux --dry-run            # Preview what will run
-rux --trace              # Performance profiling
 rux doctor               # Debug installation issues
 rux watch                # Auto-run tests on file changes (experimental)
 rux spec --command=bin/rspec  # Override default test command

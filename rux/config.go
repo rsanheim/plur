@@ -18,16 +18,15 @@ const (
 
 // GlobalConfig holds settings that are truly global across all commands
 type GlobalConfig struct {
-	Auto         bool
-	ColorOutput  bool
-	ConfigPaths  *ConfigPaths
-	Debug        bool
-	Verbose      bool
-	DryRun       bool
-	TraceEnabled bool
-	WorkerCount  int
-	RuntimeDir   string
-	JSON         string // JSON output file
+	Auto        bool
+	ColorOutput bool
+	ConfigPaths *ConfigPaths
+	Debug       bool
+	Verbose     bool
+	DryRun      bool
+	WorkerCount int
+	RuntimeDir  string
+	JSON        string // JSON output file
 }
 
 type ConfigPaths struct {

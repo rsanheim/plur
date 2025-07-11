@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"io"
 	"os"
 	"strings"
@@ -10,14 +9,12 @@ import (
 	"time"
 
 	"github.com/rsanheim/rux/logger"
-	"github.com/rsanheim/rux/tracing"
 	"github.com/rsanheim/rux/types"
 )
 
 // streamTestOutput handles the common pattern of streaming test output through a parser
 // and collector while sending progress updates to the output channel
 func streamTestOutput(
-	ctx context.Context,
 	stdout, stderr io.Reader,
 	parser types.TestOutputParser,
 	collector *TestCollector,
@@ -72,16 +69,6 @@ func streamTestOutput(
 				// Add all notifications to collector (ProgressEvents will be ignored)
 				collector.AddNotification(notification)
 
-				// Handle suite started events for tracing
-				if outputChan != nil && notification.GetEvent() == types.SuiteStarted {
-					if suite, ok := notification.(types.SuiteNotification); ok && suite.LoadTime > 0 {
-						tracing.LogEvent(ctx, string(framework)+"_loaded",
-							"worker_id", workerIndex,
-							"test_files", len(testFiles),
-							"load_time", suite.LoadTime.Seconds(),
-							"time_since_spawn", time.Since(start).Seconds()*1000)
-					}
-				}
 			}
 
 			// Debug output if enabled
