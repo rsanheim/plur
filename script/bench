@@ -40,7 +40,6 @@ OptionParser.new do |opts|
     config.max_runs = n
   end
 
-
   opts.on("--no-results", "Don't save results to file") do
     config.save_results = false
   end

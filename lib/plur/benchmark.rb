@@ -84,7 +84,6 @@ module Plur
 
           result = run_hyperfine(project_name)
 
-
           result
         end
       end
@@ -148,7 +147,6 @@ module Plur
       rescue => e
         puts "Warning: Could not add version to JSON: #{e.message}"
       end
-
 
       def create_checkpoint(results)
         checkpoint = Checkpoint.new(config, results, git_sha, rux_version)

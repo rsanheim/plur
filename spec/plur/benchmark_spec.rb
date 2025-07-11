@@ -117,7 +117,6 @@ RSpec.describe Plur::Benchmark do
         runner.send(:benchmark_project, "./fixtures/projects/default-ruby")
       end
 
-
       it "includes show-output flag when enabled" do
         config.show_output = true
 
