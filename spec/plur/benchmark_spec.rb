@@ -15,7 +15,6 @@ RSpec.describe Plur::Benchmark do
         expect(config.min_runs).to be_nil
         expect(config.max_runs).to be_nil
         expect(config.projects).to eq([])
-        expect(config.trace).to be false
         expect(config.save_results).to be true
         expect(config.show_output).to be false
         expect(config.checkpoint).to be false
@@ -118,18 +117,6 @@ RSpec.describe Plur::Benchmark do
         runner.send(:benchmark_project, "./fixtures/projects/default-ruby")
       end
 
-      it "includes trace flag when enabled" do
-        config.trace = true
-
-        expect(runner).to receive(:system) do |*args|
-          rux_command = args.find { |arg| arg.include?(Plur.config.local_rux_binary.to_s) }
-          expect(rux_command).to include("--trace")
-          true
-        end
-
-        runner.send(:benchmark_project, "./fixtures/projects/default-ruby")
-      end
-
       it "includes show-output flag when enabled" do
         config.show_output = true
 
@@ -214,12 +201,10 @@ RSpec.describe Plur::Benchmark do
     it "parses boolean flags" do
       config = Plur::Benchmark::Config.new
 
-      config.trace = true
       config.checkpoint = true
       config.show_output = true
       config.save_results = false
 
-      expect(config.trace).to be true
       expect(config.checkpoint).to be true
       expect(config.show_output).to be true
       expect(config.save_results).to be false

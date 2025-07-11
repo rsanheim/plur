@@ -40,10 +40,6 @@ OptionParser.new do |opts|
     config.max_runs = n
   end
 
-  opts.on("--trace", "Enable rux tracing for performance analysis") do
-    config.trace = true
-  end
-
   opts.on("--no-results", "Don't save results to file") do
     config.save_results = false
   end
@@ -69,8 +65,7 @@ OptionParser.new do |opts|
           # Benchmark multiple projects
           bench -p ./project1 -p ./project2 -n 8
 
-          # Enable tracing for performance analysis
-          bench -p ./references/example-project --trace
+          bench -p ./references/example-project
 
       ENVIRONMENT:
           BENCH_TIMESTAMP        Override the timestamp used for output files
@@ -104,7 +99,6 @@ runner = Plur::Benchmark::Runner.new(config)
 runner.run
 
 puts "\nAll benchmarks complete!"
-puts "Trace files saved to: #{Dir.pwd}/tmp/rux-traces/" if config.trace
 
 if !config.checkpoint && config.save_results
   puts "\nTip: Use --checkpoint to create a combined summary of all results"

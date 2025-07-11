@@ -14,7 +14,6 @@ import (
 
 	"github.com/rsanheim/rux/logger"
 	"github.com/rsanheim/rux/rspec"
-	"github.com/rsanheim/rux/tracing"
 	"github.com/rsanheim/rux/types"
 )
 
@@ -162,7 +161,6 @@ func RunSpecFile(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecC
 
 // RunRSpecFiles executes multiple spec files in a single RSpec process
 func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
-	defer tracing.StartRegionWithWorker(ctx, "run_spec_files", workerIndex, strings.Join(specFiles, ","))()
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -220,7 +218,6 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 
 	// Start the command
 	func() {
-		defer tracing.StartRegionWithWorker(ctx, "process_spawn", workerIndex, fmt.Sprintf("%d files", len(specFiles)))()
 		err = cmd.Start()
 	}()
 	if err != nil {
@@ -235,7 +232,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 	collector := NewTestCollector()
 
 	// Stream output through parser and collector
-	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, specCmd.GetFramework(), start)
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, specCmd.GetFramework(), start)
 
 	// Wait for command to complete
 	err = cmd.Wait()
@@ -299,7 +296,6 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
 func RunSpecsInParallel(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string, runtimeTracker *RuntimeTracker) ([]WorkerResult, time.Duration) {
-	defer tracing.StartRegion(context.Background(), "run_specs_parallel_grouped")()
 	start := time.Now()
 	ctx := context.Background()
 
@@ -397,7 +393,6 @@ func RunSpecsInParallel(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles 
 
 // RunMinitestFiles executes multiple test files in a single Minitest process
 func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
-	defer tracing.StartRegionWithWorker(ctx, "run_minitest_files", workerIndex, strings.Join(testFiles, ","))()
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -463,7 +458,7 @@ func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *
 	}
 	collector := NewTestCollector()
 
-	stderrOutput := streamTestOutput(ctx, stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework(), start)
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework(), start)
 
 	err = cmd.Wait()
 

@@ -11,7 +11,6 @@ Welcome to Rux! Rux is a fast, friendly test runner & watcher for Ruby.
 ### `/architecture`
 Technical implementation details and system design:
 - `rux-watch-architecture.md` - Watch mode implementation details
-- `performance-tracing.md` - Guide to using rux's built-in tracing
 
 ### `/development`
 Developer guides and setup:
@@ -35,5 +34,4 @@ Completed spikes and historical planning documents (dated):
 
 - **Getting Started**: See `development/user-guide.md`
 - **Architecture Overview**: See `project-status.md`
-- **Performance Debugging**: See `architecture/performance-tracing.md`
 - **Watch Mode Details**: See `architecture/rux-watch-architecture.md`

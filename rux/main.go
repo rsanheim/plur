@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -9,7 +8,6 @@ import (
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/rux/logger"
-	"github.com/rsanheim/rux/tracing"
 )
 
 type SpecCmd struct {
@@ -29,16 +27,6 @@ func (r *SpecCmd) Run(parent *RuxCLI) error {
 
 	framework := r.GetFramework()
 	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns, "framework", framework)
-
-	// Initialize tracing if enabled
-	if config.TraceEnabled {
-		if err := tracing.Init(true); err != nil {
-			return fmt.Errorf("failed to initialize tracer: %v", err)
-		}
-		defer tracing.Close()
-	}
-
-	defer tracing.StartRegion(context.Background(), "main.total_execution")()
 
 	// Discover test files
 	var testFiles []string
@@ -182,7 +170,6 @@ type RuxCLI struct {
 	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" hidden:""`
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
 	CacheDir   string `help:"Directory for caching runtime data" default:"${cache_dir}"`
-	Trace      bool   `help:"Enable performance tracing (saves to ./rux_trace_*.json)" default:"false"`
 	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 	Version    bool   `help:"Show version information"`
@@ -227,16 +214,15 @@ func (r *RuxCLI) AfterApply() error {
 
 	// Build global config once
 	r.globalConfig = &GlobalConfig{
-		Auto:         r.Auto,
-		ColorOutput:  r.Color,
-		ConfigPaths:  InitConfigPaths(),
-		Debug:        r.Debug,
-		Verbose:      r.Verbose,
-		DryRun:       r.DryRun,
-		TraceEnabled: r.Trace,
-		WorkerCount:  GetWorkerCount(r.Workers),
-		RuntimeDir:   r.RuntimeDir,
-		JSON:         r.JSON,
+		Auto:        r.Auto,
+		ColorOutput: r.Color,
+		ConfigPaths: InitConfigPaths(),
+		Debug:       r.Debug,
+		Verbose:     r.Verbose,
+		DryRun:      r.DryRun,
+		WorkerCount: GetWorkerCount(r.Workers),
+		RuntimeDir:  r.RuntimeDir,
+		JSON:        r.JSON,
 	}
 
 	return nil
