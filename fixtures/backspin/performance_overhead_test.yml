@@ -1,0 +1,18 @@
+---
+first_recorded_at: '2025-07-14T01:45:29-05:00'
+format_version: '2.0'
+commands:
+- command_type: Backspin::Capturer
+  args:
+  - "<captured block>"
+  stdout: "rux version version=v0.8.3-0.20250714031553-6937be8e546e+dirty\nRunning
+    1 spec files in parallel using 1 workers (20 cores available)...\n\e[32m.\e[0m\n\nFinished
+    in 0.00078 seconds (files took 0.04041 seconds to load)\n\e[32m1 example, 0 failures\e[0m\n\n\nRandomized
+    with seed 42702\n\nsimple\n  passes quickly\n\nFinished in 0.00073 seconds (files
+    took 0.03811 seconds to load)\n1 example, 0 failures\n\nRandomized with seed 42702\n\nRux
+    time: 0.166s\nRSpec time: 0.157s\nOverhead: 0.009s\n"
+  stderr: |
+    Using runtime-based grouped execution: 1 file across 18 workers
+    Runtime data saved to: /Users/rsanheim/.rux/runtime/86c82a0f.json
+  status: 0
+  recorded_at: '2025-07-14T01:45:29-05:00'
