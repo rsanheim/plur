@@ -110,7 +110,7 @@ RSpec.describe "single failure golden test" do
 
     # Ensure recording exists
     Backspin.run("rspec_playback_demo",
-      match_on: [:stdout, stdout_matcher]) do
+      matcher: {stdout: stdout_matcher}) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--force-color")
       end
