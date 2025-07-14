@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Plur - Project-Level Unified Resources
-# Shared constants and configuration for the Rux build system
+# Shared constants and configuration for the Plur build system
 
 require "pathname"
 require "singleton"
@@ -10,7 +10,7 @@ module Plur
   class Config
     include Singleton
 
-    attr_reader :edant_watcher_version, :root_dir, :rux_dir, :watcher_dir, :local_rux_binary,
+    attr_reader :edant_watcher_version, :root_dir, :plur_dir, :watcher_dir, :local_plur_binary,
       :fixtures_dir, :default_ruby_dir, :default_rails_dir
 
     def initialize
@@ -19,8 +19,8 @@ module Plur
 
       # Directory paths
       @root_dir = Pathname.new(__dir__).expand_path
-      @rux_dir = @root_dir.join("rux")
-      @watcher_dir = @rux_dir.join("embedded", "watcher")
+      @plur_dir = @root_dir.join("plur")
+      @watcher_dir = @plur_dir.join("embedded", "watcher")
 
       # Fixture paths
       @fixtures_dir = @root_dir.join("fixtures", "projects")
@@ -28,11 +28,11 @@ module Plur
       @default_rails_dir = @fixtures_dir.join("default-rails")
 
       # Binary paths
-      @local_rux_binary = @rux_dir.join("rux")
+      @local_plur_binary = @plur_dir.join("plur")
     end
 
     # Runtime configuration
-    def rux_cores
+    def plur_cores
       ENV["CI"] ? 4 : 8
     end
   end

@@ -3,8 +3,8 @@ require "tempfile"
 require "fileutils"
 require "timeout"
 
-RSpec.describe "rux watch integration" do
-  include RuxWatchHelper
+RSpec.describe "plur watch integration" do
+  include PlurWatchHelper
 
   it "starts watching the correct directories" do
     result, _streamed_out, _streamed_err = capture_watch_output

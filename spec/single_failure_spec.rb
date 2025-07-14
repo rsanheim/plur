@@ -13,7 +13,7 @@ RSpec.describe "single failure" do
 
   it "prints correct summary counts" do
     chdir fixture_path("failing_specs") do
-      result = run_rux_allowing_errors("--no-color", "spec/single_failure_spec.rb")
+      result = run_plur_allowing_errors("--no-color", "spec/single_failure_spec.rb")
       expect(result.exit_status).to eq(1)
       expect(result.out).to match(/1 failure\b/)
       expect(result.err).to match(/1 file across (\d+) workers/)
@@ -27,7 +27,7 @@ RSpec.describe "single failure" do
 
       backtrace_line = rspec_out.split("\n").find { |line| line.include?("./spec/single_failure_spec.rb:6") } # remove color codes
 
-      result = run_rux_allowing_errors("spec/single_failure_spec.rb")
+      result = run_plur_allowing_errors("spec/single_failure_spec.rb")
       expect(result.exit_status).to eq(1)
       expect(result.out).to include(backtrace_line)
     end
@@ -47,7 +47,7 @@ RSpec.describe "single failure" do
       rspec_out, _, rspec_status = run_rspec("spec/single_failure_spec.rb", "--force-color", "--tty")
       expect(rspec_status.exitstatus).to eq(1)
 
-      result = run_rux_allowing_errors("spec/single_failure_spec.rb")
+      result = run_plur_allowing_errors("spec/single_failure_spec.rb")
       expect(result.exit_status).to eq(1)
 
       stdout_lines = make_summary_line_consistent(result.out).lines

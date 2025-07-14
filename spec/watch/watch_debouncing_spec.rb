@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.describe "rux watch debouncing" do
+RSpec.describe "plur watch debouncing" do
   # Debouncing tests are now consolidated into watch_spec.rb
   # This file can be removed as its functionality is covered elsewhere
 

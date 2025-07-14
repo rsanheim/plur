@@ -1,11 +1,11 @@
 require "spec_helper"
 
-RSpec.describe "Rux output performance" do
+RSpec.describe "Plur output performance" do
   describe "concurrent output handling" do
     it "produces valid output with high worker count" do
       Dir.chdir(default_ruby_dir) do
         # Run with many workers to stress-test the output handling
-        result = run_rux("-n", "8")
+        result = run_plur("-n", "8")
 
         # Count the dots in output
         dot_count = result.out.scan(".").count
@@ -22,7 +22,7 @@ RSpec.describe "Rux output performance" do
     it "maintains colored output when supported" do
       Dir.chdir(default_ruby_dir) do
         # Force color output
-        result = run_rux("-n", "4", env: {"FORCE_COLOR" => "1"})
+        result = run_plur("-n", "4", env: {"FORCE_COLOR" => "1"})
 
         # Should contain ANSI color codes for green dots
         expect(result.out).to include("\e[32m.\e[0m")
@@ -54,7 +54,7 @@ RSpec.describe "Rux output performance" do
 
         Dir.chdir(tmpdir) do
           # Run specs that include failures
-          result = run_rux("-n", "2", "mixed_spec.rb", allow_error: true)
+          result = run_plur("-n", "2", "mixed_spec.rb", allow_error: true)
 
           # Should show both dots and F's
           expect(result.out).to match(/[.F]+/)

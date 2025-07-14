@@ -1,7 +1,7 @@
 require "spec_helper"
 
-RSpec.describe "rux watch advanced file mapping" do
-  include RuxWatchHelper
+RSpec.describe "plur watch advanced file mapping" do
+  include PlurWatchHelper
   # This spec focuses on testing with temporary directory structures
   # Basic file mapping is covered in watch_integration_spec.rb
 
@@ -90,12 +90,12 @@ RSpec.describe "rux watch advanced file mapping" do
   end
 
   it "watches multiple directories including app when present" do
-    result = run_rux_watch(dir: temp_dir, timeout: 1)
+    result = run_plur_watch(dir: temp_dir, timeout: 1)
     expect(result.err).to include("directories=[spec lib app]")
   end
 
   it "runs the corresponding spec when a lib file changes" do
-    result = run_rux_watch(dir: temp_dir, timeout: 3) do
+    result = run_plur_watch(dir: temp_dir, timeout: 3) do
       # Modify the file content to trigger a change event
       calc_file = "#{temp_dir}/lib/calculator.rb"
       content = File.read(calc_file)
@@ -108,7 +108,7 @@ RSpec.describe "rux watch advanced file mapping" do
   end
 
   it "runs the corresponding model spec when a Rails model changes" do
-    result = run_rux_watch(dir: temp_dir, timeout: 3) do
+    result = run_plur_watch(dir: temp_dir, timeout: 3) do
       # Modify the file content to trigger a change event
       user_file = "#{temp_dir}/app/models/user.rb"
       content = File.read(user_file)
@@ -121,7 +121,7 @@ RSpec.describe "rux watch advanced file mapping" do
   end
 
   it "runs all specs when spec_helper.rb changes" do
-    result = run_rux_watch(dir: temp_dir, timeout: 3) do
+    result = run_plur_watch(dir: temp_dir, timeout: 3) do
       # Modify the file content to trigger a change event
       spec_helper = "#{temp_dir}/spec/spec_helper.rb"
       content = File.read(spec_helper)
@@ -135,7 +135,7 @@ RSpec.describe "rux watch advanced file mapping" do
   end
 
   it "handles nested lib files correctly" do
-    result = run_rux_watch(dir: temp_dir, timeout: 3) do
+    result = run_plur_watch(dir: temp_dir, timeout: 3) do
       # Modify the file content to trigger a change event
       product_file = "#{temp_dir}/lib/models/product.rb"
       content = File.read(product_file)

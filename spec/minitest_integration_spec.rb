@@ -15,7 +15,7 @@ RSpec.describe "Minitest Integration" do
     it "runs minitest tests successfully" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_rux("--type", "minitest", "-n", "1")
+          result = run_plur("--type", "minitest", "-n", "1")
           expect(result).to be_success
           expect(result.out).to include("rux version")
           expect(result.out).to include("Running 2 spec files")
@@ -28,7 +28,7 @@ RSpec.describe "Minitest Integration" do
     it "discovers minitest test files" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_rux("--type", "minitest", "--dry-run")
+          result = run_plur("--type", "minitest", "--dry-run")
           expect(result).to be_success
           expect(result.err).to include("test/calculator_test.rb")
           expect(result.err).to include("test/string_helper_test.rb")
@@ -43,7 +43,7 @@ RSpec.describe "Minitest Integration" do
     it "reports minitest test failures" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_rux("--type", "minitest", "-n", "1", allow_error: true)
+          result = run_plur("--type", "minitest", "-n", "1", allow_error: true)
           expect(result).to be_failure
           # Check for failure output in stdout (not stderr)
           # In parallel execution, individual failure details are not shown
@@ -58,7 +58,7 @@ RSpec.describe "Minitest Integration" do
     it "detects minitest project by test directory" do
       chdir(project_fixture!("minitest-success")) do
         Bundler.with_unbundled_env do
-          result = run_rux("--dry-run")
+          result = run_plur("--dry-run")
           expect(result).to be_success
           # Should use minitest commands
           expect(result.err).to include("ruby -Itest")
@@ -69,7 +69,7 @@ RSpec.describe "Minitest Integration" do
     it "detects rspec project by spec directory" do
       chdir(project_fixture!("default-ruby")) do
         Bundler.with_unbundled_env do
-          result = run_rux("--dry-run")
+          result = run_plur("--dry-run")
           expect(result).to be_success
           # Should use rspec commands
           expect(result.err).to include("bundle exec rspec")

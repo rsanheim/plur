@@ -1,7 +1,7 @@
 require "spec_helper"
 
-RSpec.describe "rux doctor command" do
-  def run_rux_doctor(*args)
+RSpec.describe "plur doctor command" do
+  def run_plur_doctor(*args)
     # Use Open3 directly to match Backspin's expected format
     cmd_array = ["rux", "doctor"]
     cmd_array += args if args.any?
@@ -33,7 +33,7 @@ RSpec.describe "rux doctor command" do
   end
 
   it "displays diagnostic information" do
-    stdout, stderr, status = run_rux_doctor
+    stdout, stderr, status = run_plur_doctor
 
     expect(status.exitstatus).to eq(0)
     expect(stderr).to be_empty
@@ -48,7 +48,7 @@ RSpec.describe "rux doctor command" do
   end
 
   it "shows e-dant/watcher availability" do
-    stdout, _stderr, _status = run_rux_doctor
+    stdout, _stderr, _status = run_plur_doctor
 
     expect(stdout).to match(/Status:\s+Available/)
     expect(stdout).to match(/Binary Path:\s+/)
@@ -64,12 +64,12 @@ RSpec.describe "rux doctor command" do
 
     Backspin.run!("rux_doctor_golden",
       matcher: {stdout: stdout_matcher}) do
-      run_rux_doctor
+      run_plur_doctor
     end
   end
 
   it "includes all expected sections in output" do
-    stdout, _stderr, _status = run_rux_doctor
+    stdout, _stderr, _status = run_plur_doctor
 
     expected_sections = [
       "Rux Doctor",

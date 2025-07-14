@@ -21,8 +21,8 @@ DEFAULT_RUX_WATCH_TIMEOUT = 2
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
-  config.include RuxHomeHelper
-  config.extend RuxHomeHelper::ClassMethods
+  config.include PlurHomeHelper
+  config.extend PlurHomeHelper::ClassMethods
 
   config.filter_run_when_matching :focus
   config.disable_monkey_patching!

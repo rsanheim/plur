@@ -1,14 +1,14 @@
 require "spec_helper"
 
-RSpec.describe "Rux runtime tracking" do
+RSpec.describe "Plur runtime tracking" do
   context "explicit runtime dir" do
-    around_with_tmp_rux_home
+    around_with_tmp_plur_home
 
     it "uses RUX_HOME environment variable if provided" do
-      temp_runtime_dir = File.join(tmp_rux_home, "runtime")
+      temp_runtime_dir = File.join(tmp_plur_home, "runtime")
 
       Dir.chdir(default_ruby_dir) do
-        run_rux("-n", "2", env: {"RUX_HOME" => tmp_rux_home})
+        run_plur("-n", "2", env: {"RUX_HOME" => tmp_plur_home})
 
         expect(File.exist?(temp_runtime_dir)).to be true
         matches = Dir.glob(File.join(temp_runtime_dir, "*.json"))
@@ -19,11 +19,11 @@ RSpec.describe "Rux runtime tracking" do
   end
 
   context "runtime data collection" do
-    around_with_tmp_rux_home
+    around_with_tmp_plur_home
 
     it "saves runtime data after running specs" do
       Dir.chdir(default_ruby_dir) do
-        result = run_rux("-n", "2")
+        result = run_plur("-n", "2")
 
         runtime_file_match = result.err.match(/Runtime data saved to: (.+)/)
         expect(runtime_file_match).not_to be_nil
@@ -37,23 +37,23 @@ RSpec.describe "Rux runtime tracking" do
         expect(runtime_data.values.all? { |v| v.is_a?(Numeric) && v > 0 }).to be true
 
         # Verify it's in the temp directory with a hash filename
-        expect(runtime_file).to match(%r{#{tmp_rux_home}/runtime/[a-f0-9]{8}\.json$})
+        expect(runtime_file).to match(%r{#{tmp_plur_home}/runtime/[a-f0-9]{8}\.json$})
       end
     end
 
     it "uses runtime data for grouping when available" do
       chdir(default_ruby_dir) do
-        result = run_rux("-n", "2")
+        result = run_plur("-n", "2")
         expect(result.err).to include("Using size-based grouped execution")
 
-        result = run_rux("-n", "2", "--debug", "--dry-run")
+        result = run_plur("-n", "2", "--debug", "--dry-run")
         expect(result.err).to include("Using runtime-based grouped execution")
       end
     end
 
     it "falls back to size-based grouping when no runtime data exists" do
       Dir.chdir(default_ruby_dir) do
-        result = run_rux("--dry-run", "-n", "2")
+        result = run_plur("--dry-run", "-n", "2")
         expect(result.err).to include("[dry-run] Using size-based grouped execution")
       end
     end
@@ -81,7 +81,7 @@ RSpec.describe "Rux runtime tracking" do
         File.write(File.join(temp_cache_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
 
         # Run dry-run to see grouping
-        result = run_rux("--dry-run", "-n", "2", "--runtime-dir", temp_cache_dir)
+        result = run_plur("--dry-run", "-n", "2", "--runtime-dir", temp_cache_dir)
 
         # The slow file should be in its own group or with minimal other files
         expect(result.err).to include("Using runtime-based grouped execution")

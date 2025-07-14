@@ -1,15 +1,15 @@
 require "spec_helper"
 require "benchmark"
 
-RSpec.describe "Rux performance" do
+RSpec.describe "Plur performance" do
   let(:expected_spec_files) { 12 }
 
   describe "parallelization efficiency" do
     it "chooses optimal execution strategy based on file count" do
       # With grouping optimization, for small test suites a single worker
       # might be faster as it avoids process spawn overhead
-      single_result = run_rux("-C", default_ruby_dir.to_s, "-n", "1")
-      default_result = run_rux("-C", default_ruby_dir.to_s)
+      single_result = run_plur("-C", default_ruby_dir.to_s, "-n", "1")
+      default_result = run_plur("-C", default_ruby_dir.to_s)
 
       # Should use grouped execution when appropriate (either runtime or size-based)
       expect(single_result.err).to match(/Using (runtime-based|size-based) grouped execution: #{expected_spec_files} files across 1 workers/)
@@ -20,7 +20,7 @@ RSpec.describe "Rux performance" do
     end
 
     it "shows wall time vs CPU time to demonstrate parallelization" do
-      result = run_rux("-C", default_ruby_dir)
+      result = run_plur("-C", default_ruby_dir)
 
       # Should show both wall time and CPU time
       expect(result.out).to match(/Finished in [\d.]+ seconds \(files took [\d.]+ seconds to load\)/)
@@ -76,7 +76,7 @@ RSpec.describe "Rux performance" do
 
   describe "worker optimization" do
     it "chooses reasonable default worker count" do
-      result = run_rux("-C", default_ruby_dir.to_s)
+      result = run_plur("-C", default_ruby_dir.to_s)
 
       # Should show worker count and available cores
       expect(result.out).to match(/using \d+ workers \(\d+ cores available\)/)

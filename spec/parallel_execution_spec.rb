@@ -2,7 +2,7 @@ require "spec_helper"
 require "tmpdir"
 require "fileutils"
 
-RSpec.describe "Rux parallel execution" do
+RSpec.describe "Plur parallel execution" do
   describe "environment variables" do
     it "sets TEST_ENV_NUMBER for each worker" do
       Dir.mktmpdir do |tmpdir|
@@ -33,7 +33,7 @@ RSpec.describe "Rux parallel execution" do
         chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
-          result = run_rux("-n", "3")
+          result = run_plur("-n", "3")
 
           # With 3 workers and 3 spec files, each should run with different TEST_ENV_NUMBER
           # Just verify it runs successfully
@@ -68,7 +68,7 @@ RSpec.describe "Rux parallel execution" do
         chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
-          result = run_rux("-n", "4")
+          result = run_plur("-n", "4")
 
           # Now it should actually use 4 workers
           expect(result.out).to include("using 4 workers")
@@ -106,7 +106,7 @@ RSpec.describe "Rux parallel execution" do
         chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
-          result = run_rux("-n", "3")
+          result = run_plur("-n", "3")
 
           # Should see organized output with all tests passing
           expect(result.out).to include("15 examples, 0 failures")
@@ -149,7 +149,7 @@ RSpec.describe "Rux parallel execution" do
         chdir(tmpdir) do
           system("bundle install", out: File::NULL, err: File::NULL)
 
-          result = run_rux_allowing_errors("--color")
+          result = run_plur_allowing_errors("--color")
 
           # Should see progress dots and F's with colors
           expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots

@@ -2,8 +2,8 @@ require "spec_helper"
 require "tempfile"
 require "fileutils"
 
-RSpec.describe "rux watch with multiple directories" do
-  include RuxWatchHelper
+RSpec.describe "plur watch with multiple directories" do
+  include PlurWatchHelper
 
   it "watches multiple directories simultaneously" do
     Dir.mktmpdir do |tmpdir|
@@ -22,7 +22,7 @@ RSpec.describe "rux watch with multiple directories" do
       File.write(lib_file, "class Example\nend")
 
       # Run watch with a short timeout
-      result = run_rux_watch(dir: tmpdir, timeout: 3) do
+      result = run_plur_watch(dir: tmpdir, timeout: 3) do
         # Modify files in both directories immediately
         File.write(spec_file, "# Modified\n" + File.read(spec_file))
         File.write(lib_file, "# Modified\n" + File.read(lib_file))
@@ -49,7 +49,7 @@ RSpec.describe "rux watch with multiple directories" do
       lib_dir = File.join(tmpdir, "lib")
       FileUtils.mkdir_p([spec_dir, lib_dir])
 
-      result = run_rux_watch(dir: tmpdir, timeout: 2)
+      result = run_plur_watch(dir: tmpdir, timeout: 2)
 
       # Should start watchers for spec and lib only (in stderr)
       expect(result.err).to include("directories=[spec lib]")
@@ -63,7 +63,7 @@ RSpec.describe "rux watch with multiple directories" do
       lib_dir = File.join(tmpdir, "lib")
       FileUtils.mkdir_p([spec_dir, lib_dir])
 
-      result = run_rux_watch(dir: tmpdir, timeout: 2)
+      result = run_plur_watch(dir: tmpdir, timeout: 2)
 
       # Verify clean shutdown messages
       expect(result.out).to include("Timeout reached, exiting!")

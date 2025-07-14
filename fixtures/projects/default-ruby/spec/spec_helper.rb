@@ -1,7 +1,7 @@
 base_path = File.expand_path("../../lib", __dir__)
 $LOAD_PATH.unshift(base_path)
 
-require_relative "../lib/rux_ruby"
+require.*plur_ruby"
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

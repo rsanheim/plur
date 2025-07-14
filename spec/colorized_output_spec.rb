@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.describe "Rux colorized output" do
+RSpec.describe "Plur colorized output" do
   let(:fixture_path) { File.join(__dir__, "fixtures", "rspec_colorized_output.txt") }
   let(:expected_output) { File.read(fixture_path) }
 
@@ -12,7 +12,7 @@ RSpec.describe "Rux colorized output" do
     it "outputs red F for failures matching rspec format" do
       failing_specs_path = project_fixture("failing_specs")
       chdir(failing_specs_path) do
-        result = run_rux_allowing_errors("--color", "spec/mixed_results_spec.rb", env: {"FORCE_COLOR" => "1"})
+        result = run_plur_allowing_errors("--color", "spec/mixed_results_spec.rb", env: {"FORCE_COLOR" => "1"})
 
         # Check that we have red F's for failures
         expect(result.out).to include("\e[31mF\e[0m")
@@ -31,7 +31,7 @@ RSpec.describe "Rux colorized output" do
     it "outputs plain text without ANSI codes" do
       failing_specs_path = project_fixture("failing_specs")
       chdir(failing_specs_path) do
-        result = run_rux_allowing_errors("--no-color", "spec/mixed_results_spec.rb")
+        result = run_plur_allowing_errors("--no-color", "spec/mixed_results_spec.rb")
 
         # Should not contain any ANSI escape sequences
         expect(result.out).not_to match(/\e\[\d+m/)
@@ -47,7 +47,7 @@ RSpec.describe "Rux colorized output" do
     it "outputs plain text without ANSI codes" do
       failing_specs_path = project_fixture("failing_specs")
       chdir(failing_specs_path) do
-        result = run_rux_allowing_errors("--no-colour", "spec/mixed_results_spec.rb")
+        result = run_plur_allowing_errors("--no-colour", "spec/mixed_results_spec.rb")
 
         # Should not contain any ANSI escape sequences
         expect(result.out).not_to match(/\e\[\d+m/)

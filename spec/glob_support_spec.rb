@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.describe "rux glob pattern support" do
+RSpec.describe "plur glob pattern support" do
   before do
     expect(Dir.exist?(default_ruby_dir)).to be(true), "Test project not found at #{default_ruby_dir}"
   end
@@ -8,7 +8,7 @@ RSpec.describe "rux glob pattern support" do
   context "with glob patterns" do
     it "expands simple glob patterns correctly" do
       chdir(default_ruby_dir) do
-        result = run_rux("--dry-run", "spec/*_spec.rb")
+        result = run_plur("--dry-run", "spec/*_spec.rb")
 
         expect(result.err).to include("[dry-run] Found 10 spec files")
         expect(result.err).to include("spec/array_helpers_spec.rb")
@@ -39,7 +39,7 @@ RSpec.describe "rux glob pattern support" do
     it "handles quoted recursive glob patterns with ** (preventing shell expansion)" do
       chdir(default_ruby_dir) do
         # Using single quotes prevents shell expansion, so rux handles the glob
-        result = run_rux("--dry-run", "spec/**/*_spec.rb")
+        result = run_plur("--dry-run", "spec/**/*_spec.rb")
 
         expect(result.err).to include("[dry-run] Found 12 spec files")
         expect(result.err).to include("spec/array_helpers_spec.rb")
@@ -50,7 +50,7 @@ RSpec.describe "rux glob pattern support" do
 
     it "expands multiple glob patterns" do
       chdir(default_ruby_dir) do
-        result = run_rux("--dry-run", "spec/models/*_spec.rb", "spec/services/*_spec.rb")
+        result = run_plur("--dry-run", "spec/models/*_spec.rb", "spec/services/*_spec.rb")
 
         expect(result.err).to include("[dry-run] Found 2 spec files")
         expect(result.err).to include("spec/models/user_spec.rb")
@@ -60,7 +60,7 @@ RSpec.describe "rux glob pattern support" do
 
     it "handles character class patterns with []" do
       chdir(default_ruby_dir) do
-        result = run_rux("--dry-run", "spec/[cs]*_spec.rb")
+        result = run_plur("--dry-run", "spec/[cs]*_spec.rb")
 
         expect(result.err).to include("[dry-run] Found 3 spec files")
         expect(result.err).to include("spec/calculator_spec.rb")
@@ -71,7 +71,7 @@ RSpec.describe "rux glob pattern support" do
 
     it "handles specific file paths without globs" do
       chdir(default_ruby_dir) do
-        result = run_rux("--dry-run", "spec/calculator_spec.rb", "spec/counter_spec.rb")
+        result = run_plur("--dry-run", "spec/calculator_spec.rb", "spec/counter_spec.rb")
 
         expect(result.err).to include("[dry-run] Found 2 spec files")
         expect(result.err).to include("spec/calculator_spec.rb")
@@ -85,7 +85,7 @@ RSpec.describe "rux glob pattern support" do
         File.write("spec/helper.rb", "# helper file")
 
         begin
-          result = run_rux_allowing_errors("--dry-run", "spec/helper.rb")
+          result = run_plur_allowing_errors("--dry-run", "spec/helper.rb")
 
           expect(result.success?).to be false  # Fails when no spec files found
           expect(result.err).to include("Warning: spec/helper.rb does not end with _spec.rb")
@@ -99,7 +99,7 @@ RSpec.describe "rux glob pattern support" do
 
     it "returns error for non-existent files" do
       chdir(default_ruby_dir) do
-        result = run_rux_allowing_errors("--dry-run", "spec/nonexistent_spec.rb")
+        result = run_plur_allowing_errors("--dry-run", "spec/nonexistent_spec.rb")
 
         expect(result.success?).to be false
         expect(result.out + result.err).to include("file not found: spec/nonexistent_spec.rb")
@@ -108,7 +108,7 @@ RSpec.describe "rux glob pattern support" do
 
     it "returns error when no files match glob pattern" do
       chdir(default_ruby_dir) do
-        result = run_rux_allowing_errors("--dry-run", "spec/xyz*_spec.rb")
+        result = run_plur_allowing_errors("--dry-run", "spec/xyz*_spec.rb")
 
         expect(result.success?).to be false
         expect(result.out + result.err).to include("no test files found matching provided patterns")
@@ -119,7 +119,7 @@ RSpec.describe "rux glob pattern support" do
   context "without arguments (auto-discovery)" do
     it "finds all spec files recursively" do
       chdir(default_ruby_dir) do
-        result = run_rux("--dry-run")
+        result = run_plur("--dry-run")
 
         expect(result.err).to include("[dry-run] Found 12 spec files")
         expect(result.err).to include("spec/array_helpers_spec.rb")

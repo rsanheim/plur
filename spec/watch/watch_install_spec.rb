@@ -1,7 +1,7 @@
-RSpec.describe "rux watch install command" do
-  include RuxWatchHelper
+RSpec.describe "plur watch install command" do
+  include PlurWatchHelper
 
-  around_with_tmp_rux_home
+  around_with_tmp_plur_home
 
   def watcher_filename
     case RUBY_PLATFORM
@@ -17,17 +17,17 @@ RSpec.describe "rux watch install command" do
   end
 
   it "installs the watcher binary in RUX_HOME/bin/[platform-specific-binary]" do
-    expect(rux_home.join("bin", watcher_filename)).to_not exist
+    expect(plur_home.join("bin", watcher_filename)).to_not exist
 
-    result = run_rux("watch", "install")
+    result = run_plur("watch", "install")
 
     expect(result.success?).to be true
     expect(result.out).to include("installed watcher binary path=")
     expect(result.out).to include("bin/#{watcher_filename}")
 
-    expect(rux_home).to exist
-    expect(rux_home.join("bin", watcher_filename)).to be_file
-    expect(rux_home.join("bin", watcher_filename)).to be_executable
-    expect(rux_home.join("bin", watcher_filename)).to exist
+    expect(plur_home).to exist
+    expect(plur_home.join("bin", watcher_filename)).to be_file
+    expect(plur_home.join("bin", watcher_filename)).to be_executable
+    expect(plur_home.join("bin", watcher_filename)).to exist
   end
 end

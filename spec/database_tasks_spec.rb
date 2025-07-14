@@ -1,10 +1,10 @@
 require "spec_helper"
 
-RSpec.describe "Rux database tasks" do
+RSpec.describe "Plur database tasks" do
   context "db:setup command (dry-run)" do
     it "runs db:setup in dry-run mode for Rails app" do
       Dir.chdir(default_rails_dir) do
-        output = run_rux("--dry-run", "db:setup", "-n", "3").out
+        output = run_plur("--dry-run", "db:setup", "-n", "3").out
 
         expect(output).to include("[dry-run] Would run database task 'db:setup' with 3 workers")
         expect(output).to include("[dry-run] Worker 0: RAILS_ENV=test bundle exec rake db:setup")
@@ -26,7 +26,7 @@ RSpec.describe "Rux database tasks" do
       Dir.chdir(default_rails_dir) do
         system("bundle install")
 
-        result = run_rux("db:create", "-n", "3", allow_error: true)
+        result = run_plur("db:create", "-n", "3", allow_error: true)
         pp result
         expect(result.status).to eq(0), "db:create failed: #{result.err}"
 
@@ -36,7 +36,7 @@ RSpec.describe "Rux database tasks" do
         expect(File.exist?("storage/test3.sqlite3")).to be true
 
         # Run migrations
-        result = run_rux("db", "migrate", "-n", "3")
+        result = run_plur("db", "migrate", "-n", "3")
         expect(result.exit_status).to eq(0), "db:migrate failed: #{result.err}"
       end
     end
@@ -45,7 +45,7 @@ RSpec.describe "Rux database tasks" do
   describe "db:create command" do
     it "runs db:create in dry-run mode" do
       Dir.chdir(default_rails_dir) do
-        output = run_rux("--dry-run", "db:create", "-n", "2").out
+        output = run_plur("--dry-run", "db:create", "-n", "2").out
 
         expect(output).to include("[dry-run] Would run database task 'db:create' with 2 workers")
         expect(output).to include("RAILS_ENV=test bundle exec rake db:create")
@@ -56,7 +56,7 @@ RSpec.describe "Rux database tasks" do
   describe "db:migrate command" do
     it "runs db:migrate in dry-run mode" do
       Dir.chdir(default_rails_dir) do
-        output = run_rux("--dry-run", "db:migrate", "-n", "2").out
+        output = run_plur("--dry-run", "db:migrate", "-n", "2").out
 
         expect(output).to include("[dry-run] Would run database task 'db:migrate' with 2 workers")
         expect(output).to include("RAILS_ENV=test bundle exec rake db:migrate")
@@ -67,7 +67,7 @@ RSpec.describe "Rux database tasks" do
   describe "db:test:prepare command" do
     it "runs db:test:prepare in dry-run mode" do
       Dir.chdir(default_rails_dir) do
-        result = run_rux("--dry-run", "db:test:prepare", "-n", "2", allow_error: true)
+        result = run_plur("--dry-run", "db:test:prepare", "-n", "2", allow_error: true)
 
         expect(result.status).to eq(0)
         expect(result.out).to include("[dry-run] Would run database task 'db:test:prepare' with 2 workers")
@@ -92,7 +92,7 @@ RSpec.describe "Rux database tasks" do
         RUBY
 
         Dir.chdir(tmpdir) do
-          result = run_rux("db:setup", "-n", "3", allow_error: true)
+          result = run_plur("db:setup", "-n", "3", allow_error: true)
 
           expect(result.status).to eq(1)
           expect(result.out).to include("Running database task 'db:setup' with 3 workers...")

@@ -13,32 +13,32 @@ end
 Dir.glob(Plur.config.root_dir.join("lib", "tasks", "*.rake")).each { |file| load file }
 
 # Using 3 cores for medium/large resource class on CircleCI
-RUX_CORES = Plur.config.rux_cores
+PLUR_CORES = Plur.config.plur_cores
 
 # Default task runs all checks
 desc "Run all tests and linting"
 task default: ["build", "test:all", "lint:ruby"]
 
-desc "Build the rux Go binary"
+desc "Build the plur Go binary"
 task build: ["vendor:build", "lint:go"] do
-  Dir.chdir(Plur.config.rux_dir) do
-    puts "[build] Building rux"
-    sh %(go build -mod=mod -o rux .)
-    version = `./rux --version`.strip
-    puts "[build] Binary created at rux/rux with version: #{version}"
+  Dir.chdir(Plur.config.plur_dir) do
+    puts "[build] Building plur"
+    sh %(go build -mod=mod -o plur .)
+    version = `./plur --version`.strip
+    puts "[build] Binary created at plur/plur with version: #{version}"
   end
 end
 
-desc "Install rux to GOPATH/bin"
+desc "Install plur to GOPATH/bin"
 task :install do
-  if ENV["CI"] && system("which rux")
-    puts "[install] Rux already installed"
+  if ENV["CI"] && system("which plur")
+    puts "[install] Plur already installed"
   else
-    Dir.chdir(Plur.config.rux_dir) do
+    Dir.chdir(Plur.config.plur_dir) do
       sh %(go install -mod=mod)
     end
   end
-  puts "[install] Installed rux with version: #{`rux --version`.strip}"
+  puts "[install] Installed plur with version: #{`plur --version`.strip}"
 end
 
 namespace :test do
@@ -47,7 +47,7 @@ namespace :test do
 
   desc "Run Go tests"
   task go: ["build"] do
-    Dir.chdir(Plur.config.rux_dir) do
+    Dir.chdir(Plur.config.plur_dir) do
       puts "[test:go] Running go tests..."
       if ENV["VERBOSE"]
         sh "go test -mod=mod -v ./..."
@@ -57,14 +57,14 @@ namespace :test do
     end
   end
 
-  desc "Run default-ruby fixture project with rux"
+  desc "Run default-ruby fixture project with plur"
   task ruby: %i[default_ruby]
 
-  desc "Run default-ruby fixture project with rux"
+  desc "Run default-ruby fixture project with plur"
   task default_ruby: :install do
     Dir.chdir(Plur.config.default_ruby_dir) do
-      puts "[test:default_ruby] Running default-ruby specs with rux..."
-      sh "rux", "-n", RUX_CORES.to_s
+      puts "[test:default_ruby] Running default-ruby specs with plur..."
+      sh "plur", "-n", PLUR_CORES.to_s
     end
   end
 
@@ -76,18 +76,18 @@ namespace :test do
     end
   end
 
-  desc "Run default-rails specs using rux"
+  desc "Run default-rails specs using plur"
   task default_rails: :install do
     Dir.chdir(Plur.config.default_rails_dir) do
-      puts "[test:default_rails] Running default-rails specs with rux..."
-      sh "rux", "-n", RUX_CORES.to_s
+      puts "[test:default_rails] Running default-rails specs with plur..."
+      sh "plur", "-n", PLUR_CORES.to_s
     end
   end
 
   desc "Run integration tests in root spec directory"
   task integration: :install do
-    puts "[test:integration] Running ruby integration suite with rux..."
-    sh "rux", "-n", RUX_CORES.to_s
+    puts "[test:integration] Running ruby integration suite with plur..."
+    sh "plur", "-n", PLUR_CORES.to_s
   end
 end
 
@@ -97,7 +97,7 @@ namespace :lint do
 
   desc "Lint Go code"
   task :go do
-    Dir.chdir(Plur.config.rux_dir) do
+    Dir.chdir(Plur.config.plur_dir) do
       puts "[lint:go] Running go fmt and go vet"
       sh "go fmt -mod=mod ./..."
       sh "go vet -mod=mod ./..."

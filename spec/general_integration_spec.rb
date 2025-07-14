@@ -3,13 +3,13 @@ require "tmpdir"
 require "fileutils"
 require "json"
 
-RSpec.describe "Rux general integration" do
+RSpec.describe "Plur general integration" do
   let(:expected_spec_files) { 12 }
 
   describe "basic functionality" do
     it "runs all specs when no arguments are provided" do
       chdir(default_ruby_dir) do
-        result = run_rux
+        result = run_plur
 
         expect(result.out).to include("Running #{expected_spec_files} spec files in parallel")
         expect(result.out).to include("examples")
@@ -20,7 +20,7 @@ RSpec.describe "Rux general integration" do
 
     it "runs specific spec files when provided as arguments" do
       chdir(default_ruby_dir) do
-        result = run_rux("spec/calculator_spec.rb", "spec/string_utils_spec.rb")
+        result = run_plur("spec/calculator_spec.rb", "spec/string_utils_spec.rb")
 
         expect(result.out).to include("Running 2 spec files in parallel")
         expect(result.out).to include("Finished in")
@@ -30,14 +30,14 @@ RSpec.describe "Rux general integration" do
     it "exits with non-zero status when tests fail" do
       failing_specs_path = project_fixture("failing_specs")
       chdir(failing_specs_path) do
-        result = run_rux_allowing_errors("spec/expectation_failures_spec.rb")
+        result = run_plur_allowing_errors("spec/expectation_failures_spec.rb")
         expect(result.exit_status).to eq(1)
       end
     end
 
     it "exits with zero status when all tests pass" do
       chdir(default_ruby_dir) do
-        result = run_rux("spec/calculator_spec.rb")
+        result = run_plur("spec/calculator_spec.rb")
         expect(result.exit_status).to eq(0)
       end
     end
@@ -46,7 +46,7 @@ RSpec.describe "Rux general integration" do
   describe "worker configuration" do
     it "respects the -n flag for worker count" do
       chdir(default_ruby_dir) do
-        result = run_rux("-n", "4")
+        result = run_plur("-n", "4")
 
         expect(result.out).to include("using 4 workers")
       end
@@ -54,7 +54,7 @@ RSpec.describe "Rux general integration" do
 
     it "respects PARALLEL_TEST_PROCESSORS environment variable" do
       chdir(default_ruby_dir) do
-        result = run_rux(env: {"PARALLEL_TEST_PROCESSORS" => "3"})
+        result = run_plur(env: {"PARALLEL_TEST_PROCESSORS" => "3"})
 
         expect(result.out).to include("using 3 workers")
       end
@@ -62,7 +62,7 @@ RSpec.describe "Rux general integration" do
 
     it "prioritizes -n flag over environment variable" do
       chdir(default_ruby_dir) do
-        result = run_rux("-n", "5", env: {"PARALLEL_TEST_PROCESSORS" => "3"})
+        result = run_plur("-n", "5", env: {"PARALLEL_TEST_PROCESSORS" => "3"})
 
         expect(result.out).to include("using 5 workers")
       end
@@ -70,7 +70,7 @@ RSpec.describe "Rux general integration" do
 
     it "limits workers to number of spec files when fewer files than workers" do
       chdir(default_ruby_dir) do
-        result = run_rux("-n", "20", "spec/calculator_spec.rb", "spec/string_utils_spec.rb")
+        result = run_plur("-n", "20", "spec/calculator_spec.rb", "spec/string_utils_spec.rb")
 
         expect(result.out).to include("Running 2 spec files in parallel using 2 workers")
       end
@@ -80,7 +80,7 @@ RSpec.describe "Rux general integration" do
   describe "dry-run mode" do
     it "shows what would be executed without running tests" do
       chdir(default_ruby_dir) do
-        result = run_rux("--dry-run")
+        result = run_plur("--dry-run")
 
         expect(result.err).to include("[dry-run] Found #{expected_spec_files} spec files")
         expect(result.err).to include("[dry-run] Worker")
@@ -92,7 +92,7 @@ RSpec.describe "Rux general integration" do
 
     it "shows auto bundle install in dry-run mode" do
       chdir(default_ruby_dir) do
-        result = run_rux("--dry-run", "--auto")
+        result = run_plur("--dry-run", "--auto")
 
         expect(result.err).to include("[dry-run] bundle install")
         expect(result.err).to include("[dry-run] Found #{expected_spec_files} spec files")
@@ -123,7 +123,7 @@ RSpec.describe "Rux general integration" do
         RUBY
 
         chdir(tmpdir) do
-          result = run_rux("--auto", "test_spec.rb")
+          result = run_plur("--auto", "test_spec.rb")
 
           expect(result.out).to include("Installing dependencies...")
           expect(result.out).to include("Running 1 spec files")

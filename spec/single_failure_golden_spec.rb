@@ -5,7 +5,7 @@ RSpec.describe "single failure golden test" do
     project_fixture(name)
   end
 
-  def run_rux(file_or_glob, *args)
+  def run_plur(file_or_glob, *args)
     cmd_array = %W[rux #{file_or_glob}]
     cmd_array += args if args.any?
     Open3.capture3(*cmd_array)
@@ -52,7 +52,7 @@ RSpec.describe "single failure golden test" do
       mode: :auto,
       matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
       chdir fixture_path("failing_specs") do
-        run_rux("spec/single_failure_spec.rb")
+        run_plur("spec/single_failure_spec.rb")
       end
     end
 
@@ -93,7 +93,7 @@ RSpec.describe "single failure golden test" do
       mode: :verify,
       matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
       chdir fixture_path("failing_specs") do
-        run_rux("spec/single_failure_spec.rb")
+        run_plur("spec/single_failure_spec.rb")
       end
     end
 
