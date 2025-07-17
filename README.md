@@ -1,6 +1,6 @@
 # plur-meta
 
-A research repository for `plur`, a Go-based parallel test runner for Ruby/RSpec projects designed to outperform existing solutions like turbo_tests and parallel_tests.
+`plur` is a Go-based parallel test runner for Ruby/RSpec projects designed to outperform existing solutions like turbo_tests and parallel_tests.
 
 ## 🚀 Quick Start
 
