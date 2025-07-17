@@ -53,7 +53,7 @@ After implementing and testing both approaches side-by-side, we're fully committ
 #### ~~Analyze 'mise' impact~~ → File Grouping Victory! ✅
 - [x] Started by analyzing mise (Ruby version manager) impact - only ~31ms overhead
 - [x] Realized: "Duh, mise is written in Rust - it's not the bottleneck!"
-- [x] **Real issue found**: rux was spawning one process per file (naive approach)
+- [x] **Real issue found**: plur was spawning one process per file (naive approach)
 - [x] **Solution**: Implemented intelligent file grouping like turbo_tests/parallel_tests
 - [x] **Result**: 🚀 **2.3x faster than turbo_tests** for small suites (195ms vs 454ms)
 - [x] Lesson learned: Sometimes the obvious optimization is the right one!
@@ -61,7 +61,7 @@ After implementing and testing both approaches side-by-side, we're fully committ
 #### High Priority Optimizations:
 - [x] **Runtime-based file grouping** ✅ IMPLEMENTED (different approach)
   - [x] Actually implemented runtime tracking in `runtime_tracker.go`
-  - [x] Saves to `~/.cache/rux/runtimes/[project-hash].json` 
+  - [x] Saves to `~/.cache/plur/runtimes/[project-hash].json` 
   - [x] Uses runtime data for intelligent grouping
   - [x] Falls back to file count when no runtime data exists
   - [x] Updates after each run automatically
@@ -107,7 +107,7 @@ After implementing and testing both approaches side-by-side, we're fully committ
 ```diff
 - args := []string{"bundle", "exec", "rspec", "--format", "progress", "--format", "json", "--out", "/tmp/results.json", "--no-color", file}
 + formatterPath, _ := GetFormatterPath()
-+ args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter", "--no-color", file}
++ args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Plur::JsonRowsFormatter", "--no-color", file}
 ```
 
 ### 4. Clean Up Parallel Execution
@@ -131,7 +131,7 @@ After implementing and testing both approaches side-by-side, we're fully committ
 
 ## Performance Expectations
 
-Based on initial benchmarks with rux-ruby (11 specs):
+Based on initial benchmarks with plur-ruby (11 specs):
 - Current streaming implementation shows similar performance to dual formatter
 - This is expected because formatter overhead is small for tiny test suites
 - Real benefits should appear with larger test suites where 2x formatting matters more
@@ -171,11 +171,11 @@ Next benchmark targets:
 
 ### Formatter Distribution
 - Implemented as Go string constant embedded in binary
-- Cached at `~/.cache/rux/formatters/json_rows_formatter.rb`
+- Cached at `~/.cache/plur/formatters/json_rows_formatter.rb`
 - Written once per user, reused across projects
 
 ### JSON Streaming Format
-Each line is prefixed with `RUX_JSON:` followed by a JSON object:
+Each line is prefixed with `PLUR_JSON:` followed by a JSON object:
 - `{"type":"start","count":58,"load_time":0.123}`
 - `{"type":"example_passed","description":"...","location":"..."}`
 - `{"type":"example_failed","description":"...","exception":{...}}`

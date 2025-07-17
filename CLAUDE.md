@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project: Rux - Fast parallel test runner for Ruby/RSpec
+## Project: Plur - Fast parallel test runner for Ruby/RSpec
 
 Production-ready Go implementation, ~13% faster than turbo_tests/parallel_tests.
 
@@ -18,45 +18,45 @@ bin/rake standard:fix    # Fix Ruby lint issues
 # Never do this:
 # rake anything         ❌ WRONG - breaks bundler context  
 # go build             ❌ WRONG - missing version info
-# cd rux && go build   ❌ WRONG - use bin/rake install
+# cd plur && go build   ❌ WRONG - use bin/rake install
 ```
 
 ## Quick Reference
 
-### Rux Commands
+### Plur Commands
 ```bash
-rux                      # Run tests (auto-detect workers)
-rux -n 4                 # Specify workers (often fastest)
-rux -C path/to/project   # Change to directory before running (like git -C)
-rux --dry-run            # Preview what will run
-rux doctor               # Debug installation issues
-rux watch                # Auto-run tests on file changes (experimental)
-rux spec --command=bin/rspec  # Override default test command
+plur                      # Run tests (auto-detect workers)
+plur -n 4                 # Specify workers (often fastest)
+plur -C path/to/project   # Change to directory before running (like git -C)
+plur --dry-run            # Preview what will run
+plur doctor               # Debug installation issues
+plur watch                # Auto-run tests on file changes (experimental)
+plur spec --command=bin/rspec  # Override default test command
 ```
 
 ### Configuration Files
 
-Rux supports TOML configuration files for persistent settings:
+Plur supports TOML configuration files for persistent settings:
 
 ```toml
-# .rux.toml or ~/.rux.toml
+# .plur.toml or ~/.plur.toml
 command = "bin/rspec"    # Override default "bundle exec rspec"
 workers = 4              # Number of parallel workers
 color = true             # Enable colored output
 ```
 
-Configuration precedence: CLI flags > `.rux.toml` (local) > `~/.rux.toml` (global) > defaults
+Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (global) > defaults
 
 
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root
-- **"go: inconsistent vendoring"** → `cd rux && go mod vendor`
-- **"watcher binary not found"** → Binary is embedded and extracted to ~/.cache/rux/bin/
+- **"go: inconsistent vendoring"** → `cd plur && go mod vendor`
+- **"watcher binary not found"** → Binary is embedded and extracted to ~/.cache/plur/bin/
 - **Tests fail in rake but pass alone** → Use `bin/rake` not `rake`
-- **Testing fixtures is cumbersome** → Use `rux -C fixtures/minitest-success` instead of `cd`
+- **Testing fixtures is cumbersome** → Use `plur -C fixtures/minitest-success` instead of `cd`
 
 ### Project Structure
-- `rux/` - Go source (main binary)
+- `plur/` - Go source (main binary)
 - `spec/` - Integration tests (USE THESE as guardrails)
 - `default-ruby/` - Example Ruby project for testing
 - `vendor/backspin/` - Vendored golden testing gem

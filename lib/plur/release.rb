@@ -2,7 +2,7 @@ require "json"
 require "open3"
 require_relative "changelog"
 
-class Release
+class Plur::Release
   def initialize(new_version, prs_in_release = nil)
     @new_version = new_version
     @prs_in_release = prs_in_release || find_last_pr_merged_to_main
@@ -18,8 +18,8 @@ class Release
     current_version = get_current_version
     ensure_version_is_newer!(current_version, @new_version)
 
-    # Build rux to ensure it compiles cleanly
-    ensure_rux_builds!
+    # Build plur to ensure it compiles cleanly
+    ensure_plur_builds!
 
     # Update changelog
     changelog = Changelog.new(@new_version, @prs_in_release)
@@ -79,12 +79,12 @@ class Release
     abort "Error: New version #{new} must be greater than current version #{current}" unless new_v > current_v
   end
 
-  def ensure_rux_builds!
-    puts "Building rux to ensure it compiles..."
-    Dir.chdir("rux") do
-      system("go build -mod=mod -o rux .", exception: true)
+  def ensure_plur_builds!
+    puts "Building plur to ensure it compiles..."
+    Dir.chdir("plur") do
+      system("go build -mod=mod -o plur .", exception: true)
     end
-    puts "✓ Rux builds successfully"
+    puts "✓ plur builds successfully"
   end
 
   def show_release_summary(current_version, new_version, prs)
@@ -133,8 +133,8 @@ class Release
     system("git tag -a #{@new_version} -m 'Release #{@new_version}'", exception: true)
 
     # Rebuild with the new tag
-    puts "  → Rebuilding rux with new version..."
-    Dir.chdir("rux") do
+    puts "  → Rebuilding plur with new version..."
+    Dir.chdir("plur") do
       system("go install -mod=mod .", exception: true)
     end
 

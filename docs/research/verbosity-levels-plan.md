@@ -1,12 +1,12 @@
-# Rux CLI Verbosity Levels - Design Document
+# Plur CLI Verbosity Levels - Design Document
 
 ## Current State Analysis
 
 ### Existing Implementation
 
-Rux currently has two flags for controlling output verbosity:
+Plur currently has two flags for controlling output verbosity:
 - `--verbose`: Enable verbose output for debugging
-- `--debug` / `-d`: Enable debug output (includes verbose), also settable via RUX_DEBUG env var
+- `--debug` / `-d`: Enable debug output (includes verbose), also settable via PLUR_DEBUG env var
 
 **Issues with Current Implementation:**
 1. Both verbose and non-verbose modes set the same log level (Info)
@@ -109,7 +109,7 @@ func getLogLevel(verbosity int, quiet bool) slog.Level {
 
 #### CLI Structure
 ```go
-type RuxCLI struct {
+type PlurCLI struct {
     // Remove current flags:
     // Verbose bool
     // Debug bool
@@ -117,7 +117,7 @@ type RuxCLI struct {
     // Add new flags:
     Verbosity int  `short:"v" type:"counter" help:"Increase verbosity (-v, -vv, -vvv)"`
     Quiet     bool `short:"q" help:"Quiet mode - only show errors"`
-    Debug     bool `help:"Enable trace-level debugging (same as -vvv)" env:"RUX_DEBUG"`
+    Debug     bool `help:"Enable trace-level debugging (same as -vvv)" env:"PLUR_DEBUG"`
 }
 ```
 
@@ -129,28 +129,28 @@ type RuxCLI struct {
 
 #### Backward Compatibility
 - Keep `--debug` flag as alias for `-vvv`
-- Honor `RUX_DEBUG` environment variable
+- Honor `PLUR_DEBUG` environment variable
 - Existing `LogVerbose` calls become `Logger.Info`
 
 ### 5. User-Facing Examples
 
 ```bash
 # Quiet mode - only errors
-rux -q
+plur -q
 
 # Default - warnings and errors
-rux
+plur
 
 # Verbose - see worker assignments and progress
-rux -v
+plur -v
 
 # Debug - see command execution and file operations  
-rux -vv
+plur -vv
 
 # Trace - see parser output and internal details
-rux -vvv
+plur -vvv
 # or
-rux --debug
+plur --debug
 ```
 
 ### 6. Security Considerations

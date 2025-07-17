@@ -2,11 +2,11 @@
 
 ## Overview
 
-File mapping in Rux determines which test files should run when source files change. This is primarily used by the `rux watch` command to automatically run relevant tests during development.
+File mapping in Plur determines which test files should run when source files change. This is primarily used by the `plur watch` command to automatically run relevant tests during development.
 
 ## Current Implementation
 
-Rux implements a simple convention-based file mapping system that follows Ruby/Rails conventions:
+Plur implements a simple convention-based file mapping system that follows Ruby/Rails conventions:
 
 ### Basic Mapping Rules
 
@@ -76,19 +76,19 @@ func (fm *FileMapper) ShouldWatchFile(filePath string) bool {
 
 ```bash
 # Starts watching files and runs tests automatically
-rux watch
+plur watch
 
 # When you edit lib/user.rb, it automatically runs:
-# rux spec/user_spec.rb
+# plur spec/user_spec.rb
 ```
 
 ### Testing File Mappings
 
-Rux includes a hidden command for testing file mappings:
+Plur includes a hidden command for testing file mappings:
 
 ```bash
 # Test what specs would run for given files
-rux file-mapper lib/user.rb app/models/post.rb
+plur file-mapper lib/user.rb app/models/post.rb
 # Output:
 # lib/user.rb -> spec/user_spec.rb
 # app/models/post.rb -> spec/models/post_spec.rb
@@ -171,7 +171,7 @@ Facebook's Watchman uses trigger configurations:
     ["match", "*.rb"],
     ["match", "*.erb"]
   ],
-  "command": ["rux", "spec"]
+  "command": ["plur", "spec"]
 }
 ```
 
@@ -180,7 +180,7 @@ Facebook's Watchman uses trigger configurations:
 Entr uses shell patterns:
 
 ```bash
-find . -name '*.rb' | entr -c rux spec/
+find . -name '*.rb' | entr -c plur spec/
 ```
 
 ## Best Practices
@@ -236,7 +236,7 @@ app/models/user.rb → spec/models/user/
 
 1. **Be specific**: Edit spec files directly when focused on one test
 2. **Use focus**: Use RSpec's `focus: true` or `fdescribe`/`fit`
-3. **Filter**: Pass specific files to rux directly
+3. **Filter**: Pass specific files to plur directly
 
 ### Performance Issues
 

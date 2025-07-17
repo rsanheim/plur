@@ -1,6 +1,6 @@
 # Development
 
-Guides for contributing to and developing Rux.
+Guides for contributing to and developing Plur.
 
 ## Contents
 

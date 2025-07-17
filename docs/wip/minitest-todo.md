@@ -8,8 +8,8 @@ This is the single source of truth for remaining Minitest support tasks.
 
 Example: 
   ```
-    > rux test/calculator_test.rb 
-    rux version v0.7.6-0.20250628065354-2392e7f82dde
+    > plur test/calculator_test.rb 
+    plur version v0.7.6-0.20250628065354-2392e7f82dde
     Running 1 spec files in parallel using 1 workers (20 cores available)...
     Using size-based grouped execution: 1 file across 18 workers
   ```

@@ -6,34 +6,34 @@
 
 ```bash
 # Run all specs with auto-detected parallelism
-rux
+plur
 
 # Specify number of workers
-rux -n 4
-rux --workers 8
+plur -n 4
+plur --workers 8
 
 # Dry run - see what would be executed
-rux --dry-run
+plur --dry-run
 
 # Show auto-detected worker count
-rux --auto
+plur --auto
 ```
 
 ### Watch Mode
 
 ```bash
 # Watch for changes and re-run tests
-rux watch
+plur watch
 
 # Watch with specific number of workers
-rux watch -n 4
+plur watch -n 4
 ```
 
 ### Doctor Command
 
 ```bash
 # Run diagnostics and troubleshooting
-rux doctor
+plur doctor
 ```
 
 ## Command Line Options
@@ -49,13 +49,13 @@ rux doctor
 ### Environment Variables
 
 - `PARALLEL_TEST_PROCESSORS` - Override number of workers
-- `RUX_DEBUG` - Enable debug logging
+- `PLUR_DEBUG` - Enable debug logging
 
 ## Parallelism
 
 ### Auto-Detection
 
-Rux automatically detects the optimal number of workers:
+Plur automatically detects the optimal number of workers:
 - Default: `CPU cores - 2` (minimum 1)
 - Leaves headroom for system responsiveness
 - Respects `PARALLEL_TEST_PROCESSORS` if set
@@ -64,13 +64,13 @@ Rux automatically detects the optimal number of workers:
 
 ```bash
 # Use all cores
-rux -n $(nproc)
+plur -n $(nproc)
 
 # Conservative - half the cores
-rux -n $(( $(nproc) / 2 ))
+plur -n $(( $(nproc) / 2 ))
 
 # CI environments often benefit from more workers
-rux -n $(( $(nproc) + 2 ))
+plur -n $(( $(nproc) + 2 ))
 ```
 
 ## Output Formats
@@ -87,7 +87,7 @@ Shows dots for test progress:
 
 ### JSON Output
 
-Rux uses dual formatters internally:
+Plur uses dual formatters internally:
 - Progress formatter for visual feedback
 - JSON formatter for parsing results
 
@@ -95,7 +95,7 @@ Rux uses dual formatters internally:
 
 ### Basic Timing
 
-Rux shows execution time after each run:
+Plur shows execution time after each run:
 ```
 Finished in 12.34s (CPU: 45.67s)
 ```
@@ -104,18 +104,18 @@ Finished in 12.34s (CPU: 45.67s)
 
 ```bash
 # Run with debug output
-RUX_DEBUG=1 rux
+PLUR_DEBUG=1 plur
 
 # Check which files would run
-rux --dry-run | grep "file_spec.rb"
+plur --dry-run | grep "file_spec.rb"
 
 # Run doctor for diagnostics
-rux doctor
+plur doctor
 ```
 
 ### Performance Tuning
 
-1. **Start with auto-detection**: Let Rux choose worker count
+1. **Start with auto-detection**: Let Plur choose worker count
 2. **Measure and adjust**: Experiment with different worker counts
 3. **Consider test characteristics**:
    - Many small tests: More workers

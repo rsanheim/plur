@@ -2,9 +2,9 @@
 
 ## Overview
 
-This document analyzes the usage of `*cli.Context` in the rux codebase and compares urfave/cli's Context approach with Kong's struct-based approach.
+This document analyzes the usage of `*cli.Context` in the plur codebase and compares urfave/cli's Context approach with Kong's struct-based approach.
 
-## urfave/cli Context Usage in Rux
+## urfave/cli Context Usage in Plur
 
 ### 1. Flag Access Methods
 
@@ -97,7 +97,7 @@ There's a global `Before` hook that runs before any command:
 ```go
 Before: func(ctx *cli.Context) error {
     // Initialize logging globally before any command runs
-    debug := ctx.Bool("debug") || os.Getenv("RUX_DEBUG") == "1"
+    debug := ctx.Bool("debug") || os.Getenv("PLUR_DEBUG") == "1"
     InitLogger(ctx.Bool("verbose"), debug)
     return nil
 }
@@ -105,7 +105,7 @@ Before: func(ctx *cli.Context) error {
 
 ### 5. Context Responsibilities Summary
 
-The `*cli.Context` in rux is responsible for:
+The `*cli.Context` in plur is responsible for:
 1. **Flag retrieval** - Getting boolean, integer, and string flag values
 2. **Argument access** - Retrieving positional arguments as strings
 3. **Argument counting** - Checking how many positional arguments were provided
@@ -235,7 +235,7 @@ func (w *WatchCmd) Run() error {
 
 ### Limited Context Usage Makes Migration Easier
 
-The good news is that rux uses Context in a very limited way:
+The good news is that plur uses Context in a very limited way:
 - Only for flag/argument retrieval
 - No complex Context manipulation
 - No use of advanced Context features
@@ -272,4 +272,4 @@ Based on this analysis, here's the recommended approach:
 
 ## Conclusion
 
-While urfave/cli and Kong have different approaches to command-line parsing, the limited and straightforward usage of Context in rux makes migration feasible. Kong's struct-based approach offers better type safety and cleaner code, making it a worthwhile migration target.
+While urfave/cli and Kong have different approaches to command-line parsing, the limited and straightforward usage of Context in plur makes migration feasible. Kong's struct-based approach offers better type safety and cleaner code, making it a worthwhile migration target.

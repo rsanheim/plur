@@ -8,7 +8,7 @@ require_relative "../plur"
 
 # Docker runner for Rux
 class DockerRunner
-  include DockerHelper
+  include Plur::DockerHelper
 
   attr_reader :options
 

@@ -1,23 +1,23 @@
-# rux-meta
+# plur-meta
 
-A research repository for `rux`, a Go-based parallel test runner for Ruby/RSpec projects designed to outperform existing solutions like turbo_tests and parallel_tests.
+`plur` is a Go-based parallel test runner for Ruby/RSpec projects designed to outperform existing solutions like turbo_tests and parallel_tests.
 
 ## 🚀 Quick Start
 
 ```bash
-# Build and install rux
+# Build and install plur
 bin/rake install
 
 # Run tests on default Ruby library
-cd fixtures/projects/default-ruby && rux
+cd fixtures/projects/default-ruby && plur
 
 # Run tests on default Rails app
-cd fixtures/projects/default-rails && rux -n 3
+cd fixtures/projects/default-rails && plur -n 3
 ```
 
 ## 📦 What's Included
 
-### Core rux Implementation (`rux/`)
+### Core plur Implementation (`plur/`)
 - **Go-based CLI** for parallel RSpec execution
 - **Database commands** (db:create, db:migrate, db:setup, db:test:prepare)
 - **Performance optimized** - 13% faster than turbo_tests
@@ -38,7 +38,7 @@ cd fixtures/projects/default-rails && rux -n 3
 - **references/turbo_tests/**: Analysis of fast RSpec runner with excellent output
 
 ### Testing Infrastructure
-- **Ruby integration tests** (`test_rux_integration.rb`)
+- **Ruby integration tests** (`test_plur_integration.rb`)
 - **Go unit tests** for all core functionality
 - **Benchmarking script** (`script/bench`) for performance comparison
 - **Setup automation** (`setup_rails_testing.rb`)
@@ -47,16 +47,16 @@ cd fixtures/projects/default-rails && rux -n 3
 
 ### Parallel Test Execution
 ```bash
-rux -n 4                    # Run with specific worker count
-rux                          # Auto-detect workers (cores-2)
-rux --dry-run               # Preview execution plan
+plur -n 4                    # Run with specific worker count
+plur                          # Auto-detect workers (cores-2)
+plur --dry-run               # Preview execution plan
 ```
 
 ### Database Management
 ```bash
-rux db:create -n 3          # Create test databases in parallel
-rux db:migrate -n 3         # Run migrations across all test DBs
-rux db:setup -n 3           # Full database setup
+plur db:create -n 3          # Create test databases in parallel
+plur db:migrate -n 3         # Run migrations across all test DBs
+plur db:setup -n 3           # Full database setup
 ```
 
 ### Environment Variables
@@ -70,34 +70,34 @@ Benchmarked on example-project project (24 spec files):
 
 | Command | Time | Relative Performance |
 |---------|------|---------------------|
-| `rux -n 4` | **9.04s** | Fastest (baseline) |
-| `rux` (default) | 10.15s | +12% slower |
+| `plur -n 4` | **9.04s** | Fastest (baseline) |
+| `plur` (default) | 10.15s | +12% slower |
 | `bundle exec turbo_tests` | 10.18s | +13% slower |
 
-**Result**: rux with optimized worker count is 13% faster than turbo_tests.
+**Result**: plur with optimized worker count is 13% faster than turbo_tests.
 
 ## 🧪 Testing
 
 ### Run All Tests
 ```bash
 rake                         # Go tests (lint + test)
-rake test:ruby              # Run default-ruby specs using rux
+rake test:ruby              # Run default-ruby specs using plur
 rake test:ruby_turbo        # Run default-ruby specs using turbo_tests (for comparison)
-rake build_and_test         # Build rux and run default-ruby tests
-ruby test_rux_integration.rb # Ruby integration tests
+rake build_and_test         # Build plur and run default-ruby tests
+ruby test_plur_integration.rb # Ruby integration tests
 ```
 
 ### Test with Default Projects
 ```bash
 # Simple Ruby library
 cd fixtures/projects/default-ruby
-rux                        # Run all specs
+plur                        # Run all specs
 
 # Rails application
 cd fixtures/projects/default-rails
-rux db:create -n 3        # Set up databases
-rux db:migrate -n 3       # Run migrations
-rux -n 3                  # Run RSpec tests in parallel
+plur db:create -n 3        # Set up databases
+plur db:migrate -n 3       # Run migrations
+plur -n 3                  # Run RSpec tests in parallel
 ```
 
 ### Benchmarking
@@ -150,7 +150,7 @@ script/serve-docs
 ### Project Structure
 ```
 rux-meta/
-├── rux/                    # Main Go implementation
+├── plur/                    # Main Go implementation
 ├── fixtures/
 │   └── projects/
 │       ├── default-ruby/   # Simple Ruby library for testing
@@ -165,7 +165,7 @@ rux-meta/
 
 ### Docker Testing
 
-Rux includes Docker support for testing across different architectures and environments. Docker operations are split into two scripts for efficiency:
+Plur includes Docker support for testing across different architectures and environments. Docker operations are split into two scripts for efficiency:
 
 #### Building Images
 ```bash
@@ -189,7 +189,7 @@ Rux includes Docker support for testing across different architectures and envir
 ./script/docker-run --test
 
 # Run specific command
-./script/docker-run --command "rux doctor"
+./script/docker-run --command "plur doctor"
 ./script/docker-run --command "bin/rake test:ruby"
 
 # Shell on specific architecture

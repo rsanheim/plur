@@ -1,0 +1,115 @@
+# Example plur.toml configuration file
+# This is a research/exploration file for the auto-configuration feature
+
+# Basic project metadata
+project = "example-app"
+version = "1.0"
+
+# Project profiles - determines which auto-detection rules to apply
+# Can be: ruby, go, javascript, typescript, python, rust
+profiles = ["ruby"]
+
+# Global settings
+[settings]
+# Number of parallel workers (defaults to CPU count)
+workers = 4
+# Fail fast - stop on first test failure
+fail_fast = false
+# Output format: dots, progress, verbose
+output = "progress"
+
+# Watch mode configuration
+[watch]
+# Debounce file changes (milliseconds)
+debounce = 100
+# Clear screen before each run
+clear_screen = true
+
+# Watch rules - each rule responds to file changes
+# Simple example: bundle install when Gemfile changes
+[watch.bundle]
+command = "bundle install"
+paths = ["Gemfile", "Gemfile.lock"]
+# No mappings = runs command when any watched file changes
+
+# Test watching with various mapping syntaxes to explore
+[watch.test]
+command = "bundle exec rspec"
+# Base paths to watch
+paths = ["lib", "spec", "app"]
+
+# MAPPING SYNTAX OPTIONS TO EXPLORE:
+
+# Option 1: Simple pattern matching (current approach)
+[[watch.test.mappings]]
+# When spec_helper changes, run all specs
+pattern = "spec/spec_helper.rb"
+run = "spec"
+
+[[watch.test.mappings]]
+# Run spec files directly
+pattern = "spec/**/*_spec.rb"
+# No 'run' means execute the matched file itself
+
+[[watch.test.mappings]]
+# Map lib files to their specs
+from = "lib/**/*.rb"
+to = "spec/{path}/{name}_spec.rb"
+# Variables: {path} = relative directory path, {name} = filename without extension
+# Example: lib/foo/bar.rb → spec/foo/bar_spec.rb
+
+# Option 2: Named patterns (like gitignore but with actions)
+[[watch.test.patterns]]
+"spec/**/*_spec.rb" = "self"  # Run the file itself
+"lib/**/*.rb" = "spec"         # Run corresponding spec (convention-based)
+"spec/spec_helper.rb" = "spec/**/*_spec.rb"  # Run all specs
+
+# Option 3: Functional style with glob and template
+[[watch.test.maps]]
+glob = "lib/**/*.rb"
+template = "spec/{{ .Dir }}/{{ .Base }}_spec.rb"
+# Using Go template syntax
+
+
+# Linting configuration
+[watch.lint]
+command = "bundle exec rubocop"
+paths = ["lib", "spec"]
+# Run on all Ruby files that change
+[[watch.lint.mappings]]
+pattern = "**/*.rb"
+
+# Alternative: Type checking
+[watch.typecheck]
+command = "bundle exec sorbet tc"
+paths = ["lib", "app"]
+run_on_start = true  # Run once when watch starts
+
+# Go example for comparison
+[watch.go_test]
+command = "go test ./..."
+paths = ["."]
+[[watch.go_test.mappings]]
+# Test files run directly
+pattern = "**/*_test.go"
+
+[[watch.go_test.mappings]]
+# Implementation files run their test
+from = "**/*.go"
+to = "{dir}/{name}_test.go"
+exclude = ["**/*_test.go"]  # Don't match test files as source
+
+# JavaScript/TypeScript example
+[watch.jest]
+command = "npm test"
+paths = ["src", "tests", "__tests__"]
+
+[[watch.jest.mappings]]
+# Various test file patterns
+pattern = "**/*.{test,spec}.{js,jsx,ts,tsx}"
+
+[[watch.jest.mappings]]
+# Source to test mapping
+from = "src/**/*.{js,jsx,ts,tsx}"
+to = "{dir}/__tests__/{name}.test.{ext}"
+# Preserves file extension

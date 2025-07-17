@@ -1,4 +1,4 @@
-site_name: Rux Documentation
+site_name: Plur Documentation
 site_description: Fast parallel test runner for Ruby/RSpec
 repo_name: rsanheim/rux-meta
 repo_url: https://github.com/rsanheim/rux-meta

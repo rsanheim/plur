@@ -1,4 +1,4 @@
-## Rux and Docker
+## Plur and Docker
 
 I'd like to add the ability to test and exercise Rux inside a Docker container for testing 
 on linux architecture, as well as to test file system events on mounted volumes.
@@ -7,15 +7,15 @@ As such, we need a docker container that matches the following:
 
 * latest Alpine image
 * standard ruby 3.4 installed
-* mounted volume for ./rux (so we can build rux from source with the matching architecture)
+* mounted volume for ./plur (so we can build plur from source with the matching architecture)
 * mounted volume for ./fixtures/projects (so we have all test projects bidirectionally mounted to the container)
 * ...maybe we just mount the entire repo if that is easier? it may make sense to mount everything EXCEPT `references`
-* a small script that we can run on the docker container to build rux, install the watcher binary, and then run the various projects in fixtures/projects
+* a small script that we can run on the docker container to build plur, install the watcher binary, and then run the various projects in fixtures/projects
 * anything else to make debugging /dev easier on this image as issues arise
 
 ## Questions & Considerations
 
-1. **Go toolchain**: Should we include Go in the container since we need to build rux from source? Or use multi-stage build?
+1. **Go toolchain**: Should we include Go in the container since we need to build plur from source? Or use multi-stage build?
    - yup, lets install the latest go - 1.24.4 I think ? single stage is fine
 2. **Ruby version**: Ruby 3.4 is bleeding edge - should we use 3.3.x for stability or stick with 3.4?
    - ruby 3.4 is good for now!
@@ -44,7 +44,7 @@ As such, we need a docker container that matches the following:
    * Environment variables for test execution
 
 3. Create Docker scripts that:
-   * Builds rux for Linux
+   * Builds plur for Linux
    * Installs watcher binary
    * Runs test suite against fixture projects
    * Optionally runs specific tests
@@ -54,7 +54,7 @@ As such, we need a docker container that matches the following:
 * [x] Create Dockerfile with Ubuntu + Ruby 3.4 + Go 1.24.4
 * [x] Create docker-compose.yml for volume mounting
 * [x] Create docker-build and docker-run scripts
-* [x] Test rux build process in container
+* [x] Test plur build process in container
 * [x] Test watcher installation in container
 * [x] Run fixture project tests
 * [x] Document any Linux-specific issues found
@@ -80,8 +80,8 @@ As such, we need a docker container that matches the following:
 1. **Watcher binary architecture mismatch** - Downloads x86_64 binary on arm64 system
    - Platform detection in `lib/tasks/vendor.rake` correctly identifies `aarch64-linux`
    - But still downloads x86_64 binary: "https://github.com/e-dant/watcher/releases/download/0.13.6/x86_64-unknown-linux-gnu.tar"
-   - Rux doctor reports: "watcher binary not found at /root/.rux/bin/watcher-aarch64-unknown-linux-gnu"
-   - The rake task saves binary as `watcher-x86_64-unknown-linux-gnu` but rux expects `watcher-aarch64-unknown-linux-gnu`
+   - Plur doctor reports: "watcher binary not found at /root/.plur/bin/watcher-aarch64-unknown-linux-gnu"
+   - The rake task saves binary as `watcher-x86_64-unknown-linux-gnu` but plur expects `watcher-aarch64-unknown-linux-gnu`
 
 2. **Version warning** - docker-compose.yml version attribute is obsolete
    - ✅ Fixed - removed `version: '3.8'` line

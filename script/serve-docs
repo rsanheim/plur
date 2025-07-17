@@ -8,7 +8,7 @@ readonly SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # Show usage information
 show_help() {
   cat <<EOF
-Rux Documentation Helper
+Plur Documentation Helper
 
 Usage: ${SCRIPT_NAME} [COMMAND]
 

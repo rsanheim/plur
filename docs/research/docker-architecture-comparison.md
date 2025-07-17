@@ -48,7 +48,7 @@
 - Parallel execution works correctly on both
 
 ### 4. Compatibility
-- All rux features work identically on both architectures
+- All plur features work identically on both architectures
 - No architecture-specific bugs found
 - Docker volume mounts work correctly on both
 
@@ -72,7 +72,7 @@ Docker operations are now split into dedicated build and run scripts:
 ./script/docker-run --test --platform linux/amd64
 
 # Quick commands on specific architecture
-./script/docker-run --command "rux doctor" --platform linux/amd64
+./script/docker-run --command "plur doctor" --platform linux/amd64
 
 # Interactive shell for debugging
 ./script/docker-run --shell --platform linux/arm64
@@ -82,7 +82,7 @@ Docker operations are now split into dedicated build and run scripts:
 ```
 
 The scripts automatically use Plur configuration for:
-- Correct number of cores (RUX_CORES)
+- Correct number of cores (PLUR_CORES)
 - E-dant watcher version
 - Proper directory paths
 - Build timestamp tracking

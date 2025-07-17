@@ -3,7 +3,7 @@ require "fileutils"
 require "time"
 require "open3"
 require "pathname"
-require_relative "../../plur"
+require_relative "../plur"
 
 module Plur
   module Benchmark
@@ -12,7 +12,7 @@ module Plur
         :show_output, :checkpoint, :results_dir, :timestamp
 
       def initialize
-        @workers = Plur.config.rux_cores
+        @workers = Plur.config.plur_cores
         @warmup = 2
         @runs = 5
         @min_runs = nil
@@ -39,14 +39,14 @@ module Plur
     end
 
     class Runner
-      attr_reader :config, :git_sha, :rux_version, :original_dir
+      attr_reader :config, :git_sha, :plur_version, :original_dir
 
       def initialize(config)
         @config = config
         @original_dir = Dir.pwd
-        check_local_rux_binary!
+        check_local_plur_binary!
         @git_sha = get_git_sha
-        @rux_version = get_rux_version
+        @plur_version = get_plur_version
       end
 
       def run
@@ -93,7 +93,7 @@ module Plur
         json_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.json").to_s
         markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
 
-        rux_cmd = "#{Plur.config.local_rux_binary} -n #{config.workers}"
+        plur_cmd = "#{Plur.config.local_plur_binary} -n #{config.workers}"
 
         hyperfine_cmd = [
           "hyperfine",
@@ -116,11 +116,11 @@ module Plur
 
         hyperfine_cmd += [
           "turbo_tests -n #{config.workers}",
-          rux_cmd
+          plur_cmd
         ]
 
         puts "Running benchmarks with #{config.workers} workers, #{config.warmup} warmup runs, #{config.runs} runs"
-        puts "Rux version: #{rux_version}"
+        puts "Plur version: #{plur_version}"
         puts "===================="
 
         system(*hyperfine_cmd)
@@ -142,14 +142,14 @@ module Plur
 
       def add_version_to_json(json_file)
         data = JSON.parse(File.read(json_file))
-        data["rux_version"] = rux_version
+        data["plur_version"] = plur_version
         File.write(json_file, JSON.pretty_generate(data))
       rescue => e
         puts "Warning: Could not add version to JSON: #{e.message}"
       end
 
       def create_checkpoint(results)
-        checkpoint = Checkpoint.new(config, results, git_sha, rux_version)
+        checkpoint = Checkpoint.new(config, results, git_sha, plur_version)
         checkpoint.create
       end
 
@@ -159,18 +159,18 @@ module Plur
         "nogit"
       end
 
-      def get_rux_version
-        `#{Plur.config.local_rux_binary} --version 2>/dev/null`.strip
+      def get_plur_version
+        `#{Plur.config.local_plur_binary} --version 2>/dev/null`.strip
       rescue
-        "rux version unknown"
+        "plur version unknown"
       end
 
-      def check_local_rux_binary!
-        unless File.exist?(Plur.config.local_rux_binary)
+      def check_local_plur_binary!
+        unless File.exist?(Plur.config.local_plur_binary)
           puts <<~ERROR
-            Error: Local rux binary not found at #{Plur.config.local_rux_binary}
+            Error: Local plur binary not found at #{Plur.config.local_plur_binary}
             
-            Please build rux first by running:
+            Please build plur first by running:
               bin/rake build
           ERROR
           exit 1
@@ -179,13 +179,13 @@ module Plur
     end
 
     class Checkpoint
-      attr_reader :config, :results, :git_sha, :rux_version
+      attr_reader :config, :results, :git_sha, :plur_version
 
-      def initialize(config, results, git_sha, rux_version)
+      def initialize(config, results, git_sha, plur_version)
         @config = config
         @results = results
         @git_sha = git_sha
-        @rux_version = rux_version
+        @plur_version = plur_version
       end
 
       def create
@@ -205,7 +205,7 @@ module Plur
         summary = {
           "commit" => git_sha_long,
           "timestamp" => config.timestamp,
-          "rux_version" => rux_version,
+          "plur_version" => plur_version,
           "projects" => results.map { |r| r[:project] if r }.compact
         }
 
@@ -238,7 +238,7 @@ module Plur
           rescue
             git_sha
           end})"
-          f.puts "- **Rux Version**: #{rux_version}"
+          f.puts "- **Plur Version**: #{plur_version}"
           f.puts ""
           f.puts "## Results"
           f.puts ""
@@ -275,14 +275,14 @@ module Plur
         return nil unless results && results.size >= 2
 
         turbo = results.find { |r| r["command"].include?("turbo_tests") }
-        rux = results.find { |r| r["command"].include?("rux") }
+        plur = results.find { |r| r["command"].include?("plur") }
 
-        return nil unless turbo && rux
+        return nil unless turbo && plur
 
-        diff_percent = ((rux["mean"] - turbo["mean"]) / turbo["mean"] * 100).round(1)
+        diff_percent = ((plur["mean"] - turbo["mean"]) / turbo["mean"] * 100).round(1)
         status = (diff_percent > 0) ? "slower" : "faster"
 
-        "\n**rux is #{diff_percent.abs}% #{status} than turbo_tests**"
+        "\n**plur is #{diff_percent.abs}% #{status} than turbo_tests**"
       end
     end
   end

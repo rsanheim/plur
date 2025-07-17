@@ -1,6 +1,6 @@
 # Architecture
 
-Technical architecture documentation for Rux, covering design decisions and implementation details.
+Technical architecture documentation for Plur, covering design decisions and implementation details.
 
 ## Contents
 

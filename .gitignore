@@ -11,8 +11,8 @@ go.work.sum
 
 # Go build artifacts
 main
-./rux/rux
-/rux/tmp
+./plur/plur
+/plur/tmp
 
 # Ruby
 *.gem

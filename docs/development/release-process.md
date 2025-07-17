@@ -29,7 +29,7 @@ script/release v1.0.0
 ## What Happens
 
 1. Verifies prerequisites
-2. Builds rux to ensure it compiles
+2. Builds plur to ensure it compiles
 3. Updates CHANGELOG.md with PRs since last release
 4. Shows summary and asks for confirmation
 5. Creates git tag and GitHub release

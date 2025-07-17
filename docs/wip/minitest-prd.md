@@ -2,11 +2,11 @@
 
 ## Overview
 
-Rux is a fast parallel test runner that currently only supports RSpec. This PRD outlines the addition of Minitest support to expand Rux's usefulness to the broader Ruby community.
+Plur is a fast parallel test runner that currently only supports RSpec. This PRD outlines the addition of Minitest support to expand Plur's usefulness to the broader Ruby community.
 
 ## Problem Statement
 
-Many Ruby projects use Minitest as their testing framework. Without Minitest support, Rux cannot be adopted by these projects, limiting its impact and adoption in the Ruby ecosystem.
+Many Ruby projects use Minitest as their testing framework. Without Minitest support, Plur cannot be adopted by these projects, limiting its impact and adoption in the Ruby ecosystem.
 
 ## Goals
 
@@ -89,4 +89,4 @@ Refactor to use event-driven architecture for better extensibility:
 
 ## Outcome
 
-When complete, Rux will support both RSpec and Minitest, significantly expanding its potential user base and providing value to more Ruby projects.
+When complete, Plur will support both RSpec and Minitest, significantly expanding its potential user base and providing value to more Ruby projects.

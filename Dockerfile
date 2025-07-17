@@ -81,8 +81,8 @@ WORKDIR /workspace
 RUN mkdir -p /workspace/references /workspace/vendor
 
 # Set up non-root user (optional but good practice)
-RUN useradd -m -s /bin/bash rux
-RUN chown -R rux:rux /workspace
+RUN useradd -m -s /bin/bash plur
+RUN chown -R plur:plur /workspace
 
 # Default to bash shell
 CMD ["/bin/bash"]

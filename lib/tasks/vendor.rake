@@ -1,4 +1,4 @@
-require_relative "../../plur"
+# require_relative "../plur"
 
 # Helper method to determine platform
 def watcher_platform

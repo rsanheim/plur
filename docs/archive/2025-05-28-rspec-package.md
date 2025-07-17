@@ -2,11 +2,11 @@
 
 ## We have a lot of mixed concerns throughout the Runner and other files.
 
-Lets break out an `rspec` package in the `rux` Go CLI (./rux) that contains responsibilities for running and processing rspec files.
+Lets break out an `rspec` package in the `plur` Go CLI (./plur) that contains responsibilities for running and processing rspec files.
 This will help us divide up responsibilities, refine interfaces, and paves the way for perf work 
 as well as adding the abililtiy to handle minitest and other test runners down the road.
 
-Do not prematurely generalize, but lets start refactoring towards something cleaner. Keep in mind right now rux _only_ supports rspec.
+Do not prematurely generalize, but lets start refactoring towards something cleaner. Keep in mind right now plur _only_ supports rspec.
 Other test runners are down the road quite a bit.
 
 Questions:
@@ -26,7 +26,7 @@ Questions:
 * [x] Review RuntimeTracker to determine if it's generic enough for other test frameworks
 
 ### Phase 2: Create rspec Package Structure
-* [x] Create rux/rspec/ directory
+* [x] Create plur/rspec/ directory
 * [x] Move RspecJSON message types to rspec/json_output.go
 * [x] Move streaming message types to rspec/streaming.go
 * [x] Move formatter logic to rspec/formatter.go
@@ -51,13 +51,13 @@ Questions:
 1. **Interface Design**: Should we create a generic `TestFramework` interface now, or wait until we actually add support for minitest/other frameworks?
 - if it is very simple, yeah we could add that now. I'm not sure what the responsibilities are though?
 
-2. **RuntimeTracker Coupling**: The RuntimeTracker currently saves to `~/.cache/rux/runtime.json`. Should this be:
-   - Made framework-agnostic (e.g., `~/.cache/rux/rspec-runtime.json`)?
-   - Keep as-is since rux only supports RSpec currently?
+2. **RuntimeTracker Coupling**: The RuntimeTracker currently saves to `~/.cache/plur/runtime.json`. Should this be:
+   - Made framework-agnostic (e.g., `~/.cache/plur/rspec-runtime.json`)?
+   - Keep as-is since plur only supports RSpec currently?
 - I think we should keep it as-is for now.
 
 3. **Configuration**: Should RSpec-specific flags (like format options) be:
-   - Moved to a subcommand structure (`rux rspec --format`)?
+   - Moved to a subcommand structure (`plur rspec --format`)?
    - Kept at top level for backward compatibility?
 - Keep it as is for now.
 
@@ -83,7 +83,7 @@ Looking at the codebase, potential duplication to address:
 
 ## Completed Work Summary (2025-05-28)
 
-Successfully extracted RSpec-specific code into a dedicated `rux/rspec` package:
+Successfully extracted RSpec-specific code into a dedicated `plur/rspec` package:
 
 1. **Created rspec package** with three main components:
    - `json_output.go` - RSpec JSON output types and parsing (formerly rspec_json.go)

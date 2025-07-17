@@ -3,14 +3,14 @@ require "tempfile"
 require "fileutils"
 require "timeout"
 
-RSpec.describe "rux watch integration" do
-  include RuxWatchHelper
+RSpec.describe "plur watch integration" do
+  include PlurWatchHelper
 
   it "starts watching the correct directories" do
     result, _streamed_out, _streamed_err = capture_watch_output
 
-    expect(result.err).to include("rux watch starting!")
-    expect(result.err).to include("rux configuration info")
+    expect(result.err).to include("plur watch starting!")
+    expect(result.err).to include("plur configuration info")
     expect(result.err).to include("directories=[spec lib]")
     expect(result.err).to include("Debounce delay ms=100")
   end
@@ -29,7 +29,7 @@ RSpec.describe "rux watch integration" do
 
     expect(result.err).to include("watch event=modify type=file")
     expect(result.err).to include("path=./lib/calculator.rb")
-    expect(result.err).to include("rux event=run_spec path=./spec/calculator_spec.rb")
+    expect(result.err).to include("plur event=run_spec path=./spec/calculator_spec.rb")
   end
 
   it "maps nested lib files correctly" do
@@ -89,7 +89,7 @@ RSpec.describe "rux watch integration" do
     contents = spec_path.read
 
     modified = false
-    result, _, _ = capture_watch_output(rux_timeout: 5) do |out, err|
+    result, _, _ = capture_watch_output(plur_timeout: 5) do |out, err|
       # Wait for watcher to be ready (live message)
       if !modified && err && err.include?("s/self/live@")
         File.write(spec_path, "# Modified\n" + contents)
@@ -127,7 +127,7 @@ RSpec.describe "rux watch integration" do
   end
 
   it "respects custom debounce delay" do
-    result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: 2, debounce: 250)
+    result, _streamed_out, _streamed_err = capture_watch_output(plur_timeout: 2, debounce: 250)
 
     output = result.out + result.err
 
@@ -166,7 +166,7 @@ RSpec.describe "rux watch integration" do
 
   describe "Rails-style mappings", :skip_if_ci do
     let(:app_dir) { File.join(default_ruby_dir, "app") }
-    let(:rux_timeout) { ENV["CI"] ? 10 : 2 }
+    let(:plur_timeout) { ENV["CI"] ? 10 : 2 }
 
     before do
       # Create Rails-like directory structure
@@ -179,7 +179,7 @@ RSpec.describe "rux watch integration" do
     end
 
     it "detects app directory and watches it" do
-      result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: 2)
+      result, _streamed_out, _streamed_err = capture_watch_output(plur_timeout: 2)
 
       # Check that app directory is being watched
       expect(result.err).to include("directories=[spec lib app]")
@@ -190,7 +190,7 @@ RSpec.describe "rux watch integration" do
       File.write(model_file, "class User; end")
 
       modified = false
-      result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: rux_timeout) do |out, err|
+      result, _streamed_out, _streamed_err = capture_watch_output(plur_timeout: plur_timeout) do |out, err|
         if !modified && err && err.include?("s/self/live@")
           File.write(model_file, "class User\n  # Modified\nend")
           modified = true
@@ -206,7 +206,7 @@ RSpec.describe "rux watch integration" do
       controller_file = File.join(app_dir, "controllers/users_controller.rb")
 
       modified = false
-      result, _streamed_out, _streamed_err = capture_watch_output(rux_timeout: rux_timeout) do |out, err|
+      result, _streamed_out, _streamed_err = capture_watch_output(plur_timeout: plur_timeout) do |out, err|
         if !modified && err && err.include?("s/self/live@")
           File.write(controller_file, "class UsersController\n  def index\n    # Modified\n  end\nend")
           modified = true

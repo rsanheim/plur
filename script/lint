@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "Running Go linters"
-pushd rux || exit 1
+pushd plur || exit 1
 go fmt ./...
 go vet ./...
 popd || exit 1

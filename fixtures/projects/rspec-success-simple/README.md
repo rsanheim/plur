@@ -1,10 +1,10 @@
 # RSpec Success Simple Fixture
 
-This is a minimal RSpec test fixture used for performance testing in the rux test suite.
+This is a minimal RSpec test fixture used for performance testing in the plur test suite.
 
 ## Purpose
 
-This fixture contains a single, simple passing test that executes quickly. It's used to measure the overhead that rux adds compared to running RSpec directly.
+This fixture contains a single, simple passing test that executes quickly. It's used to measure the overhead that plur adds compared to running RSpec directly.
 
 ## Structure
 

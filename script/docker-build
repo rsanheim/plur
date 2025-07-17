@@ -7,7 +7,7 @@ require_relative "../lib/plur/docker_helper"
 
 # Docker image builder for Rux
 class DockerBuilder
-  include DockerHelper
+  include Plur::DockerHelper
 
   attr_reader :options
 

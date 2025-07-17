@@ -1,8 +1,8 @@
-# Rux Watch Mode
+# Plur Watch Mode
 
 ## Overview
 
-Rux watch mode provides automatic test execution when files change, replacing tools like Guard with a zero-configuration, fast file watcher. It's designed to be a "one stop shop" - just run `rux watch` in any Ruby project and get instant feedback as you code.
+Plur watch mode provides automatic test execution when files change, replacing tools like Guard with a zero-configuration, fast file watcher. It's designed to be a "one stop shop" - just run `plur watch` in any Ruby project and get instant feedback as you code.
 
 ### Key Features
 
@@ -19,26 +19,26 @@ Rux watch mode provides automatic test execution when files change, replacing to
 
 ```bash
 # Start watching for file changes
-rux watch
+plur watch
 ```
 
 ### Command Options
 
 ```bash
 # Dry run to see what would be watched
-rux watch --dry-run
+plur watch --dry-run
 
 # Set custom debounce delay (milliseconds)
-rux watch --debounce 250
+plur watch --debounce 250
 
 # Auto-exit after timeout (useful for CI)
-rux watch --timeout 60
+plur watch --timeout 60
 
 ```
 
 ### What Gets Watched
 
-By default, rux watch monitors:
+By default, plur watch monitors:
 - `spec/**/*_spec.rb` - Test files (runs the changed spec)
 - `lib/**/*.rb` - Library files (runs corresponding spec)
 - `app/**/*.rb` - Rails app files (runs corresponding spec)
@@ -65,7 +65,7 @@ Watch mode uses a multi-process architecture where each directory gets its own w
 
 ```
 ┌─────────────────┐
-│   rux watch     │
+│   plur watch     │
 └────────┬────────┘
          │
 ┌────────▼────────┐
@@ -109,7 +109,7 @@ Watch mode uses a multi-process architecture where each directory gets its own w
 4. Events filtered by file type and effect
 5. FileMapper determines which specs to run
 6. Debouncer batches changes (default 100ms window)
-7. Test runner executes specs using existing rux infrastructure
+7. Test runner executes specs using existing plur infrastructure
 
 ### Platform Support
 
@@ -119,13 +119,13 @@ Embedded watcher binaries for:
 - Linux ARM64
 - Linux x86_64
 
-Binaries are extracted on first use to `~/.cache/rux/bin/`.
+Binaries are extracted on first use to `~/.cache/plur/bin/`.
 
 ## Implementation Details
 
 ### Binary Management
 
-The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-performance C++ file watcher. Platform-specific binaries are embedded in the rux executable using Go's `embed` package and extracted on demand.
+The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-performance C++ file watcher. Platform-specific binaries are embedded in the plur executable using Go's `embed` package and extracted on demand.
 
 ### Process Lifecycle
 
@@ -153,7 +153,7 @@ The watcher detects:
 ### Concurrent Output
 When multiple file changes occur rapidly, concurrent test runs can execute, leading to:
 - Interleaved output from different test runs
-- Multiple "rux> " prompts appearing
+- Multiple "plur> " prompts appearing
 - Generally "janky" terminal experience
 
 This is a known issue currently. The functionality works correctly despite the output confusion.
@@ -169,30 +169,30 @@ This is a known issue currently. The functionality works correctly despite the o
 ### Common Issues
 
 **"watcher binary not found"**
-- Binary should auto-extract to `~/.cache/rux/bin/`
+- Binary should auto-extract to `~/.cache/plur/bin/`
 - Check permissions on cache directory
-- Run `rux doctor` for diagnostics
+- Run `plur doctor` for diagnostics
 
 **Tests not running on file change**
 - Verify file is not in .gitignore
 - Check that spec file exists at expected location
-- Use `rux --debug watch` to see file system events
+- Use `plur --debug watch` to see file system events
 - Note: metadata-only changes (touch) don't trigger events
 
 ### Debug Commands
 
 ```bash
 # Check watcher status and installation
-rux doctor
+plur doctor
 
 # See file system events
-rux --debug watch
+plur --debug watch
 
 # See what files would be watched
-rux watch --dry-run
+plur watch --dry-run
 
 # Verbose output for debugging
-rux watch --verbose
+plur watch --verbose
 ```
 
 ## Technical Decision Log
@@ -212,5 +212,5 @@ rux watch --verbose
 ### Why Embed Binaries?
 - Single binary distribution - no runtime downloads
 - No network dependencies or version conflicts  
-- Simpler installation - just copy rux binary
+- Simpler installation - just copy plur binary
 - Follows Go best practices for self-contained tools

@@ -2,7 +2,7 @@
 
 ## Worker Pool Architecture
 
-Rux uses a goroutine-based worker pool for parallel test execution.
+Plur uses a goroutine-based worker pool for parallel test execution.
 
 ### Key Components
 
@@ -13,12 +13,12 @@ Rux uses a goroutine-based worker pool for parallel test execution.
 
 ### Distribution Strategy
 
-Rux uses intelligent test distribution with two strategies:
+Plur uses intelligent test distribution with two strategies:
 
 1. **Runtime-based distribution** (preferred): When historical runtime data is available, tests are distributed based on their previous execution times to balance workload across workers
 2. **Size-based distribution** (fallback): When no runtime data exists, tests are distributed based on file sizes to approximate workload balance
 
-Runtime data is automatically collected and stored in `~/.cache/rux/runtimes/{project-hash}.json`.
+Runtime data is automatically collected and stored in `~/.cache/plur/runtimes/{project-hash}.json`.
 
 ## Channel Design
 

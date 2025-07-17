@@ -9,7 +9,7 @@ RSpec.describe Plur::Benchmark do
 
     describe "#initialize" do
       it "sets default values" do
-        expect(config.workers).to eq(Plur.config.rux_cores)
+        expect(config.workers).to eq(Plur.config.plur_cores)
         expect(config.warmup).to eq(2)
         expect(config.runs).to eq(5)
         expect(config.min_runs).to be_nil
@@ -56,10 +56,10 @@ RSpec.describe Plur::Benchmark do
 
     before do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with(Plur.config.local_rux_binary).and_return(true)
+      allow(File).to receive(:exist?).with(Plur.config.local_plur_binary).and_return(true)
       allow(runner).to receive(:system).and_return(true)
       allow(runner).to receive(:get_git_sha).and_return("abc123")
-      allow(runner).to receive(:get_rux_version).and_return("rux version 1.0.0")
+      allow(runner).to receive(:get_plur_version).and_return("plur version 1.0.0")
       allow(Dir).to receive(:chdir).and_yield
       allow(Dir).to receive(:glob).and_return(["spec/example_spec.rb"])
       allow(File).to receive(:directory?).and_return(true)
@@ -96,7 +96,7 @@ RSpec.describe Plur::Benchmark do
           expect(args).to include("--warmup", "2")
           expect(args).to include("--runs", "5")
           expect(args).to include("turbo_tests -n #{config.workers}")
-          expect(args).to include("#{Plur.config.local_rux_binary} -n #{config.workers}")
+          expect(args).to include("#{Plur.config.local_plur_binary} -n #{config.workers}")
           true
         end
 
@@ -143,17 +143,17 @@ RSpec.describe Plur::Benchmark do
       end
     end
 
-    describe "#get_rux_version" do
-      it "returns rux version when available" do
+    describe "#get_plur_version" do
+      it "returns plur version when available" do
         runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("#{Plur.config.local_rux_binary} --version 2>/dev/null").and_return("rux version 1.0.0\n")
-        expect(runner.send(:get_rux_version)).to eq("rux version 1.0.0")
+        allow(runner).to receive(:`).with("#{Plur.config.local_plur_binary} --version 2>/dev/null").and_return("plur version 1.0.0\n")
+        expect(runner.send(:get_plur_version)).to eq("plur version 1.0.0")
       end
 
-      it "returns unknown when rux fails" do
+      it "returns unknown when plur fails" do
         runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("#{Plur.config.local_rux_binary} --version 2>/dev/null").and_raise(StandardError)
-        expect(runner.send(:get_rux_version)).to eq("rux version unknown")
+        allow(runner).to receive(:`).with("#{Plur.config.local_plur_binary} --version 2>/dev/null").and_raise(StandardError)
+        expect(runner.send(:get_plur_version)).to eq("plur version unknown")
       end
     end
   end

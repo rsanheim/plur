@@ -1,13 +1,13 @@
 require "spec_helper"
 
-RSpec.describe "rux watch command", :skip_if_ci do
-  include RuxWatchHelper
+RSpec.describe "plur watch command", :skip_if_ci do
+  include PlurWatchHelper
 
   context "basic functionality" do
     it "starts successfully when spec directory exists" do
-      result = run_rux_watch(timeout: 2)
+      result = run_plur_watch(timeout: 2)
 
-      expect(result.err).to include("rux watch starting!")
+      expect(result.err).to include("plur watch starting!")
       expect(result.err).to include("directories=[spec lib]")
       expect(result.err).to include("timeout=2")
       expect(result.out).to include("Timeout reached, exiting!")
@@ -15,17 +15,17 @@ RSpec.describe "rux watch command", :skip_if_ci do
     end
 
     it "shows watcher availability on supported platforms" do
-      result = run_rux_watch
+      result = run_plur_watch
 
       if RUBY_PLATFORM.include?("darwin") && RUBY_PLATFORM.include?("arm64")
-        expect(result.err).to include("rux using e-dant/watcher")
-        expect(result.err).to include("path=#{ENV["HOME"]}/.rux/bin/watcher-aarch64-apple-darwin")
+        expect(result.err).to include("plur using e-dant/watcher")
+        expect(result.err).to include("path=#{ENV["HOME"]}/.plur/bin/watcher-aarch64-apple-darwin")
       end
     end
 
     it "fails gracefully when spec directory doesn't exist" do
       Dir.mktmpdir do |tmpdir|
-        result = run_rux_watch(dir: tmpdir, timeout: 1)
+        result = run_plur_watch(dir: tmpdir, timeout: 1)
 
         expect(result.success?).to be false
         expect(result.err).to match(/no directories to watch found/i)
@@ -36,7 +36,7 @@ RSpec.describe "rux watch command", :skip_if_ci do
 
   context "file change detection" do
     it "detects and runs spec when file is modified" do
-      result = run_rux_watch(timeout: 2) do
+      result = run_plur_watch(timeout: 2) do
         # Write back the same file to trigger a modify event
         spec_file = Pathname.new(default_ruby_dir).join("spec", "calculator_spec.rb")
         spec_file.write(spec_file.read)
@@ -60,12 +60,12 @@ RSpec.describe "rux watch command", :skip_if_ci do
 
   context "debouncing" do
     it "uses default debounce of 100ms when not specified" do
-      result = run_rux_watch(timeout: 1)
+      result = run_plur_watch(timeout: 1)
       expect(result.err).to include("Debounce delay ms=100")
     end
 
     it "respects custom debounce delay" do
-      result = run_rux_watch(timeout: 1, debounce: 250)
+      result = run_plur_watch(timeout: 1, debounce: 250)
       expect(result.err).to include("Debounce delay ms=250")
     end
   end

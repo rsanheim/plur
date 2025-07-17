@@ -171,7 +171,7 @@ Based on parallel_tests analysis and decisions:
    - Added auto-detection based on test/ vs spec/ directories
    - TOML config support via `spec.type = "minitest"`
 
-2. **Create Minitest Module** (`rux/minitest/`) ✅ COMPLETED (2025-06-22)
+2. **Create Minitest Module** (`plur/minitest/`) ✅ COMPLETED (2025-06-22)
    - Created output parser for standard minitest format (not verbose)
    - Parses: `"X tests, Y assertions, Z failures, W errors, Z skips"`
    - Strips ANSI color codes like parallel_tests
