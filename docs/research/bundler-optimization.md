@@ -92,7 +92,7 @@ type BundlerConfig struct {
 ### 3. Command-line Flag
 
 ```bash
- plur --no-bundler  # Skip bundle exec
+plur --no-bundler  # Skip bundle exec
 ```
 
 ### 4. Smart Detection via Dry Run

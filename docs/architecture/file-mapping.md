@@ -76,7 +76,7 @@ func (fm *FileMapper) ShouldWatchFile(filePath string) bool {
 
 ```bash
 # Starts watching files and runs tests automatically
- plur watch
+plur watch
 
 # When you edit lib/user.rb, it automatically runs:
 # plur spec/user_spec.rb
@@ -88,7 +88,7 @@ Plur includes a hidden command for testing file mappings:
 
 ```bash
 # Test what specs would run for given files
- plur file-mapper lib/user.rb app/models/post.rb
+plur file-mapper lib/user.rb app/models/post.rb
 # Output:
 # lib/user.rb -> spec/user_spec.rb
 # app/models/post.rb -> spec/models/post_spec.rb

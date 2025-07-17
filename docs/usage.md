@@ -9,31 +9,31 @@
 plur
 
 # Specify number of workers
- plur -n 4
- plur --workers 8
+plur -n 4
+plur --workers 8
 
 # Dry run - see what would be executed
- plur --dry-run
+plur --dry-run
 
 # Show auto-detected worker count
- plur --auto
+plur --auto
 ```
 
 ### Watch Mode
 
 ```bash
 # Watch for changes and re-run tests
- plur watch
+plur watch
 
 # Watch with specific number of workers
- plur watch -n 4
+plur watch -n 4
 ```
 
 ### Doctor Command
 
 ```bash
 # Run diagnostics and troubleshooting
- plur doctor
+plur doctor
 ```
 
 ## Command Line Options
@@ -64,13 +64,13 @@ Plur automatically detects the optimal number of workers:
 
 ```bash
 # Use all cores
- plur -n $(nproc)
+plur -n $(nproc)
 
 # Conservative - half the cores
- plur -n $(( $(nproc) / 2 ))
+plur -n $(( $(nproc) / 2 ))
 
 # CI environments often benefit from more workers
- plur -n $(( $(nproc) + 2 ))
+plur -n $(( $(nproc) + 2 ))
 ```
 
 ## Output Formats
@@ -107,10 +107,10 @@ Finished in 12.34s (CPU: 45.67s)
 PLUR_DEBUG=1 plur
 
 # Check which files would run
- plur --dry-run | grep "file_spec.rb"
+plur --dry-run | grep "file_spec.rb"
 
 # Run doctor for diagnostics
- plur doctor
+plur doctor
 ```
 
 ### Performance Tuning

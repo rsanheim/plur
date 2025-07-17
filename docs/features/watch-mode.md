@@ -19,20 +19,20 @@ Plur watch mode provides automatic test execution when files change, replacing t
 
 ```bash
 # Start watching for file changes
- plur watch
+plur watch
 ```
 
 ### Command Options
 
 ```bash
 # Dry run to see what would be watched
- plur watch --dry-run
+plur watch --dry-run
 
 # Set custom debounce delay (milliseconds)
- plur watch --debounce 250
+plur watch --debounce 250
 
 # Auto-exit after timeout (useful for CI)
- plur watch --timeout 60
+plur watch --timeout 60
 
 ```
 
@@ -183,16 +183,16 @@ This is a known issue currently. The functionality works correctly despite the o
 
 ```bash
 # Check watcher status and installation
- plur doctor
+plur doctor
 
 # See file system events
- plur --debug watch
+plur --debug watch
 
 # See what files would be watched
- plur watch --dry-run
+plur watch --dry-run
 
 # Verbose output for debugging
- plur watch --verbose
+plur watch --verbose
 ```
 
 ## Technical Decision Log

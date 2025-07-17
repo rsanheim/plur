@@ -23,8 +23,8 @@ Note: Watch mode (`plur watch`) runs tests serially without parallel execution.
 plur
 
 # specify number of workers
- plur -n 8
- plur --workers 8
+plur -n 8
+plur --workers 8
 
 # or via environment variable
 export PARALLEL_TEST_PROCESSORS=8

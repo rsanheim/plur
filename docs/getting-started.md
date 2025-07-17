@@ -26,10 +26,10 @@ plur --version
 plur
 
 # Run with specific number of workers
- plur -n 4
+plur -n 4
 
 # See what would run without executing
- plur --dry-run
+plur --dry-run
 ```
 
 For detailed installation options, see [Installation](installation.md).

@@ -16,10 +16,10 @@
 
 ### CLI Interface
 ```bash
- plur                          # Run with auto-detected workers (cores-2)
- plur --workers 4              # Run with 4 workers
- plur --dry-run               # Show what would run without execution
- plur --auto                  # Auto-detect and show worker count
+plur                          # Run with auto-detected workers (cores-2)
+plur --workers 4              # Run with 4 workers
+plur --dry-run               # Show what would run without execution
+plur --auto                  # Auto-detect and show worker count
 ```
 
 ### Technical Architecture

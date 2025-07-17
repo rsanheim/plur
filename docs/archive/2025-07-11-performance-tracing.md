@@ -9,9 +9,9 @@ Plur includes built-in performance tracing to help analyze execution bottlenecks
 Enable tracing with the `--trace` flag:
 
 ```bash
- plur --trace                  # Run with default workers
- plur --trace -n 4            # Run with 4 workers
- plur --trace spec/unit/*_spec.rb  # Trace specific files
+plur --trace                  # Run with default workers
+plur --trace -n 4            # Run with 4 workers
+plur --trace spec/unit/*_spec.rb  # Trace specific files
 ```
 
 Trace files are written to the repository's tmp directory:

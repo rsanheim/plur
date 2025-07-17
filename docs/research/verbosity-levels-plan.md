@@ -136,21 +136,21 @@ type RuxCLI struct {
 
 ```bash
 # Quiet mode - only errors
- plur -q
+plur -q
 
 # Default - warnings and errors
 plur
 
 # Verbose - see worker assignments and progress
- plur -v
+plur -v
 
 # Debug - see command execution and file operations  
- plur -vv
+plur -vv
 
 # Trace - see parser output and internal details
- plur -vvv
+plur -vvv
 # or
- plur --debug
+plur --debug
 ```
 
 ### 6. Security Considerations

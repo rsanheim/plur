@@ -5,7 +5,7 @@ The `plur doctor` command helps diagnose installation and configuration issues.
 ## Usage
 
 ```bash
- plur doctor
+plur doctor
 ```
 
 ## What It Checks
