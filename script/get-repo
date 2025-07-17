@@ -55,7 +55,7 @@ rm -rf "$TARGET_DIR/.git"
 cat <<EOF
 ✅ Clean repository ready at: $TARGET_DIR
 
-To test with rux (if Ruby project):
+To test with plur (if Ruby project):
   cd $TARGET_DIR
-  rux
+  plur
 EOF

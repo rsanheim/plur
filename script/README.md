@@ -27,14 +27,14 @@ Quickly grab any GitHub repository for clean testing without git history.
 ### Requirements
 
 - SSH access to GitHub configured
-- `rux` binary installed in PATH (for Ruby testing)
+- `plur` binary installed in PATH (for Ruby testing)
 
 ### Quick Testing
 
 ```bash
 ./script/get-repo https://github.com/example-org/example-project
 cd example-project-*/
-rux                    # Run all specs with default workers
+plur                    # Run all specs with default workers
 plur --workers 4        # Run with 4 workers
 PARALLEL_TEST_PROCESSORS=2 plur  # Run with env var override
 ```
@@ -47,7 +47,7 @@ Benchmarks plur against turbo_tests using hyperfine for performance comparison.
 
 ```bash
 # Benchmark any Ruby project
-./script/bench ./rux-ruby
+./script/bench ./plur-ruby
 ./script/bench ./example-project-1234567890
 ./script/bench /path/to/ruby/project
 ```
@@ -58,7 +58,7 @@ Benchmarks plur against turbo_tests using hyperfine for performance comparison.
 2. **Installs turbo_tests** temporarily if not present
 3. **Runs hyperfine benchmarks** comparing:
    - `turbo_tests`
-   - `rux` (default workers)
+   - `plur` (default workers)
    - `plur --workers 4`
    - `plur --workers 8`
 4. **Exports results** to markdown and JSON
@@ -67,7 +67,7 @@ Benchmarks plur against turbo_tests using hyperfine for performance comparison.
 ### Requirements
 
 - `hyperfine` (install with `brew install hyperfine`)
-- `rux` binary in PATH
+- `plur` binary in PATH
 - Ruby project with spec directory
 
 ### Output
