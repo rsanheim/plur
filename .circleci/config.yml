@@ -19,8 +19,8 @@ jobs:
           command: |
             pwd
             ls -la
-            ls -la rux/
-            ls -la rux/lib/rux/ || echo "rux/lib/rux not found"
+            ls -la plur/
+            ls -la plur/lib/plur/ || echo "plur/lib/plur not found"
       - run:
           name: Install Go
           command: |
@@ -32,20 +32,20 @@ jobs:
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - run:
-          name: Build rux
+          name: Build plur
           command: bin/rake build
       - run:
-          name: Verify rux binary
+          name: Verify plur binary
           command: |
-            ./rux/rux --version
-            ./rux/rux --help
+            ./plur/plur --version
+            ./plur/plur --help
       - run:
           name: Run Go tests
           command: bin/rake test:go
       - persist_to_workspace:
           root: .
           paths:
-            - rux/rux
+            - plur/plur
 
   test-ruby-integration:
     docker:
@@ -57,11 +57,11 @@ jobs:
       - attach_workspace:
           at: ~/workspace
       - run:
-          name: Install rux from workspace (global and local)
+          name: Install plur from workspace (global and local)
           command: |
-            sudo cp ~/workspace/rux/rux /usr/local/bin/
-            sudo chmod +x /usr/local/bin/rux
-            cp ~/workspace/rux/rux ./rux
+            sudo cp ~/workspace/plur/plur /usr/local/bin/
+            sudo chmod +x /usr/local/bin/plur
+            cp ~/workspace/plur/plur ./plur
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - run:
@@ -69,7 +69,7 @@ jobs:
           command: |
             bin/rake lint:ruby
       - run:
-          name: Run Ruby tests with rux
+          name: Run Ruby tests with plur
           command: |
             bin/rake test:default_ruby
       - restore_cache:
@@ -85,10 +85,10 @@ jobs:
           paths:
             - fixtures/projects/default-rails/vendor/bundle
       - run:
-          name: Run test_app specs with rux
+          name: Run test_app specs with plur
           working_directory: fixtures/projects/default-rails
           command: |
-            rux -n 2
+            plur -n 2
       - run:
           name: Install turbo_tests
           command: gem install turbo_tests
