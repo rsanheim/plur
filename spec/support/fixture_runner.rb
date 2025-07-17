@@ -53,7 +53,7 @@ module FixtureRunner
     end
   end
 
-  # Helper to run tests and compare with rux output
+  # Helper to run tests and compare with plur output
   def compare_with_native_runner(project_name, framework: :auto)
     run_fixture_tests(project_name, framework: framework)
 

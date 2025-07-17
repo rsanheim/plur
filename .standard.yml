@@ -3,4 +3,4 @@ parallel: true
 ignore:
   - "fixtures/**/*"
   - "references/**/*"
-  - "rux/**/*"
+  - "plur/**/*"

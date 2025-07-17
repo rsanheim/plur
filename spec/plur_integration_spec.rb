@@ -20,7 +20,7 @@ RSpec.describe "Plur integration tests" do
           run_plur("db:create", "-n", "3", printer: :quiet, allow_error: true)
           # TODO - not sure why this fails in this test but passes when run from a terminal
 
-          system("rux", "db", "migrate", "-n", "3", out: File::NULL, err: File::NULL)
+          system("plur", "db", "migrate", "-n", "3", out: File::NULL, err: File::NULL)
 
           # Run tests
           result = run_plur("-n", "3")
@@ -34,8 +34,8 @@ RSpec.describe "Plur integration tests" do
     it "assigns different TEST_ENV_NUMBER to workers", skip: "Database setup needs investigation" do
       chdir(default_rails_dir) do
         # Set up databases
-        system("rux", "db:create", "-n", "2", out: File::NULL, err: File::NULL)
-        system("rux", "db:migrate", "-n", "2", out: File::NULL, err: File::NULL)
+        system("plur", "db:create", "-n", "2", out: File::NULL, err: File::NULL)
+        system("plur", "db:migrate", "-n", "2", out: File::NULL, err: File::NULL)
 
         # Run tests
         result = run_plur("-n", "2")

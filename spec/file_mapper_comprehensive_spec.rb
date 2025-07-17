@@ -3,7 +3,7 @@ require "open3"
 
 RSpec.describe "plur dev:file_mapper comprehensive mappings", skip: "dev:file_mapper command removed" do
   def run_file_mapper(file)
-    stdout, stderr, status = Open3.capture3("rux", "dev:file_mapper", file)
+    stdout, stderr, status = Open3.capture3("plur", "dev:file_mapper", file)
     raise "Command failed: #{stderr}" unless status.success?
     stdout.strip
   end

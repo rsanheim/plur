@@ -3,7 +3,7 @@ require "spec_helper"
 RSpec.describe "plur doctor command" do
   def run_plur_doctor(*args)
     # Use Open3 directly to match Backspin's expected format
-    cmd_array = ["rux", "doctor"]
+    cmd_array = ["plur", "doctor"]
     cmd_array += args if args.any?
 
     Open3.capture3(*cmd_array)
@@ -62,7 +62,7 @@ RSpec.describe "plur doctor command" do
       normalized_recorded == normalized_actual
     }
 
-    Backspin.run!("rux_doctor_golden",
+    Backspin.run!("plur_doctor_golden",
       matcher: {stdout: stdout_matcher}) do
       run_plur_doctor
     end

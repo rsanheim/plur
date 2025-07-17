@@ -41,9 +41,9 @@ RSpec.describe "Plur performance" do
 
       # Use Backspin.capture to record both command executions
       result = Backspin.capture("performance_overhead_test") do
-        # Measure rux time
-        rux_time = Benchmark.realtime do
-          system("rux", "-C", simple_project.to_s, "spec/simple_spec.rb")
+        # Measure plur time
+        plur_time = Benchmark.realtime do
+          system("plur", "-C", simple_project.to_s, "spec/simple_spec.rb")
         end
 
         # Measure direct rspec time
@@ -54,9 +54,9 @@ RSpec.describe "Plur performance" do
         end
 
         # Output timing information for verification
-        puts "Rux time: #{rux_time.round(3)}s"
+        puts "Rux time: #{plur_time.round(3)}s"
         puts "RSpec time: #{rspec_time.round(3)}s"
-        puts "Overhead: #{(rux_time - rspec_time).round(3)}s"
+        puts "Overhead: #{(plur_time - rspec_time).round(3)}s"
       end
 
       # Verify output contains expected timing information

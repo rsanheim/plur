@@ -18,7 +18,7 @@ RSpec.describe "Command-specific configuration" do
 
   context "with command-specific TOML configuration" do
     before do
-      File.write(File.join(test_dir, ".rux.toml"), <<~TOML)
+      File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
         # Global settings
         workers = 2
         
@@ -33,7 +33,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "uses spec-specific command for spec runs" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("rux", "spec", "--dry-run")
+        Open3.capture3("plur", "spec", "--dry-run")
       end
 
       expect(status).to be_success
@@ -44,7 +44,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "uses watch-specific command for watch runs" do
       output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3("rux", "watch", "run", "--timeout=5", stdin_data: "\n")
+        Open3.capture3("plur", "watch", "run", "--timeout=5", stdin_data: "\n")
       end
 
       expect(status).to be_success
@@ -54,7 +54,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "respects watch-specific debounce setting" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("rux", "watch", "run", "--timeout=1", "--debug", stdin_data: "")
+        Open3.capture3("plur", "watch", "run", "--timeout=1", "--debug", stdin_data: "")
       end
 
       expect(status).to be_success
@@ -64,7 +64,7 @@ RSpec.describe "Command-specific configuration" do
 
   context "with CLI flag override" do
     before do
-      File.write(File.join(test_dir, ".rux.toml"), <<~TOML)
+      File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
         [spec]
         command = "echo 'FROM CONFIG:'"
       TOML
@@ -72,7 +72,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "CLI flag takes precedence over config file" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("rux", "spec", "--command=echo 'FROM CLI:'", "--dry-run")
+        Open3.capture3("plur", "spec", "--command=echo 'FROM CLI:'", "--dry-run")
       end
 
       expect(status).to be_success
@@ -84,7 +84,7 @@ RSpec.describe "Command-specific configuration" do
 
   context "with global command setting" do
     before do
-      File.write(File.join(test_dir, ".rux.toml"), <<~TOML)
+      File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
         # Global command applies to all commands
         command = "echo 'GLOBAL:'"
         
@@ -95,7 +95,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "uses global command setting when no command-specific setting exists" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("rux", "spec", "--dry-run")
+        Open3.capture3("plur", "spec", "--dry-run")
       end
 
       expect(status).to be_success

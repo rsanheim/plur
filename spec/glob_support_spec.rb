@@ -38,7 +38,7 @@ RSpec.describe "plur glob pattern support" do
 
     it "handles quoted recursive glob patterns with ** (preventing shell expansion)" do
       chdir(default_ruby_dir) do
-        # Using single quotes prevents shell expansion, so rux handles the glob
+        # Using single quotes prevents shell expansion, so plur handles the glob
         result = run_plur("--dry-run", "spec/**/*_spec.rb")
 
         expect(result.err).to include("[dry-run] Found 12 spec files")

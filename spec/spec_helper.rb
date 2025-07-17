@@ -13,8 +13,8 @@ require "backspin"
 
 ROOT_PATH = Pathname.new(__dir__).parent
 DEFAULT_RUBY_DIR = ROOT_PATH.join("fixtures", "projects", "default-ruby")
-# The default 'run time' for rux watch for integration tests
-# After this time rux watch will automatically exit
+# The default 'run time' for plur watch for integration tests
+# After this time plur watch will automatically exit
 DEFAULT_RUX_WATCH_TIMEOUT = 2
 
 # Load all support files
