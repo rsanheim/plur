@@ -1,16 +1,16 @@
 ---
-first_recorded_at: '2025-06-06T04:36:40-05:00'
+first_recorded_at: '2025-07-17T02:13:59-05:00'
 format_version: '2.0'
 commands:
 - command_type: Open3::Capture3
   args:
-  - "/Users/rsanheim/src/oss/plur-meta/spec/../plur/plur"
+  - plur
   - doctor
   stdout: |
     Plur Doctor
     ==========
 
-    Plur Version:     v0.6.11-0.20250616145353-46834ba1bc4e+dirty
+    Plur Version:     v0.8.3-0.20250717070130-ff31b37e0f20+dirty
     Build Date:      unknown
     Git Commit:      unknown
     Built By:        unknown
@@ -19,10 +19,10 @@ commands:
     Operating System: darwin
     Architecture:     arm64
     CPU Count:        20
-    Go Version:       go1.24.4
+    Go Version:       go1.24.5
 
     Working Dir:      /Users/rsanheim/src/oss/rux-meta
-    Rux Binary:       /Users/rsanheim/go/bin/rux
+    Plur Binary:       /Users/rsanheim/go/bin/plur
 
     Ruby Environment:
       Ruby Version:   ruby 3.4.4 (2025-05-14 revision a38531fd3f) +PRISM [arm64-darwin24]
@@ -35,12 +35,12 @@ commands:
 
     File Watcher:
       Status:         Available
-      Binary Path:    /Users/rsanheim/.rux/bin/watcher-aarch64-apple-darwin
+      Binary Path:    /Users/rsanheim/.plur/bin/watcher-aarch64-apple-darwin
       Version:        Binary exists (no version info available)
       Platform:       darwin/arm64
 
-    Cache Directory:  /Users/rsanheim/.rux/cache
-    Runtime Data:     /Users/rsanheim/.rux/runtime/f8fee6d7.json
+    Cache Directory:  /Users/rsanheim/.plur/cache
+    Runtime Data:     /Users/rsanheim/.plur/runtime/f8fee6d7.json
                       (file exists)
 
     Environment Variables:
@@ -51,4 +51,4 @@ commands:
       GOPATH:                   (not set)
   stderr: ''
   status: 0
-  recorded_at: '2025-06-06T04:36:40-05:00'
+  recorded_at: '2025-07-17T02:13:59-05:00'

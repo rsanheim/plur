@@ -13,7 +13,7 @@ RSpec.describe "plur doctor command" do
   # Very general normalization - we only care about structure, not values
   def normalize_doctor_output(str)
     str
-      .gsub(/Rux Version:\s+.+/, "Rux Version:     [VERSION]")
+      .gsub(/Plur Version:\s+.+/, "Plur Version:     [VERSION]")
       .gsub(/Build Date:\s+.+/, "Build Date:      [BUILD_DATE]")
       .gsub(/Git Commit:\s+.+/, "Git Commit:      [COMMIT]")
       .gsub(/Built By:\s+.+/, "Built By:        [BUILT_BY]")
@@ -21,7 +21,7 @@ RSpec.describe "plur doctor command" do
       .gsub(/CPU Count:\s+\d+/, "CPU Count:        [CPU_COUNT]")
       .gsub(/Go Version:\s+.+/, "Go Version:       [GO_VERSION]")
       .gsub(/Working Dir:\s+.+/, "Working Dir:      [WORKING_DIR]")
-      .gsub(/Rux Binary:\s+.+/, "Rux Binary:       [RUX_BINARY]")
+      .gsub(/Plur Binary:\s+.+/, "Plur Binary:       [PLUR_BINARY]")
       .gsub(/Binary Path:\s+.+/, "Binary Path:    [WATCHER_PATH]")
       .gsub(/Cache Directory:\s+.+/, "Cache Directory:  [CACHE_DIR]")
       .gsub(/Runtime Data:\s+.+/, "Runtime Data:     [RUNTIME_PATH]")
@@ -39,8 +39,8 @@ RSpec.describe "plur doctor command" do
     expect(stderr).to be_empty
 
     # Basic structure checks
-    expect(stdout).to include("Rux Doctor")
-    expect(stdout).to include("Rux Version:")
+    expect(stdout).to include("Plur Doctor")
+    expect(stdout).to include("Plur Version:")
     expect(stdout).to include("Operating System:")
     expect(stdout).to include("Ruby Environment:")
     expect(stdout).to include("File Watcher:")
@@ -72,8 +72,8 @@ RSpec.describe "plur doctor command" do
     stdout, _stderr, _status = run_plur_doctor
 
     expected_sections = [
-      "Rux Doctor",
-      "Rux Version:",
+      "Plur Doctor",
+      "Plur Version:",
       "Build Date:",
       "Git Commit:",
       "Built By:",
@@ -82,7 +82,7 @@ RSpec.describe "plur doctor command" do
       "CPU Count:",
       "Go Version:",
       "Working Dir:",
-      "Rux Binary:",
+      "Plur Binary:",
       "Ruby Environment:",
       "Ruby Version:",
       "Bundler:",
