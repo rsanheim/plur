@@ -22,7 +22,7 @@ class Plur::Release
     ensure_plur_builds!
 
     # Update changelog
-    changelog = Changelog.new(@new_version, @prs_in_release)
+    changelog = Plur::Changelog.new(@new_version, @prs_in_release)
     updated_content = changelog.generate_updated_content
     File.write("CHANGELOG.md", updated_content)
 
