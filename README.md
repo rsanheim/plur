@@ -149,7 +149,7 @@ script/serve-docs
 
 ### Project Structure
 ```
-rux-meta/
+plur/
 ├── plur/                    # Main Go implementation
 ├── fixtures/
 │   └── projects/

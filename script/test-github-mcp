@@ -13,14 +13,14 @@ command -v docker >/dev/null 2>&1 || { echo "Error: 'docker' not found. Please i
 
 # Test 1Password token access
 echo -n "Testing 1Password token access... "
-if GITHUB_PERSONAL_ACCESS_TOKEN=$(op read "op://Private/github-mcp-rux-meta/credential" 2>/dev/null); then
+if GITHUB_PERSONAL_ACCESS_TOKEN=$(op read "op://Private/github-mcp-plur/credential" 2>/dev/null); then
     echo "✓ Success"
     echo "Token starts with: ${GITHUB_PERSONAL_ACCESS_TOKEN:0:7}..."
 else
     echo "✗ Failed"
     echo "Could not read token from 1Password. Check:"
     echo "  - You're signed into 1Password CLI (run: op signin)"
-    echo "  - The path 'op://Private/github-mcp-rux-meta/credential' is correct"
+    echo "  - The path 'op://Private/github-mcp-plur/credential' is correct"
     echo "  - Try: op item list --vault Private | grep github"
     exit 1
 fi
@@ -41,7 +41,7 @@ echo "This replicates the exact command from .mcp.json"
 echo "============================================"
 
 # Set the token in env for op run
-export GITHUB_PERSONAL_ACCESS_TOKEN="op://Private/github-mcp-rux-meta/credential"
+export GITHUB_PERSONAL_ACCESS_TOKEN="op://Private/github-mcp-plur/credential"
 
 # Run exactly as configured in .mcp.json
 op run -- docker run -i --rm \

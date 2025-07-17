@@ -233,7 +233,7 @@ module Plur
           f.puts "# Benchmark Summary"
           f.puts ""
           f.puts "- **Date**: #{config.timestamp} UTC"
-          f.puts "- **Commit**: [#{git_sha}](https://github.com/rsanheim/rux-meta/commit/#{begin
+          f.puts "- **Commit**: [#{git_sha}](https://github.com/rsanheim/plur/commit/#{begin
             `git rev-parse HEAD`.strip
           rescue
             git_sha

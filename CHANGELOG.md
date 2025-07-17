@@ -2,12 +2,12 @@
 
 ## v0.9.0 - 2025-07-17
 
-* PLUR - the big rename [#51](https://github.com/rsanheim/rux-meta/pull/51)
+* PLUR - the big rename [#51](https://github.com/rsanheim/plur/pull/51)
   - Updated all references in code, documentation, and scripts
   - Binary is now `plur` instead of `rux`
   - Configuration files are now `.plur.toml` instead of `.rux.toml`
   - Home directory is now `~/.plur/` instead of `~/.rux/`
-* Update backspin v060 [#68](https://github.com/rsanheim/rux-meta/pull/68)
+* Update backspin v060 [#68](https://github.com/rsanheim/plur/pull/68)
 
 ## v0.8.2 - 2025-07-11
 
