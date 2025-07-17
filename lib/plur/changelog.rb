@@ -1,6 +1,8 @@
 require "time"
 
-class Changelog
+require_relative "../plur"
+
+class Plur::Changelog
   def initialize(new_version, prs_in_release = [])
     @new_version = new_version
     @prs_in_release = prs_in_release

@@ -1,6 +1,6 @@
 require "bundler/setup"
 require "fileutils"
-require_relative "plur"
+require_relative "lib/plur"
 
 begin
   require "standard/rake" if Gem::Specification.find_all_by_name("standard").any?
@@ -10,7 +10,8 @@ rescue LoadError
 end
 
 # Load all tasks from lib/tasks
-Dir.glob(Plur.config.root_dir.join("lib", "tasks", "*.rake")).each { |file| load file }
+pp Plur.config.root_dir
+Dir.glob(Plur.config.root_dir.join("lib", "tasks", "*.rake")).each { |file| pp file; load file }
 
 # Using 3 cores for medium/large resource class on CircleCI
 PLUR_CORES = Plur.config.plur_cores

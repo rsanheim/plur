@@ -3,7 +3,7 @@ require "fileutils"
 require "time"
 require "open3"
 require "pathname"
-require_relative "../../plur"
+require_relative "../plur"
 
 module Plur
   module Benchmark

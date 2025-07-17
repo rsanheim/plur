@@ -2,7 +2,7 @@ require "json"
 require "open3"
 require_relative "changelog"
 
-class Release
+class Plur::Release
   def initialize(new_version, prs_in_release = nil)
     @new_version = new_version
     @prs_in_release = prs_in_release || find_last_pr_merged_to_main

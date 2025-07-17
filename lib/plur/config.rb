@@ -1,11 +1,3 @@
-# frozen_string_literal: true
-
-# Plur - Project-Level Unified Resources
-# Shared constants and configuration for the Plur build system
-
-require "pathname"
-require "singleton"
-
 module Plur
   class Config
     include Singleton
@@ -18,7 +10,7 @@ module Plur
       @edant_watcher_version = "0.13.6"
 
       # Directory paths
-      @root_dir = Pathname.new(__dir__).expand_path
+      @root_dir = Pathname.new(__dir__).join("../..").expand_path
       @plur_dir = @root_dir.join("plur")
       @watcher_dir = @plur_dir.join("embedded", "watcher")
 
@@ -35,9 +27,5 @@ module Plur
     def plur_cores
       ENV["CI"] ? 4 : 8
     end
-  end
-
-  def self.config
-    Config.instance
   end
 end

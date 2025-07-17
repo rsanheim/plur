@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../../plur"
+require_relative "../plur"
 
 # Helper module for Docker operations using Plur configuration
-module DockerHelper
+module Plur::DockerHelper
   extend self
 
   def docker_run(command, platform: nil, interactive: false, volumes: [], env: {})

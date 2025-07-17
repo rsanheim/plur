@@ -32,4 +32,4 @@ unless version.match?(/^v\d+\.\d+\.\d+$/)
   exit 1
 end
 
-Release.new(version).call
+Plur::Release.new(version).call
