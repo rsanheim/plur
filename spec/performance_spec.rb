@@ -39,38 +39,27 @@ RSpec.describe "Plur performance" do
     it "has minimal overhead for small test suites" do
       simple_project = project_fixture("rspec-success-simple")
 
-      # Use Backspin.capture to record both command executions
-      result = Backspin.capture("performance_overhead_test") do
-        # Measure plur time
-        plur_time = Benchmark.realtime do
-          system("plur", "-C", simple_project.to_s, "spec/simple_spec.rb")
-        end
+      # Measure plur time
+      plur_time = Benchmark.realtime do
+        system("plur", "-C", simple_project.to_s, "spec/simple_spec.rb")
+      end
 
-        # Measure direct rspec time
-        rspec_time = Benchmark.realtime do
-          Dir.chdir(simple_project) do
-            system("bundle exec rspec spec/simple_spec.rb")
-          end
+      # Measure direct rspec time
+      rspec_time = Benchmark.realtime do
+        Dir.chdir(simple_project) do
+          system("bundle exec rspec spec/simple_spec.rb")
         end
+      end
 
+      if ENV["VERBOSE"]
         # Output timing information for verification
-        puts "Rux time: #{plur_time.round(3)}s"
+        puts "plur time: #{plur_time.round(3)}s"
         puts "RSpec time: #{rspec_time.round(3)}s"
         puts "Overhead: #{(plur_time - rspec_time).round(3)}s"
       end
 
-      # Verify output contains expected timing information
-      expect(result.stdout).to match(/Rux time: \d+\.\d+s/)
-      expect(result.stdout).to match(/RSpec time: \d+\.\d+s/)
-      expect(result.stdout).to match(/Overhead: -?\d+\.\d+s/)
-
-      # Extract and verify overhead
-      overhead_match = result.stdout.match(/Overhead: (-?\d+\.\d+)s/)
-      expect(overhead_match).not_to be_nil
-      overhead = overhead_match[1].to_f
-
       # Overhead should be minimal (less than 1 second)
-      expect(overhead).to be < 1.0
+      expect(plur_time - rspec_time).to be < 1.0
     end
   end
 

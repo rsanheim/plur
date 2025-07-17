@@ -8,7 +8,7 @@ RSpec.describe "Plur runtime tracking" do
       temp_runtime_dir = File.join(tmp_plur_home, "runtime")
 
       Dir.chdir(default_ruby_dir) do
-        run_plur("-n", "2", env: {"RUX_HOME" => tmp_plur_home})
+        run_plur("-n", "2")
 
         expect(File.exist?(temp_runtime_dir)).to be true
         matches = Dir.glob(File.join(temp_runtime_dir, "*.json"))

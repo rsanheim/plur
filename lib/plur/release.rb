@@ -82,9 +82,9 @@ class Release
   def ensure_plur_builds!
     puts "Building plur to ensure it compiles..."
     Dir.chdir("plur") do
-      system("go build -mod=mod -o rux .", exception: true)
+      system("go build -mod=mod -o plur .", exception: true)
     end
-    puts "✓ Rux builds successfully"
+    puts "✓ plur builds successfully"
   end
 
   def show_release_summary(current_version, new_version, prs)
@@ -133,8 +133,8 @@ class Release
     system("git tag -a #{@new_version} -m 'Release #{@new_version}'", exception: true)
 
     # Rebuild with the new tag
-    puts "  → Rebuilding rux with new version..."
-    Dir.chdir("rux") do
+    puts "  → Rebuilding plur with new version..."
+    Dir.chdir("plur") do
       system("go install -mod=mod .", exception: true)
     end
 
