@@ -1,4 +1,4 @@
-## Rux and Docker
+## Plur and Docker
 
 I'd like to add the ability to test and exercise Rux inside a Docker container for testing 
 on linux architecture, as well as to test file system events on mounted volumes.

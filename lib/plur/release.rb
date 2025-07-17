@@ -18,8 +18,8 @@ class Release
     current_version = get_current_version
     ensure_version_is_newer!(current_version, @new_version)
 
-    # Build rux to ensure it compiles cleanly
-    ensure_rux_builds!
+    # Build plur to ensure it compiles cleanly
+    ensure_plur_builds!
 
     # Update changelog
     changelog = Changelog.new(@new_version, @prs_in_release)
@@ -79,9 +79,9 @@ class Release
     abort "Error: New version #{new} must be greater than current version #{current}" unless new_v > current_v
   end
 
-  def ensure_rux_builds!
-    puts "Building rux to ensure it compiles..."
-    Dir.chdir("rux") do
+  def ensure_plur_builds!
+    puts "Building plur to ensure it compiles..."
+    Dir.chdir("plur") do
       system("go build -mod=mod -o rux .", exception: true)
     end
     puts "✓ Rux builds successfully"

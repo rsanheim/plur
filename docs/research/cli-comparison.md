@@ -4,7 +4,7 @@
 
 This document analyzes the usage of `*cli.Context` in the plur codebase and compares urfave/cli's Context approach with Kong's struct-based approach.
 
-## urfave/cli Context Usage in Rux
+## urfave/cli Context Usage in Plur
 
 ### 1. Flag Access Methods
 
@@ -235,7 +235,7 @@ func (w *WatchCmd) Run() error {
 
 ### Limited Context Usage Makes Migration Easier
 
-The good news is that rux uses Context in a very limited way:
+The good news is that plur uses Context in a very limited way:
 - Only for flag/argument retrieval
 - No complex Context manipulation
 - No use of advanced Context features

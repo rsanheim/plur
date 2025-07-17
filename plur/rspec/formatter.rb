@@ -6,8 +6,8 @@ require "rspec/core/formatters"
 require "rspec/core/notifications"
 
 module Plur
-  # A streaming JSON formatter for rux that outputs one JSON object per line
-  # Based on TurboTests::JsonRowsFormatter but simplified for rux usage
+  # A streaming JSON formatter for plur that outputs one JSON object per line
+  # Based on TurboTests::JsonRowsFormatter but simplified for plur usage
   class JsonRowsFormatter
     RSpec::Core::Formatters.register(
       self,
@@ -161,7 +161,7 @@ module Plur
     end
 
     def output_row(obj)
-      # Use environment variable for separator, default to "RUX_JSON:"
+      # Use environment variable for separator, default to "plur_JSON:"
       separator = ENV["PLUR_FORMATTER_SEPARATOR"] || "PLUR_JSON:"
       output.puts separator + obj.to_json
       output.flush

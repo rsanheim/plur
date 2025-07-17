@@ -44,7 +44,7 @@ module Plur
       def initialize(config)
         @config = config
         @original_dir = Dir.pwd
-        check_local_rux_binary!
+        check_local_plur_binary!
         @git_sha = get_git_sha
         @plur_version = get_plur_version
       end
@@ -165,7 +165,7 @@ module Plur
         "plur version unknown"
       end
 
-      def check_local_rux_binary!
+      def check_local_plur_binary!
         unless File.exist?(Plur.config.local_plur_binary)
           puts <<~ERROR
             Error: Local plur binary not found at #{Plur.config.local_plur_binary}
