@@ -2,20 +2,20 @@
 
 ## Overview
 
-This document analyzes the feasibility and trade-offs of moving the Go code from the `rux/` subdirectory to the repository root, effectively converting this from a "meta" repository to a standard Go repository.
+This document analyzes the feasibility and trade-offs of moving the Go code from the `plur/` subdirectory to the repository root, effectively converting this from a "meta" repository to a standard Go repository.
 
 ## Current Structure
 
 The repository is currently organized as a polyglot project:
 
 ```
-rux-meta/
+plur-meta/
 ├── bin/              # Ruby binstubs
 ├── lib/              # Ruby rake tasks
 ├── spec/             # Ruby integration tests  
 ├── fixtures/         # Test fixtures
 ├── docs/             # Documentation
-├── rux/              # Go source code (self-contained)
+├── plur/              # Go source code (self-contained)
 │   ├── go.mod
 │   ├── main.go
 │   ├── logger/
@@ -39,7 +39,7 @@ rux-meta/
 - No clear convention for organizing polyglot projects
 
 ### 3. Build System Dependencies
-- All rake tasks hardcode `rux/` paths
+- All rake tasks hardcode `plur/` paths
 - `plur.rb` configuration assumes nested structure
 - Integration tests depend on specific binary locations
 
@@ -63,7 +63,7 @@ rux-meta/
 ## Packaging Implications
 
 ### Current Structure Benefits
-- Can package `rux/` directory as standalone Go module
+- Can package `plur/` directory as standalone Go module
 - Clear boundary between implementation (Go) and testing framework (Ruby)
 - Easy to vendor or distribute just the Go code
 
@@ -77,13 +77,13 @@ rux-meta/
 
 **Keep the current structure**. The existing layout provides good separation of concerns:
 
-1. **Go code is self-contained**: The `rux/` directory is a complete Go module
+1. **Go code is self-contained**: The `plur/` directory is a complete Go module
 2. **Ruby provides testing infrastructure**: Integration tests and tooling live outside
 3. **Clean boundaries**: Easy to understand what's implementation vs tooling
 4. **Distribution-friendly**: Can package just the Go code when needed
 
 If we rename to "plur", the repository could be:
-- `plur` - Just the Go code (move `rux/` contents here)
+- `plur` - Just the Go code (move `plur/` contents here)
 - `plur-meta` - Keep this repo for integration testing and tooling
 
 This would give us the best of both worlds: a clean Go repository and a separate testing/tooling repository.

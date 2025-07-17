@@ -11,7 +11,7 @@ When multiple file changes occur in quick succession:
 2. The debouncer uses `time.AfterFunc` which spawns a new goroutine for each batch
 3. Multiple test runs can execute concurrently
 4. Output from different test runs gets interleaved
-5. Multiple "rux> " prompts appear as each test run completes
+5. Multiple "plur> " prompts appear as each test run completes
 
 ### Example Timeline
 ```
@@ -19,8 +19,8 @@ Time 0ms:    spec/foo_spec.rb changes → Timer starts
 Time 100ms:  Timer fires → Goroutine 1 starts running foo_spec.rb
 Time 200ms:  spec/bar_spec.rb changes (while foo is still running)
 Time 300ms:  Timer fires → Goroutine 2 starts running bar_spec.rb
-Time 350ms:  Goroutine 1 completes → prints "rux> "
-Time 400ms:  Goroutine 2 completes → prints "rux> "
+Time 350ms:  Goroutine 1 completes → prints "plur> "
+Time 400ms:  Goroutine 2 completes → prints "plur> "
 ```
 
 ## Root Cause
@@ -58,6 +58,6 @@ The prompt is reprinted after each test run with a small delay (50ms) to allow o
 For now, we're accepting this behavior as "good enough" for the watch mode MVP. The functionality works correctly even if the output is sometimes confusing. This can be revisited when watch mode stability is proven and user feedback indicates this is a priority issue.
 
 ## Related Files
-- `/rux/watch.go` - Main watch mode implementation
-- `/rux/watch/debouncer.go` - Debouncer that allows concurrent execution
+- `/plur/watch.go` - Main watch mode implementation
+- `/plur/watch/debouncer.go` - Debouncer that allows concurrent execution
 - Lines 201-204 in watch.go - Prompt reprint logic

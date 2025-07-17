@@ -35,13 +35,13 @@ Quickly grab any GitHub repository for clean testing without git history.
 ./script/get-repo https://github.com/example-org/example-project
 cd example-project-*/
 rux                    # Run all specs with default workers
-rux --workers 4        # Run with 4 workers
-PARALLEL_TEST_PROCESSORS=2 rux  # Run with env var override
+plur --workers 4        # Run with 4 workers
+PARALLEL_TEST_PROCESSORS=2 plur  # Run with env var override
 ```
 
 ## bench
 
-Benchmarks rux against turbo_tests using hyperfine for performance comparison.
+Benchmarks plur against turbo_tests using hyperfine for performance comparison.
 
 ### Usage
 
@@ -59,8 +59,8 @@ Benchmarks rux against turbo_tests using hyperfine for performance comparison.
 3. **Runs hyperfine benchmarks** comparing:
    - `turbo_tests`
    - `rux` (default workers)
-   - `rux --workers 4`
-   - `rux --workers 8`
+   - `plur --workers 4`
+   - `plur --workers 8`
 4. **Exports results** to markdown and JSON
 5. **Cleans up** temporary changes
 

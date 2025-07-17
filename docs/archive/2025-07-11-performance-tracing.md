@@ -1,22 +1,22 @@
-# Performance Tracing in Rux
+# Performance Tracing in Plur
 
 ## Overview
 
-Rux includes built-in performance tracing to help analyze execution bottlenecks and understand where time is spent during test runs.
+Plur includes built-in performance tracing to help analyze execution bottlenecks and understand where time is spent during test runs.
 
 ## Usage
 
 Enable tracing with the `--trace` flag:
 
 ```bash
-rux --trace                  # Run with default workers
-rux --trace -n 4            # Run with 4 workers
-rux --trace spec/unit/*_spec.rb  # Trace specific files
+ plur --trace                  # Run with default workers
+ plur --trace -n 4            # Run with 4 workers
+ plur --trace spec/unit/*_spec.rb  # Trace specific files
 ```
 
 Trace files are written to the repository's tmp directory:
 ```
-Tracing enabled, writing to: /path/to/rux-meta/tmp/rux-traces/rux-trace-20250528-044523.json
+Tracing enabled, writing to: /path/to/plur-meta/tmp/plur-traces/plur-trace-20250528-044523.json
 ```
 
 ## Analyzing Traces
@@ -25,10 +25,10 @@ Use the included analyzer script:
 
 ```bash
 # Analyze the most recent trace
-ruby rux/analyze_trace.rb
+ruby plur/analyze_trace.rb
 
 # Analyze a specific trace with verbose output
-ruby rux/analyze_trace.rb -v /tmp/rux-traces/rux-trace-20250528-044523.json
+ruby plur/analyze_trace.rb -v /tmp/plur-traces/plur-trace-20250528-044523.json
 ```
 
 ## Trace Events
@@ -72,9 +72,9 @@ Based on tracing analysis:
 
 1. **Ruby startup dominates**: The ~190ms Ruby startup time is the primary bottleneck for small test suites.
 
-2. **Formatter registration is minimal**: The rux formatter is registered once per process at ~6ms, which is negligible compared to Ruby startup.
+2. **Formatter registration is minimal**: The plur formatter is registered once per process at ~6ms, which is negligible compared to Ruby startup.
 
-3. **Rux overhead scales well**: As test suites grow larger, rux's coordination overhead becomes a smaller percentage of total time.
+3. **Plur overhead scales well**: As test suites grow larger, plur's coordination overhead becomes a smaller percentage of total time.
 
 4. **Process spawn is efficient**: Creating new processes takes only ~1ms on modern systems.
 
@@ -96,7 +96,7 @@ Timing Analysis:
 Total execution time:        3270.36 ms
 Parallel execution time:     3257.56 ms
 Longest spec file:           3246.44 ms
-Rux overhead:                  11.12 ms (0.3%)
+Plur overhead:                  11.12 ms (0.3%)
 ```
 
 ## Comparison with turbo_tests

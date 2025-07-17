@@ -1,4 +1,4 @@
-# Rux
+# Plur
 
 A simple Go CLI application built with [Bubbletea](https://github.com/charmbracelet/bubbletea).
 
@@ -6,13 +6,13 @@ A simple Go CLI application built with [Bubbletea](https://github.com/charmbrace
 
 ```bash
 go mod tidy
-go build -o rux
+go build -o plur
 ```
 
 ## Usage
 
 ```bash
-./rux
+./plur
 ```
 
 Use arrow keys or `j`/`k` to navigate, space to select/deselect options, and `q` to quit.

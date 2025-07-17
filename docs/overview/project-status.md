@@ -1,8 +1,8 @@
-# Rux Project Status
+# Plur Project Status
 
 ## Overview
 
-`rux` is a Go-based CLI test runner for Ruby/RSpec projects that provides parallel test execution with clean interleaved output. It's designed as a fast alternative to turbo_tests and parallel_tests.
+`plur` is a Go-based CLI test runner for Ruby/RSpec projects that provides parallel test execution with clean interleaved output. It's designed as a fast alternative to turbo_tests and parallel_tests.
 
 ## Current Implementation
 
@@ -16,10 +16,10 @@
 
 ### CLI Interface
 ```bash
-rux                          # Run with auto-detected workers (cores-2)
-rux --workers 4              # Run with 4 workers
-rux --dry-run               # Show what would run without execution
-rux --auto                  # Auto-detect and show worker count
+ plur                          # Run with auto-detected workers (cores-2)
+ plur --workers 4              # Run with 4 workers
+ plur --dry-run               # Show what would run without execution
+ plur --auto                  # Auto-detect and show worker count
 ```
 
 ### Technical Architecture
@@ -34,26 +34,26 @@ rux --auto                  # Auto-detect and show worker count
 ### Benchmark: example-project (24 spec files)
 | Command | Time | Relative Performance |
 |---------|------|---------------------|
-| `rux --workers 4` | **9.04s** | Fastest (baseline) |
-| `rux` (default) | 10.15s | +12% slower |
+| `plur --workers 4` | **9.04s** | Fastest (baseline) |
+| `plur` (default) | 10.15s | +12% slower |
 | `bundle exec turbo_tests` | 10.18s | +13% slower |
 
-**Key finding**: `rux --workers 4` is **13% faster** than turbo_tests
+**Key finding**: `plur --workers 4` is **13% faster** than turbo_tests
 
 ## Project Structure
 
 ```
-/Users/rsanheim/src/oss/rux-meta/
-├── rux/                    # Main Go implementation
-│   ├── main.go            # Core rux CLI and parallel execution
+/Users/rsanheim/src/oss/plur-meta/
+├── plur/                    # Main Go implementation
+│   ├── main.go            # Core plur CLI and parallel execution
 │   ├── go.mod/go.sum      # Go dependencies
-│   └── rux                # Compiled binary
+│   └── plur                # Compiled binary
 ├── script/                # Utility scripts
 │   ├── bench              # Performance benchmarking vs turbo_tests
 │   └── get-repo           # Repository cloning for testing
 ├── docs/                  # Documentation
 │   └── project-status.md  # This file
-├── rux-ruby/              # Test Ruby project (9 spec files)
+├── plur-ruby/              # Test Ruby project (9 spec files)
 ├── example-project-*/         # External test project (24 spec files)
 ├── references/
 │   ├── parallel_tests/    # Reference implementation (Ruby)
@@ -63,7 +63,7 @@ rux --auto                  # Auto-detect and show worker count
 ## Testing Infrastructure
 
 ### Test Projects
-- **rux-ruby/**: Custom test project with 9 spec files across nested directories
+- **plur-ruby/**: Custom test project with 9 spec files across nested directories
 - **example-project-*/**: Real-world project with 24 spec files for benchmarking
 
 ### Scripts
@@ -108,7 +108,7 @@ func getWorkerCount(cliWorkers int) int {
 
 ## Current Status: Production Ready
 
-The rux implementation is feature-complete and performing well:
+The plur implementation is feature-complete and performing well:
 
 1. **Functionality**: All core features implemented and tested
 2. **Performance**: 13% faster than turbo_tests on real projects
@@ -128,12 +128,12 @@ The rux implementation is feature-complete and performing well:
 
 - **Test filtering**: Support for RSpec's `--tag` and file filtering
 - **JSON reporting**: Enhanced structured output for CI integration
-- **Configuration files**: Support for `.rux.yml` configuration
+- **Configuration files**: Support for `.plur.yml` configuration
 - **Failure isolation**: Re-run only failed tests
 - **Watch mode improvements**: Better output management, queue-based execution
 
 ## Dependencies
 
-- **Go 1.21+** for building rux
+- **Go 1.21+** for building plur
 - **hyperfine** for benchmarking (`brew install hyperfine`)
 - **Ruby/RSpec** projects for testing

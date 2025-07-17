@@ -1,6 +1,6 @@
 # Minitest Implementation Guide
 
-This guide documents the practical implementation details, challenges, and solutions for adding Minitest support to Rux.
+This guide documents the practical implementation details, challenges, and solutions for adding Minitest support to Plur.
 
 ## Minitest Execution Model
 
@@ -167,7 +167,7 @@ require 'test_helper'
 require 'minitest/autorun'
 ```
 
-Rux doesn't modify these requirements - test files must handle their own setup.
+Plur doesn't modify these requirements - test files must handle their own setup.
 
 ### Current Limitations
 

@@ -1,16 +1,16 @@
 # Doctor Command
 
-The `rux doctor` command helps diagnose installation and configuration issues.
+The `plur doctor` command helps diagnose installation and configuration issues.
 
 ## Usage
 
 ```bash
-rux doctor
+ plur doctor
 ```
 
 ## What It Checks
 
-1. **Rux Installation**
+1. **Plur Installation**
    - Binary location and permissions
    - Version information
    - Build metadata
@@ -34,7 +34,7 @@ rux doctor
 
 For verbose diagnostics:
 ```bash
-RUX_DEBUG=1 rux doctor
+PLUR_DEBUG=1 plur doctor
 ```
 
 ## Integration with CI
@@ -42,6 +42,6 @@ RUX_DEBUG=1 rux doctor
 Use doctor in CI to validate environment:
 ```yaml
 # GitHub Actions
-- name: Validate Rux setup
-  run: rux doctor
+- name: Validate Plur setup
+  run: plur doctor
 ```

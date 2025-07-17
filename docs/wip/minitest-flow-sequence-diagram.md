@@ -1,6 +1,6 @@
 # Minitest Flow Sequence Diagram
 
-This document provides a comprehensive view of how Rux processes Minitest test output, from the runner through all components including the parser, collector, and output aggregator.
+This document provides a comprehensive view of how Plur processes Minitest test output, from the runner through all components including the parser, collector, and output aggregator.
 
 **Updated**: Reflects current architecture with WorkerResult, ProgressEvent, unified test representation, and framework-aware formatting.
 

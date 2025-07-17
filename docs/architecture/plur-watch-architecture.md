@@ -1,8 +1,8 @@
-# Rux Watch Architecture
+# Plur Watch Architecture
 
 ## Overview
 
-The `rux watch` command provides automatic test execution when files change, using a multi-process architecture for efficient file system monitoring.
+The `plur watch` command provides automatic test execution when files change, using a multi-process architecture for efficient file system monitoring.
 
 ## Key Components
 
@@ -94,8 +94,8 @@ The watcher binary emits JSON events with the following structure:
 ## Platform Support
 
 - Uses pre-compiled watcher binaries for each platform
-- Binaries are embedded in the rux executable and extracted on first use
-- Stored in `~/.cache/rux/bin/`
+- Binaries are embedded in the plur executable and extracted on first use
+- Stored in `~/.cache/plur/bin/`
 - Currently supports:
   - macOS arm64 (`watcher-aarch64-apple-darwin`)
   - macOS x64 (`watcher-x86_64-apple-darwin`)
@@ -107,11 +107,11 @@ The watcher binary emits JSON events with the following structure:
 ### Debounce Delay
 - Default: 100ms
 - Configurable via `--debounce` flag
-- Example: `rux watch --debounce 250`
+- Example: `plur watch --debounce 250`
 
 ### Timeout
 - For testing/CI: `--timeout` flag sets automatic exit
-- Example: `rux watch --timeout 60` (exits after 60 seconds)
+- Example: `plur watch --timeout 60` (exits after 60 seconds)
 
 ## File Mapping Rules
 

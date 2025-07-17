@@ -27,19 +27,19 @@ target "_base" {
 # Build for current platform as 'latest'
 target "local" {
   inherits = ["_base"]
-  tags = ["rux-test:latest"]
+  tags = ["plur-test:latest"]
 }
 
 # AMD64/x86_64 build with architecture tag
 target "amd64" {
   inherits = ["_base"]
-  tags = ["rux-test:amd64"]
+  tags = ["plur-test:amd64"]
   platforms = ["linux/amd64"]
 }
 
 # ARM64 build with architecture tag
 target "arm64" {
   inherits = ["_base"]
-  tags = ["rux-test:arm64"]
+  tags = ["plur-test:arm64"]
   platforms = ["linux/arm64"]
 }

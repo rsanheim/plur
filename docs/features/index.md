@@ -1,6 +1,6 @@
 # Features
 
-Detailed documentation for Rux features and capabilities.
+Detailed documentation for Plur features and capabilities.
 
 ## Contents
 

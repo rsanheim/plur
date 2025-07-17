@@ -1,8 +1,8 @@
-# Rux Watch: Multiple Watchers Implementation Plan
+# Plur Watch: Multiple Watchers Implementation Plan
 
 ## Problem Statement
 
-The current rux watch implementation attempts to pass multiple directory paths to a single watcher binary instance, but the watcher binary only processes the first path argument. This means directories beyond the first one are not actually being watched.
+The current plur watch implementation attempts to pass multiple directory paths to a single watcher binary instance, but the watcher binary only processes the first path argument. This means directories beyond the first one are not actually being watched.
 
 ## Proposed Solution
 
@@ -12,7 +12,7 @@ Implement a multi-watcher architecture where each directory gets its own watcher
 
 ```
 ┌─────────────────┐
-│   rux-watch     │
+│   plur-watch     │
 └────────┬────────┘
          │
 ┌────────▼────────┐
@@ -44,10 +44,10 @@ Implement a multi-watcher architecture where each directory gets its own watcher
 
 ### Phase 1: Refactor Watcher Structure
 
-#### 1.0 Create `rux-watch` binary
+#### 1.0 Create `plur-watch` binary
 
-Create a new `rux-watch` binary, which is equivalent to `rux watch`. This will just make it a bit easier to spin up rux-watch for test purposes,
-and makes it clear its a seperate piece of rux.  `rux watch` can still exist for now, and the underlying code should be the same. So I think this
+Create a new `plur-watch` binary, which is equivalent to `plur watch`. This will just make it a bit easier to spin up plur-watch for test purposes,
+and makes it clear its a seperate piece of plur.  `plur watch` can still exist for now, and the underlying code should be the same. So I think this
 is mostly a change to the CLI layer.
 
 #### 1.1 Create WatcherManager

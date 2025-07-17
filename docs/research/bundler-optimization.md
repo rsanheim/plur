@@ -2,14 +2,14 @@
 
 ## Overview
 
-This document consolidates research on bundler overhead in Rux and potential optimization strategies. The research originated from performance comparisons with turbo_tests on the example-project repository.
+This document consolidates research on bundler overhead in Plur and potential optimization strategies. The research originated from performance comparisons with turbo_tests on the example-project repository.
 
 ## The Problem
 
 We discovered that turbo_tests shows significantly better performance than rux on the example-project repository due to a key difference in how tests are executed:
 
 - **turbo_tests**: Runs `rspec` directly
-- **rux**: Runs `bundle exec rspec`
+- **plur**: Runs `bundle exec rspec`
 
 The example-project project is unique in that it **does not require bundler** to run tests, making the bundler overhead particularly noticeable.
 
@@ -27,7 +27,7 @@ For projects that don't need bundler (like example-project), this is pure overhe
 
 In `rux/runner.go:147`, rux always uses bundle exec:
 ```go
-args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+args := []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Plur::JsonRowsFormatter"}
 ```
 
 ## Evidence
@@ -72,7 +72,7 @@ func requiresBundler(projectDir string) bool {
 ### 2. Configuration Option
 
 ```yaml
-# .rux.yml
+# .plur.yml
 bundler:
   enabled: false  # Skip bundle exec
 ```
@@ -92,7 +92,7 @@ type BundlerConfig struct {
 ### 3. Command-line Flag
 
 ```bash
-rux --no-bundler  # Skip bundle exec
+ plur --no-bundler  # Skip bundle exec
 ```
 
 ### 4. Smart Detection via Dry Run
@@ -125,9 +125,9 @@ Modify `runner.go:147`:
 ```go
 var args []string
 if r.shouldUseBundler() {
-    args = []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+    args = []string{"bundle", "exec", "rspec", "-r", formatterPath, "--format", "Plur::JsonRowsFormatter"}
 } else {
-    args = []string{"rspec", "-r", formatterPath, "--format", "Rux::JsonRowsFormatter"}
+    args = []string{"rspec", "-r", formatterPath, "--format", "Plur::JsonRowsFormatter"}
 }
 ```
 

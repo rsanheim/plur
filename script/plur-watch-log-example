@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 
-# Script to test rux watch verbose output with specific file change scenarios
+# Script to test plur watch verbose output with specific file change scenarios
 
 
 pushd fixtures/projects/default-ruby || exit 1
 
-log_path=../../log/rux-watch-log.log
+log_path=../../log/plur-watch-log.log
 
-echo "Starting rux watch in verbose mode..."
+echo "Starting plur watch in verbose mode..."
 echo "This will run for about 10 seconds and capture two file change events."
 echo "Output will be saved to: $log_path"
 echo
 
-# Start rux watch in background with debug flag (shows all log levels)
-rux watch --debug --timeout 10 > $log_path 2>&1 &
-RUX_PID=$!
+# Start plur watch in background with debug flag (shows all log levels)
+plur watch --debug --timeout 10 > $log_path 2>&1 &
+PLUR_PID=$!
 
 # Wait for watch to start
 sleep 2
@@ -28,7 +28,7 @@ echo "test content" > lib/test.txt
 sleep 2
 
 echo "3. Waiting for timeout..."
-wait $RUX_PID
+wait $PLUR_PID
 
 # Clean up test file
 rm -f lib/test.txt

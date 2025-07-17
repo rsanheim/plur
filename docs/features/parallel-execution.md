@@ -1,6 +1,6 @@
 # Parallel Execution
 
-Rux's core feature is running RSpec tests in parallel for faster feedback.
+Plur's core feature is running RSpec tests in parallel for faster feedback.
 
 ## How It Works
 
@@ -17,12 +17,12 @@ Rux's core feature is running RSpec tests in parallel for faster feedback.
 
 ### Auto-Detection (Default)
 ```bash
-rux  # Uses CPU cores - 2
+ plur  # Uses CPU cores - 2
 ```
 
 ### Manual Control
 ```bash
-rux -n 4         # Use 4 workers
-rux --workers 8  # Use 8 workers
-PARALLEL_TEST_PROCESSORS=10 rux # Use 10 workers
+ plur -n 4         # Use 4 workers
+ plur --workers 8  # Use 8 workers
+PARALLEL_TEST_PROCESSORS=10 plur # Use 10 workers
 ```

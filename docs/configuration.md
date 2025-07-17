@@ -1,4 +1,4 @@
-Rux aims for zero-configuration operation, but provides options for customization when needed.
+Plur aims for zero-configuration operation, but provides options for customization when needed.
 
 ## Configuration Methods
 
@@ -10,32 +10,32 @@ Configuration precedence (highest to lowest):
 
 ## Worker Configuration
 
-Rux uses intelligent distribution of specs/tests across workers:
+Plur uses intelligent distribution of specs/tests across workers:
 - **Runtime-based**: When historical runtime data exists, tests are distributed based on previous execution times for optimal load balancing
 - **Size-based**: When no runtime data exists, tests are distributed based on file sizes as a heuristic for complexity
 
-Note: Watch mode (`rux watch`) runs tests serially without parallel execution.
+Note: Watch mode (`plur watch`) runs tests serially without parallel execution.
 
 ### Specifying Number of Workers
 
 ```bash
 # Auto-detection (default)
-rux
+plur
 
 # specify number of workers
-rux -n 8
-rux --workers 8
+ plur -n 8
+ plur --workers 8
 
 # or via environment variable
 export PARALLEL_TEST_PROCESSORS=8
-rux
+plur
 ```
 
 ## Output Configuration
 
 ### Formatters
 
-Rux always uses dual formatters:
+Plur always uses dual formatters:
 - Progress formatter (for visual feedback)
 - JSON formatter (for result parsing)
 
@@ -43,8 +43,8 @@ Rux always uses dual formatters:
 
 ```bash
 # Debug output
-export RUX_DEBUG=1
-rux
+export PLUR_DEBUG=1
+plur
 
 ```
 
@@ -70,7 +70,7 @@ Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with
 ### Recognized Variables
 
 - `PARALLEL_TEST_PROCESSORS` - Number of workers
-- `RUX_DEBUG` - Enable debug output
+- `PLUR_DEBUG` - Enable debug output
 
 ## Next Steps
 

@@ -1,10 +1,10 @@
-# Rux Performance Optimization Plan
+# Plur Performance Optimization Plan
 
 ## Current Performance Gap
 
-For the rux-ruby test suite (11 spec files, ~450ms total):
+For the plur-ruby test suite (11 spec files, ~450ms total):
 - **turbo_tests**: 455ms (baseline)
-- **rux -n 4**: 535ms (18% slower)
+- **plur -n 4**: 535ms (18% slower)
 
 ## Root Cause Analysis
 
@@ -13,7 +13,7 @@ For the rux-ruby test suite (11 spec files, ~450ms total):
 - 11 spec files → 11 processes (current behavior)
 - Could be fewer with better grouping
 
-**rux**: One process per spec file
+**plur**: One process per spec file
 - 11 spec files → 11 processes always
 - More process spawn overhead
 - More Ruby initialization overhead
@@ -23,7 +23,7 @@ For the rux-ruby test suite (11 spec files, ~450ms total):
 - Ruby startup: ~31ms 
 - RSpec load: ~45ms
 - Per-spec execution: ~175ms average
-- **Key insight**: 65.6% "rux overhead" - most time is NOT in actual test execution
+- **Key insight**: 65.6% "plur overhead" - most time is NOT in actual test execution
 
 ### 3. Architecture Differences
 
@@ -33,7 +33,7 @@ For the rux-ruby test suite (11 spec files, ~450ms total):
 - Threads handle I/O from child processes
 - Message queue pattern for result aggregation
 
-**rux current issues:**
+**plur current issues:**
 - Worker pool pattern may add coordination overhead
 - 2 goroutines created per spec file
 - No test grouping - always one file per process
@@ -109,7 +109,7 @@ Expected impact: **5-10% improvement** for uneven test suites
 
 ## Validation Metrics
 
-For rux-ruby benchmark:
+For plur-ruby benchmark:
 - Target: ≤ 470ms (within 5% of turbo_tests)
 - Stretch goal: ≤ 455ms (match turbo_tests)
 
@@ -123,7 +123,7 @@ Before implementing, we can validate the batching hypothesis:
 
 ```bash
 # Test running multiple files in one RSpec process
-cd rux-ruby
+cd plur-ruby
 time bundle exec rspec spec/calculator_spec.rb spec/counter_spec.rb spec/validator_spec.rb
 
 # vs individual runs

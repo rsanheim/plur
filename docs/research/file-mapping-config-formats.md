@@ -1,14 +1,14 @@
 # File Mapping Configuration Formats
 
 ## Overview
-Comparison of different configuration formats for managing file-to-spec mappings in rux watch.
+Comparison of different configuration formats for managing file-to-spec mappings in plur watch.
 
 ## 1. YAML Format (Recommended)
 **Pros**: Human-readable, widely supported, comments, multi-line strings
 **Cons**: Indentation-sensitive
 
 ```yaml
-# .rux-watch.yml
+# .plur-watch.yml
 version: 1
 mappings:
   # Simple glob patterns
@@ -82,7 +82,7 @@ settings:
 **Cons**: Less common in Ruby ecosystem
 
 ```toml
-# .rux-watch.toml
+# .plur-watch.toml
 version = 1
 
 [settings]
@@ -109,7 +109,7 @@ specs = ["spec/$1_spec.rb"]
 **Cons**: Requires Ruby parser in Go, security concerns
 
 ```ruby
-# .rux-watch.rb or Ruxfile
+# .plur-watch.rb or Plurfile
 watch('lib/**/*.rb') do |m|
   "spec/#{m[1]}_spec.rb"
 end
@@ -140,7 +140,7 @@ end
 **Cons**: Another language to learn, requires Lua interpreter
 
 ```lua
--- .rux-watch.lua
+-- .plur-watch.lua
 mappings = {
   {
     pattern = "lib/(.*).rb",
@@ -172,7 +172,7 @@ watch(%r{^lib/(.+)\.rb$}) { |m| "spec/lib/#{m[1]}_spec.rb" }
 ```
 
 ```yaml
-# .rux-watch.yml
+# .plur-watch.yml
 - pattern: "lib/(.+).rb"
   regex: true
   specs: "spec/lib/$1_spec.rb"

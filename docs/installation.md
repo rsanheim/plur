@@ -18,13 +18,13 @@ Binary releases will be available for:
 
 ```bash
 # Clone the repository
-git clone https://github.com/rsanheim/rux-meta.git
-cd rux-meta
+git clone https://github.com/rsanheim/plur-meta.git
+cd plur-meta
 
 # Install using rake (recommended)
 bin/rake install
 
-# This builds and installs rux to your $GOPATH/bin
+# This builds and installs plur to your $GOPATH/bin
 # Make sure $GOPATH/bin is in your PATH
 ```
 
@@ -32,24 +32,24 @@ bin/rake install
 
 ```bash
 # Install directly with go
-go install github.com/rsanheim/rux-meta/rux@latest
+go install github.com/rsanheim/plur-meta/plur@latest
 ```
 
 ## Verify Installation
 
 ```bash
 # Check version
-rux --version
+plur --version
 
 # Run doctor command to verify setup
-rux doctor
+plur doctor
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**"command not found: rux"**
+**"command not found: plur"**
 - Ensure `$GOPATH/bin` is in your PATH
 - Run `echo $PATH` to verify
 - Add to your shell profile: `export PATH=$GOPATH/bin:$PATH`

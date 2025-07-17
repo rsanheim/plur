@@ -1,6 +1,6 @@
 # Getting Started
 
-Quick start guide for using Rux.
+Quick start guide for using Plur.
 
 ## Prerequisites
 
@@ -11,25 +11,25 @@ Quick start guide for using Rux.
 
 ```bash
 # From source
-git clone https://github.com/rsanheim/rux-meta.git
-cd rux-meta
+git clone https://github.com/rsanheim/plur-meta.git
+cd plur-meta
 bin/rake install
 
 # Verify installation
-rux --version
+plur --version
 ```
 
 ## First Run
 
 ```bash
 # Run all tests with auto-detected parallelism
-rux
+plur
 
 # Run with specific number of workers
-rux -n 4
+ plur -n 4
 
 # See what would run without executing
-rux --dry-run
+ plur --dry-run
 ```
 
 For detailed installation options, see [Installation](installation.md).

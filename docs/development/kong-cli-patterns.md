@@ -24,9 +24,9 @@ type WatchCmd struct {
 ```
 
 This pattern allows:
-- `rux watch` → executes the default `run` subcommand
-- `rux watch install` → executes the `install` subcommand  
-- `rux watch run` → explicitly executes the `run` subcommand
+- `plur watch` → executes the default `run` subcommand
+- `plur watch install` → executes the `install` subcommand  
+- `plur watch run` → explicitly executes the `run` subcommand
 
 ### Example Structure
 
@@ -42,14 +42,14 @@ type WatchRunCmd struct {
     Debounce int `help:"Debounce delay in milliseconds"`
 }
 
-func (w *WatchRunCmd) Run(parent *RuxCLI) error {
+func (w *WatchRunCmd) Run(parent *PlurCLI) error {
     // Watch logic here
     return runWatchWithConfig(config, w.Timeout, w.Debounce)
 }
 
 type WatchInstallCmd struct{}
 
-func (w *WatchInstallCmd) Run(parent *RuxCLI) error {
+func (w *WatchInstallCmd) Run(parent *PlurCLI) error {
     // Install logic
     return runWatchInstall(true)
 }

@@ -8,7 +8,7 @@ config = Plur::Benchmark::Config.new
 OptionParser.new do |opts|
   opts.banner = "Usage: bench [OPTIONS]"
   opts.separator ""
-  opts.separator "Benchmark rux vs turbo_tests performance on Ruby projects."
+  opts.separator "Benchmark plur vs turbo_tests performance on Ruby projects."
   opts.separator ""
   opts.separator "OPTIONS:"
 

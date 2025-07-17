@@ -2,18 +2,18 @@
 
 ## Key Finding
 
-The ~48% performance advantage of turbo_tests over rux is entirely due to **Bundler overhead**. When both tools use the same command, they perform identically.
+The ~48% performance advantage of turbo_tests over plur is entirely due to **Bundler overhead**. When both tools use the same command, they perform identically.
 
 ## Benchmark Results (example-project project, 4 workers)
 
 ### Default Configurations
 - **turbo_tests**: 6.148s (uses bare `rspec`)
-- **rux**: 9.073s (uses `bundle exec rspec`)
+- **plur**: 9.073s (uses `bundle exec rspec`)
 - **Difference**: 47.6% slower
 
 ### With Same Command (`rspec`)
 - **turbo_tests**: 6.159s
-- **rux**: 6.063s  
+- **plur**: 6.063s  
 - **Difference**: 1.6% faster (within margin of error)
 
 ## Root Cause: Bundler Overhead
@@ -38,7 +38,7 @@ else
 end
 ```
 
-TurboTests defaults to bare `rspec` unless explicitly configured otherwise, while rux defaults to `bundle exec rspec` for broader compatibility.
+TurboTests defaults to bare `rspec` unless explicitly configured otherwise, while plur defaults to `bundle exec rspec` for broader compatibility.
 
 ## Performance Implications
 
@@ -48,10 +48,10 @@ TurboTests defaults to bare `rspec` unless explicitly configured otherwise, whil
 
 ## Recommendations
 
-### For rux users:
-1. If your project supports it, configure rux to use bare `rspec`:
+### For plur users:
+1. If your project supports it, configure plur to use bare `rspec`:
    ```toml
-   # .rux.toml
+   # .plur.toml
    command = "rspec"
    ```
 
@@ -67,8 +67,8 @@ TurboTests defaults to bare `rspec` unless explicitly configured otherwise, whil
 
 ## Conclusion
 
-Rux and turbo_tests have equivalent core performance. The difference comes from their default commands:
+Plur and turbo_tests have equivalent core performance. The difference comes from their default commands:
 - turbo_tests optimizes for speed with bare `rspec`
-- rux optimizes for compatibility with `bundle exec rspec`
+- plur optimizes for compatibility with `bundle exec rspec`
 
-Users can configure rux to match turbo_tests performance by using `command = "rspec"` in their configuration.
+Users can configure plur to match turbo_tests performance by using `command = "rspec"` in their configuration.

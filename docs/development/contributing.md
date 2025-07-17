@@ -4,12 +4,12 @@ We welcome contributions! This guide will help you get started.
 
 ```bash
 # Clone the repository
-git clone https://github.com/rsanheim/rux-meta.git
-cd rux-meta
+git clone https://github.com/rsanheim/plur-meta.git
+cd plur-meta
 
 # Install dependencies
 bundle install
-cd rux && go mod vendor
+cd plur && go mod vendor
 
 # Build and install
 bin/rake install

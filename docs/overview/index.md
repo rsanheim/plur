@@ -1,6 +1,6 @@
 # Project Overview
 
-This section provides an overview of the Rux project and its current status.
+This section provides an overview of the Plur project and its current status.
 
 ## Contents
 

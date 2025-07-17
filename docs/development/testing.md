@@ -1,8 +1,8 @@
-# Testing Rux
+# Testing Plur
 
 ## Test Structure
 
-Rux uses "outside-in" integration tests written in RSpec to ensure correctness.
+Plur uses "outside-in" integration tests written in RSpec to ensure correctness.
 
 ### Running Tests
 
@@ -24,7 +24,7 @@ The 'default-ruby' project and 'default-rails' project are good starting points.
 
 ## Key Test Files
 
-- `spec/general_integration_spec.rb` - Core rux functionality
+- `spec/general_integration_spec.rb` - Core plur functionality
 - `spec/parallel_execution_spec.rb` - Parallel execution behavior
 - `spec/error_handling_spec.rb` - Error cases and edge conditions
 - `spec/doctor_spec.rb` - Doctor command functionality

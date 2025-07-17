@@ -1,6 +1,6 @@
 # Roadmap
 
-Future plans and optimization strategies for Rux.
+Future plans and optimization strategies for Plur.
 
 ## Performance Optimizations
 

@@ -8,7 +8,7 @@ This directory contains active development documentation for the Minitest suppor
 
 | Document | Purpose | Last Updated |
 |----------|---------|--------------|
-| [minitest-prd.md](minitest-prd.md) | **Product Requirements Document**<br>High-level goals, success criteria, and phased approach for adding Minitest support to Rux. The "why" behind the implementation. | 2025-06-22 |
+| [minitest-prd.md](minitest-prd.md) | **Product Requirements Document**<br>High-level goals, success criteria, and phased approach for adding Minitest support to Plur. The "why" behind the implementation. | 2025-06-22 |
 | [minitest-todo.md](minitest-todo.md) | **Task Tracker** *(Single source of truth)*<br>All implementation tasks with checkboxes. Organized by phase with links to relevant deep dives. Check here for current progress. | 2025-06-22 |
 
 ### 🔬 Technical Deep Dives
@@ -22,7 +22,7 @@ This directory contains active development documentation for the Minitest suppor
 
 | File | Purpose |
 |------|---------|
-| [rux-json-rows-output.log](rux-json-rows-output.log) | Sample RSpec JSON output for parser development |
+| [plur-json-rows-output.log](plur-json-rows-output.log) | Sample RSpec JSON output for parser development |
 
 ## Quick Start
 
