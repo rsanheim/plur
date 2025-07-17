@@ -22,13 +22,13 @@ jobs:
             ls -la plur/
             ls -la plur/lib/plur/ || echo "plur/lib/plur not found"
       - run:
-          name: Install Go
-          command: |
-            wget https://go.dev/dl/go1.24.2.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
-            echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
-            source $BASH_ENV
-            go version
+          # name: Install Go
+          # command: |
+          #   wget https://go.dev/dl/go1.24.2.linux-amd64.tar.gz
+          #   sudo tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
+          #   echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
+          #   source $BASH_ENV
+          #   go version
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - run:
