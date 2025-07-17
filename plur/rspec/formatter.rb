@@ -5,7 +5,7 @@ require "rspec/core"
 require "rspec/core/formatters"
 require "rspec/core/notifications"
 
-module Rux
+module Plur
   # A streaming JSON formatter for rux that outputs one JSON object per line
   # Based on TurboTests::JsonRowsFormatter but simplified for rux usage
   class JsonRowsFormatter
@@ -104,7 +104,7 @@ module Rux
     def dump_failures(notification)
       # Don't output anything if there are no failures
       return if notification.failure_notifications.empty?
-      
+
       # Capture the fully formatted failures with colors
       output_row(
         type: :dump_failures,
@@ -155,14 +155,14 @@ module Rux
 
     def format_backtrace(backtrace)
       return [] unless backtrace
-      
+
       # Use RSpec's built-in backtrace filtering
       RSpec.configuration.backtrace_formatter.format_backtrace(backtrace)
     end
 
     def output_row(obj)
       # Use environment variable for separator, default to "RUX_JSON:"
-      separator = ENV["RUX_FORMATTER_SEPARATOR"] || "RUX_JSON:"
+      separator = ENV["PLUR_FORMATTER_SEPARATOR"] || "PLUR_JSON:"
       output.puts separator + obj.to_json
       output.flush
     end

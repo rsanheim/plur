@@ -5,7 +5,7 @@ RSpec.describe "plur watch advanced file mapping" do
   # This spec focuses on testing with temporary directory structures
   # Basic file mapping is covered in watch_integration_spec.rb
 
-  let(:temp_dir) { Dir.mktmpdir("rux-watch-mapping-test") }
+  let(:temp_dir) { Dir.mktmpdir("plur-watch-mapping-test") }
 
   before do
     # Create a basic Ruby project structure

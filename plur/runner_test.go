@@ -15,7 +15,7 @@ func TestFindSpecFilesRunner(t *testing.T) {
 	originalDir, _ := os.Getwd()
 	defer os.Chdir(originalDir)
 
-	// Create temp directory in rux/tmp/
+	// Create temp directory in plur/tmp/
 	os.MkdirAll("tmp", 0755)
 	tempDir, err := os.MkdirTemp("tmp", "test-runner-specs-*")
 	require.NoError(t, err, "Failed to create temp dir")

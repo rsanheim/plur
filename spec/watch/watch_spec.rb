@@ -7,7 +7,7 @@ RSpec.describe "plur watch command", :skip_if_ci do
     it "starts successfully when spec directory exists" do
       result = run_plur_watch(timeout: 2)
 
-      expect(result.err).to include("rux watch starting!")
+      expect(result.err).to include("plur watch starting!")
       expect(result.err).to include("directories=[spec lib]")
       expect(result.err).to include("timeout=2")
       expect(result.out).to include("Timeout reached, exiting!")
@@ -18,8 +18,8 @@ RSpec.describe "plur watch command", :skip_if_ci do
       result = run_plur_watch
 
       if RUBY_PLATFORM.include?("darwin") && RUBY_PLATFORM.include?("arm64")
-        expect(result.err).to include("rux using e-dant/watcher")
-        expect(result.err).to include("path=#{ENV["HOME"]}/.rux/bin/watcher-aarch64-apple-darwin")
+        expect(result.err).to include("plur using e-dant/watcher")
+        expect(result.err).to include("path=#{ENV["HOME"]}/.plur/bin/watcher-aarch64-apple-darwin")
       end
     end
 

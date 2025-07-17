@@ -30,11 +30,11 @@ RSpec.describe "Plur CLI behavior" do
 
     it "runs dry-run with multiple spec files" do
       Dir.chdir(default_ruby_dir) do
-        result = run_plur("--dry-run", "spec/calculator_spec.rb", "spec/rux_ruby_spec.rb")
+        result = run_plur("--dry-run", "spec/calculator_spec.rb", "spec/plur_ruby_spec.rb")
 
         expect(result.err).to include("[dry-run]")
         expect(result.err).to include("calculator_spec.rb")
-        expect(result.err).to include("rux_ruby_spec.rb")
+        expect(result.err).to include("plur_ruby_spec.rb")
       end
     end
 
@@ -46,7 +46,7 @@ RSpec.describe "Plur CLI behavior" do
       end
     end
 
-    it "runs dry-run with auto-discovery in rux-ruby" do
+    it "runs dry-run with auto-discovery in plur-ruby" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run")
 

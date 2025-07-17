@@ -15,7 +15,7 @@ RSpec.describe "plur glob pattern support" do
         expect(result.err).to include("spec/calculator_spec.rb")
         expect(result.err).to include("spec/counter_spec.rb")
         expect(result.err).to include("spec/date_formatter_spec.rb")
-        expect(result.err).to include("spec/rux_ruby_spec.rb")
+        expect(result.err).to include("spec/plur_ruby_spec.rb")
         expect(result.err).not_to include("spec/models/user_spec.rb")
         expect(result.err).not_to include("spec/services/email_service_spec.rb")
       end
@@ -27,7 +27,7 @@ RSpec.describe "plur glob pattern support" do
         # The shell must have globstar enabled (bash: shopt -s globstar, zsh: default on)
         # For consistent testing, we'll use bash with globstar
         cmd = TTY::Command.new(uuid: false, printer: :null)
-        result = cmd.run!("bash", "-c", "shopt -s globstar; rux --dry-run spec/**/*_spec.rb")
+        result = cmd.run!("bash", "-c", "shopt -s globstar; plur --dry-run spec/**/*_spec.rb")
 
         expect(result.err).to include("[dry-run] Found 12 spec files")
         expect(result.err).to include("spec/array_helpers_spec.rb")

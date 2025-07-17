@@ -29,7 +29,7 @@ RSpec.describe "plur watch with multiple directories" do
       end
 
       # Verify we see watcher processes for both directories in stderr
-      expect(result.err).to include("rux using e-dant/watcher")
+      expect(result.err).to include("plur using e-dant/watcher")
       expect(result.err).to include("watch event=create type=watcher")
       expect(result.err).to include("/spec")
       expect(result.err).to include("/lib")

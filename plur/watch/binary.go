@@ -37,7 +37,7 @@ func GetWatcherBinaryPath(binDir string) (string, error) {
 }
 
 // InstallBinary extracts the embedded watcher binary and installs it to PLUR_HOME/bin
-func InstallBinary(watcherBinaries embed.FS, binDir, ruxHome string, force bool) error {
+func InstallBinary(watcherBinaries embed.FS, binDir, plurHome string, force bool) error {
 	binaryPath, err := getBinaryPath(binDir)
 	if err != nil {
 		return fmt.Errorf("failed to determine binary path: %v", err)
@@ -64,7 +64,7 @@ func InstallBinary(watcherBinaries embed.FS, binDir, ruxHome string, force bool)
 	}
 
 	// Print success message
-	relPath, _ := filepath.Rel(ruxHome, binaryPath)
+	relPath, _ := filepath.Rel(plurHome, binaryPath)
 	fmt.Printf("installed watcher binary path=%s\n", relPath)
 
 	return nil

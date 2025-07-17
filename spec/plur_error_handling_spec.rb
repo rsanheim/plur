@@ -102,12 +102,12 @@ RSpec.describe "Plur error handling" do
       end
     end
 
-    context "running through rux" do
+    context "running through plur" do
       it "properly shows syntax error details" do
         chdir(fixture_dir) do
           result = run_plur_allowing_errors("spec/syntax_error_spec.rb")
 
-          puts "\n=== Rux with syntax error ==="
+          puts "\n=== Plur with syntax error ==="
           puts "Exit code: #{result.exit_status}"
           puts "Summary: #{result.out.lines.grep(/\d+ examples?/).first&.strip}"
           puts "Shows error details: #{result.out.include?("SyntaxError")}"
@@ -167,7 +167,7 @@ RSpec.describe "Plur error handling" do
       it "provides helpful error message instead of raw JSON parsing error" do
         fixture_dir = project_fixture("empty_json")
 
-        # Run rux and capture output
+        # Run plur and capture output
         chdir(fixture_dir) do
           env = {"PATH" => "#{fixture_dir}:$PATH"}
           result = run_plur_allowing_errors("test_spec.rb", env: env)
@@ -195,7 +195,7 @@ RSpec.describe "Plur error handling" do
 
     context "when command doesn't exist" do
       it "shows error when command doesn't exist" do
-        result = run_plur_allowing_errors("--command=nonexistentcommand", "spec/rux_error_handling_spec.rb", "--debug")
+        result = run_plur_allowing_errors("--command=nonexistentcommand", "spec/plur_error_handling_spec.rb", "--debug")
 
         puts "\n=== Command not found (with debug) ==="
         puts "Exit code: #{result.exit_status}"

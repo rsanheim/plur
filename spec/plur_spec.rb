@@ -26,11 +26,11 @@ RSpec.describe Plur::Config do
       expect(config.root_dir).to be_directory
     end
 
-    it "defines rux_dir as an existing Pathname" do
-      expect(config.rux_dir).to be_a(Pathname)
-      expect(config.rux_dir).to exist
-      expect(config.rux_dir).to be_directory
-      expect(config.rux_dir.basename.to_s).to eq("rux")
+    it "defines plur_dir as an existing Pathname" do
+      expect(config.plur_dir).to be_a(Pathname)
+      expect(config.plur_dir).to exist
+      expect(config.plur_dir).to be_directory
+      expect(config.plur_dir.basename.to_s).to eq("plur")
     end
 
     it "defines watcher_dir as a Pathname (may not exist yet)" do
@@ -38,24 +38,24 @@ RSpec.describe Plur::Config do
       expect(config.watcher_dir.to_s).to include("embedded/watcher")
     end
 
-    it "defines local_rux_binary as a Pathname" do
-      expect(config.local_rux_binary).to be_a(Pathname)
-      expect(config.local_rux_binary.basename.to_s).to eq("rux")
-      expect(config.local_rux_binary.dirname).to eq(config.rux_dir)
+    it "defines local_plur_binary as a Pathname" do
+      expect(config.local_plur_binary).to be_a(Pathname)
+      expect(config.local_plur_binary.basename.to_s).to eq("plur")
+      expect(config.local_plur_binary.dirname).to eq(config.plur_dir)
     end
   end
 
   describe "path relationships" do
-    it "has rux_dir as a child of root_dir" do
-      expect(config.rux_dir.to_s).to start_with(config.root_dir.to_s)
+    it "has plur_dir as a child of root_dir" do
+      expect(config.plur_dir.to_s).to start_with(config.root_dir.to_s)
     end
 
-    it "has watcher_dir as a child of rux_dir" do
-      expect(config.watcher_dir.to_s).to start_with(config.rux_dir.to_s)
+    it "has watcher_dir as a child of plur_dir" do
+      expect(config.watcher_dir.to_s).to start_with(config.plur_dir.to_s)
     end
 
-    it "has local_rux_binary inside rux_dir" do
-      expect(config.local_rux_binary.to_s).to start_with(config.rux_dir.to_s)
+    it "has local_plur_binary inside plur_dir" do
+      expect(config.local_plur_binary.to_s).to start_with(config.plur_dir.to_s)
     end
   end
 end

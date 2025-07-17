@@ -126,7 +126,7 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
 				runSpecsOrDirectory("spec", watchCmd.Command)
-				fmt.Print("\nrux> ")
+				fmt.Print("\nplur> ")
 			case "exit":
 				// User typed exit command
 				logger.Logger.Info("User requested exit")
@@ -181,10 +181,10 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 			// Map the file to specs
 			specsToRun := fileMapper.MapFileToSpecs(relPath)
 			if len(specsToRun) == 0 {
-				logger.LogDebug("rux", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
+				logger.LogDebug("plur", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
 				continue
 			}
-			logger.LogDebug("rux", "event", "mapping_found", "path", "./"+relPath, "specs", specsToRun)
+			logger.LogDebug("plur", "event", "mapping_found", "path", "./"+relPath, "specs", specsToRun)
 
 			// Debounce the spec runs
 			debouncer.Debounce(specsToRun, func(specs []string) {
@@ -196,7 +196,7 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 
 				// Run each unique spec
 				for spec := range uniqueSpecs {
-					logger.LogDebug("rux", "event", "run_spec", "path", "./"+spec)
+					logger.LogDebug("plur", "event", "run_spec", "path", "./"+spec)
 					runSpecsOrDirectory(spec, watchCmd.Command)
 				}
 
