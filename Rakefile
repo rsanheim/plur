@@ -11,7 +11,10 @@ end
 
 # Load all tasks from lib/tasks
 pp Plur.config.root_dir
-Dir.glob(Plur.config.root_dir.join("lib", "tasks", "*.rake")).each { |file| pp file; load file }
+Dir.glob(Plur.config.root_dir.join("lib", "tasks", "*.rake")).each { |file|
+  pp file
+  load file
+}
 
 # Using 3 cores for medium/large resource class on CircleCI
 PLUR_CORES = Plur.config.plur_cores
