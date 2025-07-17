@@ -150,7 +150,7 @@ script/serve-docs
 ### Project Structure
 ```
 rux-meta/
-├── rux/                    # Main Go implementation
+├── plur/                    # Main Go implementation
 ├── fixtures/
 │   └── projects/
 │       ├── default-ruby/   # Simple Ruby library for testing
@@ -165,7 +165,7 @@ rux-meta/
 
 ### Docker Testing
 
-Rux includes Docker support for testing across different architectures and environments. Docker operations are split into two scripts for efficiency:
+Plur includes Docker support for testing across different architectures and environments. Docker operations are split into two scripts for efficiency:
 
 #### Building Images
 ```bash

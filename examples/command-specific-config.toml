@@ -1,21 +1,21 @@
-# Example of command-specific configuration for rux
+# Example of command-specific configuration for plur
 # This demonstrates how to configure different commands with their own settings
 
 # Global settings apply to all commands
-workers = 4          # Number of parallel workers
-color = true         # Enable colored output
-verbose = false      # Global verbosity
+workers = 4     # Number of parallel workers
+color = true    # Enable colored output
+verbose = false # Global verbosity
 
 # Spec command configuration
-# These settings only apply when running `rux spec`
+# These settings only apply when running `plur spec`
 [spec]
-command = "rspec"    # Use bare rspec for maximum performance in CI/prod
+command = "rspec" # Use bare rspec for maximum performance in CI/prod
 
 # Watch command configuration  
-# These settings only apply when running `rux watch`
+# These settings only apply when running `plur watch`
 [watch.run]
-command = "bundle exec rspec"  # Use bundle exec for compatibility in development
-debounce = 200                 # Increase debounce delay for watch mode
+command = "bundle exec rspec" # Use bundle exec for compatibility in development
+debounce = 200                # Increase debounce delay for watch mode
 
 # Configuration precedence (highest to lowest):
 # 1. CLI flags (e.g., --command="bin/rspec")

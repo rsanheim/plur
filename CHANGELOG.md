@@ -8,7 +8,6 @@
   - Configuration files are now `.plur.toml` instead of `.rux.toml`
   - Home directory is now `~/.plur/` instead of `~/.rux/`
 
-
 ## v0.8.2 - 2025-07-11
 
 * Removing tracing [#67](https://github.com/rsanheim/plur-meta/pull/67)

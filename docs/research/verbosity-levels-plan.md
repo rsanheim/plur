@@ -4,7 +4,7 @@
 
 ### Existing Implementation
 
-Rux currently has two flags for controlling output verbosity:
+Plur currently has two flags for controlling output verbosity:
 - `--verbose`: Enable verbose output for debugging
 - `--debug` / `-d`: Enable debug output (includes verbose), also settable via PLUR_DEBUG env var
 
@@ -109,7 +109,7 @@ func getLogLevel(verbosity int, quiet bool) slog.Level {
 
 #### CLI Structure
 ```go
-type RuxCLI struct {
+type PlurCLI struct {
     // Remove current flags:
     // Verbose bool
     // Debug bool
