@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+#
+# Install plur binary to a Docker container
+#
+# Usage: script/install-plur-docker SERVICE_NAME [-C COMPOSE_PREFIX] [BINARY_PATH]
+#
+# Examples:
+#   script/install-plur-docker my-app                              # Uses container "my-app"
+#   script/install-plur-docker web -C myproject                    # Uses container "myproject_web_1"
+#   script/install-plur-docker my-app dist/plur-linux-arm64        # Use specific binary
+
+set -euo pipefail
+
+# Parse arguments
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 SERVICE_NAME [-C COMPOSE_PREFIX] [BINARY_PATH]"
+    echo ""
+    echo "Examples:"
+    echo "  $0 my-app                              # Auto-detect architecture"
+    echo "  $0 web -C myproject                    # With compose prefix"
+    echo "  $0 my-app dist/plur-linux-arm64        # Use specific binary"
+    exit 1
+fi
+
+SERVICE="$1"
+shift
+
+# Parse optional -C flag
+COMPOSE_PREFIX=""
+if [ $# -ge 2 ] && [ "$1" = "-C" ]; then
+    COMPOSE_PREFIX="$2"
+    shift 2
+fi
+
+BINARY_PATH="${1:-}"
+
+# Determine container name
+if [ -n "$COMPOSE_PREFIX" ]; then
+    CONTAINER_NAME="${COMPOSE_PREFIX}_${SERVICE}_1"
+else
+    CONTAINER_NAME="$SERVICE"
+fi
+
+# Function to detect container architecture
+detect_arch() {
+    local arch=$(docker exec "$CONTAINER_NAME" uname -m 2>/dev/null || echo "")
+    
+    case "$arch" in
+        x86_64)
+            echo "amd64"
+            ;;
+        aarch64|arm64)
+            echo "arm64"
+            ;;
+        *)
+            echo "Error: Unknown architecture: $arch" >&2
+            return 1
+            ;;
+    esac
+}
+
+# If no binary path provided, auto-detect
+if [ -z "$BINARY_PATH" ]; then
+    echo ">>> Detecting container architecture..."
+    ARCH=$(detect_arch)
+    echo "    Architecture: linux/$ARCH"
+    
+    # Check if dist directory exists
+    DIST_DIR="$(dirname "$0")/../dist"
+    if [ ! -d "$DIST_DIR" ]; then
+        echo "Error: dist directory not found. Run 'bin/rake build:linux' first."
+        exit 1
+    fi
+    
+    # Find the appropriate binary
+    BINARY_PATH="$DIST_DIR/plur-linux-$ARCH"
+    if [ ! -f "$BINARY_PATH" ]; then
+        echo "Error: Binary not found at $BINARY_PATH"
+        echo "Run 'bin/rake build:linux' to build the binaries first."
+        exit 1
+    fi
+fi
+
+# Check if binary exists
+if [ ! -f "$BINARY_PATH" ]; then
+    echo "Error: Binary not found at $BINARY_PATH"
+    exit 1
+fi
+
+# Get binary info
+BINARY_SIZE=$(du -h "$BINARY_PATH" | cut -f1)
+BINARY_NAME=$(basename "$BINARY_PATH")
+
+echo ">>> Installing plur to container: $CONTAINER_NAME"
+echo "    Binary: $BINARY_PATH ($BINARY_SIZE)"
+
+# Create temp directory in container
+echo ">>> Creating temp directory in container..."
+TEMP_DIR=$(docker exec "$CONTAINER_NAME" mktemp -d)
+echo "    Temp directory: $TEMP_DIR"
+
+# Verify container exists
+CONTAINER_ID=$(docker ps --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | head -n1)
+
+if [ -z "$CONTAINER_ID" ]; then
+    echo "Error: Could not find running container: $CONTAINER_NAME"
+    echo "Make sure the container is running"
+    exit 1
+fi
+
+# Copy binary to container
+echo ">>> Copying binary to container..."
+docker cp "$BINARY_PATH" "${CONTAINER_ID}:${TEMP_DIR}/plur"
+
+# Install binary in container
+echo ">>> Installing binary in container..."
+docker exec "$CONTAINER_NAME" bash -c "
+    set -e
+    # Create /usr/local/bin if it doesn't exist
+    mkdir -p /usr/local/bin
+    
+    # Move binary to final location
+    mv ${TEMP_DIR}/plur /usr/local/bin/plur
+    
+    # Make it executable
+    chmod +x /usr/local/bin/plur
+    
+    # Clean up temp directory
+    rmdir ${TEMP_DIR}
+"
+
+# Verify installation
+echo ">>> Verifying installation..."
+VERSION=$(docker exec "$CONTAINER_NAME" plur --version 2>&1 || echo "ERROR")
+
+if [[ "$VERSION" == "ERROR" ]] || [[ "$VERSION" == *"not found"* ]]; then
+    echo "✗ Installation failed!"
+    echo "  Error: $VERSION"
+    exit 1
+else
+    echo "✓ Installation successful!"
+    echo "  Version: $VERSION"
+fi
+
+# Show doctor output
+echo ""
+echo ">>> Running plur doctor..."
+docker exec "$CONTAINER_NAME" plur doctor || true
+
+echo ""
+echo "✓ plur has been successfully installed on $CONTAINER_NAME"
+echo "  You can now use: docker exec $CONTAINER_NAME plur [arguments]"

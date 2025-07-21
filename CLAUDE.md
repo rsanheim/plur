@@ -74,6 +74,12 @@ Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (glo
 4. Fix issues with `bin/rake standard:fix`
 5. `git add -A && git commit`
 
+### Multi-Platform Builds
+- **Build for Linux**: `bin/rake build:linux` creates linux/amd64 and linux/arm64 binaries in `dist/`
+- **Install on Docker**: `script/install-plur-docker CONTAINER_NAME` auto-detects architecture and installs
+- **Cross-compilation**: Uses Go's GOOS/GOARCH with CGO_ENABLED=0 for static binaries
+- See `docs/development/multi-platform-builds.md` for details
+
 ## Testing from Outside-In
 
 ALWAYS use integration specs as guardrails:
