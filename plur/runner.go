@@ -232,7 +232,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 	collector := NewTestCollector()
 
 	// Stream output through parser and collector
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, specCmd.GetFramework(), start)
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, specCmd.GetFramework())
 
 	// Wait for command to complete
 	err = cmd.Wait()
@@ -281,7 +281,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 		State:             state,
 		Output:            output,
 		Error:             err,
-		Duration:          time.Since(start),
+		Duration:          result.Duration,
 		FileLoadTime:      result.FileLoadTime,
 		JSONOutput:        jsonOutput,
 		ExampleCount:      result.ExampleCount,
@@ -458,7 +458,7 @@ func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *
 	}
 	collector := NewTestCollector()
 
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework(), start)
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework())
 
 	err = cmd.Wait()
 

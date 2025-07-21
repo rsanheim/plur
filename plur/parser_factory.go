@@ -12,9 +12,9 @@ import (
 func NewTestOutputParser(framework TestFramework) (types.TestOutputParser, error) {
 	switch framework {
 	case FrameworkRSpec:
-		return &rspec.OutputParser{}, nil
+		return rspec.NewOutputParser(), nil
 	case FrameworkMinitest:
-		return &minitest.OutputParser{}, nil
+		return minitest.NewOutputParser(), nil
 	default:
 		return nil, fmt.Errorf("unsupported test framework: %s", framework)
 	}

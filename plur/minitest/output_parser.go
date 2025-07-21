@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -15,16 +16,24 @@ var (
 	failureHeaderLineRegex = regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`)
 )
 
-// OutputParser parses minitest text output into notifications
-type OutputParser struct {
+// outputParser parses minitest text output into notifications
+type outputParser struct {
 	collectingFailures bool                         // Whether we're collecting failure text
 	failureBuffer      strings.Builder              // Accumulates failure section
 	failures           []types.TestCaseNotification // Extracted failures for runtime tracking
 	progressCount      int                          // Track progress index
+	startTime          time.Time                    // When the parser was created (for load time calculation)
+}
+
+// NewOutputParser creates a new minitest output parser with proper initialization
+func NewOutputParser() types.TestOutputParser {
+	return &outputParser{
+		startTime: time.Now(),
+	}
 }
 
 // Converts a TestNotification to a progress type (just a string for now) for streaming to output
-func (p *OutputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
+func (p *outputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
 	if notification.GetEvent() != types.Progress {
 		return "", false
 	}
@@ -43,7 +52,7 @@ func (p *OutputParser) NotificationToProgress(notification types.TestNotificatio
 }
 
 // FormatSummary formats a test summary in minitest style
-func (p *OutputParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
+func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
 	// Minitest doesn't typically show load time in the summary
 	// Format: "X runs, Y assertions, Z failures, W errors, V skips"
 
@@ -87,12 +96,19 @@ func (p *OutputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 }
 
 // ParseLine parses a single line of minitest output
-func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
+func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	logger.Logger.Debug("[ParseLine]", "line", line)
 
-	// Emit suite started on "# Running:"
+	// Emit suite started on "# Running:" with load time
 	if strings.HasPrefix(line, "# Running:") {
-		return []types.TestNotification{types.SuiteNotification{Event: types.SuiteStarted}}, false
+		loadTime := time.Duration(0)
+		if !p.startTime.IsZero() {
+			loadTime = time.Since(p.startTime)
+		}
+		return []types.TestNotification{types.SuiteNotification{
+			Event:    types.SuiteStarted,
+			LoadTime: loadTime,
+		}}, false
 	}
 
 	// Parse progress indicators (., F, E, S)
@@ -126,7 +142,7 @@ func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	return nil, false // Minitest output is always preserved
 }
 
-func (p *OutputParser) parseSummaryLine(line string) []types.TestNotification {
+func (p *outputParser) parseSummaryLine(line string) []types.TestNotification {
 	// Check for summary line
 	if match := summaryRegex.FindStringSubmatch(line); match != nil {
 		runs, _ := strconv.Atoi(match[1])
@@ -155,7 +171,7 @@ func (p *OutputParser) parseSummaryLine(line string) []types.TestNotification {
 	return nil // Return nil if not a summary line
 }
 
-func (p *OutputParser) parseProgressLine(line string) []types.TestNotification {
+func (p *outputParser) parseProgressLine(line string) []types.TestNotification {
 	notifications := []types.TestNotification{}
 
 	// Check for progress indicators and create progress events
@@ -208,19 +224,19 @@ func isSummaryLine(line string) bool {
 }
 
 // FormatFailures returns empty string since minitest formats its own failures
-func (p *OutputParser) FormatFailures(failures []types.TestCaseNotification) string {
+func (p *outputParser) FormatFailures(failures []types.TestCaseNotification) string {
 	// Minitest already formats failures in its output, so we don't reformat
 	return ""
 }
 
 // FormatFailuresList returns empty string since minitest doesn't use failure lists
-func (p *OutputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
+func (p *outputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
 	// Minitest doesn't typically show a re-run command list like RSpec
 	return ""
 }
 
 // ColorizeSummary applies color to a summary based on success/failure state
-func (p *OutputParser) ColorizeSummary(summary string, hasFailures bool) string {
+func (p *outputParser) ColorizeSummary(summary string, hasFailures bool) string {
 	if hasFailures {
 		return fmt.Sprintf("\033[31m%s\033[0m", summary)
 	}
