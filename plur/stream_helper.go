@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -22,7 +21,6 @@ func streamTestOutput(
 	workerIndex int,
 	testFiles []string,
 	framework TestFramework,
-	start time.Time,
 ) (stderrOutput string) {
 	var stderrBuilder strings.Builder
 	var wg sync.WaitGroup

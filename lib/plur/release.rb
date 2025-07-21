@@ -185,8 +185,8 @@ class Plur::Release
       Version #{@new_version} has been released!
 
       Next steps:
-        • View release: https://github.com/rsanheim/rux-meta/releases/tag/#{@new_version}
-        • Test installation: go install github.com/rsanheim/rux-meta/rux@#{@new_version}
+        • View release: https://github.com/rsanheim/plur/releases/tag/#{@new_version}
+        • Test installation: go install github.com/rsanheim/plur/plur@#{@new_version}
         • Announce the release
       #{"=" * 60}
     SUCCESS

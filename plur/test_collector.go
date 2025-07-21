@@ -40,9 +40,29 @@ func (a *TestCollector) AddNotification(n types.TestNotification) {
 				a.pending = append(a.pending, tc)
 			}
 		}
+	case types.SuiteStarted:
+		if suite, ok := n.(types.SuiteNotification); ok {
+			// Store the suite info from SuiteStarted which contains the load time
+			if a.suiteInfo == nil {
+				a.suiteInfo = &suite
+			} else {
+				// Preserve the load time from SuiteStarted
+				a.suiteInfo.LoadTime = suite.LoadTime
+				if suite.TestCount > 0 {
+					a.suiteInfo.TestCount = suite.TestCount
+				}
+			}
+		}
 	case types.SuiteFinished:
 		if suite, ok := n.(types.SuiteNotification); ok {
-			a.suiteInfo = &suite
+			if a.suiteInfo == nil {
+				a.suiteInfo = &suite
+			} else {
+				// Update suite info with finish data, but preserve LoadTime from SuiteStarted
+				loadTime := a.suiteInfo.LoadTime
+				a.suiteInfo = &suite
+				a.suiteInfo.LoadTime = loadTime
+			}
 		}
 	case types.RawOutput:
 		// Handle special formatted notifications

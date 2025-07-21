@@ -9,10 +9,15 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
-// OutputParser parses RSpec JSON output into notifications
-type OutputParser struct{}
+// outputParser parses RSpec JSON output into notifications
+type outputParser struct{}
 
-func (p *OutputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
+// NewOutputParser creates a new RSpec output parser
+func NewOutputParser() types.TestOutputParser {
+	return &outputParser{}
+}
+
+func (p *outputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
 	switch notification.GetEvent() {
 	case types.TestPassed:
 		return "dot", true
@@ -27,7 +32,7 @@ func (p *OutputParser) NotificationToProgress(notification types.TestNotificatio
 }
 
 // FormatSummary formats a test summary in RSpec style
-func (p *OutputParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
+func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
 	summary := fmt.Sprintf("Finished in %.5f seconds (files took %.5f seconds to load)\n", wallTime, loadTime)
 
 	// Format example count
@@ -59,7 +64,7 @@ func (p *OutputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 }
 
 // ParseLine parses a single line of RSpec output
-func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
+func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	notifications := []types.TestNotification{}
 
 	// Check if it's a JSON line
@@ -147,7 +152,7 @@ func (p *OutputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	return notifications, false // Line was not consumed
 }
 
-func (p *OutputParser) parseExample(msgType string, example map[string]interface{}) types.TestNotification {
+func (p *outputParser) parseExample(msgType string, example map[string]interface{}) types.TestNotification {
 	desc := getString(example, "description")
 	fullDesc := getString(example, "full_description")
 	location := getString(example, "location")
@@ -232,7 +237,7 @@ func getFloat(m map[string]interface{}, key string) float64 {
 }
 
 // FormatFailures formats individual failure details in RSpec style
-func (p *OutputParser) FormatFailures(failures []types.TestCaseNotification) string {
+func (p *outputParser) FormatFailures(failures []types.TestCaseNotification) string {
 	// RSpec provides pre-formatted failures via FormattedFailuresNotification
 	// This method is only used as a fallback
 	if len(failures) == 0 {
@@ -264,7 +269,7 @@ func (p *OutputParser) FormatFailures(failures []types.TestCaseNotification) str
 }
 
 // FormatFailuresList formats a list of failures with file:line references for re-running
-func (p *OutputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
+func (p *outputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
 	if len(failures) == 0 {
 		return ""
 	}
@@ -283,7 +288,7 @@ func (p *OutputParser) FormatFailuresList(failures []types.TestCaseNotification)
 }
 
 // ColorizeSummary applies color to a summary based on success/failure state
-func (p *OutputParser) ColorizeSummary(summary string, hasFailures bool) string {
+func (p *outputParser) ColorizeSummary(summary string, hasFailures bool) string {
 	if hasFailures {
 		return fmt.Sprintf("\033[31m%s\033[0m", summary)
 	}

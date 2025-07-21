@@ -189,3 +189,76 @@ func TestTestCollector_BuildResult_Success(t *testing.T) {
 	}
 	assert.Equal(t, 0, failureCount)
 }
+
+func TestTestCollector_SuiteStartedPreservesLoadTime(t *testing.T) {
+	collector := NewTestCollector()
+
+	testFile := &TestFile{
+		Path:     "spec/example_spec.rb",
+		Filename: "example_spec.rb",
+	}
+
+	// First, add SuiteStarted with LoadTime (this comes from RSpec's start notification)
+	collector.AddNotification(types.SuiteNotification{
+		Event:     types.SuiteStarted,
+		TestCount: 5,
+		LoadTime:  1500 * time.Millisecond, // 1.5 seconds load time
+	})
+
+	// Add some test notifications
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestPassed,
+		TestID: "test-1",
+	})
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestPassed,
+		TestID: "test-2",
+	})
+
+	// Then add SuiteFinished (which typically doesn't have LoadTime in the same way)
+	collector.AddNotification(types.SuiteNotification{
+		Event:        types.SuiteFinished,
+		TestCount:    2,
+		FailureCount: 0,
+		PendingCount: 0,
+		Duration:     2 * time.Second,
+		// Note: No LoadTime here, or a different value
+	})
+
+	// Build result
+	result := collector.BuildResult(testFile, 2*time.Second)
+
+	// Verify that LoadTime from SuiteStarted is preserved
+	assert.Equal(t, 1500*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should be preserved")
+	assert.Equal(t, types.StateSuccess, result.State)
+	assert.Equal(t, 2, result.ExampleCount)
+}
+
+func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {
+	collector := NewTestCollector()
+
+	testFile := &TestFile{
+		Path:     "spec/example_spec.rb",
+		Filename: "example_spec.rb",
+	}
+
+	// Add SuiteStarted with LoadTime
+	collector.AddNotification(types.SuiteNotification{
+		Event:     types.SuiteStarted,
+		TestCount: 3,
+		LoadTime:  800 * time.Millisecond,
+	})
+
+	// Add SuiteFinished with a different LoadTime (should preserve the one from Started)
+	collector.AddNotification(types.SuiteNotification{
+		Event:        types.SuiteFinished,
+		TestCount:    3,
+		FailureCount: 0,
+		LoadTime:     500 * time.Millisecond, // Different value
+	})
+
+	result := collector.BuildResult(testFile, 1*time.Second)
+
+	// Should preserve LoadTime from SuiteStarted, not SuiteFinished
+	assert.Equal(t, 800*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should take precedence")
+}

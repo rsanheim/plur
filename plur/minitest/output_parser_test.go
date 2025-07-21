@@ -18,7 +18,7 @@ func init() {
 
 func TestOutputParser_BasicFlow(t *testing.T) {
 	assert := assert.New(t)
-	parser := &OutputParser{}
+	parser := &outputParser{}
 
 	// Suite starts
 	notifications, _ := parser.ParseLine("# Running:")
@@ -42,7 +42,7 @@ func TestOutputParser_BasicFlow(t *testing.T) {
 func TestOutputParser_ProgressParsing(t *testing.T) {
 	t.Run("all passing", func(t *testing.T) {
 		assert := assert.New(t)
-		parser := &OutputParser{}
+		parser := &outputParser{}
 		notifications, _ := parser.ParseLine("...")
 
 		// Should create 3 progress events
@@ -60,7 +60,7 @@ func TestOutputParser_ProgressParsing(t *testing.T) {
 
 	t.Run("mixed results", func(t *testing.T) {
 		assert := assert.New(t)
-		parser := &OutputParser{}
+		parser := &outputParser{}
 		notifications, _ := parser.ParseLine("..F.F")
 
 		// Should create 5 progress events
@@ -79,7 +79,7 @@ func TestOutputParser_ProgressParsing(t *testing.T) {
 
 	t.Run("with errors and skips", func(t *testing.T) {
 		assert := assert.New(t)
-		parser := &OutputParser{}
+		parser := &outputParser{}
 		notifications, _ := parser.ParseLine(".FES")
 
 		assert.Len(notifications, 4)
@@ -98,7 +98,7 @@ func TestOutputParser_ProgressParsing(t *testing.T) {
 
 func TestOutputParser_FailureDetailMatching(t *testing.T) {
 	assert := assert.New(t)
-	parser := &OutputParser{}
+	parser := &outputParser{}
 
 	// Parse first failure header - should start collecting
 	notifications, _ := parser.ParseLine("  1) Failure:")
@@ -134,7 +134,7 @@ func TestOutputParser_FailureDetailMatching(t *testing.T) {
 func TestOutputParser_BothSummaryFormats(t *testing.T) {
 	t.Run("runs format", func(t *testing.T) {
 		assert := assert.New(t)
-		parser := &OutputParser{}
+		parser := &outputParser{}
 
 		// Standard minitest output uses "runs"
 		notifications, _ := parser.ParseLine("5 runs, 13 assertions, 0 failures, 0 errors, 0 skips")
@@ -148,7 +148,7 @@ func TestOutputParser_BothSummaryFormats(t *testing.T) {
 
 	t.Run("tests format", func(t *testing.T) {
 		assert := assert.New(t)
-		parser := &OutputParser{}
+		parser := &outputParser{}
 
 		// Minitest::Reporters output uses "tests"
 		notifications, _ := parser.ParseLine("2 tests, 2 assertions, 0 failures, 0 errors, 0 skips")
@@ -162,7 +162,7 @@ func TestOutputParser_BothSummaryFormats(t *testing.T) {
 
 	t.Run("singular forms", func(t *testing.T) {
 		assert := assert.New(t)
-		parser := &OutputParser{}
+		parser := &outputParser{}
 
 		// Test singular "run"
 		notifications, _ := parser.ParseLine("1 run, 1 assertion, 0 failures, 0 errors, 0 skips")
@@ -179,7 +179,7 @@ func TestOutputParser_BothSummaryFormats(t *testing.T) {
 
 func TestOutputParser_FullIntegration(t *testing.T) {
 	assert := assert.New(t)
-	parser := &OutputParser{}
+	parser := &outputParser{}
 
 	lines := []string{
 		"Run options: --seed 58399",
