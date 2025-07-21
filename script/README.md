@@ -48,8 +48,7 @@ Benchmarks plur against turbo_tests using hyperfine for performance comparison.
 ```bash
 # Benchmark any Ruby project
 ./script/bench ./plur-ruby
-./script/bench ./example-project-1234567890
-./script/bench /path/to/ruby/project
+./script/bench /references/turbo_tests
 ```
 
 ### What it does

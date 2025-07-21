@@ -121,7 +121,8 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 				os.Stdout.Write(plainStar)
 			}
 		case "stderr":
-			fmt.Fprintf(os.Stderr, "[%s] %s\n", msg.Files, msg.Content)
+			// Just output stderr content without noisy file list prefix
+			fmt.Fprintln(os.Stderr, msg.Content)
 		case "error":
 			// For JSON parse errors or other output
 			fmt.Fprintln(os.Stderr, msg.Content)

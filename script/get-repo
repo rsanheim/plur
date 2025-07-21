@@ -10,9 +10,9 @@ Usage: get-repo <github-url> [target-directory]
 Quickly grab any GitHub repository for clean testing without git history.
 
 Examples:
-  get-repo https://github.com/example-org/example-project
-  get-repo https://github.com/example-org/example-project my-test-dir
-  get-repo git@github.com:example-org/example-project.git
+  get-repo https://github.com/rspec/rspec
+  get-repo https://github.com/rspec/rspec my-test-dir
+  get-repo git@github.com:rspec/rspec.git
 
 What it does:
   - Converts HTTPS to SSH automatically for faster access
