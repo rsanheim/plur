@@ -1,5 +1,11 @@
 # plur CHANGELOG
 
+
+## v0.9.1 - 2025-07-22
+
+* Add multi-platform build support [#70](https://github.com/rsanheim/plur/pull/70)
+* PLUR: final renames and clean up  [#69](https://github.com/rsanheim/plur/pull/69)
+
 ## v0.9.0 - 2025-07-17
 
 * PLUR - the big rename [#51](https://github.com/rsanheim/plur/pull/51)
