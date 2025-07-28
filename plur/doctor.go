@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
+	toml "github.com/pelletier/go-toml"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -120,6 +122,13 @@ func runDoctorWithConfig(globalConfig *GlobalConfig) error {
 	fmt.Printf("  NO_COLOR:                 %s\n", getEnvOrDefault("NO_COLOR", "(not set)"))
 	fmt.Printf("  HOME:                     %s\n", getEnvOrDefault("HOME", "(not set)"))
 	fmt.Printf("  GOPATH:                   %s\n", getEnvOrDefault("GOPATH", "(not set)"))
+	fmt.Println()
+
+	// Configuration
+	fmt.Println("Configuration:")
+	if err := checkConfiguration(); err != nil {
+		fmt.Printf("  Error checking configuration: %v\n", err)
+	}
 
 	return nil
 }
@@ -138,4 +147,132 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func checkConfiguration() error {
+	// Check for local .plur.toml
+	localConfig := ".plur.toml"
+	if configInfo, err := checkConfigFile(localConfig); err == nil {
+		fmt.Printf("  Local Config:   %s\n", configInfo)
+	} else {
+		fmt.Printf("  Local Config:   %s (not found)\n", localConfig)
+	}
+
+	// Check for global ~/.plur.toml
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("cannot determine home directory: %w", err)
+	}
+	globalConfig := filepath.Join(homeDir, ".plur.toml")
+	if configInfo, err := checkConfigFile(globalConfig); err == nil {
+		fmt.Printf("  Global Config:  %s\n", configInfo)
+	} else {
+		fmt.Printf("  Global Config:  %s (not found)\n", globalConfig)
+	}
+
+	// Try to load and validate active configuration
+	fmt.Println("\n  Active Configuration:")
+	if err := validateActiveConfig(localConfig, globalConfig); err != nil {
+		fmt.Printf("    Error: %v\n", err)
+	}
+
+	return nil
+}
+
+func checkConfigFile(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+
+	// Try to parse the TOML file
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Sprintf("%s (exists but unreadable: %v)", path, err), nil
+	}
+
+	var config map[string]interface{}
+	if err := toml.Unmarshal(data, &config); err != nil {
+		return fmt.Sprintf("%s (invalid TOML: %v)", path, err), nil
+	}
+
+	return fmt.Sprintf("%s (valid, %d bytes)", path, info.Size()), nil
+}
+
+func validateActiveConfig(localPath, globalPath string) error {
+	// Load config in precedence order
+	var config map[string]interface{}
+	var configSource string
+
+	// Try local first
+	if data, err := os.ReadFile(localPath); err == nil {
+		if err := toml.Unmarshal(data, &config); err == nil {
+			configSource = "local .plur.toml"
+		}
+	}
+
+	// If no local config, try global
+	if config == nil {
+		if data, err := os.ReadFile(globalPath); err == nil {
+			if err := toml.Unmarshal(data, &config); err == nil {
+				configSource = "global ~/.plur.toml"
+			}
+		}
+	}
+
+	if config == nil {
+		fmt.Printf("    Using defaults (no configuration files found)\n")
+		return nil
+	}
+
+	fmt.Printf("    Source: %s\n", configSource)
+
+	// Display key configuration values
+	if command, ok := config["command"].(string); ok {
+		fmt.Printf("    Command: %s\n", command)
+	}
+
+	if workers, ok := config["workers"].(int64); ok {
+		fmt.Printf("    Workers: %d\n", workers)
+	}
+
+	if color, ok := config["color"].(bool); ok {
+		fmt.Printf("    Color: %v\n", color)
+	}
+
+	// Check for command-specific configs
+	if specConfig, ok := config["spec"].(map[string]interface{}); ok {
+		fmt.Println("    [spec] section:")
+		if specCommand, ok := specConfig["command"].(string); ok {
+			fmt.Printf("      Command: %s\n", specCommand)
+		}
+	}
+
+	if watchConfig, ok := config["watch"].(map[string]interface{}); ok {
+		if runConfig, ok := watchConfig["run"].(map[string]interface{}); ok {
+			fmt.Println("    [watch.run] section:")
+			if watchCommand, ok := runConfig["command"].(string); ok {
+				fmt.Printf("      Command: %s\n", watchCommand)
+			}
+			if debounce, ok := runConfig["debounce"].(int64); ok {
+				fmt.Printf("      Debounce: %dms\n", debounce)
+				if debounce <= 0 || debounce > 10000 {
+					fmt.Printf("      Warning: debounce value %dms seems unusual (recommended: 50-500ms)\n", debounce)
+				}
+			}
+		}
+	}
+
+	// Check for watch directories
+	fmt.Println("\n  Watch Directories:")
+	watchDirs := watch.GetWatchDirectories()
+	if len(watchDirs) == 0 {
+		fmt.Printf("    Warning: No watch directories found (checked: spec/, lib/, app/)\n")
+	} else {
+		for _, dir := range watchDirs {
+			fmt.Printf("    %s/ (exists)\n", dir)
+		}
+	}
+
+	return nil
 }

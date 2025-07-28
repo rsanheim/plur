@@ -152,13 +152,14 @@ func (d *DBPrepareCmd) Run(parent *PlurCLI) error {
 
 type PlurCLI struct {
 	// Commands
-	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
-	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Plur installation and environment"`
-	DBSetup   DBSetupCmd   `cmd:"" name:"db:setup" help:"Setup test databases"`
-	DBCreate  DBCreateCmd  `cmd:"" name:"db:create" help:"Create test databases"`
-	DBMigrate DBMigrateCmd `cmd:"" name:"db:migrate" help:"Migrate test databases"`
-	DBPrepare DBPrepareCmd `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
+	Spec       SpecCmd       `cmd:"" help:"Run tests" default:"withargs"`
+	Watch      WatchCmd      `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Doctor     DoctorCmd     `cmd:"" help:"Diagnose Plur installation and environment"`
+	ConfigInit ConfigInitCmd `cmd:"" name:"config:init" help:"Generate a starter configuration file"`
+	DBSetup    DBSetupCmd    `cmd:"" name:"db:setup" help:"Setup test databases"`
+	DBCreate   DBCreateCmd   `cmd:"" name:"db:create" help:"Create test databases"`
+	DBMigrate  DBMigrateCmd  `cmd:"" name:"db:migrate" help:"Migrate test databases"`
+	DBPrepare  DBPrepareCmd  `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
 
 	// Global flags
 	Auto       bool   `help:"Automatically run bundle install before tests" default:"false"`
@@ -231,6 +232,11 @@ func (r *PlurCLI) AfterApply() error {
 func main() {
 	var cli PlurCLI
 	configPaths := InitConfigPaths()
+
+	// Pre-validate TOML files to avoid panic
+	cleanup := ValidateTOMLFiles(".plur.toml", "~/.plur.toml")
+	defer cleanup()
+
 	ctx := kong.Parse(&cli,
 		kong.Name("plur"),
 		kong.Description("A fast Go-based test runner for Ruby/RSpec"),

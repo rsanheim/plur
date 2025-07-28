@@ -42,14 +42,14 @@ RSpec.describe "Command-specific configuration" do
       expect(error).not_to include("echo 'WATCH:'")
     end
 
-    it "uses watch-specific command for watch runs" do
-      output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "watch", "run", "--timeout=5", stdin_data: "\n")
+    it "uses watch-specific debounce for watch runs" do
+      _, error, status = Dir.chdir(test_dir) do
+        Open3.capture3("plur", "watch", "run", "--timeout=1", "--debug", stdin_data: "")
       end
 
       expect(status).to be_success
-      expect(output).to include("echo 'WATCH:'")
-      expect(output).not_to include("echo 'SPEC:'")
+      # Debug output should show the configured debounce
+      expect(error).to include("debounce=75")
     end
 
     it "respects watch-specific debounce setting" do

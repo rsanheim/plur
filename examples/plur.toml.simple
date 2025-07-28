@@ -1,0 +1,14 @@
+# Simple plur.toml example
+# Copy to .plur.toml in your project root
+
+# Use 4 workers for parallel execution
+workers = 4
+
+# Use bin/rspec instead of bundle exec rspec
+[spec]
+command = "bin/rspec"
+
+# Skip coverage in watch mode for faster feedback
+[watch.run]
+command = "bin/rspec --no-coverage"
+debounce = 200

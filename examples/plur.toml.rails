@@ -1,0 +1,22 @@
+# Rails-specific plur.toml configuration
+# Optimized for typical Rails applications
+
+# Use more workers for Rails apps (they tend to have more tests)
+workers = 8
+
+# Enable colored output for better readability
+color = true
+
+# Rails-specific test command using binstubs
+[spec]
+command = "bin/rails test"
+
+# Watch mode configuration
+[watch.run]
+# Use Spring for faster test startup in watch mode
+command = "bin/spring rspec --fail-fast --no-coverage"
+# Slightly longer debounce for Rails apps (asset compilation, etc.)
+debounce = 300
+
+# Note: For parallel database setup, plur automatically handles
+# TEST_ENV_NUMBER environment variables compatible with parallel_tests

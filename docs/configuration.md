@@ -1,12 +1,65 @@
-Plur aims for zero-configuration operation, but provides options for customization when needed.
+Plur aims for zero-configuration operation, but provides flexible configuration options through TOML files, environment variables, and command-line flags.
 
 ## Configuration Methods
 
-Configuration precedence (highest to lowest):
+Plur supports multiple configuration methods with the following precedence (highest to lowest):
 
 1. Command-line flags
-2. Environment variables
-3. Built-in defaults
+2. `.plur.toml` (project-specific configuration)
+3. `~/.plur.toml` (user-specific configuration)
+4. Environment variables
+5. Built-in defaults
+
+## Configuration Files (TOML)
+
+Plur automatically loads configuration from TOML files using the following search order:
+
+1. `.plur.toml` in the current directory (project-specific)
+2. `~/.plur.toml` in your home directory (user-specific)
+
+### Basic Example
+
+```toml
+# .plur.toml
+workers = 4
+color = true
+
+[spec]
+command = "bin/rspec"
+
+[watch.run]
+command = "bin/rspec --no-coverage"
+debounce = 200
+```
+
+### Available Options
+
+#### Global Settings
+- `workers` - Number of parallel workers (default: auto-detect)
+- `color` - Enable colored output (default: true)
+- `verbose` - Enable verbose output (default: false)
+- `command` - Default test command (default: "bundle exec rspec")
+
+#### Command-Specific Settings
+
+##### `[spec]` section
+Settings for `plur` or `plur spec` commands:
+- `command` - Test command override
+- `type` - Test framework ("rspec" or "minitest")
+
+##### `[watch.run]` section
+Settings for `plur watch` command:
+- `command` - Test command override for watch mode
+- `debounce` - Delay in milliseconds before running tests (default: 100)
+- `type` - Test framework ("rspec" or "minitest")
+
+### Configuration Examples
+
+See the `examples/` directory for complete configuration examples:
+- `plur.toml.example` - Comprehensive example with all options
+- `plur.toml.simple` - Basic configuration for most projects
+- `plur.toml.rails` - Rails-optimized configuration
+- `plur.toml.minitest` - Minitest project configuration
 
 ## Worker Configuration
 

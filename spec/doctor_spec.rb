@@ -30,6 +30,15 @@ RSpec.describe "plur doctor command" do
       .gsub(/RSpec:\s+.+/, "RSpec:          [RSPEC_VERSION]")
       .gsub(/- rspec-\w+\s+.+/, "- rspec-[COMPONENT] [VERSION]")
       .gsub(/HOME:\s+.+/, "HOME:                     [HOME_PATH]")
+      .gsub(/Local Config:\s+.+/, "Local Config:   [LOCAL_CONFIG_PATH]")
+      .gsub(/Global Config:\s+.+/, "Global Config:  [GLOBAL_CONFIG_PATH]")
+      .gsub(/Source:\s+.+/, "Source: [CONFIG_SOURCE]")
+      .gsub(/Command:\s+.+/, "Command: [COMMAND]")
+      .gsub(/Workers:\s+\d+/, "Workers: [WORKER_COUNT]")
+      .gsub(/Color:\s+.+/, "Color: [COLOR_VALUE]")
+      .gsub(/Debounce:\s+\d+ms/, "Debounce: [DEBOUNCE_MS]")
+      .gsub("Watch Directories:", "Watch Directories:")
+      .gsub(/\s+\w+\/\s+\(exists\)/, "    [DIR]/ (exists)")
   end
 
   it "displays diagnostic information" do
@@ -95,11 +104,62 @@ RSpec.describe "plur doctor command" do
       "FORCE_COLOR:",
       "NO_COLOR:",
       "HOME:",
-      "GOPATH:"
+      "GOPATH:",
+      "Configuration:",
+      "Local Config:",
+      "Global Config:",
+      "Active Configuration:"
     ]
 
     expected_sections.each do |section|
       expect(stdout).to include(section), "Expected to find '#{section}' in doctor output"
+    end
+  end
+
+  context "with configuration file" do
+    let(:test_dir) { Dir.mktmpdir }
+
+    before do
+      File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
+        workers = 8
+        color = false
+        command = "rspec --no-color"
+        
+        [spec]
+        command = "bin/rspec --format progress"
+        
+        [watch.run]
+        command = "bundle exec rspec"
+        debounce = 500
+      TOML
+    end
+
+    after do
+      FileUtils.remove_entry(test_dir)
+    end
+
+    it "displays configuration information" do
+      stdout, _stderr, _status = Dir.chdir(test_dir) do
+        run_plur_doctor
+      end
+
+      # Check configuration section appears
+      expect(stdout).to include("Configuration:")
+      expect(stdout).to include("Local Config:")
+      expect(stdout).to include(".plur.toml (valid")
+
+      # Check active configuration details
+      expect(stdout).to include("Active Configuration:")
+      expect(stdout).to include("Source: local .plur.toml")
+      expect(stdout).to include("Workers: 8")
+      expect(stdout).to include("Color: false")
+      expect(stdout).to include("Command: rspec --no-color")
+
+      # Check command-specific sections
+      expect(stdout).to include("[spec] section:")
+      expect(stdout).to include("Command: bin/rspec --format progress")
+      expect(stdout).to include("[watch.run] section:")
+      expect(stdout).to include("Debounce: 500ms")
     end
   end
 end

@@ -1,0 +1,21 @@
+# Minitest-specific plur.toml configuration
+# For projects using Minitest instead of RSpec
+
+# Standard worker configuration
+workers = 4
+
+# Minitest-specific settings
+[spec]
+# Basic minitest command
+command = "bundle exec ruby -Itest"
+type = "minitest"
+
+# Watch mode for minitest
+[watch.run]
+# Run only the changed test file for faster feedback
+command = "bundle exec ruby -Itest"
+type = "minitest"
+debounce = 150
+
+# Note: For Rails projects using Minitest, you might use:
+# command = "bin/rails test"
