@@ -233,11 +233,8 @@ func main() {
 	var cli PlurCLI
 	configPaths := InitConfigPaths()
 
-	// Pre-validate TOML files to avoid panic
-	cleanup := ValidateTOMLFiles(".plur.toml", "~/.plur.toml")
-	defer cleanup()
-
-	ctx := kong.Parse(&cli,
+	// Create parser with configuration
+	parser, err := kong.New(&cli,
 		kong.Name("plur"),
 		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
 		kong.Configuration(kongtoml.Loader, ".plur.toml", "~/.plur.toml"),
@@ -245,8 +242,30 @@ func main() {
 			"cache_dir": configPaths.CacheDir,
 		})
 
+	if err != nil {
+		// Configuration error - create parser without config files
+		fmt.Fprintf(os.Stderr, "Warning: Configuration error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Continuing with default configuration.\n")
+
+		parser, err = kong.New(&cli,
+			kong.Name("plur"),
+			kong.Description("A fast Go-based test runner for Ruby/RSpec"),
+			kong.Vars{
+				"cache_dir": configPaths.CacheDir,
+			})
+		if err != nil {
+			// This should never happen with a valid CLI struct
+			logger.Logger.Error("Fatal error creating parser", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	// Parse command line arguments
+	ctx, err := parser.Parse(os.Args[1:])
+	parser.FatalIfErrorf(err)
+
 	logger.Logger.Debug("running plur", "args", os.Args[1:], "command", ctx.Command())
-	err := ctx.Run(ctx)
+	err = ctx.Run(ctx)
 	if err != nil {
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)

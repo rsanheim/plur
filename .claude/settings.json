@@ -122,5 +122,8 @@
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "github"
-  ]
+  ],
+  "env": {
+    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "true"
+  }
 }

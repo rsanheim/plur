@@ -148,7 +148,8 @@ RSpec.describe "Configuration edge cases" do
 
         expect(status).to be_success
         # Should show warning in stderr
-        expect(error).to include("Warning: Invalid TOML")
+        expect(error).to include("Warning: Configuration error:")
+        expect(error).to include("Continuing with default configuration.")
         # Doctor should still work
         expect(output).to include("Plur Doctor")
       end

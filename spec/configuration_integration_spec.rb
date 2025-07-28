@@ -55,7 +55,8 @@ RSpec.describe "Configuration integration" do
         # Should handle invalid TOML gracefully
         expect(status).to be_success
         # Should show warning about invalid TOML
-        expect(error).to include("Warning: Invalid TOML")
+        expect(error).to include("Warning: Configuration error:")
+        expect(error).to include("Continuing with default configuration.")
         # Doctor should still work
         expect(output).to include("Plur Doctor")
       end
