@@ -1,0 +1,10 @@
+workers = 4
+color = true
+command = "custom-rspec"
+
+[spec]
+command = "spec-specific-command"
+
+[watch.run]
+command = "watch-specific-command"
+debounce = 300

@@ -233,31 +233,35 @@ func main() {
 	var cli PlurCLI
 	configPaths := InitConfigPaths()
 
+	// Build config file list
+	var configFiles []string
+
+	// Check for PLUR_CONFIG_FILE environment variable
+	if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
+		// Verify the file exists and is readable
+		if _, err := os.Stat(configFile); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
+			os.Exit(1)
+		}
+		// Add it first for highest precedence
+		configFiles = append(configFiles, configFile)
+	}
+
+	// Always append default locations after
+	configFiles = append(configFiles, ".plur.toml", "~/.plur.toml")
+
 	// Create parser with configuration
 	parser, err := kong.New(&cli,
 		kong.Name("plur"),
 		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
-		kong.Configuration(kongtoml.Loader, ".plur.toml", "~/.plur.toml"),
+		kong.Configuration(kongtoml.Loader, configFiles...),
 		kong.Vars{
 			"cache_dir": configPaths.CacheDir,
 		})
 
 	if err != nil {
-		// Configuration error - create parser without config files
-		fmt.Fprintf(os.Stderr, "Warning: Configuration error: %v\n", err)
-		fmt.Fprintf(os.Stderr, "Continuing with default configuration.\n")
-
-		parser, err = kong.New(&cli,
-			kong.Name("plur"),
-			kong.Description("A fast Go-based test runner for Ruby/RSpec"),
-			kong.Vars{
-				"cache_dir": configPaths.CacheDir,
-			})
-		if err != nil {
-			// This should never happen with a valid CLI struct
-			logger.Logger.Error("Fatal error creating parser", "error", err)
-			os.Exit(1)
-		}
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Parse command line arguments
