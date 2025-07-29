@@ -56,7 +56,6 @@ RSpec.describe Plur::Benchmark do
 
     before do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with(Plur.config.local_plur_binary).and_return(true)
       allow(runner).to receive(:system).and_return(true)
       allow(runner).to receive(:get_git_sha).and_return("abc123")
       allow(runner).to receive(:get_plur_version).and_return("plur version 1.0.0")
@@ -96,7 +95,7 @@ RSpec.describe Plur::Benchmark do
           expect(args).to include("--warmup", "2")
           expect(args).to include("--runs", "5")
           expect(args).to include("turbo_tests -n #{config.workers}")
-          expect(args).to include("#{Plur.config.local_plur_binary} -n #{config.workers}")
+          expect(args).to include("plur -n #{config.workers}")
           true
         end
 
@@ -146,13 +145,13 @@ RSpec.describe Plur::Benchmark do
     describe "#get_plur_version" do
       it "returns plur version when available" do
         runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("#{Plur.config.local_plur_binary} --version 2>/dev/null").and_return("plur version 1.0.0\n")
+        allow(runner).to receive(:`).with("plur --version 2>/dev/null").and_return("plur version 1.0.0\n")
         expect(runner.send(:get_plur_version)).to eq("plur version 1.0.0")
       end
 
       it "returns unknown when plur fails" do
         runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("#{Plur.config.local_plur_binary} --version 2>/dev/null").and_raise(StandardError)
+        allow(runner).to receive(:`).with("plur --version 2>/dev/null").and_raise(StandardError)
         expect(runner.send(:get_plur_version)).to eq("plur version unknown")
       end
     end
