@@ -38,12 +38,14 @@ type ConfigPaths struct {
 	JSONRowsFormatter string
 }
 
+// InitConfigPaths initializes PLUR_HOME if necessary, as well as subdirs inside it.
+// By default this will be ~/.plur unless PLUR_HOME is set by the user.
 func InitConfigPaths() *ConfigPaths {
 	plurHome, ok := os.LookupEnv("PLUR_HOME")
 	if !ok {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "cannot find home directory and PLUR_HOME not set: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Fatal error: cannot find home directory and PLUR_HOME not set: %v\n", err)
 			os.Exit(1)
 		}
 		plurHome = filepath.Join(homeDir, ".plur")
@@ -51,7 +53,7 @@ func InitConfigPaths() *ConfigPaths {
 
 	err := os.MkdirAll(plurHome, 0755)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create PLUR_HOME directory: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Fatal error: failed to create PLUR_HOME directory: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -62,16 +64,10 @@ func InitConfigPaths() *ConfigPaths {
 
 	paths := []string{binDir, cacheDir, runtimeDir, formatterDir}
 	for _, path := range paths {
-		if os.MkdirAll(path, 0755) != nil {
-			fmt.Fprintf(os.Stderr, "failed to create %s directory: %v\n", path, err)
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "Fatal error: failed to create %s directory: %v\n", path, err)
 			os.Exit(1)
 		}
-	}
-
-	jsonRowsFormatter, err := rspec.GetFormatterPath(formatterDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to get JSON rows formatter path: %v\n", err)
-		os.Exit(1)
 	}
 
 	configPaths := ConfigPaths{
@@ -80,10 +76,29 @@ func InitConfigPaths() *ConfigPaths {
 		CacheDir:          cacheDir,
 		RuntimeDir:        runtimeDir,
 		FormatterDir:      formatterDir,
-		JSONRowsFormatter: jsonRowsFormatter,
+		JSONRowsFormatter: "", // Will be initialized lazily when needed
 	}
 
 	return &configPaths
+}
+
+// GetJSONRowsFormatterPath returns the path to the JSON rows formatter,
+// We initialize it if needed - this is called lazily only when running RSpec tests.
+// This function will exit the program if the formatter cannot be initialized.
+func (c *ConfigPaths) GetJSONRowsFormatterPath() string {
+	if c.JSONRowsFormatter != "" {
+		return c.JSONRowsFormatter
+	}
+
+	formatter, err := rspec.GetFormatterPath(c.FormatterDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Fatal error: Failed to initialize RSpec formatter: %v\n", err)
+		fmt.Fprintf(os.Stderr, "The JSON formatter is required for RSpec test execution.\n")
+		os.Exit(1)
+	}
+
+	c.JSONRowsFormatter = formatter
+	return formatter
 }
 
 // ParseFrameworkType converts a string type to TestFramework enum
