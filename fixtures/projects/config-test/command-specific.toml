@@ -1,0 +1,9 @@
+# Global settings
+workers = 2
+
+[spec]
+command = "echo 'SPEC:'"
+
+[watch.run]
+command = "echo 'WATCH:'"
+debounce = 75

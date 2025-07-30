@@ -59,6 +59,19 @@ plur db:migrate -n 3         # Run migrations across all test DBs
 plur db:setup -n 3           # Full database setup
 ```
 
+### Configuration
+Plur supports TOML configuration files for persistent settings:
+```toml
+# .plur.toml or ~/.plur.toml
+workers = 4
+[spec]
+command = "bin/rspec"
+[watch.run]
+command = "bin/rspec --no-coverage"
+```
+
+See `examples/` directory for more configuration examples.
+
 ### Environment Variables
 - **TEST_ENV_NUMBER**: Worker 0 gets `""`, worker N gets `"N+1"`
 - **PARALLEL_TEST_GROUPS**: Total number of workers

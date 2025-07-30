@@ -56,7 +56,7 @@ OptionParser.new do |opts|
           # Benchmark default projects (default-ruby and example-project)
           bench
 
-          # Create checkpoint with summary (combines results from all projects)
+          # Benchmark default projects with combined summaries
           bench --checkpoint
 
           # Benchmark a specific project with 4 workers

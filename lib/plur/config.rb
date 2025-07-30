@@ -2,7 +2,7 @@ module Plur
   class Config
     include Singleton
 
-    attr_reader :edant_watcher_version, :root_dir, :plur_dir, :watcher_dir, :local_plur_binary,
+    attr_reader :edant_watcher_version, :root_dir, :plur_dir, :watcher_dir,
       :fixtures_dir, :default_ruby_dir, :default_rails_dir
 
     def initialize
@@ -18,9 +18,6 @@ module Plur
       @fixtures_dir = @root_dir.join("fixtures", "projects")
       @default_ruby_dir = @fixtures_dir.join("default-ruby")
       @default_rails_dir = @fixtures_dir.join("default-rails")
-
-      # Binary paths
-      @local_plur_binary = @plur_dir.join("plur")
     end
 
     # Runtime configuration

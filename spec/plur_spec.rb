@@ -37,12 +37,6 @@ RSpec.describe Plur::Config do
       expect(config.watcher_dir).to be_a(Pathname)
       expect(config.watcher_dir.to_s).to include("embedded/watcher")
     end
-
-    it "defines local_plur_binary as a Pathname" do
-      expect(config.local_plur_binary).to be_a(Pathname)
-      expect(config.local_plur_binary.basename.to_s).to eq("plur")
-      expect(config.local_plur_binary.dirname).to eq(config.plur_dir)
-    end
   end
 
   describe "path relationships" do
@@ -52,10 +46,6 @@ RSpec.describe Plur::Config do
 
     it "has watcher_dir as a child of plur_dir" do
       expect(config.watcher_dir.to_s).to start_with(config.plur_dir.to_s)
-    end
-
-    it "has local_plur_binary inside plur_dir" do
-      expect(config.local_plur_binary.to_s).to start_with(config.plur_dir.to_s)
     end
   end
 end

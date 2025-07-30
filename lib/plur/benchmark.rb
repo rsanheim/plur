@@ -44,7 +44,7 @@ module Plur
       def initialize(config)
         @config = config
         @original_dir = Dir.pwd
-        check_local_plur_binary!
+        check_plur_installed!
         @git_sha = get_git_sha
         @plur_version = get_plur_version
       end
@@ -93,7 +93,7 @@ module Plur
         json_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.json").to_s
         markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
 
-        plur_cmd = "#{Plur.config.local_plur_binary} -n #{config.workers}"
+        plur_cmd = "plur -n #{config.workers}"
 
         hyperfine_cmd = [
           "hyperfine",
@@ -160,18 +160,18 @@ module Plur
       end
 
       def get_plur_version
-        `#{Plur.config.local_plur_binary} --version 2>/dev/null`.strip
+        `plur --version 2>/dev/null`.strip
       rescue
         "plur version unknown"
       end
 
-      def check_local_plur_binary!
-        unless File.exist?(Plur.config.local_plur_binary)
+      def check_plur_installed!
+        unless system("which plur > /dev/null 2>&1")
           puts <<~ERROR
-            Error: Local plur binary not found at #{Plur.config.local_plur_binary}
+            Error: plur not found in PATH
             
-            Please build plur first by running:
-              bin/rake build
+            Please install plur first by running:
+              bin/rake install
           ERROR
           exit 1
         end

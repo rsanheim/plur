@@ -1,0 +1,58 @@
+# Example plur.toml configuration file
+# 
+# Copy this file to .plur.toml in your project root or ~/.plur.toml for global settings.
+#
+# Configuration precedence (highest to lowest):
+# 1. Command-line flags
+# 2. .plur.toml (project-specific)
+# 3. ~/.plur.toml (user-specific)
+# 4. Built-in defaults
+
+# =============================================================================
+# GLOBAL SETTINGS
+# =============================================================================
+
+# Number of parallel workers to use
+# Default: auto-detect (number of CPU cores - 2)
+workers = 4
+
+# Enable colored output
+# Default: true (auto-detected based on terminal support)
+color = true
+
+# Enable verbose output
+# Default: false
+verbose = false
+
+# =============================================================================
+# SPEC COMMAND SETTINGS
+# Settings for 'plur spec' or just 'plur'
+# =============================================================================
+
+[spec]
+# Test command to run
+# Default: "bundle exec rspec"
+command = "bin/rspec"
+
+# Test framework type
+# Options: "rspec" (default), "minitest"
+type = "rspec"
+
+# =============================================================================
+# WATCH MODE SETTINGS
+# Settings for 'plur watch'
+# =============================================================================
+
+[watch.run]
+# Test command for watch mode (often skips coverage for speed)
+# Default: inherits from [spec] or global settings
+command = "bin/rspec --no-coverage"
+
+# Debounce delay in milliseconds
+# How long to wait after a file change before running tests
+# Default: 100
+debounce = 200
+
+# Test framework type for watch mode
+# Default: inherits from [spec] settings
+type = "rspec"

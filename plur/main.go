@@ -152,13 +152,14 @@ func (d *DBPrepareCmd) Run(parent *PlurCLI) error {
 
 type PlurCLI struct {
 	// Commands
-	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
-	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Plur installation and environment"`
-	DBSetup   DBSetupCmd   `cmd:"" name:"db:setup" help:"Setup test databases"`
-	DBCreate  DBCreateCmd  `cmd:"" name:"db:create" help:"Create test databases"`
-	DBMigrate DBMigrateCmd `cmd:"" name:"db:migrate" help:"Migrate test databases"`
-	DBPrepare DBPrepareCmd `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
+	Spec       SpecCmd       `cmd:"" help:"Run tests" default:"withargs"`
+	Watch      WatchCmd      `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Doctor     DoctorCmd     `cmd:"" help:"Diagnose Plur installation and environment"`
+	ConfigInit ConfigInitCmd `cmd:"" name:"config:init" help:"Generate a starter configuration file"`
+	DBSetup    DBSetupCmd    `cmd:"" name:"db:setup" help:"Setup test databases"`
+	DBCreate   DBCreateCmd   `cmd:"" name:"db:create" help:"Create test databases"`
+	DBMigrate  DBMigrateCmd  `cmd:"" name:"db:migrate" help:"Migrate test databases"`
+	DBPrepare  DBPrepareCmd  `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
 
 	// Global flags
 	Auto       bool   `help:"Automatically run bundle install before tests" default:"false"`
@@ -167,9 +168,8 @@ type PlurCLI struct {
 	DryRun     bool   `help:"Print what would be executed without running" default:"false"`
 	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
 	Color      bool   `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
-	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" hidden:""`
+	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" default:"true" hidden:""`
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
-	CacheDir   string `help:"Directory for caching runtime data" default:"${cache_dir}"`
 	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 	Version    bool   `help:"Show version information"`
@@ -198,25 +198,20 @@ func (r *PlurCLI) AfterApply() error {
 	}
 
 	// Sync British spelling to American spelling
-	// If --no-colour is used, r.Colour is false and we need to set r.Color to false
-	// If --colour is used, r.Colour is true and we need to set r.Color to true
-	// The issue is that Kong sets the flag based on what's explicitly provided
-	// TODO: This is a limitation of Kong - we can't distinguish between
-	// "not set" vs "explicitly set to false"
-
-	// For now, we'll check if the args contain --no-colour
-	for _, arg := range os.Args {
-		if arg == "--no-colour" {
-			r.Color = false
-			break
-		}
+	// Both default to true, so if either is false, use false
+	// This handles --no-color, --no-colour, or both
+	if !r.Colour || !r.Color {
+		r.Color = false
 	}
+
+	// Initialize config paths
+	configPaths := InitConfigPaths()
 
 	// Build global config once
 	r.globalConfig = &GlobalConfig{
 		Auto:        r.Auto,
 		ColorOutput: r.Color,
-		ConfigPaths: InitConfigPaths(),
+		ConfigPaths: configPaths,
 		Debug:       r.Debug,
 		Verbose:     r.Verbose,
 		DryRun:      r.DryRun,
@@ -230,17 +225,41 @@ func (r *PlurCLI) AfterApply() error {
 
 func main() {
 	var cli PlurCLI
-	configPaths := InitConfigPaths()
-	ctx := kong.Parse(&cli,
+
+	// Build config file list
+	var configFiles []string
+
+	// Check for PLUR_CONFIG_FILE environment variable
+	if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
+		// Verify the file exists and is readable
+		if _, err := os.Stat(configFile); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
+			os.Exit(1)
+		}
+		// Add it first for highest precedence
+		configFiles = append(configFiles, configFile)
+	}
+
+	// Always append default locations after
+	configFiles = append(configFiles, ".plur.toml", "~/.plur.toml")
+
+	// Create parser with configuration
+	parser, err := kong.New(&cli,
 		kong.Name("plur"),
 		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
-		kong.Configuration(kongtoml.Loader, ".plur.toml", "~/.plur.toml"),
-		kong.Vars{
-			"cache_dir": configPaths.CacheDir,
-		})
+		kong.Configuration(kongtoml.Loader, configFiles...))
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Parse command line arguments
+	ctx, err := parser.Parse(os.Args[1:])
+	parser.FatalIfErrorf(err)
 
 	logger.Logger.Debug("running plur", "args", os.Args[1:], "command", ctx.Command())
-	err := ctx.Run(ctx)
+	err = ctx.Run(ctx)
 	if err != nil {
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)
