@@ -76,6 +76,45 @@ RSpec.describe "Plur parallel execution" do
         end
       end
     end
+
+    it "does not set TEST_ENV_NUMBER in serial mode" do
+      Dir.mktmpdir do |tmpdir|
+        spec_dir = File.join(tmpdir, "spec")
+        FileUtils.mkdir_p(spec_dir)
+
+        # Create a spec file that verifies TEST_ENV_NUMBER behavior
+        # Note: We save the value at spec load time to detect if plur set it
+        spec_path = File.join(spec_dir, "serial_env_test_spec.rb")
+        File.write(spec_path, <<~RUBY)
+          # Save initial value to detect if plur modified it
+          INITIAL_TEST_ENV = ENV['TEST_ENV_NUMBER']
+          
+          RSpec.describe "serial mode env test" do
+            it "does not modify TEST_ENV_NUMBER in serial mode" do
+              # In serial mode, plur should not modify TEST_ENV_NUMBER
+              # If it was already set by parent process, it should remain unchanged
+              current_value = ENV['TEST_ENV_NUMBER']
+              expect(current_value).to eq(INITIAL_TEST_ENV), 
+                "TEST_ENV_NUMBER was modified by plur in serial mode. Initial: '\#{INITIAL_TEST_ENV}', Current: '\#{current_value}'"
+            end
+          end
+        RUBY
+
+        File.write(File.join(tmpdir, "Gemfile"), <<~GEMFILE)
+          source 'https://rubygems.org'
+          gem 'rspec', '~> 3.0'
+        GEMFILE
+
+        chdir(tmpdir) do
+          system("bundle install", out: File::NULL, err: File::NULL)
+
+          result = run_plur("-n", "1")
+
+          # Should run successfully with no TEST_ENV_NUMBER set
+          expect(result.out).to include("1 example, 0 failures")
+        end
+      end
+    end
   end
 
   describe "output synchronization" do
