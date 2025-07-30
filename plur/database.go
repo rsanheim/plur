@@ -12,7 +12,6 @@ import (
 // RunDatabaseTask executes a Rails database task in parallel across test databases
 func RunDatabaseTask(task string, config *GlobalConfig) error {
 	if config.DryRun {
-		fmt.Printf("[dry-run] Would run database task '%s' with %d workers\n", task, config.WorkerCount)
 		for i := 0; i < config.WorkerCount; i++ {
 			envStr := ""
 			if !config.IsSerial() {
@@ -61,11 +60,9 @@ func RunDatabaseTask(task string, config *GlobalConfig) error {
 		}()
 	}
 
-	// Wait for all workers to complete
 	wg.Wait()
 	close(results)
 
-	// Check for errors
 	var errors []string
 	for err := range results {
 		if err != nil {
