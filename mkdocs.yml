@@ -1,8 +1,8 @@
 site_name: Plur Documentation
 site_description: Fast parallel test runner for Ruby/RSpec
-site_url: https://github.com/rsanheim/plur-meta
-repo_name: rsanheim/plur-meta
-repo_url: https://github.com/rsanheim/plur-meta
+site_url: https://github.com/rsanheim/plur
+repo_name: rsanheim/plur
+repo_url: https://github.com/rsanheim/plur
 
 theme:
   name: material
@@ -90,7 +90,7 @@ validation:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/rsanheim/plur-meta
+      link: https://github.com/rsanheim/plur
 
 extra_css:
   - stylesheets/extra.css
