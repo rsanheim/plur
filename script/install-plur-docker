@@ -2,37 +2,103 @@
 #
 # Install plur binary to a Docker container
 #
-# Usage: script/install-plur-docker SERVICE_NAME [-C COMPOSE_PREFIX] [BINARY_PATH]
+# Usage: script/install-plur-docker [COMMAND] SERVICE_NAME [OPTIONS]
 #
 # Examples:
 #   script/install-plur-docker my-app                              # Uses container "my-app"
 #   script/install-plur-docker web -C myproject                    # Uses container "myproject_web_1"
-#   script/install-plur-docker my-app dist/plur-linux-arm64        # Use specific binary
+#   script/install-plur-docker my-app --binary dist/plur-linux-arm64   # Use specific binary
+#   script/install-plur-docker status my-app                       # Check installation status
 
 set -euo pipefail
 
+# Show help message
+show_help() {
+    cat << EOF
+Install or update plur binary in a Docker container
+
+Usage: 
+  $0 [COMMAND] SERVICE_NAME [OPTIONS]
+  
+Commands:
+  install   Install/update plur in container (default)
+  status    Show plur installation status and doctor output
+  --help    Show this help message
+
+Arguments:
+  SERVICE_NAME      Name of the Docker container or service
+
+Options:
+  -C COMPOSE_PREFIX Use docker-compose naming (prefix_service_1)
+  --binary PATH     Path to specific binary (auto-detects if omitted)
+
+Examples:
+  $0 my-app                                      # Install with auto-detect architecture
+  $0 web -C myproject                            # Install with compose prefix
+  $0 my-app --binary dist/plur-linux-arm64       # Install specific binary
+  $0 status my-app                               # Check installation status
+  
+Notes:
+  * Always installs the latest version, replacing any existing installation
+  * Automatically detects container architecture (amd64/arm64)
+  * Requires 'bin/rake build:linux' to be run first for auto-detection
+EOF
+}
+
+# Check for help flag
+if [ $# -eq 0 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    show_help
+    exit 0
+fi
+
+# Parse command
+COMMAND="install"
+if [ "$1" = "status" ]; then
+    COMMAND="status"
+    shift
+fi
+
 # Parse arguments
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 SERVICE_NAME [-C COMPOSE_PREFIX] [BINARY_PATH]"
+    echo "Error: SERVICE_NAME required"
     echo ""
-    echo "Examples:"
-    echo "  $0 my-app                              # Auto-detect architecture"
-    echo "  $0 web -C myproject                    # With compose prefix"
-    echo "  $0 my-app dist/plur-linux-arm64        # Use specific binary"
+    show_help
     exit 1
 fi
 
 SERVICE="$1"
 shift
 
-# Parse optional -C flag
+# Parse options
 COMPOSE_PREFIX=""
-if [ $# -ge 2 ] && [ "$1" = "-C" ]; then
-    COMPOSE_PREFIX="$2"
-    shift 2
-fi
+BINARY_PATH=""
 
-BINARY_PATH="${1:-}"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -C)
+            if [ $# -lt 2 ]; then
+                echo "Error: -C requires a compose prefix argument"
+                exit 1
+            fi
+            COMPOSE_PREFIX="$2"
+            shift 2
+            ;;
+        --binary)
+            if [ $# -lt 2 ]; then
+                echo "Error: --binary requires a path argument"
+                exit 1
+            fi
+            BINARY_PATH="$2"
+            shift 2
+            ;;
+        *)
+            echo "Error: Unknown option: $1"
+            echo ""
+            show_help
+            exit 1
+            ;;
+    esac
+done
 
 # Determine container name
 if [ -n "$COMPOSE_PREFIX" ]; then
@@ -87,6 +153,44 @@ if [ ! -f "$BINARY_PATH" ]; then
     exit 1
 fi
 
+# Verify container exists first
+CONTAINER_ID=$(docker ps --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | head -n1)
+
+if [ -z "$CONTAINER_ID" ]; then
+    echo "Error: Could not find running container: $CONTAINER_NAME"
+    echo "Make sure the container is running"
+    exit 1
+fi
+
+# Handle status command
+if [ "$COMMAND" = "status" ]; then
+    echo ">>> Checking plur installation status on container: $CONTAINER_NAME"
+    echo ""
+    
+    # Check if plur is installed
+    VERSION=$(docker exec "$CONTAINER_NAME" plur --version 2>&1 || echo "NOT_INSTALLED")
+    
+    if [[ "$VERSION" == "NOT_INSTALLED" ]] || [[ "$VERSION" == *"not found"* ]]; then
+        echo "✗ plur is not installed on $CONTAINER_NAME"
+        exit 1
+    else
+        echo "✓ plur is installed on $CONTAINER_NAME"
+        echo "  Version: $VERSION"
+    fi
+    
+    # Get binary location and info
+    echo ""
+    echo ">>> Binary information:"
+    docker exec "$CONTAINER_NAME" bash -c "which plur && ls -lh \$(which plur)" 2>/dev/null || echo "  Unable to get binary info"
+    
+    # Show doctor output
+    echo ""
+    echo ">>> Running plur doctor..."
+    docker exec "$CONTAINER_NAME" plur doctor || echo "  Error running plur doctor"
+    
+    exit 0
+fi
+
 # Get binary info
 BINARY_SIZE=$(du -h "$BINARY_PATH" | cut -f1)
 BINARY_NAME=$(basename "$BINARY_PATH")
@@ -99,28 +203,26 @@ echo ">>> Creating temp directory in container..."
 TEMP_DIR=$(docker exec "$CONTAINER_NAME" mktemp -d)
 echo "    Temp directory: $TEMP_DIR"
 
-# Verify container exists
-CONTAINER_ID=$(docker ps --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | head -n1)
-
-if [ -z "$CONTAINER_ID" ]; then
-    echo "Error: Could not find running container: $CONTAINER_NAME"
-    echo "Make sure the container is running"
-    exit 1
-fi
-
 # Copy binary to container
 echo ">>> Copying binary to container..."
 docker cp "$BINARY_PATH" "${CONTAINER_ID}:${TEMP_DIR}/plur"
 
 # Install binary in container
 echo ">>> Installing binary in container..."
+
+# Check if plur already exists
+EXISTING_VERSION=$(docker exec "$CONTAINER_NAME" plur --version 2>&1 || echo "")
+if [[ -n "$EXISTING_VERSION" ]] && [[ "$EXISTING_VERSION" != *"not found"* ]]; then
+    echo "    Replacing existing plur: $EXISTING_VERSION"
+fi
+
 docker exec "$CONTAINER_NAME" bash -c "
     set -e
     # Create /usr/local/bin if it doesn't exist
     mkdir -p /usr/local/bin
     
-    # Move binary to final location
-    mv ${TEMP_DIR}/plur /usr/local/bin/plur
+    # Move binary to final location (overwrites existing)
+    mv -f ${TEMP_DIR}/plur /usr/local/bin/plur
     
     # Make it executable
     chmod +x /usr/local/bin/plur
