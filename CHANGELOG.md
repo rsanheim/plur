@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## v0.9.2 - 2025-07-30
+
+* Config file improvements [#72](https://github.com/rsanheim/plur/pull/72)
 
 ## v0.9.1 - 2025-07-22
 
