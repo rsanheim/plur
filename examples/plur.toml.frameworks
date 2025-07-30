@@ -1,0 +1,71 @@
+# Framework-specific plur.toml examples
+# 
+# This file contains configuration examples for different Ruby testing frameworks
+# and project types. Copy the relevant section to your .plur.toml file.
+
+# =============================================================================
+# RAILS WITH RSPEC
+# =============================================================================
+
+# workers = 8                          # More workers for larger test suites
+# color = true
+# 
+# [spec]
+# command = "bin/rails test"           # Use Rails binstubs
+# 
+# [watch.run]
+# command = "bin/spring rspec --fail-fast --no-coverage"  # Spring for faster startup
+# debounce = 300                       # Longer debounce for asset compilation
+
+# =============================================================================
+# MINITEST PROJECT
+# =============================================================================
+
+# workers = 4
+# 
+# [spec]
+# command = "bundle exec ruby -Itest"  # Standard Minitest invocation
+# type = "minitest"
+# 
+# [watch.run]
+# command = "bundle exec ruby -Itest"
+# type = "minitest"
+# debounce = 150
+
+# =============================================================================
+# CI/PRODUCTION OPTIMIZED
+# =============================================================================
+
+# workers = 16                         # Max out CI workers
+# color = false                        # Disable color for log files
+# verbose = true                       # More output for debugging
+# 
+# [spec]
+# command = "rspec"                    # Bare rspec for maximum performance
+# 
+# [watch.run]
+# command = "bundle exec rspec"        # Use bundle exec in development
+# debounce = 200
+
+# =============================================================================
+# MONOREPO WITH MULTIPLE APPS
+# =============================================================================
+
+# [spec]
+# command = "cd backend && bundle exec rspec"
+# 
+# [watch.run]
+# command = "cd backend && bundle exec rspec --fail-fast"
+
+# =============================================================================
+# GEM DEVELOPMENT
+# =============================================================================
+
+# workers = 4
+# 
+# [spec]
+# command = "bundle exec rspec --require spec_helper"
+# 
+# [watch.run]
+# command = "bundle exec rspec --fail-fast --format progress"
+# debounce = 100                       # Quick feedback for gem development

@@ -1,6 +1,5 @@
 # Example plur.toml configuration file
 # 
-# This file demonstrates all available configuration options for plur.
 # Copy this file to .plur.toml in your project root or ~/.plur.toml for global settings.
 #
 # Configuration precedence (highest to lowest):
@@ -11,95 +10,49 @@
 
 # =============================================================================
 # GLOBAL SETTINGS
-# These settings apply to all plur commands unless overridden
 # =============================================================================
 
 # Number of parallel workers to use
 # Default: auto-detect (number of CPU cores - 2)
-# workers = 4
+workers = 4
 
 # Enable colored output
 # Default: true (auto-detected based on terminal support)
-# color = true
+color = true
 
 # Enable verbose output
 # Default: false
-# verbose = false
-
-# Default test command to run
-# This is used when no command-specific override is provided
-# Default: "bundle exec rspec"
-# command = "bin/rspec"
+verbose = false
 
 # =============================================================================
 # SPEC COMMAND SETTINGS
-# Settings specific to 'plur spec' or just 'plur'
+# Settings for 'plur spec' or just 'plur'
 # =============================================================================
 
 [spec]
-# Override the test command for spec runs
-# Useful for projects with custom test runners or different bundle setup
-# command = "bin/rspec"
+# Test command to run
+# Default: "bundle exec rspec"
+command = "bin/rspec"
 
 # Test framework type
 # Options: "rspec" (default), "minitest"
-# type = "rspec"
+type = "rspec"
 
 # =============================================================================
 # WATCH MODE SETTINGS
-# Settings specific to 'plur watch'
+# Settings for 'plur watch'
 # =============================================================================
 
 [watch.run]
-# Override the test command for watch mode
-# Often you want faster feedback in watch mode, so you might skip coverage
-# command = "bundle exec rspec --no-coverage"
+# Test command for watch mode (often skips coverage for speed)
+# Default: inherits from [spec] or global settings
+command = "bin/rspec --no-coverage"
 
 # Debounce delay in milliseconds
 # How long to wait after a file change before running tests
-# This prevents multiple runs when saving multiple files quickly
 # Default: 100
-# debounce = 250
+debounce = 200
 
 # Test framework type for watch mode
-# Options: "rspec" (default), "minitest"
-# type = "rspec"
-
-# =============================================================================
-# EXAMPLE CONFIGURATIONS
-# =============================================================================
-
-# --- Example 1: Rails application with Spring ---
-# workers = 8
-# [spec]
-# command = "bin/spring rspec"
-# [watch.run]
-# command = "bin/spring rspec --no-coverage"
-# debounce = 200
-
-# --- Example 2: Ruby gem with custom RSpec setup ---
-# workers = 4
-# color = true
-# [spec]
-# command = "bundle exec rspec --require spec_helper"
-
-# --- Example 3: Minitest project ---
-# [spec]
-# command = "bundle exec ruby -Itest"
-# type = "minitest"
-# [watch.run]
-# command = "bundle exec ruby -Itest"
-# type = "minitest"
-
-# --- Example 4: Monorepo with specific test directory ---
-# [spec]
-# command = "cd backend && bundle exec rspec"
-# [watch.run]
-# command = "cd backend && bundle exec rspec --fail-fast"
-
-# --- Example 5: CI/CD optimized configuration ---
-# workers = 16
-# color = false
-# verbose = true
-# [spec]
-# command = "bundle exec rspec --format documentation"
+# Default: inherits from [spec] settings
+type = "rspec"
