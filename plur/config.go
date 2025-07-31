@@ -27,6 +27,12 @@ type GlobalConfig struct {
 	WorkerCount int
 	RuntimeDir  string
 	JSON        string // JSON output file
+	FirstIs1    bool   // Start TEST_ENV_NUMBER at 1 instead of empty string
+}
+
+// IsSerial returns true if running in serial mode (single worker)
+func (c *GlobalConfig) IsSerial() bool {
+	return c.WorkerCount == 1
 }
 
 type ConfigPaths struct {
