@@ -6,7 +6,6 @@ RSpec.describe "Plur parallel execution" do
       chdir(default_ruby_dir) do
         result = run_plur("-n", "3", "--verbose", "spec/env_test_spec.rb", "--no-color")
 
-        # Verify it runs successfully
         expect(result.out).to include("1 example, 0 failures")
 
         # The output will show TEST_ENV_NUMBER values printed to stderr
@@ -19,7 +18,6 @@ RSpec.describe "Plur parallel execution" do
       chdir(default_ruby_dir) do
         result = run_plur("-n", "4", "spec/env_test_spec.rb", "--no-color")
 
-        # Verify it runs successfully
         expect(result.out).to include("1 example, 0 failures")
 
         # The output will show PARALLEL_TEST_GROUPS value printed to stderr
@@ -32,7 +30,6 @@ RSpec.describe "Plur parallel execution" do
       chdir(default_ruby_dir) do
         result = run_plur("-n", "1", "spec/env_test_spec.rb", "--no-color")
 
-        # Should run successfully
         expect(result.out).to include("1 example, 0 failures")
 
         # In serial mode, TEST_ENV_NUMBER should not be set by plur
@@ -46,11 +43,8 @@ RSpec.describe "Plur parallel execution" do
   describe "output synchronization" do
     it "runs multiple workers without interleaving progress output" do
       chdir(default_ruby_dir) do
-        # Run all specs with multiple workers
-        # The default-ruby fixture has many spec files that will run in parallel
         result = run_plur("-n", "3")
 
-        # Should see organized output with all tests passing
         expect(result.out).to match(/\d+ examples, 0 failures/)
 
         # Progress dots should appear on one line (not interleaved)
@@ -64,14 +58,11 @@ RSpec.describe "Plur parallel execution" do
     it "shows combined progress from all workers" do
       failing_specs_path = project_fixture("failing_specs")
       chdir(failing_specs_path) do
-        # The failing_specs fixture has actual failing tests
         result = run_plur_allowing_errors("--color", "spec/mixed_results_spec.rb")
 
-        # Should see progress dots and F's with colors
         expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots
         expect(result.out).to match(/\e\[31mF\e\[0m/) # Red F's
 
-        # Should see summary with failures
         expect(result.out).to match(/\d+ examples?, \d+ failures?/)
       end
     end
