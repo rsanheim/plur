@@ -4,9 +4,7 @@ RSpec.describe "Plur parallel execution" do
   describe "environment variables" do
     it "sets TEST_ENV_NUMBER for each worker" do
       chdir(default_ruby_dir) do
-        # Run with multiple workers to ensure TEST_ENV_NUMBER is set
-        # The env_test_spec.rb prints the environment variables to stderr
-        result = run_plur("-n", "3", "spec/env_test_spec.rb", "--no-color")
+        result = run_plur("-n", "3", "--verbose", "spec/env_test_spec.rb", "--no-color")
 
         # Verify it runs successfully
         expect(result.out).to include("1 example, 0 failures")
@@ -19,7 +17,6 @@ RSpec.describe "Plur parallel execution" do
 
     it "sets PARALLEL_TEST_GROUPS correctly" do
       chdir(default_ruby_dir) do
-        # Run with 4 workers - the env_test_spec.rb will print PARALLEL_TEST_GROUPS
         result = run_plur("-n", "4", "spec/env_test_spec.rb", "--no-color")
 
         # Verify it runs successfully
@@ -33,7 +30,6 @@ RSpec.describe "Plur parallel execution" do
 
     it "does not set TEST_ENV_NUMBER in serial mode" do
       chdir(default_ruby_dir) do
-        # Run in serial mode (1 worker)
         result = run_plur("-n", "1", "spec/env_test_spec.rb", "--no-color")
 
         # Should run successfully
