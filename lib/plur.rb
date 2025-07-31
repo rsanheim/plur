@@ -12,6 +12,10 @@ module Plur
   def self.config
     Config.instance
   end
+
+  def self.current_git_tag
+    `git describe --tags`.strip
+  end
 end
 
 require_relative "plur/config"

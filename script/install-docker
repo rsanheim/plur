@@ -6,11 +6,7 @@ require_relative "../lib/plur/install"
 
 # Parse options
 opts = Optimist.options do
-  version "plur-install-docker #{begin
-    Plur.config.root_dir.join("VERSION").read.strip
-  rescue
-    "0.1.0"
-  end}"
+  version "install-docker #{Plur.current_git_tag}"
   banner <<~BANNER
     Install or update plur binary in a Docker container
 
