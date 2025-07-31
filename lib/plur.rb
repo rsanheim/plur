@@ -3,6 +3,8 @@
 # Plur - Project-Level Unified Resources
 # Shared constants and configuration for builds, integration specs, etc
 
+require "bundler/setup"
+Bundler.require(:default)
 require "pathname"
 require "singleton"
 

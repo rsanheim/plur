@@ -60,7 +60,7 @@ module Plur
       dist_dir = Plur.config.root_dir.join("dist")
       binary_path = dist_dir.join("plur-linux-#{arch}")
 
-      unless dist_dir.exist?
+      unless dist_dir.exist? && binary_path.exist?
         puts ">>> Building Linux binaries..."
         require "rake"
         Rake.application.init
