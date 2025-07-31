@@ -1,6 +1,11 @@
 # plur CHANGELOG
 
 
+
+## v0.9.4 - 2025-07-31
+
+* Add script/install-docker [#74](https://github.com/rsanheim/plur/pull/74)
+
 ## v0.9.3 - 2025-07-31
 
 * Default first worker DB number to 1 for parallel specs / DB setup [#75](https://github.com/rsanheim/plur/pull/75)
