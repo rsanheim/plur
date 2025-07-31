@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"testing"
@@ -127,21 +126,50 @@ func TestGetWorkerCountEdgeCases(t *testing.T) {
 }
 
 func TestGetTestEnvNumber(t *testing.T) {
-	tests := []struct {
-		workerIndex int
-		expected    string
-	}{
-		{0, ""},    // First worker gets empty string
-		{1, "2"},   // Second worker gets "2"
-		{2, "3"},   // Third worker gets "3"
-		{3, "4"},   // Fourth worker gets "4"
-		{10, "11"}, // Nth worker gets "N+1"
-	}
+	t.Run("default behavior (first-is-1)", func(t *testing.T) {
+		config := &GlobalConfig{
+			WorkerCount: 4,
+			FirstIs1:    true,
+		}
 
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("worker_%d", tt.workerIndex), func(t *testing.T) {
-			result := GetTestEnvNumber(tt.workerIndex)
-			assert.Equal(t, tt.expected, result, "GetTestEnvNumber(%d)", tt.workerIndex)
-		})
-	}
+		tests := []struct {
+			workerIndex int
+			expected    string
+		}{
+			{0, "1"}, // First worker gets "1"
+			{1, "2"}, // Second worker gets "2"
+			{2, "3"}, // Third worker gets "3"
+			{3, "4"}, // Fourth worker gets "4"
+		}
+
+		for _, tt := range tests {
+			result := GetTestEnvNumber(tt.workerIndex, config)
+			assert.Equal(t, tt.expected, result, "GetTestEnvNumber(%d) with first-is-1", tt.workerIndex)
+		}
+	})
+
+	t.Run("legacy behavior (no-first-is-1)", func(t *testing.T) {
+		config := &GlobalConfig{
+			WorkerCount: 4,
+			FirstIs1:    false,
+		}
+
+		tests := []struct {
+			workerIndex int
+			expected    string
+		}{
+			{0, ""},  // First worker gets empty string
+			{1, "2"}, // Second worker gets "2"
+			{2, "3"}, // Third worker gets "3"
+			{3, "4"}, // Fourth worker gets "4"
+		}
+
+		for _, tt := range tests {
+			result := GetTestEnvNumber(tt.workerIndex, config)
+			assert.Equal(t, tt.expected, result, "GetTestEnvNumber(%d) with legacy behavior", tt.workerIndex)
+		}
+	})
+
+	// Note: We don't test serial mode here because GetTestEnvNumber
+	// should not be called when config.IsSerial() is true
 }

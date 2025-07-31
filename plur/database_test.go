@@ -9,7 +9,12 @@ import (
 
 func TestRunDatabaseTaskDryRun(t *testing.T) {
 	// Test that dry-run shows the correct commands
-	err := RunDatabaseTask("db:test", 3, true)
+	config := &GlobalConfig{
+		WorkerCount: 3,
+		DryRun:      true,
+		FirstIs1:    true,
+	}
+	err := RunDatabaseTask("db:test", config)
 	assert.NoError(t, err, "RunDatabaseTask dry-run should not error")
 
 	// This test just verifies the function doesn't crash
@@ -30,7 +35,12 @@ func TestRunDatabaseTaskValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s_%d_workers", tt.task, tt.workerCount), func(t *testing.T) {
-			err := RunDatabaseTask(tt.task, tt.workerCount, tt.dryRun)
+			config := &GlobalConfig{
+				WorkerCount: tt.workerCount,
+				DryRun:      tt.dryRun,
+				FirstIs1:    true,
+			}
+			err := RunDatabaseTask(tt.task, config)
 
 			if tt.shouldError {
 				assert.Error(t, err, "Expected error for task %s with %d workers", tt.task, tt.workerCount)

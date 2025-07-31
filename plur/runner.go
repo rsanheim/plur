@@ -72,8 +72,14 @@ func GetWorkerCount(cliWorkers int) int {
 }
 
 // GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index
-// Following parallel_tests convention: worker 0 gets "", worker 1 gets "2", etc.
-func GetTestEnvNumber(workerIndex int) string {
+// Note: This should not be called in serial mode (config.IsSerial() == true)
+func GetTestEnvNumber(workerIndex int, config *GlobalConfig) string {
+	// New default behavior: all workers get explicit numbers
+	if config.FirstIs1 {
+		return fmt.Sprintf("%d", workerIndex+1)
+	}
+
+	// Legacy behavior: first worker gets "", others get 2,3,4...
 	if workerIndex == 0 {
 		return ""
 	}
@@ -199,12 +205,17 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
 	// Set up environment variables for parallel testing
-	testEnvNumber := GetTestEnvNumber(workerIndex)
-	cmd.Env = append(os.Environ(),
-		"TEST_ENV_NUMBER="+testEnvNumber,
-		"PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"),
-		"PLUR_FORMATTER_SEPARATOR=PLUR_JSON:",
-	)
+	env := os.Environ()
+	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
+	env = append(env, "PLUR_FORMATTER_SEPARATOR=PLUR_JSON:")
+
+	// Only set TEST_ENV_NUMBER if not in serial mode
+	if !globalConfig.IsSerial() {
+		testEnvNumber := GetTestEnvNumber(workerIndex, globalConfig)
+		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
+	}
+
+	cmd.Env = env
 
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
@@ -431,11 +442,16 @@ func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
 	// Set up environment variables for parallel testing
-	testEnvNumber := GetTestEnvNumber(workerIndex)
-	cmd.Env = append(os.Environ(),
-		"TEST_ENV_NUMBER="+testEnvNumber,
-		"PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"),
-	)
+	env := os.Environ()
+	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
+
+	// Only set TEST_ENV_NUMBER if not in serial mode
+	if !globalConfig.IsSerial() {
+		testEnvNumber := GetTestEnvNumber(workerIndex, globalConfig)
+		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
+	}
+
+	cmd.Env = env
 
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()

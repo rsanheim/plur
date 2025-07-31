@@ -123,7 +123,7 @@ type DBSetupCmd struct{}
 func (d *DBSetupCmd) Run(parent *PlurCLI) error {
 	// Use the pre-built global config
 	config := parent.globalConfig
-	return RunDatabaseTask("db:setup", config.WorkerCount, config.DryRun)
+	return RunDatabaseTask("db:setup", config)
 }
 
 type DBCreateCmd struct{}
@@ -131,7 +131,7 @@ type DBCreateCmd struct{}
 func (d *DBCreateCmd) Run(parent *PlurCLI) error {
 	// Use the pre-built global config
 	config := parent.globalConfig
-	return RunDatabaseTask("db:create", config.WorkerCount, config.DryRun)
+	return RunDatabaseTask("db:create", config)
 }
 
 type DBMigrateCmd struct{}
@@ -139,7 +139,7 @@ type DBMigrateCmd struct{}
 func (d *DBMigrateCmd) Run(parent *PlurCLI) error {
 	// Use the pre-built global config
 	config := parent.globalConfig
-	return RunDatabaseTask("db:migrate", config.WorkerCount, config.DryRun)
+	return RunDatabaseTask("db:migrate", config)
 }
 
 type DBPrepareCmd struct{}
@@ -147,7 +147,7 @@ type DBPrepareCmd struct{}
 func (d *DBPrepareCmd) Run(parent *PlurCLI) error {
 	// Use the pre-built global config
 	config := parent.globalConfig
-	return RunDatabaseTask("db:test:prepare", config.WorkerCount, config.DryRun)
+	return RunDatabaseTask("db:test:prepare", config)
 }
 
 type PlurCLI struct {
@@ -172,6 +172,7 @@ type PlurCLI struct {
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
 	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
+	FirstIs1   bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	Version    bool   `help:"Show version information"`
 
 	// Store the built global config
@@ -218,6 +219,7 @@ func (r *PlurCLI) AfterApply() error {
 		WorkerCount: GetWorkerCount(r.Workers),
 		RuntimeDir:  r.RuntimeDir,
 		JSON:        r.JSON,
+		FirstIs1:    r.FirstIs1,
 	}
 
 	return nil

@@ -6,10 +6,28 @@ RSpec.describe "Plur database tasks" do
       Dir.chdir(default_rails_dir) do
         output = run_plur("--dry-run", "db:setup", "-n", "3").out
 
-        expect(output).to include("[dry-run] Would run database task 'db:setup' with 3 workers")
-        expect(output).to include("[dry-run] Worker 0: RAILS_ENV=test bundle exec rake db:setup")
+        expect(output).to include("[dry-run] Worker 0: TEST_ENV_NUMBER=1 RAILS_ENV=test bundle exec rake db:setup")
         expect(output).to include("[dry-run] Worker 1: TEST_ENV_NUMBER=2 RAILS_ENV=test bundle exec rake db:setup")
         expect(output).to include("[dry-run] Worker 2: TEST_ENV_NUMBER=3 RAILS_ENV=test bundle exec rake db:setup")
+      end
+    end
+
+    it "runs db:setup with legacy behavior when --no-first-is-1" do
+      Dir.chdir(default_rails_dir) do
+        output = run_plur("--dry-run", "db:setup", "-n", "3", "--no-first-is-1").out
+
+        expect(output).to include("[dry-run] Worker 0: TEST_ENV_NUMBER= RAILS_ENV=test bundle exec rake db:setup")
+        expect(output).to include("[dry-run] Worker 1: TEST_ENV_NUMBER=2 RAILS_ENV=test bundle exec rake db:setup")
+        expect(output).to include("[dry-run] Worker 2: TEST_ENV_NUMBER=3 RAILS_ENV=test bundle exec rake db:setup")
+      end
+    end
+
+    it "does not set TEST_ENV_NUMBER in serial mode" do
+      Dir.chdir(default_rails_dir) do
+        output = run_plur("--dry-run", "db:setup", "-n", "1").out
+
+        expect(output).to include("[dry-run] Worker 0: RAILS_ENV=test bundle exec rake db:setup")
+        expect(output).not_to include("TEST_ENV_NUMBER")
       end
     end
   end
@@ -47,7 +65,6 @@ RSpec.describe "Plur database tasks" do
       Dir.chdir(default_rails_dir) do
         output = run_plur("--dry-run", "db:create", "-n", "2").out
 
-        expect(output).to include("[dry-run] Would run database task 'db:create' with 2 workers")
         expect(output).to include("RAILS_ENV=test bundle exec rake db:create")
       end
     end
@@ -58,7 +75,6 @@ RSpec.describe "Plur database tasks" do
       Dir.chdir(default_rails_dir) do
         output = run_plur("--dry-run", "db:migrate", "-n", "2").out
 
-        expect(output).to include("[dry-run] Would run database task 'db:migrate' with 2 workers")
         expect(output).to include("RAILS_ENV=test bundle exec rake db:migrate")
       end
     end
@@ -70,7 +86,6 @@ RSpec.describe "Plur database tasks" do
         result = run_plur("--dry-run", "db:test:prepare", "-n", "2", allow_error: true)
 
         expect(result.status).to eq(0)
-        expect(result.out).to include("[dry-run] Would run database task 'db:test:prepare' with 2 workers")
         expect(result.out).to include("RAILS_ENV=test bundle exec rake db:test:prepare")
       end
     end

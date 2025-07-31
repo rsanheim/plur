@@ -1,5 +1,11 @@
 # plur CHANGELOG
 
+
+## v0.9.3 - 2025-07-31
+
+* Default first worker DB number to 1 for parallel specs / DB setup [#75](https://github.com/rsanheim/plur/pull/75)
+* Clean up old WIP docs [#73](https://github.com/rsanheim/plur/pull/73)
+
 ## v0.9.2 - 2025-07-30
 
 * Config file improvements [#72](https://github.com/rsanheim/plur/pull/72)
