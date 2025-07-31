@@ -8,11 +8,16 @@ readonly SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # Show usage information
 show_help() {
   cat <<EOF
-Plur Documentation Helper
+Plur Documentation CLI
+
+To serve docs locally run:
+
+script/docs
 
 Usage: ${SCRIPT_NAME} [COMMAND]
 
-Commands:
+Commands (_note that the command will default to 'serve' if not provided_)
+
   serve       Start development server at http://localhost:8000 (default)
   build       Build documentation to site/
   clean       Remove site/ directory  

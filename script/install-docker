@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../lib/plur"
+require_relative "../lib/plur/install"
+
+# Parse options
+opts = Optimist.options do
+  version "install-docker #{Plur.current_git_tag}"
+  banner <<~BANNER
+    Install or update plur binary in a Docker container
+
+    Usage: 
+      plur-install-docker [COMMAND] SERVICE_NAME [OPTIONS]
+      
+    Commands:
+      install   Install/update plur in container (default)
+      status    Show plur installation status and doctor output
+
+    Arguments:
+      SERVICE_NAME      Name of the Docker container or service
+
+    Options:
+  BANNER
+
+  opt :compose_prefix, "Use docker-compose naming (prefix_service_1)", type: :string, short: "C"
+  opt :binary, "Path to specific binary (auto-detects if omitted)", type: :string
+  opt :help, "Show this help message", short: "h"
+
+  educate_on_error
+end
+
+# Handle help
+if opts[:help]
+  Optimist.educate
+  exit 0
+end
+
+# Parse command and service
+command = "install"
+if ARGV.first && %w[install status].include?(ARGV.first)
+  command = ARGV.shift
+end
+
+service = ARGV.shift
+unless service
+  puts "Error: SERVICE_NAME required"
+  puts
+  Optimist.educate
+  exit 1
+end
+
+# Run the installer
+installer = Plur::Install.new
+installer.run(
+  command: command,
+  service: service,
+  compose_prefix: opts[:compose_prefix],
+  binary: opts[:binary]
+)

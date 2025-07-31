@@ -132,6 +132,7 @@ DEPENDENCIES
   benchmark
   guard-rspec
   minitest
+  optimist
   rake
   rspec (~> 3)
   standard
