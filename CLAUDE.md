@@ -10,10 +10,11 @@ Production-ready Go implementation, ~13% faster than turbo_tests/parallel_tests.
 
 ```bash
 # Daily workflow commands (in order of frequency):
-bin/rake install         # Build & install to $GOPATH/bin - USE CONSTANTLY
-bin/rake                 # Run ALL tests & lints before committing
-bin/rake test:ruby       # Run integration specs only
-bin/rake standard:fix    # Fix Ruby lint issues
+bin/rake install              # Build & install to $GOPATH/bin - USE CONSTANTLY
+bin/rake                      # Run ALL tests & lints before committing
+bin/rake test:default_ruby    # Test plur on default-ruby fixture project (quick check)
+bin/rake test                 # Run full Ruby test suite
+bin/rake standard:fix         # Fix Ruby lint issues
 
 # Never do this:
 # rake anything         ❌ WRONG - breaks bundler context  
@@ -47,7 +48,6 @@ color = true             # Enable colored output
 
 Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (global) > defaults
 
-
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root
 - **"go: inconsistent vendoring"** → `cd plur && go mod vendor`
@@ -57,8 +57,9 @@ Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (glo
 
 ### Project Structure
 - `plur/` - Go source (main binary)
-- `spec/` - Integration tests (USE THESE as guardrails)
-- `default-ruby/` - Example Ruby project for testing
+- `spec/` - Full Ruby test suite for plur itself
+- `fixtures/projects/default-ruby/` - Ruby fixture project for testing plur
+- `fixtures/projects/default-rails/` - Rails fixture project for testing plur
 - `vendor/backspin/` - Vendored golden testing gem
 
 ### Architecture Notes
@@ -74,21 +75,33 @@ Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (glo
 4. Fix issues with `bin/rake standard:fix`
 5. `git add -A && git commit`
 
-### Multi-Platform Builds
-- **Build for Linux**: `bin/rake build:linux` creates linux/amd64 and linux/arm64 binaries in `dist/`
-- **Install on Docker**: `script/install-plur-docker CONTAINER_NAME` auto-detects architecture and installs
-- **Cross-compilation**: Uses Go's GOOS/GOARCH with CGO_ENABLED=0 for static binaries
-- See `docs/development/multi-platform-builds.md` for details
+### Multi-Platform Builds & Docker
+
+```bash
+# Build Linux binaries (amd64 & arm64)
+bin/rake build:linux
+
+# Install plur in Docker container
+script/install-plur-docker CONTAINER_NAME
+
+# Install in docker-compose container
+script/install-plur-docker SERVICE_NAME -C COMPOSE_PREFIX
+
+# Use plur in container
+docker exec CONTAINER_NAME plur
+```
+
+Cross-compilation uses Go's GOOS/GOARCH with CGO_ENABLED=0 for static binaries.
 
 ## Testing from Outside-In
 
 ALWAYS use integration specs as guardrails:
-- `spec/general_integration_spec.rb` - Core functionality
-- `spec/parallel_execution_spec.rb` - Parallelism
-- `spec/error_handling_spec.rb` - Error cases
-- `spec/doctor_spec.rb` - Doctor command with backspin
+- `spec/integration/plur_spec/general_integration_spec.rb` - Core functionality
+- `spec/integration/plur_spec/parallel_execution_spec.rb` - Parallelism
+- `spec/integration/plur_spec/error_handling_spec.rb` - Error cases
+- `spec/integration/plur_doctor/doctor_spec.rb` - Doctor command with backspin
 
-Run via: `bin/rake test:ruby` or `bundle exec rspec spec/[file]`
+Run all specs via: `bin/rake test` or target specific: `bundle exec rspec spec/[file]`
 
 ### Go Testing Guidelines
 - Use testify assertions (`assert` and `require`) for all new Go tests
@@ -100,59 +113,27 @@ Run via: `bin/rake test:ruby` or `bundle exec rspec spec/[file]`
 
 **IMPORTANT**: When implementing Kong subcommands, be aware that Kong executes commands in reverse order (from deepest subcommand up to parent). Parent commands must check the context to avoid running when a subcommand is invoked. See `docs/development/kong-cli-patterns.md` for critical implementation details.
 
-## GitHub MCP Server Integration
+## MCP Server Integration
 
-This project includes a GitHub MCP (Model Context Protocol) server configuration for enhanced GitHub integration with Claude Code.
+This project includes MCP (Model Context Protocol) servers configured in `.mcp.json`:
 
-### Features Enabled
-The `.mcp.json` configuration enables:
-- **Context**: Access repository context and metadata
-- **Pull Requests**: Create, review, and manage PRs directly
-- **Issues**: Create and manage GitHub issues
-- **Repos**: Access repository information and settings
+- **GitHub MCP**: Create/manage PRs and issues, access repo metadata
+- **CircleCI MCP**: Check CI status, run pipelines, debug failures
 
-### Usage
-Once configured, Claude Code can:
-- Create and update PRs and issues
-- Review PR changes and provide feedback
-- Create and manage issues
-- Access repository metadata
-
-## GitHub CLI (`gh`) for Better Control
-
-When searching GitHub repositories or needing more control over the data returned, use the `gh` CLI instead of MCP tools:
-
-### Repository Search Examples
+### Quick CI Status Check
 ```bash
-# Search Go glob libraries with specific fields
-gh search repos --language=go --stars=">50" glob --json name,owner,stargazersCount,pushedAt
-
-# Search with custom output format
-gh search repos glob --language=go --limit=10 \
-  --json name,owner,stargazersCount,pushedAt \
-  --jq '.[] | {name, owner: .owner.login, stars: .stargazersCount, updated: .pushedAt}'
-
-# Search code in repositories
-gh search code "glob extension:go" --limit=20
-
-# Search issues/PRs
-gh search issues "glob" --repo=gobwas/glob --state=open
+# Check current branch CI status via CircleCI MCP
+mcp__circleci__get_latest_pipeline_status
 ```
 
-### Direct API Access When Needed
+For complex GitHub searches, prefer `gh` CLI for better control:
 ```bash
-# Get specific commit info
-gh api repos/owner/repo/commits/SHA --jq '{sha: .sha, date: .commit.author.date, message: .commit.message}'
+# Search with specific fields
+gh search repos --language=go --stars=">50" glob --json name,owner,stargazersCount
 
-# List branches with just names
-gh repo view owner/repo --json defaultBranchRef,refs --jq '.refs.nodes[].name'
+# Get commit info
+gh api repos/owner/repo/commits/SHA --jq '{sha: .sha, message: .commit.message}'
 ```
-
-Key advantages over MCP tools:
-- `--json` flag to specify only the fields you need
-- Built-in search syntax with proper filters
-- `--limit` to control result count
-- Cleaner command structure with dedicated subcommands
 
 ## Documentation Guidelines
 

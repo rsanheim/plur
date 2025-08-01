@@ -7,8 +7,8 @@ Plur uses "outside-in" integration tests written in RSpec to ensure correctness.
 ### Running Tests
 
 ```bash
-# Run all tests
-bin/rake test:ruby
+# Run all Ruby specs
+bin/rake test
 
 # Run specific test file
 bundle exec rspec spec/general_integration_spec.rb

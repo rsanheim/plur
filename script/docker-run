@@ -113,12 +113,12 @@ class DockerRunner
         puts "  #{$0} --test --platform amd64           # Run full test suite on x86_64"
         puts "  #{$0} --test --platform arm64           # Run full test suite on ARM64"
         puts "  #{$0} --command 'rux doctor' --platform amd64"
-        puts "  #{$0} --command 'bin/rake test:ruby' --platform arm64"
+        puts "  #{$0} --command 'bin/rake test:default_ruby' --platform arm64"
         puts
         puts "Common commands:"
         puts "  rux doctor                              # Check rux installation"
         puts "  bin/rake test:all                       # Run all tests"
-        puts "  bin/rake test:ruby                      # Run Ruby integration tests"
+        puts "  bin/rake test                           # Run full Ruby test suite"
         puts "  bin/rake test:go                        # Run Go unit tests"
         puts "  cd fixtures/projects/default-ruby && rux # Run rux on test project"
         exit

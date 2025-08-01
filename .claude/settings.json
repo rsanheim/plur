@@ -117,7 +117,7 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pkg.go.dev)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:squidfunk.github.io)",
+      "WebFetch(domain:squidfunk.github.io)"
     ],
     "deny": []
   },
