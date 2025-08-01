@@ -80,7 +80,6 @@ namespace :test do
       sh "plur", "-n", PLUR_CORES.to_s
     end
   end
-
 end
 
 namespace :lint do
@@ -123,7 +122,6 @@ namespace :bench do
     sh "./script/bench #{Plur.config.default_rails_dir}"
   end
 end
-
 
 # ========================================
 # Convenience Tasks (top-level)
