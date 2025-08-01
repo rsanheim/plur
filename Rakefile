@@ -42,8 +42,8 @@ task :install do
 end
 
 namespace :test do
-  desc "Run all tests (Go, Ruby, and Integration)"
-  task all: %i[go ruby integration]
+  desc "Run all tests (Go, Default Ruby, and full Ruby suite)"
+  task all: ["test:go", "test:default_ruby", "test"]
 
   desc "Run Go tests"
   task go: ["build"] do
@@ -57,10 +57,7 @@ namespace :test do
     end
   end
 
-  desc "Run default-ruby fixture project with plur"
-  task ruby: %i[default_ruby]
-
-  desc "Run default-ruby fixture project with plur"
+  desc "Run plur against default-ruby fixture project"
   task default_ruby: :install do
     Dir.chdir(Plur.config.default_ruby_dir) do
       puts "[test:default_ruby] Running default-ruby specs with plur..."
@@ -84,11 +81,6 @@ namespace :test do
     end
   end
 
-  desc "Run integration tests in root spec directory"
-  task integration: :install do
-    puts "[test:integration] Running ruby integration suite with plur..."
-    sh "plur", "-n", PLUR_CORES.to_s
-  end
 end
 
 namespace :lint do
@@ -132,22 +124,15 @@ namespace :bench do
   end
 end
 
-namespace :ci do
-  desc "Run all CI checks"
-  task all: ["lint:all", "test:all"]
-
-  desc "Run CI checks for Go"
-  task go: ["lint:go", "test:go"]
-
-  desc "Run CI checks for Ruby"
-  task ruby: ["lint:ruby", "test:ruby"]
-end
 
 # ========================================
 # Convenience Tasks (top-level)
 # ========================================
-desc "Run all tests"
-task test: ["test:all"]
+desc "Run all Ruby specs"
+task test: :install do
+  puts "[test] Running all ruby specs with plur..."
+  sh "plur", "-n", PLUR_CORES.to_s
+end
 
 desc "Run all linting"
 task lint: ["lint:all"]

@@ -78,7 +78,7 @@ Docker operations are now split into dedicated build and run scripts:
 ./script/docker-run --shell --platform linux/arm64
 
 # Run without rebuilding (much faster)
-./script/docker-run --command "bin/rake test:ruby"
+./script/docker-run --command "bin/rake test"
 ```
 
 The scripts automatically use Plur configuration for:

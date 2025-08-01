@@ -99,9 +99,9 @@ jobs:
             sudo dpkg -i hyperfine_1.19.0_amd64.deb
             hyperfine --version
       - run:
-          name: Run integration tests
+          name: Run all Ruby specs
           command: |
-            bin/rake test:integration
+            bin/rake test
       # - run:
       #     name: Run benchmarks default benchmark suite
       #     command: ./script/bench

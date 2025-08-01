@@ -93,11 +93,11 @@ Benchmarked on example-project project (24 spec files):
 
 ### Run All Tests
 ```bash
-rake                         # Go tests (lint + test)
-rake test:ruby              # Run default-ruby specs using plur
-rake test:ruby_turbo        # Run default-ruby specs using turbo_tests (for comparison)
-rake build_and_test         # Build plur and run default-ruby tests
-ruby test_plur_integration.rb # Ruby integration tests
+rake                         # Run ALL tests & lints before committing
+rake test                    # Run full Ruby test suite
+rake test:default_ruby       # Test plur on default-ruby fixture project
+rake test:default_ruby_turbo # Run default-ruby fixture specs using turbo_tests (for comparison)
+rake test:go                 # Run Go tests only
 ```
 
 ### Test with Default Projects
@@ -203,7 +203,7 @@ Plur includes Docker support for testing across different architectures and envi
 
 # Run specific command
 ./script/docker-run --command "plur doctor"
-./script/docker-run --command "bin/rake test:ruby"
+./script/docker-run --command "bin/rake test"
 
 # Shell on specific architecture
 ./script/docker-run --shell --platform linux/amd64
