@@ -1,7 +1,7 @@
 require "spec_helper"
 
 RSpec.describe "Plur colorized output" do
-  let(:fixture_path) { File.join(__dir__, "fixtures", "rspec_colorized_output.txt") }
+  let(:fixture_path) { File.join(__dir__, "..", "..", "fixtures", "rspec_colorized_output.txt") }
   let(:expected_output) { File.read(fixture_path) }
 
   before do

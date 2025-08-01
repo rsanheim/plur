@@ -1,5 +1,5 @@
 require "spec_helper"
-require_relative "support/fixture_runner"
+require_relative "../../support/fixture_runner"
 
 RSpec.describe "Fixture Projects" do
   describe "minitest projects" do

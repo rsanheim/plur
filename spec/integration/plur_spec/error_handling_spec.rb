@@ -195,7 +195,7 @@ RSpec.describe "Plur error handling" do
 
     context "when command doesn't exist" do
       it "shows error when command doesn't exist" do
-        result = run_plur_allowing_errors("--command=nonexistentcommand", "spec/plur_error_handling_spec.rb", "--debug")
+        result = run_plur_allowing_errors("--command=nonexistentcommand", "spec/integration/plur_spec/error_handling_spec.rb", "--debug")
 
         puts "\n=== Command not found (with debug) ==="
         puts "Exit code: #{result.exit_status}"
