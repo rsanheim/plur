@@ -103,11 +103,40 @@ plur
 
 ## File Discovery
 
-### Current Behavior
+### Glob Pattern Support
 
-- Recursively finds all `*_spec.rb` files
-- Starts from current directory
-- Excludes `vendor/` directory
+Plur supports advanced glob patterns for selecting test files:
+
+- `**` - Matches any number of directories (e.g., `spec/**/*_spec.rb`)
+- `*` - Matches any characters except path separator
+- `?` - Matches single character
+- `[abc]` - Matches any character in brackets
+- `{a,b}` - Brace expansion (e.g., `spec/{models,controllers}/**/*_spec.rb`)
+
+### Pattern Examples
+
+```bash
+# Run specific pattern
+plur 'spec/**/*_spec.rb'          # All specs recursively
+plur 'spec/*_spec.rb'              # Only top-level specs
+plur 'spec/models/**/*_spec.rb'    # All model specs
+plur 'spec/{models,controllers}/**/*_spec.rb'  # Multiple directories
+
+# Directory shorthand
+plur spec/                         # Expands to spec/**/*_spec.rb
+plur spec/models/                  # Expands to spec/models/**/*_spec.rb
+
+# Single files (passed through even if not *_spec.rb)
+plur spec/user_spec.rb             # Specific file
+plur spec/spec_helper.rb           # Warning shown but runs
+```
+
+### RSpec Compatibility
+
+Plur matches RSpec's behavior:
+- **Directories**: Automatically append `**/*_spec.rb` pattern
+- **Single files**: Pass through with warning if not matching test suffix
+- **Glob patterns**: Filter results to only test files
 
 ## Watch Mode Configuration
 
