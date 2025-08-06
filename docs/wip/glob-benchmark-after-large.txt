@@ -1,0 +1,16 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/rsanheim/plur
+cpu: Apple M1 Ultra
+BenchmarkExpandGlobPatterns_Simple-20            	   20070	     64790 ns/op	   24272 B/op	     381 allocs/op
+BenchmarkExpandGlobPatterns_Recursive-20         	     268	   4272592 ns/op	  777553 B/op	    8616 allocs/op
+BenchmarkExpandGlobPatterns_Multiple-20          	     469	   2620200 ns/op	  461660 B/op	    5130 allocs/op
+BenchmarkExpandGlobPatterns_Directory-20         	    1962	    593469 ns/op	  122930 B/op	    1360 allocs/op
+BenchmarkExpandGlobPatterns_LargeRecursive-20    	    1332	    889510 ns/op	  235749 B/op	    3050 allocs/op
+--- FAIL: BenchmarkFindTestFiles_RSpec
+    glob_bench_test.go:151: No files found
+BenchmarkDoublestarGlob-20                       	     289	   4117553 ns/op	  741098 B/op	    8591 allocs/op
+BenchmarkFilepathGlob_Simple-20                  	   23060	     51498 ns/op	    9168 B/op	     108 allocs/op
+FAIL
+exit status 1
+FAIL	github.com/rsanheim/plur	11.017s

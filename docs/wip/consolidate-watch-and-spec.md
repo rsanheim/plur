@@ -2,7 +2,8 @@
 
 ## Problem
 
-Currently, 'plur spec' and 'plur watch' use distinct designs and code paths for most of how they work. One runs tests in paralle, while the other uses file based events to run specs in response. This will make shared behavior where it makes sense difficult.
+Currently, `plur spec` and `plur watch` use distinct designs and code paths for most of how they work. `plur spec` runs tests in parallel, while `plur watch` uses file based events to run specs in response. This makes sharing common behavior
+difficult as we move forward with new features or fixes.
 
 Lets research and analyze the following:
 

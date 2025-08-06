@@ -53,6 +53,8 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return fmt.Errorf("no test files found (looking for *%s in %s/)", suffix, dir)
 		}
 	}
+	msg := fmt.Sprintf("found %v test files", len(testFiles))
+	logger.LogVerbose(msg, "testFiles", testFiles)
 
 	// Run bundle install if --auto flag is set
 	if config.Auto && !config.DryRun {
