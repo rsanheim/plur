@@ -147,3 +147,19 @@ Keep documentation focused on the **current state** of the project:
 
 - No ANSI color codes in output (keep it plain text)
 - Use simple ASCII for emphasis: `>>>`, `✓`, `✗`
+
+## ⚠️ CRITICAL: No Backward Compatibility Without Explicit Instruction
+
+**NEVER** keep old code around for backward compatibility unless explicitly instructed to do so. This includes:
+- No deprecated aliases or wrapper functions
+- No "backward compatibility" comments or code paths
+- No maintaining old method names or interfaces
+- Remove old code immediately when refactoring
+
+When renaming or refactoring:
+1. Change the code directly
+2. Update all references
+3. Delete the old implementation completely
+4. Do NOT leave deprecated versions "for compatibility"
+
+This is a hard rule. Break things if needed - we prefer clean breaks over technical debt.

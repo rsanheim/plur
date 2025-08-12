@@ -112,10 +112,106 @@ RSpec.describe "Plur database tasks" do
           expect(result.status).to eq(1)
           expect(result.out).to include("Running database task 'db:setup' with 3 workers...")
           expect(result.err).to include("Command failed error=database task failed:")
-          expect(result.err).to include("worker 1 failed: exit status 1")
+          expect(result.err).to include("worker 1 failed:")
+          # Now shows the actual error output
+          expect(result.err).to include("Error: Database 2 setup failed")
 
           # Should exit with error
           expect(result.exitstatus).to eq(1)
+        end
+      end
+    end
+
+    it "shows stderr output when database tasks fail" do
+      Dir.mktmpdir do |tmpdir|
+        rakefile_path = File.join(tmpdir, "Rakefile")
+        File.write(rakefile_path, <<~RUBY)
+          task "db:setup" do
+            env_num = ENV['TEST_ENV_NUMBER'] || ''
+            STDERR.puts "Error: Database connection failed for test\#{env_num}"
+            STDERR.puts "Could not connect to server: Connection refused"
+            STDERR.puts "Is the server running on host 'localhost' and accepting TCP/IP connections on port 5432?"
+            exit 1
+          end
+        RUBY
+
+        Dir.chdir(tmpdir) do
+          result = run_plur("db:setup", "-n", "2", allow_error: true)
+
+          expect(result.status).to eq(1)
+          expect(result.out).to include("Running database task 'db:setup' with 2 workers...")
+
+          # Now we should see the actual stderr output in the error message
+          expect(result.err).to include("database task failed:")
+          expect(result.err).to include("Error: Database connection failed")
+          expect(result.err).to include("Could not connect to server: Connection refused")
+          expect(result.err).to include("Is the server running on host 'localhost'")
+        end
+      end
+    end
+
+    it "deduplicates identical errors across all workers" do
+      Dir.mktmpdir do |tmpdir|
+        rakefile_path = File.join(tmpdir, "Rakefile")
+        File.write(rakefile_path, <<~RUBY)
+          task "db:setup" do
+            # All workers will fail with the same error
+            STDERR.puts "Error: PostgreSQL is not installed"
+            STDERR.puts "Please install PostgreSQL and try again"
+            exit 1
+          end
+        RUBY
+
+        Dir.chdir(tmpdir) do
+          result = run_plur("db:setup", "-n", "3", allow_error: true)
+
+          expect(result.status).to eq(1)
+          expect(result.out).to include("Running database task 'db:setup' with 3 workers...")
+
+          # Should show that all workers failed with the same error
+          expect(result.err).to include("All 3 workers failed with the same error:")
+          expect(result.err).to include("Error: PostgreSQL is not installed")
+          expect(result.err).to include("Please install PostgreSQL and try again")
+
+          # Should NOT show the error 3 times
+          expect(result.err.scan("PostgreSQL is not installed").length).to eq(1)
+        end
+      end
+    end
+
+    it "shows different errors separately when workers fail differently" do
+      Dir.mktmpdir do |tmpdir|
+        rakefile_path = File.join(tmpdir, "Rakefile")
+        File.write(rakefile_path, <<~RUBY)
+          task "db:setup" do
+            env_num = ENV['TEST_ENV_NUMBER'] || ''
+            case env_num
+            when "1", ""
+              STDERR.puts "Error: Database test\#{env_num} already exists"
+              exit 1
+            when "2"
+              STDERR.puts "Error: Permission denied for database test2"
+              exit 1
+            else
+              puts "Successfully created test\#{env_num}"
+            end
+          end
+        RUBY
+
+        Dir.chdir(tmpdir) do
+          result = run_plur("db:setup", "-n", "3", allow_error: true)
+
+          expect(result.status).to eq(1)
+          expect(result.out).to include("Running database task 'db:setup' with 3 workers...")
+
+          # Should show each unique error
+          expect(result.err).to include("database task failed:")
+          expect(result.err).to include("Database test1 already exists")
+          expect(result.err).to include("Permission denied for database test2")
+
+          # Worker 2 (TEST_ENV_NUMBER=3) should succeed, so only 2 errors
+          expect(result.err).to include("worker 0 failed")
+          expect(result.err).to include("worker 1 failed")
         end
       end
     end

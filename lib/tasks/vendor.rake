@@ -105,12 +105,6 @@ namespace :vendor do
     end
   end
 
-  # Maintain backward compatibility but mark as deprecated
-  desc "[DEPRECATED] Use vendor:download:current instead"
-  task build: ["download:current"] do
-    puts "WARNING: vendor:build is deprecated. Please use vendor:download:current instead."
-  end
-
   desc "Download vendored dependencies for current platform"
   task download: ["download:current"]
 
