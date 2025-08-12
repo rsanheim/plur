@@ -1,0 +1,9 @@
+db_task_file = ENV["DB_TASK_FILE"]
+
+if db_task_file && File.exist?(db_task_file)
+  load db_task_file
+else
+  task "db:setup" do
+    puts "Running db:setup"
+  end
+end
