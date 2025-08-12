@@ -24,6 +24,7 @@ open embedded/watcher/watcher-aarch64-unknown-linux-gnu: file does not exist
 **What's expected (per documentation):**
 * `watcher-aarch64-apple-darwin` (macOS ARM64) ✅ Present
 * `watcher-x86_64-apple-darwin` (macOS x64) ❌ Missing  
+  **NOTE** we don't care or want x86 for mac, we should remove it from docs
 * `watcher-aarch64-unknown-linux-gnu` (Linux ARM64) ❌ Missing
 * `watcher-x86_64-unknown-linux-gnu` (Linux x64) ❌ Missing
 
@@ -58,6 +59,9 @@ open embedded/watcher/watcher-aarch64-unknown-linux-gnu: file does not exist
    * Embeds whatever is in `plur/embedded/watcher/` at compile time
    * Since only macOS binary exists, Linux builds lack Linux watcher support
 
+3. Confusing names: `vendor:build` actually just downloads the compiled watcher release, 
+it doesn't actually "build" anything.
+
 ### The Missing Link
 
 * Main `build` task depends on `vendor:build`
@@ -67,57 +71,36 @@ open embedded/watcher/watcher-aarch64-unknown-linux-gnu: file does not exist
 
 ## Solution
 
-### Short-term Fix: Add `vendor:all` Task
+1) Rename `vendor:build` to `vendor:download` to make it explicit that it just downloads
+vendor'ed depedencies, it doesn't actually "build" anything
 
-Create a new rake task that downloads all platform watcher binaries:
+2) Update any refrences from `vendor:build` to `vendor:download`
 
-```ruby
-# lib/tasks/vendor.rake
+3) Change `vendor:download` to `vendor:download:current` to be explicit that it
+downloads the current machine platform.
 
-namespace :vendor do
-  desc "Download watcher binaries for all platforms"
-  task :all do
-    platforms = [
-      "aarch64-apple-darwin",
-      "x86_64-apple-darwin", 
-      "aarch64-unknown-linux-gnu",
-      "x86_64-unknown-linux-gnu"
-    ]
-    
-    platforms.each do |platform|
-      download_watcher_for_platform(platform)
-    end
-  end
-  
-  def download_watcher_for_platform(platform)
-    # Download from: https://github.com/e-dant/watcher/releases/download/0.13.6/#{platform}.tar
-    # Extract to: plur/embedded/watcher/watcher-#{platform}
-  end
-end
-```
+4) Update main `build` to depend on `vendor:download:current`
 
-### Updated Build Process
+When running `bin/rake build`, we are typically building for local dev, tests, or for CI tests - for this
+case, we only care about the current machine platform.
 
-1. **Before building for distribution:**
-   ```bash
-   bin/rake vendor:all        # Download ALL watcher binaries
-   bin/rake build:linux       # Build Linux binaries with embedded watchers
-   ```
+5) Add `vendor:download:all` Task
 
-2. **Update main build dependency:**
-   ```ruby
-   # For CI/distribution builds
-   task build: ["vendor:all", "lint:go"] do
-     # ...
-   end
-   ```
+Add a new task inside the `vendor` namespace that downloads desired watcher binaries.
+This should build on and reuse the existing `vendor:download` code, but just do it for 
+all desired platforms.
 
-### Long-term Improvements
+6) Update `vendor:clean` to clean all downloaded watcher binaries
 
-1. **Add CI check** to ensure all platform binaries are present before release
-2. **Update documentation** to clarify build requirements
-3. **Consider git-lfs** or similar for storing binary assets
-4. **Add `vendor:verify` task** to check all binaries are present and valid
+7) Update `script/install-docker` to use `build:all` instead of `build:linux`
+
+This should fix the issue having watcher binaries downloaded for linux amd64 and aarch64/arm64,
+so that we can embed the correct binary for the targeted docker container. It also will 
+ensure we have all binaries built for plur itself for supported platforms.
+
+8) Update `docs/architecture/plur-watch-architecture.md` to reflect the new build process
+
+9) Run full test suite and linters
 
 ## Testing Requirements
 
@@ -126,13 +109,18 @@ After implementing the fix:
 1. **Local verification:**
    ```bash
    bin/rake vendor:clean
-   bin/rake vendor:all
-   ls -la plur/embedded/watcher/  # Should show 4 binaries
+   bin/rake vendor:download:all
+   ls -la plur/embedded/watcher/  # Should show binaries for all supported platforms
+   ```
+
+2. **Multi-arch build verification:**
+   ```bash
+   bin/rake build:all
+   ls -la dist/  # Should show binaries for all supported platforms with correct names
    ```
 
 2. **Linux container test:**
    ```bash
-   bin/rake build:linux
    ./script/install-docker install example-service -C app-compose -p vendor/gems/bin
    docker exec app-compose_example-service_1 plur watch install  # Should succeed
    ```
