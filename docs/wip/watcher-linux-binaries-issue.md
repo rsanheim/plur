@@ -1,6 +1,6 @@
 # Watcher Linux Binaries Issue
 
-**Date:** 2025-01-12  
+**Date:** 2025-08-12
 **Status:** 🔴 Broken - Linux watcher binaries not embedded  
 **Impact:** `plur watch install` fails in all Linux Docker containers
 
