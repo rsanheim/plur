@@ -28,8 +28,6 @@
       "Bash(claude mcp list)",
       "Bash(cp:*)",
       "Bash(curl:*)",
-      "Bash(DEBUG=1 bundle exec rspec spec/watch_signal_spec.rb -e \"runs indefinitely\")",
-      "Bash(DEBUG=1 bundle exec rspec spec/watch_spec.rb -e \"detects and runs spec\")",
       "Bash(docker:*)",
       "Bash(echo:*)",
       "Bash(find:*)",
@@ -122,7 +120,7 @@
     "deny": []
   },
   "includeCoAuthoredBy": false,
-  "enableAllProjectMcpServers": true,
+  "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": [
     "github"
   ],
