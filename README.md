@@ -95,8 +95,6 @@ Benchmarked on example-project project (24 spec files):
 ```bash
 rake                         # Run ALL tests & lints before committing
 rake test                    # Run full Ruby test suite
-rake test:default_ruby       # Test plur on default-ruby fixture project
-rake test:default_ruby_turbo # Run default-ruby fixture specs using turbo_tests (for comparison)
 rake test:go                 # Run Go tests only
 ```
 
