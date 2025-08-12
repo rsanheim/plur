@@ -22,7 +22,7 @@ cd fixtures/projects/default-rails && plur -n 3
 - **Database commands** (db:create, db:migrate, db:setup, db:test:prepare)
 - **Performance optimized** - 13% faster than turbo_tests
 
-### Test Projects
+### Test Fixture Projects (`fixtures/projects/*`)
 - **default-ruby/**: Simple Ruby library for basic testing and development
   - Pure Ruby project with models, services, and utilities
   - Comprehensive RSpec test suite
