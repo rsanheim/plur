@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Production-ready Go implementation, ~13% faster than turbo_tests/parallel_tests.
 
-## 🚨 CRITICAL: Always use `bin/rake`, never bare `rake`
+## 🚨 IMPORTANT: Always use `bin/rake`, never bare `rake`
 
 ```bash
 # Daily workflow commands (in order of frequency):
@@ -148,7 +148,7 @@ Keep documentation focused on the **current state** of the project:
 - No ANSI color codes in output (keep it plain text)
 - Use simple ASCII for emphasis: `>>>`, `✓`, `✗`
 
-## ⚠️ CRITICAL: No Backward Compatibility Without Explicit Instruction
+## ⚠️ No Backward Compatibility Without Explicit Instruction
 
 **NEVER** keep old code around for backward compatibility unless explicitly instructed to do so. This includes:
 - No deprecated aliases or wrapper functions
