@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -30,7 +32,6 @@ func RunDatabaseTask(task string, config *GlobalConfig) error {
 	results := make(chan error, config.WorkerCount)
 	var wg sync.WaitGroup
 
-	// Run the task in parallel for each test database
 	for i := 0; i < config.WorkerCount; i++ {
 		workerIndex := i
 		wg.Add(1)
@@ -52,8 +53,9 @@ func RunDatabaseTask(task string, config *GlobalConfig) error {
 
 			cmd.Env = env
 
-			if err := cmd.Run(); err != nil {
-				results <- fmt.Errorf("worker %d failed: %v", workerIndex, err)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				results <- fmt.Errorf("worker %d failed: %v\nOutput:\n%s", workerIndex, err, string(output))
 			} else {
 				results <- nil
 			}
@@ -63,15 +65,52 @@ func RunDatabaseTask(task string, config *GlobalConfig) error {
 	wg.Wait()
 	close(results)
 
-	var errors []string
+	// Collect and deduplicate errors
+	var errors []error
+	errorOutputs := make(map[string][]int) // Map output to worker indices that had this error
+
 	for err := range results {
 		if err != nil {
-			errors = append(errors, err.Error())
+			errors = append(errors, err)
+			// Extract just the output part for deduplication
+			errStr := err.Error()
+			if idx := strings.Index(errStr, "\nOutput:\n"); idx != -1 {
+				output := errStr[idx+9:] // Skip past "\nOutput:\n"
+				workerMatch := regexp.MustCompile(`^worker (\d+) failed:`).FindStringSubmatch(errStr)
+				if len(workerMatch) > 1 {
+					if workerIdx, parseErr := strconv.Atoi(workerMatch[1]); parseErr == nil {
+						errorOutputs[output] = append(errorOutputs[output], workerIdx)
+					}
+				}
+			}
 		}
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("database task failed:\n%s", strings.Join(errors, "\n"))
+		// Check if all errors have the same output
+		if len(errorOutputs) == 1 && len(errors) == config.WorkerCount {
+			// All workers failed with the same error
+			for output, workers := range errorOutputs {
+				return fmt.Errorf("database task failed:\nAll %d workers failed with the same error:\n%s",
+					len(workers), output)
+			}
+		}
+
+		// Different errors or not all workers failed - show each unique error
+		var uniqueErrors []string
+		for output, workers := range errorOutputs {
+			if len(workers) == 1 {
+				uniqueErrors = append(uniqueErrors, fmt.Sprintf("worker %d failed:\n%s", workers[0], output))
+			} else {
+				workerList := make([]string, len(workers))
+				for i, w := range workers {
+					workerList[i] = fmt.Sprintf("%d", w)
+				}
+				uniqueErrors = append(uniqueErrors, fmt.Sprintf("workers [%s] failed with:\n%s",
+					strings.Join(workerList, ", "), output))
+			}
+		}
+		return fmt.Errorf("database task failed:\n%s", strings.Join(uniqueErrors, "\n---\n"))
 	}
 
 	fmt.Printf("Database task '%s' completed successfully\n", task)

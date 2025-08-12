@@ -20,7 +20,7 @@ desc "Run all tests and linting"
 task default: ["build", "test:all", "lint:ruby"]
 
 desc "Build the plur Go binary"
-task build: ["vendor:build", "lint:go"] do
+task build: ["vendor:download:current", "lint:go"] do
   Dir.chdir(Plur.config.plur_dir) do
     puts "[build] Building plur"
     sh %(go build -mod=mod -o plur .)

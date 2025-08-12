@@ -25,6 +25,7 @@ opts = Optimist.options do
 
   opt :compose_prefix, "Use docker-compose naming (prefix_service_1)", type: :string, short: "C"
   opt :binary, "Path to specific binary (auto-detects if omitted)", type: :string
+  opt :install_path, "Container path to install plur (default: /usr/local/bin)", type: :string, short: "p"
   opt :help, "Show this help message", short: "h"
 
   educate_on_error
@@ -56,5 +57,6 @@ installer.run(
   command: command,
   service: service,
   compose_prefix: opts[:compose_prefix],
-  binary: opts[:binary]
+  binary: opts[:binary],
+  install_path: opts[:install_path]
 )
