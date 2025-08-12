@@ -55,7 +55,6 @@ func RunDatabaseTask(task string, config *GlobalConfig) error {
 
 			output, err := cmd.CombinedOutput()
 			if err != nil {
-				// Include the actual output in the error message
 				results <- fmt.Errorf("worker %d failed: %v\nOutput:\n%s", workerIndex, err, string(output))
 			} else {
 				results <- nil
