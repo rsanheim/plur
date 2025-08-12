@@ -7,7 +7,7 @@ orbs:
 jobs:
   build-and-test-go:
     docker:
-      - image: cimg/ruby:3.4.4
+      - image: cimg/ruby:3.4.5
     working_directory: ~/project
     resource_class: medium
     environment:
@@ -24,8 +24,8 @@ jobs:
       - run:
           name: Install Go
           command: |
-            wget https://go.dev/dl/go1.24.2.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
+            wget https://go.dev/dl/go1.24.6.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.24.6.linux-amd64.tar.gz
             echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
             source $BASH_ENV
             go version
@@ -49,7 +49,7 @@ jobs:
 
   test-ruby-integration:
     docker:
-      - image: cimg/ruby:3.4.4
+      - image: cimg/ruby:3.4.5
     resource_class: large
     working_directory: ~/project/
     steps:
@@ -93,18 +93,9 @@ jobs:
           name: Install turbo_tests
           command: gem install turbo_tests
       - run:
-          name: Install hyperfine for benchmarking
-          command: |
-            wget https://github.com/sharkdp/hyperfine/releases/download/v1.19.0/hyperfine_1.19.0_amd64.deb
-            sudo dpkg -i hyperfine_1.19.0_amd64.deb
-            hyperfine --version
-      - run:
           name: Run all Ruby specs
           command: |
             bin/rake test
-      # - run:
-      #     name: Run benchmarks default benchmark suite
-      #     command: ./script/bench
 
 workflows:
   test-all:
