@@ -17,7 +17,7 @@ module Plur
       @cmd = TTY::Command.new(printer: :null)
     end
 
-    def run(command:, service:, compose_prefix: nil, binary: nil)
+    def run(command:, service:, compose_prefix: nil, binary: nil, install_path: nil)
       container_name = build_container_name(service, compose_prefix)
 
       unless container_exists?(container_name)
@@ -28,9 +28,9 @@ module Plur
 
       case command
       when "status"
-        show_status(container_name)
+        show_status(container_name, install_path)
       else
-        install(container_name, binary)
+        install(container_name, binary, install_path)
       end
     end
 
@@ -77,7 +77,9 @@ module Plur
       binary_path
     end
 
-    def install(container_name, binary_path)
+    def install(container_name, binary_path, install_path = nil)
+      install_path ||= "/usr/local/bin"
+
       if binary_path.nil?
         puts ">>> Detecting container architecture..."
         arch = detect_architecture(container_name)
@@ -94,9 +96,18 @@ module Plur
       binary_size = (binary_path.size / 1024.0 / 1024.0).round(1)
       puts ">>> Installing plur to container: #{container_name}"
       puts "    Binary: #{binary_path} (#{binary_size}M)"
+      puts "    Install path: #{install_path}"
 
-      # Check existing version
-      existing_version = get_plur_version(container_name)
+      # Check if install path exists
+      check_result = @cmd.run("docker exec #{container_name} test -d #{install_path} && echo 'exists' || echo 'missing'", only_output_on_error: true)
+      if check_result.out.strip == "missing"
+        puts ">>> Creating install directory: #{install_path}"
+        @cmd.run("docker exec #{container_name} mkdir -p #{install_path}")
+      end
+
+      # Check existing version at install path
+      plur_path = "#{install_path}/plur"
+      existing_version = get_plur_version_at_path(container_name, plur_path)
       if existing_version && !existing_version.include?("not found")
         puts "    Replacing existing plur: #{existing_version}"
       end
@@ -112,12 +123,21 @@ module Plur
       @cmd.run("docker cp #{binary_path} #{container_name}:#{temp_dir}/plur")
 
       # Install binary
-      puts ">>> Installing binary in container..."
+      puts ">>> Installing plur binary..."
       install_script = <<~BASH
         set -e
-        mkdir -p /usr/local/bin
-        mv -f #{temp_dir}/plur /usr/local/bin/plur
-        chmod +x /usr/local/bin/plur
+        # Install plur binary
+        mv -f #{temp_dir}/plur #{plur_path}
+        chmod +x #{plur_path}
+        
+        # Create symlink in /usr/local/bin if installing elsewhere
+        if [ "#{install_path}" != "/usr/local/bin" ]; then
+          echo "Creating symlink in /usr/local/bin..."
+          mkdir -p /usr/local/bin
+          ln -sf #{plur_path} /usr/local/bin/plur
+        fi
+        
+        # Clean up temp directory
         rmdir #{temp_dir}
       BASH
       @cmd.run("docker exec #{container_name} bash -c #{Shellwords.escape(install_script)}")
@@ -132,6 +152,20 @@ module Plur
       else
         puts "✓ Installation successful!"
         puts "  Version: #{version}"
+        puts "  Location: #{plur_path}"
+        if install_path != "/usr/local/bin"
+          puts "  Symlink: /usr/local/bin/plur -> #{plur_path}"
+        end
+      end
+
+      # Try to install watchr binary using plur watch install
+      puts ">>> Installing watchr binary..."
+      begin
+        @cmd.run("docker exec #{container_name} plur watch install")
+        puts "✓ Watchr binary installed successfully"
+      rescue TTY::Command::ExitError => e
+        puts "⚠ Could not install watchr binary: #{e.message.lines.first}"
+        puts "  The watch command may not work properly"
       end
 
       # Run doctor
@@ -149,8 +183,12 @@ module Plur
       puts "  You can now use: docker exec #{container_name} plur [arguments]"
     end
 
-    def show_status(container_name)
+    def show_status(container_name, install_path = nil)
+      install_path ||= "/usr/local/bin"
+      plur_path = "#{install_path}/plur"
+
       puts ">>> Checking plur installation status on container: #{container_name}"
+      puts "    Install path: #{install_path}"
       puts
 
       version = get_plur_version(container_name)
@@ -166,10 +204,31 @@ module Plur
       puts
       puts ">>> Binary information:"
       begin
-        result = @cmd.run("docker exec #{container_name} bash -c 'which plur && ls -lh $(which plur)'", only_output_on_error: true)
-        puts result.out
+        # Check primary install location
+        result = @cmd.run("docker exec #{container_name} bash -c 'test -f #{plur_path} && ls -lh #{plur_path} || echo \"Not found at #{plur_path}\"'", only_output_on_error: true)
+        puts "  Primary: #{result.out.strip}"
+
+        # Check symlink if different from /usr/local/bin
+        if install_path != "/usr/local/bin"
+          result = @cmd.run("docker exec #{container_name} bash -c 'test -L /usr/local/bin/plur && ls -lh /usr/local/bin/plur || echo \"No symlink at /usr/local/bin/plur\"'", only_output_on_error: true)
+          puts "  Symlink: #{result.out.strip}"
+        end
+
+        # Check which plur resolves to
+        result = @cmd.run("docker exec #{container_name} bash -c 'which plur'", only_output_on_error: true)
+        puts "  In PATH: #{result.out.strip}"
       rescue TTY::Command::ExitError
         puts "  Unable to get binary info"
+      end
+
+      # Check watchr binary (plur watch install puts it in ~/.cache/plur/bin)
+      puts
+      puts ">>> Watchr binary:"
+      begin
+        result = @cmd.run("docker exec #{container_name} bash -c 'which watchr || ls -lh ~/.cache/plur/bin/watchr 2>/dev/null || echo \"Not found\"'", only_output_on_error: true)
+        puts "  #{result.out.strip}"
+      rescue TTY::Command::ExitError
+        puts "  Unable to check watchr binary"
       end
 
       # Doctor output
@@ -185,6 +244,13 @@ module Plur
 
     def get_plur_version(container_name)
       result = @cmd.run("docker exec #{container_name} plur --version", only_output_on_error: true)
+      result.out.strip
+    rescue TTY::Command::ExitError
+      nil
+    end
+
+    def get_plur_version_at_path(container_name, path)
+      result = @cmd.run("docker exec #{container_name} #{path} --version", only_output_on_error: true)
       result.out.strip
     rescue TTY::Command::ExitError
       nil

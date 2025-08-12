@@ -1,6 +1,13 @@
 # plur CHANGELOG
 
+## v0.9.9 - 2025-08-12
 
+* Improve database tasks spec: [#83](https://github.com/rsanheim/plur/pull/83)
+* Clean up docs [#82](https://github.com/rsanheim/plur/pull/82)
+* Fix watcher binary install; fix DB task error handling [#81](https://github.com/rsanheim/plur/pull/81)
+* gitignore plur-race binary [#80](https://github.com/rsanheim/plur/pull/80)
+* Wire up CircleCI MCP [#77](https://github.com/rsanheim/plur/pull/77)
+* Re org specs [#76](https://github.com/rsanheim/plur/pull/76)
 
 ## v0.9.4 - 2025-07-31
 

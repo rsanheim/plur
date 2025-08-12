@@ -9,10 +9,8 @@ begin
 rescue LoadError
 end
 
-# Load all tasks from lib/tasks
 Dir.glob(Plur.config.root_dir.join("lib", "tasks", "*.rake")).each { |file| load file }
 
-# Using 3 cores for medium/large resource class on CircleCI
 PLUR_CORES = Plur.config.plur_cores
 
 # Default task runs all checks
@@ -20,7 +18,7 @@ desc "Run all tests and linting"
 task default: ["build", "test:all", "lint:ruby"]
 
 desc "Build the plur Go binary"
-task build: ["vendor:build", "lint:go"] do
+task build: ["vendor:download:current", "lint:go"] do
   Dir.chdir(Plur.config.plur_dir) do
     puts "[build] Building plur"
     sh %(go build -mod=mod -o plur .)
@@ -59,26 +57,14 @@ namespace :test do
 
   desc "Run plur against default-ruby fixture project"
   task default_ruby: :install do
-    Dir.chdir(Plur.config.default_ruby_dir) do
-      puts "[test:default_ruby] Running default-ruby specs with plur..."
-      sh "plur", "-n", PLUR_CORES.to_s
-    end
-  end
-
-  desc "Run default-ruby specs using turbo_tests"
-  task :default_ruby_turbo do
-    Dir.chdir(Plur.config.default_ruby_dir) do
-      puts "[test:default_ruby_turbo] Running default-ruby specs with turbo_tests..."
-      sh "bundle exec turbo_tests"
-    end
+    puts "[test:default_ruby] Running default-ruby specs with plur..."
+    sh "plur", "-C", Plur.config.default_ruby_dir.to_s, "-n", PLUR_CORES.to_s, err: "/dev/null"
   end
 
   desc "Run default-rails specs using plur"
   task default_rails: :install do
-    Dir.chdir(Plur.config.default_rails_dir) do
-      puts "[test:default_rails] Running default-rails specs with plur..."
-      sh "plur", "-n", PLUR_CORES.to_s
-    end
+    puts "[test:default_rails] Running default-rails specs with plur..."
+    sh "plur", "-C", Plur.config.default_rails_dir.to_s, "-n", PLUR_CORES.to_s, err: "/dev/null"
   end
 end
 
