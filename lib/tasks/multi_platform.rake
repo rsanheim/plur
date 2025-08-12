@@ -2,7 +2,7 @@ require_relative "../plur"
 
 namespace :build do
   desc "Build plur for Linux (amd64 and arm64)"
-  task :linux do
+  task linux: ["vendor:download:all"] do
     # Ensure dist directory exists
     dist_dir = Plur.config.root_dir.join("dist")
     FileUtils.mkdir_p(dist_dir)
@@ -52,7 +52,7 @@ namespace :build do
   end
 
   desc "Build plur for all platforms (macOS and Linux)"
-  task :all do
+  task all: ["vendor:download:all"] do
     dist_dir = Plur.config.root_dir.join("dist")
     FileUtils.mkdir_p(dist_dir)
 

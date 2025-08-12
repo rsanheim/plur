@@ -79,7 +79,7 @@ module Plur
 
     def install(container_name, binary_path, install_path = nil)
       install_path ||= "/usr/local/bin"
-      
+
       if binary_path.nil?
         puts ">>> Detecting container architecture..."
         arch = detect_architecture(container_name)
@@ -186,7 +186,7 @@ module Plur
     def show_status(container_name, install_path = nil)
       install_path ||= "/usr/local/bin"
       plur_path = "#{install_path}/plur"
-      
+
       puts ">>> Checking plur installation status on container: #{container_name}"
       puts "    Install path: #{install_path}"
       puts
@@ -207,13 +207,13 @@ module Plur
         # Check primary install location
         result = @cmd.run("docker exec #{container_name} bash -c 'test -f #{plur_path} && ls -lh #{plur_path} || echo \"Not found at #{plur_path}\"'", only_output_on_error: true)
         puts "  Primary: #{result.out.strip}"
-        
+
         # Check symlink if different from /usr/local/bin
         if install_path != "/usr/local/bin"
           result = @cmd.run("docker exec #{container_name} bash -c 'test -L /usr/local/bin/plur && ls -lh /usr/local/bin/plur || echo \"No symlink at /usr/local/bin/plur\"'", only_output_on_error: true)
           puts "  Symlink: #{result.out.strip}"
         end
-        
+
         # Check which plur resolves to
         result = @cmd.run("docker exec #{container_name} bash -c 'which plur'", only_output_on_error: true)
         puts "  In PATH: #{result.out.strip}"
