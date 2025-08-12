@@ -50,7 +50,7 @@ jobs:
   test-ruby-integration:
     docker:
       - image: cimg/ruby:3.4.5
-    resource_class: xlarge
+    resource_class: large
     working_directory: ~/project/
     steps:
       - checkout
