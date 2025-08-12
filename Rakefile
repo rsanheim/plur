@@ -59,10 +59,8 @@ namespace :test do
 
   desc "Run plur against default-ruby fixture project"
   task default_ruby: :install do
-    Dir.chdir(Plur.config.default_ruby_dir) do
-      puts "[test:default_ruby] Running default-ruby specs with plur..."
-      sh "plur", "-n", PLUR_CORES.to_s
-    end
+    puts "[test:default_ruby] Running default-ruby specs with plur..."
+    sh "plur", "-C", Plur.config.default_ruby_dir.to_s, "-n", PLUR_CORES.to_s, err: "/dev/null"
   end
 
   desc "Run default-ruby specs using turbo_tests"
