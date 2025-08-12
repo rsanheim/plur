@@ -32,7 +32,6 @@ func RunDatabaseTask(task string, config *GlobalConfig) error {
 	results := make(chan error, config.WorkerCount)
 	var wg sync.WaitGroup
 
-	// Run the task in parallel for each test database
 	for i := 0; i < config.WorkerCount; i++ {
 		workerIndex := i
 		wg.Add(1)
