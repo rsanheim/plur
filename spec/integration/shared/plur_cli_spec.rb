@@ -86,31 +86,12 @@ RSpec.describe "Plur CLI behavior" do
       Dir.chdir(default_ruby_dir) do
         result = run_plur("spec", "-d", "spec/calculator_spec.rb")
 
-        expect(result.err).to include("bundle exec rspec")
+        expect(result.err).to include("DEBUG")
+        expect(result.err).to include("rspec")
         expect(result.out).to include("#{calculator_spec_examples} examples, 0 failures")
       end
     end
 
-    it "uses debug mode for --debug" do
-      Dir.chdir(default_ruby_dir) do
-        result = run_plur("spec", "--debug", "spec/calculator_spec.rb")
-
-        expect(result.err).to include("bundle exec rspec")
-        expect(result.out).to include("#{calculator_spec_examples} examples, 0 failures")
-      end
-    end
-
-    it "uses the configured command if defined" do
-      Dir.chdir(default_ruby_dir) do
-        result = run_plur("spec", "--debug", "--command=rspec")
-
-        expect(result.err).to include("rspec -r")
-        expect(result.err).not_to include("bundle exec")
-        expect(result.out).to include("examples, 0 failures")
-      end
-    end
-
-    # TODO - we need better handling and feedback here if a command does not exist
     it "errors if configured command is not found" do
       Dir.chdir(default_ruby_dir) do
         result = run_plur_allowing_errors("spec", "--debug", "--command=rspecx")

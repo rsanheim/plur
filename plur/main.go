@@ -186,13 +186,7 @@ func (r *PlurCLI) AfterApply() error {
 	// Kong has already resolved r.Debug from CLI flag, env var, or config file
 	logger.InitLogger(r.Verbose, r.Debug)
 
-	// Change directory if -C flag is provided - do this first
-	if r.ChangeDir != "" {
-		if err := os.Chdir(r.ChangeDir); err != nil {
-			return fmt.Errorf("failed to change directory to %s: %v", r.ChangeDir, err)
-		}
-		logger.Logger.Debug("Changed directory", "dir", r.ChangeDir)
-	}
+	// Note: Directory change is now handled before Kong initialization in main()
 
 	// Handle version flag
 	if r.Version {
@@ -229,6 +223,37 @@ func (r *PlurCLI) AfterApply() error {
 
 func main() {
 	var cli PlurCLI
+
+	// Pre-parse -C flag to change directory before config loading
+	// This ensures config files are loaded from the target directory
+	for i := 1; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		var dir string
+
+		// Check for various -C formats
+		if arg == "-C" || arg == "--change-dir" {
+			if i+1 < len(os.Args) {
+				dir = os.Args[i+1]
+				i++ // Skip next arg since we consumed it
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: %s flag requires a directory argument\n", arg)
+				os.Exit(1)
+			}
+		} else if strings.HasPrefix(arg, "-C=") {
+			dir = strings.TrimPrefix(arg, "-C=")
+		} else if strings.HasPrefix(arg, "--change-dir=") {
+			dir = strings.TrimPrefix(arg, "--change-dir=")
+		}
+
+		// Change directory if we found a -C flag
+		if dir != "" {
+			if err := os.Chdir(dir); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: failed to change directory to %s: %v\n", dir, err)
+				os.Exit(1)
+			}
+			break // Only process the first -C flag
+		}
+	}
 
 	// Build config file list
 	var configFiles []string

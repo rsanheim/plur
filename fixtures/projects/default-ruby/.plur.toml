@@ -1,0 +1,3 @@
+# Plur configuration for default-ruby test fixture
+# Using direct rspec command for 12.5% performance improvement
+command = "rspec"

@@ -52,7 +52,7 @@ RSpec.describe "plur watch command", :skip_if_ci do
       end
 
       expect(result.out).to include("running:")
-      expect(result.out).to include(/bundle exec rspec/)
+      expect(result.out).to include(/rspec/)
       expect(result.out).to include("calculator_spec.rb")
       expect(result.success?).to be true
     end
