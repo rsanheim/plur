@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rsanheim/plur/internal/format"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -89,7 +90,7 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 		skipText = fmt.Sprintf("%d skips", totalPending)
 	}
 
-	summary := fmt.Sprintf("\nFinished in %.6fs.\n", wallTime)
+	summary := fmt.Sprintf("\nFinished in %s.\n", format.FormatDuration(wallTime))
 	summary += fmt.Sprintf("%s, %s, %s, %s, %s", runText, assertionText, failureText, errorText, skipText)
 
 	return summary
