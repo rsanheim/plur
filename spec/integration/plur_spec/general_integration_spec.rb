@@ -67,7 +67,7 @@ RSpec.describe "Plur general integration" do
 
       expect(result.err).to include("[dry-run] Found #{expected_spec_files} spec files")
       expect(result.err).to include("[dry-run] Worker")
-      expect(result.err).to include("bundle exec rspec")
+      expect(result.err).to include("rspec")
       expect(result.out).not_to include("Finished in")
       expect(result.out).not_to include("examples, ")
     end

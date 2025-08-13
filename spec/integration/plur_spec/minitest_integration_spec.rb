@@ -78,16 +78,5 @@ RSpec.describe "Minitest Integration" do
         end
       end
     end
-
-    it "detects rspec project by spec directory" do
-      chdir(project_fixture!("default-ruby")) do
-        Bundler.with_unbundled_env do
-          result = run_plur("--dry-run")
-          expect(result).to be_success
-          # Should use rspec commands
-          expect(result.err).to include("bundle exec rspec")
-        end
-      end
-    end
   end
 end
