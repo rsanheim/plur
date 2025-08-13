@@ -79,18 +79,20 @@ RSpec.describe "plur glob pattern support" do
       end
     end
 
-    it "warns about non-spec files and returns error when no specs found" do
+    it "warns about non-spec files but still passes them to RSpec" do
       chdir(default_ruby_dir) do
         # Create a temporary non-spec file (doesn't end with _spec.rb)
         File.write("spec/helper.rb", "# helper file")
 
         begin
-          result = run_plur_allowing_errors("--dry-run", "spec/helper.rb")
+          result = run_plur("--dry-run", "spec/helper.rb")
 
-          expect(result.success?).to be false  # Fails when no spec files found
+          # Should succeed with dry-run (matching RSpec's behavior of accepting any file)
+          expect(result.success?).to be true
           expect(result.err).to include("Warning: spec/helper.rb does not end with _spec.rb")
-          # Kong logs errors through the logger with a specific format
-          expect(result.out + result.err).to include("no test files found matching provided patterns")
+          # Should still include the file in dry-run output
+          expect(result.err).to include("[dry-run] Found 1 spec files")
+          expect(result.err).to include("spec/helper.rb")
         ensure
           File.delete("spec/helper.rb") if File.exist?("spec/helper.rb")
         end

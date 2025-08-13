@@ -4,7 +4,7 @@ Plur's core feature is running RSpec tests in parallel for faster feedback.
 
 ## How It Works
 
-1. **Test Discovery**: Finds all `*_spec.rb` files recursively
+1. **Test Discovery**: Finds test files based on patterns (supports globs like `**/*_spec.rb`)
 2. **Worker Pool**: Creates N worker processes
 3. **Intelligent Distribution**: 
    - Uses saved runtime data when available for optimal load balancing
