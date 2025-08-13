@@ -111,7 +111,7 @@ Plur supports advanced glob patterns for selecting test files:
 - `*` - Matches any characters except path separator
 - `?` - Matches single character
 - `[abc]` - Matches any character in brackets
-- `{a,b}` - Brace expansion (e.g., `spec/{models,controllers}/**/*_spec.rb`)
+- `{models,controllers}` - Brace expansion (e.g., `spec/{models,controllers}/**/*_spec.rb`)
 
 ### Pattern Examples
 
