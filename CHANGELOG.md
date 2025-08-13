@@ -1,5 +1,9 @@
 # plur CHANGELOG
 
+## v0.9.10 - 2025-08-13
+* Implement RSpec-style adaptive duration formatting [#94](https://github.com/rsanheim/plur/pull/94)
+* Use doublestar for globs [#90](https://github.com/rsanheim/plur/pull/90)
+
 ## v0.9.9 - 2025-08-12
 
 * Improve database tasks spec: [#83](https://github.com/rsanheim/plur/pull/83)
