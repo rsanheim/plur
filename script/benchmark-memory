@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Simple script to run memory benchmarks for plur
+# Usage: script/benchmark-memory [filter]
+# Examples:
+#   script/benchmark-memory               # Run all benchmarks
+#   script/benchmark-memory Collector     # Run only Collector benchmarks
+#   script/benchmark-memory -v            # Verbose output
+
+FILTER="${1:-}"
+VERBOSE="${2:-}"
+
+echo "Running memory benchmarks for plur..."
+echo "=================================="
+echo ""
+
+cd plur
+
+if [ -n "$FILTER" ] && [ "$FILTER" != "-v" ]; then
+    echo "Filter: $FILTER"
+    go test -bench="$FILTER" -benchmem -benchtime=10s
+elif [ "$VERBOSE" = "-v" ] || [ "$FILTER" = "-v" ]; then
+    echo "Running with verbose output..."
+    go test -bench=. -benchmem -benchtime=10s -v
+else
+    go test -bench=. -benchmem -benchtime=10s
+fi
+
+echo ""
+echo "=================================="
+echo "Benchmark complete!"
+echo ""
+echo "To compare before/after optimization:"
+echo "1. Save current results: script/benchmark-memory > before.txt"
+echo "2. Make your optimization changes"
+echo "3. Run again: script/benchmark-memory > after.txt"
+echo "4. Compare: diff before.txt after.txt"
+echo ""
+echo "Or use benchstat for better comparison:"
+echo "  go install golang.org/x/perf/cmd/benchstat@latest"
+echo "  benchstat before.txt after.txt"

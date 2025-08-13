@@ -119,7 +119,7 @@ module Plur
 
         puts "Running benchmarks with #{config.workers} workers, #{config.warmup} warmup runs, #{config.runs} runs"
         puts "Plur version: #{plur_version}"
-        puts "Command: #{hyperfine_cmd.join(' ')}"
+        puts "Command: #{hyperfine_cmd.join(" ")}"
         puts "===================="
 
         Bundler.with_unbundled_env do

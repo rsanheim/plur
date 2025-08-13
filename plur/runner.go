@@ -241,7 +241,14 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 	if err != nil {
 		return errorResult(testFile, err, start, specCmd.GetFramework())
 	}
-	collector := NewTestCollector()
+
+	// Use smart allocation based on number of files
+	// For single files, estimate 20 tests per file; for groups, use 10 per file
+	testsPerFile := 20
+	if len(specFiles) > 1 {
+		testsPerFile = 10
+	}
+	collector := NewTestCollectorWithHints(len(specFiles), testsPerFile)
 
 	// Stream output through parser and collector
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, specCmd.GetFramework())
@@ -473,7 +480,14 @@ func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *
 	if err != nil {
 		return errorResult(testFile, err, start, specCmd.GetFramework())
 	}
-	collector := NewTestCollector()
+
+	// Use smart allocation based on number of files
+	// For single files, estimate 20 tests per file; for groups, use 10 per file
+	testsPerFile := 20
+	if len(testFiles) > 1 {
+		testsPerFile = 10
+	}
+	collector := NewTestCollectorWithHints(len(testFiles), testsPerFile)
 
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework())
 

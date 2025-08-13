@@ -11,6 +11,11 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
+// ScannerBufferSize is the buffer size for scanning test output.
+// 256KB allows for large output lines while being memory-efficient.
+// Default bufio.Scanner is 64KB which can fail on large single lines.
+const ScannerBufferSize = 256 * 1024
+
 // streamTestOutput handles the common pattern of streaming test output through a parser
 // and collector while sending progress updates to the output channel
 func streamTestOutput(
@@ -23,6 +28,7 @@ func streamTestOutput(
 	framework TestFramework,
 ) (stderrOutput string) {
 	var stderrBuilder strings.Builder
+	stderrBuilder.Grow(2048) // Pre-allocate for typical stderr output
 	var wg sync.WaitGroup
 
 	// Stream stdout and parse using event-based architecture
@@ -30,6 +36,8 @@ func streamTestOutput(
 	go func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
+		// Increase buffer size to handle large output lines (default is 64KB)
+		scanner.Buffer(make([]byte, 0, ScannerBufferSize), ScannerBufferSize)
 
 		firstOutput := true
 		for scanner.Scan() {
@@ -85,6 +93,8 @@ func streamTestOutput(
 	go func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
+		// Increase buffer size to handle large output lines (default is 64KB)
+		scanner.Buffer(make([]byte, 0, ScannerBufferSize), ScannerBufferSize)
 		for scanner.Scan() {
 			line := scanner.Text()
 			stderrBuilder.WriteString("STDERR: " + line + "\n")

@@ -112,7 +112,7 @@ File: `rspec/json_output.go:117-156`
 * [x] Add string builder pre-allocation - DONE
 * [x] Add slice capacity hints - DONE
 * [x] Remove dead ParseJSONOutput code - DONE
-* [ ] Increase scanner buffer sizes
+* [x] Increase scanner buffer sizes to 256KB - DONE
 
 ### Phase 2: I/O Improvements (3-5 days)
 
