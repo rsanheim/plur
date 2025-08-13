@@ -110,14 +110,17 @@ func NewConfigPaths() *ConfigPaths {
 **Issue**: Concurrent access to shared memory during `strings.Join()` operation
 
 **Race Details**:
+
 - Multiple goroutines calling `strings.Join(args, " ")` simultaneously
 - Internal string builder shares memory temporarily
 
 **Impact**: 
+
 - Low - only affects debug output
 - Could cause garbled debug messages
 
 **Fix**: 
+
 - This appears to be a false positive from the race detector
 - The `args` slice is local to each goroutine
 - No actual fix needed, but could copy args first if paranoid
