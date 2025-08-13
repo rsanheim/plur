@@ -1,5 +1,10 @@
 # plur CHANGELOG
 
+
+## v0.9.11 - 2025-08-13
+
+* Fix "-C" flag for change dir [#98](https://github.com/rsanheim/plur/pull/98)
+
 ## v0.9.10 - 2025-08-13
 * Implement RSpec-style adaptive duration formatting [#94](https://github.com/rsanheim/plur/pull/94)
 * Use doublestar for globs [#90](https://github.com/rsanheim/plur/pull/90)
