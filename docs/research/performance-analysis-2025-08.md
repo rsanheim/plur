@@ -34,21 +34,9 @@ File: `runtime_tracker.go:77-80`
 
 ### 2. I/O Operation Inefficiencies
 
-#### JSON File Loading
-
-File: `rspec/json_output.go:65-68`
-
-* Issue: `io.ReadAll()` loads entire JSON into memory
-* Impact: HIGH - Memory scales with file size
-* Fix: Use streaming decoder:
-
-```go
-json.NewDecoder(file).Decode(&output)
-```
-
 #### Repeated File Reading
 
-File: `rspec/json_output.go:167-205` (ExtractFailingLine)
+File: `rspec/json_output.go:132-170` (ExtractFailingLine)
 
 * Issue: Opens and scans file for each failure
 * Impact: HIGH - O(failures × file_lines)
@@ -121,10 +109,10 @@ File: `rspec/json_output.go:117-156`
 
 ### Phase 1: Quick Wins (1-2 days)
 
-* [ ] Add string builder pre-allocation
-* [ ] Fix JSON streaming decoder
+* [x] Add string builder pre-allocation - DONE
+* [x] Add slice capacity hints - DONE
+* [x] Remove dead ParseJSONOutput code - DONE
 * [ ] Increase scanner buffer sizes
-* [ ] Add slice capacity hints
 
 ### Phase 2: I/O Improvements (3-5 days)
 

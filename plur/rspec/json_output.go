@@ -2,9 +2,7 @@ package rspec
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 )
@@ -52,36 +50,6 @@ type FailureDetail struct {
 	ErrorClass  string
 	Message     string
 	Backtrace   []string
-}
-
-// ParseJSONOutput reads and parses RSpec JSON output from a file
-func ParseJSONOutput(filename string) (*JSONOutput, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open JSON file: %v", err)
-	}
-	defer file.Close()
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read JSON file: %v", err)
-	}
-
-	// Check if file is empty or contains only whitespace
-	if len(strings.TrimSpace(string(data))) == 0 {
-		return nil, fmt.Errorf("JSON file is empty - RSpec likely failed to start (check for missing gems or bundle install needed)")
-	}
-
-	var output JSONOutput
-	if err := json.Unmarshal(data, &output); err != nil {
-		// Provide more helpful error for common case of malformed JSON due to early RSpec failure
-		if strings.Contains(err.Error(), "unexpected end of JSON input") {
-			return nil, fmt.Errorf("JSON file is incomplete - RSpec may have failed before generating output (check for missing gems or run 'bundle install')")
-		}
-		return nil, fmt.Errorf("failed to parse JSON: %v", err)
-	}
-
-	return &output, nil
 }
 
 // ExtractFailures extracts failure details from RSpec examples
