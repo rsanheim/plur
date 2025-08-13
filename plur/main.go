@@ -172,10 +172,12 @@ type PlurCLI struct {
 	Color      bool   `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
 	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" default:"true" hidden:""`
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
-	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
-	FirstIs1   bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
-	Version    bool   `help:"Show version information"`
+	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
+	// directory change is handled early in main() before config loading
+	ChangeDir string `short:"C" help:"Change to directory before running (like git -C)" default:""`
+	Workers   int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
+	FirstIs1  bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
+	Version   bool   `help:"Show version information"`
 
 	// Store the built global config
 	globalConfig *GlobalConfig `kong:"-"`
@@ -221,38 +223,49 @@ func (r *PlurCLI) AfterApply() error {
 	return nil
 }
 
-func main() {
-	var cli PlurCLI
-
-	// Pre-parse -C flag to change directory before config loading
-	// This ensures config files are loaded from the target directory
-	for i := 1; i < len(os.Args); i++ {
-		arg := os.Args[i]
+// handleEarlyChangeDir pre-parses command line arguments for the -C flag
+// and changes the working directory before Kong configuration loading.
+// This ensures config files are loaded from the target directory, not the current directory.
+//
+// Supports formats: -C dir, -C=dir, --change-dir dir, --change-dir=dir
+func handleChangeDir(args []string) error {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		var dir string
 
 		// Check for various -C formats
-		if arg == "-C" || arg == "--change-dir" {
-			if i+1 < len(os.Args) {
-				dir = os.Args[i+1]
+		switch {
+		case arg == "-C" || arg == "--change-dir":
+			if i+1 < len(args) {
+				dir = args[i+1]
 				i++ // Skip next arg since we consumed it
 			} else {
-				fmt.Fprintf(os.Stderr, "Error: %s flag requires a directory argument\n", arg)
-				os.Exit(1)
+				return fmt.Errorf("%s flag requires a directory argument", arg)
 			}
-		} else if strings.HasPrefix(arg, "-C=") {
+		case strings.HasPrefix(arg, "-C="):
 			dir = strings.TrimPrefix(arg, "-C=")
-		} else if strings.HasPrefix(arg, "--change-dir=") {
+		case strings.HasPrefix(arg, "--change-dir="):
 			dir = strings.TrimPrefix(arg, "--change-dir=")
 		}
 
-		// Change directory if we found a -C flag
 		if dir != "" {
 			if err := os.Chdir(dir); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: failed to change directory to %s: %v\n", dir, err)
-				os.Exit(1)
+				return fmt.Errorf("failed to change directory to %s: %v", dir, err)
 			}
-			break // Only process the first -C flag
+			// Only process the first -C flag
+			return nil
 		}
+	}
+	return nil
+}
+
+func main() {
+	var cli PlurCLI
+
+	// Handle -C flag early to ensure config files are loaded from the correct directory
+	if err := handleChangeDir(os.Args[1:]); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Build config file list
