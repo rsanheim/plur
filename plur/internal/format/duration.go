@@ -3,6 +3,7 @@ package format
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -17,7 +18,6 @@ func FormatDuration(seconds float64) string {
 		return "0 seconds"
 	}
 
-	// Determine precision based on duration
 	var precision int
 	switch {
 	case seconds < 1:
@@ -30,73 +30,42 @@ func FormatDuration(seconds float64) string {
 		precision = 0
 	}
 
-	// Format durations over 60 seconds as minutes + seconds
 	if seconds >= 60 {
-		// First round the seconds according to precision
 		multiplier := math.Pow(10, float64(precision))
 		roundedTotal := math.Round(seconds*multiplier) / multiplier
 
 		minutes := int(roundedTotal / 60)
 		remainingSeconds := roundedTotal - float64(minutes*60)
 
-		minuteStr := pluralize(minutes, "minute")
+		minuteStr := pluralize(strconv.Itoa(minutes), "minute")
 		secondStr := pluralize(formatSeconds(remainingSeconds, precision), "second")
 
 		return fmt.Sprintf("%s %s", minuteStr, secondStr)
 	}
 
-	// Format durations under 60 seconds
 	return pluralize(formatSeconds(seconds, precision), "second")
 }
 
-// formatSeconds formats seconds with the specified precision, removing trailing zeros
 func formatSeconds(seconds float64, precision int) string {
-	// Round to the specified precision
 	multiplier := math.Pow(10, float64(precision))
 	rounded := math.Round(seconds*multiplier) / multiplier
 
-	// Format with the specified precision
-	formatted := fmt.Sprintf("%.*f", precision, rounded)
-
-	// Strip trailing zeros (but keep at least one digit after decimal if there's a decimal point)
-	return stripTrailingZeros(formatted)
-}
-
-// stripTrailingZeros removes trailing zeros from a formatted number
-// Examples: "1.00" -> "1", "1.50" -> "1.5", "1.0001" -> "1.0001"
-func stripTrailingZeros(s string) string {
-	// If there's no decimal point, return as-is
-	if !strings.Contains(s, ".") {
-		return s
+	if precision == 0 {
+		return strconv.FormatFloat(rounded, 'f', 0, 64)
 	}
 
-	// Remove trailing zeros after decimal point
-	s = strings.TrimRight(s, "0")
+	result := strconv.FormatFloat(rounded, 'g', -1, 64)
 
-	// If we removed all digits after decimal, remove the decimal too
-	s = strings.TrimRight(s, ".")
+	// Prevent scientific notation for whole numbers
+	if rounded == math.Trunc(rounded) && rounded >= 1 {
+		result = strconv.FormatFloat(rounded, 'f', 0, 64)
+	}
 
-	return s
+	return result
 }
 
-// pluralize returns a pluralized string with count
-// Examples: pluralize(1, "second") -> "1 second", pluralize(2, "second") -> "2 seconds"
-func pluralize(count interface{}, word string) string {
-	var countStr string
-	var isOne bool
-
-	switch v := count.(type) {
-	case int:
-		countStr = fmt.Sprintf("%d", v)
-		isOne = v == 1
-	case string:
-		countStr = v
-		// Check if the string represents 1 (could be "1", "1.0", etc)
-		isOne = v == "1" || v == "1.0"
-	default:
-		countStr = fmt.Sprintf("%v", v)
-		isOne = false
-	}
+func pluralize(countStr string, word string) string {
+	isOne := countStr == "1" || countStr == "1.0"
 
 	if isOne {
 		return fmt.Sprintf("%s %s", countStr, word)

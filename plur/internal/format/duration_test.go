@@ -148,43 +148,24 @@ func TestFormatDuration(t *testing.T) {
 	}
 }
 
-func TestStripTrailingZeros(t *testing.T) {
-	testCases := []struct {
-		input    string
-		expected string
-	}{
-		{"1.00", "1"},
-		{"1.50", "1.5"},
-		{"1.0001", "1.0001"},
-		{"10", "10"},
-		{"0.10000", "0.1"},
-		{"123.456000", "123.456"},
-		{"0.0", "0"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.input, func(t *testing.T) {
-			result := stripTrailingZeros(tc.input)
-			assert.Equal(t, tc.expected, result)
-		})
-	}
-}
+// TestStripTrailingZeros removed - now using strconv.FormatFloat with 'g' format
+// which automatically handles trailing zero removal
 
 func TestPluralize(t *testing.T) {
 	testCases := []struct {
-		count    interface{}
+		count    string
 		word     string
 		expected string
 	}{
-		{1, "second", "1 second"},
-		{2, "second", "2 seconds"},
-		{0, "second", "0 seconds"},
+		{"1", "second", "1 second"},
+		{"2", "second", "2 seconds"},
+		{"0", "second", "0 seconds"},
 		{"1", "minute", "1 minute"},
 		{"2", "minute", "2 minutes"},
 		{"1.0", "second", "1.0 second"},
 		{"1.5", "second", "1.5 seconds"},
-		{1, "process", "1 process"},
-		{2, "process", "2 processes"},
+		{"1", "process", "1 process"},
+		{"2", "process", "2 processes"},
 	}
 
 	for _, tc := range testCases {
