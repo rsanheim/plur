@@ -82,9 +82,7 @@ module Plur
           spec_count = Dir.glob("spec/**/*_spec.rb").count
           puts "Found #{spec_count} spec files"
 
-          result = run_hyperfine(project_name)
-
-          result
+          run_hyperfine(project_name)
         end
       end
 
