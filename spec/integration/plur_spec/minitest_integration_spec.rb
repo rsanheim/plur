@@ -25,6 +25,19 @@ RSpec.describe "Minitest Integration" do
       end
     end
 
+    it "formats minitest duration using RSpec-style formatting" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--type", "minitest", "-n", "1")
+          expect(result).to be_success
+          # Should use "seconds" not "s" suffix
+          expect(result.out).to match(/Finished in \d+(?:\.\d{1,5})? seconds/)
+          # Should NOT use the old "Xs" format
+          expect(result.out).not_to match(/Finished in [\d.]+s\./)
+        end
+      end
+    end
+
     it "discovers minitest test files" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do

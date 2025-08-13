@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rsanheim/plur/internal/format"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -33,7 +34,7 @@ func (p *outputParser) NotificationToProgress(notification types.TestNotificatio
 
 // FormatSummary formats a test summary in RSpec style
 func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExamples int, totalFailures int, totalPending int, wallTime float64, loadTime float64) string {
-	summary := fmt.Sprintf("Finished in %.5f seconds (files took %.5f seconds to load)\n", wallTime, loadTime)
+	summary := fmt.Sprintf("Finished in %s (files took %s to load)\n", format.FormatDuration(wallTime), format.FormatDuration(loadTime))
 
 	// Format example count
 	exampleText := "1 example"
