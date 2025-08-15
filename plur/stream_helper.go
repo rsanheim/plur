@@ -15,6 +15,7 @@ import (
 // 256KB allows for large output lines while being memory-efficient.
 // Default bufio.Scanner is 64KB which can fail on large single lines.
 const ScannerBufferSize = 256 * 1024
+const StdErrBufferSize = 1024 * 8
 
 // streamTestOutput handles the common pattern of streaming test output through a parser
 // and collector while sending progress updates to the output channel
@@ -28,7 +29,7 @@ func streamTestOutput(
 	framework TestFramework,
 ) (stderrOutput string) {
 	var stderrBuilder strings.Builder
-	stderrBuilder.Grow(2048) // Pre-allocate for typical stderr output
+	stderrBuilder.Grow(StdErrBufferSize) // Pre-allocate for typical stderr output
 	var wg sync.WaitGroup
 
 	// Stream stdout and parse using event-based architecture
