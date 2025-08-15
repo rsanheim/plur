@@ -30,37 +30,6 @@ func NewTestCollector() *TestCollector {
 	return tc
 }
 
-// NewTestCollectorWithHints creates a test collector with size hints based on test suite characteristics
-func NewTestCollectorWithHints(numFiles int, estimatedTestsPerFile int) *TestCollector {
-	// Calculate capacity hints based on suite size
-	expectedTests := numFiles * estimatedTestsPerFile
-	if expectedTests < 10 {
-		expectedTests = 10 // Minimum capacity
-	}
-
-	// Assume 5% failure rate, 5% pending rate (adjustable based on project history)
-	expectedFailures := expectedTests / 20
-	if expectedFailures < 5 {
-		expectedFailures = 5
-	}
-
-	tc := &TestCollector{
-		tests:    make([]types.TestCaseNotification, 0, expectedTests),
-		failures: make([]types.TestCaseNotification, 0, expectedFailures),
-		pending:  make([]types.TestCaseNotification, 0, expectedFailures),
-	}
-
-	// Pre-allocate string builder based on expected output
-	// Assume ~100 bytes per test + 2KB base overhead
-	outputSize := expectedTests*100 + 2048
-	if outputSize > 1024*1024 { // Cap at 1MB to avoid over-allocation
-		outputSize = 1024 * 1024
-	}
-	tc.rawOutput.Grow(outputSize)
-
-	return tc
-}
-
 // AddNotification adds a notification to the collector
 func (a *TestCollector) AddNotification(n types.TestNotification) {
 	switch n.GetEvent() {

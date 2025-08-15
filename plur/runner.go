@@ -243,7 +243,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 	}
 
 	// Use fixed default allocation hints
-	collector := NewTestCollectorWithHints(len(specFiles), 10)
+	collector := NewTestCollector()
 
 	// Stream output through parser and collector
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, specCmd.GetFramework())
@@ -476,13 +476,7 @@ func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *
 		return errorResult(testFile, err, start, specCmd.GetFramework())
 	}
 
-	// Use smart allocation based on number of files
-	// For single files, estimate 20 tests per file; for groups, use 10 per file
-	testsPerFile := 20
-	if len(testFiles) > 1 {
-		testsPerFile = 10
-	}
-	collector := NewTestCollectorWithHints(len(testFiles), testsPerFile)
+	collector := NewTestCollector()
 
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework())
 
