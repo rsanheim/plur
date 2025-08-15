@@ -18,13 +18,18 @@ type TestCollector struct {
 	formattedSummary  string
 }
 
+const rawOutputBufferSize = 1024 * 8
+
 // NewTestCollector creates a new test collector
 func NewTestCollector() *TestCollector {
-	return &TestCollector{
-		tests:    make([]types.TestCaseNotification, 0),
-		failures: make([]types.TestCaseNotification, 0),
-		pending:  make([]types.TestCaseNotification, 0),
+	tc := &TestCollector{
+		tests:    make([]types.TestCaseNotification, 0, 100), // Pre-allocate for ~100 tests
+		failures: make([]types.TestCaseNotification, 0, 10),  // Pre-allocate for ~10 failures
+		pending:  make([]types.TestCaseNotification, 0, 10),  // Pre-allocate for ~10 pending
 	}
+	// Pre-allocate string builder for typical output size (8KB)
+	tc.rawOutput.Grow(rawOutputBufferSize)
+	return tc
 }
 
 // AddNotification adds a notification to the collector

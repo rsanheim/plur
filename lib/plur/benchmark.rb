@@ -82,9 +82,7 @@ module Plur
           spec_count = Dir.glob("spec/**/*_spec.rb").count
           puts "Found #{spec_count} spec files"
 
-          result = run_hyperfine(project_name)
-
-          result
+          run_hyperfine(project_name)
         end
       end
 
@@ -121,22 +119,31 @@ module Plur
 
         puts "Running benchmarks with #{config.workers} workers, #{config.warmup} warmup runs, #{config.runs} runs"
         puts "Plur version: #{plur_version}"
+        puts "Command: #{hyperfine_cmd.join(" ")}"
         puts "===================="
 
-        system(*hyperfine_cmd)
+        Bundler.with_unbundled_env do
+          system(*hyperfine_cmd)
+        end
 
-        if File.exist?(json_file)
+        if File.exist?(json_file) && File.size(json_file) > 0
           add_version_to_json(json_file)
           puts "\nResults saved to:\n  - #{json_file}"
           puts "  - #{markdown_file}" if File.exist?(markdown_file)
 
           # Return the result data
-          {
-            project: project_name,
-            json_file: json_file,
-            markdown_file: markdown_file,
-            data: JSON.parse(File.read(json_file))
-          }
+          begin
+            {
+              project: project_name,
+              json_file: json_file,
+              markdown_file: markdown_file,
+              data: JSON.parse(File.read(json_file))
+            }
+          rescue JSON::ParserError => e
+            abort "Warning: Could not parse results JSON: #{e.message}"
+          end
+        else
+          puts "\nWarning: Benchmark failed - no results saved"
         end
       end
 

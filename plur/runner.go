@@ -241,6 +241,8 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 	if err != nil {
 		return errorResult(testFile, err, start, specCmd.GetFramework())
 	}
+
+	// Use fixed default allocation hints
 	collector := NewTestCollector()
 
 	// Stream output through parser and collector
@@ -473,6 +475,7 @@ func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *
 	if err != nil {
 		return errorResult(testFile, err, start, specCmd.GetFramework())
 	}
+
 	collector := NewTestCollector()
 
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, specCmd.GetFramework())
