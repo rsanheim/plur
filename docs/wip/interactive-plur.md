@@ -27,5 +27,11 @@ Additionally, we should allow watch to be in two different modes that can be tog
 * 'learn' mode: where plur will suggest rules to add to the config based on the files saved
 * 'standard' mode: where plur will run just what is in the config file as prescribed
 
-
 by default `plur watch` will be in the standard mode, but I think the learn mode could be an attractive offering for more complicated test suites...and help us build out our mapping rules to suit the many varieties of test - to lib spec rules.
+
+### Implementation Plan
+
+* Consider how the config is loaded and how we can change it at runtime (for live feedback), and also write it back to the file system to save valid rules for the user
+* Consider how to make this user friendly: we want to explain what the rules currently are (and why), and then explain what plur is suggesting, and then explain changes plur may make to the runtime rules and the config saved on disk.
+* a broader goal is to help developers think thru what test files are important when a certain file changes....and providing input and guidance to help them build the correct set of matching rules that respond to file change events. This may mean running specs that match a simple glob pattern, or if someone saves "config/application.rb", we can suggest just running the entire suite or maybe running "spec/config/application_spec.rb" if it exists.  
+
