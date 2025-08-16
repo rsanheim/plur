@@ -31,6 +31,7 @@ by default `plur watch` will be in the standard mode, but I think the learn mode
 
 ### Implementation Plan
 
+* Remember that we have a the `plur watch run --timeout [seconds]` option that will exit after the timeout is reached.  This is a good way to ensure that the watch mode does not run forever when running it locally or building etsts around. We already have rspec integration tests that use this now.
 * Consider how the config is loaded and how we can change it at runtime (for live feedback), and also write it back to the file system to save valid rules for the user
 * Consider how to make this user friendly: we want to explain what the rules currently are (and why), and then explain what plur is suggesting, and then explain changes plur may make to the runtime rules and the config saved on disk.
 * a broader goal is to help developers think thru what test files are important when a certain file changes....and providing input and guidance to help them build the correct set of matching rules that respond to file change events. This may mean running specs that match a simple glob pattern, or if someone saves "config/application.rb", we can suggest just running the entire suite or maybe running "spec/config/application_spec.rb" if it exists.  
