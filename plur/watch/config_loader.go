@@ -12,10 +12,10 @@ type WatchConfig struct {
 	Mappings MappingConfig `toml:"mappings"`
 }
 
-// LoadMappingConfig loads mapping configuration from a TOML file
-func LoadMappingConfig(configPath string) (*MappingConfig, error) {
-	// Start with default config
-	config := NewMappingConfig()
+// LoadMappingConfig loads mapping configuration from a TOML file with framework
+func LoadMappingConfig(configPath string, framework string) (*MappingConfig, error) {
+	// Start with framework-specific config
+	config := NewMappingConfigForFramework(framework)
 
 	// Compile the default rules first
 	if err := config.CompileRules(); err != nil {

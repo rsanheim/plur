@@ -31,11 +31,14 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
-	// Load mapping configuration
-	mappingConfig, err := watch.LoadMappingConfig("")
+	// Get the test framework
+	framework := watchCmd.GetFramework()
+
+	// Load mapping configuration with framework (pass as string)
+	mappingConfig, err := watch.LoadMappingConfig("", string(framework))
 	if err != nil {
 		logger.LogDebug("Failed to load mapping config, using defaults", "error", err)
-		mappingConfig = watch.NewMappingConfig()
+		mappingConfig = watch.NewMappingConfigForFramework(string(framework))
 	}
 
 	// In debug mode, disable feedback to avoid breaking tests
@@ -57,10 +60,14 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 	debouncer := watch.NewDebouncer(debounceDelay)
 	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
 
-	// Determine which directories to watch
-	watchDirs := watch.GetWatchDirectories()
+	// Determine which directories to watch based on framework
+	watchDirs := watch.GetWatchDirectories(string(framework))
 	if len(watchDirs) == 0 {
-		return fmt.Errorf("no directories to watch found (tried: spec, lib, app)")
+		dirList := "spec, lib, app"
+		if framework == FrameworkMinitest {
+			dirList = "test, lib, app"
+		}
+		return fmt.Errorf("no directories to watch found (tried: %s)", dirList)
 	}
 
 	// Get project name from current directory

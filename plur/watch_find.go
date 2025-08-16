@@ -21,11 +21,14 @@ type WatchFindCmd struct {
 }
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
-	// Load existing mapping configuration
-	mappingConfig, err := watch.LoadMappingConfig("")
+	// Detect framework
+	framework := DetectTestFramework()
+
+	// Load existing mapping configuration with framework
+	mappingConfig, err := watch.LoadMappingConfig("", string(framework))
 	if err != nil {
 		logger.LogDebug("Failed to load mapping config, using defaults", "error", err)
-		mappingConfig = watch.NewMappingConfig()
+		mappingConfig = watch.NewMappingConfigForFramework(string(framework))
 	}
 
 	// Create a FileMapper with the same config - this ensures we use the SAME code as plur watch
@@ -63,7 +66,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 			// If mapped specs don't exist, search for alternatives
 			if !allExist {
-				alternatives := findAlternativeSpecs(file)
+				alternatives := findAlternativeSpecs(file, framework)
 				if len(alternatives) > 0 {
 					fmt.Println("  Found alternative specs:")
 					for i, alt := range alternatives {
@@ -75,7 +78,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 					}
 
 					// Suggest a new rule based on the first alternative
-					pattern, targetPattern := detectPatternFromAlternative(file, alternatives[0])
+					pattern, targetPattern := detectPatternFromAlternative(file, alternatives[0], framework)
 					newRule := watch.MappingRule{
 						Pattern:     pattern,
 						Target:      targetPattern,
@@ -97,7 +100,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 			fmt.Printf("✗ No mapping for: %s\n", file)
 
 			// First, search for actual spec files that might match
-			alternatives := findAlternativeSpecs(file)
+			alternatives := findAlternativeSpecs(file, framework)
 
 			if len(alternatives) > 0 {
 				fmt.Println("  Found potential specs:")
@@ -110,7 +113,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 				}
 
 				// Suggest a rule based on the first alternative
-				pattern, targetPattern := detectPatternFromAlternative(file, alternatives[0])
+				pattern, targetPattern := detectPatternFromAlternative(file, alternatives[0], framework)
 				newRule := watch.MappingRule{
 					Pattern:     pattern,
 					Target:      targetPattern,
@@ -143,7 +146,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 					// Create a rule for the most likely location
 					if len(suggestions) > 0 && !strings.Contains(suggestions[0], "*") {
-						newRule := createRuleForFile(file, suggestions[0])
+						newRule := createRuleForFile(file, suggestions[0], framework)
 
 						if cmd.Interactive || cmd.DryRun {
 							fmt.Println("\n  Proposed rule for new specs:")
@@ -195,8 +198,8 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	return nil
 }
 
-// findAlternativeSpecs searches for spec files that might match the given source file
-func findAlternativeSpecs(sourceFile string) []string {
+// findAlternativeSpecs searches for spec/test files that might match the given source file
+func findAlternativeSpecs(sourceFile string, framework TestFramework) []string {
 	var alternatives []string
 
 	// Extract the base name without extension
@@ -204,17 +207,27 @@ func findAlternativeSpecs(sourceFile string) []string {
 	ext := filepath.Ext(base)
 	name := strings.TrimSuffix(base, ext)
 
-	// Don't search for specs if this is already a spec file
-	if strings.HasSuffix(name, "_spec") {
+	// Don't search for specs if this is already a spec/test file
+	if strings.HasSuffix(name, "_spec") || strings.HasSuffix(name, "_test") {
 		return alternatives
 	}
 
 	// Search patterns to try using doublestar
-	patterns := []string{
-		fmt.Sprintf("spec/**/%s_spec.rb", name),   // Exact name match anywhere
-		fmt.Sprintf("spec/**/*%s_spec.rb", name),  // Name as suffix
-		fmt.Sprintf("spec/**/%s*_spec.rb", name),  // Name as prefix
-		fmt.Sprintf("spec/**/*%s*_spec.rb", name), // Partial name match
+	var patterns []string
+	if framework == FrameworkMinitest {
+		patterns = []string{
+			fmt.Sprintf("test/**/%s_test.rb", name),   // Exact name match anywhere
+			fmt.Sprintf("test/**/*%s_test.rb", name),  // Name as suffix
+			fmt.Sprintf("test/**/%s*_test.rb", name),  // Name as prefix
+			fmt.Sprintf("test/**/*%s*_test.rb", name), // Partial name match
+		}
+	} else {
+		patterns = []string{
+			fmt.Sprintf("spec/**/%s_spec.rb", name),   // Exact name match anywhere
+			fmt.Sprintf("spec/**/*%s_spec.rb", name),  // Name as suffix
+			fmt.Sprintf("spec/**/%s*_spec.rb", name),  // Name as prefix
+			fmt.Sprintf("spec/**/*%s*_spec.rb", name), // Partial name match
+		}
 	}
 
 	// Use a map to avoid duplicates
@@ -238,9 +251,9 @@ func findAlternativeSpecs(sourceFile string) []string {
 	return alternatives
 }
 
-// detectPatternFromAlternative analyzes an alternative spec path and the source file
+// detectPatternFromAlternative analyzes an alternative spec/test path and the source file
 // to detect a pattern that could be used as a mapping rule
-func detectPatternFromAlternative(sourceFile, specFile string) (pattern, target string) {
+func detectPatternFromAlternative(sourceFile, specFile string, framework TestFramework) (pattern, target string) {
 	// Clean up paths
 	sourceFile = filepath.Clean(sourceFile)
 	specFile = filepath.Clean(specFile)
@@ -249,65 +262,121 @@ func detectPatternFromAlternative(sourceFile, specFile string) (pattern, target 
 	sourceDir := filepath.Dir(sourceFile)
 	specDir := filepath.Dir(specFile)
 
-	// Case 1: lib/example-project/cli.rb -> spec/lib/example-project/cli_spec.rb (lib preserved in spec)
-	if strings.HasPrefix(sourceFile, "lib/") && strings.Contains(specDir, "/lib/") {
-		pattern = "lib/**/*.rb"
-		target = "spec/lib/{path}/{name}_spec.rb"
-		return
-	}
+	if framework == FrameworkMinitest {
+		// Minitest patterns
+		// Case 1: lib/example-project/cli.rb -> test/lib/example-project/cli_test.rb (lib preserved in test)
+		if strings.HasPrefix(sourceFile, "lib/") && strings.Contains(specDir, "/lib/") {
+			pattern = "lib/**/*.rb"
+			target = "test/lib/{path}/{name}_test.rb"
+			return
+		}
 
-	// Case 2: lib/example-project/cli.rb -> spec/example-project/cli_spec.rb (standard lib to spec)
-	if strings.HasPrefix(sourceFile, "lib/") && !strings.Contains(specDir, "/lib/") {
-		if strings.HasPrefix(specFile, "spec/") {
-			// Check if the structure aligns after removing lib/ and spec/
-			sourcePath := strings.TrimPrefix(sourceFile, "lib/")
-			specPath := strings.TrimPrefix(specFile, "spec/")
-			specPath = strings.TrimSuffix(specPath, "_spec.rb") + ".rb"
+		// Case 2: lib/example-project/cli.rb -> test/example-project/cli_test.rb (standard lib to test)
+		if strings.HasPrefix(sourceFile, "lib/") && !strings.Contains(specDir, "/lib/") {
+			if strings.HasPrefix(specFile, "test/") {
+				// Check if the structure aligns after removing lib/ and test/
+				sourcePath := strings.TrimPrefix(sourceFile, "lib/")
+				testPath := strings.TrimPrefix(specFile, "test/")
+				testPath = strings.TrimSuffix(testPath, "_test.rb") + ".rb"
 
-			if sourcePath == specPath {
-				pattern = "lib/**/*.rb"
-				target = "spec/{path}/{name}_spec.rb"
-				return
+				if sourcePath == testPath {
+					pattern = "lib/**/*.rb"
+					target = "test/{path}/{name}_test.rb"
+					return
+				}
 			}
 		}
-	}
 
-	// Case 3: app/services/foo.rb -> spec/services/foo_spec.rb
-	if strings.HasPrefix(sourceFile, "app/") {
-		pattern = "app/**/*.rb"
-		target = "spec/{path}/{name}_spec.rb"
-		return
+		// Case 3: app/services/foo.rb -> test/services/foo_test.rb
+		if strings.HasPrefix(sourceFile, "app/") {
+			pattern = "app/**/*.rb"
+			target = "test/{path}/{name}_test.rb"
+			return
+		}
+	} else {
+		// RSpec patterns
+		// Case 1: lib/example-project/cli.rb -> spec/lib/example-project/cli_spec.rb (lib preserved in spec)
+		if strings.HasPrefix(sourceFile, "lib/") && strings.Contains(specDir, "/lib/") {
+			pattern = "lib/**/*.rb"
+			target = "spec/lib/{path}/{name}_spec.rb"
+			return
+		}
+
+		// Case 2: lib/example-project/cli.rb -> spec/example-project/cli_spec.rb (standard lib to spec)
+		if strings.HasPrefix(sourceFile, "lib/") && !strings.Contains(specDir, "/lib/") {
+			if strings.HasPrefix(specFile, "spec/") {
+				// Check if the structure aligns after removing lib/ and spec/
+				sourcePath := strings.TrimPrefix(sourceFile, "lib/")
+				specPath := strings.TrimPrefix(specFile, "spec/")
+				specPath = strings.TrimSuffix(specPath, "_spec.rb") + ".rb"
+
+				if sourcePath == specPath {
+					pattern = "lib/**/*.rb"
+					target = "spec/{path}/{name}_spec.rb"
+					return
+				}
+			}
+		}
+
+		// Case 3: app/services/foo.rb -> spec/services/foo_spec.rb
+		if strings.HasPrefix(sourceFile, "app/") {
+			pattern = "app/**/*.rb"
+			target = "spec/{path}/{name}_spec.rb"
+			return
+		}
 	}
 
 	// Case 4: Generic pattern for other directories
 	if sourceDir != "." && sourceDir != "" {
 		pattern = fmt.Sprintf("%s/**/*.rb", sourceDir)
-		if strings.HasPrefix(specFile, "spec/") {
-			// Try to detect the pattern in the spec path
-			specRelative := strings.TrimPrefix(specFile, "spec/")
-			specRelativeDir := filepath.Dir(specRelative)
+		if framework == FrameworkMinitest {
+			if strings.HasPrefix(specFile, "test/") {
+				// Try to detect the pattern in the test path
+				testRelative := strings.TrimPrefix(specFile, "test/")
+				testRelativeDir := filepath.Dir(testRelative)
 
-			if specRelativeDir == sourceDir {
-				// Direct mapping: config/foo.rb -> spec/config/foo_spec.rb
-				target = fmt.Sprintf("spec/%s/{name}_spec.rb", sourceDir)
+				if testRelativeDir == sourceDir {
+					// Direct mapping: config/foo.rb -> test/config/foo_test.rb
+					target = fmt.Sprintf("test/%s/{name}_test.rb", sourceDir)
+				} else {
+					// Complex mapping, use generic pattern
+					target = "test/**/{name}_test.rb"
+				}
 			} else {
-				// Complex mapping, use generic pattern
-				target = "spec/**/{name}_spec.rb"
+				target = "{dir}/{name}_test.rb"
 			}
 		} else {
-			target = "{dir}/{name}_spec.rb"
+			if strings.HasPrefix(specFile, "spec/") {
+				// Try to detect the pattern in the spec path
+				specRelative := strings.TrimPrefix(specFile, "spec/")
+				specRelativeDir := filepath.Dir(specRelative)
+
+				if specRelativeDir == sourceDir {
+					// Direct mapping: config/foo.rb -> spec/config/foo_spec.rb
+					target = fmt.Sprintf("spec/%s/{name}_spec.rb", sourceDir)
+				} else {
+					// Complex mapping, use generic pattern
+					target = "spec/**/{name}_spec.rb"
+				}
+			} else {
+				target = "{dir}/{name}_spec.rb"
+			}
 		}
 		return
 	}
 
 	// Default fallback
 	pattern = "**/*.rb"
-	target = "spec/**/{name}_spec.rb"
+	if framework == FrameworkMinitest {
+		target = "test/**/{name}_test.rb"
+	} else {
+		target = "spec/**/{name}_spec.rb"
+	}
 	return
 }
 
 // createRuleForFile creates a mapping rule for a file based on its path
-func createRuleForFile(file, target string) watch.MappingRule {
+func createRuleForFile(file, target string, framework TestFramework) watch.MappingRule {
 	// Determine the pattern based on the file structure
 	dir := filepath.Dir(file)
 
@@ -316,10 +385,21 @@ func createRuleForFile(file, target string) watch.MappingRule {
 
 	// Extract the target pattern
 	targetDir := filepath.Dir(target)
-	targetPattern := filepath.Join(targetDir, "{name}_spec.rb")
+	var targetPattern string
+	if framework == FrameworkMinitest {
+		targetPattern = filepath.Join(targetDir, "{name}_test.rb")
+	} else {
+		targetPattern = filepath.Join(targetDir, "{name}_spec.rb")
+	}
 
 	// Create description
-	description := fmt.Sprintf("Map %s files to %s specs", dir, targetDir)
+	var testType string
+	if framework == FrameworkMinitest {
+		testType = "tests"
+	} else {
+		testType = "specs"
+	}
+	description := fmt.Sprintf("Map %s files to %s %s", dir, targetDir, testType)
 
 	return watch.MappingRule{
 		Pattern:     pattern,

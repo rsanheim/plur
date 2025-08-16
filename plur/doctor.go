@@ -265,9 +265,14 @@ func validateActiveConfig(localPath, globalPath string) error {
 
 	// Check for watch directories
 	fmt.Println("\n  Watch Directories:")
-	watchDirs := watch.GetWatchDirectories()
+	framework := DetectTestFramework()
+	watchDirs := watch.GetWatchDirectories(string(framework))
 	if len(watchDirs) == 0 {
-		fmt.Printf("    Warning: No watch directories found (checked: spec/, lib/, app/)\n")
+		dirList := "spec/, lib/, app/"
+		if framework == FrameworkMinitest {
+			dirList = "test/, lib/, app/"
+		}
+		fmt.Printf("    Warning: No watch directories found (checked: %s)\n", dirList)
 	} else {
 		for _, dir := range watchDirs {
 			fmt.Printf("    %s/ (exists)\n", dir)

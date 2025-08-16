@@ -2,6 +2,7 @@ package watch
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -26,6 +27,8 @@ type MappingRule struct {
 
 // MappingConfig holds all mapping rules and settings
 type MappingConfig struct {
+	// Test framework being used
+	Framework string
 	// Built-in rules that are always applied
 	BuiltinRules []MappingRule
 	// User-defined rules from config file
@@ -36,14 +39,38 @@ type MappingConfig struct {
 	ProvideFeedback bool `toml:"provide_feedback"`
 }
 
-// NewMappingConfig creates a default mapping configuration
+// NewMappingConfig creates a default mapping configuration with auto-detected framework
 func NewMappingConfig() *MappingConfig {
+	// Auto-detect framework based on directory structure
+	framework := detectFramework()
+	return NewMappingConfigForFramework(framework)
+}
+
+// NewMappingConfigForFramework creates a mapping configuration for a specific framework
+func NewMappingConfigForFramework(framework string) *MappingConfig {
 	return &MappingConfig{
-		BuiltinRules:    getBuiltinRules(),
+		Framework:       framework,
+		BuiltinRules:    getBuiltinRulesForFramework(framework),
 		CustomRules:     []MappingRule{},
 		ShowSuggestions: true,
 		ProvideFeedback: true,
 	}
+}
+
+// detectFramework auto-detects the test framework based on directory structure
+func detectFramework() string {
+	// Check for test/ directory (minitest)
+	if _, err := os.Stat("test"); err == nil {
+		return "minitest"
+	}
+
+	// Check for spec/ directory (rspec)
+	if _, err := os.Stat("spec"); err == nil {
+		return "rspec"
+	}
+
+	// Default to RSpec for backward compatibility
+	return "rspec"
 }
 
 // getBuiltinRules returns the default built-in mapping rules
@@ -94,6 +121,119 @@ func getBuiltinRules() []MappingRule {
 			Pattern:     "app/**/*.rb",
 			Target:      "spec/{path}/{name}_spec.rb",
 			Description: "Map Rails app files to corresponding specs",
+			Priority:    50,
+			Type:        "glob",
+		},
+	}
+}
+
+// getBuiltinRulesForFramework returns framework-specific built-in mapping rules
+func getBuiltinRulesForFramework(framework string) []MappingRule {
+	switch framework {
+	case "minitest":
+		return getMinitestRules()
+	case "rspec":
+		return getRSpecRules()
+	default:
+		// Auto-detect: return RSpec rules for backward compatibility
+		return getRSpecRules()
+	}
+}
+
+// getRSpecRules returns RSpec-specific mapping rules
+func getRSpecRules() []MappingRule {
+	return []MappingRule{
+		// Direct spec file mapping
+		{
+			Pattern:     "**/*_spec.rb",
+			Target:      "{file}",
+			Description: "Run spec files directly",
+			Priority:    100,
+			Type:        "glob",
+		},
+		// spec_helper.rb triggers all specs
+		{
+			Pattern:     "spec/spec_helper.rb",
+			Target:      "spec",
+			Description: "Run all specs when spec_helper changes",
+			Priority:    90,
+			Type:        "glob",
+		},
+		// rails_helper.rb triggers all specs
+		{
+			Pattern:     "spec/rails_helper.rb",
+			Target:      "spec",
+			Description: "Run all specs when rails_helper changes",
+			Priority:    90,
+			Type:        "glob",
+		},
+		// lib/ -> spec/ mapping (with subdirectories)
+		{
+			Pattern:     "lib/**/*.rb",
+			Target:      "spec/{path}/{name}_spec.rb",
+			Description: "Map lib files to corresponding specs",
+			Priority:    50,
+			Type:        "glob",
+		},
+		// lib/ -> spec/ mapping (direct files)
+		{
+			Pattern:     "lib/*.rb",
+			Target:      "spec/{name}_spec.rb",
+			Description: "Map lib files to corresponding specs",
+			Priority:    50,
+			Type:        "glob",
+		},
+		// app/ -> spec/ mapping for Rails
+		{
+			Pattern:     "app/**/*.rb",
+			Target:      "spec/{path}/{name}_spec.rb",
+			Description: "Map Rails app files to corresponding specs",
+			Priority:    50,
+			Type:        "glob",
+		},
+	}
+}
+
+// getMinitestRules returns Minitest-specific mapping rules
+func getMinitestRules() []MappingRule {
+	return []MappingRule{
+		// Direct test file mapping
+		{
+			Pattern:     "**/*_test.rb",
+			Target:      "{file}",
+			Description: "Run test files directly",
+			Priority:    100,
+			Type:        "glob",
+		},
+		// test_helper.rb triggers all tests
+		{
+			Pattern:     "test/test_helper.rb",
+			Target:      "test",
+			Description: "Run all tests when test_helper changes",
+			Priority:    90,
+			Type:        "glob",
+		},
+		// lib/ -> test/ mapping (with subdirectories)
+		{
+			Pattern:     "lib/**/*.rb",
+			Target:      "test/{path}/{name}_test.rb",
+			Description: "Map lib files to corresponding tests",
+			Priority:    50,
+			Type:        "glob",
+		},
+		// lib/ -> test/ mapping (direct files)
+		{
+			Pattern:     "lib/*.rb",
+			Target:      "test/{name}_test.rb",
+			Description: "Map lib files to corresponding tests",
+			Priority:    50,
+			Type:        "glob",
+		},
+		// app/ -> test/ mapping for Rails
+		{
+			Pattern:     "app/**/*.rb",
+			Target:      "test/{path}/{name}_test.rb",
+			Description: "Map Rails app files to corresponding tests",
 			Priority:    50,
 			Type:        "glob",
 		},
@@ -296,6 +436,11 @@ func ExpandTarget(target string, vars map[string]string) string {
 
 // GenerateSuggestions generates spec file suggestions for an unmapped file
 func GenerateSuggestions(filePath string) []string {
+	return GenerateSuggestionsForFramework(filePath, detectFramework())
+}
+
+// GenerateSuggestionsForFramework generates spec/test file suggestions for an unmapped file
+func GenerateSuggestionsForFramework(filePath string, framework string) []string {
 	suggestions := []string{}
 
 	// Clean up the file path
@@ -305,8 +450,8 @@ func GenerateSuggestions(filePath string) []string {
 	ext := filepath.Ext(base)
 	name := strings.TrimSuffix(base, ext)
 
-	// Don't suggest for spec files themselves
-	if strings.HasSuffix(filePath, "_spec.rb") {
+	// Don't suggest for spec/test files themselves
+	if strings.HasSuffix(filePath, "_spec.rb") || strings.HasSuffix(filePath, "_test.rb") {
 		return suggestions
 	}
 
@@ -315,36 +460,69 @@ func GenerateSuggestions(filePath string) []string {
 		return suggestions
 	}
 
-	// Suggestion 1: Direct spec file in spec/ directory
-	if strings.HasPrefix(filePath, "lib/") {
-		specPath := strings.Replace(filePath, "lib/", "spec/", 1)
-		specPath = strings.TrimSuffix(specPath, ".rb") + "_spec.rb"
-		suggestions = append(suggestions, specPath)
-	}
+	if framework == "minitest" {
+		// Minitest suggestions
+		// Suggestion 1: Direct test file in test/ directory
+		if strings.HasPrefix(filePath, "lib/") {
+			testPath := strings.Replace(filePath, "lib/", "test/", 1)
+			testPath = strings.TrimSuffix(testPath, ".rb") + "_test.rb"
+			suggestions = append(suggestions, testPath)
+		}
 
-	// Suggestion 2: Rails app/ to spec/ mapping
-	if strings.HasPrefix(filePath, "app/") {
-		specPath := strings.Replace(filePath, "app/", "spec/", 1)
-		specPath = strings.TrimSuffix(specPath, ".rb") + "_spec.rb"
-		suggestions = append(suggestions, specPath)
-	}
+		// Suggestion 2: Rails app/ to test/ mapping
+		if strings.HasPrefix(filePath, "app/") {
+			testPath := strings.Replace(filePath, "app/", "test/", 1)
+			testPath = strings.TrimSuffix(testPath, ".rb") + "_test.rb"
+			suggestions = append(suggestions, testPath)
+		}
 
-	// Suggestion 3: Look for specs with similar names
-	// This would require filesystem access, so we'll suggest patterns
-	if !strings.HasPrefix(filePath, "spec/") {
-		suggestions = append(suggestions, fmt.Sprintf("spec/**/*%s*_spec.rb", name))
-	}
+		// Suggestion 3: Look for tests with similar names
+		if !strings.HasPrefix(filePath, "test/") {
+			suggestions = append(suggestions, fmt.Sprintf("test/**/*%s*_test.rb", name))
+		}
 
-	// Suggestion 4: Integration or request specs for controllers
-	if strings.Contains(dir, "controllers") {
-		controllerName := strings.TrimSuffix(name, "_controller")
-		suggestions = append(suggestions, fmt.Sprintf("spec/requests/%s_spec.rb", controllerName))
-		suggestions = append(suggestions, fmt.Sprintf("spec/integration/%s_spec.rb", controllerName))
-	}
+		// Suggestion 4: Integration tests for controllers
+		if strings.Contains(dir, "controllers") {
+			controllerName := strings.TrimSuffix(name, "_controller")
+			suggestions = append(suggestions, fmt.Sprintf("test/integration/%s_test.rb", controllerName))
+		}
 
-	// Suggestion 5: System specs for views
-	if strings.Contains(dir, "views") {
-		suggestions = append(suggestions, fmt.Sprintf("spec/system/%s_spec.rb", name))
+		// Suggestion 5: System tests for views
+		if strings.Contains(dir, "views") {
+			suggestions = append(suggestions, fmt.Sprintf("test/system/%s_test.rb", name))
+		}
+	} else {
+		// RSpec suggestions
+		// Suggestion 1: Direct spec file in spec/ directory
+		if strings.HasPrefix(filePath, "lib/") {
+			specPath := strings.Replace(filePath, "lib/", "spec/", 1)
+			specPath = strings.TrimSuffix(specPath, ".rb") + "_spec.rb"
+			suggestions = append(suggestions, specPath)
+		}
+
+		// Suggestion 2: Rails app/ to spec/ mapping
+		if strings.HasPrefix(filePath, "app/") {
+			specPath := strings.Replace(filePath, "app/", "spec/", 1)
+			specPath = strings.TrimSuffix(specPath, ".rb") + "_spec.rb"
+			suggestions = append(suggestions, specPath)
+		}
+
+		// Suggestion 3: Look for specs with similar names
+		if !strings.HasPrefix(filePath, "spec/") {
+			suggestions = append(suggestions, fmt.Sprintf("spec/**/*%s*_spec.rb", name))
+		}
+
+		// Suggestion 4: Integration or request specs for controllers
+		if strings.Contains(dir, "controllers") {
+			controllerName := strings.TrimSuffix(name, "_controller")
+			suggestions = append(suggestions, fmt.Sprintf("spec/requests/%s_spec.rb", controllerName))
+			suggestions = append(suggestions, fmt.Sprintf("spec/integration/%s_spec.rb", controllerName))
+		}
+
+		// Suggestion 5: System specs for views
+		if strings.Contains(dir, "views") {
+			suggestions = append(suggestions, fmt.Sprintf("spec/system/%s_spec.rb", name))
+		}
 	}
 
 	return suggestions
