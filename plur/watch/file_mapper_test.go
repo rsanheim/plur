@@ -7,7 +7,15 @@ import (
 )
 
 func TestFileMapper_MapFileToSpecs(t *testing.T) {
-	fm := NewFileMapper()
+	// Create a file mapper with feedback disabled for testing
+	config := NewMappingConfig()
+	config.ProvideFeedback = false
+	config.ShowSuggestions = false
+	err := config.CompileRules()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm := NewFileMapperWithConfig(config)
 
 	tests := []struct {
 		name        string
@@ -93,7 +101,11 @@ func TestFileMapper_MapFileToSpecs(t *testing.T) {
 }
 
 func TestFileMapper_ShouldWatchFile(t *testing.T) {
-	fm := NewFileMapper()
+	// Create a file mapper with feedback disabled for testing
+	config := NewMappingConfig()
+	config.ProvideFeedback = false
+	config.ShowSuggestions = false
+	fm := NewFileMapperWithConfig(config)
 
 	tests := []struct {
 		name     string

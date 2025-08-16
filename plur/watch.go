@@ -31,8 +31,26 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
-	// Create file mapper
-	fileMapper := watch.NewFileMapper()
+	// Load mapping configuration
+	mappingConfig, err := watch.LoadMappingConfig("")
+	if err != nil {
+		logger.LogDebug("Failed to load mapping config, using defaults", "error", err)
+		mappingConfig = watch.NewMappingConfig()
+	}
+
+	// In debug mode, disable feedback to avoid breaking tests
+	if globalConfig.Debug {
+		mappingConfig.ProvideFeedback = false
+		mappingConfig.ShowSuggestions = false
+	}
+
+	// Ensure rules are compiled
+	if err := mappingConfig.CompileRules(); err != nil {
+		logger.LogDebug("Failed to compile mapping rules", "error", err)
+	}
+
+	// Create file mapper with config
+	fileMapper := watch.NewFileMapperWithConfig(mappingConfig)
 
 	// Create debouncer with configurable delay
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
@@ -181,6 +199,7 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 			// Map the file to specs
 			specsToRun := fileMapper.MapFileToSpecs(relPath)
 			if len(specsToRun) == 0 {
+				// Still log the mapping_not_found for tests
 				logger.LogDebug("plur", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
 				continue
 			}

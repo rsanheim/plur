@@ -56,3 +56,51 @@ debounce = 200
 # Test framework type for watch mode
 # Default: inherits from [spec] settings
 type = "rspec"
+
+# =============================================================================
+# WATCH MAPPING SETTINGS
+# Configure how files map to their test files
+# =============================================================================
+
+[watch.mappings]
+# Show suggestions when no mapping is found
+# Default: true
+show_suggestions = true
+
+# Provide feedback about mapping results
+# Default: true
+provide_feedback = true
+
+# Custom mapping rules (evaluated before built-in rules)
+# Each rule has:
+# - pattern: glob or regex pattern to match files
+# - target: the spec file(s) to run (can use variables)
+# - description: human-readable description
+# - priority: higher numbers are evaluated first (default: 50)
+# - type: "glob" (default) or "regex"
+
+[[watch.mappings.rules]]
+pattern = "config/*.rb"
+target = "spec/config/{name}_spec.rb"
+description = "Config files to their specs"
+priority = 60
+
+[[watch.mappings.rules]]
+pattern = "app/services/**/*.rb"
+target = "spec/services/{path}/{name}_spec.rb"
+description = "Service objects to their specs"
+priority = 55
+
+# Example: Run integration tests for certain files
+[[watch.mappings.rules]]
+pattern = "app/controllers/*_controller.rb"
+target = "spec/requests/{name}_spec.rb"
+description = "Controllers to request specs"
+priority = 45
+
+# Variables available in target:
+# {file} - the full file path
+# {path} - the directory path (without lib/ or app/ prefix)
+# {dir} - the full directory path
+# {name} - filename without extension
+# {ext} - file extension without dot
