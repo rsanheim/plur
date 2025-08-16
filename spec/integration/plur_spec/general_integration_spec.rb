@@ -7,6 +7,7 @@ RSpec.describe "Plur general integration" do
   let(:expected_spec_files) { 12 }
 
   describe "basic functionality" do
+    # Modified to test the hook
     it "runs all specs when no arguments are provided" do
       result = run_plur("-C", default_ruby_dir)
 

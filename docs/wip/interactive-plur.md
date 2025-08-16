@@ -1,62 +1,77 @@
-# Interactive Plur
+# Interactive Plur - Implementation Tasks
 
-One of my 'big idea' goals with Plur is to allow a developer to use `plur watch` to build up an interactive
-config and mapping of files to tests while they are running.  So here is one simple example:
+## TODO Checklist
 
-User starts `plur watch` and saves the file `app/services/user_publisher.rb`
+### 🔴 Critical: Minitest/Test::Unit Support
+- [ ] Add support for `test/` directory detection in `FileMapper`
+- [ ] Add support for `*_test.rb` file naming convention
+- [ ] Auto-detect testing framework (check for `spec/` vs `test/`, `Gemfile` deps)
+- [ ] Add configurable test directory and naming patterns to `.plur.toml`
+- [ ] Update `findAlternativeSpecs()` to search for both `*_spec.rb` and `*_test.rb`
+- [ ] Test with Rails, Sidekiq, Devise, and other minitest projects
 
-plur does not find a direct mapping (as it would be spec/services/user_publisher_spec.rb only with our simple mapping rules), and tells the user that, but in presents the user with options of other specs that could be run:
+### 🟡 High Priority: Improve Alternative Suggestions
+- [ ] Add confidence scoring to alternative spec suggestions
+  - Higher score for same directory structure
+  - Lower score for wildcard matches
+  - Filter out suggestions below threshold
+- [ ] Reduce false positives for non-Ruby files
+  - Skip ERB/template files from spec matching
+  - Add file type validation before suggesting alternatives
+- [ ] Improve pattern detection to avoid overly generic rules
+  - Prefer specific paths over `**` wildcards when possible
+  - Validate that suggested patterns don't match too many files
+- [ ] Better handling of multiple match scenarios
+  - Group by type (unit vs integration)
+  - Allow user to select which type to prioritize
 
-* spec/services/user_publisher_spec.rb
-* spec/integrations/user_publisher_spec.rb
-* spec/*user_publisher**.rb
+### 🟢 Medium Priority: Interactive Mode Enhancements
+- [ ] Integrate `plur watch find` logic into main `plur watch` command
+  - Add `--learn` mode flag to enable interactive mapping
+  - Show suggestions when file changes have no mapping
+  - Allow adding rules without restarting watch
+- [ ] Improve interactive prompts
+  - Show preview of what files would match new rule
+  - Allow editing suggested rules before adding
+  - Support multi-select for adding multiple rules at once
+- [ ] Add runtime config reloading
+  - Watch `.plur.toml` for changes
+  - Apply new rules without restart
+  - Show notification when config reloads
 
-and so on.  
+### 🔵 Nice to Have: Advanced Features
+- [ ] Support for monorepo structures
+  - Detect Rails engines/components
+  - Handle project-specific test directories
+  - Support workspace-aware mappings
+- [ ] Smart suggestions for special files
+  - `config/` files → suggest full suite or specific config specs
+  - `db/migrate/` → suggest model specs
+  - `Gemfile` → suggest dependency-related specs
+- [ ] Integration with test coverage data
+  - Suggest specs based on code coverage reports
+  - Prioritize specs that cover changed lines
+- [ ] Machine learning based suggestions
+  - Learn from user's accepted/rejected suggestions
+  - Build project-specific patterns over time
 
-The basic idea is to allow a developer to add rules to their config interactively based on files saved that 
-_do not_ have any matching files to run....and there are some pretty easy heuristics we can apply to handle
-90% of cases for this sort of thing. I think. 
+## Vision & Context
 
-Some contraints:
-* we should not try to be too clever -- providing a general glob rule based on a file saved is a good start
-* if a user saves 'app/models/user.rb', and there is a typiocal matching spec 'spec/models/user_spec.rb', we should not try to provide suggestions
-* if we provide suggestions, we should tell the user what specs _would_ match if they added that rule to make the mathcing work
-* we should provide enough feedback to the user to help them understand how mapping rules work with plur, and how they can tweak them later to get more specific or correct
-
-Additionally, we should allow watch to be in two different modes that can be toggled by the user:
-* 'learn' mode: where plur will suggest rules to add to the config based on the files saved
-* 'standard' mode: where plur will run just what is in the config file as prescribed
-
-by default `plur watch` will be in the standard mode, but I think the learn mode could be an attractive offering for more complicated test suites...and help us build out our mapping rules to suit the many varieties of test - to lib spec rules.
-
-### Implementation Plan
-
-* Remember that we have a the `plur watch run --timeout [seconds]` option that will exit after the timeout is reached.  This is a good way to ensure that the watch mode does not run forever when running it locally or building etsts around. We already have rspec integration tests that use this now.
-* Consider how the config is loaded and how we can change it at runtime (for live feedback), and also write it back to the file system to save valid rules for the user
-* Consider how to make this user friendly: we want to explain what the rules currently are (and why), and then explain what plur is suggesting, and then explain changes plur may make to the runtime rules and the config saved on disk.
-* a broader goal is to help developers think thru what test files are important when a certain file changes....and providing input and guidance to help them build the correct set of matching rules that respond to file change events. This may mean running specs that match a simple glob pattern, or if someone saves "config/application.rb", we can suggest just running the entire suite or maybe running "spec/config/application_spec.rb" if it exists.  
-
-### Example mappings to explore with our default rules and what may come up:
-
-* 'app/services/foo_service.rb'
-User saves a service file, and in a rails project does it try to find a spec/services/foo_service_spec.rb? Is that in default rules?
-
-* 'lib/[something]/foo.rb'
-
-This is a ruby gem or library case - the user saves a top level file in the library -- does it look for spec/foo_spec.rb?  If it does, and there are no matches, does it then look for spec/lib/foo_spec.rb?  Or perhaps spec/lib/[something]/foo_spec.rb?
+For the full vision and rationale behind interactive plur, see the sections below. The core idea is to help developers build up correct file-to-test mappings interactively while they work, learning from their project's structure and conventions.
 
 ## Current Implementation Status (2025-08-16)
 
 ### What's Been Built
 
 We've implemented `plur watch find [files]` as a standalone exploration/diagnostic command that:
+- **USES THE SAME MAPPING CODE AS `plur watch`** via `FileMapper.MapFileToSpecs()`
 - Validates if mapped spec files actually exist
 - Searches for alternative specs when default mappings fail
 - Suggests custom mapping rules based on discovered alternatives
 - Supports interactive mode (`-i`) and dry-run mode (`--dry-run`)
 - Uses doublestar for proper `**` glob pattern support
 
-**Important:** This is NOT yet integrated into the main `plur watch` command - it's a separate tool for testing the concept.
+**Important:** This command now correctly uses the same `FileMapper.MapFileToSpecs()` method that `plur watch` uses internally, ensuring consistent behavior between testing mappings and actual watch mode.
 
 ### Testing with Real Projects
 
@@ -181,3 +196,22 @@ Tested `plur watch find` on additional popular Ruby/Rails projects to understand
 4. Configurable test directory and naming patterns
 
 Currently best suited as a diagnostic tool for RSpec-based projects only.
+
+## Related Work
+
+### Post-Tool-Use Hook Implementation (2025-08-16)
+
+We've successfully implemented a Claude Code post-tool-use hook that provides immediate test feedback:
+
+* **Location**: `script/cc-post-tool-use`
+* **Configuration**: `.claude/settings.json` with PostToolUse hook matcher for Edit|MultiEdit|Write
+* **Functionality**: 
+  * Automatically runs tests when files are edited
+  * Maps files to their corresponding test files (Ruby specs and Go tests)
+  * Blocks edits (exit code 2) when tests fail
+  * Allows edits (exit code 0) when tests pass
+  * Provides detailed failure output to stderr for debugging
+
+This hook provides a foundation for the "learn mode" concept - we're already intercepting file changes and running tests, so the next step would be to detect when no tests are found and suggest mappings interactively.
+
+See [optimize-watch-tests-with-handlers.md](optimize-watch-tests-with-handlers.md) for the original proposal and implementation details.

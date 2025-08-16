@@ -9,6 +9,7 @@
       "Bash(./script/get-repo:*)",
       "Bash(./script/lint:*)",
       "Bash(./script/plur-bench:*)",
+      "Bash(./script/cc-post-tool-use:*)",
       "Bash(bin/rake:*)",
       "Bash(bundle exec rails generate:*)",
       "Bash(bundle exec rails:*)",
@@ -126,5 +127,18 @@
   ],
   "env": {
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "true"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/script/cc-post-tool-use"
+          }
+        ]
+      }
+    ]
   }
 }

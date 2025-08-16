@@ -12,7 +12,7 @@ RSpec.describe "plur watch find command" do
       expect(result.out).to include("✓")
       expect(result.out).to include("lib/standard_mapper.rb")
       expect(result.out).to include("spec/standard_mapper_spec.rb")
-      expect(result.out).to include("exists via:")
+      expect(result.out).to include("(exists)")
     end
 
     it "works with Rails app structure" do
@@ -64,7 +64,7 @@ RSpec.describe "plur watch find command" do
 
       expect(result).to be_success
       expect(result.out).to include("✗ No mapping for: config/routes.rb")
-      
+
       # Should suggest locations for new specs since none exist
       expect(result.out).to include("No existing specs found")
     end
@@ -90,7 +90,7 @@ RSpec.describe "plur watch find command" do
       expect(result.out).to include("Found alternative specs:")
       expect(result.out).to include("spec/lib/misaligned_mapper_spec.rb")
       expect(result.out).to include("Suggested rule based on found specs:")
-      
+
       # The current implementation shows the rule but doesn't have special dry-run output
       # when the mapping fails and alternatives are found
       expect(result.out).to include('pattern = "lib/**/*.rb"')
@@ -102,7 +102,7 @@ RSpec.describe "plur watch find command" do
     it "prompts for confirmation when adding rules" do
       # Use Open3 directly for interactive testing
       cmd = "echo 'n' | plur -C #{watch_find_fixture} watch find lib/misaligned_mapper.rb -i"
-      stdout, stderr, status = Open3.capture3(cmd)
+      stdout, _, status = Open3.capture3(cmd)
 
       expect(status).to be_success
       expect(stdout).to include("Add 1 mapping rule(s) to .plur.toml? [y/N]:")
@@ -112,8 +112,8 @@ RSpec.describe "plur watch find command" do
 
   context "with multiple files" do
     it "processes each file and reports findings" do
-      result = run_plur("-C", watch_find_fixture, "watch", "find", 
-                       "lib/standard_mapper.rb", "lib/misaligned_mapper.rb")
+      result = run_plur("-C", watch_find_fixture, "watch", "find",
+        "lib/standard_mapper.rb", "lib/misaligned_mapper.rb")
 
       expect(result).to be_success
       expect(result.out).to include("lib/standard_mapper.rb")

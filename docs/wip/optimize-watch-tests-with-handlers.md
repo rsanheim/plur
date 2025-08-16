@@ -127,3 +127,18 @@ end
 2. Convert one simple test to validate the approach
 3. If successful, convert remaining watch tests
 4. Expected time savings: 30-40 seconds off test suite
+
+## Implementation Update (2025-08-16)
+
+This approach has been successfully adapted for Claude Code hooks! Instead of optimizing watch tests, we've implemented a **post-tool-use hook** that:
+
+* **Location**: `script/cc-post-tool-use`
+* **Purpose**: Automatically runs tests when files are edited in Claude Code
+* **Key Features**:
+  * Parses JSON input from Claude Code's tool execution
+  * Maps edited files to their test files
+  * Runs tests and captures output
+  * Blocks edits if tests fail (exit code 2)
+  * Includes error logging for debugging
+
+The hook uses similar streaming/handler concepts but adapted for the Claude Code environment. See [interactive-plur.md](interactive-plur.md#post-tool-use-hook-implementation-2025-08-16) for how this relates to the interactive config building vision.
