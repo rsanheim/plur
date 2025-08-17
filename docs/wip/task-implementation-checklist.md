@@ -2,29 +2,40 @@
 
 This checklist tracks the implementation of the new Task system for Plur, which consolidates test framework configuration, command building, and file mapping into a unified architecture.
 
-## Phase 1: Core Task Infrastructure
+## Prerequisites ✅ COMPLETED
 
-* [ ] Create `plur/internal/task/` package directory
-* [ ] Define Task struct in `plur/internal/task/task.go` with all fields from design
-  * [ ] description field
-  * [ ] run field  
-  * [ ] source_dirs field
-  * [ ] mappings field
-  * [ ] ignore_patterns field
-* [ ] Implement `BuildCommand` method on Task
-  * [ ] Handle RSpec command building
-  * [ ] Handle Minitest command building
-  * [ ] Support command override from config/CLI
-* [ ] Implement `MapFilesToTarget` method on Task
-  * [ ] Parse mapping patterns with `{{path}}`, `{{name}}`, `{{file}}` tokens
-  * [ ] Return all matching target files
-* [ ] Create default RSpec task configuration
-* [ ] Create default Minitest task configuration
-* [ ] Write `task_test.go` with tests for:
-  * [ ] BuildCommand happy path for RSpec
-  * [ ] BuildCommand happy path for Minitest
-  * [ ] MapFilesToTarget with various patterns
-  * [ ] Edge cases for empty/invalid mappings
+* [x] **Move GlobalConfig to shared package** - Created `plur/config` package to hold shared configuration types
+  * [x] Move GlobalConfig, ConfigPaths, TestFramework types to `plur/config/`
+  * [x] Update internal/task to use shared config.GlobalConfig (eliminating duplication)
+  * [x] Fix variable shadowing issues throughout codebase
+  * [x] Update all imports and test files
+  * [x] Verify all tests pass and compilation works
+
+This prerequisite eliminates the config duplication between main and internal/task packages, providing a clean foundation for Task integration.
+
+## Phase 1: Core Task Infrastructure ✅ COMPLETED
+
+* [x] Create `plur/internal/task/` package directory
+* [x] Define Task struct in `plur/internal/task/task.go` with all fields from design
+  * [x] description field
+  * [x] run field  
+  * [x] source_dirs field
+  * [x] mappings field
+  * [x] ignore_patterns field
+* [x] Implement `BuildCommand` method on Task
+  * [x] Handle RSpec command building
+  * [x] Handle Minitest command building
+  * [x] Support command override from config/CLI
+* [x] Implement `MapFilesToTarget` method on Task
+  * [x] Parse mapping patterns with `{{path}}`, `{{name}}`, `{{file}}` tokens
+  * [x] Return all matching target files
+* [x] Create default RSpec task configuration
+* [x] Create default Minitest task configuration
+* [x] Write `task_test.go` with tests for:
+  * [x] BuildCommand happy path for RSpec
+  * [x] BuildCommand happy path for Minitest
+  * [x] MapFilesToTarget with various patterns
+  * [x] Edge cases for empty/invalid mappings
 
 ## Phase 2: TOML Config Integration
 
