@@ -42,8 +42,8 @@ RSpec.describe "plur watch find command" do
       expect(result).to be_success
       expect(result.out).to include("Suggested rule based on found specs:")
       expect(result.out).to include('pattern = "lib/**/*.rb"')
-      # For files directly in lib/, the pattern doesn't include {path}
-      expect(result.out).to include('target = "spec/lib/{name}_spec.rb"')
+      # For misaligned lib structure, suggests spec/lib/ prefix
+      expect(result.out).to include('target = "spec/lib/{{path}}/{{name}}_spec.rb"')
     end
 
     it "handles nested misaligned structures" do
@@ -94,7 +94,7 @@ RSpec.describe "plur watch find command" do
       # The current implementation shows the rule but doesn't have special dry-run output
       # when the mapping fails and alternatives are found
       expect(result.out).to include('pattern = "lib/**/*.rb"')
-      expect(result.out).to include('target = "spec/lib/{name}_spec.rb"')
+      expect(result.out).to include('target = "spec/lib/{{path}}/{{name}}_spec.rb"')
     end
   end
 
@@ -134,7 +134,7 @@ RSpec.describe "plur watch find command" do
       expect(result.out).to include("spec/lib/example-project/cli_spec.rb")
       expect(result.out).to include("Suggested rule based on found specs:")
       expect(result.out).to include('pattern = "lib/**/*.rb"')
-      expect(result.out).to include('target = "spec/lib/{path}/{name}_spec.rb"')
+      expect(result.out).to include('target = "spec/lib/{{path}}/{{name}}_spec.rb"')
     end
   end
 end

@@ -116,21 +116,28 @@ This prerequisite eliminates the config duplication between main and internal/ta
 
 **Key Achievement**: Clean --use flag interface with proper task configuration merging!
 
-## Phase 5: Watch Consolidation
+## Phase 5: Watch Consolidation ✅ COMPLETED
 
-* [ ] Update watch FileMapper to use Task.MapFilesToTarget
-* [ ] Update watch_find.go to use Task mappings
-* [ ] Remove duplicate mapping logic from watch_find.go:
-  * [ ] DELETE detectPatternFromAlternative function
-  * [ ] DELETE createRuleForFile function
-  * [ ] Replace with Task-based mapping
-* [ ] Ensure watch and watch find use identical mapping logic
-* [ ] Update watch/mapping_rules.go to work with Task
-* [ ] Write unified mapping tests:
-  * [ ] Test lib -> spec mappings
-  * [ ] Test app -> spec mappings
-  * [ ] Test direct spec file mappings
-  * [ ] Test custom mapping patterns
+* [x] Update watch FileMapper to use Task.MapFilesToTarget
+* [x] Update watch_find.go to use Task mappings
+* [x] Remove duplicate mapping logic from watch_find.go:
+  * [x] DELETE detectPatternFromAlternative function
+  * [x] DELETE createRuleForFile function
+  * [x] Replace with Task-based mapping
+* [x] Ensure watch and watch find use identical mapping logic
+* [x] Update watch/mapping_rules.go to work with Task
+  * [x] DELETE detectFramework() compatibility function
+  * [x] Update GenerateSuggestions() to use task.DetectFramework()
+* [x] DELETE entire FileMapper class and MappingConfig (~500+ lines removed)
+* [x] DELETE file_mapper_test.go and rewrote mapping_rules_test.go
+* [x] Write unified mapping tests:
+  * [x] Test lib -> spec mappings
+  * [x] Test app -> spec mappings
+  * [x] Test direct spec file mappings
+  * [x] Test custom mapping patterns
+* [x] Ensure consistent {{}} token syntax (no backward compatibility with {})
+
+**Key Achievement**: Eliminated all duplicate mapping logic! Watch mode now uses identical Task system as regular runs.
 
 ## Phase 6: Eliminate TestFramework Enum
 

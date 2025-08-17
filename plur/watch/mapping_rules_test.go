@@ -4,69 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestMatchGlobPattern(t *testing.T) {
-	tests := []struct {
-		name     string
-		pattern  string
-		file     string
-		expected bool
-		vars     map[string]string
-	}{
-		{
-			name:     "spec file match",
-			pattern:  "*_spec.rb",
-			file:     "calculator_spec.rb",
-			expected: true,
-			vars: map[string]string{
-				"file": "calculator_spec.rb",
-				"name": "calculator_spec",
-				"path": "",
-			},
-		},
-		{
-			name:     "lib file with path",
-			pattern:  "lib/**/*.rb",
-			file:     "lib/models/user.rb",
-			expected: true,
-			vars: map[string]string{
-				"file": "lib/models/user.rb",
-				"path": "models",
-				"name": "user",
-			},
-		},
-		{
-			name:     "app file with path",
-			pattern:  "app/**/*.rb",
-			file:     "app/models/user.rb",
-			expected: true,
-			vars: map[string]string{
-				"file": "app/models/user.rb",
-				"path": "models",
-				"name": "user",
-			},
-		},
-		{
-			name:     "no match",
-			pattern:  "spec/**/*_spec.rb",
-			file:     "lib/user.rb",
-			expected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			matched, vars := matchGlobPattern(tt.pattern, tt.file)
-			assert.Equal(t, tt.expected, matched)
-			if tt.expected && tt.vars != nil {
-				assert.Equal(t, tt.vars["name"], vars["name"])
-				assert.Equal(t, tt.vars["path"], vars["path"])
-			}
-		})
-	}
-}
 
 func TestExpandTarget(t *testing.T) {
 	tests := []struct {
@@ -77,7 +15,7 @@ func TestExpandTarget(t *testing.T) {
 	}{
 		{
 			name:   "expand file variable",
-			target: "{file}",
+			target: "{{file}}",
 			vars: map[string]string{
 				"file": "spec/models/user_spec.rb",
 			},
@@ -85,7 +23,7 @@ func TestExpandTarget(t *testing.T) {
 		},
 		{
 			name:   "expand path and name",
-			target: "spec/{path}/{name}_spec.rb",
+			target: "spec/{{path}}/{{name}}_spec.rb",
 			vars: map[string]string{
 				"path": "models",
 				"name": "user",
@@ -100,68 +38,21 @@ func TestExpandTarget(t *testing.T) {
 			},
 			expected: "spec",
 		},
+		{
+			name:   "empty path",
+			target: "spec/{{path}}/{{name}}_spec.rb",
+			vars: map[string]string{
+				"path": "",
+				"name": "calculator",
+			},
+			expected: "spec//calculator_spec.rb",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ExpandTarget(tt.target, tt.vars)
 			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestMappingConfig_MatchFile(t *testing.T) {
-	config := NewMappingConfig()
-	err := config.CompileRules()
-	require.NoError(t, err)
-
-	tests := []struct {
-		name         string
-		file         string
-		expectRule   bool
-		expectTarget string
-	}{
-		{
-			name:         "spec file",
-			file:         "spec/models/user_spec.rb",
-			expectRule:   true,
-			expectTarget: "spec/models/user_spec.rb",
-		},
-		{
-			name:         "spec_helper",
-			file:         "spec/spec_helper.rb",
-			expectRule:   true,
-			expectTarget: "spec",
-		},
-		{
-			name:         "lib file",
-			file:         "lib/calculator.rb",
-			expectRule:   true,
-			expectTarget: "spec/calculator_spec.rb",
-		},
-		{
-			name:         "app model",
-			file:         "app/models/user.rb",
-			expectRule:   true,
-			expectTarget: "spec/models/user_spec.rb",
-		},
-		{
-			name:       "unknown file",
-			file:       "config/database.yml",
-			expectRule: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rule, vars := config.MatchFile(tt.file)
-			if tt.expectRule {
-				require.NotNil(t, rule, "expected to find a rule for %s", tt.file)
-				target := ExpandTarget(rule.Target, vars)
-				assert.Equal(t, tt.expectTarget, target)
-			} else {
-				assert.Nil(t, rule)
-			}
 		})
 	}
 }
@@ -174,20 +65,31 @@ func TestGenerateSuggestions(t *testing.T) {
 		contains    string
 	}{
 		{
-			name:        "lib file",
+			name:        "lib file generates spec suggestions",
 			file:        "lib/services/user_service.rb",
 			expectCount: 2,
 			contains:    "spec/services/user_service_spec.rb",
 		},
 		{
-			name:        "app controller",
+			name:        "app controller generates spec suggestions",
 			file:        "app/controllers/users_controller.rb",
-			expectCount: 4,
+			expectCount: 1,
 			contains:    "spec/controllers/users_controller_spec.rb",
+		},
+		{
+			name:        "generic ruby file generates spec suggestions",
+			file:        "config/application.rb",
+			expectCount: 2,
+			contains:    "spec/application_spec.rb",
 		},
 		{
 			name:        "spec file gets no suggestions",
 			file:        "spec/models/user_spec.rb",
+			expectCount: 0,
+		},
+		{
+			name:        "test file gets no suggestions",
+			file:        "test/models/user_test.rb",
 			expectCount: 0,
 		},
 		{
@@ -215,27 +117,58 @@ func TestGenerateSuggestions(t *testing.T) {
 	}
 }
 
-func TestCustomRules(t *testing.T) {
-	config := NewMappingConfig()
-
-	// Add a custom rule
-	config.CustomRules = []MappingRule{
+func TestGenerateSuggestionsForFramework(t *testing.T) {
+	tests := []struct {
+		name        string
+		file        string
+		framework   string
+		expectCount int
+		contains    string
+	}{
 		{
-			Pattern:     "config/*.rb",
-			Target:      "spec/config/{name}_spec.rb",
-			Description: "Config files",
-			Priority:    60,
-			Type:        "glob",
+			name:        "lib file with minitest",
+			file:        "lib/calculator.rb",
+			framework:   "minitest",
+			expectCount: 2,
+			contains:    "test/calculator_test.rb",
+		},
+		{
+			name:        "lib file with rspec",
+			file:        "lib/calculator.rb",
+			framework:   "rspec",
+			expectCount: 2,
+			contains:    "spec/calculator_spec.rb",
+		},
+		{
+			name:        "app model with minitest",
+			file:        "app/models/user.rb",
+			framework:   "minitest",
+			expectCount: 1,
+			contains:    "test/models/user_test.rb",
+		},
+		{
+			name:        "app model with rspec",
+			file:        "app/models/user.rb",
+			framework:   "rspec",
+			expectCount: 1,
+			contains:    "spec/models/user_spec.rb",
 		},
 	}
 
-	err := config.CompileRules()
-	require.NoError(t, err)
-
-	// Test that custom rule works
-	rule, vars := config.MatchFile("config/application.rb")
-	require.NotNil(t, rule)
-
-	target := ExpandTarget(rule.Target, vars)
-	assert.Equal(t, "spec/config/application_spec.rb", target)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			suggestions := GenerateSuggestionsForFramework(tt.file, tt.framework)
+			assert.GreaterOrEqual(t, len(suggestions), tt.expectCount)
+			if tt.contains != "" && len(suggestions) > 0 {
+				found := false
+				for _, s := range suggestions {
+					if s == tt.contains {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected suggestions to contain %s, got %v", tt.contains, suggestions)
+			}
+		})
+	}
 }

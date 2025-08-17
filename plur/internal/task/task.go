@@ -233,6 +233,14 @@ func NewRSpecTask() *Task {
 		SourceDirs:  []string{"spec", "lib", "app"},
 		Mappings: []MappingRule{
 			{
+				Pattern: "spec/spec_helper.rb",
+				Target:  "spec",
+			},
+			{
+				Pattern: "spec/rails_helper.rb",
+				Target:  "spec",
+			},
+			{
 				Pattern: "lib/**/*.rb",
 				Target:  "spec/{{path}}/{{name}}_spec.rb",
 			},
@@ -258,6 +266,10 @@ func NewMinitestTask() *Task {
 		Run:         "", // Special handling in BuildCommand
 		SourceDirs:  []string{"test", "lib", "app"},
 		Mappings: []MappingRule{
+			{
+				Pattern: "test/test_helper.rb",
+				Target:  "test",
+			},
 			{
 				Pattern: "lib/**/*.rb",
 				Target:  "test/{{path}}/{{name}}_test.rb",

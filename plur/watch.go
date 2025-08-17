@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
@@ -33,43 +34,20 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
-	// Get the test framework from task
-	framework := currentTask.GetFramework()
-
-	// Load mapping configuration with framework (pass as string)
-	mappingConfig, err := watch.LoadMappingConfig("", string(framework))
-	if err != nil {
-		logger.LogDebug("Failed to load mapping config, using defaults", "error", err)
-		mappingConfig = watch.NewMappingConfigForFramework(string(framework))
-	}
-
-	// In debug mode, disable feedback to avoid breaking tests
-	if globalConfig.Debug {
-		mappingConfig.ProvideFeedback = false
-		mappingConfig.ShowSuggestions = false
-	}
-
-	// Ensure rules are compiled
-	if err := mappingConfig.CompileRules(); err != nil {
-		logger.LogDebug("Failed to compile mapping rules", "error", err)
-	}
-
-	// Create file mapper with config
-	fileMapper := watch.NewFileMapperWithConfig(mappingConfig)
-
 	// Create debouncer with configurable delay
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
 	debouncer := watch.NewDebouncer(debounceDelay)
 	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
 
-	// Determine which directories to watch based on framework
-	watchDirs := watch.GetWatchDirectories(string(framework))
-	if len(watchDirs) == 0 {
-		dirList := "spec, lib, app"
-		if framework == config.FrameworkMinitest {
-			dirList = "test, lib, app"
+	// Determine which directories to watch from Task's SourceDirs
+	watchDirs := []string{}
+	for _, dir := range currentTask.SourceDirs {
+		if _, err := os.Stat(dir); err == nil {
+			watchDirs = append(watchDirs, dir)
 		}
-		return fmt.Errorf("no directories to watch found (tried: %s)", dirList)
+	}
+	if len(watchDirs) == 0 {
+		return fmt.Errorf("no directories to watch found (tried: %v)", currentTask.SourceDirs)
 	}
 
 	// Get project name from current directory
@@ -192,21 +170,21 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				continue
 			}
 
-			// Check if we should watch this file
-			if !fileMapper.ShouldWatchFile(event.PathName) {
-				// Skip logging for files not in watch list
-				continue
-			}
-
-			// Convert absolute path to relative path for mapping
+			// Convert absolute path to relative path for mapping first
 			relPath, err = filepath.Rel(cwd, event.PathName)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get relative path: %v\n", err)
 				continue
 			}
 
-			// Map the file to specs
-			specsToRun := fileMapper.MapFileToSpecs(relPath)
+			// Check if we should watch this file by seeing if it matches any mapping pattern
+			if !shouldWatchFile(relPath, currentTask) {
+				// Skip logging for files not in watch list
+				continue
+			}
+
+			// Map the file to specs using Task
+			specsToRun := currentTask.MapFilesToTarget([]string{relPath})
 			if len(specsToRun) == 0 {
 				// Still log the mapping_not_found for tests
 				logger.LogDebug("plur", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
@@ -274,4 +252,14 @@ func runSpecsOrDirectory(specPath string, command string) {
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to run spec: %v\n", err)
 	}
+}
+
+// shouldWatchFile determines if a file should trigger spec runs by checking if it matches any mapping pattern
+func shouldWatchFile(filePath string, currentTask *task.Task) bool {
+	for _, mapping := range currentTask.Mappings {
+		if matched, err := doublestar.Match(mapping.Pattern, filePath); err == nil && matched {
+			return true
+		}
+	}
+	return false
 }

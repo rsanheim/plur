@@ -52,7 +52,6 @@ type OutputMessage struct {
 	Files    string // For stderr messages - comma-separated list of files
 }
 
-
 // GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
 func GetWorkerCount(cliWorkers int) int {
 	// Priority: CLI flag > ENV var > default (cores-2)
