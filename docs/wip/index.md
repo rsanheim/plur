@@ -24,25 +24,14 @@ This directory contains active development documentation.
 
 ## Quick Start
 
-1. **Test Automation Hook**: We've implemented a post-tool-use hook that automatically runs tests when files are edited
-   - Located at `script/cc-post-tool-use`
-   - Configured in `.claude/settings.json`
-   - Runs relevant tests and blocks edits if tests fail
-
-2. **Interactive Watch Mode**: `plur watch find` is an experimental diagnostic tool for exploring file-to-test mappings
+1. **Interactive Watch Mode**: `plur watch find` is an experimental diagnostic tool for exploring file-to-test mappings
    - Works well for RSpec projects (~75-85% success rate)
    - Currently doesn't support Test::Unit/Minitest projects
    - Not yet integrated into main `plur watch` command
 
 
-## Current Status
 
-### ✅ Completed
-* **Post-tool-use hook** (`script/cc-post-tool-use`): Automatically runs tests when files are edited via Claude Code
-  * Fixed JSON parsing to use correct `tool_input.file_path` structure
-  * Added error logging for debugging hook format changes
-  * Successfully blocks edits when tests fail (exit code 2)
-  * Allows edits when tests pass (exit code 0)
+## Current Status
 
 ### 🧪 Experimental
 * **`plur watch find`**: Diagnostic command for testing file-to-test mapping discovery
@@ -52,7 +41,6 @@ This directory contains active development documentation.
   * Works well for RSpec projects, needs work for Test::Unit/Minitest
 
 ### 📝 Next Steps
-* Extend hook to support Go tests and other file types
 * Improve `plur watch find` to support Test::Unit/Minitest conventions
 * Consider integrating `plur watch find` learnings into main `plur watch` mode
 * Add confidence scoring to reduce false positive suggestions

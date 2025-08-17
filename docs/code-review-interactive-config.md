@@ -87,11 +87,7 @@ This could be simplified using a dedicated glob library or pre-compiled patterns
    ```
 
 3. **Good Error Context**
-   ```ruby
-   # script/cc-post-tool-use
-   $stderr.puts "Error parsing JSON: #{e.message}"
-   $stderr.puts "Input was: #{raw_input[0..200]}..."
-   ```
+   Error messages provide helpful context for debugging.
 
 ### Areas for Improvement
 
@@ -142,14 +138,9 @@ This could be simplified using a dedicated glob library or pre-compiled patterns
    }
    ```
 
-2. **Unbounded Test Execution**
-   - **Risk:** Hook script could hang on long-running tests
-   - **Fix:** Add timeout to cc-post-tool-use script
-   ```ruby
-   Timeout::timeout(30) do
-     system(test_command)
-   end
-   ```
+2. **Test Execution Timeouts**
+   - **Risk:** Tests could hang on long-running operations
+   - **Fix:** Add appropriate timeouts to test execution
 
 ### Low Priority Issues
 
@@ -204,18 +195,8 @@ end
    }
    ```
 
-2. **Add script timeout**
-   ```ruby
-   # script/cc-post-tool-use
-   require 'timeout'
-   begin
-     Timeout::timeout(30) do
-       system(test_command)
-     end
-   rescue Timeout::Error
-     $stderr.puts "Test execution timed out after 30 seconds"
-   end
-   ```
+2. **Add execution timeouts**
+   Consider adding timeouts to prevent hanging on long-running operations.
 
 ### Short Term (Next PR)
 

@@ -199,19 +199,8 @@ Currently best suited as a diagnostic tool for RSpec-based projects only.
 
 ## Related Work
 
-### Post-Tool-Use Hook Implementation (2025-08-16)
+### File Change Detection and Test Mapping
 
-We've successfully implemented a Claude Code post-tool-use hook that provides immediate test feedback:
+The watch mode already provides file change detection and test mapping capabilities that could be extended for interactive learning mode. The `plur watch find` command demonstrates how we can suggest test mappings for files without existing mappings.
 
-* **Location**: `script/cc-post-tool-use`
-* **Configuration**: `.claude/settings.json` with PostToolUse hook matcher for Edit|MultiEdit|Write
-* **Functionality**: 
-  * Automatically runs tests when files are edited
-  * Maps files to their corresponding test files (Ruby specs and Go tests)
-  * Blocks edits (exit code 2) when tests fail
-  * Allows edits (exit code 0) when tests pass
-  * Provides detailed failure output to stderr for debugging
-
-This hook provides a foundation for the "learn mode" concept - we're already intercepting file changes and running tests, so the next step would be to detect when no tests are found and suggest mappings interactively.
-
-See [optimize-watch-tests-with-handlers.md](optimize-watch-tests-with-handlers.md) for the original proposal and implementation details.
+See [optimize-watch-tests-with-handlers.md](optimize-watch-tests-with-handlers.md) for proposals on optimizing test execution.
