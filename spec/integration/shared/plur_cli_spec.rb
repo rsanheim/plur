@@ -11,7 +11,6 @@ RSpec.describe "Plur CLI behavior" do
       expect(result.err).to include("rspec")
     end
 
-
     it "runs dry-run with specific spec file" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run", "spec/calculator_spec.rb")
@@ -84,7 +83,6 @@ RSpec.describe "Plur CLI behavior" do
         expect(result.out).to include("#{calculator_spec_examples} examples, 0 failures")
       end
     end
-
 
     it "provides interleaved output from parallel execution" do
       Dir.chdir(default_ruby_dir) do

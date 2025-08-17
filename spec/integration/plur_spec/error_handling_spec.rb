@@ -192,6 +192,5 @@ RSpec.describe "Plur error handling" do
         end
       end
     end
-
   end
 end

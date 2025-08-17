@@ -69,7 +69,6 @@ RSpec.describe "Command-specific configuration" do
         command = "echo 'FROM CONFIG:'"
       TOML
     end
-
   end
 
   context "with global command setting" do

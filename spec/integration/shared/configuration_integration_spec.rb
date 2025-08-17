@@ -147,7 +147,6 @@ RSpec.describe "Configuration integration" do
 
   describe "task configuration loading" do
     context "with TOML task definitions" do
-
       it "applies task-specific run commands from TOML" do
         _, output, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
