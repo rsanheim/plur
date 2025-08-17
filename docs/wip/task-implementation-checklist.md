@@ -188,7 +188,7 @@ This prerequisite eliminates the config duplication between main and internal/ta
   * [ ] Update CLAUDE.md with new architecture
   * [ ] Update example TOML configs
   * [ ] Document task configuration options
-* [ ] Write end-to-end integration tests:
+* [ ] Review end-to-end integration tests - do we cover all the bases?
   * [ ] Full RSpec run with custom task
   * [ ] Full Minitest run with custom task
   * [ ] Watch mode with custom mappings
