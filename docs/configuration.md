@@ -24,11 +24,13 @@ Plur automatically loads configuration from TOML files using the following searc
 workers = 4
 color = true
 
-[spec]
-command = "bin/rspec"
+[task.rspec]
+run = "bin/rspec"
+
+[task.minitest]
+run = "bin/rake test"
 
 [watch.run]
-command = "bin/rspec --no-coverage"
 debounce = 200
 ```
 
@@ -38,20 +40,33 @@ debounce = 200
 - `workers` - Number of parallel workers (default: auto-detect)
 - `color` - Enable colored output (default: true)
 - `verbose` - Enable verbose output (default: false)
-- `command` - Default test command (default: "bundle exec rspec")
+- `use` - Default task to use (default: auto-detect based on project structure)
 
-#### Command-Specific Settings
+#### Task Configuration
 
-##### `[spec]` section
-Settings for `plur` or `plur spec` commands:
-- `command` - Test command override
-- `type` - Test framework ("rspec" or "minitest")
+##### `[task.rspec]` section
+Settings for RSpec task:
+- `run` - Test command (default: "bundle exec rspec")
+- `test_glob` - Pattern for finding test files (default: "spec/**/*_spec.rb")
+- `source_dirs` - Directories to watch for changes (default: ["lib", "app"])
+
+##### `[task.minitest]` section  
+Settings for Minitest task:
+- `run` - Test command (default: "bundle exec ruby -Itest")
+- `test_glob` - Pattern for finding test files (default: "test/**/*_test.rb")
+- `source_dirs` - Directories to watch for changes (default: ["lib", "app"])
+
+##### Custom Tasks
+You can define custom tasks with:
+```toml
+[task.custom]
+run = "your-test-command"
+test_glob = "your-pattern/**/*_test.rb"
+```
 
 ##### `[watch.run]` section
 Settings for `plur watch` command:
-- `command` - Test command override for watch mode
 - `debounce` - Delay in milliseconds before running tests (default: 100)
-- `type` - Test framework ("rspec" or "minitest")
 
 ### Configuration Examples
 

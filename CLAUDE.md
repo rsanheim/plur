@@ -41,9 +41,14 @@ Plur supports TOML configuration files for persistent settings:
 
 ```toml
 # .plur.toml or ~/.plur.toml
-command = "bin/rspec"    # Override default "bundle exec rspec"
 workers = 4              # Number of parallel workers
 color = true             # Enable colored output
+
+[task.rspec]
+run = "bin/rspec"        # Override default "bundle exec rspec"
+
+[task.minitest]
+run = "bin/rake test"    # Override default for minitest
 ```
 
 Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (global) > defaults

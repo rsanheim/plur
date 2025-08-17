@@ -24,7 +24,7 @@ plur --auto                  # Auto-detect and show worker count
 
 ### Technical Architecture
 - **Language**: Go 1.21+ 
-- **CLI Framework**: urfave/cli/v2
+- **CLI Framework**: Kong (https://github.com/alecthomas/kong)
 - **Concurrency**: Worker pool pattern with sync.WaitGroup
 - **Process Management**: exec.CommandContext for timeout handling
 - **Output Strategy**: RSpec dual formatters (`--format progress --format json`)
