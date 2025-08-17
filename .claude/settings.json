@@ -123,22 +123,9 @@
   "includeCoAuthoredBy": false,
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": [
-    "github"
+    // "github"
   ],
   "env": {
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "true"
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|MultiEdit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/script/cc-post-tool-use"
-          }
-        ]
-      }
-    ]
   }
 }
