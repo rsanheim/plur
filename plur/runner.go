@@ -52,17 +52,6 @@ type OutputMessage struct {
 	Files    string // For stderr messages - comma-separated list of files
 }
 
-// getFrameworkFromTask converts task name to TestFramework enum
-func getFrameworkFromTask(currentTask *task.Task) config.TestFramework {
-	switch currentTask.Name {
-	case "minitest":
-		return config.FrameworkMinitest
-	case "rspec":
-		return config.FrameworkRSpec
-	default:
-		return config.FrameworkRSpec // Default fallback
-	}
-}
 
 // GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
 func GetWorkerCount(cliWorkers int) int {
@@ -171,7 +160,7 @@ func errorResult(testFile *TestFile, err error, start time.Time, framework confi
 // RunSpecFile executes multiple test files in a single test process
 func RunSpecFile(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
 	// Dispatch to framework-specific implementation
-	framework := getFrameworkFromTask(currentTask)
+	framework := currentTask.GetFramework()
 	switch framework {
 	case config.FrameworkMinitest:
 		return RunMinitestFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan, currentTask)
@@ -233,12 +222,12 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, getFrameworkFromTask(currentTask))
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, currentTask.GetFramework())
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, getFrameworkFromTask(currentTask))
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, currentTask.GetFramework())
 	}
 
 	// Start the command
@@ -246,20 +235,20 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 		err = cmd.Start()
 	}()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, getFrameworkFromTask(currentTask))
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, currentTask.GetFramework())
 	}
 
 	// Create parser and collector for event-based processing
-	parser, err := NewTestOutputParser(getFrameworkFromTask(currentTask))
+	parser, err := NewTestOutputParser(currentTask.GetFramework())
 	if err != nil {
-		return errorResult(testFile, err, start, getFrameworkFromTask(currentTask))
+		return errorResult(testFile, err, start, currentTask.GetFramework())
 	}
 
 	// Use fixed default allocation hints
 	collector := NewTestCollector()
 
 	// Stream output through parser and collector
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, getFrameworkFromTask(currentTask))
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, specFiles, currentTask.GetFramework())
 
 	// Wait for command to complete
 	err = cmd.Wait()
@@ -317,7 +306,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 		Tests:             result.Tests,
 		FormattedFailures: result.FormattedFailures,
 		FormattedSummary:  result.FormattedSummary,
-		Framework:         getFrameworkFromTask(currentTask),
+		Framework:         currentTask.GetFramework(),
 	}
 }
 
@@ -470,27 +459,27 @@ func RunMinitestFiles(ctx context.Context, globalConfig *config.GlobalConfig, sp
 	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, getFrameworkFromTask(currentTask))
+		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start, currentTask.GetFramework())
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, getFrameworkFromTask(currentTask))
+		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start, currentTask.GetFramework())
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, getFrameworkFromTask(currentTask))
+		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start, currentTask.GetFramework())
 	}
 
-	parser, err := NewTestOutputParser(getFrameworkFromTask(currentTask))
+	parser, err := NewTestOutputParser(currentTask.GetFramework())
 	if err != nil {
-		return errorResult(testFile, err, start, getFrameworkFromTask(currentTask))
+		return errorResult(testFile, err, start, currentTask.GetFramework())
 	}
 
 	collector := NewTestCollector()
 
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, getFrameworkFromTask(currentTask))
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles, currentTask.GetFramework())
 
 	err = cmd.Wait()
 
@@ -515,7 +504,7 @@ func RunMinitestFiles(ctx context.Context, globalConfig *config.GlobalConfig, sp
 	result.State = state
 	result.Output = output
 	result.Error = err
-	result.Framework = getFrameworkFromTask(currentTask)
+	result.Framework = currentTask.GetFramework()
 
 	return result
 }

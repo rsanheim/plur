@@ -132,7 +132,41 @@ This prerequisite eliminates the config duplication between main and internal/ta
   * [ ] Test direct spec file mappings
   * [ ] Test custom mapping patterns
 
-## Phase 6: Final Cleanup (Breaking Changes)
+## Phase 6: Eliminate TestFramework Enum
+
+### Phase 6.1: Low-Hanging Fruit
+* [ ] Remove unused `framework` parameter from `streamTestOutput()` function
+* [ ] Remove `Framework` field from `WorkerResult` struct  
+* [ ] Update `errorResult()` to not need framework parameter
+* [ ] Clean up all `currentTask.GetFramework()` calls that are no longer needed
+
+### Phase 6.2: Add Task Methods
+* [ ] Add `CreateParser() types.TestOutputParser` method to Task
+* [ ] Add `IsMinitestStyle() bool` helper to Task for formatting decisions
+* [ ] Add `GetWatchDirs() []string` method to Task for watch/doctor
+* [ ] Update `NewTestOutputParser()` to use `task.CreateParser()`
+* [ ] Remove `parser_factory.go` if no longer needed
+
+### Phase 6.3: Consolidate Test Runners  
+* [ ] Merge `RunRSpecFiles` and `RunMinitestFiles` into single function
+* [ ] Remove dispatch logic in `RunSpecFile`
+* [ ] Use Task to determine any framework-specific behavior
+
+### Phase 6.4: Update Framework Detection
+* [ ] Change `DetectTestFramework()` to return `*Task` instead of `TestFramework`
+* [ ] Update all callers of `DetectTestFramework()`
+* [ ] Remove `GetFramework()` method from Task
+* [ ] Remove `TestFramework` enum entirely from config package
+
+### Phase 6.5: Refactor watch_find.go
+* [ ] Move pattern detection logic into Task methods
+* [ ] Add `FindAlternativeSpecs(sourceFile string) []string` to Task
+* [ ] Remove all framework conditionals from watch_find.go
+* [ ] Update doctor.go to use Task instead of framework checks
+
+**Key Achievement**: Complete elimination of TestFramework enum in favor of Task-based logic!
+
+## Phase 7: Final Cleanup (Breaking Changes)
 
 * [ ] DELETE SpecCmd struct and all its methods
 * [ ] Update main.go to use Task directly for `plur spec` command

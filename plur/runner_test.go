@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFindSpecFilesRunner(t *testing.T) {
+func TestFindTestFiles(t *testing.T) {
 	// Test the runner version more thoroughly
 	originalDir, _ := os.Getwd()
 	defer os.Chdir(originalDir)

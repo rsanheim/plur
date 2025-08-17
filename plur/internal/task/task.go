@@ -25,6 +25,18 @@ type Task struct {
 	TestGlob       string        `toml:"test_glob"`       // Glob pattern for test files (e.g., "spec/**/*_spec.rb")
 }
 
+// GetFramework returns the TestFramework enum for this task
+func (t *Task) GetFramework() config.TestFramework {
+	switch t.Name {
+	case "minitest":
+		return config.FrameworkMinitest
+	case "rspec":
+		return config.FrameworkRSpec
+	default:
+		return config.FrameworkRSpec // Default fallback
+	}
+}
+
 // BuildCommand constructs the command to execute for this task
 func (t *Task) BuildCommand(files []string, globalConfig *config.GlobalConfig, commandOverride string) []string {
 	// Use override command if provided

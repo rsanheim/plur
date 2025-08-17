@@ -34,7 +34,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
 	// Get the test framework from task
-	framework := getFrameworkFromTask(currentTask)
+	framework := currentTask.GetFramework()
 
 	// Load mapping configuration with framework (pass as string)
 	mappingConfig, err := watch.LoadMappingConfig("", string(framework))
