@@ -15,7 +15,6 @@ import (
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/rspec"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -27,7 +26,6 @@ type WorkerResult struct {
 	Error        error
 	Duration     time.Duration
 	FileLoadTime time.Duration // Time to load spec files before running tests
-	JSONOutput   *rspec.JSONOutput
 	ExampleCount int
 	FailureCount int
 	PendingCount int
@@ -154,28 +152,16 @@ func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 	}
 }
 
-// RunSpecFile executes multiple test files in a single test process
-func RunSpecFile(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
-	// Dispatch to framework-specific implementation
-	framework := currentTask.GetFramework()
-	switch framework {
-	case config.FrameworkMinitest:
-		return RunMinitestFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan, currentTask)
-	default:
-		return RunRSpecFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan, currentTask)
-	}
-}
-
-// RunRSpecFiles executes multiple spec files in a single RSpec process
-func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
+// RunTestFiles executes multiple test files in a single test process (unified for all frameworks)
+func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
 	var testFile *TestFile
-	if len(specFiles) > 0 {
+	if len(testFiles) > 0 {
 		testFile = &TestFile{
-			Path:     specFiles[0], // Use first file as primary
-			Filename: filepath.Base(specFiles[0]),
+			Path:     testFiles[0], // Use first file as primary
+			Filename: filepath.Base(testFiles[0]),
 		}
 	} else {
 		testFile = &TestFile{
@@ -185,7 +171,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 	}
 
 	// Build command using the task
-	args := currentTask.BuildCommand(specFiles, globalConfig, specCmd.Command)
+	args := currentTask.BuildCommand(testFiles, globalConfig, specCmd.Command)
 
 	// Log the command in debug mode
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
@@ -206,7 +192,6 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 	// Set up environment variables for parallel testing
 	env := os.Environ()
 	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
-	env = append(env, "PLUR_FORMATTER_SEPARATOR=PLUR_JSON:")
 
 	// Only set TEST_ENV_NUMBER if not in serial mode
 	if !globalConfig.IsSerial() {
@@ -235,17 +220,15 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
-	// Create parser and collector for event-based processing
 	parser, err := currentTask.CreateParser()
 	if err != nil {
 		return errorResult(testFile, err, start)
 	}
 
-	// Use fixed default allocation hints
 	collector := NewTestCollector()
 
 	// Stream output through parser and collector
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, specFiles)
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles)
 
 	// Wait for command to complete
 	err = cmd.Wait()
@@ -260,31 +243,13 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 	}
 	success := exitCode == 0
 
-	// Convert accumulated results to RSpec JSON format for compatibility
-	jsonOutput := result.JSONOutput
-	if jsonOutput == nil {
-		jsonOutput = &rspec.JSONOutput{
-			Version:  "3.13.0",
-			Examples: []rspec.Example{},
-			Summary: rspec.Summary{
-				Duration:     result.Duration.Seconds(),
-				ExampleCount: result.ExampleCount,
-				FailureCount: result.FailureCount,
-				PendingCount: result.PendingCount,
-			},
-		}
-	}
-
 	// Determine the state based on the execution outcome
 	state := types.StateSuccess
 	output := result.Output + stderrOutput
 
-	// Check if this is an execution error (couldn't run tests)
-	if err != nil && result.ExampleCount == 0 &&
-		(strings.Contains(output, "error occurred outside of examples") ||
-			strings.Contains(result.FormattedSummary, "error occurred outside of examples")) {
+	// Check if this is an execution error (couldn't run tests at all)
+	if err != nil && result.ExampleCount == 0 {
 		state = types.StateError
-		// For execution errors, keep the full output which contains error details
 	} else if !success {
 		state = types.StateFailed
 	}
@@ -296,7 +261,6 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 		Error:             err,
 		Duration:          result.Duration,
 		FileLoadTime:      result.FileLoadTime,
-		JSONOutput:        jsonOutput,
 		ExampleCount:      result.ExampleCount,
 		FailureCount:      result.FailureCount,
 		PendingCount:      result.PendingCount,
@@ -371,7 +335,7 @@ func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, spe
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunSpecFile(ctx, globalConfig, specCmd, files, workerIndex, outputChan, currentTask)
+			result := RunTestFiles(ctx, globalConfig, specCmd, files, workerIndex, outputChan, currentTask)
 			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success())
 			results <- result
 		}(i, group.Files)
@@ -401,105 +365,4 @@ func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, spe
 	fmt.Println()
 
 	return allResults, time.Since(start)
-}
-
-// RunMinitestFiles executes multiple test files in a single Minitest process
-func RunMinitestFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
-	start := time.Now()
-
-	// Create TestFile for the primary file (or combined representation)
-	var testFile *TestFile
-	if len(testFiles) > 0 {
-		testFile = &TestFile{
-			Path:     testFiles[0], // Use first file as primary
-			Filename: filepath.Base(testFiles[0]),
-		}
-	} else {
-		testFile = &TestFile{
-			Path:     "unknown",
-			Filename: "unknown",
-		}
-	}
-
-	// Build command using the task
-	args := currentTask.BuildCommand(testFiles, globalConfig, specCmd.Command)
-
-	// Log the command in debug mode
-	logger.Logger.Debug("executing minitest command", "worker", workerIndex, "command", strings.Join(args, " "))
-
-	if globalConfig.DryRun {
-		return WorkerResult{
-			File:     testFile,
-			State:    types.StateSuccess,
-			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
-			Error:    nil,
-			Duration: time.Since(start),
-		}
-	}
-
-	// Create command with context for timeout handling
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-
-	// Set up environment variables for parallel testing
-	env := os.Environ()
-	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
-
-	// Only set TEST_ENV_NUMBER if not in serial mode
-	if !globalConfig.IsSerial() {
-		testEnvNumber := GetTestEnvNumber(workerIndex, globalConfig)
-		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
-	}
-
-	cmd.Env = env
-
-	// Set up stdout and stderr pipes
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
-	}
-
-	parser, err := currentTask.CreateParser()
-	if err != nil {
-		return errorResult(testFile, err, start)
-	}
-
-	collector := NewTestCollector()
-
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles)
-
-	err = cmd.Wait()
-
-	exitCode := 0
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		exitCode = exitErr.ExitCode()
-	}
-	success := exitCode == 0
-
-	result := collector.BuildResult(testFile, time.Since(start))
-
-	state := types.StateSuccess
-	output := result.Output + stderrOutput
-
-	if err != nil && result.ExampleCount == 0 {
-		// Couldn't run tests at all
-		state = types.StateError
-	} else if !success {
-		state = types.StateFailed
-	}
-
-	result.State = state
-	result.Output = output
-	result.Error = err
-
-	return result
 }

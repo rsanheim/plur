@@ -28,6 +28,7 @@ module Plur
 
     def initialize(output)
       @output = output
+      @separator = ENV["PLUR_FORMATTER_SEPARATOR"] || "PLUR_JSON:"
     end
 
     def start(notification)
@@ -161,9 +162,7 @@ module Plur
     end
 
     def output_row(obj)
-      # Use environment variable for separator, default to "plur_JSON:"
-      separator = ENV["PLUR_FORMATTER_SEPARATOR"] || "PLUR_JSON:"
-      output.puts separator + obj.to_json
+      output.puts @separator + obj.to_json
       output.flush
     end
   end
