@@ -171,7 +171,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCm
 	}
 
 	// Build command using the task
-	args := currentTask.BuildCommand(testFiles, globalConfig, specCmd.Command)
+	args := currentTask.BuildCommand(testFiles, globalConfig, "")
 
 	// Log the command in debug mode
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))

@@ -10,6 +10,7 @@ import (
 
 	toml "github.com/pelletier/go-toml"
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -266,11 +267,11 @@ func validateActiveConfig(localPath, globalPath string) error {
 
 	// Check for watch directories
 	fmt.Println("\n  Watch Directories:")
-	framework := config.DetectTestFramework()
-	watchDirs := watch.GetWatchDirectories(string(framework))
+	currentTask := task.DetectFramework()
+	watchDirs := currentTask.GetWatchDirs()
 	if len(watchDirs) == 0 {
 		dirList := "spec/, lib/, app/"
-		if framework == config.FrameworkMinitest {
+		if currentTask.IsMinitestStyle() {
 			dirList = "test/, lib/, app/"
 		}
 		fmt.Printf("    Warning: No watch directories found (checked: %s)\n", dirList)

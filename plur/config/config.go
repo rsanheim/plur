@@ -8,14 +8,6 @@ import (
 	"github.com/rsanheim/plur/rspec"
 )
 
-// TestFramework represents the test framework type
-type TestFramework string
-
-const (
-	FrameworkRSpec    TestFramework = "rspec"
-	FrameworkMinitest TestFramework = "minitest"
-)
-
 // GlobalConfig holds settings that are truly global across all commands
 type GlobalConfig struct {
 	Auto        bool
@@ -104,20 +96,4 @@ func (c *ConfigPaths) GetJSONRowsFormatterPath() string {
 
 	c.JSONRowsFormatter = formatter
 	return c.JSONRowsFormatter
-}
-
-// DetectTestFramework attempts to detect the test framework based on directory structure
-func DetectTestFramework() TestFramework {
-	// Check for test/ directory (minitest)
-	if _, err := os.Stat("test"); err == nil {
-		return FrameworkMinitest
-	}
-
-	// Check for spec/ directory (rspec)
-	if _, err := os.Stat("spec"); err == nil {
-		return FrameworkRSpec
-	}
-
-	// Default to RSpec for backward compatibility
-	return FrameworkRSpec
 }

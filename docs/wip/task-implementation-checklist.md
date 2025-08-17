@@ -159,38 +159,48 @@ This prerequisite eliminates the config duplication between main and internal/ta
 
 **Key Achievement**: Eliminated WorkerResult.Framework field and added Task-based methods for all framework-specific decisions!
 
-### Phase 6.3: Consolidate Test Runners  
-* [ ] Merge `RunRSpecFiles` and `RunMinitestFiles` into single function
-* [ ] Remove dispatch logic in `RunSpecFile`
-* [ ] Use Task to determine any framework-specific behavior
+### Phase 6.3: Consolidate Test Runners ✅ COMPLETED
+* [x] Merge `RunRSpecFiles` and `RunMinitestFiles` into single function
+* [x] Remove dispatch logic in `RunSpecFile`
+* [x] Use Task to determine any framework-specific behavior
 
-### Phase 6.4: Update Framework Detection
-* [ ] Change `DetectTestFramework()` to return `*Task` instead of `TestFramework`
-* [ ] Update all callers of `DetectTestFramework()`
-* [ ] Remove `GetFramework()` method from Task
-* [ ] Remove `TestFramework` enum entirely from config package
+### Phase 6.4: Update Framework Detection ✅ COMPLETED
+* [x] Change `DetectTestFramework()` to return `*Task` instead of `TestFramework`
+* [x] Update all callers of `DetectTestFramework()`
+* [x] Remove `GetFramework()` method from Task
+* [x] Remove `TestFramework` enum entirely from config package
 
-### Phase 6.5: Refactor watch_find.go
+### Phase 6.5: Refactor watch_find.go (Nice to Have)
 * [ ] Move pattern detection logic into Task methods
 * [ ] Add `FindAlternativeSpecs(sourceFile string) []string` to Task
 * [ ] Remove all framework conditionals from watch_find.go
 * [ ] Update doctor.go to use Task instead of framework checks
 
-**Key Achievement**: Complete elimination of TestFramework enum in favor of Task-based logic!
-
 ## Phase 7: Final Cleanup (Breaking Changes)
 
-* [ ] DELETE SpecCmd struct and all its methods
-* [ ] Update main.go to use Task directly for `plur spec` command
-* [ ] Remove all deprecated framework detection functions
-* [ ] Update all integration tests to use new Task system
-* [ ] Update documentation:
-  * [ ] Update CLAUDE.md with new architecture
-  * [ ] Update example TOML configs
-  * [ ] Document task configuration options
-* [ ] Review end-to-end integration tests - do we cover all the bases?
-  * [ ] Full RSpec run with custom task
-  * [ ] Full Minitest run with custom task
+### Phase 7.1: Remove --command CLI Flag ✅ COMPLETED
+* [x] Remove Command field from SpecCmd and WatchCmd structs
+* [x] Remove command override logic from getTaskWithOverrides()
+* [x] Update TestExecutor and runner functions to use Task commands directly
+* [x] Remove all tests that used --command flag
+* [x] Update TOML test fixtures to use [task.taskname] configuration format
+* [x] Update documentation to remove --command references
+* [x] Fix watch.go to use currentTask.Run instead of watchCmd.Command
+
+**Key Achievement**: Complete elimination of --command CLI flag! Commands are now managed entirely by Task system with no confusing CLI overrides or mutations.
+
+### Phase 7.2: Further SpecCmd Simplification
+* [ ] Remove SpecCmd entirely and handle spec command directly in main.go
+* [ ] Update TestExecutor to not require SpecCmd parameter
+* [ ] Simplify runner function signatures to remove SpecCmd dependency
+
+### Phase 7.3: Documentation and Polish
+* [ ] Update CLAUDE.md with new Task-only architecture
+* [ ] Update example TOML configs to show Task configuration
+* [ ] Document task configuration options comprehensively
+* [ ] Review end-to-end integration tests coverage:
+  * [ ] Full RSpec run with custom task configuration
+  * [ ] Full Minitest run with custom task configuration
   * [ ] Watch mode with custom mappings
 
 ## Notes

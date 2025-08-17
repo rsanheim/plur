@@ -1,8 +1,8 @@
 # Global settings
 workers = 2
 
-[spec]
-command = "echo 'SPEC:'"
+[task.rspec]
+run = "echo 'SPEC:'"
 
 [watch.run]
 command = "echo 'WATCH:'"

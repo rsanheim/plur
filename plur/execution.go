@@ -69,7 +69,7 @@ func (e *TestExecutor) executeDryRun() error {
 
 	// Display what would be executed
 	for i, group := range groups {
-		args := e.buildTestCommand(group.Files)
+		args := e.currentTask.BuildCommand(group.Files, e.globalConfig, "")
 		fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
 	}
 
@@ -118,9 +118,4 @@ func (e *TestExecutor) executeTests() error {
 	}
 
 	return nil
-}
-
-// buildTestCommand constructs the test command arguments based on the framework
-func (e *TestExecutor) buildTestCommand(files []string) []string {
-	return e.currentTask.BuildCommand(files, e.globalConfig, e.specCmd.Command)
 }

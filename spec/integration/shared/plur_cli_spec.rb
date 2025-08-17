@@ -11,13 +11,6 @@ RSpec.describe "Plur CLI behavior" do
       expect(result.err).to include("rspec")
     end
 
-    it "shows overridden command if defined" do
-      result = run_plur("spec", "--dry-run", "--command=bin/rspec")
-
-      expect(result.err).to include("[dry-run]")
-      expect(result.err).to include("bin/rspec")
-      expect(result.err).to_not include("bundle exec rspec")
-    end
 
     it "runs dry-run with specific spec file" do
       chdir(default_ruby_dir) do
@@ -92,17 +85,6 @@ RSpec.describe "Plur CLI behavior" do
       end
     end
 
-    it "errors if configured command is not found" do
-      Dir.chdir(default_ruby_dir) do
-        result = run_plur_allowing_errors("spec", "--debug", "--command=rspecx")
-        expect(result).to_not be_success
-        expect(result.exit_status).to be_nonzero
-        # Error messages are displayed after the summary
-        expect(result.out).to include("Error: failed to start command")
-        expect(result.out).to include("rspecx")
-        expect(result.out).to include("not found")
-      end
-    end
 
     it "provides interleaved output from parallel execution" do
       Dir.chdir(default_ruby_dir) do

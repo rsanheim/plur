@@ -147,18 +147,6 @@ RSpec.describe "Configuration integration" do
 
   describe "task configuration loading" do
     context "with TOML task definitions" do
-      it "loads custom task configurations" do
-        _, output, status = Dir.chdir(config_fixture_dir) do
-          Open3.capture3(
-            {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
-            "plur", "spec", "--dry-run", "--command=custom-override"
-          )
-        end
-
-        expect(status).to be_success
-        # Should use custom command override
-        expect(output).to include("custom-override")
-      end
 
       it "applies task-specific run commands from TOML" do
         _, output, status = Dir.chdir(config_fixture_dir) do

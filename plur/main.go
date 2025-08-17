@@ -24,7 +24,6 @@ type TaskConfig struct {
 
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Command  string   `help:"Test command to run" default:"bundle exec rspec"`
 	Use      string   `short:"u" help:"Task configuration to use" default:""`
 }
 
@@ -43,12 +42,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		taskName = detectedTask.Name
 	}
 
-	// Only override command if it's not the default value
-	commandOverride := ""
-	if r.Command != "bundle exec rspec" { // Default value from struct tag
-		commandOverride = r.Command
-	}
-	currentTask := parent.getTaskWithOverrides(taskName, commandOverride)
+	currentTask := parent.getTaskWithOverrides(taskName)
 	logger.Logger.Debug("SpecCmd.Run", "command", currentTask.Run, "patterns", r.Patterns, "task", currentTask.Name)
 
 	// Discover test files
@@ -89,9 +83,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	// Update SpecCmd to use task command
-	r.Command = currentTask.Run
-
 	// Create and run executor
 	executor := NewTestExecutor(cfg, r, testFiles, currentTask)
 	if err := executor.Execute(); err != nil {
@@ -115,7 +106,6 @@ type WatchRunCmd struct {
 	// Flags for watch command
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
-	Command  string `help:"Test command to run" default:"bundle exec rspec"`
 	Use      string `short:"u" help:"Task configuration to use" default:""`
 }
 
@@ -134,12 +124,7 @@ func (w *WatchRunCmd) Run(parent *PlurCLI) error {
 		taskName = detectedTask.Name
 	}
 
-	// Only override command if it's not the default value
-	commandOverride := ""
-	if w.Command != "bundle exec rspec" { // Default value from struct tag
-		commandOverride = w.Command
-	}
-	currentTask := parent.getTaskWithOverrides(taskName, commandOverride)
+	currentTask := parent.getTaskWithOverrides(taskName)
 
 	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
@@ -281,7 +266,7 @@ func (r *PlurCLI) AfterApply() error {
 }
 
 // getTaskWithOverrides returns the appropriate task with CLI/config overrides applied
-func (r *PlurCLI) getTaskWithOverrides(taskName string, commandOverride string) *task.Task {
+func (r *PlurCLI) getTaskWithOverrides(taskName string) *task.Task {
 	var baseTask *task.Task
 
 	// Start with appropriate default task
@@ -316,11 +301,6 @@ func (r *PlurCLI) getTaskWithOverrides(taskName string, commandOverride string) 
 		if configTask.TestGlob != "" {
 			baseTask.TestGlob = configTask.TestGlob
 		}
-	}
-
-	// Apply command override if provided
-	if commandOverride != "" {
-		baseTask.Run = commandOverride
 	}
 
 	return baseTask

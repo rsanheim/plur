@@ -193,23 +193,5 @@ RSpec.describe "Plur error handling" do
       end
     end
 
-    context "when command doesn't exist" do
-      it "shows error when command doesn't exist" do
-        result = run_plur_allowing_errors("--command=nonexistentcommand", "spec/integration/plur_spec/error_handling_spec.rb", "--debug")
-
-        puts "\n=== Command not found (with debug) ==="
-        puts "Exit code: #{result.exit_status}"
-        puts "STDOUT:\n#{result.out}"
-        puts "STDERR:\n#{result.err}"
-
-        expect(result.exit_status).to eq(1)
-        expect(result.out).to include("0 examples, 0 failures")
-
-        # Error details should show the command not found error
-        expect(result.out).to include("Error: failed to start command")
-        expect(result.out).to include("nonexistentcommand")
-        expect(result.out).to include("not found")
-      end
-    end
   end
 end

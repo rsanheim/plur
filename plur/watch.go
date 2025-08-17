@@ -130,7 +130,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				// User pressed Enter - run all specs
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
-				runSpecsOrDirectory("spec", watchCmd.Command)
+				runSpecsOrDirectory("spec", currentTask.Run)
 				fmt.Print("\nplur> ")
 			case "exit":
 				// User typed exit command
@@ -203,7 +203,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				// Run each unique spec
 				for spec := range uniqueSpecs {
 					logger.LogDebug("plur", "event", "run_spec", "path", "./"+spec)
-					runSpecsOrDirectory(spec, watchCmd.Command)
+					runSpecsOrDirectory(spec, currentTask.Run)
 				}
 
 				go func() {

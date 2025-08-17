@@ -32,7 +32,7 @@ plur -C path/to/project   # Change to directory before running (like git -C)
 plur --dry-run            # Preview what will run
 plur doctor               # Debug installation issues
 plur watch                # Auto-run tests on file changes (experimental)
-plur spec --command=bin/rspec  # Override default test command
+plur spec                      # Run tests with detected task
 ```
 
 ### Configuration Files

@@ -48,8 +48,9 @@ RSpec.describe "plur -C with config files", type: :integration do
     before do
       # Create .plur.toml with custom command
       File.write(File.join(project_dir, ".plur.toml"), <<~TOML)
-        command = "rspec"
         workers = 2
+        [task.rspec]
+        run = "rspec"
       TOML
     end
 
@@ -100,7 +101,8 @@ RSpec.describe "plur -C with config files", type: :integration do
   context "with different -C flag formats" do
     before do
       File.write(File.join(project_dir, ".plur.toml"), <<~TOML)
-        command = "rspec"
+        [task.rspec]
+        run = "rspec"
       TOML
     end
 

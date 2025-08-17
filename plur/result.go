@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/types"
 )
@@ -24,11 +23,10 @@ type TestSummary struct {
 	WallTime          time.Duration
 	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
 	HasFailures       bool
-	Success           bool                 // True if no failures and no errors
-	ErroredFiles      []WorkerResult       // Workers that had errors running tests
-	Framework         config.TestFramework // The test framework used
-	TotalPending      int                  // Total pending/skipped tests
-	AllResults        []WorkerResult       // All worker results for accessing raw output
+	Success           bool           // True if no failures and no errors
+	ErroredFiles      []WorkerResult // Workers that had errors running tests
+	TotalPending      int            // Total pending/skipped tests
+	AllResults        []WorkerResult // All worker results for accessing raw output
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -42,7 +40,6 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentTas
 		ErroredFiles: []WorkerResult{},
 		AllResults:   results, // Store all results for raw output access
 		Success:      true,    // Start assuming success
-		Framework:    currentTask.GetFramework(),
 	}
 
 	// Track if we're in single-file mode (single worker)
