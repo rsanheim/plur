@@ -179,9 +179,8 @@ func TestMapFilesToTarget_EdgeCases(t *testing.T) {
 		SourceDirs: []string{"src"},
 		Mappings: []MappingRule{
 			{
-				Pattern:  "src/**/*.go",
-				Target:   "{{path}}/{{name}}_test.go",
-				Priority: 100,
+				Pattern: "src/**/*.go",
+				Target:  "{{path}}/{{name}}_test.go",
 			},
 		},
 	}
@@ -272,78 +271,6 @@ func TestApplyMapping_TokenReplacement(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := task.applyMapping(tt.sourceFile, tt.targetPattern)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestGetTestPattern(t *testing.T) {
-	tests := []struct {
-		name     string
-		task     *Task
-		expected string
-	}{
-		{
-			name:     "rspec task",
-			task:     NewRSpecTask(),
-			expected: "spec/**/*_spec.rb",
-		},
-		{
-			name:     "minitest task",
-			task:     NewMinitestTask(),
-			expected: "test/**/*_test.rb",
-		},
-		{
-			name: "custom task with spec pattern",
-			task: &Task{
-				Name: "custom",
-				Mappings: []MappingRule{
-					{Target: "spec/{{name}}_spec.rb"},
-				},
-			},
-			expected: "spec/**/*_spec.rb",
-		},
-		{
-			name: "custom task with test pattern",
-			task: &Task{
-				Name: "custom",
-				Mappings: []MappingRule{
-					{Target: "test/{{name}}_test.rb"},
-				},
-			},
-			expected: "test/**/*_test.rb",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.task.GetTestPattern()
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestGetTestSuffix(t *testing.T) {
-	tests := []struct {
-		name     string
-		task     *Task
-		expected string
-	}{
-		{
-			name:     "rspec task",
-			task:     NewRSpecTask(),
-			expected: "_spec.rb",
-		},
-		{
-			name:     "minitest task",
-			task:     NewMinitestTask(),
-			expected: "_test.rb",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.task.GetTestSuffix()
 			assert.Equal(t, tt.expected, result)
 		})
 	}

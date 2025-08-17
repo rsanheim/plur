@@ -11,9 +11,8 @@ import (
 
 // MappingRule defines how source files map to test files
 type MappingRule struct {
-	Pattern  string `toml:"pattern"`  // Source file glob pattern
-	Target   string `toml:"target"`   // Target pattern with {{path}}, {{name}}, {{file}} tokens
-	Priority int    `toml:"priority"` // Higher priority rules are checked first
+	Pattern string `toml:"pattern"` // Source file glob pattern
+	Target  string `toml:"target"`  // Target pattern with {{path}}, {{name}}, {{file}} tokens
 }
 
 // Task defines how to run tests, linters, or other jobs in a project
@@ -101,7 +100,7 @@ func (t *Task) MapFilesToTarget(sourceFiles []string) []string {
 	seen := make(map[string]bool)
 
 	for _, sourceFile := range sourceFiles {
-		// Try each mapping rule in priority order
+		// Try each mapping rule in order
 		for _, mapping := range t.Mappings {
 			// Check if source file matches the pattern
 			matched, err := doublestar.Match(mapping.Pattern, sourceFile)
@@ -154,48 +153,6 @@ func (t *Task) applyMapping(sourceFile, targetPattern string) string {
 	return result
 }
 
-// GetTestPattern returns the glob pattern for finding test files
-func (t *Task) GetTestPattern() string {
-	switch t.Name {
-	case "rspec":
-		return "spec/**/*_spec.rb"
-	case "minitest":
-		return "test/**/*_test.rb"
-	default:
-		// Try to infer from mappings
-		for _, mapping := range t.Mappings {
-			if strings.Contains(mapping.Target, "_spec.rb") {
-				return "spec/**/*_spec.rb"
-			}
-			if strings.Contains(mapping.Target, "_test.rb") {
-				return "test/**/*_test.rb"
-			}
-		}
-		return "**/*_test.rb"
-	}
-}
-
-// GetTestSuffix returns the test file suffix for this task
-func (t *Task) GetTestSuffix() string {
-	switch t.Name {
-	case "rspec":
-		return "_spec.rb"
-	case "minitest":
-		return "_test.rb"
-	default:
-		// Try to infer from mappings
-		for _, mapping := range t.Mappings {
-			if strings.Contains(mapping.Target, "_spec.rb") {
-				return "_spec.rb"
-			}
-			if strings.Contains(mapping.Target, "_test.rb") {
-				return "_test.rb"
-			}
-		}
-		return "_test.rb"
-	}
-}
-
 // NewRSpecTask creates the default RSpec task configuration
 func NewRSpecTask() *Task {
 	return &Task{
@@ -205,19 +162,16 @@ func NewRSpecTask() *Task {
 		SourceDirs:  []string{"spec", "lib", "app"},
 		Mappings: []MappingRule{
 			{
-				Pattern:  "lib/**/*.rb",
-				Target:   "spec/{{path}}/{{name}}_spec.rb",
-				Priority: 100,
+				Pattern: "lib/**/*.rb",
+				Target:  "spec/{{path}}/{{name}}_spec.rb",
 			},
 			{
-				Pattern:  "app/**/*.rb",
-				Target:   "spec/{{path}}/{{name}}_spec.rb",
-				Priority: 90,
+				Pattern: "app/**/*.rb",
+				Target:  "spec/{{path}}/{{name}}_spec.rb",
 			},
 			{
-				Pattern:  "spec/**/*_spec.rb",
-				Target:   "{{file}}",
-				Priority: 80,
+				Pattern: "spec/**/*_spec.rb",
+				Target:  "{{file}}",
 			},
 		},
 		IgnorePatterns: []string{".git", "tmp", "log"},
@@ -233,19 +187,16 @@ func NewMinitestTask() *Task {
 		SourceDirs:  []string{"test", "lib", "app"},
 		Mappings: []MappingRule{
 			{
-				Pattern:  "lib/**/*.rb",
-				Target:   "test/{{path}}/{{name}}_test.rb",
-				Priority: 100,
+				Pattern: "lib/**/*.rb",
+				Target:  "test/{{path}}/{{name}}_test.rb",
 			},
 			{
-				Pattern:  "app/**/*.rb",
-				Target:   "test/{{path}}/{{name}}_test.rb",
-				Priority: 90,
+				Pattern: "app/**/*.rb",
+				Target:  "test/{{path}}/{{name}}_test.rb",
 			},
 			{
-				Pattern:  "test/**/*_test.rb",
-				Target:   "{{file}}",
-				Priority: 80,
+				Pattern: "test/**/*_test.rb",
+				Target:  "{{file}}",
 			},
 		},
 		IgnorePatterns: []string{".git", "tmp", "log"},

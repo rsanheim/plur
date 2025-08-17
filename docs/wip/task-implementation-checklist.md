@@ -36,6 +36,11 @@ This prerequisite eliminates the config duplication between main and internal/ta
   * [x] BuildCommand happy path for Minitest
   * [x] MapFilesToTarget with various patterns
   * [x] Edge cases for empty/invalid mappings
+* [x] **Simplify MappingRule struct** - Remove unnecessary fields
+  * [x] Remove Description field (not needed)
+  * [x] Remove Type field (all same type)  
+  * [x] Remove Priority field (simple order-based processing)
+  * [x] Remove hard-coded GetTestPattern/GetTestSuffix methods (defeats data-driven design)
 
 ## Phase 2: TOML Config Integration
 
