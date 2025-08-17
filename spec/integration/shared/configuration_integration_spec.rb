@@ -164,7 +164,7 @@ RSpec.describe "Configuration integration" do
         _, output, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
-            "plur", "spec", "--dry-run", "--type=custom"
+            "plur", "spec", "--dry-run", "--use=custom"
           )
         end
 

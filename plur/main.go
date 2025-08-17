@@ -25,12 +25,7 @@ type TaskConfig struct {
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
 	Command  string   `help:"Test command to run" default:"bundle exec rspec"`
-	Type     string   `short:"t" help:"Test framework type (rspec|minitest)" default:""`
-}
-
-// GetFramework returns the TestFramework enum based on the Type field
-func (s *SpecCmd) GetFramework() config.TestFramework {
-	return ParseFrameworkType(s.Type)
+	Use      string   `short:"u" help:"Task configuration to use" default:""`
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
@@ -38,8 +33,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg := parent.globalConfig
 
 	// Get the appropriate task with overrides applied
-	// Use Type field directly as task name, fall back to framework detection
-	taskName := r.Type
+	// Priority: CLI --use, config use, auto-detect
+	taskName := r.Use
+	if taskName == "" && parent.Use != "" {
+		taskName = parent.Use
+	}
 	if taskName == "" {
 		detectedTask := task.DetectFramework()
 		taskName = detectedTask.Name
@@ -118,24 +116,37 @@ type WatchRunCmd struct {
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
 	Command  string `help:"Test command to run" default:"bundle exec rspec"`
-	Type     string `short:"t" help:"Test framework type (rspec|minitest)" default:""`
-}
-
-// GetFramework returns the TestFramework enum based on the Type field
-func (w *WatchRunCmd) GetFramework() config.TestFramework {
-	return ParseFrameworkType(w.Type)
+	Use      string `short:"u" help:"Task configuration to use" default:""`
 }
 
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
 	// Use the pre-built global config
 	config := parent.globalConfig
 
+	// Get the appropriate task with overrides applied
+	// Priority: CLI --use, config use, auto-detect
+	taskName := w.Use
+	if taskName == "" && parent.Use != "" {
+		taskName = parent.Use
+	}
+	if taskName == "" {
+		detectedTask := task.DetectFramework()
+		taskName = detectedTask.Name
+	}
+
+	// Only override command if it's not the default value
+	commandOverride := ""
+	if w.Command != "bundle exec rspec" { // Default value from struct tag
+		commandOverride = w.Command
+	}
+	currentTask := parent.getTaskWithOverrides(taskName, commandOverride)
+
 	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}
 
-	return runWatchWithConfig(config, w)
+	return runWatchWithConfig(config, w, currentTask)
 }
 
 type WatchInstallCmd struct{}
@@ -209,6 +220,7 @@ type PlurCLI struct {
 	Workers   int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 	FirstIs1  bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	Version   bool   `help:"Show version information"`
+	Use       string `help:"Default task configuration to use" default:""`
 
 	// Task configurations from [task.NAME] sections in TOML - parsed by Kong
 	Task map[string]TaskConfig `help:"Task configurations (config file only)"`
@@ -225,22 +237,15 @@ func (r *PlurCLI) AfterApply() error {
 	// Kong has already resolved r.Debug from CLI flag, env var, or config file
 	logger.InitLogger(r.Verbose, r.Debug)
 
-	// Note: Directory change is now handled before Kong initialization in main()
-
-	// Handle version flag
 	if r.Version {
 		fmt.Println(GetVersionInfo())
 		os.Exit(0)
 	}
 
-	// Sync British spelling to American spelling
-	// Both default to true, so if either is false, use false
-	// This handles --no-color, --no-colour, or both
-	if !r.Colour || !r.Color {
+	if !r.Colour || !r.Color { // silly british spelling
 		r.Color = false
 	}
 
-	// Initialize config paths
 	configPaths := config.InitConfigPaths()
 
 	// Build global config once
@@ -280,21 +285,37 @@ func (r *PlurCLI) AfterApply() error {
 func (r *PlurCLI) getTaskWithOverrides(taskName string, commandOverride string) *task.Task {
 	var baseTask *task.Task
 
-	// Try to get task from TOML config first
+	// Start with appropriate default task
+	switch taskName {
+	case "rspec":
+		baseTask = task.NewRSpecTask()
+	case "minitest":
+		baseTask = task.NewMinitestTask()
+	default:
+		// Auto-detect framework and fall back to RSpec
+		baseTask = task.DetectFramework()
+	}
+
+	// Merge TOML config overrides if they exist
 	if configTask, exists := r.Tasks[taskName]; exists {
-		// Clone the config task to avoid modifying the original
-		clonedTask := *configTask
-		baseTask = &clonedTask
-	} else {
-		// Fall back to default task based on framework detection
-		switch taskName {
-		case "rspec":
-			baseTask = task.NewRSpecTask()
-		case "minitest":
-			baseTask = task.NewMinitestTask()
-		default:
-			// Auto-detect framework and fall back to RSpec
-			baseTask = task.DetectFramework()
+		// Merge non-empty fields from TOML config into base task
+		if configTask.Description != "" {
+			baseTask.Description = configTask.Description
+		}
+		if configTask.Run != "" {
+			baseTask.Run = configTask.Run
+		}
+		if len(configTask.SourceDirs) > 0 {
+			baseTask.SourceDirs = configTask.SourceDirs
+		}
+		if len(configTask.Mappings) > 0 {
+			baseTask.Mappings = configTask.Mappings
+		}
+		if len(configTask.IgnorePatterns) > 0 {
+			baseTask.IgnorePatterns = configTask.IgnorePatterns
+		}
+		if configTask.TestGlob != "" {
+			baseTask.TestGlob = configTask.TestGlob
 		}
 	}
 

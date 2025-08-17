@@ -15,7 +15,7 @@ RSpec.describe "Minitest Integration" do
     it "runs minitest tests successfully" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--type", "minitest", "-n", "1")
+          result = run_plur("--use", "minitest", "-n", "1")
           expect(result).to be_success
           expect(result.out).to include("plur version")
           expect(result.out).to include("Running 2 spec files")
@@ -28,7 +28,7 @@ RSpec.describe "Minitest Integration" do
     it "formats minitest duration using RSpec-style formatting" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--type", "minitest", "-n", "1")
+          result = run_plur("--use", "minitest", "-n", "1")
           expect(result).to be_success
           # Should use "seconds" not "s" suffix
           expect(result.out).to match(/Finished in \d+(?:\.\d{1,5})? seconds/)
@@ -41,7 +41,7 @@ RSpec.describe "Minitest Integration" do
     it "discovers minitest test files" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--type", "minitest", "--dry-run")
+          result = run_plur("--use", "minitest", "--dry-run")
           expect(result).to be_success
           expect(result.err).to include("test/calculator_test.rb")
           expect(result.err).to include("test/string_helper_test.rb")
@@ -56,7 +56,7 @@ RSpec.describe "Minitest Integration" do
     it "reports minitest test failures" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--type", "minitest", "-n", "1", allow_error: true)
+          result = run_plur("--use", "minitest", "-n", "1", allow_error: true)
           expect(result).to be_failure
           # Check for failure output in stdout (not stderr)
           # In parallel execution, individual failure details are not shown

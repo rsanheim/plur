@@ -98,6 +98,24 @@ This prerequisite eliminates the config duplication between main and internal/ta
 
 **Key Achievement**: Eliminate redundant TestSuffix field by deriving it from TestGlob!
 
+## Phase 4.6: Replace --type Flag with --use Flag ✅ COMPLETED
+
+* [x] Replace `--type` flag with `--use` flag throughout codebase
+* [x] Add `Use` field to PlurCLI struct for global task configuration
+* [x] Add `Use` field to SpecCmd (replacing Type field)
+* [x] Add `Use` field to WatchRunCmd (replacing Type field)
+* [x] Implement priority-based task selection (CLI --use > global use > auto-detect)
+* [x] Remove all Type fields and GetFramework methods from command structs
+* [x] Remove ParseFrameworkType function entirely
+* [x] Add getFrameworkFromTask helper to convert task names to TestFramework enum
+* [x] Fix getTaskWithOverrides to properly merge TOML configs with defaults
+* [x] Update all integration tests to use --use instead of --type
+* [x] Simplify ExpandGlobPatterns to leverage task TestGlob directly
+* [x] Remove unused FindSpecFiles() and FindMinitestFiles() functions
+* [x] Clean up main_test.go (framework validation no longer needed)
+
+**Key Achievement**: Clean --use flag interface with proper task configuration merging!
+
 ## Phase 5: Watch Consolidation
 
 * [ ] Update watch FileMapper to use Task.MapFilesToTarget

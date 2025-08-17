@@ -54,7 +54,7 @@ func TestFindSpecFilesRunner(t *testing.T) {
 	assert.NoError(t, err, "FindTestFiles() should not return error")
 
 	expectedFiles := 5 // Only *_spec.rb files
-	assert.Len(t, files, expectedFiles, "FindSpecFiles() should find exactly 5 spec files")
+	assert.Len(t, files, expectedFiles, "FindTestFiles() should find exactly 5 spec files")
 
 	// Verify all expected spec files were found
 	expectedSpecs := map[string]bool{

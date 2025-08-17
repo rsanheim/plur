@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -28,12 +29,12 @@ func runWatchInstall(force bool) error {
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
-func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd) error {
+func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, currentTask *task.Task) error {
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
-	// Get the test framework
-	framework := watchCmd.GetFramework()
+	// Get the test framework from task
+	framework := getFrameworkFromTask(currentTask)
 
 	// Load mapping configuration with framework (pass as string)
 	mappingConfig, err := watch.LoadMappingConfig("", string(framework))
