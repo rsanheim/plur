@@ -1,11 +1,15 @@
 package task
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/minitest"
+	"github.com/rsanheim/plur/rspec"
+	"github.com/rsanheim/plur/types"
 )
 
 // MappingRule defines how source files map to test files
@@ -67,6 +71,37 @@ func (t *Task) BuildCommand(files []string, globalConfig *config.GlobalConfig, c
 	args = append(args, files...)
 
 	return args
+}
+
+// CreateParser creates the appropriate test output parser for this task
+func (t *Task) CreateParser() (types.TestOutputParser, error) {
+	switch t.Name {
+	case "rspec":
+		return rspec.NewOutputParser(), nil
+	case "minitest":
+		return minitest.NewOutputParser(), nil
+	default:
+		return nil, fmt.Errorf("unsupported task type: %s", t.Name)
+	}
+}
+
+// IsMinitestStyle returns true if this task is minitest-style (for formatting decisions)
+func (t *Task) IsMinitestStyle() bool {
+	return t.Name == "minitest"
+}
+
+// GetWatchDirs returns the directories that should be watched for this task
+func (t *Task) GetWatchDirs() []string {
+	var dirs []string
+
+	// Add directories from SourceDirs that actually exist
+	for _, dir := range t.SourceDirs {
+		if exists(dir) {
+			dirs = append(dirs, dir)
+		}
+	}
+
+	return dirs
 }
 
 // GetTestSuffix returns the test file suffix derived from TestGlob

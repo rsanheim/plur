@@ -141,18 +141,23 @@ This prerequisite eliminates the config duplication between main and internal/ta
 
 ## Phase 6: Eliminate TestFramework Enum
 
-### Phase 6.1: Low-Hanging Fruit
-* [ ] Remove unused `framework` parameter from `streamTestOutput()` function
-* [ ] Remove `Framework` field from `WorkerResult` struct  
-* [ ] Update `errorResult()` to not need framework parameter
-* [ ] Clean up all `currentTask.GetFramework()` calls that are no longer needed
+### Phase 6.1: Low-Hanging Fruit ✅ COMPLETED
+* [x] Remove unused `framework` parameter from `streamTestOutput()` function
+* [x] Remove `Framework` field from `WorkerResult` struct  
+* [x] Update `errorResult()` to not need framework parameter
+* [x] Update `BuildTestSummary()` to get framework from Task instead of WorkerResult
+* [x] Update `PrintResults()` to take Task parameter instead of relying on TestSummary.Framework
+* [x] Clean up all `currentTask.GetFramework()` calls that are no longer needed
 
-### Phase 6.2: Add Task Methods
-* [ ] Add `CreateParser() types.TestOutputParser` method to Task
-* [ ] Add `IsMinitestStyle() bool` helper to Task for formatting decisions
-* [ ] Add `GetWatchDirs() []string` method to Task for watch/doctor
-* [ ] Update `NewTestOutputParser()` to use `task.CreateParser()`
-* [ ] Remove `parser_factory.go` if no longer needed
+### Phase 6.2: Add Task Methods ✅ COMPLETED
+* [x] Add `CreateParser() types.TestOutputParser` method to Task
+* [x] Add `IsMinitestStyle() bool` helper to Task for formatting decisions
+* [x] Add `GetWatchDirs() []string` method to Task for watch/doctor
+* [x] Update `NewTestOutputParser()` calls to use `task.CreateParser()`
+* [x] Update `PrintResults()` to use `task.IsMinitestStyle()` instead of framework checks
+* [x] DELETE `parser_factory.go` entirely - no longer needed
+
+**Key Achievement**: Eliminated WorkerResult.Framework field and added Task-based methods for all framework-specific decisions!
 
 ### Phase 6.3: Consolidate Test Runners  
 * [ ] Merge `RunRSpecFiles` and `RunMinitestFiles` into single function

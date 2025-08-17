@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -27,7 +26,6 @@ func streamTestOutput(
 	outputChan chan<- OutputMessage,
 	workerIndex int,
 	testFiles []string,
-	framework config.TestFramework,
 ) (stderrOutput string) {
 	var stderrBuilder strings.Builder
 	stderrBuilder.Grow(StdErrBufferSize) // Pre-allocate for typical stderr output

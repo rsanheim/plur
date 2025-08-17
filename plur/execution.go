@@ -108,8 +108,8 @@ func (e *TestExecutor) executeTests() error {
 	}
 
 	// Build summary and print results
-	summary := BuildTestSummary(results, wallTime)
-	PrintResults(summary, e.globalConfig.ColorOutput)
+	summary := BuildTestSummary(results, wallTime, e.currentTask)
+	PrintResults(summary, e.globalConfig.ColorOutput, e.currentTask)
 
 	// Return error if tests failed
 	if !summary.Success {
