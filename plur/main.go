@@ -248,7 +248,6 @@ func (r *PlurCLI) AfterApply() error {
 
 	configPaths := config.InitConfigPaths()
 
-	// Build global config once
 	r.globalConfig = &config.GlobalConfig{
 		Auto:        r.Auto,
 		ColorOutput: r.Color,
@@ -372,12 +371,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Build config file list
 	var configFiles []string
-
-	// Check for PLUR_CONFIG_FILE environment variable
 	if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
-		// Verify the file exists and is readable
 		if _, err := os.Stat(configFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
 			os.Exit(1)
