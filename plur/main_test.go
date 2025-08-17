@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,19 +15,19 @@ func TestSpecCmd_FrameworkValidation(t *testing.T) {
 		name      string
 		framework string
 		wantErr   bool
-		expected  TestFramework
+		expected  config.TestFramework
 	}{
 		{
 			name:      "valid rspec",
 			framework: "rspec",
 			wantErr:   false,
-			expected:  FrameworkRSpec,
+			expected:  config.FrameworkRSpec,
 		},
 		{
 			name:      "valid minitest",
 			framework: "minitest",
 			wantErr:   false,
-			expected:  FrameworkMinitest,
+			expected:  config.FrameworkMinitest,
 		},
 		{
 			name:      "invalid framework",
@@ -37,7 +38,7 @@ func TestSpecCmd_FrameworkValidation(t *testing.T) {
 			name:      "empty framework uses auto-detection",
 			framework: "",
 			wantErr:   false,
-			expected:  FrameworkRSpec, // default when no dirs exist
+			expected:  config.FrameworkRSpec, // default when no dirs exist
 		},
 	}
 
@@ -76,7 +77,7 @@ func TestDetectTestFramework(t *testing.T) {
 	tests := []struct {
 		name     string
 		setup    func()
-		expected TestFramework
+		expected config.TestFramework
 	}{
 		{
 			name: "detects minitest with test directory",
@@ -84,7 +85,7 @@ func TestDetectTestFramework(t *testing.T) {
 				err := os.Mkdir("test", 0755)
 				require.NoError(t, err)
 			},
-			expected: FrameworkMinitest,
+			expected: config.FrameworkMinitest,
 		},
 		{
 			name: "detects rspec with spec directory",
@@ -92,12 +93,12 @@ func TestDetectTestFramework(t *testing.T) {
 				err := os.Mkdir("spec", 0755)
 				require.NoError(t, err)
 			},
-			expected: FrameworkRSpec,
+			expected: config.FrameworkRSpec,
 		},
 		{
 			name:     "defaults to rspec with no directories",
 			setup:    func() {},
-			expected: FrameworkRSpec,
+			expected: config.FrameworkRSpec,
 		},
 		{
 			name: "prefers minitest when both exist",
@@ -107,7 +108,7 @@ func TestDetectTestFramework(t *testing.T) {
 				err = os.Mkdir("spec", 0755)
 				require.NoError(t, err)
 			},
-			expected: FrameworkMinitest,
+			expected: config.FrameworkMinitest,
 		},
 	}
 
@@ -119,19 +120,19 @@ func TestDetectTestFramework(t *testing.T) {
 
 			tt.setup()
 
-			result := DetectTestFramework()
+			result := config.DetectTestFramework()
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
 // Helper functions to test framework parsing logic
-func parseFramework(frameworkType string) TestFramework {
+func parseFramework(frameworkType string) config.TestFramework {
 	switch frameworkType {
 	case "rspec":
-		return FrameworkRSpec
+		return config.FrameworkRSpec
 	case "minitest":
-		return FrameworkMinitest
+		return config.FrameworkMinitest
 	default:
 		return ""
 	}

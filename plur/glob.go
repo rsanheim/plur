@@ -8,10 +8,11 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/rsanheim/plur/config"
 )
 
 // FindTestFiles discovers all test files based on the framework
-func FindTestFiles(framework TestFramework) ([]string, error) {
+func FindTestFiles(framework config.TestFramework) ([]string, error) {
 	pattern := getDefaultPattern(framework)
 	matches, err := doublestar.FilepathGlob(pattern)
 	if err != nil {
@@ -43,7 +44,7 @@ func FindMinitestFiles() ([]string, error) {
 // ExpandGlobPatterns takes a list of file paths/patterns and expands any glob patterns
 // Supports ** for recursive directory matching, brace expansion, and more
 // Like RSpec, when given patterns or directories, filters to only test files
-func ExpandGlobPatterns(patterns []string, framework TestFramework) ([]string, error) {
+func ExpandGlobPatterns(patterns []string, framework config.TestFramework) ([]string, error) {
 	seenFiles := make(map[string]struct{})
 	suffix := getTestFileSuffix(framework)
 
@@ -103,11 +104,11 @@ func ExpandGlobPatterns(patterns []string, framework TestFramework) ([]string, e
 }
 
 // getTestFileSuffix returns the test file suffix for the framework
-func getTestFileSuffix(framework TestFramework) string {
+func getTestFileSuffix(framework config.TestFramework) string {
 	switch framework {
-	case FrameworkRSpec:
+	case config.FrameworkRSpec:
 		return "_spec.rb"
-	case FrameworkMinitest:
+	case config.FrameworkMinitest:
 		return "_test.rb"
 	default:
 		return "_spec.rb"
@@ -115,11 +116,11 @@ func getTestFileSuffix(framework TestFramework) string {
 }
 
 // getDefaultPattern returns the default glob pattern for the framework
-func getDefaultPattern(framework TestFramework) string {
+func getDefaultPattern(framework config.TestFramework) string {
 	switch framework {
-	case FrameworkRSpec:
+	case config.FrameworkRSpec:
 		return "spec/**/*_spec.rb"
-	case FrameworkMinitest:
+	case config.FrameworkMinitest:
 		return "test/**/*_test.rb"
 	default:
 		return "spec/**/*_spec.rb"

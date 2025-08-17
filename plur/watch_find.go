@@ -9,6 +9,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/pelletier/go-toml"
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -22,7 +23,7 @@ type WatchFindCmd struct {
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	// Detect framework
-	framework := DetectTestFramework()
+	framework := config.DetectTestFramework()
 
 	// Load existing mapping configuration with framework
 	mappingConfig, err := watch.LoadMappingConfig("", string(framework))
@@ -199,7 +200,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 }
 
 // findAlternativeSpecs searches for spec/test files that might match the given source file
-func findAlternativeSpecs(sourceFile string, framework TestFramework) []string {
+func findAlternativeSpecs(sourceFile string, framework config.TestFramework) []string {
 	var alternatives []string
 
 	// Extract the base name without extension
@@ -214,7 +215,7 @@ func findAlternativeSpecs(sourceFile string, framework TestFramework) []string {
 
 	// Search patterns to try using doublestar
 	var patterns []string
-	if framework == FrameworkMinitest {
+	if framework == config.FrameworkMinitest {
 		patterns = []string{
 			fmt.Sprintf("test/**/%s_test.rb", name),   // Exact name match anywhere
 			fmt.Sprintf("test/**/*%s_test.rb", name),  // Name as suffix
@@ -253,7 +254,7 @@ func findAlternativeSpecs(sourceFile string, framework TestFramework) []string {
 
 // detectPatternFromAlternative analyzes an alternative spec/test path and the source file
 // to detect a pattern that could be used as a mapping rule
-func detectPatternFromAlternative(sourceFile, specFile string, framework TestFramework) (pattern, target string) {
+func detectPatternFromAlternative(sourceFile, specFile string, framework config.TestFramework) (pattern, target string) {
 	// Clean up paths
 	sourceFile = filepath.Clean(sourceFile)
 	specFile = filepath.Clean(specFile)
@@ -262,7 +263,7 @@ func detectPatternFromAlternative(sourceFile, specFile string, framework TestFra
 	sourceDir := filepath.Dir(sourceFile)
 	specDir := filepath.Dir(specFile)
 
-	if framework == FrameworkMinitest {
+	if framework == config.FrameworkMinitest {
 		// Minitest patterns
 		// Case 1: lib/example-project/cli.rb -> test/lib/example-project/cli_test.rb (lib preserved in test)
 		if strings.HasPrefix(sourceFile, "lib/") && strings.Contains(specDir, "/lib/") {
@@ -329,7 +330,7 @@ func detectPatternFromAlternative(sourceFile, specFile string, framework TestFra
 	// Case 4: Generic pattern for other directories
 	if sourceDir != "." && sourceDir != "" {
 		pattern = fmt.Sprintf("%s/**/*.rb", sourceDir)
-		if framework == FrameworkMinitest {
+		if framework == config.FrameworkMinitest {
 			if strings.HasPrefix(specFile, "test/") {
 				// Try to detect the pattern in the test path
 				testRelative := strings.TrimPrefix(specFile, "test/")
@@ -367,7 +368,7 @@ func detectPatternFromAlternative(sourceFile, specFile string, framework TestFra
 
 	// Default fallback
 	pattern = "**/*.rb"
-	if framework == FrameworkMinitest {
+	if framework == config.FrameworkMinitest {
 		target = "test/**/{name}_test.rb"
 	} else {
 		target = "spec/**/{name}_spec.rb"
@@ -376,7 +377,7 @@ func detectPatternFromAlternative(sourceFile, specFile string, framework TestFra
 }
 
 // createRuleForFile creates a mapping rule for a file based on its path
-func createRuleForFile(file, target string, framework TestFramework) watch.MappingRule {
+func createRuleForFile(file, target string, framework config.TestFramework) watch.MappingRule {
 	// Determine the pattern based on the file structure
 	dir := filepath.Dir(file)
 
@@ -386,7 +387,7 @@ func createRuleForFile(file, target string, framework TestFramework) watch.Mappi
 	// Extract the target pattern
 	targetDir := filepath.Dir(target)
 	var targetPattern string
-	if framework == FrameworkMinitest {
+	if framework == config.FrameworkMinitest {
 		targetPattern = filepath.Join(targetDir, "{name}_test.rb")
 	} else {
 		targetPattern = filepath.Join(targetDir, "{name}_spec.rb")
@@ -394,7 +395,7 @@ func createRuleForFile(file, target string, framework TestFramework) watch.Mappi
 
 	// Create description
 	var testType string
-	if framework == FrameworkMinitest {
+	if framework == config.FrameworkMinitest {
 		testType = "tests"
 	} else {
 		testType = "specs"

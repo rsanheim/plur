@@ -6,12 +6,13 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/types"
 )
 
 // TestExecutor orchestrates the execution of tests
 type TestExecutor struct {
-	globalConfig   *GlobalConfig
+	globalConfig   *config.GlobalConfig
 	specCmd        *SpecCmd
 	specFiles      []string
 	runtimeTracker *RuntimeTracker
@@ -19,7 +20,7 @@ type TestExecutor struct {
 }
 
 // NewTestExecutor creates a new test executor
-func NewTestExecutor(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string) *TestExecutor {
+func NewTestExecutor(globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string) *TestExecutor {
 	return &TestExecutor{
 		globalConfig:   globalConfig,
 		specCmd:        specCmd,

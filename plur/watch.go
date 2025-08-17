@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -23,11 +24,11 @@ import (
 var watcherBinaries embed.FS
 
 func runWatchInstall(force bool) error {
-	configPaths := InitConfigPaths()
+	configPaths := config.InitConfigPaths()
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
-func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error {
+func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd) error {
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
@@ -64,7 +65,7 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 	watchDirs := watch.GetWatchDirectories(string(framework))
 	if len(watchDirs) == 0 {
 		dirList := "spec, lib, app"
-		if framework == FrameworkMinitest {
+		if framework == config.FrameworkMinitest {
 			dirList = "test, lib, app"
 		}
 		return fmt.Errorf("no directories to watch found (tried: %s)", dirList)

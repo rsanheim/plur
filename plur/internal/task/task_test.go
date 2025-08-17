@@ -4,19 +4,22 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildCommand_RSpec(t *testing.T) {
 	task := NewRSpecTask()
-	config := &GlobalConfig{
-		ColorOutput:   true,
-		FormatterPath: "/path/to/formatter.rb",
+	globalConfig := &config.GlobalConfig{
+		ColorOutput: true,
+		ConfigPaths: &config.ConfigPaths{
+			JSONRowsFormatter: "/path/to/formatter.rb",
+		},
 	}
 	files := []string{"spec/models/user_spec.rb", "spec/controllers/posts_spec.rb"}
 
-	cmd := task.BuildCommand(files, config, nil)
+	cmd := task.BuildCommand(files, globalConfig, nil)
 	require.NotNil(t, cmd)
 
 	// Check command and args

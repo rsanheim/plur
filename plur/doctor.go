@@ -9,10 +9,11 @@ import (
 	"strings"
 
 	toml "github.com/pelletier/go-toml"
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/watch"
 )
 
-func runDoctorWithConfig(globalConfig *GlobalConfig) error {
+func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
 	fmt.Println("Plur Doctor")
 	fmt.Println("==========")
 	fmt.Println()
@@ -191,8 +192,8 @@ func checkConfigFile(path string) (string, error) {
 		return fmt.Sprintf("%s (exists but unreadable: %v)", path, err), nil
 	}
 
-	var config map[string]interface{}
-	if err := toml.Unmarshal(data, &config); err != nil {
+	var tempCfg map[string]interface{}
+	if err := toml.Unmarshal(data, &tempCfg); err != nil {
 		return fmt.Sprintf("%s (invalid TOML: %v)", path, err), nil
 	}
 
@@ -201,26 +202,26 @@ func checkConfigFile(path string) (string, error) {
 
 func validateActiveConfig(localPath, globalPath string) error {
 	// Load config in precedence order
-	var config map[string]interface{}
+	var cfg map[string]interface{}
 	var configSource string
 
 	// Try local first
 	if data, err := os.ReadFile(localPath); err == nil {
-		if err := toml.Unmarshal(data, &config); err == nil {
+		if err := toml.Unmarshal(data, &cfg); err == nil {
 			configSource = "local .plur.toml"
 		}
 	}
 
 	// If no local config, try global
-	if config == nil {
+	if cfg == nil {
 		if data, err := os.ReadFile(globalPath); err == nil {
-			if err := toml.Unmarshal(data, &config); err == nil {
+			if err := toml.Unmarshal(data, &cfg); err == nil {
 				configSource = "global ~/.plur.toml"
 			}
 		}
 	}
 
-	if config == nil {
+	if cfg == nil {
 		fmt.Printf("    Using defaults (no configuration files found)\n")
 		return nil
 	}
@@ -228,27 +229,27 @@ func validateActiveConfig(localPath, globalPath string) error {
 	fmt.Printf("    Source: %s\n", configSource)
 
 	// Display key configuration values
-	if command, ok := config["command"].(string); ok {
+	if command, ok := cfg["command"].(string); ok {
 		fmt.Printf("    Command: %s\n", command)
 	}
 
-	if workers, ok := config["workers"].(int64); ok {
+	if workers, ok := cfg["workers"].(int64); ok {
 		fmt.Printf("    Workers: %d\n", workers)
 	}
 
-	if color, ok := config["color"].(bool); ok {
+	if color, ok := cfg["color"].(bool); ok {
 		fmt.Printf("    Color: %v\n", color)
 	}
 
 	// Check for command-specific configs
-	if specConfig, ok := config["spec"].(map[string]interface{}); ok {
+	if specConfig, ok := cfg["spec"].(map[string]interface{}); ok {
 		fmt.Println("    [spec] section:")
 		if specCommand, ok := specConfig["command"].(string); ok {
 			fmt.Printf("      Command: %s\n", specCommand)
 		}
 	}
 
-	if watchConfig, ok := config["watch"].(map[string]interface{}); ok {
+	if watchConfig, ok := cfg["watch"].(map[string]interface{}); ok {
 		if runConfig, ok := watchConfig["run"].(map[string]interface{}); ok {
 			fmt.Println("    [watch.run] section:")
 			if watchCommand, ok := runConfig["command"].(string); ok {
@@ -265,11 +266,11 @@ func validateActiveConfig(localPath, globalPath string) error {
 
 	// Check for watch directories
 	fmt.Println("\n  Watch Directories:")
-	framework := DetectTestFramework()
+	framework := config.DetectTestFramework()
 	watchDirs := watch.GetWatchDirectories(string(framework))
 	if len(watchDirs) == 0 {
 		dirList := "spec/, lib/, app/"
-		if framework == FrameworkMinitest {
+		if framework == config.FrameworkMinitest {
 			dirList = "test/, lib/, app/"
 		}
 		fmt.Printf("    Warning: No watch directories found (checked: %s)\n", dirList)

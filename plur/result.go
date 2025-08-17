@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -23,8 +24,8 @@ type TestSummary struct {
 	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
 	HasFailures       bool
 	Success           bool           // True if no failures and no errors
-	ErroredFiles      []WorkerResult // Workers that had errors running tests
-	Framework         TestFramework  // The test framework used
+	ErroredFiles      []WorkerResult        // Workers that had errors running tests
+	Framework         config.TestFramework  // The test framework used
 	TotalPending      int            // Total pending/skipped tests
 	AllResults        []WorkerResult // All worker results for accessing raw output
 
@@ -104,7 +105,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
-	if summary.Framework == FrameworkMinitest && summary.HasFailures {
+	if summary.Framework == config.FrameworkMinitest && summary.HasFailures {
 		// Collect all output from failed workers
 		for _, result := range summary.AllResults {
 			if result.State == types.StateFailed && result.Output != "" {
@@ -135,7 +136,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 
 	// Print failed examples list only if we didn't get a formatted summary
 	// (RSpec's formatted summary already includes the failed examples list)
-	if !hasFormattedSummary && summary.Framework != FrameworkMinitest {
+	if !hasFormattedSummary && summary.Framework != config.FrameworkMinitest {
 		// Skip for minitest since we already printed the raw output
 		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
 			fmt.Println("\nFailed examples:")

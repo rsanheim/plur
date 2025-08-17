@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/rsanheim/plur/config"
 )
 
 // MappingRule defines how source files map to test files
@@ -27,22 +28,9 @@ type Task struct {
 	IgnorePatterns []string      `toml:"ignore_patterns"` // Patterns to ignore (for watch)
 }
 
-// GlobalConfig represents configuration passed from the main app
-type GlobalConfig struct {
-	ColorOutput bool
-	Debug       bool
-	Verbose     bool
-	DryRun      bool
-	WorkerCount int
-	RuntimeDir  string
-	JSON        string
-	FirstIs1    bool
-	// Add any formatter paths or other needed config
-	FormatterPath string
-}
 
 // BuildCommand constructs the command to execute for this task
-func (t *Task) BuildCommand(files []string, globalConfig *GlobalConfig, taskOverride *Task) *exec.Cmd {
+func (t *Task) BuildCommand(files []string, globalConfig *config.GlobalConfig, taskOverride *Task) *exec.Cmd {
 	// Use override command if provided
 	command := t.Run
 	if taskOverride != nil && taskOverride.Run != "" {
@@ -75,7 +63,7 @@ func (t *Task) BuildCommand(files []string, globalConfig *GlobalConfig, taskOver
 }
 
 // buildMinitestCommand builds the minitest command
-func (t *Task) buildMinitestCommand(files []string, globalConfig *GlobalConfig) []string {
+func (t *Task) buildMinitestCommand(files []string, globalConfig *config.GlobalConfig) []string {
 	// Default minitest command building
 	parts := []string{"bundle", "exec", "ruby", "-Itest"}
 
@@ -91,10 +79,13 @@ func (t *Task) buildMinitestCommand(files []string, globalConfig *GlobalConfig) 
 }
 
 // addRSpecArgs adds RSpec-specific arguments
-func (t *Task) addRSpecArgs(args []string, globalConfig *GlobalConfig) []string {
+func (t *Task) addRSpecArgs(args []string, globalConfig *config.GlobalConfig) []string {
 	// Add formatter if available
-	if globalConfig.FormatterPath != "" {
-		args = append(args, "-r", globalConfig.FormatterPath, "--format", "Plur::JsonRowsFormatter")
+	if globalConfig.ConfigPaths != nil {
+		formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
+		if formatterPath != "" {
+			args = append(args, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
+		}
 	}
 
 	// Handle color output

@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ func TestFindSpecFilesRunner(t *testing.T) {
 	os.Chdir(tempDir)
 
 	// Test empty directory
-	files, err := FindTestFiles(FrameworkRSpec)
+	files, err := FindTestFiles(config.FrameworkRSpec)
 	assert.NoError(t, err, "FindTestFiles() should not return error")
 	assert.Empty(t, files, "FindTestFiles() should return empty slice for empty directory")
 
@@ -47,7 +48,7 @@ func TestFindSpecFilesRunner(t *testing.T) {
 		f.Close()
 	}
 
-	files, err = FindTestFiles(FrameworkRSpec)
+	files, err = FindTestFiles(config.FrameworkRSpec)
 	assert.NoError(t, err, "FindTestFiles() should not return error")
 
 	expectedFiles := 5 // Only *_spec.rb files
@@ -127,7 +128,7 @@ func TestGetWorkerCountEdgeCases(t *testing.T) {
 
 func TestGetTestEnvNumber(t *testing.T) {
 	t.Run("default behavior (first-is-1)", func(t *testing.T) {
-		config := &GlobalConfig{
+		config := &config.GlobalConfig{
 			WorkerCount: 4,
 			FirstIs1:    true,
 		}
@@ -149,7 +150,7 @@ func TestGetTestEnvNumber(t *testing.T) {
 	})
 
 	t.Run("legacy behavior (no-first-is-1)", func(t *testing.T) {
-		config := &GlobalConfig{
+		config := &config.GlobalConfig{
 			WorkerCount: 4,
 			FirstIs1:    false,
 		}

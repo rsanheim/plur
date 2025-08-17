@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/rspec"
 	"github.com/rsanheim/plur/types"
@@ -30,7 +31,7 @@ type WorkerResult struct {
 	FailureCount int
 	PendingCount int
 	Tests        []types.TestCaseNotification // All test notifications
-	Framework    TestFramework                // The test framework used
+	Framework    config.TestFramework         // The test framework used
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -73,7 +74,7 @@ func GetWorkerCount(cliWorkers int) int {
 
 // GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index
 // Note: This should not be called in serial mode (config.IsSerial() == true)
-func GetTestEnvNumber(workerIndex int, config *GlobalConfig) string {
+func GetTestEnvNumber(workerIndex int, config *config.GlobalConfig) string {
 	// New default behavior: all workers get explicit numbers
 	if config.FirstIs1 {
 		return fmt.Sprintf("%d", workerIndex+1)
@@ -137,7 +138,7 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 }
 
 // errorResult creates a WorkerResult for error cases
-func errorResult(testFile *TestFile, err error, start time.Time, framework TestFramework) WorkerResult {
+func errorResult(testFile *TestFile, err error, start time.Time, framework config.TestFramework) WorkerResult {
 	// Extract error message for output
 	errorOutput := ""
 	if err != nil {
@@ -155,11 +156,11 @@ func errorResult(testFile *TestFile, err error, start time.Time, framework TestF
 }
 
 // RunSpecFile executes multiple test files in a single test process
-func RunSpecFile(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
+func RunSpecFile(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
 	// Dispatch to framework-specific implementation
 	framework := specCmd.GetFramework()
 	switch framework {
-	case FrameworkMinitest:
+	case config.FrameworkMinitest:
 		return RunMinitestFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan)
 	default:
 		return RunRSpecFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan)
@@ -167,7 +168,7 @@ func RunSpecFile(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecC
 }
 
 // RunRSpecFiles executes multiple spec files in a single RSpec process
-func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
+func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -309,7 +310,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *Spe
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles []string, runtimeTracker *RuntimeTracker) ([]WorkerResult, time.Duration) {
+func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, runtimeTracker *RuntimeTracker) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 
@@ -406,7 +407,7 @@ func RunSpecsInParallel(globalConfig *GlobalConfig, specCmd *SpecCmd, specFiles 
 }
 
 // RunMinitestFiles executes multiple test files in a single Minitest process
-func RunMinitestFiles(ctx context.Context, globalConfig *GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
+func RunMinitestFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)

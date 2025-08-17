@@ -7,6 +7,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/alecthomas/kong-toml"
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/logger"
 )
 
@@ -17,13 +18,13 @@ type SpecCmd struct {
 }
 
 // GetFramework returns the TestFramework enum based on the Type field
-func (s *SpecCmd) GetFramework() TestFramework {
+func (s *SpecCmd) GetFramework() config.TestFramework {
 	return ParseFrameworkType(s.Type)
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	// Use the pre-built global config
-	config := parent.globalConfig
+	cfg := parent.globalConfig
 
 	framework := r.GetFramework()
 	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns, "framework", framework)
@@ -47,7 +48,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		if len(testFiles) == 0 {
 			suffix := getTestFileSuffix(framework)
 			dir := "spec"
-			if framework == FrameworkMinitest {
+			if framework == config.FrameworkMinitest {
 				dir = "test"
 			}
 			return fmt.Errorf("no test files found (looking for *%s in %s/)", suffix, dir)
@@ -57,7 +58,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.LogVerbose(msg, "testFiles", testFiles)
 
 	// Run bundle install if --auto flag is set
-	if config.Auto && !config.DryRun {
+	if cfg.Auto && !cfg.DryRun {
 		depManager := NewDependencyManager()
 		if err := depManager.InstallDependencies(); err != nil {
 			return err
@@ -65,7 +66,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	// Create and run executor
-	executor := NewTestExecutor(config, r, testFiles)
+	executor := NewTestExecutor(cfg, r, testFiles)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {
@@ -92,7 +93,7 @@ type WatchRunCmd struct {
 }
 
 // GetFramework returns the TestFramework enum based on the Type field
-func (w *WatchRunCmd) GetFramework() TestFramework {
+func (w *WatchRunCmd) GetFramework() config.TestFramework {
 	return ParseFrameworkType(w.Type)
 }
 
@@ -181,7 +182,7 @@ type PlurCLI struct {
 	Version   bool   `help:"Show version information"`
 
 	// Store the built global config
-	globalConfig *GlobalConfig `kong:"-"`
+	globalConfig *config.GlobalConfig `kong:"-"`
 }
 
 func (r *PlurCLI) AfterApply() error {
@@ -205,10 +206,10 @@ func (r *PlurCLI) AfterApply() error {
 	}
 
 	// Initialize config paths
-	configPaths := InitConfigPaths()
+	configPaths := config.InitConfigPaths()
 
 	// Build global config once
-	r.globalConfig = &GlobalConfig{
+	r.globalConfig = &config.GlobalConfig{
 		Auto:        r.Auto,
 		ColorOutput: r.Color,
 		ConfigPaths: configPaths,
