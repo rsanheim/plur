@@ -14,7 +14,6 @@ type MappingRule struct {
 	Pattern  string `toml:"pattern"`  // Source file glob pattern
 	Target   string `toml:"target"`   // Target pattern with {{path}}, {{name}}, {{file}} tokens
 	Priority int    `toml:"priority"` // Higher priority rules are checked first
-	Type     string `toml:"type"`     // Rule type (currently only "glob")
 }
 
 // Task defines how to run tests, linters, or other jobs in a project
@@ -209,19 +208,16 @@ func NewRSpecTask() *Task {
 				Pattern:  "lib/**/*.rb",
 				Target:   "spec/{{path}}/{{name}}_spec.rb",
 				Priority: 100,
-				Type:     "glob",
 			},
 			{
 				Pattern:  "app/**/*.rb",
 				Target:   "spec/{{path}}/{{name}}_spec.rb",
 				Priority: 90,
-				Type:     "glob",
 			},
 			{
 				Pattern:  "spec/**/*_spec.rb",
 				Target:   "{{file}}",
 				Priority: 80,
-				Type:     "glob",
 			},
 		},
 		IgnorePatterns: []string{".git", "tmp", "log"},
@@ -240,19 +236,16 @@ func NewMinitestTask() *Task {
 				Pattern:  "lib/**/*.rb",
 				Target:   "test/{{path}}/{{name}}_test.rb",
 				Priority: 100,
-				Type:     "glob",
 			},
 			{
 				Pattern:  "app/**/*.rb",
 				Target:   "test/{{path}}/{{name}}_test.rb",
 				Priority: 90,
-				Type:     "glob",
 			},
 			{
 				Pattern:  "test/**/*_test.rb",
 				Target:   "{{file}}",
 				Priority: 80,
-				Type:     "glob",
 			},
 		},
 		IgnorePatterns: []string{".git", "tmp", "log"},
