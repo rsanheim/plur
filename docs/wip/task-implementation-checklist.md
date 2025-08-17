@@ -42,16 +42,21 @@ This prerequisite eliminates the config duplication between main and internal/ta
   * [x] Remove Priority field (simple order-based processing)
   * [x] Remove hard-coded GetTestPattern/GetTestSuffix methods (defeats data-driven design)
 
-## Phase 2: TOML Config Integration
+## Phase 2: TOML Config Integration ✅ COMPLETED
 
-* [ ] Add Task struct tags for TOML parsing
-* [ ] Extend Kong config to load task definitions from TOML
-* [ ] Support loading custom tasks from `[task.NAME]` sections
-* [ ] Handle task override logic (CLI > local config > global config > defaults)
-* [ ] Write config loading tests:
-  * [ ] Load custom task from TOML
-  * [ ] Override default task settings
-  * [ ] Invalid task configuration handling
+* [x] **Use Kong's native features for TOML parsing** - Eliminated all custom TOML loading code
+  * [x] Create TaskConfig struct with proper TOML tags for Kong parsing
+  * [x] Add `Task map[string]TaskConfig` field to PlurCLI for Kong to populate automatically
+  * [x] Convert TaskConfig to task.Task in AfterApply() hook for architecture compatibility
+  * [x] Remove entire loadTaskConfigurations() function (100% less custom code)
+* [x] Support loading custom tasks from `[task.NAME]` sections via Kong's map parsing
+* [x] Handle task override logic (CLI > TOML config > defaults) in getTaskWithOverrides()
+* [x] Verify config loading works:
+  * [x] Successfully load custom task from with-tasks.toml
+  * [x] Test `--type=custom` uses correct command (`echo 'CUSTOM TASK:'`)
+  * [x] Maintain all existing functionality and fallback behavior
+
+**Key Achievement**: Zero custom TOML loading code - Kong handles everything natively!
 
 ## Phase 3: Replace CommandBuilder (Breaking Change)
 

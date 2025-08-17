@@ -8,8 +8,18 @@ import (
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
 )
+
+// TaskConfig defines the structure for task configurations that Kong can parse from TOML
+type TaskConfig struct {
+	Description    string             `toml:"description"`     // Human-readable description
+	Run            string             `toml:"run"`             // Command to run (e.g., "bundle exec rspec")
+	SourceDirs     []string           `toml:"source_dirs"`     // Directories to watch/search
+	Mappings       []task.MappingRule `toml:"mappings"`        // File mapping rules
+	IgnorePatterns []string           `toml:"ignore_patterns"` // Patterns to ignore (for watch)
+}
 
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
@@ -26,8 +36,22 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	// Use the pre-built global config
 	cfg := parent.globalConfig
 
-	framework := r.GetFramework()
-	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns, "framework", framework)
+	// Get the appropriate task with overrides applied
+	// Use Type field directly as task name, fall back to framework detection
+	taskName := r.Type
+	if taskName == "" {
+		framework := config.DetectTestFramework()
+		taskName = string(framework)
+	}
+
+	// Only override command if it's not the default value
+	commandOverride := ""
+	if r.Command != "bundle exec rspec" { // Default value from struct tag
+		commandOverride = r.Command
+	}
+	currentTask := parent.getTaskWithOverrides(taskName, commandOverride)
+	framework := r.GetFramework() // Still needed for legacy file discovery
+	logger.Logger.Debug("SpecCmd.Run", "command", currentTask.Run, "patterns", r.Patterns, "task", currentTask.Name)
 
 	// Discover test files
 	var testFiles []string
@@ -64,6 +88,9 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return err
 		}
 	}
+
+	// Update SpecCmd to use task command
+	r.Command = currentTask.Run
 
 	// Create and run executor
 	executor := NewTestExecutor(cfg, r, testFiles)
@@ -181,6 +208,12 @@ type PlurCLI struct {
 	FirstIs1  bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	Version   bool   `help:"Show version information"`
 
+	// Task configurations from [task.NAME] sections in TOML - parsed by Kong
+	Task map[string]TaskConfig `help:"Task configurations (config file only)"`
+
+	// Processed task configurations (converted from TaskConfig)
+	Tasks map[string]*task.Task `kong:"-"`
+
 	// Store the built global config
 	globalConfig *config.GlobalConfig `kong:"-"`
 }
@@ -222,7 +255,57 @@ func (r *PlurCLI) AfterApply() error {
 		FirstIs1:    r.FirstIs1,
 	}
 
+	// Convert TaskConfig map to task.Task map
+	r.Tasks = make(map[string]*task.Task)
+	for taskName, taskConfig := range r.Task {
+		// Convert TaskConfig to task.Task
+		taskObj := &task.Task{
+			Name:           taskName,
+			Description:    taskConfig.Description,
+			Run:            taskConfig.Run,
+			SourceDirs:     taskConfig.SourceDirs,
+			Mappings:       taskConfig.Mappings,
+			IgnorePatterns: taskConfig.IgnorePatterns,
+		}
+		r.Tasks[taskName] = taskObj
+	}
+
 	return nil
+}
+
+// getTaskWithOverrides returns the appropriate task with CLI/config overrides applied
+func (r *PlurCLI) getTaskWithOverrides(taskName string, commandOverride string) *task.Task {
+	var baseTask *task.Task
+
+	// Try to get task from TOML config first
+	if configTask, exists := r.Tasks[taskName]; exists {
+		// Clone the config task to avoid modifying the original
+		clonedTask := *configTask
+		baseTask = &clonedTask
+	} else {
+		// Fall back to default task based on framework detection
+		switch taskName {
+		case "rspec":
+			baseTask = task.NewRSpecTask()
+		case "minitest":
+			baseTask = task.NewMinitestTask()
+		default:
+			// Auto-detect framework and fall back to RSpec
+			framework := config.DetectTestFramework()
+			if framework == config.FrameworkMinitest {
+				baseTask = task.NewMinitestTask()
+			} else {
+				baseTask = task.NewRSpecTask() // Default fallback
+			}
+		}
+	}
+
+	// Apply command override if provided
+	if commandOverride != "" {
+		baseTask.Run = commandOverride
+	}
+
+	return baseTask
 }
 
 // handleEarlyChangeDir pre-parses command line arguments for the -C flag
