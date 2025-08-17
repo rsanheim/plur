@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -16,17 +17,17 @@ type TestExecutor struct {
 	specCmd        *SpecCmd
 	specFiles      []string
 	runtimeTracker *RuntimeTracker
-	commandBuilder CommandBuilder
+	currentTask    *task.Task
 }
 
 // NewTestExecutor creates a new test executor
-func NewTestExecutor(globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string) *TestExecutor {
+func NewTestExecutor(globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, currentTask *task.Task) *TestExecutor {
 	return &TestExecutor{
 		globalConfig:   globalConfig,
 		specCmd:        specCmd,
 		specFiles:      specFiles,
 		runtimeTracker: NewRuntimeTracker(),
-		commandBuilder: NewCommandBuilder(specCmd.GetFramework()),
+		currentTask:    currentTask,
 	}
 }
 
@@ -85,7 +86,7 @@ func (e *TestExecutor) executeTests() error {
 	fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
 		len(e.specFiles), actualWorkers, runtime.NumCPU())
 
-	results, wallTime := RunSpecsInParallel(e.globalConfig, e.specCmd, e.specFiles, e.runtimeTracker)
+	results, wallTime := RunSpecsInParallel(e.globalConfig, e.specCmd, e.specFiles, e.runtimeTracker, e.currentTask)
 
 	// Save runtime data only if some tests actually ran
 	hasValidRuntimeData := false
@@ -121,5 +122,5 @@ func (e *TestExecutor) executeTests() error {
 
 // buildTestCommand constructs the test command arguments based on the framework
 func (e *TestExecutor) buildTestCommand(files []string) []string {
-	return e.commandBuilder.BuildCommand(files, e.globalConfig, e.specCmd.Command)
+	return e.currentTask.BuildCommand(files, e.globalConfig, e.specCmd.Command)
 }

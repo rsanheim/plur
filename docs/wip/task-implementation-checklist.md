@@ -58,29 +58,45 @@ This prerequisite eliminates the config duplication between main and internal/ta
 
 **Key Achievement**: Zero custom TOML loading code - Kong handles everything natively!
 
-## Phase 3: Replace CommandBuilder (Breaking Change)
+## Phase 3: Replace CommandBuilder (Breaking Change) ✅ COMPLETED
 
-* [ ] Migrate RSpecCommandBuilder logic to Task.BuildCommand
-* [ ] Migrate MinitestCommandBuilder logic to Task.BuildCommand  
-* [ ] Update execution.go to use Task instead of CommandBuilder
-* [ ] Update all references to CommandBuilder throughout codebase
-* [ ] DELETE command_builder.go entirely
-* [ ] DELETE minitest/command.go command building logic
-* [ ] Update execution_test.go to test with Task
+* [x] Migrate RSpecCommandBuilder logic to Task.BuildCommand
+* [x] Migrate MinitestCommandBuilder logic to Task.BuildCommand  
+* [x] Update execution.go to use Task instead of CommandBuilder
+* [x] Update all references to CommandBuilder throughout codebase
+* [x] DELETE command_builder.go entirely
+* [x] DELETE minitest/command.go command building logic
+* [x] Verified with full test suite - 235 examples, 0 failures
 
-## Phase 4: Consolidate Test Discovery (Breaking Change)
+## Phase 4: Consolidate Test Discovery (Breaking Change) ✅ COMPLETED
 
-* [ ] Move `getTestFileSuffix` logic into Task
-* [ ] Move `getDefaultPattern` logic into Task
-* [ ] Update glob.go FindTestFiles to use Task
-* [ ] Update glob.go ExpandGlobPatterns to use Task
-* [ ] Simplify DetectTestFramework to return appropriate Task
-* [ ] DELETE getTestFileSuffix function
-* [ ] DELETE getDefaultPattern function
-* [ ] Write discovery tests:
-  * [ ] RSpec pattern discovery
-  * [ ] Minitest pattern discovery
-  * [ ] Mixed framework detection
+* [x] Move `getTestFileSuffix` logic into Task
+* [x] Move `getDefaultPattern` logic into Task
+* [x] Update glob.go FindTestFiles to use Task
+* [x] Update glob.go ExpandGlobPatterns to use Task
+* [x] Simplify DetectTestFramework to return appropriate Task
+* [x] DELETE getTestFileSuffix function
+* [x] DELETE getDefaultPattern function
+* [x] Write discovery tests:
+  * [x] RSpec pattern discovery
+  * [x] Minitest pattern discovery
+  * [x] Mixed framework detection
+
+**Key Achievement**: All test discovery is now data-driven through Task configuration!
+
+## Phase 4.5: Simplify Test Discovery Fields ✅ COMPLETED
+
+* [x] Rename `TestPattern` field to `TestGlob` in Task struct for clearer naming
+* [x] Remove `TestSuffix` field from Task struct (redundant with TestGlob)
+* [x] Update `GetTestSuffix()` method to derive suffix from TestGlob pattern
+  * [x] Extract suffix from patterns like `"spec/**/*_spec.rb"` → `"_spec.rb"`
+  * [x] Extract suffix from patterns like `"test/**/*_test.rb"` → `"_test.rb"`
+* [x] Update TOML configuration to use `test_glob` instead of `test_pattern`
+* [x] Update all references to TestPattern/TestSuffix throughout codebase
+* [x] Add tests for suffix extraction from glob patterns
+* [x] Verify all existing functionality works with derived suffixes
+
+**Key Achievement**: Eliminate redundant TestSuffix field by deriving it from TestGlob!
 
 ## Phase 5: Watch Consolidation
 

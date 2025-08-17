@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/rspec"
 	"github.com/rsanheim/plur/types"
@@ -156,19 +157,19 @@ func errorResult(testFile *TestFile, err error, start time.Time, framework confi
 }
 
 // RunSpecFile executes multiple test files in a single test process
-func RunSpecFile(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
+func RunSpecFile(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
 	// Dispatch to framework-specific implementation
 	framework := specCmd.GetFramework()
 	switch framework {
 	case config.FrameworkMinitest:
-		return RunMinitestFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan)
+		return RunMinitestFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan, currentTask)
 	default:
-		return RunRSpecFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan)
+		return RunRSpecFiles(ctx, globalConfig, specCmd, testFiles, workerIndex, outputChan, currentTask)
 	}
 }
 
 // RunRSpecFiles executes multiple spec files in a single RSpec process
-func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
+func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -185,9 +186,8 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 		}
 	}
 
-	// Build command using the appropriate builder
-	builder := NewCommandBuilder(specCmd.GetFramework())
-	args := builder.BuildCommand(specFiles, globalConfig, specCmd.Command)
+	// Build command using the task
+	args := currentTask.BuildCommand(specFiles, globalConfig, specCmd.Command)
 
 	// Log the command in debug mode
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
@@ -310,7 +310,7 @@ func RunRSpecFiles(ctx context.Context, globalConfig *config.GlobalConfig, specC
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, runtimeTracker *RuntimeTracker) ([]WorkerResult, time.Duration) {
+func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, runtimeTracker *RuntimeTracker, currentTask *task.Task) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 
@@ -374,7 +374,7 @@ func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, spe
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunSpecFile(ctx, globalConfig, specCmd, files, workerIndex, outputChan)
+			result := RunSpecFile(ctx, globalConfig, specCmd, files, workerIndex, outputChan, currentTask)
 			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success())
 			results <- result
 		}(i, group.Files)
@@ -407,7 +407,7 @@ func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, spe
 }
 
 // RunMinitestFiles executes multiple test files in a single Minitest process
-func RunMinitestFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage) WorkerResult {
+func RunMinitestFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -424,9 +424,8 @@ func RunMinitestFiles(ctx context.Context, globalConfig *config.GlobalConfig, sp
 		}
 	}
 
-	// Build command using the appropriate builder
-	builder := NewCommandBuilder(specCmd.GetFramework())
-	args := builder.BuildCommand(testFiles, globalConfig, specCmd.Command)
+	// Build command using the task
+	args := currentTask.BuildCommand(testFiles, globalConfig, specCmd.Command)
 
 	// Log the command in debug mode
 	logger.Logger.Debug("executing minitest command", "worker", workerIndex, "command", strings.Join(args, " "))

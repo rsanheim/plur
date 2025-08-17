@@ -19,6 +19,7 @@ type TaskConfig struct {
 	SourceDirs     []string           `toml:"source_dirs"`     // Directories to watch/search
 	Mappings       []task.MappingRule `toml:"mappings"`        // File mapping rules
 	IgnorePatterns []string           `toml:"ignore_patterns"` // Patterns to ignore (for watch)
+	TestGlob       string             `toml:"test_glob"`       // Glob pattern for test files
 }
 
 type SpecCmd struct {
@@ -40,8 +41,8 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	// Use Type field directly as task name, fall back to framework detection
 	taskName := r.Type
 	if taskName == "" {
-		framework := config.DetectTestFramework()
-		taskName = string(framework)
+		detectedTask := task.DetectFramework()
+		taskName = detectedTask.Name
 	}
 
 	// Only override command if it's not the default value
@@ -50,14 +51,13 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		commandOverride = r.Command
 	}
 	currentTask := parent.getTaskWithOverrides(taskName, commandOverride)
-	framework := r.GetFramework() // Still needed for legacy file discovery
 	logger.Logger.Debug("SpecCmd.Run", "command", currentTask.Run, "patterns", r.Patterns, "task", currentTask.Name)
 
 	// Discover test files
 	var testFiles []string
 	var err error
 	if len(r.Patterns) > 0 {
-		testFiles, err = ExpandGlobPatterns(r.Patterns, framework)
+		testFiles, err = ExpandGlobPatterns(r.Patterns, currentTask)
 		if err != nil {
 			return err
 		}
@@ -65,14 +65,16 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return fmt.Errorf("no test files found matching provided patterns")
 		}
 	} else {
-		testFiles, err = FindTestFiles(framework)
+		testFiles, err = FindTestFiles(currentTask)
 		if err != nil {
 			return err
 		}
 		if len(testFiles) == 0 {
-			suffix := getTestFileSuffix(framework)
+			suffix := currentTask.GetTestSuffix()
+			// Determine directory from task's test pattern
+			pattern := currentTask.GetTestPattern()
 			dir := "spec"
-			if framework == config.FrameworkMinitest {
+			if strings.HasPrefix(pattern, "test/") {
 				dir = "test"
 			}
 			return fmt.Errorf("no test files found (looking for *%s in %s/)", suffix, dir)
@@ -93,7 +95,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	r.Command = currentTask.Run
 
 	// Create and run executor
-	executor := NewTestExecutor(cfg, r, testFiles)
+	executor := NewTestExecutor(cfg, r, testFiles, currentTask)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {
@@ -266,6 +268,7 @@ func (r *PlurCLI) AfterApply() error {
 			SourceDirs:     taskConfig.SourceDirs,
 			Mappings:       taskConfig.Mappings,
 			IgnorePatterns: taskConfig.IgnorePatterns,
+			TestGlob:       taskConfig.TestGlob,
 		}
 		r.Tasks[taskName] = taskObj
 	}
@@ -291,12 +294,7 @@ func (r *PlurCLI) getTaskWithOverrides(taskName string, commandOverride string) 
 			baseTask = task.NewMinitestTask()
 		default:
 			// Auto-detect framework and fall back to RSpec
-			framework := config.DetectTestFramework()
-			if framework == config.FrameworkMinitest {
-				baseTask = task.NewMinitestTask()
-			} else {
-				baseTask = task.NewRSpecTask() // Default fallback
-			}
+			baseTask = task.DetectFramework()
 		}
 	}
 

@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 )
 
-// FindTestFiles discovers all test files based on the framework
-func FindTestFiles(framework config.TestFramework) ([]string, error) {
-	pattern := getDefaultPattern(framework)
+// FindTestFiles discovers all test files based on the task
+func FindTestFiles(currentTask *task.Task) ([]string, error) {
+	pattern := currentTask.GetTestPattern()
 	matches, err := doublestar.FilepathGlob(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("error finding test files: %v", err)
@@ -44,9 +44,9 @@ func FindMinitestFiles() ([]string, error) {
 // ExpandGlobPatterns takes a list of file paths/patterns and expands any glob patterns
 // Supports ** for recursive directory matching, brace expansion, and more
 // Like RSpec, when given patterns or directories, filters to only test files
-func ExpandGlobPatterns(patterns []string, framework config.TestFramework) ([]string, error) {
+func ExpandGlobPatterns(patterns []string, currentTask *task.Task) ([]string, error) {
 	seenFiles := make(map[string]struct{})
-	suffix := getTestFileSuffix(framework)
+	suffix := currentTask.GetTestSuffix()
 
 	for _, pattern := range patterns {
 		var matches []string
@@ -101,28 +101,4 @@ func ExpandGlobPatterns(patterns []string, framework config.TestFramework) ([]st
 	}
 
 	return allFiles, nil
-}
-
-// getTestFileSuffix returns the test file suffix for the framework
-func getTestFileSuffix(framework config.TestFramework) string {
-	switch framework {
-	case config.FrameworkRSpec:
-		return "_spec.rb"
-	case config.FrameworkMinitest:
-		return "_test.rb"
-	default:
-		return "_spec.rb"
-	}
-}
-
-// getDefaultPattern returns the default glob pattern for the framework
-func getDefaultPattern(framework config.TestFramework) string {
-	switch framework {
-	case config.FrameworkRSpec:
-		return "spec/**/*_spec.rb"
-	case config.FrameworkMinitest:
-		return "test/**/*_test.rb"
-	default:
-		return "spec/**/*_spec.rb"
-	}
 }

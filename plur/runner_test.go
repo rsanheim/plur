@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +25,8 @@ func TestFindSpecFilesRunner(t *testing.T) {
 	os.Chdir(tempDir)
 
 	// Test empty directory
-	files, err := FindTestFiles(config.FrameworkRSpec)
+	rspecTask := task.NewRSpecTask()
+	files, err := FindTestFiles(rspecTask)
 	assert.NoError(t, err, "FindTestFiles() should not return error")
 	assert.Empty(t, files, "FindTestFiles() should return empty slice for empty directory")
 
@@ -48,7 +50,7 @@ func TestFindSpecFilesRunner(t *testing.T) {
 		f.Close()
 	}
 
-	files, err = FindTestFiles(config.FrameworkRSpec)
+	files, err = FindTestFiles(rspecTask)
 	assert.NoError(t, err, "FindTestFiles() should not return error")
 
 	expectedFiles := 5 // Only *_spec.rb files

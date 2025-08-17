@@ -1,7 +1,6 @@
 package task
 
 import (
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -23,14 +22,15 @@ type Task struct {
 	SourceDirs     []string      `toml:"source_dirs"`     // Directories to watch/search
 	Mappings       []MappingRule `toml:"mappings"`        // File mapping rules
 	IgnorePatterns []string      `toml:"ignore_patterns"` // Patterns to ignore (for watch)
+	TestGlob       string        `toml:"test_glob"`       // Glob pattern for test files (e.g., "spec/**/*_spec.rb")
 }
 
 // BuildCommand constructs the command to execute for this task
-func (t *Task) BuildCommand(files []string, globalConfig *config.GlobalConfig, taskOverride *Task) *exec.Cmd {
+func (t *Task) BuildCommand(files []string, globalConfig *config.GlobalConfig, commandOverride string) []string {
 	// Use override command if provided
 	command := t.Run
-	if taskOverride != nil && taskOverride.Run != "" {
-		command = taskOverride.Run
+	if commandOverride != "" {
+		command = commandOverride
 	}
 
 	// Parse command into executable and base args
@@ -38,14 +38,13 @@ func (t *Task) BuildCommand(files []string, globalConfig *config.GlobalConfig, t
 	if len(parts) == 0 {
 		// Special case for minitest where we build the command
 		if t.Name == "minitest" {
-			parts = t.buildMinitestCommand(files, globalConfig)
+			return t.buildMinitestCommand(files, globalConfig)
 		} else {
 			return nil
 		}
 	}
 
-	cmd := parts[0]
-	args := parts[1:]
+	args := parts
 
 	// Add framework-specific arguments
 	if t.Name == "rspec" && globalConfig != nil {
@@ -55,23 +54,83 @@ func (t *Task) BuildCommand(files []string, globalConfig *config.GlobalConfig, t
 	// Add files to command
 	args = append(args, files...)
 
-	return exec.Command(cmd, args...)
+	return args
+}
+
+// GetTestSuffix returns the test file suffix derived from TestGlob
+func (t *Task) GetTestSuffix() string {
+	return extractSuffixFromGlob(t.TestGlob)
+}
+
+// GetTestPattern returns the glob pattern for this task
+func (t *Task) GetTestPattern() string {
+	return t.TestGlob
+}
+
+// extractSuffixFromGlob extracts the file suffix from a glob pattern
+// Examples: "spec/**/*_spec.rb" -> "_spec.rb", "test/**/*_test.rb" -> "_test.rb"
+func extractSuffixFromGlob(glob string) string {
+	// Find the last * in the pattern
+	lastStar := strings.LastIndex(glob, "*")
+	if lastStar == -1 {
+		// No wildcards, try to extract from end
+		if strings.Contains(glob, "_spec.") {
+			// Find _spec. and take everything from there
+			if idx := strings.Index(glob, "_spec."); idx != -1 {
+				return glob[idx:]
+			}
+		}
+		if strings.Contains(glob, "_test.") {
+			// Find _test. and take everything from there
+			if idx := strings.Index(glob, "_test."); idx != -1 {
+				return glob[idx:]
+			}
+		}
+		return ""
+	}
+
+	// Get everything after the last *
+	suffix := glob[lastStar+1:]
+
+	// If it looks like a valid test suffix, return it
+	// Look for patterns like _spec.rb, _test.rb, _custom.js, etc.
+	if strings.Contains(suffix, "_") && strings.Contains(suffix, ".") {
+		// Find the underscore and check if it looks like a test pattern
+		underscoreIdx := strings.Index(suffix, "_")
+		if underscoreIdx != -1 {
+			return suffix
+		}
+	}
+
+	return ""
 }
 
 // buildMinitestCommand builds the minitest command
 func (t *Task) buildMinitestCommand(files []string, globalConfig *config.GlobalConfig) []string {
-	// Default minitest command building
-	parts := []string{"bundle", "exec", "ruby", "-Itest"}
+	// Build base command
+	cmd := []string{"bundle", "exec", "ruby", "-Itest"}
 
-	// Add files with -r flag for each file
-	for _, file := range files {
-		parts = append(parts, "-r", file)
+	// Handle files differently based on count
+	if len(files) == 1 {
+		// Single file: pass directly
+		cmd = append(cmd, files[0])
+	} else if len(files) > 1 {
+		// Multiple files: use -e with require pattern
+		requires := make([]string, len(files))
+		for i, file := range files {
+			// Strip the "test/" prefix if present since we're using -Itest
+			testFile := strings.TrimPrefix(file, "test/")
+			// Remove the .rb extension for require
+			testFile = strings.TrimSuffix(testFile, ".rb")
+			requires[i] = strings.ReplaceAll(testFile, "\"", "\\\"") // Escape quotes
+		}
+
+		// Create the require pattern
+		requireList := `"` + strings.Join(requires, `", "`) + `"`
+		cmd = append(cmd, "-e", `[`+requireList+`].each { |f| require f }`)
 	}
 
-	// Add the test runner
-	parts = append(parts, "-e", "nil")
-
-	return parts
+	return cmd
 }
 
 // addRSpecArgs adds RSpec-specific arguments
@@ -175,6 +234,7 @@ func NewRSpecTask() *Task {
 			},
 		},
 		IgnorePatterns: []string{".git", "tmp", "log"},
+		TestGlob:       "spec/**/*_spec.rb",
 	}
 }
 
@@ -200,6 +260,7 @@ func NewMinitestTask() *Task {
 			},
 		},
 		IgnorePatterns: []string{".git", "tmp", "log"},
+		TestGlob:       "test/**/*_test.rb",
 	}
 }
 
