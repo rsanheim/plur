@@ -84,7 +84,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	// Create and run executor
-	executor := NewTestExecutor(cfg, r, testFiles, currentTask)
+	executor := NewTestExecutor(cfg, testFiles, currentTask)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {

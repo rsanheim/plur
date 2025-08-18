@@ -153,7 +153,7 @@ func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 }
 
 // RunTestFiles executes multiple test files in a single test process (unified for all frameworks)
-func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCmd *SpecCmd, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
+func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -271,7 +271,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, specCm
 }
 
 // RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, runtimeTracker *RuntimeTracker, currentTask *task.Task) ([]WorkerResult, time.Duration) {
+func RunSpecsInParallel(globalConfig *config.GlobalConfig, specFiles []string, runtimeTracker *RuntimeTracker, currentTask *task.Task) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 
@@ -335,7 +335,7 @@ func RunSpecsInParallel(globalConfig *config.GlobalConfig, specCmd *SpecCmd, spe
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
-			result := RunTestFiles(ctx, globalConfig, specCmd, files, workerIndex, outputChan, currentTask)
+			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentTask)
 			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success())
 			results <- result
 		}(i, group.Files)

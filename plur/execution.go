@@ -14,17 +14,15 @@ import (
 // TestExecutor orchestrates the execution of tests
 type TestExecutor struct {
 	globalConfig   *config.GlobalConfig
-	specCmd        *SpecCmd
 	specFiles      []string
 	runtimeTracker *RuntimeTracker
 	currentTask    *task.Task
 }
 
 // NewTestExecutor creates a new test executor
-func NewTestExecutor(globalConfig *config.GlobalConfig, specCmd *SpecCmd, specFiles []string, currentTask *task.Task) *TestExecutor {
+func NewTestExecutor(globalConfig *config.GlobalConfig, specFiles []string, currentTask *task.Task) *TestExecutor {
 	return &TestExecutor{
 		globalConfig:   globalConfig,
-		specCmd:        specCmd,
 		specFiles:      specFiles,
 		runtimeTracker: NewRuntimeTracker(),
 		currentTask:    currentTask,
@@ -86,7 +84,7 @@ func (e *TestExecutor) executeTests() error {
 	fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
 		len(e.specFiles), actualWorkers, runtime.NumCPU())
 
-	results, wallTime := RunSpecsInParallel(e.globalConfig, e.specCmd, e.specFiles, e.runtimeTracker, e.currentTask)
+	results, wallTime := RunSpecsInParallel(e.globalConfig, e.specFiles, e.runtimeTracker, e.currentTask)
 
 	// Save runtime data only if some tests actually ran
 	hasValidRuntimeData := false
