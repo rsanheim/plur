@@ -24,6 +24,13 @@ func (s *SpecCmd) GetFramework() TestFramework {
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	// Use the pre-built global config
 	config := parent.globalConfig
+	fakeConfig := &GlobalConfig{
+		Auto:        true,
+		ColorOutput: true,
+		ConfigPaths: []string{".plur.toml", "~/.plur.toml"},
+		Debug:       false,
+		Verbose:     false,
+	}
 
 	framework := r.GetFramework()
 	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns, "framework", framework)
