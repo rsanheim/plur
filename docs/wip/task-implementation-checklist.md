@@ -190,9 +190,9 @@ This prerequisite eliminates the config duplication between main and internal/ta
 **Key Achievement**: Complete elimination of --command CLI flag! Commands are now managed entirely by Task system with no confusing CLI overrides or mutations.
 
 ### Phase 7.2: Further SpecCmd Simplification
-* [ ] Remove SpecCmd entirely and handle spec command directly in main.go
-* [ ] Update TestExecutor to not require SpecCmd parameter
-* [ ] Simplify runner function signatures to remove SpecCmd dependency
+* [x] Remove SpecCmd entirely and handle spec command directly in main.go
+* [x] Update TestExecutor to not require SpecCmd parameter
+* [x] Simplify runner function signatures to remove SpecCmd dependency
 
 ### Phase 7.3: Documentation and Polish
 * [ ] Update CLAUDE.md with new Task-only architecture
