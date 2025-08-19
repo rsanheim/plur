@@ -51,7 +51,7 @@ func (e *TestExecutor) summaryMsg() {
 
 // Execute runs the test execution based on the configuration
 func (e *TestExecutor) Execute() error {
-	fmt.Printf("plur version version=%s\n", GetVersionInfo())
+	toStdErr(e.globalConfig.DryRun, "plur version version=%s\n", GetVersionInfo())
 
 	if e.globalConfig.DryRun {
 		return e.executeDryRun()

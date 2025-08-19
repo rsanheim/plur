@@ -17,7 +17,7 @@ RSpec.describe "Minitest Integration" do
         Bundler.with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "1")
           expect(result).to be_success
-          expect(result.out).to include("plur version")
+          expect(result.err).to include("plur version")
           expect(result.err).to include("Running 2 tests")
           # Minitest shows the final summary
           expect(result.out).to match(/\d+ runs?, \d+ assertions?, 0 failures?, 0 errors?/)
