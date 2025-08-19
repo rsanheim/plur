@@ -33,7 +33,7 @@ RSpec.describe "single failure golden test" do
     stderr_matcher = ->(stderr_1, stderr_2) { true }
 
     # Record rspec output
-    Backspin.run("rspec_vs_plur_backtrace_comparison", 
+    Backspin.run("rspec_vs_plur_backtrace_comparison",
       matcher: {stdout: stdout_matcher}) do
       chdir fixture_path("failing_specs") do
         run_rspec("spec/single_failure_spec.rb", "--tty", "--force-color")

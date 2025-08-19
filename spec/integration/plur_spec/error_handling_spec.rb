@@ -9,7 +9,7 @@ RSpec.describe "Plur error handling" do
     context "running RSpec directly (baseline behavior)" do
       it "shows behavior for passing tests" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/passing_spec.rb")
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/passing_spec.rb")
 
           expect(status.exitstatus).to eq(0)
           expect(stdout).to include("2 examples, 0 failures")
@@ -18,7 +18,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for test failures" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/test_failure_spec.rb")
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/test_failure_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("2 examples, 1 failure")
@@ -27,7 +27,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for unhandled exceptions" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/exception_spec.rb")
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/exception_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("2 examples, 1 failure")
@@ -36,7 +36,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for syntax errors in spec" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/syntax_error_spec.rb")
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/syntax_error_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
@@ -46,7 +46,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for syntax errors in code under test" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/calculator_spec.rb")
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/calculator_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
@@ -56,7 +56,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for LoadError" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/load_error_spec.rb")
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/load_error_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
