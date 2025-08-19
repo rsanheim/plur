@@ -37,12 +37,9 @@ RSpec.describe "Plur performance" do
         end
       end
 
-      if true
-        # Output timing information for verification
-        puts "plur time: #{plur_time.round(3)}s"
-        puts "RSpec time: #{rspec_time.round(3)}s"
-        puts "Overhead: #{(plur_time - rspec_time).round(3)}s"
-      end
+      puts "plur time: #{plur_time.round(3)}s"
+      puts "RSpec time: #{rspec_time.round(3)}s"
+      puts "Overhead: #{(plur_time - rspec_time).round(3)}s"
 
       # Overhead should be minimal (less than 1 second)
       expect(plur_time - rspec_time).to be < 1.0
