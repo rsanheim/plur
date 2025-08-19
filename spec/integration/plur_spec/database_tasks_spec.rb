@@ -4,7 +4,7 @@ RSpec.describe "Plur database tasks" do
   context "db:setup command (dry-run)" do
     it "runs db:setup in dry-run mode for Rails app" do
       Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:setup", "-n", "3").out
+        output = run_plur("--dry-run", "db:setup", "-n", "3").err
 
         expect(output).to include("[dry-run] Worker 0: TEST_ENV_NUMBER=1 RAILS_ENV=test bundle exec rake db:setup")
         expect(output).to include("[dry-run] Worker 1: TEST_ENV_NUMBER=2 RAILS_ENV=test bundle exec rake db:setup")
@@ -14,7 +14,7 @@ RSpec.describe "Plur database tasks" do
 
     it "runs db:setup with legacy behavior when --no-first-is-1" do
       Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:setup", "-n", "3", "--no-first-is-1").out
+        output = run_plur("--dry-run", "db:setup", "-n", "3", "--no-first-is-1").err
 
         expect(output).to include("[dry-run] Worker 0: TEST_ENV_NUMBER= RAILS_ENV=test bundle exec rake db:setup")
         expect(output).to include("[dry-run] Worker 1: TEST_ENV_NUMBER=2 RAILS_ENV=test bundle exec rake db:setup")
@@ -24,7 +24,7 @@ RSpec.describe "Plur database tasks" do
 
     it "does not set TEST_ENV_NUMBER in serial mode" do
       Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:setup", "-n", "1").out
+        output = run_plur("--dry-run", "db:setup", "-n", "1").err
 
         expect(output).to include("[dry-run] Worker 0: RAILS_ENV=test bundle exec rake db:setup")
         expect(output).not_to include("TEST_ENV_NUMBER")
@@ -65,7 +65,7 @@ RSpec.describe "Plur database tasks" do
   describe "db:create command" do
     it "displays db:create in dry-run mode" do
       Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:create", "-n", "2").out
+        output = run_plur("--dry-run", "db:create", "-n", "2").err
 
         expect(output).to include("RAILS_ENV=test bundle exec rake db:create")
       end
@@ -75,7 +75,7 @@ RSpec.describe "Plur database tasks" do
   describe "db:migrate command" do
     it "displays db:migrate in dry-run mode" do
       Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:migrate", "-n", "2").out
+        output = run_plur("--dry-run", "db:migrate", "-n", "2").err
 
         expect(output).to include("RAILS_ENV=test bundle exec rake db:migrate")
       end
@@ -88,7 +88,7 @@ RSpec.describe "Plur database tasks" do
         result = run_plur("--dry-run", "db:test:prepare", "-n", "2", allow_error: true)
 
         expect(result.status).to eq(0)
-        expect(result.out).to include("RAILS_ENV=test bundle exec rake db:test:prepare")
+        expect(result.err).to include("RAILS_ENV=test bundle exec rake db:test:prepare")
       end
     end
   end

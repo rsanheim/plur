@@ -18,7 +18,7 @@ RSpec.describe "Minitest Integration" do
           result = run_plur("--use", "minitest", "-n", "1")
           expect(result).to be_success
           expect(result.out).to include("plur version")
-          expect(result.out).to include("Running 2 spec files")
+          expect(result.err).to include("Running 2 tests")
           # Minitest shows the final summary
           expect(result.out).to match(/\d+ runs?, \d+ assertions?, 0 failures?, 0 errors?/)
         end

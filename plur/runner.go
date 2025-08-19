@@ -193,7 +193,6 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 	env := os.Environ()
 	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
 
-	// Only set TEST_ENV_NUMBER if not in serial mode
 	if !globalConfig.IsSerial() {
 		testEnvNumber := GetTestEnvNumber(workerIndex, globalConfig)
 		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
@@ -270,8 +269,8 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 	}
 }
 
-// RunSpecsInParallel executes spec files in parallel using intelligent grouping
-func RunSpecsInParallel(globalConfig *config.GlobalConfig, specFiles []string, runtimeTracker *RuntimeTracker, currentTask *task.Task) ([]WorkerResult, time.Duration) {
+// RunTestsInParallel runs spec or test files in parallel
+func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentTask *task.Task) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 
@@ -288,12 +287,12 @@ func RunSpecsInParallel(globalConfig *config.GlobalConfig, specFiles []string, r
 	// Group files using runtime data if available, otherwise by size
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(specFiles), pluralize(len(specFiles), "file", "files"), maxWorkers)
-		groups = GroupSpecFilesByRuntime(specFiles, maxWorkers, runtimeData)
+		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
+		groups = GroupSpecFilesByRuntime(testFiles, maxWorkers, runtimeData)
 		logger.LogVerbose("Using runtime-based grouping", "runtime_entries", len(runtimeData))
 	} else {
-		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(specFiles), pluralize(len(specFiles), "file", "files"), maxWorkers)
-		groups = GroupSpecFilesBySize(specFiles, maxWorkers)
+		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
+		groups = GroupSpecFilesBySize(testFiles, maxWorkers)
 		logger.LogVerbose("Using size-based grouping (no runtime data available)")
 	}
 

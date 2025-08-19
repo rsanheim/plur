@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/rsanheim/plur/config"
@@ -14,19 +13,40 @@ import (
 // TestExecutor orchestrates the execution of tests
 type TestExecutor struct {
 	globalConfig   *config.GlobalConfig
-	specFiles      []string
+	testFiles      []string
+	testLabel      string
 	runtimeTracker *RuntimeTracker
 	currentTask    *task.Task
 }
 
 // NewTestExecutor creates a new test executor
-func NewTestExecutor(globalConfig *config.GlobalConfig, specFiles []string, currentTask *task.Task) *TestExecutor {
+func NewTestExecutor(globalConfig *config.GlobalConfig, testFiles []string, currentTask *task.Task) *TestExecutor {
+	var label string
+	switch currentTask.Name {
+	case "rspec":
+		label = pluralize(len(testFiles), "spec", "specs")
+	case "minitest":
+		label = pluralize(len(testFiles), "test", "tests")
+	default:
+		label = pluralize(len(testFiles), "test", "tests")
+	}
 	return &TestExecutor{
 		globalConfig:   globalConfig,
-		specFiles:      specFiles,
+		testFiles:      testFiles,
+		testLabel:      label,
 		runtimeTracker: NewRuntimeTracker(),
 		currentTask:    currentTask,
 	}
+}
+
+func (e *TestExecutor) summaryMsg() {
+	actualWorkers := e.globalConfig.WorkerCount
+	if len(e.testFiles) < e.globalConfig.WorkerCount {
+		actualWorkers = len(e.testFiles)
+	}
+
+	toStdErr(e.globalConfig.DryRun, "Running %d %s in parallel using %d workers\n",
+		len(e.testFiles), e.testLabel, actualWorkers)
 }
 
 // Execute runs the test execution based on the configuration
@@ -43,32 +63,30 @@ func (e *TestExecutor) Execute() error {
 // executeDryRun handles the dry-run mode
 func (e *TestExecutor) executeDryRun() error {
 	if e.globalConfig.Auto {
-		fmt.Fprintln(os.Stderr, "[dry-run] bundle install")
+		toStdErr(true, "bundle install\n")
 	}
 
-	fmt.Fprintf(os.Stderr, "[dry-run] Found %d spec files, running in parallel:\n", len(e.specFiles))
+	e.summaryMsg()
 
-	// Load runtime data if available
 	runtimeData, err := LoadRuntimeData()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
 		runtimeData = make(map[string]float64)
 	}
 
-	// Group files for execution
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(e.specFiles, e.globalConfig.WorkerCount, runtimeData)
-		fmt.Fprintf(os.Stderr, "[dry-run] Using runtime-based grouped execution: %d groups\n", len(groups))
+		groups = GroupSpecFilesByRuntime(e.testFiles, e.globalConfig.WorkerCount, runtimeData)
+		toStdErr(e.globalConfig.DryRun, "Using runtime-based grouped execution: %d groups\n", len(groups))
 	} else {
-		groups = GroupSpecFilesBySize(e.specFiles, e.globalConfig.WorkerCount)
-		fmt.Fprintf(os.Stderr, "[dry-run] Using size-based grouped execution: %d groups\n", len(groups))
+		groups = GroupSpecFilesBySize(e.testFiles, e.globalConfig.WorkerCount)
+		toStdErr(e.globalConfig.DryRun, "Using size-based grouped execution: %d groups\n", len(groups))
 	}
 
 	// Display what would be executed
 	for i, group := range groups {
 		args := e.currentTask.BuildCommand(group.Files, e.globalConfig, "")
-		fmt.Fprintf(os.Stderr, "[dry-run] Worker %d: %s\n", i, strings.Join(args, " "))
+		toStdErr(e.globalConfig.DryRun, "Worker %d: %s\n", i, strings.Join(args, " "))
 	}
 
 	return nil
@@ -76,15 +94,9 @@ func (e *TestExecutor) executeDryRun() error {
 
 // executeTests handles the actual test execution
 func (e *TestExecutor) executeTests() error {
-	actualWorkers := e.globalConfig.WorkerCount
-	if len(e.specFiles) < e.globalConfig.WorkerCount {
-		actualWorkers = len(e.specFiles)
-	}
+	e.summaryMsg()
 
-	fmt.Printf("Running %d spec files in parallel using %d workers (%d cores available)...\n",
-		len(e.specFiles), actualWorkers, runtime.NumCPU())
-
-	results, wallTime := RunSpecsInParallel(e.globalConfig, e.specFiles, e.runtimeTracker, e.currentTask)
+	results, wallTime := RunTestsInParallel(e.globalConfig, e.testFiles, e.runtimeTracker, e.currentTask)
 
 	// Save runtime data only if some tests actually ran
 	hasValidRuntimeData := false
