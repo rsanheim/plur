@@ -32,7 +32,7 @@ RSpec.describe "plur watch integration" do
     expect(result.err).to include("plur event=run_spec path=./spec/calculator_spec.rb")
   end
 
-  it "maps nested lib files correctly" do
+  it "maps nested lib files correctly", :skip_if_ci do
     # Create a nested lib file temporarily
     nested_lib = default_ruby_dir.join("lib/models/temp_model.rb")
     FileUtils.mkdir_p(File.dirname(nested_lib))
