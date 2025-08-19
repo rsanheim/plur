@@ -37,7 +37,7 @@ RSpec.describe "Plur performance" do
         end
       end
 
-      if ENV["VERBOSE"]
+      if true
         # Output timing information for verification
         puts "plur time: #{plur_time.round(3)}s"
         puts "RSpec time: #{rspec_time.round(3)}s"
