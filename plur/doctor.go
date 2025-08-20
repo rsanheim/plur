@@ -18,7 +18,7 @@ func runDoctorWithConfig(globalConfig *GlobalConfig) error {
 	fmt.Println()
 
 	// Plur version info
-	fmt.Printf("Plur Version:     %s\n", GetVersionInfo())
+	fmt.Printf("Plur Version:    %s\n", GetVersionInfo())
 	fmt.Printf("Build Date:      %s\n", date)
 	fmt.Printf("Git Commit:      %s\n", commit)
 	fmt.Printf("Built By:        %s\n", builtBy)
@@ -46,7 +46,7 @@ func runDoctorWithConfig(globalConfig *GlobalConfig) error {
 	if err != nil {
 		exePath = fmt.Sprintf("error: %v", err)
 	}
-	fmt.Printf("Plur Binary:       %s\n", exePath)
+	fmt.Printf("Plur Binary:     %s\n", exePath)
 	fmt.Println()
 
 	// Ruby info
