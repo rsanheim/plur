@@ -14,7 +14,6 @@ This directory contains active development documentation.
 
 | Document | Purpose | Last Updated |
 |----------|---------|--------------|  
-| [optimize-watch-tests-with-handlers.md](optimize-watch-tests-with-handlers.md) | Hook-based test automation for file changes | 2025-08-16 |
 | [consolidate-watch-and-spec-report.md](consolidate-watch-and-spec-report.md) | Consolidate watch and spec report handlers | - |
 
 ### 📁 Reference Files
