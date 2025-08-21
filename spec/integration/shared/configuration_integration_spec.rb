@@ -140,15 +140,15 @@ RSpec.describe "Configuration integration" do
       expect(status).to be_success
       expect(output).to include("Plur Doctor")
       expect(output).to include("Configuration:")
-      
+
       # Should show active configuration files (with expanded path)
       expect(output).to include("Active Configuration Files:")
       expect(output).to match(/doctor-test\.toml \(via PLUR_CONFIG_FILE\)/)
-      
+
       # Should show actual config values from doctor-test.toml
       expect(output).to include("Workers:     4")
       expect(output).to include("Color:       true")
-      
+
       # Should NOT show "Using defaults" since config was loaded
       expect(output).not_to include("Using defaults")
     end
