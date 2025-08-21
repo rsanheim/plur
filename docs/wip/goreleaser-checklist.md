@@ -63,32 +63,35 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 - [x] ✅ Verify version info: `./dist/plur_darwin_arm64_v8.0/plur --version`
 - [x] ✅ Confirm artifact naming follows convention
 
-### 1.5 Watcher Binary Packaging
-- [ ] **CRITICAL**: Package e-dant/watcher binaries with plur
-  - [ ] Strategy: Embed platform-specific watcher binaries
-  - [ ] Download watcher binaries during build
-  - [ ] Include correct watcher for target platform
-  - [ ] Test extraction and execution
-- [ ] Implementation options:
-  - [ ] Option A: go:embed with pre-downloaded binaries
-  - [ ] Option B: Download during GoReleaser build
-  - [ ] Option C: Build from source during release
-- [ ] Ensure watcher works on all platforms
+### 1.5 Watcher Binary Packaging ✅
+- [x] ✅ **Strategy Decision**: Continue with existing go:embed approach
+  - [x] ✅ macOS Intel (x86_64) - NOT SUPPORTED (documented)
+  - [x] ✅ Windows - Include as experimental/alpha
+  - [x] ✅ macOS ARM64 - Already embedded
+  - [x] ✅ Linux ARM64 - Already embedded
+  - [x] ✅ Linux x86_64 - Already embedded
+- [x] ✅ Implementation tasks:
+  - [x] ✅ Download Windows watcher binaries
+  - [x] ✅ Update `lib/tasks/vendor.rake` to include Windows platforms
+  - [x] ✅ Update `watch/binary.go` to support Windows platforms
+  - [x] ✅ Test GoReleaser builds with embedded binaries
+  - [x] ✅ Document Windows support as experimental in README
 
-### 1.6 CircleCI Integration
-- [ ] Add new job to `.circleci/config.yml`:
+### 1.6 CircleCI Integration ✅
+- [x] ✅ Add new job to `.circleci/config.yml`:
   ```yaml
   test-goreleaser:
     docker:
-      - image: cimg/go:1.22
+      - image: cimg/go:1.25
     steps:
       - checkout
-      - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
-      - run: ./bin/goreleaser build --snapshot --single-target
+      - run: Install GoReleaser
+      - run: goreleaser build --snapshot --single-target
+      - run: Test Linux binary
   ```
-- [ ] Test linux/amd64 build in CI
-- [ ] Store artifacts for download/verification
-- [ ] Add to existing workflow
+- [x] ✅ Test linux/amd64 build in CI
+- [x] ✅ Store artifacts for download/verification
+- [x] ✅ Add to existing workflow
 
 ---
 
@@ -302,7 +305,7 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 ## Progress Tracking
 
 * **Started**: 2025-08-21
-* **Phase 1 Complete**: ~75% (need CircleCI integration and docs)
+* **Phase 1 Complete**: ~95% (just need to include extra files in archives)
 * **Phase 2 Complete**: ~25% (version management done, script integration pending)
 * **Phase 3 Complete**: _________
 * **Phase 4 Complete**: _________

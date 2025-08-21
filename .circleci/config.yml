@@ -47,6 +47,33 @@ jobs:
           paths:
             - plur/plur
 
+  test-goreleaser:
+    docker:
+      - image: cimg/go:1.25
+    resource_class: medium
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Install GoReleaser
+          command: |
+            curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
+            sudo mv ./bin/goreleaser /usr/local/bin/
+            goreleaser --version
+      - run:
+          name: Test GoReleaser snapshot build
+          working_directory: plur
+          command: |
+            goreleaser build --snapshot --single-target --clean
+      - run:
+          name: Test Linux binary
+          command: |
+            plur/dist/plur_linux_amd64_v1/plur --version
+            plur/dist/plur_linux_amd64_v1/plur doctor
+      - store_artifacts:
+          path: plur/dist
+          destination: goreleaser-artifacts
+
   test-ruby-integration:
     docker:
       - image: cimg/ruby:3.4.5
@@ -101,6 +128,7 @@ workflows:
   test-all:
     jobs:
       - build-and-test-go
+      - test-goreleaser
       - test-ruby-integration:
           requires:
             - build-and-test-go

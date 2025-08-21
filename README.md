@@ -43,6 +43,22 @@ cd fixtures/projects/default-rails && plur -n 3
 - **Benchmarking script** (`script/bench`) for performance comparison
 - **Setup automation** (`setup_rails_testing.rb`)
 
+## 📦 Platform Support
+
+### Production Ready
+* **macOS ARM64** (Apple Silicon) - Fully supported
+* **Linux x86_64** - Fully supported
+* **Linux ARM64** - Fully supported
+
+### Not Supported
+* **macOS Intel (x86_64)** - Not supported (no upstream watcher binary available)
+
+### Experimental/Alpha
+* **Windows x86_64** - Experimental support (never tested in production)
+* **Windows ARM64** - Experimental support (never tested in production)
+
+**Note**: Watch mode (`plur watch`) requires platform-specific binaries. All platforms support standard test execution.
+
 ## 🎯 Key Features
 
 ### Parallel Test Execution
