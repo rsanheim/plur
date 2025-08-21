@@ -129,7 +129,7 @@ RSpec.describe "Configuration integration" do
   end
 
   describe "doctor command" do
-    it "runs successfully with PLUR_CONFIG_FILE" do
+    it "shows configuration from PLUR_CONFIG_FILE" do
       output, _, status = Dir.chdir(config_fixture_dir) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => "doctor-test.toml"},
@@ -140,8 +140,17 @@ RSpec.describe "Configuration integration" do
       expect(status).to be_success
       expect(output).to include("Plur Doctor")
       expect(output).to include("Configuration:")
-      # Doctor shows what's on disk, not what's loaded via env var
-      expect(output).to include("Using defaults")
+      
+      # Should show active configuration files (with expanded path)
+      expect(output).to include("Active Configuration Files:")
+      expect(output).to match(/doctor-test\.toml \(via PLUR_CONFIG_FILE\)/)
+      
+      # Should show actual config values from doctor-test.toml
+      expect(output).to include("Workers:     4")
+      expect(output).to include("Color:       true")
+      
+      # Should NOT show "Using defaults" since config was loaded
+      expect(output).not_to include("Using defaults")
     end
   end
 

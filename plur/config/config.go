@@ -20,6 +20,9 @@ type GlobalConfig struct {
 	RuntimeDir  string
 	JSON        string // JSON output file
 	FirstIs1    bool   // Start TEST_ENV_NUMBER at 1 instead of empty string
+
+	// Configuration source tracking
+	LoadedConfigs []string // List of config files that actually exist and were loaded
 }
 
 // IsSerial returns true if running in serial mode (single worker)

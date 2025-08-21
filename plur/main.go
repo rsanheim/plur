@@ -28,7 +28,6 @@ type SpecCmd struct {
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
 	cfg := parent.globalConfig
 
 	// Get the appropriate task with overrides applied
@@ -103,14 +102,12 @@ type WatchCmd struct {
 }
 
 type WatchRunCmd struct {
-	// Flags for watch command
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
 	Use      string `short:"u" help:"Task configuration to use" default:""`
 }
 
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
 	config := parent.globalConfig
 
 	// Get the appropriate task with overrides applied
@@ -143,40 +140,31 @@ func (w *WatchInstallCmd) Run(parent *PlurCLI) error {
 type DoctorCmd struct{}
 
 func (d *DoctorCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
 	return runDoctorWithConfig(parent.globalConfig)
 }
 
 type DBSetupCmd struct{}
 
 func (d *DBSetupCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
-	return RunDatabaseTask("db:setup", config)
+	return RunDatabaseTask("db:setup", parent.globalConfig)
 }
 
 type DBCreateCmd struct{}
 
 func (d *DBCreateCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
-	return RunDatabaseTask("db:create", config)
+	return RunDatabaseTask("db:create", parent.globalConfig)
 }
 
 type DBMigrateCmd struct{}
 
 func (d *DBMigrateCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
-	return RunDatabaseTask("db:migrate", config)
+	return RunDatabaseTask("db:migrate", parent.globalConfig)
 }
 
 type DBPrepareCmd struct{}
 
 func (d *DBPrepareCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
-	return RunDatabaseTask("db:test:prepare", config)
+	return RunDatabaseTask("db:test:prepare", parent.globalConfig)
 }
 
 type PlurCLI struct {
@@ -215,6 +203,9 @@ type PlurCLI struct {
 
 	// Store the built global config
 	globalConfig *config.GlobalConfig `kong:"-"`
+
+	// Store config files that were attempted (for tracking)
+	configFiles []string `kong:"-"`
 }
 
 func (r *PlurCLI) AfterApply() error {
@@ -233,17 +224,26 @@ func (r *PlurCLI) AfterApply() error {
 
 	configPaths := config.InitConfigPaths()
 
+	var loadedConfigs []string
+	for _, configFile := range r.configFiles {
+		expandedPath := kong.ExpandPath(configFile)
+		if _, err := os.Stat(expandedPath); err == nil {
+			loadedConfigs = append(loadedConfigs, expandedPath)
+		}
+	}
+
 	r.globalConfig = &config.GlobalConfig{
-		Auto:        r.Auto,
-		ColorOutput: r.Color,
-		ConfigPaths: configPaths,
-		Debug:       r.Debug,
-		Verbose:     r.Verbose,
-		DryRun:      r.DryRun,
-		WorkerCount: GetWorkerCount(r.Workers),
-		RuntimeDir:  r.RuntimeDir,
-		JSON:        r.JSON,
-		FirstIs1:    r.FirstIs1,
+		Auto:          r.Auto,
+		ColorOutput:   r.Color,
+		ConfigPaths:   configPaths,
+		Debug:         r.Debug,
+		Verbose:       r.Verbose,
+		DryRun:        r.DryRun,
+		WorkerCount:   GetWorkerCount(r.Workers),
+		RuntimeDir:    r.RuntimeDir,
+		JSON:          r.JSON,
+		FirstIs1:      r.FirstIs1,
+		LoadedConfigs: loadedConfigs,
 	}
 
 	// Convert TaskConfig map to task.Task map
@@ -345,7 +345,6 @@ func handleChangeDir(args []string) error {
 func main() {
 	var cli PlurCLI
 
-	// Handle -C flag early to ensure config files are loaded from the correct directory
 	if err := handleChangeDir(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -357,14 +356,13 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
 			os.Exit(1)
 		}
-		// Add it first for highest precedence
 		configFiles = append(configFiles, configFile)
 	}
 
-	// Always append default locations after
 	configFiles = append(configFiles, ".plur.toml", "~/.plur.toml")
 
-	// Create parser with configuration
+	cli.configFiles = configFiles
+
 	parser, err := kong.New(&cli,
 		kong.Name("plur"),
 		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
@@ -375,7 +373,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Parse command line arguments
 	ctx, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 
