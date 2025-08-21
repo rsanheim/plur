@@ -107,12 +107,8 @@ RSpec.describe "Configuration integration" do
 
   describe "minitest configuration" do
     it "respects minitest type configuration" do
-      # Create a minitest config
+      # Use the existing minitest.toml from config-test fixtures
       minitest_config = config_fixture_dir.join("minitest.toml")
-      File.write(minitest_config, <<~TOML)
-        [spec]
-        type = "minitest"
-      TOML
 
       _, error, status = Dir.chdir(project_fixture("minitest-success")) do
         Open3.capture3(
