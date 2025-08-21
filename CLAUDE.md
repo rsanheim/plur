@@ -56,7 +56,7 @@ test_glob = "**/*.rb"
 
 Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (global) > defaults
 
-See [Task Configuration Documentation](docs/configuration/tasks.md) for full details on creating custom tasks.
+See [Configuration Documentation](docs/configuration.md#task-configuration) for full details on creating custom tasks.
 
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root
