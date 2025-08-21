@@ -2,17 +2,17 @@ package main
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/rsanheim/plur/internal/task"
 )
 
-// FindTestFiles discovers all test files based on the framework
-func FindTestFiles(framework TestFramework) ([]string, error) {
-	pattern := getDefaultPattern(framework)
+// FindTestFiles discovers all test files based on the task
+func FindTestFiles(currentTask *task.Task) ([]string, error) {
+	pattern := currentTask.GetTestPattern()
 	matches, err := doublestar.FilepathGlob(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("error finding test files: %v", err)
@@ -20,32 +20,10 @@ func FindTestFiles(framework TestFramework) ([]string, error) {
 	return matches, nil
 }
 
-// FindSpecFiles discovers all spec files in the spec directory
-func FindSpecFiles() ([]string, error) {
-	// Check if spec directory exists
-	if _, err := os.Stat("spec"); os.IsNotExist(err) {
-		return []string{}, nil // Return empty list if no spec directory
-	}
-
-	return doublestar.FilepathGlob("spec/**/*_spec.rb")
-}
-
-// FindMinitestFiles discovers all test files in the test directory
-func FindMinitestFiles() ([]string, error) {
-	// Check if test directory exists
-	if _, err := os.Stat("test"); os.IsNotExist(err) {
-		return []string{}, nil // Return empty list if no test directory
-	}
-
-	return doublestar.FilepathGlob("test/**/*_test.rb")
-}
-
 // ExpandGlobPatterns takes a list of file paths/patterns and expands any glob patterns
-// Supports ** for recursive directory matching, brace expansion, and more
-// Like RSpec, when given patterns or directories, filters to only test files
-func ExpandGlobPatterns(patterns []string, framework TestFramework) ([]string, error) {
+func ExpandGlobPatterns(patterns []string, currentTask *task.Task) ([]string, error) {
 	seenFiles := make(map[string]struct{})
-	suffix := getTestFileSuffix(framework)
+	suffix := currentTask.GetTestSuffix()
 
 	for _, pattern := range patterns {
 		var matches []string
@@ -59,28 +37,19 @@ func ExpandGlobPatterns(patterns []string, framework TestFramework) ([]string, e
 			}
 
 			if fileInfo.IsDir() {
-				// Directory: append test pattern (like RSpec's gather_directories)
-				pattern = filepath.Join(pattern, "**", "*"+suffix)
-				matches, err = doublestar.FilepathGlob(pattern)
+				// Directory: use task's test glob pattern within this directory
+				dirPattern := filepath.Join(pattern, "**", "*"+suffix)
+				matches, err = doublestar.FilepathGlob(dirPattern)
 			} else {
-				// Single file: pass it through (like RSpec's extract_location)
-				// RSpec will handle it - finds 0 examples for non-test files
+				// Single file: pass it through but warn if it doesn't match expected pattern
 				if !strings.HasSuffix(pattern, suffix) {
 					fmt.Fprintf(os.Stderr, "Warning: %s does not end with %s\n", pattern, suffix)
 				}
 				matches = []string{pattern}
 			}
 		} else {
-			// It's a glob pattern - use GlobWalk to expand and filter in one pass
-			// This matches RSpec's behavior of applying its pattern filter
-			matches = []string{}
-			err = doublestar.GlobWalk(os.DirFS("."), pattern, func(path string, d fs.DirEntry) error {
-				// Only add test files (like RSpec does)
-				if !d.IsDir() && strings.HasSuffix(path, suffix) {
-					matches = append(matches, path)
-				}
-				return nil
-			})
+			// It's already a glob pattern - expand it directly
+			matches, err = doublestar.FilepathGlob(pattern)
 		}
 
 		if err != nil {
@@ -100,28 +69,4 @@ func ExpandGlobPatterns(patterns []string, framework TestFramework) ([]string, e
 	}
 
 	return allFiles, nil
-}
-
-// getTestFileSuffix returns the test file suffix for the framework
-func getTestFileSuffix(framework TestFramework) string {
-	switch framework {
-	case FrameworkRSpec:
-		return "_spec.rb"
-	case FrameworkMinitest:
-		return "_test.rb"
-	default:
-		return "_spec.rb"
-	}
-}
-
-// getDefaultPattern returns the default glob pattern for the framework
-func getDefaultPattern(framework TestFramework) string {
-	switch framework {
-	case FrameworkRSpec:
-		return "spec/**/*_spec.rb"
-	case FrameworkMinitest:
-		return "test/**/*_test.rb"
-	default:
-		return "spec/**/*_spec.rb"
-	}
 }

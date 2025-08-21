@@ -25,18 +25,35 @@ color = true
 verbose = false
 
 # =============================================================================
-# SPEC COMMAND SETTINGS
-# Settings for 'plur spec' or just 'plur'
+# TASK CONFIGURATION
+# Define test frameworks and custom tasks
 # =============================================================================
 
-[spec]
+# RSpec task configuration
+[task.rspec]
 # Test command to run
 # Default: "bundle exec rspec"
-command = "bin/rspec"
+run = "bin/rspec"
 
-# Test framework type
-# Options: "rspec" (default), "minitest"
-type = "rspec"
+# Pattern for finding test files
+# Default: "spec/**/*_spec.rb"
+test_glob = "spec/**/*_spec.rb"
+
+# Source directories to watch
+# Default: ["lib", "app"]
+source_dirs = ["lib", "app"]
+
+# Minitest task configuration (if using minitest)
+[task.minitest]
+run = "bin/rails test"
+test_glob = "test/**/*_test.rb"
+source_dirs = ["lib", "app"]
+
+# Custom task example
+[task.integration]
+run = "bin/rspec --tag integration"
+test_glob = "spec/integration/**/*_spec.rb"
+source_dirs = ["app"]
 
 # =============================================================================
 # WATCH MODE SETTINGS
@@ -44,15 +61,41 @@ type = "rspec"
 # =============================================================================
 
 [watch.run]
-# Test command for watch mode (often skips coverage for speed)
-# Default: inherits from [spec] or global settings
-command = "bin/rspec --no-coverage"
-
 # Debounce delay in milliseconds
 # How long to wait after a file change before running tests
 # Default: 100
 debounce = 200
 
-# Test framework type for watch mode
-# Default: inherits from [spec] settings
-type = "rspec"
+# =============================================================================
+# WATCH MAPPING SETTINGS
+# Configure how files map to their test files
+# =============================================================================
+
+[watch.mappings]
+# Show suggestions when no mapping is found
+# Default: true
+show_suggestions = true
+
+# Provide feedback about mapping results
+# Default: true
+provide_feedback = true
+
+# Note: Mapping rules are now defined within task configurations
+# You can customize mappings per task:
+
+# Example of custom task with mappings:
+# [task.custom]
+# run = "bin/rspec"
+# test_glob = "spec/**/*_spec.rb"
+# source_dirs = ["app", "lib", "config"]
+# [[task.custom.mappings]]
+# pattern = "config/*.rb"
+# target = "spec/config/{{name}}_spec.rb"
+# [[task.custom.mappings]]
+# pattern = "app/services/**/*.rb"
+# target = "spec/services/{{path}}/{{name}}_spec.rb"
+
+# Variables available in target patterns:
+# {{file}} - the full file path
+# {{path}} - the directory path (without lib/ or app/ prefix)
+# {{name}} - filename without extension

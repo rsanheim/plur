@@ -7,32 +7,48 @@ import (
 
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/alecthomas/kong-toml"
+	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
 )
 
-type SpecCmd struct {
-	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Command  string   `help:"Test command to run" default:"bundle exec rspec"`
-	Type     string   `short:"t" help:"Test framework type (rspec|minitest)" default:""`
+// TaskConfig defines the structure for task configurations that Kong can parse from TOML
+type TaskConfig struct {
+	Description    string             `toml:"description"`     // Human-readable description
+	Run            string             `toml:"run"`             // Command to run (e.g., "bundle exec rspec")
+	SourceDirs     []string           `toml:"source_dirs"`     // Directories to watch/search
+	Mappings       []task.MappingRule `toml:"mappings"`        // File mapping rules
+	IgnorePatterns []string           `toml:"ignore_patterns"` // Patterns to ignore (for watch)
+	TestGlob       string             `toml:"test_glob"`       // Glob pattern for test files
 }
 
-// GetFramework returns the TestFramework enum based on the Type field
-func (s *SpecCmd) GetFramework() TestFramework {
-	return ParseFrameworkType(s.Type)
+type SpecCmd struct {
+	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
+	Use      string   `short:"u" help:"Task configuration to use" default:""`
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
+	cfg := parent.globalConfig
 
-	framework := r.GetFramework()
-	logger.Logger.Debug("SpecCmd.Run", "command", r.Command, "patterns", r.Patterns, "framework", framework)
+	// Get the appropriate task with overrides applied
+	// Priority: CLI --use, config use, auto-detect
+	taskName := r.Use
+	if taskName == "" && parent.Use != "" {
+		taskName = parent.Use
+	}
+	if taskName == "" {
+		detectedTask := task.DetectFramework()
+		taskName = detectedTask.Name
+	}
+
+	currentTask := parent.getTaskWithOverrides(taskName)
+	logger.Logger.Debug("SpecCmd.Run", "command", currentTask.Run, "patterns", r.Patterns, "task", currentTask.Name)
 
 	// Discover test files
 	var testFiles []string
 	var err error
 	if len(r.Patterns) > 0 {
-		testFiles, err = ExpandGlobPatterns(r.Patterns, framework)
+		testFiles, err = ExpandGlobPatterns(r.Patterns, currentTask)
 		if err != nil {
 			return err
 		}
@@ -40,14 +56,16 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return fmt.Errorf("no test files found matching provided patterns")
 		}
 	} else {
-		testFiles, err = FindTestFiles(framework)
+		testFiles, err = FindTestFiles(currentTask)
 		if err != nil {
 			return err
 		}
 		if len(testFiles) == 0 {
-			suffix := getTestFileSuffix(framework)
+			suffix := currentTask.GetTestSuffix()
+			// Determine directory from task's test pattern
+			pattern := currentTask.GetTestPattern()
 			dir := "spec"
-			if framework == FrameworkMinitest {
+			if strings.HasPrefix(pattern, "test/") {
 				dir = "test"
 			}
 			return fmt.Errorf("no test files found (looking for *%s in %s/)", suffix, dir)
@@ -57,7 +75,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.LogVerbose(msg, "testFiles", testFiles)
 
 	// Run bundle install if --auto flag is set
-	if config.Auto && !config.DryRun {
+	if cfg.Auto && !cfg.DryRun {
 		depManager := NewDependencyManager()
 		if err := depManager.InstallDependencies(); err != nil {
 			return err
@@ -65,7 +83,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	// Create and run executor
-	executor := NewTestExecutor(config, r, testFiles)
+	executor := NewTestExecutor(cfg, testFiles, currentTask)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {
@@ -80,31 +98,37 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 type WatchCmd struct {
 	Run     WatchRunCmd     `cmd:"" default:"" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
+	Find    WatchFindCmd    `cmd:"" help:"Find and suggest mappings for files"`
 }
 
 type WatchRunCmd struct {
-	// Flags for watch command
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
-	Command  string `help:"Test command to run" default:"bundle exec rspec"`
-	Type     string `short:"t" help:"Test framework type (rspec|minitest)" default:""`
-}
-
-// GetFramework returns the TestFramework enum based on the Type field
-func (w *WatchRunCmd) GetFramework() TestFramework {
-	return ParseFrameworkType(w.Type)
+	Use      string `short:"u" help:"Task configuration to use" default:""`
 }
 
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
 	config := parent.globalConfig
+
+	// Get the appropriate task with overrides applied
+	// Priority: CLI --use, config use, auto-detect
+	taskName := w.Use
+	if taskName == "" && parent.Use != "" {
+		taskName = parent.Use
+	}
+	if taskName == "" {
+		detectedTask := task.DetectFramework()
+		taskName = detectedTask.Name
+	}
+
+	currentTask := parent.getTaskWithOverrides(taskName)
 
 	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}
 
-	return runWatchWithConfig(config, w)
+	return runWatchWithConfig(config, w, currentTask)
 }
 
 type WatchInstallCmd struct{}
@@ -116,40 +140,31 @@ func (w *WatchInstallCmd) Run(parent *PlurCLI) error {
 type DoctorCmd struct{}
 
 func (d *DoctorCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
 	return runDoctorWithConfig(parent.globalConfig)
 }
 
 type DBSetupCmd struct{}
 
 func (d *DBSetupCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
-	return RunDatabaseTask("db:setup", config)
+	return RunDatabaseTask("db:setup", parent.globalConfig)
 }
 
 type DBCreateCmd struct{}
 
 func (d *DBCreateCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
-	return RunDatabaseTask("db:create", config)
+	return RunDatabaseTask("db:create", parent.globalConfig)
 }
 
 type DBMigrateCmd struct{}
 
 func (d *DBMigrateCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
-	return RunDatabaseTask("db:migrate", config)
+	return RunDatabaseTask("db:migrate", parent.globalConfig)
 }
 
 type DBPrepareCmd struct{}
 
 func (d *DBPrepareCmd) Run(parent *PlurCLI) error {
-	// Use the pre-built global config
-	config := parent.globalConfig
-	return RunDatabaseTask("db:test:prepare", config)
+	return RunDatabaseTask("db:test:prepare", parent.globalConfig)
 }
 
 type PlurCLI struct {
@@ -178,9 +193,19 @@ type PlurCLI struct {
 	Workers   int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 	FirstIs1  bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	Version   bool   `help:"Show version information"`
+	Use       string `help:"Default task configuration to use" default:""`
+
+	// Task configurations from [task.NAME] sections in TOML - parsed by Kong
+	Task map[string]TaskConfig `help:"Task configurations (config file only)"`
+
+	// Processed task configurations (converted from TaskConfig)
+	Tasks map[string]*task.Task `kong:"-"`
 
 	// Store the built global config
-	globalConfig *GlobalConfig `kong:"-"`
+	globalConfig *config.GlobalConfig `kong:"-"`
+
+	// Store config files that were attempted (for tracking)
+	configFiles []string `kong:"-"`
 }
 
 func (r *PlurCLI) AfterApply() error {
@@ -188,39 +213,97 @@ func (r *PlurCLI) AfterApply() error {
 	// Kong has already resolved r.Debug from CLI flag, env var, or config file
 	logger.InitLogger(r.Verbose, r.Debug)
 
-	// Note: Directory change is now handled before Kong initialization in main()
-
-	// Handle version flag
 	if r.Version {
 		fmt.Println(GetVersionInfo())
 		os.Exit(0)
 	}
 
-	// Sync British spelling to American spelling
-	// Both default to true, so if either is false, use false
-	// This handles --no-color, --no-colour, or both
-	if !r.Colour || !r.Color {
+	if !r.Colour || !r.Color { // silly british spelling
 		r.Color = false
 	}
 
-	// Initialize config paths
-	configPaths := InitConfigPaths()
+	configPaths := config.InitConfigPaths()
 
-	// Build global config once
-	r.globalConfig = &GlobalConfig{
-		Auto:        r.Auto,
-		ColorOutput: r.Color,
-		ConfigPaths: configPaths,
-		Debug:       r.Debug,
-		Verbose:     r.Verbose,
-		DryRun:      r.DryRun,
-		WorkerCount: GetWorkerCount(r.Workers),
-		RuntimeDir:  r.RuntimeDir,
-		JSON:        r.JSON,
-		FirstIs1:    r.FirstIs1,
+	var loadedConfigs []string
+	for _, configFile := range r.configFiles {
+		expandedPath := kong.ExpandPath(configFile)
+		if _, err := os.Stat(expandedPath); err == nil {
+			loadedConfigs = append(loadedConfigs, expandedPath)
+		}
+	}
+
+	r.globalConfig = &config.GlobalConfig{
+		Auto:          r.Auto,
+		ColorOutput:   r.Color,
+		ConfigPaths:   configPaths,
+		Debug:         r.Debug,
+		Verbose:       r.Verbose,
+		DryRun:        r.DryRun,
+		WorkerCount:   GetWorkerCount(r.Workers),
+		RuntimeDir:    r.RuntimeDir,
+		JSON:          r.JSON,
+		FirstIs1:      r.FirstIs1,
+		LoadedConfigs: loadedConfigs,
+	}
+
+	// Convert TaskConfig map to task.Task map
+	r.Tasks = make(map[string]*task.Task)
+	for taskName, taskConfig := range r.Task {
+		// Convert TaskConfig to task.Task
+		taskObj := &task.Task{
+			Name:           taskName,
+			Description:    taskConfig.Description,
+			Run:            taskConfig.Run,
+			SourceDirs:     taskConfig.SourceDirs,
+			Mappings:       taskConfig.Mappings,
+			IgnorePatterns: taskConfig.IgnorePatterns,
+			TestGlob:       taskConfig.TestGlob,
+		}
+		r.Tasks[taskName] = taskObj
 	}
 
 	return nil
+}
+
+// getTaskWithOverrides returns the appropriate task with CLI/config overrides applied
+func (r *PlurCLI) getTaskWithOverrides(taskName string) *task.Task {
+	var baseTask *task.Task
+
+	// Start with appropriate default task
+	switch taskName {
+	case "rspec":
+		baseTask = task.NewRSpecTask()
+	case "minitest":
+		baseTask = task.NewMinitestTask()
+	default:
+		// Auto-detect framework and fall back to RSpec
+		baseTask = task.DetectFramework()
+	}
+
+	// Merge TOML config overrides if they exist
+	if configTask, exists := r.Tasks[taskName]; exists {
+		// Merge non-empty fields from TOML config into base task
+		if configTask.Description != "" {
+			baseTask.Description = configTask.Description
+		}
+		if configTask.Run != "" {
+			baseTask.Run = configTask.Run
+		}
+		if len(configTask.SourceDirs) > 0 {
+			baseTask.SourceDirs = configTask.SourceDirs
+		}
+		if len(configTask.Mappings) > 0 {
+			baseTask.Mappings = configTask.Mappings
+		}
+		if len(configTask.IgnorePatterns) > 0 {
+			baseTask.IgnorePatterns = configTask.IgnorePatterns
+		}
+		if configTask.TestGlob != "" {
+			baseTask.TestGlob = configTask.TestGlob
+		}
+	}
+
+	return baseTask
 }
 
 // handleEarlyChangeDir pre-parses command line arguments for the -C flag
@@ -262,30 +345,24 @@ func handleChangeDir(args []string) error {
 func main() {
 	var cli PlurCLI
 
-	// Handle -C flag early to ensure config files are loaded from the correct directory
 	if err := handleChangeDir(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Build config file list
 	var configFiles []string
-
-	// Check for PLUR_CONFIG_FILE environment variable
 	if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
-		// Verify the file exists and is readable
 		if _, err := os.Stat(configFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
 			os.Exit(1)
 		}
-		// Add it first for highest precedence
 		configFiles = append(configFiles, configFile)
 	}
 
-	// Always append default locations after
 	configFiles = append(configFiles, ".plur.toml", "~/.plur.toml")
 
-	// Create parser with configuration
+	cli.configFiles = configFiles
+
 	parser, err := kong.New(&cli,
 		kong.Name("plur"),
 		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
@@ -296,7 +373,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Parse command line arguments
 	ctx, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 

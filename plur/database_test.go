@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRunDatabaseTaskDryRun(t *testing.T) {
 	// Test that dry-run shows the correct commands
-	config := &GlobalConfig{
+	config := &config.GlobalConfig{
 		WorkerCount: 3,
 		DryRun:      true,
 		FirstIs1:    true,
@@ -35,7 +36,7 @@ func TestRunDatabaseTaskValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s_%d_workers", tt.task, tt.workerCount), func(t *testing.T) {
-			config := &GlobalConfig{
+			config := &config.GlobalConfig{
 				WorkerCount: tt.workerCount,
 				DryRun:      tt.dryRun,
 				FirstIs1:    true,

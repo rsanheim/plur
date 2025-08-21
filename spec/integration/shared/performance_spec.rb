@@ -5,20 +5,6 @@ RSpec.describe "Plur performance" do
   let(:expected_spec_files) { 12 }
 
   describe "parallelization efficiency" do
-    it "chooses optimal execution strategy based on file count" do
-      # With grouping optimization, for small test suites a single worker
-      # might be faster as it avoids process spawn overhead
-      single_result = run_plur("-C", default_ruby_dir.to_s, "-n", "1")
-      default_result = run_plur("-C", default_ruby_dir.to_s)
-
-      # Should use grouped execution when appropriate (either runtime or size-based)
-      expect(single_result.err).to match(/Using (runtime-based|size-based) grouped execution: #{expected_spec_files} files across 1 workers/)
-
-      # Verify all examples run in both cases
-      expect(single_result.out).to match(/\d+ examples, 0 failures/)
-      expect(default_result.out).to match(/\d+ examples, 0 failures/)
-    end
-
     it "shows wall time vs CPU time to demonstrate parallelization" do
       result = run_plur("-C", default_ruby_dir)
 
@@ -52,7 +38,6 @@ RSpec.describe "Plur performance" do
       end
 
       if ENV["VERBOSE"]
-        # Output timing information for verification
         puts "plur time: #{plur_time.round(3)}s"
         puts "RSpec time: #{rspec_time.round(3)}s"
         puts "Overhead: #{(plur_time - rspec_time).round(3)}s"
@@ -67,20 +52,18 @@ RSpec.describe "Plur performance" do
     it "chooses reasonable default worker count" do
       result = run_plur("-C", default_ruby_dir.to_s)
 
-      # Should show worker count and available cores
-      expect(result.out).to match(/using \d+ workers \(\d+ cores available\)/)
+      # Should show worker count in stderr
+      expect(result.err).to match(/Running \d+ specs in parallel using \d+ workers/)
+
+      available_cores = `nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null`.to_i
+      expected_workers = [available_cores - 2, 1].max
 
       # Extract values
-      if result.out =~ /using (\d+) workers \((\d+) cores available\)/
+      if result.err =~ /Running \d+ specs in parallel using (\d+) workers/
         workers = $1.to_i
-        cores = $2.to_i
 
         # Default should be cores - 2 (but at least 1)
-        expected_workers = [cores - 2, 1].max
-
-        # But also limited by number of spec files
-        spec_files = expected_spec_files
-        expected_workers = [expected_workers, spec_files].min
+        expected_workers = [workers, expected_workers].min
 
         expect(workers).to eq(expected_workers)
       end

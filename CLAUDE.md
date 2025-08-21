@@ -32,7 +32,7 @@ plur -C path/to/project   # Change to directory before running (like git -C)
 plur --dry-run            # Preview what will run
 plur doctor               # Debug installation issues
 plur watch                # Auto-run tests on file changes (experimental)
-plur spec --command=bin/rspec  # Override default test command
+plur spec                      # Run tests with detected task
 ```
 
 ### Configuration Files
@@ -41,12 +41,22 @@ Plur supports TOML configuration files for persistent settings:
 
 ```toml
 # .plur.toml or ~/.plur.toml
-command = "bin/rspec"    # Override default "bundle exec rspec"
 workers = 4              # Number of parallel workers
 color = true             # Enable colored output
+use = "rspec"            # Default task to use (can be overridden with --use)
+
+[task.rspec]
+run = "bin/rspec"        # Override default "bundle exec rspec"
+
+[task.custom-lint]
+run = "bundle exec rubocop"
+source_dirs = ["lib", "spec"]
+test_glob = "**/*.rb"
 ```
 
 Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (global) > defaults
+
+See [Task Configuration Documentation](docs/configuration/tasks.md) for full details on creating custom tasks.
 
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root

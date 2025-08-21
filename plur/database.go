@@ -9,10 +9,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/rsanheim/plur/config"
 )
 
 // RunDatabaseTask executes a Rails database task in parallel across test databases
-func RunDatabaseTask(task string, config *GlobalConfig) error {
+func RunDatabaseTask(task string, config *config.GlobalConfig) error {
 	if config.DryRun {
 		for i := 0; i < config.WorkerCount; i++ {
 			envStr := ""
@@ -20,7 +22,7 @@ func RunDatabaseTask(task string, config *GlobalConfig) error {
 				testEnvNumber := GetTestEnvNumber(i, config)
 				envStr = fmt.Sprintf("TEST_ENV_NUMBER=%s ", testEnvNumber)
 			}
-			fmt.Printf("[dry-run] Worker %d: %sRAILS_ENV=test bundle exec rake %s\n", i, envStr, task)
+			toStdErr(config.DryRun, "Worker %d: %sRAILS_ENV=test bundle exec rake %s\n", i, envStr, task)
 		}
 		return nil
 	}

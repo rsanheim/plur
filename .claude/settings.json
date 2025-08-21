@@ -9,6 +9,7 @@
       "Bash(./script/get-repo:*)",
       "Bash(./script/lint:*)",
       "Bash(./script/plur-bench:*)",
+      "Bash(./script/cc-post-tool-use:*)",
       "Bash(bin/rake:*)",
       "Bash(bundle exec rails generate:*)",
       "Bash(bundle exec rails:*)",
@@ -121,9 +122,6 @@
   },
   "includeCoAuthoredBy": false,
   "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [
-    "github"
-  ],
   "env": {
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "true"
   }

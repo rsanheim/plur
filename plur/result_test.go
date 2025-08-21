@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,7 +69,8 @@ func TestBuildTestSummary(t *testing.T) {
 	}
 
 	wallTime := 250 * time.Millisecond
-	summary := BuildTestSummary(results, wallTime)
+	testTask := task.NewRSpecTask()
+	summary := BuildTestSummary(results, wallTime, testTask)
 
 	assert := assert.New(t)
 	assert.Equal(15, summary.TotalExamples)
@@ -111,7 +113,8 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 		},
 	}
 
-	summary := BuildTestSummary(results, 250*time.Millisecond)
+	testTask := task.NewRSpecTask()
+	summary := BuildTestSummary(results, 250*time.Millisecond, testTask)
 
 	assert.Equal(t, 15, summary.TotalExamples)
 	assert.Equal(t, 0, summary.TotalFailures)
@@ -137,7 +140,8 @@ func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 		},
 	}
 
-	summary := BuildTestSummary(results, 100*time.Millisecond)
+	testTask := task.NewRSpecTask()
+	summary := BuildTestSummary(results, 100*time.Millisecond, testTask)
 
 	assert.Equal(t, 10, summary.TotalExamples)
 	assert.True(t, summary.Success)

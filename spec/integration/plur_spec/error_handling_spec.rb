@@ -9,12 +9,7 @@ RSpec.describe "Plur error handling" do
     context "running RSpec directly (baseline behavior)" do
       it "shows behavior for passing tests" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/passing_spec.rb")
-
-          puts "\n=== Passing tests ==="
-          puts "Exit code: #{status.exitstatus}"
-          puts "Summary: #{stdout.lines.grep(/\d+ examples?/).first&.strip}"
-          puts "STDERR empty: #{stderr.empty?}"
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/passing_spec.rb")
 
           expect(status.exitstatus).to eq(0)
           expect(stdout).to include("2 examples, 0 failures")
@@ -23,12 +18,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for test failures" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/test_failure_spec.rb")
-
-          puts "\n=== Test failures ==="
-          puts "Exit code: #{status.exitstatus}"
-          puts "Summary: #{stdout.lines.grep(/\d+ examples?/).first&.strip}"
-          puts "STDERR empty: #{stderr.empty?}"
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/test_failure_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("2 examples, 1 failure")
@@ -37,12 +27,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for unhandled exceptions" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/exception_spec.rb")
-
-          puts "\n=== Unhandled exceptions ==="
-          puts "Exit code: #{status.exitstatus}"
-          puts "Summary: #{stdout.lines.grep(/\d+ examples?/).first&.strip}"
-          puts "STDERR empty: #{stderr.empty?}"
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/exception_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("2 examples, 1 failure")
@@ -51,17 +36,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for syntax errors in spec" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/syntax_error_spec.rb")
-
-          puts "\n=== Syntax error in spec ==="
-          puts "Exit code: #{status.exitstatus}"
-          puts "Summary: #{stdout.lines.grep(/\d+ examples?.*error/).first&.strip}"
-          puts "Error message in STDOUT: #{stdout.include?("SyntaxError")}"
-          puts "STDERR: #{stderr.inspect}"
-
-          # Show first few lines of error
-          puts "Error details:"
-          stdout.lines.take(10).each { |line| puts "  #{line.strip}" }
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/syntax_error_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
@@ -71,13 +46,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for syntax errors in code under test" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/calculator_spec.rb")
-
-          puts "\n=== Syntax error in code under test ==="
-          puts "Exit code: #{status.exitstatus}"
-          puts "Summary: #{stdout.lines.grep(/\d+ examples?.*error/).first&.strip}"
-          puts "Error message in STDOUT: #{stdout.include?("SyntaxError")}"
-          puts "STDERR: #{stderr.inspect}"
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/calculator_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
@@ -87,13 +56,7 @@ RSpec.describe "Plur error handling" do
 
       it "shows behavior for LoadError" do
         chdir(fixture_dir) do
-          stdout, stderr, status = Open3.capture3("bundle", "exec", "rspec", "spec/load_error_spec.rb")
-
-          puts "\n=== LoadError ==="
-          puts "Exit code: #{status.exitstatus}"
-          puts "Summary: #{stdout.lines.grep(/\d+ examples?.*error/).first&.strip}"
-          puts "Error message in STDOUT: #{stdout.include?("LoadError")}"
-          puts "STDERR: #{stderr.inspect}"
+          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/load_error_spec.rb")
 
           expect(status.exitstatus).to eq(1)
           expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
@@ -107,11 +70,6 @@ RSpec.describe "Plur error handling" do
         chdir(fixture_dir) do
           result = run_plur_allowing_errors("spec/syntax_error_spec.rb")
 
-          puts "\n=== Plur with syntax error ==="
-          puts "Exit code: #{result.exit_status}"
-          puts "Summary: #{result.out.lines.grep(/\d+ examples?/).first&.strip}"
-          puts "Shows error details: #{result.out.include?("SyntaxError")}"
-
           expect(result.exit_status).to eq(1)
           expect(result.out).to include("0 examples, 0 failures, 1 error occurred outside of examples")
           expect(result.out).to include("SyntaxError")
@@ -124,25 +82,10 @@ RSpec.describe "Plur error handling" do
 
       it "verifies exit codes for different failure scenarios" do
         chdir(fixture_dir) do
-          puts "\n=== Test 1: Normal test failure ==="
           result1 = run_plur_allowing_errors("spec/test_failure_spec.rb")
-          puts "Exit code: #{result1.exit_status}"
-          puts "Output: #{result1.out.lines.grep(/examples?.*failures?/).first}"
-
-          puts "\n=== Test 2: Unhandled exception ==="
           result2 = run_plur_allowing_errors("spec/exception_spec.rb")
-          puts "Exit code: #{result2.exit_status}"
-          puts "Output: #{result2.out.lines.grep(/examples?.*failures?/).first}"
-
-          puts "\n=== Test 3: Syntax error in spec ==="
           result3 = run_plur_allowing_errors("spec/syntax_error_spec.rb")
-          puts "Exit code: #{result3.exit_status}"
-          puts "Output: #{result3.out.lines.grep(/examples?.*failures?.*error/).first}"
-
-          puts "\n=== Test 4: Syntax error in code under test ==="
           result4 = run_plur_allowing_errors("spec/calculator_spec.rb")
-          puts "Exit code: #{result4.exit_status}"
-          puts "Output: #{result4.out.lines.grep(/examples?.*failures?.*error/).first}"
 
           # All should exit with non-zero
           expect(result1.exit_status).to eq(1)
@@ -190,25 +133,6 @@ RSpec.describe "Plur error handling" do
             expect(result.out + result.err).to include("no spec files found").or include("ERROR")
           end
         end
-      end
-    end
-
-    context "when command doesn't exist" do
-      it "shows error when command doesn't exist" do
-        result = run_plur_allowing_errors("--command=nonexistentcommand", "spec/integration/plur_spec/error_handling_spec.rb", "--debug")
-
-        puts "\n=== Command not found (with debug) ==="
-        puts "Exit code: #{result.exit_status}"
-        puts "STDOUT:\n#{result.out}"
-        puts "STDERR:\n#{result.err}"
-
-        expect(result.exit_status).to eq(1)
-        expect(result.out).to include("0 examples, 0 failures")
-
-        # Error details should show the command not found error
-        expect(result.out).to include("Error: failed to start command")
-        expect(result.out).to include("nonexistentcommand")
-        expect(result.out).to include("not found")
       end
     end
   end

@@ -51,10 +51,9 @@ RSpec.describe "single failure" do
       expect(result.exit_status).to eq(1)
 
       stdout_lines = make_summary_line_consistent(result.out).lines
-      stdout_without_preamble = stdout_lines[2..]
       rspec_stdout_lines = make_summary_line_consistent(rspec_out).lines
 
-      expect(stdout_without_preamble).to eq(rspec_stdout_lines)
+      expect(stdout_lines).to eq(rspec_stdout_lines)
     end
   end
 end

@@ -26,7 +26,6 @@ func streamTestOutput(
 	outputChan chan<- OutputMessage,
 	workerIndex int,
 	testFiles []string,
-	framework TestFramework,
 ) (stderrOutput string) {
 	var stderrBuilder strings.Builder
 	stderrBuilder.Grow(StdErrBufferSize) // Pre-allocate for typical stderr output
@@ -40,16 +39,9 @@ func streamTestOutput(
 		// Increase buffer size to handle large output lines (default is 64KB)
 		scanner.Buffer(make([]byte, 0, ScannerBufferSize), ScannerBufferSize)
 
-		firstOutput := true
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			if firstOutput {
-				// tracing Removed
-				firstOutput = false
-			}
-
-			// Parse line into notifications
 			notifications, consumed := parser.ParseLine(line)
 
 			// If line wasn't consumed by parser, add it as raw output

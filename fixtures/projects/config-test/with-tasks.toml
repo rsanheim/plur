@@ -1,0 +1,37 @@
+# Configuration file with task definitions
+workers = 2
+color = false
+
+[task.rspec]
+description = "Custom RSpec configuration"
+run = "bin/rspec --format documentation"
+source_dirs = ["spec", "lib", "app"]
+test_glob = "spec/**/*_spec.rb"
+
+[[task.rspec.mappings]]
+pattern = "lib/**/*.rb"
+target = "spec/{{path}}/{{name}}_spec.rb"
+
+[[task.rspec.mappings]]
+pattern = "app/**/*.rb"
+target = "spec/{{path}}/{{name}}_spec.rb"
+
+[task.minitest]
+description = "Custom Minitest configuration"
+run = "bundle exec ruby -I test"
+source_dirs = ["test", "lib", "app"]
+test_glob = "test/**/*_test.rb"
+
+[[task.minitest.mappings]]
+pattern = "lib/**/*.rb"
+target = "test/{{path}}/{{name}}_test.rb"
+
+[task.custom]
+description = "Custom test runner"
+run = "echo 'CUSTOM TASK:'"
+source_dirs = ["src"]
+test_glob = "src/**/*_custom.rb"
+
+[[task.custom.mappings]]
+pattern = "src/**/*.rb"
+target = "test/{{path}}/{{name}}_test.rb"

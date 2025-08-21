@@ -27,13 +27,6 @@ RSpec.describe "single failure golden test" do
     stdout_matcher = ->(stdout_1, stdout_2) {
       normalized_1 = make_summary_line_consistent(stdout_1)
       normalized_2 = make_summary_line_consistent(stdout_2)
-
-      # Skip preamble if present
-      if normalized_2.include?("plur version")
-        lines = normalized_2.lines
-        normalized_2 = lines[2..].join if lines.size > 2
-      end
-
       normalized_1.strip == normalized_2.strip
     }
 
@@ -70,11 +63,6 @@ RSpec.describe "single failure golden test" do
       normalized_2 = make_summary_line_consistent(stdout_2)
 
       # Skip preamble if present
-      if normalized_2.include?("plur version")
-        lines = normalized_2.lines
-        normalized_2 = lines[2..].join if lines.size > 2
-      end
-
       normalized_1.strip == normalized_2.strip
     }
 

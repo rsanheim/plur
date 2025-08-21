@@ -22,8 +22,8 @@ RSpec.describe "Command-specific configuration" do
         # Global settings
         workers = 2
         
-        [spec]
-        command = "echo 'SPEC:'"
+        [task.rspec]
+        run = "echo 'SPEC:'"
         
         [watch.run]
         command = "echo 'WATCH:'"
@@ -69,27 +69,14 @@ RSpec.describe "Command-specific configuration" do
         command = "echo 'FROM CONFIG:'"
       TOML
     end
-
-    it "CLI flag takes precedence over config file" do
-      _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "spec", "--command=echo 'FROM CLI:'", "--dry-run")
-      end
-
-      expect(status).to be_success
-      # Dry-run output goes to stderr
-      expect(error).to include("echo 'FROM CLI:'")
-      expect(error).not_to include("echo 'FROM CONFIG:'")
-    end
   end
 
   context "with global command setting" do
     before do
       File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
-        # Global command applies to all commands
-        command = "echo 'GLOBAL:'"
-        
-        [spec]
-        # No command specified here
+        # Task command applies to RSpec task
+        [task.rspec]
+        run = "echo 'GLOBAL:'"
       TOML
     end
 

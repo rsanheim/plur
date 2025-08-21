@@ -107,12 +107,8 @@ RSpec.describe "Configuration integration" do
 
   describe "minitest configuration" do
     it "respects minitest type configuration" do
-      # Create a minitest config
+      # Use the existing minitest.toml from config-test fixtures
       minitest_config = config_fixture_dir.join("minitest.toml")
-      File.write(minitest_config, <<~TOML)
-        [spec]
-        type = "minitest"
-      TOML
 
       _, error, status = Dir.chdir(project_fixture("minitest-success")) do
         Open3.capture3(
@@ -129,7 +125,7 @@ RSpec.describe "Configuration integration" do
   end
 
   describe "doctor command" do
-    it "runs successfully with PLUR_CONFIG_FILE" do
+    it "shows configuration from PLUR_CONFIG_FILE" do
       output, _, status = Dir.chdir(config_fixture_dir) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => "doctor-test.toml"},
@@ -140,8 +136,34 @@ RSpec.describe "Configuration integration" do
       expect(status).to be_success
       expect(output).to include("Plur Doctor")
       expect(output).to include("Configuration:")
-      # Doctor shows what's on disk, not what's loaded via env var
-      expect(output).to include("Using defaults")
+
+      # Should show active configuration files (with expanded path)
+      expect(output).to include("Active Configuration Files:")
+      expect(output).to match(/doctor-test\.toml \(via PLUR_CONFIG_FILE\)/)
+
+      # Should show actual config values from doctor-test.toml
+      expect(output).to include("Workers:     4")
+      expect(output).to include("Color:       true")
+
+      # Should NOT show "Using defaults" since config was loaded
+      expect(output).not_to include("Using defaults")
+    end
+  end
+
+  describe "task configuration loading" do
+    context "with TOML task definitions" do
+      it "applies task-specific run commands from TOML" do
+        _, output, status = Dir.chdir(config_fixture_dir) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
+            "plur", "spec", "--dry-run", "--use=custom"
+          )
+        end
+
+        expect(status).to be_success
+        # Should use the custom task's run command
+        expect(output).to include("echo 'CUSTOM TASK:'")
+      end
     end
   end
 end

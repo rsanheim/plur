@@ -49,8 +49,8 @@ RSpec.describe "Plur integration tests" do
       Dir.chdir(default_rails_dir) do
         result = run_plur("--dry-run", "-n", "2")
 
-        expect(result.err).to include("[dry-run] Found")
-        expect(result.err).to include("spec files")
+        expect(result.err).to include("[dry-run] Running")
+        expect(result.err).to include("specs")
         expect(result.err).to include("bundle exec rspec")
       end
     end

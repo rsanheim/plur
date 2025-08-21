@@ -13,6 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
+	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -23,26 +26,28 @@ import (
 var watcherBinaries embed.FS
 
 func runWatchInstall(force bool) error {
-	configPaths := InitConfigPaths()
+	configPaths := config.InitConfigPaths()
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
-func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error {
+func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, currentTask *task.Task) error {
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
-
-	// Create file mapper
-	fileMapper := watch.NewFileMapper()
 
 	// Create debouncer with configurable delay
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
 	debouncer := watch.NewDebouncer(debounceDelay)
 	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
 
-	// Determine which directories to watch
-	watchDirs := watch.GetWatchDirectories()
+	// Determine which directories to watch from Task's SourceDirs
+	watchDirs := []string{}
+	for _, dir := range currentTask.SourceDirs {
+		if _, err := os.Stat(dir); err == nil {
+			watchDirs = append(watchDirs, dir)
+		}
+	}
 	if len(watchDirs) == 0 {
-		return fmt.Errorf("no directories to watch found (tried: spec, lib, app)")
+		return fmt.Errorf("no directories to watch found (tried: %v)", currentTask.SourceDirs)
 	}
 
 	// Get project name from current directory
@@ -125,7 +130,7 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 				// User pressed Enter - run all specs
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
-				runSpecsOrDirectory("spec", watchCmd.Command)
+				runSpecsOrDirectory("spec", currentTask.Run)
 				fmt.Print("\nplur> ")
 			case "exit":
 				// User typed exit command
@@ -165,22 +170,23 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 				continue
 			}
 
-			// Check if we should watch this file
-			if !fileMapper.ShouldWatchFile(event.PathName) {
-				// Skip logging for files not in watch list
-				continue
-			}
-
-			// Convert absolute path to relative path for mapping
+			// Convert absolute path to relative path for mapping first
 			relPath, err = filepath.Rel(cwd, event.PathName)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get relative path: %v\n", err)
 				continue
 			}
 
-			// Map the file to specs
-			specsToRun := fileMapper.MapFileToSpecs(relPath)
+			// Check if we should watch this file by seeing if it matches any mapping pattern
+			if !shouldWatchFile(relPath, currentTask) {
+				// Skip logging for files not in watch list
+				continue
+			}
+
+			// Map the file to specs using Task
+			specsToRun := currentTask.MapFilesToTarget([]string{relPath})
 			if len(specsToRun) == 0 {
+				// Still log the mapping_not_found for tests
 				logger.LogDebug("plur", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
 				continue
 			}
@@ -197,7 +203,7 @@ func runWatchWithConfig(globalConfig *GlobalConfig, watchCmd *WatchRunCmd) error
 				// Run each unique spec
 				for spec := range uniqueSpecs {
 					logger.LogDebug("plur", "event", "run_spec", "path", "./"+spec)
-					runSpecsOrDirectory(spec, watchCmd.Command)
+					runSpecsOrDirectory(spec, currentTask.Run)
 				}
 
 				go func() {
@@ -246,4 +252,14 @@ func runSpecsOrDirectory(specPath string, command string) {
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to run spec: %v\n", err)
 	}
+}
+
+// shouldWatchFile determines if a file should trigger spec runs by checking if it matches any mapping pattern
+func shouldWatchFile(filePath string, currentTask *task.Task) bool {
+	for _, mapping := range currentTask.Mappings {
+		if matched, err := doublestar.Match(mapping.Pattern, filePath); err == nil && matched {
+			return true
+		}
+	}
+	return false
 }

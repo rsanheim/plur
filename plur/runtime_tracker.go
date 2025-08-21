@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -102,7 +103,7 @@ func getProjectHash() (string, error) {
 
 // getRuntimeFilePath returns the project-specific runtime file path
 func getRuntimeFilePath() (string, error) {
-	configPaths := InitConfigPaths()
+	configPaths := config.InitConfigPaths()
 	runtimesDir := configPaths.RuntimeDir
 
 	// Get project hash for filename

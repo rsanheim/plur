@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -24,7 +25,6 @@ type TestSummary struct {
 	HasFailures       bool
 	Success           bool           // True if no failures and no errors
 	ErroredFiles      []WorkerResult // Workers that had errors running tests
-	Framework         TestFramework  // The test framework used
 	TotalPending      int            // Total pending/skipped tests
 	AllResults        []WorkerResult // All worker results for accessing raw output
 
@@ -34,7 +34,7 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentTask *task.Task) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
@@ -45,16 +45,11 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 	// Track if we're in single-file mode (single worker)
 	singleWorkerMode := len(results) == 1
 
-	for i, result := range results {
+	for _, result := range results {
 		summary.TotalCPUTime += result.Duration
 		summary.TotalExamples += result.ExampleCount
 		summary.TotalFailures += result.FailureCount
 		summary.TotalPending += result.PendingCount
-
-		// Set framework from first result (all should be the same)
-		if i == 0 {
-			summary.Framework = result.Framework
-		}
 
 		// Track the maximum file load time (since workers run in parallel)
 		if result.FileLoadTime > summary.TotalFileLoadTime {
@@ -95,8 +90,8 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 }
 
 // PrintResults displays a test summary
-func PrintResults(summary TestSummary, colorOutput bool) {
-	parser, err := NewTestOutputParser(summary.Framework)
+func PrintResults(summary TestSummary, colorOutput bool, currentTask *task.Task) {
+	parser, err := currentTask.CreateParser()
 	if err != nil {
 		// Fallback to basic output
 		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
@@ -104,7 +99,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
-	if summary.Framework == FrameworkMinitest && summary.HasFailures {
+	if currentTask.IsMinitestStyle() && summary.HasFailures {
 		// Collect all output from failed workers
 		for _, result := range summary.AllResults {
 			if result.State == types.StateFailed && result.Output != "" {
@@ -135,7 +130,7 @@ func PrintResults(summary TestSummary, colorOutput bool) {
 
 	// Print failed examples list only if we didn't get a formatted summary
 	// (RSpec's formatted summary already includes the failed examples list)
-	if !hasFormattedSummary && summary.Framework != FrameworkMinitest {
+	if !hasFormattedSummary && !currentTask.IsMinitestStyle() {
 		// Skip for minitest since we already printed the raw output
 		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
 			fmt.Println("\nFailed examples:")

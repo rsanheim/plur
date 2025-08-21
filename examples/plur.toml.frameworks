@@ -10,11 +10,12 @@
 # workers = 8                          # More workers for larger test suites
 # color = true
 # 
-# [spec]
-# command = "bin/rails test"           # Use Rails binstubs
+# [task.rspec]
+# run = "bin/rails test"               # Use Rails binstubs
+# test_glob = "spec/**/*_spec.rb"
+# source_dirs = ["app", "lib"]
 # 
 # [watch.run]
-# command = "bin/spring rspec --fail-fast --no-coverage"  # Spring for faster startup
 # debounce = 300                       # Longer debounce for asset compilation
 
 # =============================================================================
@@ -23,13 +24,12 @@
 
 # workers = 4
 # 
-# [spec]
-# command = "bundle exec ruby -Itest"  # Standard Minitest invocation
-# type = "minitest"
+# [task.minitest]
+# run = "bundle exec ruby -Itest"      # Standard Minitest invocation
+# test_glob = "test/**/*_test.rb"
+# source_dirs = ["lib", "app"]
 # 
 # [watch.run]
-# command = "bundle exec ruby -Itest"
-# type = "minitest"
 # debounce = 150
 
 # =============================================================================
@@ -40,22 +40,25 @@
 # color = false                        # Disable color for log files
 # verbose = true                       # More output for debugging
 # 
-# [spec]
-# command = "rspec"                    # Bare rspec for maximum performance
+# [task.rspec]
+# run = "rspec"                        # Bare rspec for maximum performance
 # 
 # [watch.run]
-# command = "bundle exec rspec"        # Use bundle exec in development
 # debounce = 200
 
 # =============================================================================
 # MONOREPO WITH MULTIPLE APPS
 # =============================================================================
 
-# [spec]
-# command = "cd backend && bundle exec rspec"
+# [task.backend]
+# run = "cd backend && bundle exec rspec"
+# test_glob = "backend/spec/**/*_spec.rb"
+# source_dirs = ["backend/app", "backend/lib"]
 # 
-# [watch.run]
-# command = "cd backend && bundle exec rspec --fail-fast"
+# [task.frontend]
+# run = "cd frontend && npm test"
+# test_glob = "frontend/test/**/*.test.js"
+# source_dirs = ["frontend/src"]
 
 # =============================================================================
 # GEM DEVELOPMENT
@@ -63,9 +66,29 @@
 
 # workers = 4
 # 
-# [spec]
-# command = "bundle exec rspec --require spec_helper"
+# [task.rspec]
+# run = "bundle exec rspec --require spec_helper"
 # 
 # [watch.run]
-# command = "bundle exec rspec --fail-fast --format progress"
 # debounce = 100                       # Quick feedback for gem development
+
+# =============================================================================
+# CUSTOM TASK EXAMPLES
+# =============================================================================
+
+# # Integration tests only
+# [task.integration]
+# run = "rspec --tag integration"
+# test_glob = "spec/integration/**/*_spec.rb"
+# source_dirs = ["app"]
+# 
+# # Fast unit tests only
+# [task.unit]
+# run = "rspec --tag ~integration --fail-fast"
+# test_glob = "spec/unit/**/*_spec.rb"
+# source_dirs = ["lib"]
+# 
+# # Linting task
+# [task.lint]
+# run = "rubocop"
+# source_dirs = ["."]
