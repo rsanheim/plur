@@ -13,24 +13,24 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 ## Phase 1: Local GoReleaser Setup ⏳
 
 ### 1.1 Installation & Basic Configuration
-- [ ] Install GoReleaser locally (`brew install goreleaser` or download binary)
-- [ ] Create `.goreleaser.yml` in project root
-- [ ] Configure basic project settings:
-  - [ ] Project name: `plur`
-  - [ ] Main package: `./plur`
-  - [ ] Binary name: `plur`
+- [x] ✅ Install GoReleaser locally (`brew install goreleaser` or download binary)
+- [x] ✅ Create `.goreleaser.yml` in plur directory
+- [x] ✅ Configure basic project settings:
+  - [x] Project name: `plur`
+  - [x] Main package: `.` (from plur dir)
+  - [x] Binary name: `plur`
 
 ### 1.2 Build Configuration
-- [ ] Configure builds section:
+- [x] ✅ Configure builds section:
   ```yaml
   builds:
     - id: plur
-      main: ./plur
+      main: .
       binary: plur
       goos: [darwin, linux, windows]
       goarch: [amd64, arm64]
   ```
-- [ ] Set up ldflags for version injection:
+- [x] ✅ Set up ldflags for version injection:
   ```yaml
   ldflags:
     - -s -w
@@ -40,30 +40,42 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
     - -X main.builtBy=goreleaser
   ```
 - [x] ✅ Update `plur/version.go` to properly use ldflags variables - COMPLETED
-- [x] ✅ Test version output with `plur --version` after build - Works with VCS info
+- [x] ✅ Test version output with `plur --version` after build - Shows `0.10.0-dev-327b9f2`
 
 ### 1.3 Archive Configuration
-- [ ] Configure archive formats:
-  - [ ] tar.gz for Unix systems (darwin, linux)
-  - [ ] zip for Windows
-- [ ] Set naming template: `plur_{{.Version}}_{{.Os}}_{{.Arch}}`
+- [x] ✅ Configure archive formats:
+  - [x] tar.gz for Unix systems (darwin, linux)
+  - [x] zip for Windows
+- [x] ✅ Set naming template: `plur_{{.Version}}_{{.Os}}_{{.Arch}}`
 - [ ] Include necessary files:
-  - [ ] README.md
+  - [ ] README.md (needs to be accessible from plur dir)
   - [ ] LICENSE
   - [ ] CHANGELOG.md
-- [ ] Configure checksums (SHA256)
+- [x] ✅ Configure checksums (SHA256)
 
 ### 1.4 Local Testing
-- [ ] Run `goreleaser build --snapshot --clean`
-- [ ] Verify output structure in `dist/` directory
-- [ ] Test binaries on available platforms:
-  - [ ] darwin/amd64 (Intel Mac)
-  - [ ] darwin/arm64 (Apple Silicon)
-  - [ ] linux/amd64 (via Docker or CI)
-- [ ] Verify version info: `./dist/plur_darwin_amd64_v1/plur --version`
-- [ ] Confirm artifact naming follows convention
+- [x] ✅ Run `goreleaser build --snapshot --clean`
+- [x] ✅ Verify output structure in `dist/` directory
+- [x] ✅ Test binaries on available platforms:
+  - [ ] darwin/amd64 (Intel Mac) - Not tested yet
+  - [x] darwin/arm64 (Apple Silicon) - Tested
+  - [ ] linux/amd64 (via Docker or CI) - To test in CircleCI
+- [x] ✅ Verify version info: `./dist/plur_darwin_arm64_v8.0/plur --version`
+- [x] ✅ Confirm artifact naming follows convention
 
-### 1.5 CircleCI Integration
+### 1.5 Watcher Binary Packaging
+- [ ] **CRITICAL**: Package e-dant/watcher binaries with plur
+  - [ ] Strategy: Embed platform-specific watcher binaries
+  - [ ] Download watcher binaries during build
+  - [ ] Include correct watcher for target platform
+  - [ ] Test extraction and execution
+- [ ] Implementation options:
+  - [ ] Option A: go:embed with pre-downloaded binaries
+  - [ ] Option B: Download during GoReleaser build
+  - [ ] Option C: Build from source during release
+- [ ] Ensure watcher works on all platforms
+
+### 1.6 CircleCI Integration
 - [ ] Add new job to `.circleci/config.yml`:
   ```yaml
   test-goreleaser:
@@ -96,7 +108,7 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
   - [x] "dev" version for untagged builds
 - [x] ✅ Test version display in various scenarios:
   - [x] Local development build - Shows `v0.10.0-8-g327b9f2`
-  - [ ] GoReleaser snapshot - To be tested
+  - [x] GoReleaser snapshot - Shows `0.10.0-dev-327b9f2`
   - [ ] Tagged release build - To be tested
 
 ### 2.3 Validation & Testing
@@ -289,9 +301,9 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 
 ## Progress Tracking
 
-* **Started**: _________
-* **Phase 1 Complete**: _________
-* **Phase 2 Complete**: _________
+* **Started**: 2025-08-21
+* **Phase 1 Complete**: ~75% (need CircleCI integration and docs)
+* **Phase 2 Complete**: ~25% (version management done, script integration pending)
 * **Phase 3 Complete**: _________
 * **Phase 4 Complete**: _________
 * **Go Live**: _________
