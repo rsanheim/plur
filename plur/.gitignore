@@ -21,4 +21,4 @@ embedded/
 go.work
 
 # Built binary
-/plur
+/plurdist/

@@ -1,0 +1,143 @@
+# GoReleaser configuration for plur
+# https://goreleaser.com/customization/
+
+version: 2
+
+# Set project name
+project_name: plur
+
+# Before hooks - run before building
+before:
+  hooks:
+    - go mod tidy
+    - go mod vendor
+
+# Build configuration
+builds:
+  - id: plur
+    main: .
+    binary: plur
+    
+    # Build for multiple platforms
+    goos:
+      - darwin
+      - linux
+      - windows
+    
+    goarch:
+      - amd64
+      - arm64
+    
+    # Skip some combinations that don't make sense
+    ignore:
+      - goos: windows
+        goarch: arm64
+    
+    # Set module mode
+    flags:
+      - -mod=vendor
+    
+    # Embed version information via ldflags
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+    
+    # Environment variables for build
+    env:
+      - CGO_ENABLED=0
+
+# Archive configuration
+archives:
+  - id: plur-archive
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- if eq .Os "darwin" }}Darwin
+      {{- else if eq .Os "linux" }}Linux
+      {{- else if eq .Os "windows" }}Windows
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "arm64" }}arm64
+      {{- else }}{{ .Arch }}{{ end }}
+    
+    # Use tar.gz for Unix, zip for Windows
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+    wrap_in_directory: true
+    
+    # Include these files in the archive
+    # Note: These files need to be accessible from the plur directory
+    # We'll copy them during the build process or use symlinks
+
+# Checksum configuration
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+# Snapshot configuration (for testing)
+snapshot:
+  version_template: "{{ .Version }}-dev-{{ .ShortCommit }}"
+
+# Release configuration
+release:
+  # GitHub releases
+  github:
+    owner: rsanheim
+    name: plur
+  
+  # Use the CHANGELOG.md for release notes
+  header: |
+    ## plur v{{ .Version }}
+    
+    Fast parallel test runner for Ruby/RSpec.
+  
+  # Draft mode for safety (initially)
+  draft: true
+  
+  # Use changelog for release body
+  # We'll extract the relevant section from CHANGELOG.md
+  name_template: "v{{.Version}}"
+
+# Changelog configuration (for automation)
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+  groups:
+    - title: Features
+      regexp: "^feat"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^fix"
+      order: 1
+    - title: Performance
+      regexp: "^perf"
+      order: 2
+    - title: Refactoring
+      regexp: "^refactor"
+      order: 3
+
+# Homebrew tap configuration (commented out for now)
+# brews:
+#   - repository:
+#       owner: rsanheim
+#       name: homebrew-tap
+#     folder: Formula
+#     homepage: https://github.com/rsanheim/plur
+#     description: Fast parallel test runner for Ruby/RSpec
+#     license: MIT
+#     test: |
+#       system "#{bin}/plur", "--version"
+#     install: |
+#       bin.install "plur"

@@ -6,6 +6,7 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 * **Current Release Process**: Ruby script (`script/release`) that creates tags, updates changelog, and creates GitHub releases
 * **Version Format**: Semver with `v` prefix (e.g., `v0.7.0`)
 * **Distribution**: Currently via `go install` only - no pre-built binaries
+* **Version Management**: ✅ COMPLETED - Now uses Go's VCS BuildSettings with git describe formatting
 
 ---
 
@@ -38,8 +39,8 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
     - -X main.date={{.Date}}
     - -X main.builtBy=goreleaser
   ```
-- [ ] Update `plur/version.go` to properly use ldflags variables
-- [ ] Test version output with `plur --version` after build
+- [x] ✅ Update `plur/version.go` to properly use ldflags variables - COMPLETED
+- [x] ✅ Test version output with `plur --version` after build - Works with VCS info
 
 ### 1.3 Archive Configuration
 - [ ] Configure archive formats:
@@ -89,14 +90,14 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 - [ ] Maintain backward compatibility with current process
 
 ### 2.2 Version Management Enhancement
-- [ ] Ensure `plur/version.go` properly handles:
-  - [ ] ldflags when set (release builds)
-  - [ ] runtime/debug fallback (development builds)
-  - [ ] "dev" version for untagged builds
-- [ ] Test version display in various scenarios:
-  - [ ] Local development build
-  - [ ] GoReleaser snapshot
-  - [ ] Tagged release build
+- [x] ✅ Ensure `plur/version.go` properly handles:
+  - [x] ldflags when set (release builds)
+  - [x] runtime/debug fallback (development builds)
+  - [x] "dev" version for untagged builds
+- [x] ✅ Test version display in various scenarios:
+  - [x] Local development build - Shows `v0.10.0-8-g327b9f2`
+  - [ ] GoReleaser snapshot - To be tested
+  - [ ] Tagged release build - To be tested
 
 ### 2.3 Validation & Testing
 - [ ] Create test script to validate artifacts:
