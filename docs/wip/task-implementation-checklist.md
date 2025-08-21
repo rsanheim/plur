@@ -197,7 +197,7 @@ This prerequisite eliminates the config duplication between main and internal/ta
 ### Phase 7.3: Documentation and Polish
 * [ ] Update CLAUDE.md with new Task-only architecture
 * [ ] Update example TOML configs to show Task configuration
-* [ ] Document task configuration options comprehensively
+* [ ] Document task configuration options
 * [ ] Review end-to-end integration tests coverage:
   * [ ] Full RSpec run with custom task configuration
   * [ ] Full Minitest run with custom task configuration
