@@ -20,7 +20,7 @@ Plur should also support user defined tasks defined via our TOML config file(s).
 | description     | string   | description of the recipe | No | "" | "Run RSpec specs" |
 | run             | string | command to run | Yes | "" | "bundle exec rspec" |
 | source_dirs     | string[] | directories used as input | No | `["."]` | `["spec", "lib"]` |
-| mappings        | MappingRule[] | mappings for the task | No | `[]` | see [Mapping examples](#mapping-examples) |
+| mappings        | MappingRule[] | mappings for the task | No | `[]` | see [Mapping TOML examples](#mapping-toml-examples) |
 | ignore_patterns | string[] | patterns to ignore (only applies to watch currently) | No | `[".git"]` | |
 
 ### Proposed responsibilities for Task
