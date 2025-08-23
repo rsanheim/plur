@@ -1,5 +1,11 @@
 # plur CHANGELOG
 
+## v0.10.0 - 2025-08-21
+
+* Consolidate to `Task` to for defining how to run things [#100](https://github.com/rsanheim/plur/pull/100)
+* fix: align plur doctor output formatting [#104](https://github.com/rsanheim/plur/pull/104)
+* Change trigger phrase for automated review [#102](https://github.com/rsanheim/plur/pull/102)
+* Performance optimizations and benchmarking infrastructure [#99](https://github.com/rsanheim/plur/pull/99)
 
 ## v0.9.11 - 2025-08-13
 

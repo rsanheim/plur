@@ -1,10 +1,17 @@
 workers = 4
 color = true
-command = "custom-rspec"
+use = "doctor-test"
 
-[spec]
-command = "spec-specific-command"
+[task.doctor-test]
+description = "Custom test task for doctor verification"
+run = "echo 'DOCTOR TEST TASK'"
+source_dirs = ["spec", "lib"]
+test_glob = "spec/**/*_spec.rb"
 
-[watch.run]
-command = "watch-specific-command"
-debounce = 300
+[[task.doctor-test.mappings]]
+pattern = "lib/**/*.rb"
+target = "spec/{{path}}/{{name}}_spec.rb"
+
+[[task.doctor-test.mappings]]
+pattern = "spec/**/*_spec.rb"
+target = "{{file}}"

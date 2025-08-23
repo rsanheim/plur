@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 
-	toml "github.com/pelletier/go-toml"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/watch"
@@ -20,13 +18,10 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
 	fmt.Println()
 
 	// Plur version info
-	fmt.Printf("Plur Version:     %s\n", GetVersionInfo())
+	fmt.Printf("Plur Version:    %s\n", GetVersionInfo())
 	fmt.Printf("Build Date:      %s\n", date)
 	fmt.Printf("Git Commit:      %s\n", commit)
 	fmt.Printf("Built By:        %s\n", builtBy)
-
-	// CLI Framework info
-	fmt.Printf("CLI Framework:   Kong\n")
 	fmt.Println()
 
 	// System info
@@ -48,7 +43,7 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
 	if err != nil {
 		exePath = fmt.Sprintf("error: %v", err)
 	}
-	fmt.Printf("Plur Binary:       %s\n", exePath)
+	fmt.Printf("Plur Binary:     %s\n", exePath)
 	fmt.Println()
 
 	// Ruby info
@@ -128,7 +123,7 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
 
 	// Configuration
 	fmt.Println("Configuration:")
-	if err := checkConfiguration(); err != nil {
+	if err := checkConfiguration(globalConfig); err != nil {
 		fmt.Printf("  Error checking configuration: %v\n", err)
 	}
 
@@ -151,119 +146,33 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func checkConfiguration() error {
-	// Check for local .plur.toml
-	localConfig := ".plur.toml"
-	if configInfo, err := checkConfigFile(localConfig); err == nil {
-		fmt.Printf("  Local Config:   %s\n", configInfo)
+func checkConfiguration(globalConfig *config.GlobalConfig) error {
+	// Show which config files are actually in use
+	fmt.Println("  Active Configuration Files:")
+	if len(globalConfig.LoadedConfigs) == 0 {
+		fmt.Println("    Using defaults (no configuration files found)")
 	} else {
-		fmt.Printf("  Local Config:   %s (not found)\n", localConfig)
-	}
-
-	// Check for global ~/.plur.toml
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %w", err)
-	}
-	globalConfig := filepath.Join(homeDir, ".plur.toml")
-	if configInfo, err := checkConfigFile(globalConfig); err == nil {
-		fmt.Printf("  Global Config:  %s\n", configInfo)
-	} else {
-		fmt.Printf("  Global Config:  %s (not found)\n", globalConfig)
-	}
-
-	// Try to load and validate active configuration
-	fmt.Println("\n  Active Configuration:")
-	if err := validateActiveConfig(localConfig, globalConfig); err != nil {
-		fmt.Printf("    Error: %v\n", err)
-	}
-
-	return nil
-}
-
-func checkConfigFile(path string) (string, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", err
-	}
-
-	// Try to parse the TOML file
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Sprintf("%s (exists but unreadable: %v)", path, err), nil
-	}
-
-	var tempCfg map[string]interface{}
-	if err := toml.Unmarshal(data, &tempCfg); err != nil {
-		return fmt.Sprintf("%s (invalid TOML: %v)", path, err), nil
-	}
-
-	return fmt.Sprintf("%s (valid, %d bytes)", path, info.Size()), nil
-}
-
-func validateActiveConfig(localPath, globalPath string) error {
-	// Load config in precedence order
-	var cfg map[string]interface{}
-	var configSource string
-
-	// Try local first
-	if data, err := os.ReadFile(localPath); err == nil {
-		if err := toml.Unmarshal(data, &cfg); err == nil {
-			configSource = "local .plur.toml"
-		}
-	}
-
-	// If no local config, try global
-	if cfg == nil {
-		if data, err := os.ReadFile(globalPath); err == nil {
-			if err := toml.Unmarshal(data, &cfg); err == nil {
-				configSource = "global ~/.plur.toml"
+		envFile := os.Getenv("PLUR_CONFIG_FILE")
+		for i, loaded := range globalConfig.LoadedConfigs {
+			// Check if this was from PLUR_CONFIG_FILE (first in list and env var is set)
+			if i == 0 && envFile != "" {
+				fmt.Printf("    - %s (via PLUR_CONFIG_FILE)\n", loaded)
+			} else {
+				fmt.Printf("    - %s\n", loaded)
 			}
 		}
 	}
 
-	if cfg == nil {
-		fmt.Printf("    Using defaults (no configuration files found)\n")
-		return nil
-	}
+	// Show actual configuration values
+	fmt.Println("\n  Active Settings:")
+	fmt.Printf("    Workers:     %d\n", globalConfig.WorkerCount)
+	fmt.Printf("    Color:       %v\n", globalConfig.ColorOutput)
+	fmt.Printf("    Auto:        %v\n", globalConfig.Auto)
+	fmt.Printf("    Debug:       %v\n", globalConfig.Debug)
+	fmt.Printf("    Verbose:     %v\n", globalConfig.Verbose)
 
-	fmt.Printf("    Source: %s\n", configSource)
-
-	// Display key configuration values
-	if command, ok := cfg["command"].(string); ok {
-		fmt.Printf("    Command: %s\n", command)
-	}
-
-	if workers, ok := cfg["workers"].(int64); ok {
-		fmt.Printf("    Workers: %d\n", workers)
-	}
-
-	if color, ok := cfg["color"].(bool); ok {
-		fmt.Printf("    Color: %v\n", color)
-	}
-
-	// Check for command-specific configs
-	if specConfig, ok := cfg["spec"].(map[string]interface{}); ok {
-		fmt.Println("    [spec] section:")
-		if specCommand, ok := specConfig["command"].(string); ok {
-			fmt.Printf("      Command: %s\n", specCommand)
-		}
-	}
-
-	if watchConfig, ok := cfg["watch"].(map[string]interface{}); ok {
-		if runConfig, ok := watchConfig["run"].(map[string]interface{}); ok {
-			fmt.Println("    [watch.run] section:")
-			if watchCommand, ok := runConfig["command"].(string); ok {
-				fmt.Printf("      Command: %s\n", watchCommand)
-			}
-			if debounce, ok := runConfig["debounce"].(int64); ok {
-				fmt.Printf("      Debounce: %dms\n", debounce)
-				if debounce <= 0 || debounce > 10000 {
-					fmt.Printf("      Warning: debounce value %dms seems unusual (recommended: 50-500ms)\n", debounce)
-				}
-			}
-		}
-	}
+	// Show active task if set
+	// Note: We'd need to pass the active task name from PlurCLI if we want to show it here
 
 	// Check for watch directories
 	fmt.Println("\n  Watch Directories:")

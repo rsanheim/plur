@@ -202,4 +202,3 @@ Currently best suited as a diagnostic tool for RSpec-based projects only.
 ### File Change Detection and Test Mapping
 
 The watch mode already provides file change detection and test mapping capabilities that could be extended for interactive learning mode. The `plur watch find` command demonstrates how we can suggest test mappings for files without existing mappings.
-

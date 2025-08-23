@@ -43,15 +43,20 @@ Plur supports TOML configuration files for persistent settings:
 # .plur.toml or ~/.plur.toml
 workers = 4              # Number of parallel workers
 color = true             # Enable colored output
+use = "rspec"            # Default task to use (can be overridden with --use)
 
 [task.rspec]
 run = "bin/rspec"        # Override default "bundle exec rspec"
 
-[task.minitest]
-run = "bin/rake test"    # Override default for minitest
+[task.custom-lint]
+run = "bundle exec rubocop"
+source_dirs = ["lib", "spec"]
+test_glob = "**/*.rb"
 ```
 
 Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (global) > defaults
+
+See [Configuration Documentation](docs/configuration.md#task-configuration) for full details on creating custom tasks.
 
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root

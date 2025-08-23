@@ -106,9 +106,8 @@ RSpec.describe "plur doctor command" do
       "HOME:",
       "GOPATH:",
       "Configuration:",
-      "Local Config:",
-      "Global Config:",
-      "Active Configuration:"
+      "Active Configuration Files:",
+      "Active Settings:"
     ]
 
     expected_sections.each do |section|
@@ -123,14 +122,11 @@ RSpec.describe "plur doctor command" do
       File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
         workers = 8
         color = false
-        command = "rspec --no-color"
+        use = "rspec"
         
-        [spec]
-        command = "bin/rspec --format progress"
-        
-        [watch.run]
-        command = "bundle exec rspec"
-        debounce = 500
+        [task.rspec]
+        run = "bin/rspec --format progress"
+        test_glob = "spec/**/*_spec.rb"
       TOML
     end
 
@@ -145,21 +141,13 @@ RSpec.describe "plur doctor command" do
 
       # Check configuration section appears
       expect(stdout).to include("Configuration:")
-      expect(stdout).to include("Local Config:")
-      expect(stdout).to include(".plur.toml (valid")
+      expect(stdout).to include("Active Configuration Files:")
+      expect(stdout).to include(".plur.toml")
 
       # Check active configuration details
-      expect(stdout).to include("Active Configuration:")
-      expect(stdout).to include("Source: local .plur.toml")
-      expect(stdout).to include("Workers: 8")
-      expect(stdout).to include("Color: false")
-      expect(stdout).to include("Command: rspec --no-color")
-
-      # Check command-specific sections
-      expect(stdout).to include("[spec] section:")
-      expect(stdout).to include("Command: bin/rspec --format progress")
-      expect(stdout).to include("[watch.run] section:")
-      expect(stdout).to include("Debounce: 500ms")
+      expect(stdout).to include("Active Settings:")
+      expect(stdout).to include("Workers:     8")
+      expect(stdout).to include("Color:       false")
     end
   end
 end
