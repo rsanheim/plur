@@ -39,6 +39,7 @@ jobs:
           command: |
             ./plur/plur --version
             ./plur/plur --help
+            ./plur/plur doctor
       - run:
           name: Run Go tests
           command: bin/rake test:go
