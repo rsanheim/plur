@@ -7,10 +7,11 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 * **Version Format**: Semver with `v` prefix (e.g., `v0.7.0`)
 * **Distribution**: Currently via `go install` only - no pre-built binaries
 * **Version Management**: ✅ COMPLETED - Now uses Go's VCS BuildSettings with git describe formatting
+* **Last Updated**: 2025-08-27
 
 ---
 
-## Phase 1: Local GoReleaser Setup ⏳
+## Phase 1: Local GoReleaser Setup ✅ COMPLETED
 
 ### 1.1 Installation & Basic Configuration
 - [x] ✅ Install GoReleaser locally (`brew install goreleaser` or download binary)
@@ -47,10 +48,10 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
   - [x] tar.gz for Unix systems (darwin, linux)
   - [x] zip for Windows
 - [x] ✅ Set naming template: `plur_{{.Version}}_{{.Os}}_{{.Arch}}`
-- [ ] Include necessary files:
-  - [ ] README.md (needs to be accessible from plur dir)
-  - [ ] LICENSE
-  - [ ] CHANGELOG.md
+- [x] ✅ Include necessary files:
+  - [x] README.md (copied via before hook)
+  - [x] LICENSE (created placeholder, copied via before hook)
+  - [x] CHANGELOG.md (copied via before hook)
 - [x] ✅ Configure checksums (SHA256)
 
 ### 1.4 Local Testing
@@ -59,7 +60,7 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 - [x] ✅ Test binaries on available platforms:
   - [ ] darwin/amd64 (Intel Mac) - Not tested yet
   - [x] darwin/arm64 (Apple Silicon) - Tested
-  - [ ] linux/amd64 (via Docker or CI) - To test in CircleCI
+  - [x] linux/amd64 (via CircleCI) - Tested in CI
 - [x] ✅ Verify version info: `./dist/plur_darwin_arm64_v8.0/plur --version`
 - [x] ✅ Confirm artifact naming follows convention
 
@@ -78,17 +79,8 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
   - [x] ✅ Document Windows support as experimental in README
 
 ### 1.6 CircleCI Integration ✅
-- [x] ✅ Add new job to `.circleci/config.yml`:
-  ```yaml
-  test-goreleaser:
-    docker:
-      - image: cimg/go:1.25
-    steps:
-      - checkout
-      - run: Install GoReleaser
-      - run: goreleaser build --snapshot --single-target
-      - run: Test Linux binary
-  ```
+- [x] ✅ Add new job to `.circleci/config.yml`
+- [x] ✅ Configure using hubci/goreleaser orb (v2)
 - [x] ✅ Test linux/amd64 build in CI
 - [x] ✅ Store artifacts for download/verification
 - [x] ✅ Add to existing workflow
@@ -305,7 +297,7 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 ## Progress Tracking
 
 * **Started**: 2025-08-21
-* **Phase 1 Complete**: ~95% (just need to include extra files in archives)
+* **Phase 1 Complete**: ✅ 100% - 2025-08-27
 * **Phase 2 Complete**: ~25% (version management done, script integration pending)
 * **Phase 3 Complete**: _________
 * **Phase 4 Complete**: _________
@@ -314,4 +306,10 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 ### Release History with GoReleaser
 * First test release: _________
 * First production release: _________
-* Issues encountered: _________
+
+### Recent Updates (2025-08-27)
+* Created placeholder LICENSE file (pending OSS license selection)
+* Modified `.goreleaser.yml` to copy parent directory files via before hooks
+* Updated `.gitignore` in plur/ to exclude copied documentation files
+* Upgraded CircleCI config to use hubci/goreleaser orb instead of manual installation
+* Verified successful snapshot builds with all documentation files included
