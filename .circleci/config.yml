@@ -88,6 +88,11 @@ jobs:
             sudo cp ~/workspace/plur/plur /usr/local/bin/
             sudo chmod +x /usr/local/bin/plur
             cp ~/workspace/plur/plur ./plur
+      - run:
+          name: plur doctor
+          command: |
+            which plur
+            ./plur/plur doctor
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - run:
