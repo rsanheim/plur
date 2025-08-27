@@ -58,16 +58,16 @@ func GetVersionInfo() string {
 			if len(shortCommit) > 7 {
 				shortCommit = shortCommit[:7]
 			}
-			
+
 			// Try to get a more descriptive version with git describe
 			// This gives us the nice "v0.10.0-7-g0d44116" format
 			versionStr := tryGitDescribe(shortCommit)
-			
+
 			// Add dirty flag if working tree has modifications
 			if vcsModified {
 				versionStr += "-dirty"
 			}
-			
+
 			return versionStr
 		}
 	}
@@ -118,7 +118,7 @@ func GetBuildTime() string {
 	if date != "unknown" && date != "" {
 		return date
 	}
-	
+
 	// Try to get from VCS info
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, setting := range info.Settings {
@@ -131,7 +131,7 @@ func GetBuildTime() string {
 			}
 		}
 	}
-	
+
 	return "unknown"
 }
 
@@ -143,7 +143,7 @@ func tryGitDescribe(shortCommit string) string {
 	cmd.Stderr = nil // Ignore stderr
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	
+
 	if err := cmd.Run(); err == nil {
 		described := strings.TrimSpace(out.String())
 		if described != "" && described != shortCommit {
@@ -156,7 +156,7 @@ func tryGitDescribe(shortCommit string) string {
 			return described
 		}
 	}
-	
+
 	// Fallback to simple format when git is not available
 	// or when not in a git repository (e.g., in Docker)
 	return fmt.Sprintf("dev-%s", shortCommit)
