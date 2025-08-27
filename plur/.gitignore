@@ -21,4 +21,12 @@ embedded/
 go.work
 
 # Built binary
-/plurdist/
+/plur
+
+# GoReleaser artifacts
+dist/
+
+# Documentation files copied by GoReleaser
+README.md
+LICENSE
+CHANGELOG.md

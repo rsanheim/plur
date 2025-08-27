@@ -11,6 +11,10 @@ before:
   hooks:
     - go mod tidy
     - go mod vendor
+    # Copy documentation files to plur directory for archiving
+    - cp ../README.md .
+    - cp ../LICENSE .
+    - cp ../CHANGELOG.md .
 
 # Build configuration
 builds:
@@ -72,8 +76,10 @@ archives:
     wrap_in_directory: true
     
     # Include these files in the archive
-    # Note: These files need to be accessible from the plur directory
-    # We'll copy them during the build process or use symlinks
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
 
 # Checksum configuration
 checksum:
