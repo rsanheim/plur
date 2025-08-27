@@ -246,6 +246,6 @@ app/models/user.rb → spec/models/user/
 
 ## See Also
 
-- [Watch Mode Documentation](/docs/features/watch-mode.md)
-- [Configuration Guide](/docs/configuration.md)
+- [Watch Mode Documentation](../features/watch-mode.md)
+- [Configuration Guide](../configuration.md)
 - [Architecture Overview](index.md)

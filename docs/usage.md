@@ -125,5 +125,5 @@ plur doctor
 ## Next Steps
 
 - See [Configuration](configuration.md) for customization
-- See [Architecture](architecture/) for technical details
-- See [Features](features/) for detailed feature documentation
+- See [Architecture](architecture/index.md) for technical details
+- See [Features](features/index.md) for detailed feature documentation
