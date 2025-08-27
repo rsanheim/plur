@@ -80,7 +80,7 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 
 ### 1.6 CircleCI Integration ✅
 - [x] ✅ Add new job to `.circleci/config.yml`
-- [x] ✅ Configure using hubci/goreleaser orb (v2)
+- [x] ✅ Configure using official CircleCI Go orb's `install-goreleaser` command
 - [x] ✅ Test linux/amd64 build in CI
 - [x] ✅ Store artifacts for download/verification
 - [x] ✅ Add to existing workflow
@@ -311,5 +311,5 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 * Created placeholder LICENSE file (pending OSS license selection)
 * Modified `.goreleaser.yml` to copy parent directory files via before hooks
 * Updated `.gitignore` in plur/ to exclude copied documentation files
-* Upgraded CircleCI config to use hubci/goreleaser orb instead of manual installation
+* Updated CircleCI config to use official Go orb's `install-goreleaser` command (v1.11.0)
 * Verified successful snapshot builds with all documentation files included

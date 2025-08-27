@@ -3,7 +3,6 @@ version: 2.1
 orbs:
   ruby: circleci/ruby@2.5.3
   go: circleci/go@3.0.2
-  goreleaser: hubci/goreleaser@2
 
 jobs:
   build-and-test-go:
@@ -55,8 +54,10 @@ jobs:
     working_directory: ~/project
     steps:
       - checkout
-      - goreleaser/install:
-          version: latest
+      - go/install-goreleaser
+      - run:
+          name: Verify GoReleaser installation
+          command: goreleaser --version
       - run:
           name: Test GoReleaser snapshot build
           working_directory: plur
