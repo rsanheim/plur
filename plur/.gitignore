@@ -14,8 +14,8 @@
 # Dependency directories
 vendor/
 
-# Embedded watcher binaries
-embedded/
+# Embedded watcher binaries are now all committed for reliable builds
+# Total size: ~850KB for all 5 platforms
 
 # Go workspace file
 go.work

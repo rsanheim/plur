@@ -311,5 +311,5 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 * Created placeholder LICENSE file (pending OSS license selection)
 * Modified `.goreleaser.yml` to copy parent directory files via before hooks
 * Updated `.gitignore` in plur/ to exclude copied documentation files
-* Updated CircleCI config to use official Go orb's `install-goreleaser` command (v1.11.0)
+* Updated CircleCI config to use official Go orb's `install-goreleaser` command (v3.0.3)
 * Verified successful snapshot builds with all documentation files included

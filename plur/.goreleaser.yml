@@ -32,10 +32,12 @@ builds:
       - amd64
       - arm64
     
-    # Skip some combinations that don't make sense
+    # Skip unsupported combinations
     ignore:
+      - goos: darwin
+        goarch: amd64  # No Intel Mac support
       - goos: windows
-        goarch: arm64
+        goarch: arm64  # Not supporting Windows ARM64
     
     # Set module mode
     flags:

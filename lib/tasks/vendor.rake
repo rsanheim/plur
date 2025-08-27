@@ -20,8 +20,7 @@ def all_watcher_platforms
     "aarch64-apple-darwin",       # macOS ARM64
     "aarch64-unknown-linux-gnu",  # Linux ARM64
     "x86_64-unknown-linux-gnu",   # Linux x64
-    "x86_64-pc-windows-msvc",     # Windows x64 (experimental)
-    "aarch64-pc-windows-msvc"     # Windows ARM64 (experimental)
+    "x86_64-pc-windows-msvc"      # Windows x64 (experimental)
   ]
 end
 
