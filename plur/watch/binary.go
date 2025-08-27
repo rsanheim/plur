@@ -106,7 +106,7 @@ func getPlatformBinaryName() (string, error) {
 		case "amd64":
 			return "watcher-x86_64-pc-windows-msvc", nil
 		case "arm64", "aarch64":
-			return "watcher-aarch64-pc-windows-msvc", nil
+			return "", fmt.Errorf("Windows ARM64 is not supported")
 		default:
 			return "", fmt.Errorf("unsupported Windows architecture: %s", runtime.GOARCH)
 		}

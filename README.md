@@ -55,7 +55,6 @@ cd fixtures/projects/default-rails && plur -n 3
 
 ### Experimental/Alpha
 * **Windows x86_64** - Experimental support (never tested in production)
-* **Windows ARM64** - Experimental support (never tested in production)
 
 **Note**: Watch mode (`plur watch`) requires platform-specific binaries. All platforms support standard test execution.
 
