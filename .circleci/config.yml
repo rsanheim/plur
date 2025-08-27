@@ -89,6 +89,9 @@ jobs:
             sudo chmod +x /usr/local/bin/plur
             cp ~/workspace/plur/plur ./plur
       - run:
+          name: install plur watcher
+          command: plur watch install
+      - run:
           name: plur doctor
           command: |
             which plur
