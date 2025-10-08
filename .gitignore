@@ -24,13 +24,11 @@ plur/plur-race
 /coverage/
 /fixtures/**/tmp/*
 /fixtures/**/log/*
-/InstalledFiles
 /pkg/
 /spec/reports/
 /spec/examples.txt
 /storage
 /test/tmp/
-/test/version_tmp/
 /tmp/
 /log/*
 !/log/.keep
@@ -48,12 +46,6 @@ plur/plur-race
 .env
 .env.local
 .env.*.local
-
-# Temporary files
-.DS_Store
-.swp
-.swo
-*~
 
 # Logs
 *.pid
