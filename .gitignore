@@ -16,6 +16,9 @@ main
 /dist
 plur/plur-race
 
+# GoReleaser
+.goreleaser-notes.md
+
 # Ruby
 *.gem
 *.rbc

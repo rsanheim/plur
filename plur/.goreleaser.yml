@@ -112,29 +112,10 @@ release:
   # We'll extract the relevant section from CHANGELOG.md
   name_template: "v{{.Version}}"
 
-# Changelog configuration (for automation)
+# Changelog configuration
+# We use PR-based changelog generation via script/release, so disable auto-generation
 changelog:
-  use: github
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
-      - "^ci:"
-  groups:
-    - title: Features
-      regexp: "^feat"
-      order: 0
-    - title: Bug Fixes
-      regexp: "^fix"
-      order: 1
-    - title: Performance
-      regexp: "^perf"
-      order: 2
-    - title: Refactoring
-      regexp: "^refactor"
-      order: 3
+  disable: true
 
 # Homebrew tap configuration (commented out for now)
 # brews:

@@ -2,18 +2,26 @@
 
 require "optparse"
 require_relative "../lib/plur/release"
+
+options = {}
+
 parser = OptionParser.new do |opts|
-  opts.banner = "Usage: script/release VERSION"
+  opts.banner = "Usage: script/release VERSION [OPTIONS]"
 
   opts.on("-h", "--help", "Show this help message") do
     puts opts
     exit
   end
 
+  opts.on("--extract-notes", "Extract release notes for VERSION from CHANGELOG.md and print to stdout") do
+    options[:extract_notes] = true
+  end
+
   opts.separator ""
   opts.separator "Examples:"
-  opts.separator "  script/release v0.7.0    # Create release v0.7.0"
-  opts.separator "  script/release v1.0.0    # Create major release"
+  opts.separator "  script/release v0.7.0                    # Create release v0.7.0"
+  opts.separator "  script/release v1.0.0                    # Create major release"
+  opts.separator "  script/release v0.7.0 --extract-notes    # Extract notes for v0.7.0"
   opts.separator ""
   opts.separator "Version must be in format vX.Y.Z"
 end
@@ -32,4 +40,21 @@ unless version.match?(/^v\d+\.\d+\.\d+$/)
   exit 1
 end
 
-Plur::Release.new(version).call
+if options[:extract_notes]
+  # Just extract and print the notes for this version
+  unless File.exist?("CHANGELOG.md")
+    abort "Error: CHANGELOG.md not found in current directory"
+  end
+
+  content = File.read("CHANGELOG.md")
+  version_escaped = Regexp.escape(version)
+
+  if content =~ /^## #{version_escaped}.*?\n(.*?)(?=^## |\z)/m
+    puts $1.strip
+  else
+    abort "Error: No changelog entry found for version #{version}"
+  end
+else
+  # Normal release flow
+  Plur::Release.new(version).call
+end

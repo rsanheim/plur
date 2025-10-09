@@ -128,40 +128,34 @@ class Plur::Release
       system("git commit -m 'Update CHANGELOG for #{@new_version}'", exception: true)
     end
 
-    # Create and push tag
-    puts "  → Creating tag #{@new_version}..."
-    system("git tag -a #{@new_version} -m 'Release #{@new_version}'", exception: true)
+    # Extract release notes for GoReleaser
+    puts "  → Extracting release notes..."
+    extract_release_notes_to_file!(@new_version)
 
-    # Rebuild with the new tag
-    puts "  → Rebuilding plur with new version..."
+    # Use GoReleaser to handle everything:
+    # - Create and push tag
+    # - Build multi-platform binaries
+    # - Generate checksums
+    # - Create archives
+    # - Create GitHub release
+    # - Upload artifacts
+    puts "  → Running GoReleaser..."
     Dir.chdir("plur") do
-      system("go install -mod=mod .", exception: true)
+      system("goreleaser release --release-notes=../.goreleaser-notes.md --clean", exception: true)
     end
 
-    # Push tag to remote
-    puts "  → Pushing tag to remote..."
-    system("git push origin #{@new_version}", exception: true)
-
-    # Push commits if any
+    # Push commits if any (GoReleaser already pushed the tag)
     if system("git diff --quiet origin/main..HEAD")
       puts "  ✓ No commits to push"
     else
       puts "  → Pushing commits to main..."
       system("git push origin main", exception: true)
     end
-
-    # Create GitHub release
-    puts "  → Creating GitHub release..."
-    create_github_release!
   end
 
-  def create_github_release!
-    changelog_entry = extract_changelog_entry(@new_version)
-    system("gh", "release", "create", @new_version,
-      "--title", @new_version,
-      "--notes", changelog_entry,
-      "--target", "main",
-      exception: true)
+  def extract_release_notes_to_file!(version)
+    notes = extract_changelog_entry(version)
+    File.write(".goreleaser-notes.md", notes)
   end
 
   def extract_changelog_entry(version)

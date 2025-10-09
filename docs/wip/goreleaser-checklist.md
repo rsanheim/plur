@@ -86,14 +86,14 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 
 ---
 
-## Phase 2: Enhanced Developer Experience ⏳
+## Phase 2: Enhanced Developer Experience ✅ COMPLETED
 
 ### 2.1 Script Integration
-- [ ] Create `script/release-goreleaser` as experimental wrapper
-- [ ] Add options to `script/release`:
-  - [ ] `--dry-run` flag (uses goreleaser snapshot)
-  - [ ] `--goreleaser` flag to use new pipeline
-- [ ] Maintain backward compatibility with current process
+- [x] ✅ Enhanced `script/release` to use GoReleaser internally
+- [x] ✅ Added `--extract-notes` flag to extract changelog entries for CI
+- [x] ✅ Integrated PR-based changelog with GoReleaser release notes
+- [x] ✅ Disabled GoReleaser auto-changelog (we provide our own)
+- [x] ✅ Maintained backward compatibility - same `script/release v0.x.x` command
 
 ### 2.2 Version Management Enhancement
 - [x] ✅ Ensure `plur/version.go` properly handles:
@@ -278,7 +278,7 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 
 * **Started**: 2025-08-21
 * **Phase 1 Complete**: ✅ 100% - 2025-08-27
-* **Phase 2 Complete**: ~25% (version management done, script integration pending)
+* **Phase 2 Complete**: ✅ 100% - 2025-10-09
 * **Phase 3 Complete**: _________
 * **Phase 4 Complete**: _________
 * **Go Live**: _________
@@ -287,7 +287,15 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 * First test release: _________
 * First production release: _________
 
-### Recent Updates (2025-08-27)
+### Recent Updates (2025-10-09)
+* **Phase 2 Complete**: Integrated PR-based changelog with GoReleaser
+* Enhanced `script/release` to use GoReleaser internally (same UX, professional output)
+* Added `--extract-notes` flag for CI/automation use
+* Disabled GoReleaser auto-changelog (we provide our own from PR tracking)
+* Maintained backward compatibility - same command `script/release v0.x.x`
+* Updated `.gitignore` to exclude `.goreleaser-notes.md` temp file
+
+### Previous Updates (2025-08-27)
 * Created placeholder LICENSE file (pending OSS license selection)
 * Modified `.goreleaser.yml` to copy parent directory files via before hooks
 * Updated `.gitignore` in plur/ to exclude copied documentation files
