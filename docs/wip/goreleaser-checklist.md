@@ -58,7 +58,6 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 - [x] ✅ Run `goreleaser build --snapshot --clean`
 - [x] ✅ Verify output structure in `dist/` directory
 - [x] ✅ Test binaries on available platforms:
-  - [ ] darwin/amd64 (Intel Mac) - Not tested yet
   - [x] darwin/arm64 (Apple Silicon) - Tested
   - [x] linux/amd64 (via CircleCI) - Tested in CI
 - [x] ✅ Verify version info: `./dist/plur_darwin_arm64_v8.0/plur --version`
@@ -159,16 +158,6 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
   ```
 - [ ] Document formula testing process
 
-### 3.4 Signing & Notarization Prep
-- [ ] Research macOS code signing requirements
-- [ ] Document certificate requirements
-- [ ] Prepare signing configuration (commented):
-  ```yaml
-  # signs:
-  #   - artifacts: checksum
-  #     cmd: gpg
-  ```
-- [ ] Create signing key documentation
 
 ---
 
@@ -219,8 +208,6 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 - [ ] Add tap/install instructions to README
 
 ### 5.3 Enhanced Distribution
-- [ ] Enable GPG signing if configured
-- [ ] Add macOS notarization if available
 - [ ] Consider Docker image generation
 - [ ] Set up release announcement automation
 
@@ -243,12 +230,10 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 
 ### Should Have
 - [ ] Homebrew formula generation
-- [ ] Signed binaries
 - [ ] Shell completion files
 - [ ] Docker images
 
 ### Nice to Have
-- [ ] macOS notarization
 - [ ] Scoop manifest (Windows)
 - [ ] AUR package (Arch Linux)
 - [ ] Snap package (Ubuntu)
@@ -262,12 +247,7 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
    - Project-specific tap (`homebrew-plur`)?
    - Decision: _______________
 
-2. **Code Signing Strategy**
-   - GPG signing only?
-   - Apple Developer certificate?
-   - Decision: _______________
-
-3. **Shell Completions**
+2. **Shell Completions**
    - Include in releases?
    - Which shells (bash, zsh, fish)?
    - Decision: _______________

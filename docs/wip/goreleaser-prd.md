@@ -62,7 +62,6 @@ While `script/release` provides an excellent developer experience, the underlyin
 
 - Enable GitHub Actions on public repo
 - Activate Homebrew formula generation
-- Turn on artifact signing/notarization
 - Enable changelog publication
 - Monitor and iterate based on user feedback
 
@@ -97,8 +96,8 @@ While `script/release` provides an excellent developer experience, the underlyin
 
 ### Add What Go Ecosystem Expects
 - Professional artifact naming
-- Multi-platform binary distribution  
-- Checksums and signatures
+- Multi-platform binary distribution
+- Checksums
 - Homebrew formula generation
 - Standard Go project structure
 
