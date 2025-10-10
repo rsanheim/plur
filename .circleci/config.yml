@@ -24,8 +24,8 @@ jobs:
       - run:
           name: Install Go
           command: |
-            wget https://go.dev/dl/go1.24.6.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.24.6.linux-amd64.tar.gz
+            wget https://go.dev/dl/go1.25.2.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.25.2.linux-amd64.tar.gz
             echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
             source $BASH_ENV
             go version
@@ -50,7 +50,7 @@ jobs:
 
   test-goreleaser:
     docker:
-      - image: cimg/go:1.25
+      - image: cimg/go:1.25.2
     resource_class: medium
     working_directory: ~/project
     steps:
@@ -131,6 +131,31 @@ jobs:
           command: |
             bin/rake test
 
+  release:
+    docker:
+      - image: cimg/ruby:3.4.5
+    resource_class: medium
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Install Go
+          command: |
+            wget https://go.dev/dl/go1.25.2.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.25.2.linux-amd64.tar.gz
+            echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
+            source $BASH_ENV
+            go version
+      - go/install-goreleaser
+      - run:
+          name: Verify GoReleaser installation
+          command: goreleaser --version
+      - ruby/install-deps:
+          include-branch-in-cache-key: false
+      - run:
+          name: Release with GoReleaser
+          command: script/release $CIRCLE_TAG
+
 workflows:
   test-all:
     jobs:
@@ -139,3 +164,13 @@ workflows:
       - test-ruby-integration:
           requires:
             - build-and-test-go
+
+  release:
+    jobs:
+      - release:
+          context: github-releases
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
