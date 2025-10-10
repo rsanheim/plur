@@ -86,6 +86,9 @@ func getPlatformBinaryName() (string, error) {
 		switch runtime.GOARCH {
 		case "arm64", "aarch64":
 			return "watcher-aarch64-apple-darwin", nil
+		case "amd64":
+			// macOS Intel is not supported - no upstream binary available
+			return "", fmt.Errorf("macOS Intel (x86_64) is not supported for watch mode")
 		default:
 			return "", fmt.Errorf("unsupported macOS architecture: %s", runtime.GOARCH)
 		}
@@ -97,6 +100,15 @@ func getPlatformBinaryName() (string, error) {
 			return "watcher-x86_64-unknown-linux-gnu", nil
 		default:
 			return "", fmt.Errorf("unsupported Linux architecture: %s", runtime.GOARCH)
+		}
+	case "windows":
+		switch runtime.GOARCH {
+		case "amd64":
+			return "watcher-x86_64-pc-windows-msvc", nil
+		case "arm64", "aarch64":
+			return "", fmt.Errorf("Windows ARM64 is not supported")
+		default:
+			return "", fmt.Errorf("unsupported Windows architecture: %s", runtime.GOARCH)
 		}
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)

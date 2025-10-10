@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   ruby: circleci/ruby@2.5.3
-  go: circleci/go@3.0.2
+  go: circleci/go@3.0.3
 
 jobs:
   build-and-test-go:
@@ -24,8 +24,8 @@ jobs:
       - run:
           name: Install Go
           command: |
-            wget https://go.dev/dl/go1.24.6.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.24.6.linux-amd64.tar.gz
+            wget https://go.dev/dl/go1.25.2.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.25.2.linux-amd64.tar.gz
             echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
             source $BASH_ENV
             go version
@@ -39,6 +39,7 @@ jobs:
           command: |
             ./plur/plur --version
             ./plur/plur --help
+            ./plur/plur doctor
       - run:
           name: Run Go tests
           command: bin/rake test:go
@@ -46,6 +47,31 @@ jobs:
           root: .
           paths:
             - plur/plur
+
+  test-goreleaser:
+    docker:
+      - image: cimg/go:1.25.2
+    resource_class: medium
+    working_directory: ~/project
+    steps:
+      - checkout
+      - go/install-goreleaser
+      - run:
+          name: Verify GoReleaser installation
+          command: goreleaser --version
+      - run:
+          name: Test GoReleaser snapshot build
+          working_directory: plur
+          command: |
+            goreleaser build --snapshot --single-target --clean
+      - run:
+          name: Test Linux binary
+          command: |
+            plur/dist/plur_linux_amd64_v1/plur --version
+            plur/dist/plur_linux_amd64_v1/plur doctor
+      - store_artifacts:
+          path: plur/dist
+          destination: goreleaser-artifacts
 
   test-ruby-integration:
     docker:
@@ -62,6 +88,14 @@ jobs:
             sudo cp ~/workspace/plur/plur /usr/local/bin/
             sudo chmod +x /usr/local/bin/plur
             cp ~/workspace/plur/plur ./plur
+      - run:
+          name: install plur watcher
+          command: plur watch install
+      - run:
+          name: plur doctor
+          command: |
+            which plur
+            ./plur/plur doctor
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - run:
@@ -97,10 +131,46 @@ jobs:
           command: |
             bin/rake test
 
+  release:
+    docker:
+      - image: cimg/ruby:3.4.5
+    resource_class: medium
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Install Go
+          command: |
+            wget https://go.dev/dl/go1.25.2.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.25.2.linux-amd64.tar.gz
+            echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
+            source $BASH_ENV
+            go version
+      - go/install-goreleaser
+      - run:
+          name: Verify GoReleaser installation
+          command: goreleaser --version
+      - ruby/install-deps:
+          include-branch-in-cache-key: false
+      - run:
+          name: Release with GoReleaser
+          command: script/release $CIRCLE_TAG
+
 workflows:
   test-all:
     jobs:
       - build-and-test-go
+      - test-goreleaser
       - test-ruby-integration:
           requires:
             - build-and-test-go
+
+  release:
+    jobs:
+      - release:
+          context: github-releases
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/

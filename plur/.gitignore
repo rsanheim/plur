@@ -14,11 +14,16 @@
 # Dependency directories
 vendor/
 
-# Embedded watcher binaries
-embedded/
-
 # Go workspace file
 go.work
 
 # Built binary
 /plur
+
+# GoReleaser artifacts
+dist/
+
+# Documentation files copied by GoReleaser
+README.md
+LICENSE
+CHANGELOG.md
