@@ -35,8 +35,8 @@ unless version
   exit 1
 end
 
-unless version.match?(/^v\d+\.\d+\.\d+$/)
-  puts "Error: Version must be in format vX.Y.Z (e.g., v0.7.0)"
+unless version.match?(/^v\d+\.\d+\.\d+(-.*)?$/)
+  puts "Error: Version must be in format vX.Y.Z or vX.Y.Z-suffix (e.g., v0.7.0, v0.7.0-rc1)"
   exit 1
 end
 
