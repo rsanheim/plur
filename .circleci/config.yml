@@ -146,12 +146,12 @@ jobs:
             echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
             source $BASH_ENV
             go version
+      - ruby/install-deps:
+          include-branch-in-cache-key: false
       - go/install-goreleaser
       - run:
           name: Verify GoReleaser installation
           command: goreleaser --version
-      - ruby/install-deps:
-          include-branch-in-cache-key: false
       - run:
           name: Release with GoReleaser
           command: script/release $CIRCLE_TAG
