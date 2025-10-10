@@ -154,7 +154,7 @@ jobs:
           command: goreleaser --version
       - run:
           name: Release with GoReleaser
-          command: script/release $CIRCLE_TAG
+          command: bundle exec script/release $CIRCLE_TAG
 
 workflows:
   test-all:
