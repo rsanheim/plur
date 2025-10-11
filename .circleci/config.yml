@@ -150,7 +150,7 @@ jobs:
           command: goreleaser --version
       - run:
           name: Release with GoReleaser
-          command: bundle exec script/release v0.10.4-$CIRCLE_BUILD_NUM-test
+          command: bundle exec script/release v0.10.4-$CIRCLE_BUILD_NUM-test --automated --draft
 
 workflows:
   test-all:

@@ -3,9 +3,11 @@ require "open3"
 require_relative "changelog"
 
 class Plur::Release
-  def initialize(new_version, prs_in_release = nil)
+  def initialize(new_version, options = {})
     @new_version = new_version
-    @prs_in_release = prs_in_release || find_last_pr_merged_to_main
+    @prs_in_release = options[:prs_in_release] || find_last_pr_merged_to_main
+    @automated = options[:automated] || false
+    @draft = options.fetch(:draft, true) # default to draft for safety
     @main_required = false
   end
 
@@ -29,11 +31,15 @@ class Plur::Release
     # Show release summary and ask for confirmation
     show_release_summary(current_version, @new_version, @prs_in_release)
 
-    unless confirm_release?
+    unless @automated || confirm_release?
       puts "\nRelease cancelled. To continue later:"
       puts "  1. Review and update CHANGELOG.md if needed"
       puts "  2. Run: script/release #{@new_version}"
       exit 0
+    end
+
+    if @automated
+      puts "\n>>> Running in automated mode - skipping confirmation"
     end
 
     # Perform the release
@@ -147,8 +153,18 @@ class Plur::Release
     # - Create GitHub release
     # - Upload artifacts
     puts "  → Running GoReleaser..."
+
+    # Build GoReleaser command with draft flag
+    goreleaser_cmd = "goreleaser release --release-notes=../.goreleaser-notes.md --clean"
+    unless @draft
+      goreleaser_cmd += " --draft=false"
+      puts "    (Publishing as non-draft release)"
+    else
+      puts "    (Creating draft release)"
+    end
+
     Dir.chdir("plur") do
-      system("goreleaser release --release-notes=../.goreleaser-notes.md --clean", exception: true)
+      system(goreleaser_cmd, exception: true)
     end
 
     # Push commits if any (GoReleaser already pushed the tag)

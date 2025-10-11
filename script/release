@@ -13,14 +13,27 @@ parser = OptionParser.new do |opts|
     exit
   end
 
+  opts.on("-a, --automated", "Automated release - will not prompt for confirmation") do
+    options[:automated] = true
+  end
+
+  opts.on("-d", "--draft", "Create a draft release (default)") do
+    options[:draft] = true
+  end
+
+  opts.on("--no-draft", "Publish release immediately (not as draft)") do
+    options[:draft] = false
+  end
+
   opts.on("--extract-notes", "Extract release notes for VERSION from CHANGELOG.md and print to stdout") do
     options[:extract_notes] = true
   end
 
   opts.separator ""
   opts.separator "Examples:"
-  opts.separator "  script/release v0.7.0                    # Create release v0.7.0"
-  opts.separator "  script/release v1.0.0                    # Create major release"
+  opts.separator "  script/release v0.7.0                    # Create draft release v0.7.0"
+  opts.separator "  script/release v1.0.0 --no-draft         # Create and publish release"
+  opts.separator "  script/release v0.7.0 --automated        # Automated release (no prompts)"
   opts.separator "  script/release v0.7.0 --extract-notes    # Extract notes for v0.7.0"
   opts.separator ""
   opts.separator "Version must be in format vX.Y.Z"
@@ -56,5 +69,5 @@ if options[:extract_notes]
   end
 else
   # Normal release flow
-  Plur::Release.new(version).call
+  Plur::Release.new(version, options).call
 end
