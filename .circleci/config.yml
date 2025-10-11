@@ -139,7 +139,8 @@ jobs:
     working_directory: ~/project
     steps:
       - checkout
-      - go/install
+      - go/install:
+          version: 1.25.2
       - gh/setup
       - ruby/install-deps:
           include-branch-in-cache-key: false
