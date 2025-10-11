@@ -161,7 +161,7 @@ class Plur::Release
     end
 
     Dir.chdir("plur") do
-      system(goreleaser_cmd, exception: true)
+      system(*goreleaser_cmd, exception: true)
     end
 
     if system("git diff --quiet origin/main..HEAD")
