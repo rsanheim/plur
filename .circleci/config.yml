@@ -149,6 +149,11 @@ jobs:
           name: Verify GoReleaser installation
           command: goreleaser --version
       - run:
+          name: Configure Git for automated commits
+          command: |
+            git config user.email "rsanheim@gmail.com"
+            git config user.name "Rob Sanheim"
+      - run:
           name: Release with GoReleaser
           command: bundle exec script/release v0.10.4-$CIRCLE_BUILD_NUM-test --automated --draft
 
