@@ -163,13 +163,6 @@ class Plur::Release
     Dir.chdir("plur") do
       system(*goreleaser_cmd, exception: true)
     end
-
-    if system("git diff --quiet origin/main..HEAD")
-      puts "  ✓ No commits to push"
-    else
-      puts "  → Pushing commits to main..."
-      system("git push origin main", exception: true)
-    end
   end
 
   def extract_release_notes_to_file!(version)
