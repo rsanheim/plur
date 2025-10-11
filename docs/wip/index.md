@@ -7,14 +7,21 @@ This directory contains active development documentation.
 ### 📋 Strategy & Planning
 
 | Document | Purpose | Last Updated |
-|----------|---------|--------------|  
+|----------|---------|--------------|
 | [interactive-plur.md](interactive-plur.md) | Interactive config building via `plur watch` - learning mode concept | 2025-08-16 |
+| [watcher-packaging-strategy.md](watcher-packaging-strategy.md) | Strategy for packaging watcher binaries across platforms | 2025-08-27 |
 
 ### 🔬 Technical Deep Dives
 
 | Document | Purpose | Last Updated |
-|----------|---------|--------------|  
+|----------|---------|--------------|
 | [consolidate-watch-and-spec-report.md](consolidate-watch-and-spec-report.md) | Consolidate watch and spec report handlers | - |
+
+### ✅ Recently Completed (Moved)
+
+| Document | New Location | Status |
+|----------|-------------|--------|
+| GoReleaser Implementation | [Release Infrastructure](../development/releases/index.md) | Completed Oct 2025 |
 
 ### 📁 Reference Files
 
