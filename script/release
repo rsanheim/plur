@@ -13,7 +13,7 @@ parser = OptionParser.new do |opts|
     exit
   end
 
-  opts.on("-a, --automated", "Automated release - will not prompt for confirmation") do
+  opts.on("-a", "--automated", "Automated release - will not prompt for confirmation") do
     options[:automated] = true
   end
 
@@ -39,9 +39,11 @@ parser = OptionParser.new do |opts|
   opts.separator "Version must be in format vX.Y.Z"
 end
 
-parser.parse!
+# Extract version from ARGV[0] first (before parsing options)
+version = ARGV.shift
 
-version = ARGV[0]
+# Then parse the remaining options
+parser.parse!
 
 unless version
   puts parser
@@ -49,7 +51,7 @@ unless version
 end
 
 unless version.match?(/^v\d+\.\d+\.\d+(-.*)?$/)
-  puts "Error: Version must be in format vX.Y.Z or vX.Y.Z-suffix (e.g., v0.7.0, v0.7.0-rc1)"
+  puts "Error - invalid version #{version.inspect}. Version must be in format vX.Y.Z or vX.Y.Z-suffix (e.g., v0.7.0, v0.7.0-rc1)"
   exit 1
 end
 
