@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   ruby: circleci/ruby@2.5.3
   go: circleci/go@3.0.3
-  gh: circleci/gh@2.7.2
+  gh: circleci/github-cli@2.7.2
 
 jobs:
   build-and-test-go:
