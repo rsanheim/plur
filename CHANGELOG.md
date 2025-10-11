@@ -1,6 +1,6 @@
 # plur CHANGELOG
 
-## v0.9.12-test2 - Test Release
+## v0.10.2-test2 - Test Release
 
 * Test release to verify GoReleaser and CircleCI release workflow
 * Includes permission fixes for Claude settings
