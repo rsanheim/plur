@@ -64,7 +64,14 @@ class Plur::Release
   def ensure_clean_git_status!
     stdout, _, _ = capture3!("git status --porcelain")
     status = stdout.strip
-    abort "Error: Git working directory is not clean. Please commit or stash your changes." unless status.empty?
+
+    unless status.empty?
+      warn "Error: Git working directory is not clean."
+      warn "Uncommitted changes:"
+      warn status
+      warn "\nPlease commit or stash your changes."
+      abort
+    end
   end
 
   def get_current_version
