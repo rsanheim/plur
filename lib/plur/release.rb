@@ -156,11 +156,11 @@ class Plur::Release
 
     # Build GoReleaser command with draft flag
     goreleaser_cmd = "goreleaser release --release-notes=../.goreleaser-notes.md --clean"
-    unless @draft
+    if @draft
+      puts "    (Creating draft release)"
+    else
       goreleaser_cmd += " --draft=false"
       puts "    (Publishing as non-draft release)"
-    else
-      puts "    (Creating draft release)"
     end
 
     Dir.chdir("plur") do
