@@ -152,11 +152,11 @@ class Plur::Release
     extract_release_notes_to_file!(@new_version)
 
     puts "  → Running GoReleaser..."
-    goreleaser_cmd = "goreleaser release --release-notes=../.goreleaser-notes.md --clean"
+    goreleaser_cmd = %w[goreleaser release --release-notes=../.goreleaser-notes.md --clean]
     if @draft
       puts "    (Creating draft release)"
     else
-      goreleaser_cmd += " --draft=false"
+      goreleaser_cmd << "--draft=false"
       puts "    (Publishing as non-draft release)"
     end
 
