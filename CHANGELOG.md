@@ -1,5 +1,10 @@
 # plur CHANGELOG
 
+
+## v0.10.2-test2 - 2025-10-10
+
+* Various improvements and bug fixes
+
 ## v0.10.2-test2 - Test Release
 
 * Test release to verify GoReleaser and CircleCI release workflow
