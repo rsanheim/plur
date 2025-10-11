@@ -31,14 +31,14 @@ class Plur::Release
     # Show release summary and ask for confirmation
     show_release_summary(current_version, @new_version, @prs_in_release)
 
-    unless @automated || confirm_release?
+    unless automated? || confirm_release?
       puts "\nRelease cancelled. To continue later:"
       puts "  1. Review and update CHANGELOG.md if needed"
       puts "  2. Run: script/release #{@new_version}"
       exit 0
     end
 
-    if @automated
+    if automated?
       puts "\n>>> Running in automated mode - skipping confirmation"
     end
 
@@ -141,20 +141,17 @@ class Plur::Release
       system("git commit -m 'Update CHANGELOG for #{@new_version}'", exception: true)
     end
 
+    if automated?
+      puts "  → Tagging and pushing new version #{@new_version}..."
+      system("git tag -a #{@new_version} -m 'Release #{@new_version}'", exception: true)
+      system("git push --tags", exception: true)
+    end
+
     # Extract release notes for GoReleaser
     puts "  → Extracting release notes..."
     extract_release_notes_to_file!(@new_version)
 
-    # Use GoReleaser to handle everything:
-    # - Create and push tag
-    # - Build multi-platform binaries
-    # - Generate checksums
-    # - Create archives
-    # - Create GitHub release
-    # - Upload artifacts
     puts "  → Running GoReleaser..."
-
-    # Build GoReleaser command with draft flag
     goreleaser_cmd = "goreleaser release --release-notes=../.goreleaser-notes.md --clean"
     if @draft
       puts "    (Creating draft release)"
@@ -167,7 +164,6 @@ class Plur::Release
       system(goreleaser_cmd, exception: true)
     end
 
-    # Push commits if any (GoReleaser already pushed the tag)
     if system("git diff --quiet origin/main..HEAD")
       puts "  ✓ No commits to push"
     else
@@ -223,6 +219,10 @@ class Plur::Release
     end
 
     prs
+  end
+
+  def automated?
+    @automated
   end
 
   def get_pr_info(pr_number)
