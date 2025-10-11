@@ -1,5 +1,11 @@
 # plur CHANGELOG
 
+## v0.9.12-test2 - Test Release
+
+* Test release to verify GoReleaser and CircleCI release workflow
+* Includes permission fixes for Claude settings
+* Testing pre-release version suffix support
+
 ## v0.10.0 - 2025-08-21
 
 * Consolidate to `Task` to for defining how to run things [#100](https://github.com/rsanheim/plur/pull/100)
