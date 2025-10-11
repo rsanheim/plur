@@ -140,14 +140,6 @@ jobs:
     steps:
       - checkout
       - gh/setup
-      # - run:
-      #     name: Install Go
-      #     command: |
-      #       wget https://go.dev/dl/go1.25.2.linux-amd64.tar.gz
-      #       sudo tar -C /usr/local -xzf go1.25.2.linux-amd64.tar.gz
-      #       echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
-      #       source $BASH_ENV
-      #       go version
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - go/install-goreleaser
@@ -156,7 +148,7 @@ jobs:
           command: goreleaser --version
       - run:
           name: Release with GoReleaser
-          command: bundle exec script/release $CIRCLE_TAG
+          command: bundle exec script/release v0.10.1-$CIRCLE_BUILD_NUM-test
 
 workflows:
   test-all:
