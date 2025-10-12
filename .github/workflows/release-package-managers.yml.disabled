@@ -1,0 +1,126 @@
+# GitHub Actions workflow for releasing plur with package manager support
+# This workflow runs when a new tag is pushed and uses GoReleaser to:
+# - Build multi-platform binaries
+# - Create GitHub release
+# - Update Homebrew tap
+# - Create Scoop manifest
+# - Build Linux packages (deb, rpm, apk)
+
+name: Release with Package Managers
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+
+permissions:
+  contents: write  # For creating releases
+  packages: write  # For publishing packages
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog generation
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'  # Match the Go version used in development
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          version: latest
+          install-only: true
+
+      - name: Validate GoReleaser config
+        run: |
+          cd plur
+          goreleaser check
+
+      - name: Extract release notes
+        run: |
+          # Extract notes for this version from CHANGELOG.md
+          bundle exec script/release ${GITHUB_REF_NAME} --extract-notes > .goreleaser-notes.md
+
+      - name: Run GoReleaser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Token for publishing to homebrew-tap repo
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          # Token for publishing to scoop-bucket repo (optional)
+          SCOOP_GITHUB_TOKEN: ${{ secrets.SCOOP_GITHUB_TOKEN }}
+          # AUR key for Arch Linux (optional)
+          AUR_KEY: ${{ secrets.AUR_KEY }}
+        run: |
+          cd plur
+          goreleaser release --release-notes=../.goreleaser-notes.md --clean
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-packages
+          path: |
+            plur/dist/*.deb
+            plur/dist/*.rpm
+            plur/dist/*.apk
+
+  # Optional: Test Homebrew installation
+  test-homebrew:
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - name: Wait for tap update
+        run: sleep 60  # Give time for tap to be updated
+
+      - name: Test Homebrew installation
+        run: |
+          brew tap rsanheim/tap
+          brew install plur
+          plur --version
+          plur doctor
+
+  # Optional: Test Scoop installation
+  test-scoop:
+    needs: release
+    runs-on: windows-latest
+    if: secrets.SCOOP_GITHUB_TOKEN != ''  # Only run if Scoop is configured
+    steps:
+      - name: Wait for bucket update
+        run: Start-Sleep -Seconds 60
+
+      - name: Test Scoop installation
+        shell: pwsh
+        run: |
+          scoop bucket add rsanheim https://github.com/rsanheim/scoop-bucket
+          scoop install plur
+          plur --version
+          plur doctor
+
+  # Notification job
+  notify:
+    needs: [release, test-homebrew]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify release status
+        run: |
+          if [ "${{ needs.release.result }}" == "success" ]; then
+            echo "✅ Release successful!"
+            echo "Package managers updated:"
+            echo "  - Homebrew tap: brew tap rsanheim/tap && brew install plur"
+            echo "  - Linux packages: Available as .deb, .rpm, .apk"
+            echo "  - Scoop (if configured): scoop bucket add rsanheim https://github.com/rsanheim/scoop-bucket && scoop install plur"
+          else
+            echo "❌ Release failed. Check the logs for details."
+          fi
