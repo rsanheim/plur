@@ -104,18 +104,16 @@ if opts[:parallel] && containers.length > 1
   require "parallel"
 
   results = Parallel.map(containers, in_threads: 4) do |container|
-    begin
-      installer.run(
-        command: command,
-        service: container,
-        compose_prefix: opts[:compose_prefix],
-        binary: opts[:binary],
-        install_path: opts[:install_path]
-      )
-      [container, true, nil]
-    rescue => e
-      [container, false, e.message]
-    end
+    installer.run(
+      command: command,
+      service: container,
+      compose_prefix: opts[:compose_prefix],
+      binary: opts[:binary],
+      install_path: opts[:install_path]
+    )
+    [container, true, nil]
+  rescue => e
+    [container, false, e.message]
   end
 
   results.each do |container, success, error|
