@@ -1,7 +1,5 @@
 # plur CHANGELOG
 
-
-
 ## v0.11.0 - 2025-10-12
 
 * Release testing and refinement [#114](https://github.com/rsanheim/plur/pull/114)
