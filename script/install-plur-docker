@@ -1,0 +1,163 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../lib/plur"
+require_relative "../lib/plur/install"
+
+# Parse options
+opts = Optimist.options do
+  version "install-plur-docker #{Plur.current_git_tag}"
+  banner <<~BANNER
+    Install or update plur binary in Docker containers
+
+    Usage:
+      install-plur-docker [COMMAND] SERVICE_NAME [OPTIONS]
+      install-plur-docker [COMMAND] --pattern PATTERN [OPTIONS]
+      install-plur-docker [COMMAND] --file FILE [OPTIONS]
+
+    Commands:
+      install   Install/update plur in container(s) (default)
+      status    Show plur installation status and doctor output
+
+    Arguments:
+      SERVICE_NAME      Name of the Docker container or service
+
+    Options:
+  BANNER
+
+  opt :compose_prefix, "Use docker-compose naming (prefix_service_1)", type: :string, short: "C"
+  opt :binary, "Path to specific binary (auto-detects if omitted)", type: :string
+  opt :install_path, "Container path to install plur (default: /usr/local/bin)", type: :string, short: "p"
+  opt :pattern, "Install to all containers matching pattern", type: :string, short: "P"
+  opt :file, "Read container names from file (one per line)", type: :string, short: "f"
+  opt :parallel, "Install to multiple containers in parallel", default: false
+  opt :help, "Show this help message", short: "h"
+
+  educate_on_error
+end
+
+# Handle help
+if opts[:help]
+  Optimist.educate
+  exit 0
+end
+
+# Parse command and service/containers
+command = "install"
+if ARGV.first && %w[install status].include?(ARGV.first)
+  command = ARGV.shift
+end
+
+# Determine which containers to install to
+containers = []
+
+if opts[:pattern]
+  # Get all containers matching pattern
+  cmd = TTY::Command.new(printer: :null)
+  result = cmd.run("docker ps --format '{{.Names}}'", only_output_on_error: true)
+  all_containers = result.out.split("\n").map(&:strip)
+  pattern = Regexp.new(opts[:pattern])
+  containers = all_containers.select { |c| c.match?(pattern) }
+
+  if containers.empty?
+    puts "Error: No running containers match pattern: #{opts[:pattern]}"
+    exit 1
+  end
+
+  puts "Found #{containers.length} container(s) matching '#{opts[:pattern]}':"
+  containers.each { |c| puts "  - #{c}" }
+  puts
+elsif opts[:file]
+  # Read container names from file
+  unless File.exist?(opts[:file])
+    puts "Error: File not found: #{opts[:file]}"
+    exit 1
+  end
+
+  containers = File.readlines(opts[:file]).map(&:strip).reject(&:empty?)
+  if containers.empty?
+    puts "Error: No container names found in file: #{opts[:file]}"
+    exit 1
+  end
+
+  puts "Read #{containers.length} container(s) from #{opts[:file]}:"
+  containers.each { |c| puts "  - #{c}" }
+  puts
+else
+  # Single container from command line
+  service = ARGV.shift
+  unless service
+    puts "Error: SERVICE_NAME required (or use --pattern or --file)"
+    puts
+    Optimist.educate
+    exit 1
+  end
+  containers = [service]
+end
+
+# Run the installer for each container
+installer = Plur::Install.new
+failed_containers = []
+
+if opts[:parallel] && containers.length > 1
+  puts "Installing to #{containers.length} containers in parallel..."
+  require "parallel"
+
+  results = Parallel.map(containers, in_threads: 4) do |container|
+    begin
+      installer.run(
+        command: command,
+        service: container,
+        compose_prefix: opts[:compose_prefix],
+        binary: opts[:binary],
+        install_path: opts[:install_path]
+      )
+      [container, true, nil]
+    rescue => e
+      [container, false, e.message]
+    end
+  end
+
+  results.each do |container, success, error|
+    unless success
+      failed_containers << container
+      puts "Failed to install on #{container}: #{error}"
+    end
+  end
+else
+  # Sequential installation
+  containers.each_with_index do |container, idx|
+    if containers.length > 1
+      puts "=" * 60
+      puts "Container #{idx + 1}/#{containers.length}: #{container}"
+      puts "=" * 60
+    end
+
+    begin
+      installer.run(
+        command: command,
+        service: container,
+        compose_prefix: opts[:compose_prefix],
+        binary: opts[:binary],
+        install_path: opts[:install_path]
+      )
+    rescue => e
+      puts "Failed to install on #{container}: #{e.message}"
+      failed_containers << container
+    end
+
+    puts if containers.length > 1
+  end
+end
+
+# Summary for batch operations
+if containers.length > 1
+  puts "=" * 60
+  puts "Summary:"
+  puts "  Successful: #{containers.length - failed_containers.length}/#{containers.length}"
+  if failed_containers.any?
+    puts "  Failed containers:"
+    failed_containers.each { |c| puts "    - #{c}" }
+    exit 1
+  end
+end
