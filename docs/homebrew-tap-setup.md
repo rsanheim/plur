@@ -66,20 +66,20 @@ brew upgrade plur
 For GoReleaser to push to the tap repository:
 
 1. Create a Personal Access Token:
-   * Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
-   * Click "Generate new token (classic)"
-   * Name: `TAP_GITHUB_TOKEN`
-   * Scopes required:
-     * `repo` (full control of private repositories)
-     * `workflow` (if the tap repo has GitHub Actions)
-   * Generate and copy the token
+    * Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+    * Click "Generate new token (classic)"
+    * Name: `TAP_GITHUB_TOKEN`
+    * Scopes required:
+        * `repo` (full control of private repositories)
+        * `workflow` (if the tap repo has GitHub Actions)
+    * Generate and copy the token
 
 2. Add to plur repository secrets:
-   * Go to plur repository → Settings → Secrets and variables → Actions
-   * Click "New repository secret"
-   * Name: `TAP_GITHUB_TOKEN`
-   * Value: Paste the token
-   * Click "Add secret"
+    * Go to plur repository → Settings → Secrets and variables → Actions
+    * Click "New repository secret"
+    * Name: `TAP_GITHUB_TOKEN`
+    * Value: Paste the token
+    * Click "Add secret"
 
 ## Testing the Setup
 

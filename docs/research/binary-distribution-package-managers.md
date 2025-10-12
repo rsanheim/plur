@@ -22,18 +22,18 @@ This document presents research findings on distributing plur binaries through p
 ### Key Findings
 
 1. **Homebrew Strategy**: Projects typically follow one of two paths:
-   * **Homebrew Core**: Established projects (gh, lazygit) get accepted into homebrew-core
-   * **Custom Tap**: New/smaller projects maintain their own tap for immediate control
+    * **Homebrew Core**: Established projects (gh, lazygit) get accepted into homebrew-core
+    * **Custom Tap**: New/smaller projects maintain their own tap for immediate control
 
 2. **GoReleaser Adoption**: Most successful Go CLIs use GoReleaser for automation
-   * Handles multi-platform builds
-   * Automates formula/package generation
-   * Integrates with CI/CD pipelines
+    * Handles multi-platform builds
+    * Automates formula/package generation
+    * Integrates with CI/CD pipelines
 
 3. **Multi-Platform Support**: Successful projects support 3-5 package managers
-   * macOS: Homebrew (primary)
-   * Windows: Scoop, Chocolatey
-   * Linux: apt/yum via nFPM, Snap, AUR
+    * macOS: Homebrew (primary)
+    * Windows: Scoop, Chocolatey
+    * Linux: apt/yum via nFPM, Snap, AUR
 
 ## GoReleaser's Package Manager Capabilities
 
@@ -187,8 +187,8 @@ jobs:
 
 For cross-repository publishing (e.g., to homebrew-tap):
 1. Create a Personal Access Token with:
-   * `repo` scope (full control of private repositories)
-   * `workflow` scope (if updating GitHub Actions)
+    * `repo` scope (full control of private repositories)
+    * `workflow` scope (if updating GitHub Actions)
 2. Add as repository secret (`TAP_GITHUB_TOKEN`)
 3. Reference in GoReleaser config: `token: "{{ .Env.TAP_GITHUB_TOKEN }}"`
 
