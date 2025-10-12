@@ -139,15 +139,9 @@ jobs:
     working_directory: ~/project
     steps:
       - checkout
+      - go/install:
+          version: 1.25.2
       - gh/setup
-      # - run:
-      #     name: Install Go
-      #     command: |
-      #       wget https://go.dev/dl/go1.25.2.linux-amd64.tar.gz
-      #       sudo tar -C /usr/local -xzf go1.25.2.linux-amd64.tar.gz
-      #       echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
-      #       source $BASH_ENV
-      #       go version
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - go/install-goreleaser
@@ -155,8 +149,21 @@ jobs:
           name: Verify GoReleaser installation
           command: goreleaser --version
       - run:
+          name: Configure Git for automated commits
+          command: |
+            git config user.email "rsanheim@gmail.com"
+            git config user.name "Rob Sanheim"
+      - run:
+          name: Configure Git authentication for pushing
+          command: |
+            # Switch origin to use HTTPS with GitHub token
+            git remote set-url origin https://${GITHUB_TOKEN}@github.com/rsanheim/plur.git
+
+            # Verify the change (token will be masked in output)
+            git remote -v
+      - run:
           name: Release with GoReleaser
-          command: bundle exec script/release $CIRCLE_TAG
+          command: bundle exec script/release v0.10.4-$CIRCLE_BUILD_NUM-test --automated --draft
 
 workflows:
   test-all:
@@ -167,6 +174,8 @@ workflows:
           requires:
             - build-and-test-go
 
+  # Test release workflow - runs on test-releases/* branches for validation
+  # Production releases are done from main branch via manual script/release
   release:
     jobs:
       - release:
@@ -175,4 +184,4 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              ignore: /.*/
+              only: /test-releases.*/

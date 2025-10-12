@@ -191,43 +191,4 @@ plur/
     └── turbo_tests/        # Reference implementation
 ```
 
-### Docker Testing
-
-Plur includes Docker support for testing across different architectures and environments. Docker operations are split into two scripts for efficiency:
-
-#### Building Images
-```bash
-# Build for current platform
-./script/docker-build
-
-# Build for specific architecture
-./script/docker-build --platform linux/amd64
-./script/docker-build --platform linux/arm64
-
-# Force rebuild
-./script/docker-build --force
-```
-
-#### Running Containers
-```bash
-# Interactive shell
-./script/docker-run --shell
-
-# Run full test suite
-./script/docker-run --test
-
-# Run specific command
-./script/docker-run --command "plur doctor"
-./script/docker-run --command "bin/rake test"
-
-# Shell on specific architecture
-./script/docker-run --shell --platform linux/amd64
-```
-
-The Docker setup automatically:
-- Uses configuration from the `plur.rb` module
-- Detects when rebuilds are needed (Dockerfile/dependency changes)
-- Sets up proper volumes and environment variables
-- Supports both ARM64 and x86_64 architectures
-
 This project demonstrates that Go can provide significant performance improvements for Ruby tooling while maintaining full compatibility with existing Rails workflows.
