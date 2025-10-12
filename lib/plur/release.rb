@@ -141,11 +141,9 @@ class Plur::Release
       system("git commit -m 'Update CHANGELOG for #{@new_version}'", exception: true)
     end
 
-    if automated?
-      puts "  → Tagging and pushing new version #{@new_version}..."
-      system("git tag -a #{@new_version} -m 'Release #{@new_version}'", exception: true)
-      system("git push --tags", exception: true)
-    end
+    puts "  → Tagging and pushing new version #{@new_version}..."
+    system("git tag -a #{@new_version} -m 'Release #{@new_version}'", exception: true)
+    system("git push --tags", exception: true)
 
     # Extract release notes for GoReleaser
     puts "  → Extracting release notes..."
