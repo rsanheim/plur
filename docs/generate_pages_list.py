@@ -63,9 +63,9 @@ def main():
         # Skip some files
         rel_path = md_file.relative_to(docs_dir)
         path_str = str(rel_path)
-        
-        # Skip WIP, overrides, and the recent-pages file itself
-        if 'wip/' in path_str or 'overrides/' in path_str or md_file.name == 'recent-pages.md':
+
+        # Skip WIP, overrides, README files (conflicts with index.md), and the recent-pages file itself
+        if 'wip/' in path_str or 'overrides/' in path_str or md_file.name == 'recent-pages.md' or md_file.name == 'README.md':
             continue
         
         timestamp = get_git_timestamp(md_file)

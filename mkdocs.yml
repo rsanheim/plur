@@ -70,6 +70,9 @@ plugins:
       fallback_to_build_date: false
       exclude:
         - index.md
+        - README.md
+        - .venv/**
+        - .cache/**
       enabled: true
   - panzoom:
       full_screen: true

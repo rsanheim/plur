@@ -122,7 +122,7 @@ The plur implementation is feature-complete and performing well:
 - **File watching**: Automatically runs tests when files change
 - **Interactive commands**: Press Enter to run all tests, type 'exit' to quit
 - **Intelligent mapping**: Maps source files to their corresponding spec files
-- **Known issue**: Concurrent test runs can produce interleaved output (see [architecture docs](../architecture/watch-mode-concurrent-output-issue.md))
+- **Known issue**: Concurrent test runs can produce interleaved output (see [architecture docs](../architecture/watch-concurrent-output.md))
 
 ## Future Enhancements (Optional)
 
