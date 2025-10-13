@@ -11,13 +11,13 @@ theme:
     code: JetBrains Mono
   palette:
     - scheme: default
-      primary: indigo
+      primary: teal
       accent: indigo
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - scheme: slate
-      primary: indigo
+      primary: teal
       accent: indigo
       toggle:
         icon: material/weather-sunny
