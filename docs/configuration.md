@@ -5,17 +5,19 @@ Plur aims for zero-configuration operation, but provides flexible configuration 
 Plur supports multiple configuration methods with the following precedence (highest to lowest):
 
 1. Command-line flags
-2. `.plur.toml` (project-specific configuration)
-3. `~/.plur.toml` (user-specific configuration)
-4. Environment variables
-5. Built-in defaults
+2. Environment variables (e.g., `PARALLEL_TEST_PROCESSORS`)
+3. `PLUR_CONFIG_FILE` environment variable (if set)
+4. `.plur.toml` (project-specific configuration)
+5. `~/.plur.toml` (user-specific configuration)
+6. Built-in defaults
 
 ## Configuration Files (TOML)
 
 Plur automatically loads configuration from TOML files using the following search order:
 
-1. `.plur.toml` in the current directory (project-specific)
-2. `~/.plur.toml` in your home directory (user-specific)
+1. `PLUR_CONFIG_FILE` environment variable (if set, takes highest priority)
+2. `.plur.toml` in the current directory (project-specific)
+3. `~/.plur.toml` in your home directory (user-specific)
 
 ### Basic Example
 
@@ -37,10 +39,11 @@ debounce = 200
 ### Available Options
 
 #### Global Settings
-- `workers` - Number of parallel workers (default: auto-detect)
-- `color` - Enable colored output (default: true)
-- `verbose` - Enable verbose output (default: false)
-- `use` - Default task to use (default: auto-detect based on project structure)
+
+* `workers` - Number of parallel workers (default: auto-detect)
+* `color` - Enable colored output (default: true)
+* `verbose` - Enable verbose output (default: false)
+* `use` - Default task to use (default: auto-detect based on project structure)
 
 ## Task Configuration
 
@@ -49,6 +52,7 @@ Tasks are the core of Plur's test execution system. They define how to run tests
 ### Task Overview
 
 A Task in Plur encapsulates:
+
 * The command to run
 * Which directories to watch or search
 * How to map source files to test files
@@ -59,6 +63,7 @@ Plur comes with built-in tasks for RSpec and Minitest, but you can define custom
 ### Task Selection Priority
 
 Tasks are selected in the following priority order:
+
 1. CLI flag: `plur --use=custom-task`
 2. Config file: `use = "custom-task"` in `.plur.toml`
 3. Auto-detection: Based on directory structure (spec/ → rspec, test/ → minitest)
@@ -69,7 +74,7 @@ Tasks are selected in the following priority order:
 |-------|------|-------------|----------|------| 
 | `description` | string | Human-readable description of the task | No | "" |
 | `run` | string | Command to execute | Yes | "" |
-| `source_dirs` | string[] | Directories to watch/search | No | `["."` |
+| `source_dirs` | string[] | Directories to watch/search | No | `["spec", "lib", "app"]` (rspec)<br>`["test", "lib", "app"]` (minitest) |
 | `mappings` | MappingRule[] | File mapping rules | No | `[]` |
 | `ignore_patterns` | string[] | Patterns to ignore (watch mode) | No | `[".git"]` |
 | `test_glob` | string | Glob pattern for test files | No | Depends on task |
@@ -160,6 +165,7 @@ ignore_patterns = ["vendor", ".git"]
 Mappings define how source files map to test files. They use a pattern matching system with tokens:
 
 #### Available Tokens
+
 * `{{file}}` - The complete matched file path
 * `{{path}}` - The directory path of the matched file (without filename)
 * `{{name}}` - The base filename without extension
@@ -167,6 +173,7 @@ Mappings define how source files map to test files. They use a pattern matching 
 #### Mapping Examples
 
 Given a file `lib/models/user.rb`:
+
 * `{{file}}` → `lib/models/user.rb`
 * `{{path}}` → `lib/models`
 * `{{name}}` → `user`
@@ -214,27 +221,23 @@ plur watch --use=custom-task
 ```
 
 When a file changes:
+
 1. Plur checks if it matches any mapping patterns
 2. If matched, runs the corresponding target test files
 3. If no match, runs the changed file directly (if it matches `test_glob`)
 
 ### `[watch.run]` section
+
 Settings for `plur watch` command:
-- `debounce` - Delay in milliseconds before running tests (default: 100)
 
-### Configuration Examples
-
-See the `examples/` directory for complete configuration examples:
-- `plur.toml.example` - Comprehensive example with all options
-- `plur.toml.simple` - Basic configuration for most projects
-- `plur.toml.rails` - Rails-optimized configuration
-- `plur.toml.minitest` - Minitest project configuration
+* `debounce` - Delay in milliseconds before running tests (default: 100)
 
 ## Worker Configuration
 
 Plur uses intelligent distribution of specs/tests across workers:
-- **Runtime-based**: When historical runtime data exists, tests are distributed based on previous execution times for optimal load balancing
-- **Size-based**: When no runtime data exists, tests are distributed based on file sizes as a heuristic for complexity
+
+* **Runtime-based**: When historical runtime data exists, tests are distributed based on previous execution times for optimal load balancing
+* **Size-based**: When no runtime data exists, tests are distributed based on file sizes as a heuristic for complexity
 
 Note: Watch mode (`plur watch`) runs tests serially without parallel execution.
 
@@ -258,8 +261,9 @@ plur
 ### Formatters
 
 Plur always uses dual formatters:
-- Progress formatter (for visual feedback)
-- JSON formatter (for result parsing)
+
+* Progress formatter (for visual feedback)
+* JSON formatter (for result parsing)
 
 ### Verbosity
 
@@ -276,11 +280,11 @@ plur
 
 Plur supports advanced glob patterns for selecting test files:
 
-- `**` - Matches any number of directories (e.g., `spec/**/*_spec.rb`)
-- `*` - Matches any characters except path separator
-- `?` - Matches single character
-- `[abc]` - Matches any character in brackets
-- `{models,controllers}` - Brace expansion (e.g., `spec/{models,controllers}/**/*_spec.rb`)
+* `**` - Matches any number of directories (e.g., `spec/**/*_spec.rb`)
+* `*` - Matches any characters except path separator
+* `?` - Matches single character
+* `[abc]` - Matches any character in brackets
+* `{models,controllers}` - Brace expansion (e.g., `spec/{models,controllers}/**/*_spec.rb`)
 
 ### Pattern Examples
 
@@ -303,43 +307,51 @@ plur spec/spec_helper.rb           # Warning shown but runs
 ### RSpec Compatibility
 
 Plur matches RSpec's behavior:
-- **Directories**: Automatically append `**/*_spec.rb` pattern
-- **Single files**: Pass through with warning if not matching test suffix
-- **Glob patterns**: Filter results to only test files
+
+* **Directories**: Automatically append `**/*_spec.rb` pattern
+* **Single files**: Pass through with warning if not matching test suffix
+* **Glob patterns**: Filter results to only test files
 
 ## Watch Mode Configuration
 
 ### File Watching
 
 Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with support for Ruby and Rails conventions. The watcher automatically detects changes in:
-- `spec/` directory for test files
-- `lib/` directory for source files (mapped to corresponding specs)
-- `app/` directory for Rails applications
+
+* `spec/` directory for test files
+* `lib/` directory for source files (mapped to corresponding specs)
+* `app/` directory for Rails applications
 
 ## Environment Variables
 
 ### Recognized Variables
 
-- `PARALLEL_TEST_PROCESSORS` - Number of workers
-- `PLUR_DEBUG` - Enable debug output
+* `PARALLEL_TEST_PROCESSORS` - Number of workers
+* `PLUR_DEBUG` - Enable debug output
 
 ## Task Troubleshooting
 
 ### Tests Not Found
+
 Check that your `test_glob` pattern matches your test files:
+
 ```bash
 # List files that would be run
 plur --dry-run --use=your-task
 ```
 
 ### Mappings Not Working
+
 Verify your mappings with the watch find command:
+
 ```bash
 plur watch find lib/models/user.rb --use=your-task
 ```
 
 ### Command Not Running
+
 Ensure the `run` command is executable and in your PATH:
+
 ```bash
 # Test the command directly
 bundle exec rspec --version
@@ -355,5 +367,5 @@ bundle exec rspec --version
 
 ## Next Steps
 
-- See [Usage](usage.md) for command examples
-- See [Development](development/index.md) for contributing
+* See [Usage](usage.md) for command examples
+* See [Development](development/index.md) for contributing

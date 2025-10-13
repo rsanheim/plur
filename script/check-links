@@ -1,31 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Check if uv is installed
+readonly SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+readonly PROJECT_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
+readonly DOCS_DIR="${PROJECT_ROOT}/docs"
+
+# Check if mise and uv are installed
+if ! command -v mise &> /dev/null; then
+    echo "Error: mise is not installed."
+    echo "Install it with: curl https://mise.run | sh"
+    exit 1
+fi
+
 if ! command -v uv &> /dev/null; then
     echo "Error: uv is not installed."
     echo "Install it with: curl -LsSf https://astral.sh/uv/install.sh | sh"
     exit 1
 fi
 
-# Create and activate virtual environment if it doesn't exist
-if [ ! -d ".venv" ]; then
-    echo "Creating virtual environment..."
-    uv venv
-fi
+cd "${DOCS_DIR}"
 
-# Check if dependencies are installed
+# Ensure dependencies are installed
 if ! uv run mkdocs --version &> /dev/null; then
     echo "Installing MkDocs and dependencies..."
-    uv pip install -r requirements.txt
+    uv sync
 fi
+
+# Export DYLD_FALLBACK_LIBRARY_PATH for macOS cairo support
+# This allows Python to find cairo installed via Homebrew
+export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib
 
 echo ">>> Checking markdown links..."
 
 # First, run MkDocs build with strict validation
 echo ""
 echo ">>> Running MkDocs validation..."
-if uv run mkdocs build --strict > /tmp/mkdocs-build.log 2>&1; then
+if uv run mkdocs build --strict -f "${PROJECT_ROOT}/mkdocs.yml" > /tmp/mkdocs-build.log 2>&1; then
     echo "✓ MkDocs validation passed"
 else
     echo "✗ MkDocs validation failed"
@@ -39,7 +49,7 @@ fi
 # Note: linkcheckmd may report directory links as issues when they're actually valid
 echo ""
 echo ">>> Running linkcheckmd..."
-if uv run python -m linkcheckmd docs/ 2>&1 | grep -v "seconds to check links"; then
+if uv run python -m linkcheckmd . 2>&1 | grep -v "seconds to check links"; then
     # Check if there were actual errors (not just the summary line)
     if [ ${PIPESTATUS[0]} -eq 0 ]; then
         echo "✓ linkcheckmd passed"

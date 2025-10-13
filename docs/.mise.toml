@@ -1,0 +1,11 @@
+[tools]
+python = "3.14.0"
+
+[settings]
+python.uv_venv_auto = true
+
+[env]
+# Fix for macOS: Python needs to find cairo installed via Homebrew
+# Without this, mkdocs-material's social plugin fails with "no library called cairo-2 was found"
+# See: https://squidfunk.github.io/mkdocs-material/plugins/requirements/image-processing/
+DYLD_FALLBACK_LIBRARY_PATH = '/opt/homebrew/lib'

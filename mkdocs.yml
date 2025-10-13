@@ -56,8 +56,6 @@ markdown_extensions:
   - attr_list
   - md_in_html
 
-docs_dir: docs
-
 # Navigation handled by awesome-pages plugin
 
 plugins:

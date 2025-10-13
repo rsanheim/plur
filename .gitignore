@@ -64,5 +64,9 @@ site/
 
 # Python
 .venv/
+docs/.venv/
+docs/.python-version
+docs/.cache/
 __pycache__/
 *.pyc
+uv.lock
