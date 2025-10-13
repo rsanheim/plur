@@ -6,6 +6,8 @@ repo_url: https://github.com/rsanheim/plur
 
 theme:
   name: material
+  icon:
+    logo: simple/unity
   font:
     text: Lato
     code: JetBrains Mono
