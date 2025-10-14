@@ -45,9 +45,9 @@ jobs:
             - Test coverage
 
             Be constructive and helpful in your feedback.
-
             Use GitHub's suggestion format when proposing code changes.
 
+          pr_number: ${{ github.event.issue.number }}
           # Optional: Use sticky comments to make Claude reuse the same comment on subsequent pushes to the same PR
           # use_sticky_comment: true
 
@@ -55,4 +55,3 @@ jobs:
           # allowed_tools: "Bash(npm run test),Bash(npm run lint),Bash(npm run typecheck)"
 
           # Get PR number from the issue context
-          pr_number: ${{ github.event.issue.number }}
