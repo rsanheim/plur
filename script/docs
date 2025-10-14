@@ -4,6 +4,8 @@ set -euo pipefail
 # Script info
 readonly SCRIPT_NAME=$(basename "$0")
 readonly SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+readonly PROJECT_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
+readonly DOCS_DIR="${PROJECT_ROOT}/docs"
 
 # Show usage information
 show_help() {
@@ -20,7 +22,7 @@ Commands (_note that the command will default to 'serve' if not provided_)
 
   serve       Start development server at http://localhost:8000 (default)
   build       Build documentation to site/
-  clean       Remove site/ directory  
+  clean       Remove site/ directory
   clean-build Clean and rebuild documentation
   help        Show this help message
 
@@ -30,15 +32,26 @@ Examples:
   ${SCRIPT_NAME} clean-build        # Clean rebuild
 
 Environment:
-  Uses uv for Python dependency management.
-  Creates virtual environment in .venv/
-  Dependencies defined in requirements.txt
+  Uses mise + uv for Python dependency management.
+  Configuration in docs/.mise.toml and docs/pyproject.toml
 
 EOF
 }
 
 # Check prerequisites
 check_requirements() {
+  if ! command -v mise &> /dev/null; then
+    cat <<EOF
+Error: mise is not installed.
+
+Install it with:
+  curl https://mise.run | sh
+
+Then reload your shell.
+EOF
+    exit 1
+  fi
+
   if ! command -v uv &> /dev/null; then
     cat <<EOF
 Error: uv is not installed.
@@ -53,17 +66,18 @@ EOF
 
 # Setup Python environment
 setup_environment() {
-  # Create virtual environment if needed
-  if [[ ! -d ".venv" ]]; then
-    echo "Creating virtual environment..."
-    uv venv
-  fi
+  cd "${DOCS_DIR}"
 
-  # Install dependencies if needed
+  # mise automatically creates .venv via uv when we cd here (uv_venv_auto setting)
+  # Just ensure dependencies are installed
   if ! uv run mkdocs --version &> /dev/null 2>&1; then
     echo "Installing MkDocs and dependencies..."
-    uv pip install -r requirements.txt
+    uv sync
   fi
+
+  # Export DYLD_FALLBACK_LIBRARY_PATH for macOS cairo support
+  # This allows Python to find cairo installed via Homebrew
+  export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib
 }
 
 # Main script logic
@@ -74,37 +88,39 @@ main() {
   # Parse command
   local command="${1:-serve}"
 
+  cd "${DOCS_DIR}"
+
   case "${command}" in
     clean)
       echo "Cleaning build artifacts..."
-      rm -rf site/
+      rm -rf "${PROJECT_ROOT}/site/"
       echo "✓ Cleaned site directory"
       ;;
-      
+
     build)
       echo "Building documentation..."
-      uv run mkdocs build
+      uv run mkdocs build -f "${PROJECT_ROOT}/mkdocs.yml"
       echo "Documentation built in site/"
       ;;
-      
+
     clean-build)
       echo "Cleaning and building documentation..."
-      rm -rf site/
-      uv run mkdocs build
+      rm -rf "${PROJECT_ROOT}/site/"
+      uv run mkdocs build -f "${PROJECT_ROOT}/mkdocs.yml"
       echo "✓ Documentation rebuilt in site/"
       ;;
-      
+
     serve)
       echo "Starting MkDocs server..."
       echo "Documentation will be available at http://localhost:8000"
       echo "Press Ctrl+C to stop"
-      uv run mkdocs serve
+      uv run mkdocs serve -f "${PROJECT_ROOT}/mkdocs.yml"
       ;;
-      
+
     help|--help|-h)
       show_help
       ;;
-      
+
     *)
       echo "Error: Unknown command '${command}'"
       echo ""

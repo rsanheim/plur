@@ -6,18 +6,20 @@ repo_url: https://github.com/rsanheim/plur
 
 theme:
   name: material
+  icon:
+    logo: simple/unity
   font:
     text: Lato
     code: JetBrains Mono
   palette:
     - scheme: default
-      primary: indigo
+      primary: teal
       accent: indigo
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - scheme: slate
-      primary: indigo
+      primary: teal
       accent: indigo
       toggle:
         icon: material/weather-sunny
@@ -56,8 +58,6 @@ markdown_extensions:
   - attr_list
   - md_in_html
 
-docs_dir: docs
-
 # Navigation handled by awesome-pages plugin
 
 plugins:
@@ -72,6 +72,9 @@ plugins:
       fallback_to_build_date: false
       exclude:
         - index.md
+        - README.md
+        - .venv/**
+        - .cache/**
       enabled: true
   - panzoom:
       full_screen: true
