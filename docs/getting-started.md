@@ -4,7 +4,7 @@ Quick start guide for using Plur.
 
 ## Prerequisites
 
-- Ruby project with RSpec tests
+- Ruby project with RSpec or Minitest tests
 - Go 1.21+ (for building from source)
 
 ## Quick Install
@@ -31,6 +31,23 @@ plur -n 4
 # See what would run without executing
 plur --dry-run
 ```
+
+## Multiple Frameworks
+
+If your project has both `spec/` (RSpec) and `test/` (Minitest) directories:
+
+```bash
+# Select framework with --use flag
+plur --use=rspec
+plur --use=minitest
+
+# Or set default in .plur.toml
+echo 'use = "rspec"' > .plur.toml
+```
+
+See [Configuration](configuration.md#task-configuration) for more details.
+
+## Next Steps
 
 For detailed installation options, see [Installation](installation.md).
 For comprehensive usage information, see [Usage](usage.md).

@@ -1,6 +1,6 @@
 # plur-meta
 
-`plur` is a Go-based parallel test runner for Ruby/RSpec projects designed to outperform existing solutions like turbo_tests and parallel_tests.
+`plur` is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) designed to outperform existing solutions like turbo_tests and parallel_tests.
 
 ## 🚀 Quick Start
 
@@ -73,6 +73,15 @@ plur db:create -n 3          # Create test databases in parallel
 plur db:migrate -n 3         # Run migrations across all test DBs
 plur db:setup -n 3           # Full database setup
 ```
+
+### Framework Selection
+```bash
+plur --use=rspec             # Run RSpec tests
+plur --use=minitest          # Run Minitest tests
+plur                         # Auto-detect from directory structure
+```
+
+Projects with both `spec/` and `test/` directories should use `--use` or set `use = "rspec"` in `.plur.toml`.
 
 ### Configuration
 Plur supports TOML configuration files for persistent settings:

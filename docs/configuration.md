@@ -68,6 +68,21 @@ Tasks are selected in the following priority order:
 2. Config file: `use = "custom-task"` in `.plur.toml`
 3. Auto-detection: Based on directory structure (spec/ → rspec, test/ → minitest)
 
+> **💡 Tip for Projects with Multiple Frameworks**
+>
+> If your project has both `spec/` and `test/` directories, plur will default to Minitest.
+> Use the `--use` flag or config file setting to select your preferred framework:
+>
+> ```bash
+> plur --use=rspec     # Run RSpec tests
+> plur --use=minitest  # Run Minitest tests
+> ```
+>
+> Or add to `.plur.toml`:
+> ```toml
+> use = "rspec"  # Set permanent default
+> ```
+
 ### Task Configuration Fields
 
 | Field | Type | Description | Required | Default |
