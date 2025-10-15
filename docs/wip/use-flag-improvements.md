@@ -43,10 +43,10 @@ Create `fixtures/projects/mixed-rspec-minitest/` with:
 * README explaining the fixture's purpose
 
 ### Test Scenarios to Cover
-* Default behavior (should pick minitest)
+* Default behavior (should pick rspec)
 * `plur --use=rspec` explicitly runs RSpec
 * `plur --use=minitest` explicitly runs Minitest
-* Config file `use = "rspec"` changes default
+* Config file `use = "minitest"` changes default to Minitest
 * CLI flag overrides config file setting
 
 ### Impact
@@ -69,11 +69,11 @@ Create `fixtures/projects/mixed-rspec-minitest/` with:
 ### Example Message
 ```
 Note: Both spec/ and test/ directories detected.
-Running Minitest tests by default.
+Running RSpec tests by default.
 
-To run RSpec instead:
-  plur -t rspec              # Use -t flag
-  echo 'use = "rspec"' > .plur.toml  # Or set default in config
+To run Minitest instead:
+  plur -t minitest              # Use -t flag
+  echo 'use = "minitest"' > .plur.toml  # Or set default in config
 
 Run 'plur doctor' to see current configuration.
 ```
@@ -97,7 +97,7 @@ Run 'plur doctor' to see current configuration.
 #### Auto-detection Tests
 * Single `spec/` directory → detects rspec
 * Single `test/` directory → detects minitest
-* Both directories → defaults to minitest
+* Both directories → defaults to rspec
 * Neither directory → defaults to rspec (backward compat)
 
 #### CLI Flag Tests

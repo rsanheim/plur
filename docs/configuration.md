@@ -64,23 +64,24 @@ Plur comes with built-in tasks for RSpec and Minitest, but you can define custom
 
 Tasks are selected in the following priority order:
 
-1. CLI flag: `plur --use=custom-task`
+1. CLI flag: `plur spec -u custom-task`
 2. Config file: `use = "custom-task"` in `.plur.toml`
 3. Auto-detection: Based on directory structure (spec/ → rspec, test/ → minitest)
 
 > **💡 Tip for Projects with Multiple Frameworks**
 >
-> If your project has both `spec/` and `test/` directories, plur will default to Minitest.
-> Use the `--use` flag or config file setting to select your preferred framework:
+> If your project has both `spec/` and `test/` directories, plur will default to RSpec.
+> Use the `-u` flag or config file setting to select a different framework:
 >
 > ```bash
-> plur --use=rspec     # Run RSpec tests
-> plur --use=minitest  # Run Minitest tests
+> plur                    # Runs RSpec tests (default)
+> plur spec -u minitest   # Run Minitest tests instead
+> plur spec -u rspec      # Explicitly run RSpec tests
 > ```
 >
 > Or add to `.plur.toml`:
 > ```toml
-> use = "rspec"  # Set permanent default
+> use = "minitest"  # Override default to use Minitest
 > ```
 
 ### Task Configuration Fields

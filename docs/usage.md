@@ -24,11 +24,11 @@ plur --auto
 Plur auto-detects your test framework (RSpec or Minitest) based on directory structure, but you can override this:
 
 ```bash
-# Run RSpec tests (from spec/ directory)
-plur --use=rspec
+# Run RSpec tests explicitly
+plur spec -u rspec
 
-# Run Minitest tests (from test/ directory)
-plur --use=minitest
+# Run Minitest tests
+plur spec -u minitest
 
 # Set default in config file
 echo 'use = "rspec"' > .plur.toml
@@ -37,17 +37,18 @@ plur  # Now runs RSpec by default
 
 **Projects with both spec/ and test/ directories**:
 
-When both exist, plur defaults to Minitest. Use `--use` to select:
+When both exist, plur defaults to RSpec. Use the `-u` flag to select:
 
 ```bash
-plur --use=rspec     # Run RSpec tests
-plur --use=minitest  # Run Minitest tests
+plur                    # Runs RSpec tests (default)
+plur spec -u rspec      # Explicitly run RSpec tests
+plur spec -u minitest   # Run Minitest tests
 ```
 
 Or set a permanent default in `.plur.toml`:
 
 ```toml
-use = "rspec"  # or "minitest"
+use = "minitest"  # Override default to use Minitest
 ```
 
 ### Watch Mode
