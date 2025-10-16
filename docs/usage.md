@@ -25,10 +25,10 @@ Plur auto-detects your test framework (RSpec or Minitest) based on directory str
 
 ```bash
 # Run RSpec tests explicitly
-plur spec -u rspec
+plur spec -t rspec
 
 # Run Minitest tests
-plur spec -u minitest
+plur spec -t minitest
 
 # Set default in config file
 echo 'use = "rspec"' > .plur.toml
@@ -37,12 +37,12 @@ plur  # Now runs RSpec by default
 
 **Projects with both spec/ and test/ directories**:
 
-When both exist, plur defaults to RSpec. Use the `-u` flag to select:
+When both exist, plur defaults to RSpec. Use the `-t` flag to select:
 
 ```bash
 plur                    # Runs RSpec tests (default)
-plur spec -u rspec      # Explicitly run RSpec tests
-plur spec -u minitest   # Run Minitest tests
+plur spec -t rspec      # Explicitly run RSpec tests
+plur spec -t minitest   # Run Minitest tests
 ```
 
 Or set a permanent default in `.plur.toml`:

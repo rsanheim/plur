@@ -24,7 +24,7 @@ type TaskConfig struct {
 
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Use      string   `short:"u" help:"Task configuration to use" default:""`
+	Use      string   `short:"t" help:"Task to run (rspec/minitest/custom)" default:""`
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
@@ -104,7 +104,7 @@ type WatchCmd struct {
 type WatchRunCmd struct {
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
-	Use      string `short:"u" help:"Task configuration to use" default:""`
+	Use      string `short:"t" help:"Task to run (rspec/minitest/custom)" default:""`
 }
 
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
@@ -193,10 +193,10 @@ type PlurCLI struct {
 	Workers   int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 	FirstIs1  bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	Version   bool   `help:"Show version information"`
-	Use       string `help:"Default task configuration to use" default:""`
+	Use       string `help:"Default task configuration to use" default:"" hidden:""`
 
 	// Task configurations from [task.NAME] sections in TOML - parsed by Kong
-	Task map[string]TaskConfig `help:"Task configurations (config file only)"`
+	Task map[string]TaskConfig `help:"Task configurations (config file only)" hidden:""`
 
 	// Processed task configurations (converted from TaskConfig)
 	Tasks map[string]*task.Task `kong:"-"`

@@ -4,6 +4,129 @@
 
 This document outlines recommended improvements to make framework selection easier for users, particularly those with non-standard Ruby projects (mixed RSpec/Minitest, Minitest-only, custom frameworks).
 
+## Analysis: Current Flag Issues (2025-10-14)
+
+### Problem 1: Duplicate --use in Help
+
+When running `plur spec -h`, users see:
+```
+--use=""                Default task configuration to use
+-u, --use=""            Task configuration to use
+```
+
+**Root Cause:**
+- `PlurCLI.Use` (main.go:196): Global `--use=""` with no short flag
+- `SpecCmd.Use` (main.go:27): Command-level `-u, --use=""`
+- Kong shows all parent flags in subcommand help, creating duplication
+
+**Current Behavior:**
+- Priority: `SpecCmd.Use` → `PlurCLI.Use` → auto-detect
+- Both commands (`spec` and `watch`) have their own `Use` field with `-u`
+- Global `Use` acts as fallback if command-level not specified
+
+### Problem 2: --task Flag Leaking to CLI Help
+
+The `--task=KEY=VALUE` flag appears in help output but is marked "config file only".
+
+**Root Cause:**
+- `PlurCLI.Task` (main.go:199): Used by Kong to parse `[task.NAME]` TOML sections
+- No `hidden:""` tag, so it appears in help
+- Confuses users - looks like a CLI flag but is really for config parsing
+
+### Why -t Was Initially Avoided
+
+**Initial Concern:** RSpec uses `-t` for `--tag` (filtering tests by tag)
+
+**Analysis Result:** **Not a Real Conflict**
+- Plur doesn't pass arbitrary flags through to rspec
+- `Task.BuildCommand()` (task.go:33) constructs commands from scratch
+- No mechanism for users to pass rspec flags like `-t`
+- parallel_tests uses `-t` for test type (aligns with our goal)
+
+**Conclusion:** `-t` is safe to use and available (no conflicts with `-h`, `-d`, `-C`, `-n`)
+
+### Kong Tag Reference
+
+Confirmed Kong supports:
+- `hidden:""` - Hides from help but still parseable (used for `Colour` flag)
+- `kong:"-"` - Completely ignored by Kong (used for internal fields)
+
+## Design Options
+
+### Option A: Command-Level -t Only (Recommended)
+
+**Changes:**
+1. Change `SpecCmd.Use` from `short:"u"` to `short:"t"`
+2. Change `WatchRunCmd.Use` from `short:"u"` to `short:"t"`
+3. Add `hidden:""` to `PlurCLI.Use` (hide global flag from help)
+4. Add `hidden:""` to `PlurCLI.Task` (hide config parsing detail)
+
+**Result:**
+```bash
+plur spec -t rspec       # Clean, obvious
+plur watch -t minitest   # Consistent
+plur -t rspec spec       # Still works via hidden global flag
+```
+
+**Pros:**
+- Clean help output, no duplication
+- Matches parallel_tests convention (`-t` for test type)
+- Shorter and more intuitive than `-u`
+- Hides implementation details (--task, global --use)
+
+**Cons:**
+- Breaking change for anyone using `-u` (small impact, recently added)
+- Different from current documented examples
+
+### Option B: Global -t with Hidden Command Flags
+
+**Changes:**
+1. Add `short:"t"` to `PlurCLI.Use`
+2. Add `hidden:""` to `SpecCmd.Use` and `WatchRunCmd.Use`
+3. Add `hidden:""` to `PlurCLI.Task`
+
+**Result:**
+```bash
+plur -t rspec            # Works globally
+plur -t rspec spec       # Also works
+plur spec -u rspec       # Hidden but still works
+```
+
+**Pros:**
+- Global flag is more versatile
+- Backward compatible (`-u` still works, just hidden)
+
+**Cons:**
+- Flag must come before command (`plur -t rspec spec`, not `plur spec -t rspec`)
+- Less discoverable for command-specific use
+
+### Option C: Keep Both Visible with -t
+
+**Changes:**
+1. Add `short:"t"` to `PlurCLI.Use`
+2. Change `SpecCmd.Use` from `short:"u"` to `short:"t"`
+3. Add `hidden:""` to `PlurCLI.Task`
+
+**Result:**
+Users see both flags but with clearer naming
+
+**Pros:**
+- Maximum flexibility
+- Both patterns work
+
+**Cons:**
+- Still has duplication in help
+- Doesn't solve the original problem
+
+### Recommendation: Option A
+
+**Rationale:**
+- Cleanest UX with no duplicate flags in help
+- Command-level placement is most natural: `plur spec -t rspec`
+- Matches how users think: "run the spec command with this task"
+- Easy deprecation path: remove command flags later if we want global
+- Hides implementation details users don't need to see
+
 ## 1. Add `-t` Short Flag
 
 ### Why

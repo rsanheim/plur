@@ -54,15 +54,15 @@ RSpec.describe "Framework Selection" do
       expect(output).not_to include("test/example_test.rb")
     end
 
-    it "runs RSpec tests when -u rspec is specified" do
-      output = run_plur_in_dir(test_dir, "spec -u rspec --dry-run")
+    it "runs RSpec tests when -t rspec is specified" do
+      output = run_plur_in_dir(test_dir, "spec -t rspec --dry-run")
 
       expect(output).to include("spec/example_spec.rb")
       expect(output).not_to include("test/example_test.rb")
     end
 
-    it "runs Minitest tests when -u minitest is specified" do
-      output = run_plur_in_dir(test_dir, "spec -u minitest --dry-run")
+    it "runs Minitest tests when -t minitest is specified" do
+      output = run_plur_in_dir(test_dir, "spec -t minitest --dry-run")
 
       expect(output).to include("test/example_test.rb")
       expect(output).not_to include("spec/example_spec.rb")
@@ -83,7 +83,7 @@ RSpec.describe "Framework Selection" do
       end
 
       it "allows CLI flag to override config file" do
-        output = run_plur_in_dir(test_dir, "spec -u rspec --dry-run")
+        output = run_plur_in_dir(test_dir, "spec -t rspec --dry-run")
 
         expect(output).to include("spec/example_spec.rb")
         expect(output).not_to include("test/example_test.rb")

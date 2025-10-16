@@ -37,9 +37,9 @@ plur --dry-run
 If your project has both `spec/` (RSpec) and `test/` (Minitest) directories:
 
 ```bash
-# Select framework with -u flag
-plur spec -u rspec
-plur spec -u minitest
+# Select framework with -t flag
+plur spec -t rspec
+plur spec -t minitest
 
 # Or set default in .plur.toml
 echo 'use = "minitest"' > .plur.toml
