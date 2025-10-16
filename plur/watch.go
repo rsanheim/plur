@@ -59,6 +59,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	logger.Logger.Info("plur configuration info",
 		"project", projectName,
 		"directories", watchDirs,
+		"task", currentTask.Name,
+		"mappings", currentTask.Mappings,
 		"debounce", watchCmd.Debounce,
 		"timeout", watchCmd.Timeout)
 	if watchCmd.Timeout > 0 {
