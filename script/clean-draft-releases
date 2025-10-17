@@ -59,10 +59,11 @@ puts "Total: #{drafts.size} draft releases"
 
 check_rate_limit
 
-puts "\nThis will delete all of them. Press ENTER to continue, or Ctrl+C to cancel..."
+puts "\nThis will delete all draft releases AND their git tags (local + remote)."
+puts "Press ENTER to continue, or Ctrl+C to cancel..."
 $stdin.gets
 
-puts "\nDeleting draft releases in parallel (10 workers)..."
+puts "\nDeleting draft releases and tags in parallel (10 workers)..."
 
 # Thread-safe counters
 deleted = 0
@@ -71,6 +72,7 @@ mutex = Mutex.new
 progress = 0
 
 results = Parallel.map(drafts, in_threads: 10, progress: "Deleting") do |tag|
+  # Delete the GitHub release
   stdout, stderr, status = run_command("gh release delete #{tag} --yes 2>&1")
 
   result = if status.success?
@@ -81,9 +83,15 @@ results = Parallel.map(drafts, in_threads: 10, progress: "Deleting") do |tag|
     {error: tag, message: stderr}
   end
 
+  # Also delete the git tag locally and remotely
+  if result == :deleted
+    run_command("git tag -d #{tag} 2>/dev/null")
+    run_command("git push origin :refs/tags/#{tag} 2>/dev/null")
+  end
+
   mutex.synchronize do
     progress += 1
-    print "\r[#{progress}/#{drafts.size}] Deleting releases...".ljust(80)
+    print "\r[#{progress}/#{drafts.size}] Deleting releases and tags...".ljust(80)
   end
 
   result
