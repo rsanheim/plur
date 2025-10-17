@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Ruby 2.7+ with RSpec
+- Ruby 2.7+ with RSpec or Minitest
 - Go 1.21+ (only if building from source)
 
 ## Installation Methods

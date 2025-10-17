@@ -313,18 +313,20 @@ func NewMinitestTask() *Task {
 
 // DetectFramework returns the appropriate task based on directory structure
 func DetectFramework() *Task {
-	// Check for test/ directory first (minitest)
-	if exists("test") {
-		return NewMinitestTask()
-	}
-
-	// Check for spec/ directory (rspec)
 	if exists("spec") {
 		return NewRSpecTask()
 	}
 
-	// Default to RSpec for backward compatibility
+	if exists("test") {
+		return NewMinitestTask()
+	}
+
 	return NewRSpecTask()
+}
+
+// BothFrameworksExist returns true if both spec/ and test/ directories exist
+func BothFrameworksExist() bool {
+	return exists("spec") && exists("test")
 }
 
 // exists checks if a path exists

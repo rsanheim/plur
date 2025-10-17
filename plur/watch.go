@@ -59,6 +59,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	logger.Logger.Info("plur configuration info",
 		"project", projectName,
 		"directories", watchDirs,
+		"task", currentTask.Name,
+		"mappings", currentTask.Mappings,
 		"debounce", watchCmd.Debounce,
 		"timeout", watchCmd.Timeout)
 	if watchCmd.Timeout > 0 {
@@ -121,6 +123,16 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	fmt.Println()
 	fmt.Print("plur> ")
 
+	// Resolve the working directory in case we're in a symlinked directory
+	cwd, _ := os.Getwd()
+	if resolvedCwd, err := filepath.EvalSymlinks(cwd); err == nil {
+		if resolvedCwd != cwd {
+			logger.LogDebug("watch", "cwd_symlink_resolved", true,
+				"original", cwd, "resolved", resolvedCwd)
+		}
+		cwd = resolvedCwd
+	}
+
 	// Process events with watchCmd.Timeout
 	for {
 		select {
@@ -145,8 +157,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			}
 
 		case event := <-manager.Events():
-			// Convert absolute path to relative for cleaner logs
-			cwd, _ := os.Getwd()
+			// Compute relative path for debug logging
 			relPath := event.PathName
 			if rel, err := filepath.Rel(cwd, event.PathName); err == nil {
 				relPath = "./" + rel
@@ -179,7 +190,10 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 			// Check if we should watch this file by seeing if it matches any mapping pattern
 			if !shouldWatchFile(relPath, currentTask) {
-				// Skip logging for files not in watch list
+				logger.LogDebug("watch",
+					"event", "skip",
+					"reason", "not_watching_file",
+					"path", "./"+relPath)
 				continue
 			}
 

@@ -25,19 +25,19 @@ From `plur/main.go:170-179`:
 
 From `plur/internal/task/task.go:314-328` in `DetectFramework()`:
 ```go
-// Check for test/ directory first (minitest)
-if exists("test") {
-    return NewMinitestTask()
-}
-// Check for spec/ directory (rspec)
+// Check for spec/ directory first (rspec)
 if exists("spec") {
     return NewRSpecTask()
+}
+// Check for test/ directory (minitest)
+if exists("test") {
+    return NewMinitestTask()
 }
 // Default to RSpec for backward compatibility
 return NewRSpecTask()
 ```
 
-**Critical Issue**: When both `spec/` and `test/` exist, it **always picks minitest** because it checks `test/` first.
+**Current Behavior**: When both `spec/` and `test/` exist, it **always picks RSpec** because it checks `spec/` first. This is the preferred behavior as RSpec is typically the primary framework in projects that have both directories.
 
 ### 3. Command Execution Flow
 
@@ -79,9 +79,10 @@ This means `plur spec test/` would look for files matching the current task's su
 - The `spec` command name is misleading when running minitest
 
 ### Issue 2: Auto-detection Bias
-- `DetectFramework()` always prefers `test/` over `spec/`
+- `DetectFramework()` always prefers `spec/` over `test/`
 - No smart detection based on which command was invoked
 - No ability to have both frameworks active simultaneously
+- This is actually the preferred behavior for most Ruby projects
 
 ### Issue 3: Command Semantics Mismatch
 - `plur spec test/` tries to be smart but the logic is convoluted

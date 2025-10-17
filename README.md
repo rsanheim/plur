@@ -76,12 +76,12 @@ plur db:setup -n 3           # Full database setup
 
 ### Framework Selection
 ```bash
-plur --use=rspec             # Run RSpec tests
-plur --use=minitest          # Run Minitest tests
+plur spec -t rspec           # Run RSpec tests explicitly
+plur spec -t minitest        # Run Minitest tests
 plur                         # Auto-detect from directory structure
 ```
 
-Projects with both `spec/` and `test/` directories should use `--use` or set `use = "rspec"` in `.plur.toml`.
+Projects with both `spec/` and `test/` directories will default to RSpec. Use `-t minitest` to run Minitest tests instead, or set `use = "minitest"` in `.plur.toml`.
 
 ### Configuration
 Plur supports TOML configuration files for persistent settings:

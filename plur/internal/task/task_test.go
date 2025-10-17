@@ -387,7 +387,7 @@ func TestDetectFramework_Minitest(t *testing.T) {
 	assert.Equal(t, "test/**/*_test.rb", detectedTask.GetTestPattern())
 }
 
-func TestDetectFramework_Mixed_PrefersMinitest(t *testing.T) {
+func TestDetectFramework_Mixed_PrefersRSpec(t *testing.T) {
 	// Create temporary directory structure
 	err := os.MkdirAll("temp_mixed_test", 0755)
 	require.NoError(t, err)
@@ -398,14 +398,14 @@ func TestDetectFramework_Mixed_PrefersMinitest(t *testing.T) {
 
 	os.Chdir("temp_mixed_test")
 
-	// Create both test and spec directories (minitest should win)
+	// Create both test and spec directories
 	err = os.MkdirAll("test", 0755)
 	require.NoError(t, err)
 	err = os.MkdirAll("spec", 0755)
 	require.NoError(t, err)
 
 	detectedTask := DetectFramework()
-	assert.Equal(t, "minitest", detectedTask.Name, "When both test/ and spec/ exist, should prefer minitest")
+	assert.Equal(t, "rspec", detectedTask.Name, "When both test/ and spec/ exist, should prefer rspec")
 }
 
 func TestDetectFramework_DefaultToRSpec(t *testing.T) {

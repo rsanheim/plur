@@ -65,6 +65,13 @@ See [Configuration Documentation](docs/configuration.md#task-configuration) for 
 - **Tests fail in rake but pass alone** → Use `bin/rake` not `rake`
 - **Testing fixtures is cumbersome** → Use `plur -C fixtures/minitest-success` instead of `cd`
 
+### Framework Detection (Updated Behavior)
+When both `spec/` and `test/` directories exist:
+- **Current behavior (as of commit 7796831)**: Plur defaults to RSpec
+- **Previous behavior**: Plur defaulted to Minitest
+- **Rationale**: RSpec is typically the primary framework in projects with both directories
+- **Override**: Use `plur --use=minitest` or set `use = "minitest"` in `.plur.toml`
+
 ### Project Structure
 - `plur/` - Go source (main binary)
 - `spec/` - Full Ruby test suite for plur itself
