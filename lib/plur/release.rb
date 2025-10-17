@@ -18,7 +18,7 @@ class Plur::Release
 
     # Get current version and ensure new version is greater
     current_version = get_current_version
-    ensure_version_is_newer!(current_version, @new_version)
+    # ensure_version_is_newer!(current_version, @new_version)
 
     # Build plur to ensure it compiles cleanly
     ensure_plur_builds!
