@@ -143,7 +143,7 @@ class Plur::Release
 
     puts "  → Tagging and pushing new version #{@new_version}..."
     system("git tag -a #{@new_version} -m 'Release #{@new_version}'", exception: true)
-    system("git push origin tag #{new_version}", exception: true)
+    system("git push origin tag #{@new_version}", exception: true)
 
     # Extract release notes for GoReleaser
     puts "  → Extracting release notes..."
@@ -152,9 +152,9 @@ class Plur::Release
     puts "  → Running GoReleaser..."
     goreleaser_cmd = %w[goreleaser release --release-notes=../.goreleaser-notes.md --clean]
     if @draft
+      goreleaser_cmd << "--draft=true"
       puts "    (Creating draft release)"
     else
-      goreleaser_cmd << "--draft=false"
       puts "    (Publishing as non-draft release)"
     end
 

@@ -98,18 +98,8 @@ release:
   github:
     owner: rsanheim
     name: plur
-  
-  # Use the CHANGELOG.md for release notes
-  header: |
-    ## plur v{{ .Version }}
-    
-    Fast parallel test runner for Ruby/RSpec.
-  
-  # Draft mode for safety (initially)
-  draft: true
-  
-  # Use changelog for release body
-  # We'll extract the relevant section from CHANGELOG.md
+
+  # Draft and release notes controlled via CLI flags
   name_template: "v{{.Version}}"
 
 # Changelog configuration
