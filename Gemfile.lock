@@ -133,6 +133,7 @@ DEPENDENCIES
   guard-rspec
   minitest
   optimist
+  parallel
   rake
   rspec (~> 3)
   standard

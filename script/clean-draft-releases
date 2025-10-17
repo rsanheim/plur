@@ -1,0 +1,108 @@
+#!/usr/bin/env ruby
+# Clean up all draft releases from GitHub (up to 1000)
+#
+# GitHub API Rate Limits (authenticated):
+# - 5,000 requests/hour (~83/minute or ~1.4/second)
+# - gh CLI handles rate limiting automatically
+
+require "bundler/setup"
+require "json"
+require "open3"
+require "parallel"
+
+def run_command(cmd)
+  stdout, stderr, status = Open3.capture3(cmd)
+  [stdout, stderr, status]
+end
+
+def check_rate_limit
+  stdout, _, status = run_command("gh api rate_limit")
+  return unless status.success?
+
+  data = JSON.parse(stdout)
+  core = data.dig("resources", "core")
+  remaining = core["remaining"]
+  limit = core["limit"]
+  reset_at = Time.at(core["reset"])
+
+  puts "\nGitHub API Rate Limit:"
+  puts "  Remaining: #{remaining}/#{limit}"
+  puts "  Resets at: #{reset_at}"
+
+  if remaining < 100
+    puts "\n⚠️  WARNING: Low on API requests. Consider waiting until #{reset_at}"
+  end
+end
+
+puts "Fetching draft releases (up to 1000)..."
+
+stdout, stderr, status = run_command("gh release list --limit 1000 --json tagName,isDraft")
+
+unless status.success?
+  warn "Error fetching releases: #{stderr}"
+  exit 1
+end
+
+releases = JSON.parse(stdout)
+drafts = releases.select { |r| r["isDraft"] }.map { |r| r["tagName"] }
+
+if drafts.empty?
+  puts "No draft releases found!"
+  exit 0
+end
+
+puts "\nFound #{drafts.size} draft releases:"
+puts "=" * 60
+drafts.each { |tag| puts tag }
+puts "=" * 60
+puts "Total: #{drafts.size} draft releases"
+
+check_rate_limit
+
+puts "\nThis will delete all of them. Press ENTER to continue, or Ctrl+C to cancel..."
+$stdin.gets
+
+puts "\nDeleting draft releases in parallel (10 workers)..."
+
+# Thread-safe counters
+deleted = 0
+failed = 0
+mutex = Mutex.new
+progress = 0
+
+results = Parallel.map(drafts, in_threads: 10, progress: "Deleting") do |tag|
+  stdout, stderr, status = run_command("gh release delete #{tag} --yes 2>&1")
+
+  result = if status.success?
+    :deleted
+  elsif stderr.include?("release not found") || stdout.include?("release not found")
+    :deleted
+  else
+    {error: tag, message: stderr}
+  end
+
+  mutex.synchronize do
+    progress += 1
+    print "\r[#{progress}/#{drafts.size}] Deleting releases...".ljust(80)
+  end
+
+  result
+end
+
+results.each do |result|
+  if result == :deleted
+    deleted += 1
+  else
+    failed += 1
+    puts "\n  ERROR deleting #{result[:error]}: #{result[:message]}"
+  end
+end
+
+puts "\n\nCleanup complete!"
+puts "  Deleted: #{deleted}"
+puts "  Failed: #{failed}" if failed > 0
+
+check_rate_limit
+
+puts "\nRemaining releases:"
+system("gh release list --limit 10")
