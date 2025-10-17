@@ -80,7 +80,8 @@ func (h *CustomTextHandler) WithGroup(name string) slog.Handler {
 
 // InitLogger initializes the slog logger based on the verbose flag and debug mode
 func InitLogger(verbose bool, debug bool) {
-	VerboseMode = verbose
+	// Debug mode implies verbose mode
+	VerboseMode = verbose || debug
 
 	var level slog.Level
 	if debug {

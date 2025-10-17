@@ -324,6 +324,11 @@ func DetectFramework() *Task {
 	return NewRSpecTask()
 }
 
+// BothFrameworksExist returns true if both spec/ and test/ directories exist
+func BothFrameworksExist() bool {
+	return exists("spec") && exists("test")
+}
+
 // exists checks if a path exists
 func exists(path string) bool {
 	matches, err := filepath.Glob(path)

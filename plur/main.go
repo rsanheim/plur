@@ -53,6 +53,16 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	currentTask := parent.getTaskWithOverrides(taskName)
 	logger.Logger.Debug("SpecCmd.Run", "command", currentTask.Run, "patterns", r.Patterns, "task", currentTask.Name)
 
+	// Show hint if both frameworks exist and we auto-detected
+	if !wasExplicit && task.BothFrameworksExist() {
+		otherFramework := "minitest"
+		if currentTask.Name == "minitest" {
+			otherFramework = "rspec"
+		}
+		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Use -t %s to run %s instead.",
+			currentTask.Name, otherFramework, otherFramework))
+	}
+
 	// Discover test files
 	var testFiles []string
 	var err error
@@ -139,6 +149,16 @@ func (w *WatchRunCmd) Run(parent *PlurCLI) error {
 	}
 
 	currentTask := parent.getTaskWithOverrides(taskName)
+
+	// Show hint if both frameworks exist and we auto-detected
+	if !wasExplicit && task.BothFrameworksExist() {
+		otherFramework := "minitest"
+		if currentTask.Name == "minitest" {
+			otherFramework = "rspec"
+		}
+		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Use -t %s to run %s instead.",
+			currentTask.Name, otherFramework, otherFramework))
+	}
 
 	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
