@@ -1,7 +1,9 @@
 # plur CHANGELOG
 
-## v0.11.0 - 2025-10-12
+## v0.11.1 - 2025-10-17
 
+* Default to Rspec; fail fast if custom task doesn't exist [#116](https://github.com/rsanheim/plur/pull/116)
+* Modernize python mkdocs [#115](https://github.com/rsanheim/plur/pull/115)
 * Release testing and refinement [#114](https://github.com/rsanheim/plur/pull/114)
 
 ## v0.10.2-test2 - 2025-10-10
