@@ -29,9 +29,4 @@ target = "test/{{path}}/{{name}}_test.rb"
 [task.custom]
 description = "Custom test runner"
 run = "echo 'CUSTOM TASK:'"
-source_dirs = ["src"]
-test_glob = "src/**/*_custom.rb"
-
-[[task.custom.mappings]]
-pattern = "src/**/*.rb"
-target = "test/{{path}}/{{name}}_test.rb"
+# Intentionally minimal - should inherit mappings, source_dirs, test_glob from auto-detected RSpec

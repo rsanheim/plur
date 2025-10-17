@@ -321,6 +321,10 @@ func (r *PlurCLI) validateTaskExists(taskName string, wasExplicit bool) error {
 
 // mergeTaskConfig merges non-empty fields from override into base task
 func (r *PlurCLI) mergeTaskConfig(base *task.Task, override *task.Task) {
+	// Always preserve Name from override (custom task name, not detected framework name)
+	if override.Name != "" {
+		base.Name = override.Name
+	}
 	if override.Description != "" {
 		base.Description = override.Description
 	}
@@ -352,11 +356,11 @@ func (r *PlurCLI) getTaskWithOverrides(taskName string) *task.Task {
 	case "minitest":
 		baseTask = task.NewMinitestTask()
 	default:
-		// Auto-detect framework and fall back to RSpec
+		// Custom tasks inherit from auto-detected framework
 		baseTask = task.DetectFramework()
 	}
 
-	// Merge TOML config overrides if they exist
+	// Merge TOML config overrides if they exist (for both built-in and custom tasks)
 	if configTask, exists := r.Tasks[taskName]; exists {
 		r.mergeTaskConfig(baseTask, configTask)
 	}
