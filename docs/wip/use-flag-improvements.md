@@ -1,12 +1,32 @@
 # --use Flag Improvements and Follow-up Work
 
+## STATUS UPDATE (2025-10-17)
+
+### ✅ COMPLETED ITEMS:
+- **Added `-t` short flag** - Both spec and watch commands now support `-t` for task selection
+- **Improved help text** - Changed to clear "Task to run (rspec/minitest/custom)"
+- **Hidden implementation details** - Global `--use` and `--task` flags now have `hidden:""` tags
+- **Fail-fast validation** - Invalid task names now error immediately with sorted list of available tasks
+  - Example: `task 'nonexistent' not found. Available tasks: custom, minitest, rspec`
+- **Code refactoring** - Extracted mergeTaskConfig() helper to reduce duplication
+- **Updated installation.md** - Now mentions "Ruby 2.7+ with RSpec or Minitest"
+
+### 🚧 REMAINING WORK:
+- [ ] Create mixed-framework test fixture (fixtures/projects/mixed-rspec-minitest/)
+- [ ] Add framework detection hint when both spec/ and test/ exist
+- [ ] Add integration tests for mixed projects and config file `use` setting
+
+---
+
 ## Overview
 
 This document outlines recommended improvements to make framework selection easier for users, particularly those with non-standard Ruby projects (mixed RSpec/Minitest, Minitest-only, custom frameworks).
 
 ## Analysis: Current Flag Issues (2025-10-14)
 
-### Problem 1: Duplicate --use in Help
+### Problem 1: Duplicate --use in Help ✅ DONE
+
+**Status:** RESOLVED - Global --use and --task flags now hidden with `hidden:""` tags
 
 When running `plur spec -h`, users see:
 ```
@@ -127,7 +147,9 @@ Users see both flags but with clearer naming
 - Easy deprecation path: remove command flags later if we want global
 - Hides implementation details users don't need to see
 
-## 1. Add `-t` Short Flag
+## 1. Add `-t` Short Flag ✅ DONE
+
+**Status:** IMPLEMENTED - Both SpecCmd and WatchRunCmd now have `short:"t"` flags
 
 ### Why
 * **Ease of use**: `plur -t rspec` is much faster to type than `plur --use=rspec`
@@ -207,7 +229,18 @@ Run 'plur doctor' to see current configuration.
 * Respects `--quiet` or similar flags
 * Can be disabled via config: `show_hints = false`
 
-## 4. Integration Test Coverage
+## 4. Integration Test Coverage ⚠️ PARTIALLY DONE
+
+**Status:** Tests added for invalid task error handling, but missing tests for mixed projects and config file settings
+
+**Completed:**
+- ✅ Integration tests for non-existent task errors (spec and watch commands)
+- ✅ Unit tests for validateTaskExists() helper
+
+**Still Needed:**
+- [ ] Tests for mixed framework projects (both spec/ and test/)
+- [ ] Tests for config file `use` setting
+- [ ] Tests for CLI flag overriding config file
 
 ### Why
 * Current minitest tests only use `--use minitest` flag
@@ -224,9 +257,9 @@ Run 'plur doctor' to see current configuration.
 * Neither directory → defaults to rspec (backward compat)
 
 #### CLI Flag Tests
-* `-t rspec` on mixed project runs RSpec
-* `-t minitest` on mixed project runs Minitest
-* Invalid task name shows helpful error
+* `-t rspec` on mixed project runs RSpec (needs mixed fixture)
+* `-t minitest` on mixed project runs Minitest (needs mixed fixture)
+* ✅ Invalid task name shows helpful error (DONE - see configuration_integration_spec.rb:169)
 
 #### Config File Tests
 * `use = "rspec"` makes RSpec default
@@ -242,7 +275,9 @@ Run 'plur doctor' to see current configuration.
 Add to existing `spec/integration/plur_spec/` or create new:
 `spec/integration/plur_spec/framework_selection_spec.rb`
 
-## 5. Improve Help Text
+## 5. Improve Help Text ✅ DONE
+
+**Status:** IMPLEMENTED - Help text now shows "Task to run (rspec/minitest/custom)"
 
 ### Why
 * Current text is vague: "Default task configuration to use"
@@ -265,7 +300,9 @@ Add to existing `spec/integration/plur_spec/` or create new:
 * Hints that custom tasks are possible
 * Shorter and more actionable
 
-## 6. Update installation.md
+## 6. Update installation.md ✅ DONE
+
+**Status:** COMPLETED - Now says "Ruby 2.7+ with RSpec or Minitest"
 
 ### Why
 * Currently says "Ruby 2.7+ with RSpec"
