@@ -143,7 +143,7 @@ class Plur::Release
 
     puts "  → Tagging and pushing new version #{@new_version}..."
     system("git tag -a #{@new_version} -m 'Release #{@new_version}'", exception: true)
-    system("git push --tags", exception: true)
+    system("git push origin tag #{new_version}", exception: true)
 
     # Extract release notes for GoReleaser
     puts "  → Extracting release notes..."
