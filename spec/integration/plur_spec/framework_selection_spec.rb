@@ -10,83 +10,82 @@ RSpec.describe "Framework Selection" do
   end
 
   describe "with both spec/ and test/ directories" do
-    before do
-      FileUtils.mkdir_p(File.join(test_dir, "spec"))
-      FileUtils.mkdir_p(File.join(test_dir, "test"))
+    let(:project_dir) { project_fixture!("mixed-rspec-minitest") }
 
-      # Create a passing RSpec test
-      File.write(File.join(test_dir, "spec", "example_spec.rb"), <<~RUBY)
-        RSpec.describe "Example" do
-          it "passes" do
-            expect(1).to eq(1)
-          end
+    before(:all) do
+      # Ensure dependencies are installed
+      chdir(project_fixture!("mixed-rspec-minitest")) do
+        Bundler.with_unbundled_env do
+          system("bundle check", out: File::NULL, err: File::NULL) ||
+            system("bundle install", exception: true)
         end
-      RUBY
-
-      # Create a passing Minitest test
-      File.write(File.join(test_dir, "test", "example_test.rb"), <<~RUBY)
-        require 'minitest/autorun'
-
-        class ExampleTest < Minitest::Test
-          def test_passes
-            assert_equal 1, 1
-          end
-        end
-      RUBY
-
-      # Create minimal Gemfile for both frameworks
-      File.write(File.join(test_dir, "Gemfile"), <<~RUBY)
-        source 'https://rubygems.org'
-        gem 'rspec', '~> 3.0'
-        gem 'minitest', '~> 5.0'
-      RUBY
-
-      # Run bundle install
-      Dir.chdir(test_dir) do
-        system("bundle install --quiet", out: File::NULL, err: File::NULL)
       end
     end
 
     it "defaults to RSpec when no --use flag is provided" do
-      output = run_plur_in_dir(test_dir, "--dry-run")
-
-      expect(output).to include("spec/example_spec.rb")
-      expect(output).not_to include("test/example_test.rb")
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--dry-run")
+          expect(result).to be_success
+          expect(result.err).to include("spec/example_spec.rb")
+          expect(result.err).not_to include("test/example_test.rb")
+        end
+      end
     end
 
     it "runs RSpec tests when -t rspec is specified" do
-      output = run_plur_in_dir(test_dir, "spec -t rspec --dry-run")
-
-      expect(output).to include("spec/example_spec.rb")
-      expect(output).not_to include("test/example_test.rb")
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("spec", "-t", "rspec", "--dry-run")
+          expect(result).to be_success
+          expect(result.err).to include("spec/example_spec.rb")
+          expect(result.err).not_to include("test/example_test.rb")
+        end
+      end
     end
 
     it "runs Minitest tests when -t minitest is specified" do
-      output = run_plur_in_dir(test_dir, "spec -t minitest --dry-run")
-
-      expect(output).to include("test/example_test.rb")
-      expect(output).not_to include("spec/example_spec.rb")
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("spec", "-t", "minitest", "--dry-run")
+          expect(result).to be_success
+          expect(result.err).to include("test/example_test.rb")
+          expect(result.err).not_to include("spec/example_spec.rb")
+        end
+      end
     end
 
     context "with config file setting use=minitest" do
+      let(:config_file) { project_dir.join(".plur.toml") }
+
       before do
-        File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
-          use = "minitest"
-        TOML
+        File.write(config_file, "use = \"minitest\"\n")
+      end
+
+      after do
+        File.delete(config_file) if File.exist?(config_file)
       end
 
       it "uses Minitest as default" do
-        output = run_plur_in_dir(test_dir, "--dry-run")
-
-        expect(output).to include("test/example_test.rb")
-        expect(output).not_to include("spec/example_spec.rb")
+        chdir(project_dir) do
+          Bundler.with_unbundled_env do
+            result = run_plur("--dry-run")
+            expect(result).to be_success
+            expect(result.err).to include("test/example_test.rb")
+            expect(result.err).not_to include("spec/example_spec.rb")
+          end
+        end
       end
 
       it "allows CLI flag to override config file" do
-        output = run_plur_in_dir(test_dir, "spec -t rspec --dry-run")
-
-        expect(output).to include("spec/example_spec.rb")
-        expect(output).not_to include("test/example_test.rb")
+        chdir(project_dir) do
+          Bundler.with_unbundled_env do
+            result = run_plur("spec", "-t", "rspec", "--dry-run")
+            expect(result).to be_success
+            expect(result.err).to include("spec/example_spec.rb")
+            expect(result.err).not_to include("test/example_test.rb")
+          end
+        end
       end
     end
   end
