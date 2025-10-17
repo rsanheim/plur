@@ -19,9 +19,14 @@
   - Tests all framework selection scenarios (auto-detect, explicit, config file, override)
   - 4x faster than dynamic test creation (0.28s vs 1.1s)
   - Includes README with usage examples
+- **Added framework detection hint** - Verbose/debug mode now shows helpful message when both frameworks exist
+  - Shows which framework was auto-detected and how to switch
+  - Only displays when auto-detecting (not with explicit -t flag)
+  - Simple implementation without state tracking or caching
+  - Example: "Both spec/ and test/ directories detected. Using rspec. Use -t minitest to run minitest instead."
 
 ### 🚧 REMAINING WORK:
-- [ ] Add framework detection hint when both spec/ and test/ exist
+None! All planned improvements complete.
 
 ---
 
@@ -206,35 +211,36 @@ Updated `spec/integration/plur_spec/framework_selection_spec.rb` to use the fixt
 * Faster test runs (no bundle install each time)
 * Documents expected behavior for maintainers
 
-## 3. Add Framework Detection Hint
+## 3. Add Framework Detection Hint ✅ DONE
 
-### Why
-* **Discoverability**: Users don't know `--use` exists until they read docs
-* **Just-in-time help**: Show guidance exactly when it's needed
-* **Reduce friction**: Help users before they get frustrated
+**Status:** COMPLETED - Simple verbose-mode hint implemented
 
-### When to Show
-* When both `spec/` and `test/` directories exist
-* Only on first run (or when no config file exists)
-* Can be suppressed with config file setting
+### What We Built
+Simpler approach than originally planned - message only shows in verbose/debug mode:
 
-### Example Message
 ```
-Note: Both spec/ and test/ directories detected.
-Running RSpec tests by default.
-
-To run Minitest instead:
-  plur -t minitest              # Use -t flag
-  echo 'use = "minitest"' > .plur.toml  # Or set default in config
-
-Run 'plur doctor' to see current configuration.
+03:26:05 - INFO  - Both spec/ and test/ directories detected. Using rspec. Use -t minitest to run minitest instead.
 ```
 
-### Implementation Notes
-* Message goes to stderr, not stdout
-* Only shows once per project (can track in `.plur/` directory)
-* Respects `--quiet` or similar flags
-* Can be disabled via config: `show_hints = false`
+### Implementation Details
+* Added `BothFrameworksExist()` helper in `plur/internal/task/task.go`
+* Message shown in both `SpecCmd.Run()` and `WatchRunCmd.Run()`
+* Only displays when framework is auto-detected (not with explicit `-t` flag)
+* Uses existing `logger.LogVerbose()` - respects `--verbose` and `--debug` flags
+* No state tracking, caching, or configuration needed
+
+### Why Simpler is Better
+* No hidden state files to manage
+* No "first run" tracking complexity
+* Users who want hints will use verbose mode anyway
+* Clean implementation: ~5 lines of code per command
+* Consistent with plur's existing verbose output patterns
+
+### Benefits Achieved
+* Helps users discover the `-t` flag when they need it
+* Not intrusive (only in verbose mode)
+* Easy to maintain and understand
+* Works immediately without setup
 
 ## 4. Integration Test Coverage ✅ DONE
 
