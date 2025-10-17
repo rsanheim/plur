@@ -10,6 +10,11 @@
   - Example: `task 'nonexistent' not found. Available tasks: custom, minitest, rspec`
 - **Code refactoring** - Extracted mergeTaskConfig() helper to reduce duplication
 - **Updated installation.md** - Now mentions "Ruby 2.7+ with RSpec or Minitest"
+- **Fixed custom task name preservation** - Custom tasks now show their configured name (e.g., "watch") instead of auto-detected framework name (e.g., "rspec") while still inheriting defaults
+  - mergeTaskConfig now preserves Name field from custom task
+  - getTaskWithOverrides simplified to always use auto-detect as base for custom tasks
+  - Added comprehensive Go tests for custom task inheritance behavior
+  - Example: `[task.watch]` with `run = "bin/rspec"` now shows `task=watch` in debug output
 
 ### 🚧 REMAINING WORK:
 - [ ] Create mixed-framework test fixture (fixtures/projects/mixed-rspec-minitest/)
@@ -231,11 +236,14 @@ Run 'plur doctor' to see current configuration.
 
 ## 4. Integration Test Coverage ⚠️ PARTIALLY DONE
 
-**Status:** Tests added for invalid task error handling, but missing tests for mixed projects and config file settings
+**Status:** Tests added for invalid task error handling and custom task inheritance, but missing tests for mixed projects and config file settings
 
 **Completed:**
 - ✅ Integration tests for non-existent task errors (spec and watch commands)
 - ✅ Unit tests for validateTaskExists() helper
+- ✅ Go unit tests for custom task inheritance (TestGetTaskWithOverrides)
+  - Tests verify custom tasks inherit mappings, source_dirs, test_glob from auto-detected framework
+  - Tests verify custom task name is preserved during merge
 
 **Still Needed:**
 - [ ] Tests for mixed framework projects (both spec/ and test/)
