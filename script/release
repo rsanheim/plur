@@ -39,11 +39,15 @@ parser = OptionParser.new do |opts|
   opts.separator "Version must be in format vX.Y.Z"
 end
 
-# Extract version from ARGV[0] first (before parsing options)
-version = ARGV.shift
-
-# Then parse the remaining options
-parser.parse!
+# Handle options first if the first argument is a flag
+if ARGV[0] && ARGV[0].start_with?("-")
+  parser.parse!
+  version = ARGV[0]  # Get version after parsing options
+else
+  # Traditional flow: version first, then options
+  version = ARGV.shift
+  parser.parse!
+end
 
 unless version
   puts parser
