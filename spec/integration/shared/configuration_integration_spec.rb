@@ -165,5 +165,33 @@ RSpec.describe "Configuration integration" do
         expect(output).to include("echo 'CUSTOM TASK:'")
       end
     end
+
+    context "when explicitly requesting a non-existent task" do
+      it "fails with a clear error message for spec command" do
+        _, error, status = Open3.capture3(
+          {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
+          "plur", "-C", config_fixture_dir.to_s, "spec", "--use=nonexistent"
+        )
+
+        expect(status).not_to be_success
+        expect(error).to include("task 'nonexistent' not found")
+        # Should list available tasks
+        expect(error).to include("rspec")
+        expect(error).to include("minitest")
+        expect(error).to include("custom")
+      end
+
+      it "fails with a clear error message for watch command" do
+        skip "Watch tests require watcher binary" if ENV["CI"]
+
+        _, error, status = Open3.capture3(
+          {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
+          "plur", "-C", config_fixture_dir.to_s, "watch", "run", "-t", "nonexistent", "--timeout=1"
+        )
+
+        expect(status).not_to be_success
+        expect(error).to include("task 'nonexistent' not found")
+      end
+    end
   end
 end

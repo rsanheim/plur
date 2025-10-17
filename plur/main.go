@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -33,12 +34,20 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	// Get the appropriate task with overrides applied
 	// Priority: CLI --use, config use, auto-detect
 	taskName := r.Use
+	wasExplicit := r.Use != ""
 	if taskName == "" && parent.Use != "" {
 		taskName = parent.Use
+		wasExplicit = true
 	}
 	if taskName == "" {
 		detectedTask := task.DetectFramework()
 		taskName = detectedTask.Name
+		wasExplicit = false
+	}
+
+	// Validate task exists if explicitly requested
+	if err := parent.validateTaskExists(taskName, wasExplicit); err != nil {
+		return err
 	}
 
 	currentTask := parent.getTaskWithOverrides(taskName)
@@ -113,12 +122,20 @@ func (w *WatchRunCmd) Run(parent *PlurCLI) error {
 	// Get the appropriate task with overrides applied
 	// Priority: CLI --use, config use, auto-detect
 	taskName := w.Use
+	wasExplicit := w.Use != ""
 	if taskName == "" && parent.Use != "" {
 		taskName = parent.Use
+		wasExplicit = true
 	}
 	if taskName == "" {
 		detectedTask := task.DetectFramework()
 		taskName = detectedTask.Name
+		wasExplicit = false
+	}
+
+	// Validate task exists if explicitly requested
+	if err := parent.validateTaskExists(taskName, wasExplicit); err != nil {
+		return err
 	}
 
 	currentTask := parent.getTaskWithOverrides(taskName)
@@ -265,6 +282,65 @@ func (r *PlurCLI) AfterApply() error {
 	return nil
 }
 
+// validateTaskExists checks if a task exists when explicitly requested
+// Returns nil if task exists or was auto-detected
+// Returns error with available tasks if explicitly requested task doesn't exist
+func (r *PlurCLI) validateTaskExists(taskName string, wasExplicit bool) error {
+	if !wasExplicit {
+		return nil // Auto-detected tasks are always valid
+	}
+
+	// Check built-in tasks
+	if taskName == "rspec" || taskName == "minitest" {
+		return nil
+	}
+
+	// Check custom tasks from config
+	if _, exists := r.Tasks[taskName]; exists {
+		return nil
+	}
+
+	// Task not found - build helpful error message with deduplication
+	availableMap := make(map[string]bool)
+	availableMap["rspec"] = true
+	availableMap["minitest"] = true
+	for name := range r.Tasks {
+		availableMap[name] = true
+	}
+
+	// Convert to sorted slice for consistent output
+	available := make([]string, 0, len(availableMap))
+	for name := range availableMap {
+		available = append(available, name)
+	}
+	sort.Strings(available)
+
+	return fmt.Errorf("task '%s' not found. Available tasks: %s",
+		taskName, strings.Join(available, ", "))
+}
+
+// mergeTaskConfig merges non-empty fields from override into base task
+func (r *PlurCLI) mergeTaskConfig(base *task.Task, override *task.Task) {
+	if override.Description != "" {
+		base.Description = override.Description
+	}
+	if override.Run != "" {
+		base.Run = override.Run
+	}
+	if len(override.SourceDirs) > 0 {
+		base.SourceDirs = override.SourceDirs
+	}
+	if len(override.Mappings) > 0 {
+		base.Mappings = override.Mappings
+	}
+	if len(override.IgnorePatterns) > 0 {
+		base.IgnorePatterns = override.IgnorePatterns
+	}
+	if override.TestGlob != "" {
+		base.TestGlob = override.TestGlob
+	}
+}
+
 // getTaskWithOverrides returns the appropriate task with CLI/config overrides applied
 func (r *PlurCLI) getTaskWithOverrides(taskName string) *task.Task {
 	var baseTask *task.Task
@@ -282,25 +358,7 @@ func (r *PlurCLI) getTaskWithOverrides(taskName string) *task.Task {
 
 	// Merge TOML config overrides if they exist
 	if configTask, exists := r.Tasks[taskName]; exists {
-		// Merge non-empty fields from TOML config into base task
-		if configTask.Description != "" {
-			baseTask.Description = configTask.Description
-		}
-		if configTask.Run != "" {
-			baseTask.Run = configTask.Run
-		}
-		if len(configTask.SourceDirs) > 0 {
-			baseTask.SourceDirs = configTask.SourceDirs
-		}
-		if len(configTask.Mappings) > 0 {
-			baseTask.Mappings = configTask.Mappings
-		}
-		if len(configTask.IgnorePatterns) > 0 {
-			baseTask.IgnorePatterns = configTask.IgnorePatterns
-		}
-		if configTask.TestGlob != "" {
-			baseTask.TestGlob = configTask.TestGlob
-		}
+		r.mergeTaskConfig(baseTask, configTask)
 	}
 
 	return baseTask
