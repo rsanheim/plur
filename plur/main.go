@@ -26,6 +26,7 @@ type TaskConfig struct {
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
 	Use      string   `short:"t" help:"Task to run (rspec/minitest/custom)" default:""`
+	Auto     bool     `help:"Automatically run bundle install before tests" default:"false"`
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
@@ -94,14 +95,15 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.LogVerbose(msg, "testFiles", testFiles)
 
 	// Run bundle install if --auto flag is set
-	if cfg.Auto && !cfg.DryRun {
+	if r.Auto && !cfg.DryRun {
 		depManager := NewDependencyManager()
 		if err := depManager.InstallDependencies(); err != nil {
 			return err
 		}
 	}
 
-	// Create and run executor
+	// Create and run executor with Auto flag
+	cfg.Auto = r.Auto
 	executor := NewTestExecutor(cfg, testFiles, currentTask)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
@@ -215,22 +217,21 @@ type PlurCLI struct {
 	DBMigrate  DBMigrateCmd  `cmd:"" name:"db:migrate" help:"Migrate test databases"`
 	DBPrepare  DBPrepareCmd  `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
 
-	// Global flags
-	Auto       bool   `help:"Automatically run bundle install before tests" default:"false"`
-	Verbose    bool   `help:"Enable verbose output for debugging" default:"false"`
-	Debug      bool   `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
-	DryRun     bool   `help:"Print what would be executed without running" default:"false"`
-	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
-	Color      bool   `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
-	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" default:"true" hidden:""`
-	RuntimeDir string `help:"Custom directory for runtime data" default:""`
+	// Global flags (alphabetically sorted for help display)
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
-	ChangeDir string `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Workers   int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
-	FirstIs1  bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
-	Version   bool   `help:"Show version information"`
-	Use       string `help:"Default task configuration to use" default:"" hidden:""`
+	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
+	Color      bool   `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
+	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" default:"true" hidden:""`
+	Debug      bool   `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
+	DryRun     bool   `help:"Print what would be executed without running" default:"false"`
+	FirstIs1   bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
+	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
+	RuntimeDir string `help:"Custom directory for runtime data" default:""`
+	Use        string `help:"Default task configuration to use" default:"" hidden:""`
+	Verbose    bool   `short:"v" help:"Enable verbose output for debugging" default:"false"`
+	Version    bool   `help:"Show version information"`
+	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 
 	// Task configurations from [task.NAME] sections in TOML - parsed by Kong
 	Task map[string]TaskConfig `help:"Task configurations (config file only)" hidden:""`
@@ -270,7 +271,6 @@ func (r *PlurCLI) AfterApply() error {
 	}
 
 	r.globalConfig = &config.GlobalConfig{
-		Auto:          r.Auto,
 		ColorOutput:   r.Color,
 		ConfigPaths:   configPaths,
 		Debug:         r.Debug,
@@ -388,6 +388,21 @@ func (r *PlurCLI) getTaskWithOverrides(taskName string) *task.Task {
 	return baseTask
 }
 
+// handleHelpCommand converts "help" command to "-h" flag for better UX.
+// Kong doesn't have a built-in help command, so we intercept it early.
+func handleHelpCommand(args []string) []string {
+	if len(args) > 0 && args[0] == "help" {
+		// Replace "help" with "-h"
+		newArgs := []string{"-h"}
+		// If there are additional args after "help", keep them for subcommand help
+		if len(args) > 1 {
+			newArgs = append(newArgs, args[1:]...)
+		}
+		return newArgs
+	}
+	return args
+}
+
 // handleEarlyChangeDir pre-parses command line arguments for the -C flag
 // and changes the working directory before Kong configuration loading.
 // This ensures config files are loaded from the target directory, not the current directory.
@@ -427,7 +442,10 @@ func handleChangeDir(args []string) error {
 func main() {
 	var cli PlurCLI
 
-	if err := handleChangeDir(os.Args[1:]); err != nil {
+	// Handle "help" command by converting it to "-h" flag
+	args := handleHelpCommand(os.Args[1:])
+
+	if err := handleChangeDir(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -455,7 +473,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx, err := parser.Parse(os.Args[1:])
+	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(err)
 
 	logger.Logger.Debug("running plur", "args", os.Args[1:], "command", ctx.Command())

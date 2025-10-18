@@ -167,7 +167,6 @@ func checkConfiguration(globalConfig *config.GlobalConfig) error {
 	fmt.Println("\n  Active Settings:")
 	fmt.Printf("    Workers:     %d\n", globalConfig.WorkerCount)
 	fmt.Printf("    Color:       %v\n", globalConfig.ColorOutput)
-	fmt.Printf("    Auto:        %v\n", globalConfig.Auto)
 	fmt.Printf("    Debug:       %v\n", globalConfig.Debug)
 	fmt.Printf("    Verbose:     %v\n", globalConfig.Verbose)
 

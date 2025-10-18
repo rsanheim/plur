@@ -3,7 +3,7 @@ module github.com/rsanheim/plur
 go 1.25.2
 
 require (
-	github.com/alecthomas/kong v1.11.0
+	github.com/alecthomas/kong v1.12.1
 	github.com/alecthomas/kong-toml v0.2.0
 )
 

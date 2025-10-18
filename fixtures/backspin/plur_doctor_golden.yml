@@ -56,7 +56,6 @@ commands:
       Active Settings:
         Workers:     12
         Color:       true
-        Auto:        false
         Debug:       false
         Verbose:     false
 
