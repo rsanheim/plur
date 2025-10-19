@@ -126,10 +126,10 @@ These documents may have ongoing value but need your decision on whether to keep
 
 ### WIP Directory - Active Work
 
-- [ ] `docs/wip/interactive-plur.md`
+- [x] `docs/wip/interactive-plur.md` ✅ KEEP
   * **Status:** Documents `plur watch find` (experimental but working)
-  * **Issue:** Contains outdated TODOs; Minitest support may be complete
-  * **Action needed:** Update completion status and remove stale TODOs
+  * **Resolution:** Keep in WIP - experimental feature, not ready to publicize
+  * **Reason:** Feature exists but limited to RSpec; may revisit Minitest support later
 
 - [x] `docs/wip/index.md` ✅ KEEP
   * **Status:** Index for WIP directory
@@ -208,20 +208,20 @@ These documents may have ongoing value but need your decision on whether to keep
 ## Summary Statistics
 
 * **Group 1 (Safe to Remove):** 15 files ✅ ALL ARCHIVED
-* **Group 2 (Require Review):** 15 files → **4 remaining** (11 resolved)
+* **Group 2 (Require Review):** 15 files → **3 remaining** (12 resolved)
 * **Total Identified:** 30 items
-* **Progress:** 26/30 complete (87%)
+* **Progress:** 27/30 complete (90%)
 
 ### Breakdown by Category
 
 | Category | Safe to Remove | Require Review | Resolved | Remaining |
 |----------|----------------|----------------|----------|-----------|
 | Archive | 3 ✅ | 4 | 3 ✅ | 1 |
-| WIP | 2 ✅ | 2 | 1 ✅ | 1 |
+| WIP | 2 ✅ | 2 | 2 ✅ | 0 |
 | Research | 5 ✅ | 3 | 3 ✅ | 0 |
 | Root-level | 3 ✅ | 5 | 4 ✅ | 1 |
 | Releases | 2 ✅ | 1 | 0 | 1 |
-| **Total** | **15 ✅** | **15** | **11** | **4** |
+| **Total** | **15 ✅** | **15** | **12** | **3** |
 
 ---
 
