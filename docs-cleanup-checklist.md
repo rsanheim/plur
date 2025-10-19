@@ -101,13 +101,10 @@ These documents may have ongoing value but need your decision on whether to keep
 
 ### Archive Directory - Potentially Valuable
 
-- [ ] `docs/archive/2025-05-28-single-stream-full-migration.md`
+- [x] `docs/archive/2025-05-28-single-stream-full-migration.md` ✅ KEEP
   * **Status:** Contains valuable performance insights and decision rationale
-  * **Issue:** Migration completed months ago; could be condensed
-  * **Options:**
-    1. Keep as-is for historical reference
-    2. Distill key lessons into main architecture docs
-    3. Remove if performance rationale is well-documented elsewhere
+  * **Resolution:** Keep in archive as historical reference
+  * **Reason:** Documents important architectural decision with performance data
 
 - [ ] `docs/archive/2025-07-11-minitest-refactoring-summary.md`
   * **Status:** Analysis with "recommendations for further improvement"
@@ -180,13 +177,10 @@ These documents may have ongoing value but need your decision on whether to keep
 
 ### Release Documentation - Active Process
 
-- [ ] `docs/development/releases/goreleaser-checklist.md`
+- [x] `docs/development/releases/goreleaser-checklist.md` ✅ MOVED
   * **Status:** 300+ line implementation tracker with Phases 1-3 complete
-  * **Issue:** Reads like planning doc; Phases 4-5 are speculative
-  * **Options:**
-    1. Archive as implementation log
-    2. Replace with simpler status document
-    3. Update to reflect only current actionable items
+  * **Resolution:** Moved to docs/wip/goreleaser-checklist.md
+  * **Reason:** Active tracking doc; belongs in WIP until fully complete
 
 ### Architecture/Features - Minor Issues
 
@@ -195,33 +189,30 @@ These documents may have ongoing value but need your decision on whether to keep
   * **Resolution:** Removed the TODO comment
   * **Reason:** Comment was unclear and unnecessary
 
-- [ ] `docs/architecture/output-design.md`
+- [x] `docs/architecture/output-design.md` ✅ MOVED
   * **Status:** Reads like personal notes/future plans, not current docs
-  * **Issue:** Contains "Logging needs an overhaul" and proposed `plur watch-config` command
-  * **Options:**
-    1. Move to roadmap
-    2. Rewrite as current implementation status
-    3. Move to WIP if plans are active
+  * **Resolution:** Moved to docs/ideas/output-design.md
+  * **Reason:** Future ideas/backlog; created new docs/ideas/ directory for such content
 
 ---
 
 ## Summary Statistics
 
 * **Group 1 (Safe to Remove):** 15 files ✅ ALL ARCHIVED
-* **Group 2 (Require Review):** 15 files → **3 remaining** (12 resolved)
+* **Group 2 (Require Review):** 15 files ✅ ALL RESOLVED
 * **Total Identified:** 30 items
-* **Progress:** 27/30 complete (90%)
+* **Progress:** 30/30 complete (100%) 🎉
 
 ### Breakdown by Category
 
 | Category | Safe to Remove | Require Review | Resolved | Remaining |
 |----------|----------------|----------------|----------|-----------|
-| Archive | 3 ✅ | 4 | 3 ✅ | 1 |
+| Archive | 3 ✅ | 4 | 4 ✅ | 0 |
 | WIP | 2 ✅ | 2 | 2 ✅ | 0 |
 | Research | 5 ✅ | 3 | 3 ✅ | 0 |
-| Root-level | 3 ✅ | 5 | 4 ✅ | 1 |
-| Releases | 2 ✅ | 1 | 0 | 1 |
-| **Total** | **15 ✅** | **15** | **12** | **3** |
+| Root-level | 3 ✅ | 5 | 5 ✅ | 0 |
+| Releases | 2 ✅ | 1 | 1 ✅ | 0 |
+| **Total** | **15 ✅** | **15** | **15** | **0** |
 
 ---
 
