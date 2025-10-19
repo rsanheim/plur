@@ -2,7 +2,7 @@
 
 > **Status**: ✅ IMPLEMENTED (October 2025)
 >
-> This PRD has been successfully implemented. See [goreleaser-checklist.md](./goreleaser-checklist.md) for implementation details and [release-process.md](../release-process.md) for usage documentation.
+> This PRD has been successfully implemented. See [goreleaser-checklist.md](../wip/goreleaser-checklist.md) for implementation details and [release-process.md](../development/release-process.md) for usage documentation.
 
 ## Executive Summary
 Implement GoReleaser to establish a standard Go release pipeline that will enable a smooth transition to open source while preserving the developer-friendly experience like our current `script/release` workflow. This creates a flexible, industry-standard foundation that can run locally during private development and seamlessly transition to GitHub Actions when public, all while maintaining the simple UX that makes releasing effortless.

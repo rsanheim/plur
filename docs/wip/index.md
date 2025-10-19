@@ -4,49 +4,27 @@ This directory contains active development documentation.
 
 ## Document Structure
 
-### 📋 Strategy & Planning
+### 📋 Active Planning
 
 | Document | Purpose | Last Updated |
 |----------|---------|--------------|
-| [interactive-plur.md](interactive-plur.md) | Interactive config building via `plur watch` - learning mode concept | 2025-08-16 |
-| [watcher-packaging-strategy.md](watcher-packaging-strategy.md) | Strategy for packaging watcher binaries across platforms | 2025-08-27 |
-
-### 🔬 Technical Deep Dives
-
-| Document | Purpose | Last Updated |
-|----------|---------|--------------|
-| [consolidate-watch-and-spec-report.md](consolidate-watch-and-spec-report.md) | Consolidate watch and spec report handlers | - |
+| [goreleaser-checklist.md](goreleaser-checklist.md) | GoReleaser implementation tracker - Phases 1-3 complete | 2025-10 |
 
 ### ✅ Recently Completed (Moved)
 
 | Document | New Location | Status |
 |----------|-------------|--------|
-| GoReleaser Implementation | [Release Infrastructure](../development/releases/index.md) | Completed Oct 2025 |
+| Interactive watch find | [Ideas](../ideas/interactive-watch-find.md) | Moved to ideas - experimental feature |
+| Watcher packaging strategy | [Archive](../archive/2025-08-27-watcher-packaging-strategy.md) | Completed Aug 2025 |
+| Watch/spec consolidation | [Archive](../archive/2025-08-17-consolidate-watch-and-spec-report.md) | Completed Aug 2025 |
+| GoReleaser PRD | [Archive](../archive/2025-10-goreleaser-prd.md) | Completed Oct 2025 |
+| GoReleaser summary | [Archive](../archive/2025-10-goreleaser-implementation-summary.md) | Completed Oct 2025 |
 
 ### 📁 Reference Files
 
 | File | Purpose |
 |------|---------|
 
-## Quick Start
-
-1. **Interactive Watch Mode**: `plur watch find` is an experimental diagnostic tool for exploring file-to-test mappings
-   - Works well for RSpec projects (~75-85% success rate)
-   - Currently doesn't support Test::Unit/Minitest projects
-   - Not yet integrated into main `plur watch` command
-
-
-
 ## Current Status
 
-### 🧪 Experimental
-* **`plur watch find`**: Diagnostic command for testing file-to-test mapping discovery
-  * Validates if mapped spec files exist
-  * Searches for alternative specs when default mappings fail  
-  * Suggests custom mapping rules based on discovered alternatives
-  * Works well for RSpec projects, needs work for Test::Unit/Minitest
-
-### 📝 Next Steps
-* Improve `plur watch find` to support Test::Unit/Minitest conventions
-* Consider integrating `plur watch find` learnings into main `plur watch` mode
-* Add confidence scoring to reduce false positive suggestions
+This directory now contains only active work-in-progress items. Completed work has been moved to the archive, and future ideas have been moved to the ideas directory.

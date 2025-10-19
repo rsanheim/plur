@@ -138,7 +138,6 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 The watcher detects:
 - `create` - New files
 - `modify` - Content changes (metadata-only changes like `touch` are ignored)
-# TODO you sure aout that?
 - `destroy` - Deleted files
 - `rename` - Renamed files
 
