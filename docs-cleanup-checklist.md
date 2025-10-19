@@ -146,15 +146,17 @@ These documents may have ongoing value but need your decision on whether to keep
     2. Move to docs/planning/
     3. Move to roadmap if not prioritized
 
-- [ ] `docs/research/optimization-opportunities.md`
-  * **Status:** Mix of completed and pending optimizations
-  * **Issue:** Needs update to mark completed items
-  * **Action needed:** Update status of Phase 1 items (done), review Phase 2-4
+- [x] `docs/research/optimization-opportunities.md` ✅ KEEP
+  * **Status:** Detailed optimization catalog (265 lines)
+  * **Resolution:** Keep as comprehensive reference
+  * **Reason:** Detailed breakdown of specific optimizations with code examples; complements performance-analysis doc
+  * **Note:** This is a detailed catalog, while performance-analysis is the roadmap
 
-- [ ] `docs/research/performance-analysis-2025-08.md`
-  * **Status:** Active optimization roadmap from Aug 2025
-  * **Issue:** Phases 1-4 need status verification
-  * **Action needed:** Verify current status, mark completed phases
+- [x] `docs/research/performance-analysis-2025-08.md` ✅ KEEP
+  * **Status:** Optimization roadmap with Phase 1 completed
+  * **Resolution:** Keep as active roadmap
+  * **Reason:** Phase 1 complete (4/4 items done); Phases 2-4 provide clear next steps
+  * **Note:** This is the roadmap/plan, while optimization-opportunities is the detailed catalog
 
 ### Root-Level Documents - Unclear Status
 
@@ -193,9 +195,10 @@ These documents may have ongoing value but need your decision on whether to keep
 
 ### Architecture/Features - Minor Issues
 
-- [ ] TODO comment in `docs/features/watch-mode.md:141`
+- [x] TODO comment in `docs/features/watch-mode.md:141` ✅ REMOVED
   * **Status:** Stale inline TODO: `# TODO you sure aout that?`
-  * **Action:** Remove or clarify
+  * **Resolution:** Removed the TODO comment
+  * **Reason:** Comment was unclear and unnecessary
 
 - [ ] `docs/architecture/output-design.md`
   * **Status:** Reads like personal notes/future plans, not current docs
@@ -210,9 +213,9 @@ These documents may have ongoing value but need your decision on whether to keep
 ## Summary Statistics
 
 * **Group 1 (Safe to Remove):** 15 files ✅ ALL ARCHIVED
-* **Group 2 (Require Review):** 15 files → **8 remaining** (7 resolved)
+* **Group 2 (Require Review):** 15 files → **5 remaining** (10 resolved)
 * **Total Identified:** 30 items
-* **Progress:** 22/30 complete (73%)
+* **Progress:** 25/30 complete (83%)
 
 ### Breakdown by Category
 
@@ -220,10 +223,10 @@ These documents may have ongoing value but need your decision on whether to keep
 |----------|----------------|----------------|----------|-----------|
 | Archive | 3 ✅ | 4 | 3 ✅ | 1 |
 | WIP | 2 ✅ | 2 | 1 ✅ | 1 |
-| Research | 5 ✅ | 3 | 0 | 3 |
+| Research | 5 ✅ | 3 | 3 ✅ | 0 |
 | Root-level | 3 ✅ | 5 | 3 ✅ | 2 |
 | Releases | 2 ✅ | 1 | 0 | 1 |
-| **Total** | **15 ✅** | **15** | **7** | **8** |
+| **Total** | **15 ✅** | **15** | **10** | **5** |
 
 ---
 
