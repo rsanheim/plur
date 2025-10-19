@@ -161,17 +161,15 @@ These documents may have ongoing value but need your decision on whether to keep
 
 ### Root-Level Documents - Unclear Status
 
-- [ ] `docs/bundler-optimization-research.md`
+- [x] `docs/bundler-optimization-research.md` ✅ MOVED
   * **Status:** 239-line research document from Aug 2025
-  * **Issue:** Proposes Phases 1-3 that were never implemented
-  * **Options:**
-    1. Move to `docs/research/` if keeping
-    2. Remove if superseded by different approach
+  * **Resolution:** Moved to `docs/research/bundler-optimization-research.md`
+  * **Reason:** Valuable research on bundler overhead; belongs in research directory
 
-- [ ] `docs/plur-optimization-plan.md`
+- [x] `docs/plur-optimization-plan.md` ✅ REMOVED
   * **Status:** Performance plan from July 2025 (3 months old)
-  * **Issue:** Unclear if Phase 1 file batching was pursued
-  * **Action needed:** Verify implementation status before deciding
+  * **Resolution:** Deleted - proposals were never pursued
+  * **Reason:** Project took different optimization approach
 
 - [ ] `docs/implementation-mkdocs-migration.md`
   * **Status:** ⚠️ **CRITICAL** - Detailed plan that was NOT executed
@@ -214,19 +212,21 @@ These documents may have ongoing value but need your decision on whether to keep
 
 ## Summary Statistics
 
-* **Group 1 (Safe to Remove):** 15 files
-* **Group 2 (Require Review):** 15 files
+* **Group 1 (Safe to Remove):** 15 files ✅ ALL ARCHIVED
+* **Group 2 (Require Review):** 15 files → **13 remaining** (2 resolved)
 * **Total Identified:** 30 items
+* **Progress:** 17/30 complete (57%)
 
 ### Breakdown by Category
 
-| Category | Safe to Remove | Require Review | Total |
-|----------|----------------|----------------|-------|
-| Archive | 3 | 4 | 7 |
-| WIP | 2 | 2 | 4 |
-| Research | 5 | 3 | 8 |
-| Root-level | 3 | 5 | 8 |
-| Releases | 2 | 1 | 3 |
+| Category | Safe to Remove | Require Review | Resolved | Remaining |
+|----------|----------------|----------------|----------|-----------|
+| Archive | 3 ✅ | 4 | 1 ✅ | 3 |
+| WIP | 2 ✅ | 2 | 0 | 2 |
+| Research | 5 ✅ | 3 | 0 | 3 |
+| Root-level | 3 ✅ | 5 | 2 ✅ | 3 |
+| Releases | 2 ✅ | 1 | 0 | 1 |
+| **Total** | **15 ✅** | **15** | **3** | **12** |
 
 ---
 
