@@ -168,13 +168,10 @@ These documents may have ongoing value but need your decision on whether to keep
   * **Resolution:** Deleted - proposals were never pursued
   * **Reason:** Project took different optimization approach
 
-- [ ] `docs/implementation-mkdocs-migration.md`
-  * **Status:** ⚠️ **CRITICAL** - Detailed plan that was NOT executed
-  * **Issue:** Looks like active docs but mkdocs.yml still in root, not migrated
-  * **Options:**
-    1. Delete if migration plan is abandoned
-    2. Move to `docs/wip/` if still planned
-    3. **Do not leave in root** - misleading
+- [x] `docs/implementation-mkdocs-migration.md` ✅ REMOVED
+  * **Status:** Unexecuted migration plan
+  * **Resolution:** Deleted - decided to keep mkdocs in root
+  * **Reason:** Migration not needed; existing setup works fine
 
 - [x] `docs/recent-pages.md` ✅ KEEP
   * **Status:** Auto-generated index from Oct 13
@@ -211,9 +208,9 @@ These documents may have ongoing value but need your decision on whether to keep
 ## Summary Statistics
 
 * **Group 1 (Safe to Remove):** 15 files ✅ ALL ARCHIVED
-* **Group 2 (Require Review):** 15 files → **5 remaining** (10 resolved)
+* **Group 2 (Require Review):** 15 files → **4 remaining** (11 resolved)
 * **Total Identified:** 30 items
-* **Progress:** 25/30 complete (83%)
+* **Progress:** 26/30 complete (87%)
 
 ### Breakdown by Category
 
@@ -222,9 +219,9 @@ These documents may have ongoing value but need your decision on whether to keep
 | Archive | 3 ✅ | 4 | 3 ✅ | 1 |
 | WIP | 2 ✅ | 2 | 1 ✅ | 1 |
 | Research | 5 ✅ | 3 | 3 ✅ | 0 |
-| Root-level | 3 ✅ | 5 | 3 ✅ | 2 |
+| Root-level | 3 ✅ | 5 | 4 ✅ | 1 |
 | Releases | 2 ✅ | 1 | 0 | 1 |
-| **Total** | **15 ✅** | **15** | **10** | **5** |
+| **Total** | **15 ✅** | **15** | **11** | **4** |
 
 ---
 
