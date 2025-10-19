@@ -146,17 +146,15 @@ These documents may have ongoing value but need your decision on whether to keep
     2. Move to docs/planning/
     3. Move to roadmap if not prioritized
 
-- [x] `docs/research/optimization-opportunities.md` ✅ KEEP
+- [x] `docs/research/optimization-opportunities.md` ✅ MERGED
   * **Status:** Detailed optimization catalog (265 lines)
-  * **Resolution:** Keep as comprehensive reference
-  * **Reason:** Detailed breakdown of specific optimizations with code examples; complements performance-analysis doc
-  * **Note:** This is a detailed catalog, while performance-analysis is the roadmap
+  * **Resolution:** Merged into unified performance-optimizations.md
+  * **Reason:** Combined with performance-analysis doc; verified all code references with subagents
 
-- [x] `docs/research/performance-analysis-2025-08.md` ✅ KEEP
+- [x] `docs/research/performance-analysis-2025-08.md` ✅ MERGED
   * **Status:** Optimization roadmap with Phase 1 completed
-  * **Resolution:** Keep as active roadmap
-  * **Reason:** Phase 1 complete (4/4 items done); Phases 2-4 provide clear next steps
-  * **Note:** This is the roadmap/plan, while optimization-opportunities is the detailed catalog
+  * **Resolution:** Merged into unified performance-optimizations.md
+  * **Reason:** Combined with optimization-opportunities doc; updated with current status
 
 ### Root-Level Documents - Unclear Status
 
