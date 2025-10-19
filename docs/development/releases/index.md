@@ -7,10 +7,10 @@ This directory contains documentation for plur's release infrastructure, which c
 ### Process & Usage
 - [Release Process](../release-process.md) - How to create releases (manual and automated)
 
-### Implementation
-- [GoReleaser Implementation Checklist](./goreleaser-checklist.md) - Complete implementation tracking with current status
-- [GoReleaser Implementation Summary](./goreleaser-implementation-summary.md) - Technical summary of what was built
-- [GoReleaser PRD](./goreleaser-prd.md) - Original product requirements document
+### Implementation (Historical)
+- [GoReleaser Implementation Checklist](../../wip/goreleaser-checklist.md) - Complete implementation tracking with current status
+- [GoReleaser Implementation Summary](../../archive/2025-10-goreleaser-implementation-summary.md) - Technical summary of what was built (archived)
+- [GoReleaser PRD](../../archive/2025-10-goreleaser-prd.md) - Original product requirements document (archived)
 
 ## Current Status
 
