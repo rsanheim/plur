@@ -1,10 +1,12 @@
-# Minitest Flow Sequence Diagram
+# Test Processing Flow
 
-This document provides a comprehensive view of how Plur processes Minitest test output, from the runner through all components including the parser, collector, and output aggregator.
+This document provides a comprehensive view of how Plur processes test output, from the runner through all components including the parser, collector, and output aggregator.
 
 **Updated**: Reflects current architecture with WorkerResult, ProgressEvent, unified test representation, and framework-aware formatting.
 
-## Full System Flow - Minitest Execution
+**Note**: While this diagram uses Minitest as the example, the architecture applies to all test frameworks (RSpec, Minitest, etc.) with framework-specific implementations in the parser layer.
+
+## Full System Flow - Test Execution
 
 !!! tip "Viewing Large Diagrams"
     This diagram supports pan and zoom! Use your mouse wheel to zoom in/out and drag to pan around. Double-click to reset the view.

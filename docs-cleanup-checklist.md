@@ -114,13 +114,10 @@ These documents may have ongoing value but need your decision on whether to keep
   * **Issue:** Unclear if recommendations were addressed or ignored
   * **Action needed:** Verify if recommendations were implemented before deciding
 
-- [ ] `docs/archive/2025-07-30-minitest-flow-sequence-diagram.md`
+- [x] `docs/archive/2025-07-30-minitest-flow-sequence-diagram.md` ✅ MOVED
   * **Status:** Documents CURRENT architecture with useful mermaid diagram
-  * **Issue:** Should be in main docs (architecture/), not archive
-  * **Options:**
-    1. Move to `docs/architecture/minitest-flow.md`
-    2. Keep in archive if superseded by other docs
-    3. Remove if diagram is outdated
+  * **Resolution:** Moved to `docs/architecture/test-processing-flow.md`
+  * **Reason:** Valuable architecture documentation showing complete test processing flow; renamed to reflect that it covers general architecture (not just minitest)
 
 - [ ] `docs/archive/index.md`
   * **Status:** Index for archive directory
@@ -213,20 +210,20 @@ These documents may have ongoing value but need your decision on whether to keep
 ## Summary Statistics
 
 * **Group 1 (Safe to Remove):** 15 files ✅ ALL ARCHIVED
-* **Group 2 (Require Review):** 15 files → **13 remaining** (2 resolved)
+* **Group 2 (Require Review):** 15 files → **12 remaining** (3 resolved)
 * **Total Identified:** 30 items
-* **Progress:** 17/30 complete (57%)
+* **Progress:** 18/30 complete (60%)
 
 ### Breakdown by Category
 
 | Category | Safe to Remove | Require Review | Resolved | Remaining |
 |----------|----------------|----------------|----------|-----------|
-| Archive | 3 ✅ | 4 | 1 ✅ | 3 |
+| Archive | 3 ✅ | 4 | 2 ✅ | 2 |
 | WIP | 2 ✅ | 2 | 0 | 2 |
 | Research | 5 ✅ | 3 | 0 | 3 |
 | Root-level | 3 ✅ | 5 | 2 ✅ | 3 |
 | Releases | 2 ✅ | 1 | 0 | 1 |
-| **Total** | **15 ✅** | **15** | **3** | **12** |
+| **Total** | **15 ✅** | **15** | **4** | **11** |
 
 ---
 
