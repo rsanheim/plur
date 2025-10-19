@@ -123,10 +123,10 @@ These documents may have ongoing value but need your decision on whether to keep
 
 ### WIP Directory - Active Work
 
-- [x] `docs/wip/interactive-plur.md` ✅ KEEP
+- [x] `docs/wip/interactive-plur.md` ✅ MOVED
   * **Status:** Documents `plur watch find` (experimental but working)
-  * **Resolution:** Keep in WIP - experimental feature, not ready to publicize
-  * **Reason:** Feature exists but limited to RSpec; may revisit Minitest support later
+  * **Resolution:** Moved to docs/ideas/interactive-watch-find.md
+  * **Reason:** Future feature idea; experimental and not ready to publicize
 
 - [x] `docs/wip/index.md` ✅ KEEP
   * **Status:** Index for WIP directory
