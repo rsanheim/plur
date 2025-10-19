@@ -119,10 +119,10 @@ These documents may have ongoing value but need your decision on whether to keep
   * **Resolution:** Moved to `docs/architecture/test-processing-flow.md`
   * **Reason:** Valuable architecture documentation showing complete test processing flow; renamed to reflect that it covers general architecture (not just minitest)
 
-- [ ] `docs/archive/index.md`
+- [x] `docs/archive/index.md` ✅ KEEP
   * **Status:** Index for archive directory
-  * **Issue:** Only needed if keeping archived docs
-  * **Action:** Remove if archive directory is emptied
+  * **Resolution:** Keep as-is
+  * **Reason:** Useful navigation for archived content
 
 ### WIP Directory - Active Work
 
@@ -131,10 +131,10 @@ These documents may have ongoing value but need your decision on whether to keep
   * **Issue:** Contains outdated TODOs; Minitest support may be complete
   * **Action needed:** Update completion status and remove stale TODOs
 
-- [ ] `docs/wip/index.md`
+- [x] `docs/wip/index.md` ✅ KEEP
   * **Status:** Index for WIP directory
-  * **Issue:** References completed work as in-progress
-  * **Action needed:** Update or remove based on what stays in WIP
+  * **Resolution:** Keep as-is
+  * **Reason:** Useful navigation for WIP content
 
 ### Research Directory - Ongoing Value
 
@@ -176,10 +176,10 @@ These documents may have ongoing value but need your decision on whether to keep
     2. Move to `docs/wip/` if still planned
     3. **Do not leave in root** - misleading
 
-- [ ] `docs/recent-pages.md`
+- [x] `docs/recent-pages.md` ✅ KEEP
   * **Status:** Auto-generated index from Oct 13
-  * **Issue:** Not automatically updated; duplicates git-revision-date plugin
-  * **Action needed:** Decide if manual maintenance is worth it
+  * **Resolution:** Keep as-is
+  * **Reason:** Useful navigation aid; manual maintenance is acceptable
 
 ### Release Documentation - Active Process
 
@@ -210,20 +210,20 @@ These documents may have ongoing value but need your decision on whether to keep
 ## Summary Statistics
 
 * **Group 1 (Safe to Remove):** 15 files ✅ ALL ARCHIVED
-* **Group 2 (Require Review):** 15 files → **12 remaining** (3 resolved)
+* **Group 2 (Require Review):** 15 files → **8 remaining** (7 resolved)
 * **Total Identified:** 30 items
-* **Progress:** 18/30 complete (60%)
+* **Progress:** 22/30 complete (73%)
 
 ### Breakdown by Category
 
 | Category | Safe to Remove | Require Review | Resolved | Remaining |
 |----------|----------------|----------------|----------|-----------|
-| Archive | 3 ✅ | 4 | 2 ✅ | 2 |
-| WIP | 2 ✅ | 2 | 0 | 2 |
+| Archive | 3 ✅ | 4 | 3 ✅ | 1 |
+| WIP | 2 ✅ | 2 | 1 ✅ | 1 |
 | Research | 5 ✅ | 3 | 0 | 3 |
-| Root-level | 3 ✅ | 5 | 2 ✅ | 3 |
+| Root-level | 3 ✅ | 5 | 3 ✅ | 2 |
 | Releases | 2 ✅ | 1 | 0 | 1 |
-| **Total** | **15 ✅** | **15** | **4** | **11** |
+| **Total** | **15 ✅** | **15** | **7** | **8** |
 
 ---
 
