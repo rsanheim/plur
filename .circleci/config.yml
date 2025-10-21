@@ -173,15 +173,3 @@ workflows:
       - test-ruby-integration:
           requires:
             - build-and-test-go
-
-  # Test release workflow - runs on test-releases/* branches for validation
-  # Production releases are done from main branch via manual script/release
-  release:
-    jobs:
-      - release:
-          context: github-releases
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              only: /test-releases.*/
