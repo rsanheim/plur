@@ -190,17 +190,13 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 			// Check if we should watch this file by seeing if it matches any mapping pattern
 			if !shouldWatchFile(relPath, currentTask) {
-				logger.LogDebug("watch",
-					"event", "skip",
-					"reason", "not_watching_file",
-					"path", "./"+relPath)
+				logger.LogDebug("watch", "event", "skip", "reason", "not_watching_file", "path", "./"+relPath)
 				continue
 			}
 
 			// Map the file to specs using Task
 			targetsToRun := currentTask.MapFilesToTarget([]string{relPath})
 			if len(targetsToRun) == 0 {
-				// Still log the mapping_not_found for tests
 				logger.LogDebug("plur", "event", "mapping_not_found", "path", "./"+relPath, "targets", []string{})
 				continue
 			}
