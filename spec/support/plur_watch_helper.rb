@@ -78,6 +78,6 @@ module PlurWatchHelper
 
   # Helper to check for spec run events in the new log format
   def expect_spec_run_logged(output, spec_path)
-    expect(output).to include("plur event=run_spec path=#{spec_path}")
+    expect(output).to include("plur event=run_command path=#{spec_path}")
   end
 end

@@ -142,7 +142,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				// User pressed Enter - run all specs
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
-				runSpecsOrDirectory("spec", currentTask.Run)
+				runCommand("spec", currentTask.Run)
 				fmt.Print("\nplur> ")
 			case "exit":
 				// User typed exit command
@@ -198,26 +198,24 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			}
 
 			// Map the file to specs using Task
-			specsToRun := currentTask.MapFilesToTarget([]string{relPath})
-			if len(specsToRun) == 0 {
+			targetsToRun := currentTask.MapFilesToTarget([]string{relPath})
+			if len(targetsToRun) == 0 {
 				// Still log the mapping_not_found for tests
-				logger.LogDebug("plur", "event", "mapping_not_found", "path", "./"+relPath, "specs", []string{})
+				logger.LogDebug("plur", "event", "mapping_not_found", "path", "./"+relPath, "targets", []string{})
 				continue
 			}
-			logger.LogDebug("plur", "event", "mapping_found", "path", "./"+relPath, "specs", specsToRun)
+			logger.LogDebug("plur", "event", "mapping_found", "path", "./"+relPath, "targets", targetsToRun)
 
-			// Debounce the spec runs
-			debouncer.Debounce(specsToRun, func(specs []string) {
+			debouncer.Debounce(targetsToRun, func(targets []string) {
 				// Remove duplicates
-				uniqueSpecs := make(map[string]bool)
-				for _, spec := range specs {
-					uniqueSpecs[spec] = true
+				uniqueTargets := make(map[string]bool)
+				for _, target := range targets {
+					uniqueTargets[target] = true
 				}
 
-				// Run each unique spec
-				for spec := range uniqueSpecs {
-					logger.LogDebug("plur", "event", "run_spec", "path", "./"+spec)
-					runSpecsOrDirectory(spec, currentTask.Run)
+				for target := range uniqueTargets {
+					logger.LogDebug("plur", "event", "run_command", "path", "./"+target)
+					runCommand(target, currentTask.Run)
 				}
 
 				go func() {
@@ -241,22 +239,21 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	}
 }
 
-// Simple implementation using direct rspec call for now
-// We'll integrate with plur runner properly later
-func runSpecsOrDirectory(specPath string, command string) {
+// Simple implementation using direct command call for now
+func runCommand(targetPath string, command string) {
 	var cmd *exec.Cmd
-
-	if _, err := os.Stat(specPath); errors.Is(err, os.ErrNotExist) {
-		fmt.Printf("Spec file not found: %s\n", specPath)
-		return
-	}
 
 	// Split the command string into parts
 	cmdParts := strings.Fields(command)
-	args := append(cmdParts, specPath)
+	args := append(cmdParts, targetPath)
 	cmd_string := strings.Join(args, " ")
 
 	fmt.Println("running:", cmd_string)
+
+	if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
+		fmt.Printf("file not found: %s\n", targetPath)
+		return
+	}
 
 	cmd = exec.Command(args[0], args[1:]...)
 
@@ -264,7 +261,7 @@ func runSpecsOrDirectory(specPath string, command string) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to run spec: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
 	}
 }
 
