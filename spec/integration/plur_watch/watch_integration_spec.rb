@@ -29,7 +29,7 @@ RSpec.describe "plur watch integration" do
 
     expect(result.err).to include("watch event=modify type=file")
     expect(result.err).to include("path=./lib/calculator.rb")
-    expect(result.err).to include("plur event=run_spec path=./spec/calculator_spec.rb")
+    expect(result.err).to include("plur event=run_command path=./spec/calculator_spec.rb")
   end
 
   it "maps nested lib files correctly", :skip_if_ci do
@@ -52,7 +52,7 @@ RSpec.describe "plur watch integration" do
       expect_file_change_logged(result.err, "./lib/models/temp_model.rb")
       expect_spec_run_logged(result.err, "./spec/models/temp_model_spec.rb")
       # It will say spec not found since we didn't create the spec
-      expect(result.out).to include("Spec file not found: spec/models/temp_model_spec.rb")
+      expect(result.out).to include("file not found: spec/models/temp_model_spec.rb")
     ensure
       FileUtils.rm_f(nested_lib)
       begin
