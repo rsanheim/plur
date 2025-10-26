@@ -253,7 +253,7 @@ func runSpecsOrDirectory(specPath string, command string) {
 
 	// Split the command string into parts
 	cmdParts := strings.Fields(command)
-	args := append(cmdParts, "--format", "progress", specPath)
+	args := append(cmdParts, specPath)
 	cmd_string := strings.Join(args, " ")
 
 	fmt.Println("running:", cmd_string)
