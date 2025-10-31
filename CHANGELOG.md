@@ -2,6 +2,7 @@
 
 ## v0.12.0 - 2025-10-31
 
+* Add plur watch reload command [#126](https://github.com/rsanheim/plur/pull/126)
 * rename to targets in watch [#125](https://github.com/rsanheim/plur/pull/125)
 * Remove default formatter from watch command [#124](https://github.com/rsanheim/plur/pull/124)
 * Cleanup old docs [#118](https://github.com/rsanheim/plur/pull/118)
