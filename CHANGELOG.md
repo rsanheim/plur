@@ -21,16 +21,6 @@
 * Modernize python mkdocs [#115](https://github.com/rsanheim/plur/pull/115)
 * Release testing and refinement [#114](https://github.com/rsanheim/plur/pull/114)
 
-## v0.10.2-test2 - 2025-10-10
-
-* Various improvements and bug fixes
-
-## v0.10.2-test2 - Test Release
-
-* Test release to verify GoReleaser and CircleCI release workflow
-* Includes permission fixes for Claude settings
-* Testing pre-release version suffix support
-
 ## v0.10.0 - 2025-08-21
 
 * Consolidate to `Task` to for defining how to run things [#100](https://github.com/rsanheim/plur/pull/100)
