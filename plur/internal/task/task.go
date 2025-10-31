@@ -20,13 +20,12 @@ type MappingRule struct {
 
 // Task defines how to run tests, linters, or other jobs in a project
 type Task struct {
-	Name           string        `toml:"-"`               // Task name (e.g., "rspec", "minitest")
-	Description    string        `toml:"description"`     // Human-readable description
-	Run            string        `toml:"run"`             // Command to run (e.g., "bundle exec rspec")
-	SourceDirs     []string      `toml:"source_dirs"`     // Directories to watch/search
-	Mappings       []MappingRule `toml:"mappings"`        // File mapping rules
-	IgnorePatterns []string      `toml:"ignore_patterns"` // Patterns to ignore (for watch)
-	TestGlob       string        `toml:"test_glob"`       // Glob pattern for test files (e.g., "spec/**/*_spec.rb")
+	Name        string        `toml:"-"`           // Task name (e.g., "rspec", "minitest")
+	Description string        `toml:"description"` // Human-readable description
+	Run         string        `toml:"run"`         // Command to run (e.g., "bundle exec rspec")
+	SourceDirs  []string      `toml:"source_dirs"` // Directories to watch/search
+	Mappings    []MappingRule `toml:"mappings"`    // File mapping rules
+	TestGlob    string        `toml:"test_glob"`   // Glob pattern for test files (e.g., "spec/**/*_spec.rb")
 }
 
 // BuildCommand constructs the command to execute for this task
@@ -276,8 +275,7 @@ func NewRSpecTask() *Task {
 				Target:  "{{file}}",
 			},
 		},
-		IgnorePatterns: []string{".git", "tmp", "log"},
-		TestGlob:       "spec/**/*_spec.rb",
+		TestGlob: "spec/**/*_spec.rb",
 	}
 }
 
@@ -306,8 +304,7 @@ func NewMinitestTask() *Task {
 				Target:  "{{file}}",
 			},
 		},
-		IgnorePatterns: []string{".git", "tmp", "log"},
-		TestGlob:       "test/**/*_test.rb",
+		TestGlob: "test/**/*_test.rb",
 	}
 }
 

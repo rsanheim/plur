@@ -56,7 +56,7 @@ A Task in Plur encapsulates:
 * The command to run
 * Which directories to watch or search
 * How to map source files to test files
-* File patterns to match and ignore
+* File patterns to match
 
 Plur comes with built-in tasks for RSpec and Minitest, but you can define custom tasks for any tool.
 
@@ -87,12 +87,11 @@ Tasks are selected in the following priority order:
 ### Task Configuration Fields
 
 | Field | Type | Description | Required | Default |
-|-------|------|-------------|----------|------| 
+|-------|------|-------------|----------|------|
 | `description` | string | Human-readable description of the task | No | "" |
 | `run` | string | Command to execute | Yes | "" |
 | `source_dirs` | string[] | Directories to watch/search | No | `["spec", "lib", "app"]` (rspec)<br>`["test", "lib", "app"]` (minitest) |
 | `mappings` | MappingRule[] | File mapping rules | No | `[]` |
-| `ignore_patterns` | string[] | Patterns to ignore (watch mode) | No | `[".git"]` |
 | `test_glob` | string | Glob pattern for test files | No | Depends on task |
 
 ### Built-in Tasks
@@ -173,7 +172,6 @@ mappings = [
   { pattern = "**/*.go", target = "{{path}}/{{name}}_test.go" },
   { pattern = "**/*_test.go", target = "{{file}}" }
 ]
-ignore_patterns = ["vendor", ".git"]
 ```
 
 ### Mapping Patterns
