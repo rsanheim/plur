@@ -15,12 +15,11 @@ import (
 
 // TaskConfig defines the structure for task configurations that Kong can parse from TOML
 type TaskConfig struct {
-	Description    string             `toml:"description"`     // Human-readable description
-	Run            string             `toml:"run"`             // Command to run (e.g., "bundle exec rspec")
-	SourceDirs     []string           `toml:"source_dirs"`     // Directories to watch/search
-	Mappings       []task.MappingRule `toml:"mappings"`        // File mapping rules
-	IgnorePatterns []string           `toml:"ignore_patterns"` // Patterns to ignore (for watch)
-	TestGlob       string             `toml:"test_glob"`       // Glob pattern for test files
+	Description string             `toml:"description"` // Human-readable description
+	Run         string             `toml:"run"`         // Command to run (e.g., "bundle exec rspec")
+	SourceDirs  []string           `toml:"source_dirs"` // Directories to watch/search
+	Mappings    []task.MappingRule `toml:"mappings"`    // File mapping rules
+	TestGlob    string             `toml:"test_glob"`   // Glob pattern for test files
 }
 
 type SpecCmd struct {
@@ -288,13 +287,12 @@ func (r *PlurCLI) AfterApply() error {
 	for taskName, taskConfig := range r.Task {
 		// Convert TaskConfig to task.Task
 		taskObj := &task.Task{
-			Name:           taskName,
-			Description:    taskConfig.Description,
-			Run:            taskConfig.Run,
-			SourceDirs:     taskConfig.SourceDirs,
-			Mappings:       taskConfig.Mappings,
-			IgnorePatterns: taskConfig.IgnorePatterns,
-			TestGlob:       taskConfig.TestGlob,
+			Name:        taskName,
+			Description: taskConfig.Description,
+			Run:         taskConfig.Run,
+			SourceDirs:  taskConfig.SourceDirs,
+			Mappings:    taskConfig.Mappings,
+			TestGlob:    taskConfig.TestGlob,
 		}
 		r.Tasks[taskName] = taskObj
 	}
@@ -356,9 +354,6 @@ func (r *PlurCLI) mergeTaskConfig(base *task.Task, override *task.Task) {
 	}
 	if len(override.Mappings) > 0 {
 		base.Mappings = override.Mappings
-	}
-	if len(override.IgnorePatterns) > 0 {
-		base.IgnorePatterns = override.IgnorePatterns
 	}
 	if override.TestGlob != "" {
 		base.TestGlob = override.TestGlob
