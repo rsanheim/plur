@@ -1,5 +1,10 @@
 # plur CHANGELOG
 
+## v0.12.0 - 2025-10-31
+
+* rename to targets in watch [#125](https://github.com/rsanheim/plur/pull/125)
+* Remove default formatter from watch command [#124](https://github.com/rsanheim/plur/pull/124)
+* Cleanup old docs [#118](https://github.com/rsanheim/plur/pull/118)
 
 ## v0.11.0 - 2025-10-17
 
