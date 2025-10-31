@@ -118,6 +118,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	fmt.Println("Watching for file changes.")
 	fmt.Println("Commands:")
 	fmt.Println("  [Enter]  - Run all tests")
+	fmt.Println("  reload   - Reload configuration")
 	fmt.Println("  exit     - Exit watch mode")
 	fmt.Println("  Ctrl-C   - Exit watch mode")
 	fmt.Println()
@@ -144,6 +145,31 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				fmt.Println("Running all tests...")
 				runCommand("spec", currentTask.Run)
 				fmt.Print("\nplur> ")
+			case "reload":
+				// User requested process reload
+				logger.LogDebug("User requested process reload")
+				fmt.Println("Reloading plur...")
+
+				// Get current executable path
+				execPath, err := os.Executable()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to reload: %v\n", err)
+					fmt.Print("plur> ")
+					continue
+				}
+
+				// Must cleanup before exec - defers won't run
+				manager.Stop()
+
+				// Atomic process replacement (Unix/Linux/macOS only)
+				// Process is replaced in-place, maintaining the same PID
+				args := os.Args
+				env := os.Environ()
+				err = syscall.Exec(execPath, args, env)
+
+				// Only reached if exec fails
+				fmt.Fprintf(os.Stderr, "Failed to exec new process: %v\n", err)
+				os.Exit(1)
 			case "exit":
 				// User typed exit command
 				logger.Logger.Info("User requested exit")
@@ -152,7 +178,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			default:
 				// Unknown command
 				fmt.Printf("Unknown command: '%s'\n", input)
-				fmt.Println("Commands: [Enter] to run all tests, 'exit' to quit")
+				fmt.Println("Commands: [Enter] to run all tests, 'reload' to reload config, 'exit' to quit")
 				fmt.Print("plur> ")
 			}
 
@@ -163,11 +189,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				relPath = "./" + rel
 			}
 
-			logger.LogDebug("watch",
-				"event", event.EffectType,
-				"type", event.PathType,
-				"associated", fmt.Sprintf("%v", event.Associated),
-				"path", relPath)
+			logger.LogDebug("watch", "event", event.EffectType, "type", event.PathType,
+				"associated", fmt.Sprintf("%v", event.Associated), "path", relPath)
 
 			// Only process file events (not directories)
 			if event.PathType != "file" {
@@ -239,7 +262,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 func runCommand(targetPath string, command string) {
 	var cmd *exec.Cmd
 
-	// Split the command string into parts
 	cmdParts := strings.Fields(command)
 	args := append(cmdParts, targetPath)
 	cmd_string := strings.Join(args, " ")

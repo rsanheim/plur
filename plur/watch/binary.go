@@ -6,18 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/rsanheim/plur/logger"
 )
 
 // LogDebug logs a debug message with key-value pairs
 func LogDebug(msg string, args ...interface{}) {
-	// For now, just print to stdout
-	fmt.Printf("[DEBUG] %s", msg)
-	for i := 0; i < len(args); i += 2 {
-		if i+1 < len(args) {
-			fmt.Printf(" %v=%v", args[i], args[i+1])
-		}
-	}
-	fmt.Println()
+	logger.LogDebug(msg, args...)
 }
 
 // GetWatcherBinaryPath returns the path to the installed watcher binary
