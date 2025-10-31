@@ -51,7 +51,6 @@ type OutputMessage struct {
 
 // GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
 func GetWorkerCount(cliWorkers int) int {
-	// Priority: CLI flag > ENV var > default (cores-2)
 	if cliWorkers > 0 {
 		return cliWorkers
 	}
@@ -71,9 +70,7 @@ func GetWorkerCount(cliWorkers int) int {
 }
 
 // GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index
-// Note: This should not be called in serial mode (config.IsSerial() == true)
 func GetTestEnvNumber(workerIndex int, config *config.GlobalConfig) string {
-	// New default behavior: all workers get explicit numbers
 	if config.FirstIs1 {
 		return fmt.Sprintf("%d", workerIndex+1)
 	}
@@ -126,7 +123,6 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 				os.Stdout.Write(plainStar)
 			}
 		case "stderr":
-			// Just output stderr content without noisy file list prefix
 			fmt.Fprintln(os.Stderr, msg.Content)
 		case "error":
 			// For JSON parse errors or other output
@@ -135,7 +131,7 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 	}
 }
 
-// errorResult creates a WorkerResult for error cases
+// creates a WorkerResult for error cases
 func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 	// Extract error message for output
 	errorOutput := ""
@@ -152,7 +148,7 @@ func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 	}
 }
 
-// RunTestFiles executes multiple test files in a single test process (unified for all frameworks)
+// RunTestFiles executes multiple test files in a single test process
 func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
 	start := time.Now()
 
@@ -170,10 +166,8 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		}
 	}
 
-	// Build command using the task
 	args := currentTask.BuildCommand(testFiles, globalConfig, "")
 
-	// Log the command in debug mode
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
 
 	if globalConfig.DryRun {
@@ -304,10 +298,7 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 			if len(runtimeData) > 0 {
 				runtimeInfo = fmt.Sprintf("%.2fs", float64(group.TotalSize)/1000.0)
 			}
-			logger.LogVerbose("Worker assignment",
-				"worker", i,
-				"files", group.Files,
-				"estimated_time", runtimeInfo)
+			logger.LogVerbose("assigned", "worker", i, "files", group.Files, "estimated_time", runtimeInfo)
 		}
 	}
 
@@ -333,9 +324,9 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		wg.Add(1)
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
-			logger.LogVerbose("Worker starting", "worker", workerIndex, "file_count", len(files))
+			logger.LogVerbose("starting", "worker", workerIndex, "file_count", len(files))
 			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentTask)
-			logger.LogVerbose("Worker finished", "worker", workerIndex, "status", result.Success())
+			logger.LogVerbose("finished", "worker", workerIndex, "success", result.Success())
 			results <- result
 		}(i, group.Files)
 	}
