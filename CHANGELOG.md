@@ -1,5 +1,10 @@
 # plur CHANGELOG
 
+## v0.12.0 - 2025-10-31
+
+* rename to targets in watch [#125](https://github.com/rsanheim/plur/pull/125)
+* Remove default formatter from watch command [#124](https://github.com/rsanheim/plur/pull/124)
+* Cleanup old docs [#118](https://github.com/rsanheim/plur/pull/118)
 
 ## v0.11.0 - 2025-10-17
 
@@ -15,16 +20,6 @@
 * fail fast if custom task doesn't exist [#116](https://github.com/rsanheim/plur/pull/116)
 * Modernize python mkdocs [#115](https://github.com/rsanheim/plur/pull/115)
 * Release testing and refinement [#114](https://github.com/rsanheim/plur/pull/114)
-
-## v0.10.2-test2 - 2025-10-10
-
-* Various improvements and bug fixes
-
-## v0.10.2-test2 - Test Release
-
-* Test release to verify GoReleaser and CircleCI release workflow
-* Includes permission fixes for Claude settings
-* Testing pre-release version suffix support
 
 ## v0.10.0 - 2025-08-21
 

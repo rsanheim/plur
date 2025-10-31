@@ -117,14 +117,12 @@ func (e *TestExecutor) executeTests() error {
 		}
 	}
 
-	// Build summary and print results
 	summary := BuildTestSummary(results, wallTime, e.currentTask)
 	PrintResults(summary, e.globalConfig.ColorOutput, e.currentTask)
 
 	// Return error if tests failed
 	if !summary.Success {
-		return fmt.Errorf("test run failed: %d examples, %d failures",
-			summary.TotalExamples, summary.TotalFailures)
+		return fmt.Errorf("test run failed: %d examples, %d failures", summary.TotalExamples, summary.TotalFailures)
 	}
 
 	return nil
