@@ -74,7 +74,6 @@ func TestGetTaskWithOverrides(t *testing.T) {
 		require.NotNil(t, result)
 		assert.Equal(t, "rspec", result.Name)
 		assert.Equal(t, "bundle exec rspec", result.Run)
-		assert.NotEmpty(t, result.Mappings)
 	})
 
 	t.Run("built-in minitest task", func(t *testing.T) {
@@ -85,7 +84,6 @@ func TestGetTaskWithOverrides(t *testing.T) {
 		result := cli.getTaskWithOverrides("minitest")
 		require.NotNil(t, result)
 		assert.Equal(t, "minitest", result.Name)
-		assert.NotEmpty(t, result.Mappings)
 	})
 
 	t.Run("override built-in rspec with custom run", func(t *testing.T) {
@@ -102,7 +100,6 @@ func TestGetTaskWithOverrides(t *testing.T) {
 		require.NotNil(t, result)
 		assert.Equal(t, "rspec", result.Name, "should preserve built-in task name")
 		assert.Equal(t, "bin/rspec", result.Run, "should use custom run command")
-		assert.NotEmpty(t, result.Mappings, "should keep default mappings")
 	})
 
 	t.Run("custom task inherits defaults but preserves name", func(t *testing.T) {
@@ -111,7 +108,7 @@ func TestGetTaskWithOverrides(t *testing.T) {
 				"watch": {
 					Name: "watch",
 					Run:  "bin/rspec",
-					// Sparse config - should inherit mappings and source dirs from auto-detected base
+					// Sparse config - should inherit source dirs from auto-detected base
 				},
 			},
 		}
@@ -120,7 +117,6 @@ func TestGetTaskWithOverrides(t *testing.T) {
 		require.NotNil(t, result)
 		assert.Equal(t, "watch", result.Name, "should preserve custom task name, not show auto-detected 'rspec'")
 		assert.Equal(t, "bin/rspec", result.Run, "should use custom run command")
-		assert.NotEmpty(t, result.Mappings, "should inherit default RSpec mappings")
 		assert.NotEmpty(t, result.SourceDirs, "should inherit default RSpec source dirs")
 		assert.Equal(t, "spec/**/*_spec.rb", result.TestGlob, "should inherit default RSpec test glob")
 	})
@@ -140,7 +136,6 @@ func TestGetTaskWithOverrides(t *testing.T) {
 		require.NotNil(t, result)
 		assert.Equal(t, "lint", result.Name, "should preserve custom task name")
 		assert.Equal(t, "rubocop", result.Run, "should use custom run command")
-		assert.NotEmpty(t, result.Mappings, "should inherit default mappings")
 		assert.NotEmpty(t, result.SourceDirs, "should inherit default source dirs")
 	})
 }

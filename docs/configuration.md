@@ -47,7 +47,7 @@ debounce = 200
 
 ## Task Configuration
 
-Tasks are the core of Plur's test execution system. They define how to run tests, linters, or other commands, and how to map source files to test files.
+Tasks are the core of Plur's test execution system. They define how to run tests, linters, or other commands.
 
 ### Task Overview
 
@@ -55,7 +55,6 @@ A Task in Plur encapsulates:
 
 * The command to run
 * Which directories to watch or search
-* How to map source files to test files
 * File patterns to match
 
 Plur comes with built-in tasks for RSpec and Minitest, but you can define custom tasks for any tool.
@@ -91,7 +90,6 @@ Tasks are selected in the following priority order:
 | `description` | string | Human-readable description of the task | No | "" |
 | `run` | string | Command to execute | Yes | "" |
 | `source_dirs` | string[] | Directories to watch/search | No | `["spec", "lib", "app"]` (rspec)<br>`["test", "lib", "app"]` (minitest) |
-| `mappings` | MappingRule[] | File mapping rules | No | `[]` |
 | `test_glob` | string | Glob pattern for test files | No | Depends on task |
 
 ### Built-in Tasks
@@ -102,11 +100,6 @@ Tasks are selected in the following priority order:
 run = "bundle exec rspec"
 source_dirs = ["spec", "lib", "app"]
 test_glob = "spec/**/*_spec.rb"
-mappings = [
-  { pattern = "lib/**/*.rb", target = "spec/{{path}}/{{name}}_spec.rb" },
-  { pattern = "app/**/*.rb", target = "spec/{{path}}/{{name}}_spec.rb" },
-  { pattern = "spec/**/*_spec.rb", target = "{{file}}" }
-]
 ```
 
 #### Minitest
@@ -115,11 +108,6 @@ mappings = [
 run = "ruby -Itest"  # Plur handles test file arguments specially for minitest
 source_dirs = ["test", "lib", "app"]
 test_glob = "test/**/*_test.rb"
-mappings = [
-  { pattern = "lib/**/*.rb", target = "test/{{path}}/{{name}}_test.rb" },
-  { pattern = "app/**/*.rb", target = "test/{{path}}/{{name}}_test.rb" },
-  { pattern = "test/**/*_test.rb", target = "{{file}}" }
-]
 ```
 
 ### Custom Task Examples
@@ -131,11 +119,6 @@ description = "RSpec with Spring preloader"
 run = "bin/spring rspec"
 source_dirs = ["spec", "lib", "app"]
 test_glob = "spec/**/*_spec.rb"
-mappings = [
-  { pattern = "lib/**/*.rb", target = "spec/{{path}}/{{name}}_spec.rb" },
-  { pattern = "app/**/*.rb", target = "spec/{{path}}/{{name}}_spec.rb" },
-  { pattern = "spec/**/*_spec.rb", target = "{{file}}" }
-]
 ```
 
 #### Linter Task
@@ -145,7 +128,6 @@ description = "Run RuboCop linter"
 run = "bundle exec rubocop"
 source_dirs = ["lib", "spec", "app"]
 test_glob = "**/*.rb"
-# No mappings needed - rubocop will lint the files directly
 ```
 
 #### JavaScript Test Runner
@@ -155,10 +137,6 @@ description = "Run Jest tests"
 run = "npm test"
 source_dirs = ["src", "test"]
 test_glob = "test/**/*.test.js"
-mappings = [
-  { pattern = "src/**/*.js", target = "test/{{path}}/{{name}}.test.js" },
-  { pattern = "test/**/*.test.js", target = "{{file}}" }
-]
 ```
 
 #### Go Tests
@@ -168,35 +146,7 @@ description = "Run Go tests"
 run = "go test"
 source_dirs = ["."]
 test_glob = "**/*_test.go"
-mappings = [
-  { pattern = "**/*.go", target = "{{path}}/{{name}}_test.go" },
-  { pattern = "**/*_test.go", target = "{{file}}" }
-]
 ```
-
-### Mapping Patterns
-
-Mappings define how source files map to test files. They use a pattern matching system with tokens:
-
-#### Available Tokens
-
-* `{{file}}` - The complete matched file path
-* `{{path}}` - The directory path of the matched file (without filename)
-* `{{name}}` - The base filename without extension
-
-#### Mapping Examples
-
-Given a file `lib/models/user.rb`:
-
-* `{{file}}` → `lib/models/user.rb`
-* `{{path}}` → `lib/models`
-* `{{name}}` → `user`
-
-So the mapping:
-```toml
-{ pattern = "lib/**/*.rb", target = "spec/{{path}}/{{name}}_spec.rb" }
-```
-Would map `lib/models/user.rb` → `spec/lib/models/user_spec.rb`
 
 ### Multiple Task Definitions
 
@@ -228,17 +178,13 @@ plur --use=integration
 
 ### Watch Mode Integration
 
-Tasks work seamlessly with watch mode. The `source_dirs` determine which directories are watched, and `mappings` determine which tests run when files change:
+Tasks work seamlessly with watch mode. The `source_dirs` determine which directories are watched:
 
 ```bash
 plur watch --use=custom-task
 ```
 
-When a file changes:
-
-1. Plur checks if it matches any mapping patterns
-2. If matched, runs the corresponding target test files
-3. If no match, runs the changed file directly (if it matches `test_glob`)
+When a file changes, plur reports the change. File-to-test mapping functionality is being rebuilt with a simpler, cleaner design.
 
 ### `[watch.run]` section
 
@@ -333,7 +279,7 @@ Plur matches RSpec's behavior:
 Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with support for Ruby and Rails conventions. The watcher automatically detects changes in:
 
 * `spec/` directory for test files
-* `lib/` directory for source files (mapped to corresponding specs)
+* `lib/` directory for source files
 * `app/` directory for Rails applications
 
 ## Environment Variables
@@ -354,14 +300,6 @@ Check that your `test_glob` pattern matches your test files:
 plur --dry-run --use=your-task
 ```
 
-### Mappings Not Working
-
-Verify your mappings with the watch find command:
-
-```bash
-plur watch find lib/models/user.rb --use=your-task
-```
-
 ### Command Not Running
 
 Ensure the `run` command is executable and in your PATH:
@@ -375,9 +313,8 @@ bundle exec rspec --version
 
 1. **Start Simple**: Begin with just overriding the `run` command for existing tasks
 2. **Use Descriptive Names**: Name custom tasks clearly (e.g., `rspec-fast`, `integration-tests`)
-3. **Test Mappings**: Use `plur watch find <file>` to test your mappings
-4. **Leverage Glob Patterns**: Use standard glob patterns for maximum flexibility
-5. **Document Complex Tasks**: Use the `description` field to explain what custom tasks do
+3. **Leverage Glob Patterns**: Use standard glob patterns for maximum flexibility
+4. **Document Complex Tasks**: Use the `description` field to explain what custom tasks do
 
 ## Next Steps
 

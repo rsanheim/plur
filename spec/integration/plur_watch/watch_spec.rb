@@ -35,7 +35,7 @@ RSpec.describe "plur watch command", :skip_if_ci do
   end
 
   context "file change detection" do
-    it "detects and runs spec when file is modified" do
+    it "detects when files are modified" do
       result = run_plur_watch(timeout: 2) do
         # Write back the same file to trigger a modify event
         spec_file = Pathname.new(default_ruby_dir).join("spec", "calculator_spec.rb")
@@ -51,8 +51,8 @@ RSpec.describe "plur watch command", :skip_if_ci do
         puts "=================="
       end
 
-      expect(result.out).to include("running:")
-      expect(result.out).to include(/rspec/)
+      # Watch now only reports file changes, doesn't run tests
+      expect(result.out).to include("File changed:")
       expect(result.out).to include("calculator_spec.rb")
       expect(result.success?).to be true
     end

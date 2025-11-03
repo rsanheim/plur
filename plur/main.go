@@ -15,11 +15,10 @@ import (
 
 // TaskConfig defines the structure for task configurations that Kong can parse from TOML
 type TaskConfig struct {
-	Description string             `toml:"description"` // Human-readable description
-	Run         string             `toml:"run"`         // Command to run (e.g., "bundle exec rspec")
-	SourceDirs  []string           `toml:"source_dirs"` // Directories to watch/search
-	Mappings    []task.MappingRule `toml:"mappings"`    // File mapping rules
-	TestGlob    string             `toml:"test_glob"`   // Glob pattern for test files
+	Description string   `toml:"description"` // Human-readable description
+	Run         string   `toml:"run"`         // Command to run (e.g., "bundle exec rspec")
+	SourceDirs  []string `toml:"source_dirs"` // Directories to watch/search
+	TestGlob    string   `toml:"test_glob"`   // Glob pattern for test files
 }
 
 type SpecCmd struct {
@@ -118,7 +117,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 type WatchCmd struct {
 	Run     WatchRunCmd     `cmd:"" default:"" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
-	Find    WatchFindCmd    `cmd:"" help:"Find and suggest mappings for files"`
+	Find    WatchFindCmd    `cmd:"" help:"Placeholder - functionality being rebuilt"`
 }
 
 type WatchRunCmd struct {
@@ -291,7 +290,6 @@ func (r *PlurCLI) AfterApply() error {
 			Description: taskConfig.Description,
 			Run:         taskConfig.Run,
 			SourceDirs:  taskConfig.SourceDirs,
-			Mappings:    taskConfig.Mappings,
 			TestGlob:    taskConfig.TestGlob,
 		}
 		r.Tasks[taskName] = taskObj
@@ -351,9 +349,6 @@ func (r *PlurCLI) mergeTaskConfig(base *task.Task, override *task.Task) {
 	}
 	if len(override.SourceDirs) > 0 {
 		base.SourceDirs = override.SourceDirs
-	}
-	if len(override.Mappings) > 0 {
-		base.Mappings = override.Mappings
 	}
 	if override.TestGlob != "" {
 		base.TestGlob = override.TestGlob

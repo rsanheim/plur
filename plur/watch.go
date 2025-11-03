@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
@@ -34,9 +33,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
-	// Create debouncer with configurable delay
+	// Create debounce delay (for future use)
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
-	debouncer := watch.NewDebouncer(debounceDelay)
 	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
 
 	// Determine which directories to watch from Task's SourceDirs
@@ -60,7 +58,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		"project", projectName,
 		"directories", watchDirs,
 		"task", currentTask.Name,
-		"mappings", currentTask.Mappings,
 		"debounce", watchCmd.Debounce,
 		"timeout", watchCmd.Timeout)
 	if watchCmd.Timeout > 0 {
@@ -204,44 +201,17 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				continue
 			}
 
-			// Convert absolute path to relative path for mapping first
+			// Convert absolute path to relative path for display
 			relPath, err = filepath.Rel(cwd, event.PathName)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get relative path: %v\n", err)
 				continue
 			}
 
-			// Check if we should watch this file by seeing if it matches any mapping pattern
-			if !shouldWatchFile(relPath, currentTask) {
-				logger.LogDebug("watch", "event", "skip", "reason", "not_watching_file", "path", "./"+relPath)
-				continue
-			}
-
-			// Map the file to specs using Task
-			targetsToRun := currentTask.MapFilesToTarget([]string{relPath})
-			if len(targetsToRun) == 0 {
-				logger.LogDebug("plur", "event", "mapping_not_found", "path", "./"+relPath, "targets", []string{})
-				continue
-			}
-			logger.LogDebug("plur", "event", "mapping_found", "path", "./"+relPath, "targets", targetsToRun)
-
-			debouncer.Debounce(targetsToRun, func(targets []string) {
-				// Remove duplicates
-				uniqueTargets := make(map[string]bool)
-				for _, target := range targets {
-					uniqueTargets[target] = true
-				}
-
-				for target := range uniqueTargets {
-					logger.LogDebug("plur", "event", "run_command", "path", "./"+target)
-					runCommand(target, currentTask.Run)
-				}
-
-				go func() {
-					time.Sleep(50 * time.Millisecond)
-					fmt.Print("plur> ")
-				}()
-			})
+			// Just report the file change - no mapping or test execution
+			logger.Logger.Info("File changed", "path", "./"+relPath)
+			fmt.Printf("File changed: %s\n", "./"+relPath)
+			fmt.Print("plur> ")
 
 		case err := <-manager.Errors():
 			return fmt.Errorf("watcher error: %v", err)
@@ -281,14 +251,4 @@ func runCommand(targetPath string, command string) {
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
 	}
-}
-
-// shouldWatchFile determines if a file should trigger spec runs by checking if it matches any mapping pattern
-func shouldWatchFile(filePath string, currentTask *task.Task) bool {
-	for _, mapping := range currentTask.Mappings {
-		if matched, err := doublestar.Match(mapping.Pattern, filePath); err == nil && matched {
-			return true
-		}
-	}
-	return false
 }

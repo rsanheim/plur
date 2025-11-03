@@ -7,11 +7,3 @@ description = "Custom test task for doctor verification"
 run = "echo 'DOCTOR TEST TASK'"
 source_dirs = ["spec", "lib"]
 test_glob = "spec/**/*_spec.rb"
-
-[[task.doctor-test.mappings]]
-pattern = "lib/**/*.rb"
-target = "spec/{{path}}/{{name}}_spec.rb"
-
-[[task.doctor-test.mappings]]
-pattern = "spec/**/*_spec.rb"
-target = "{{file}}"

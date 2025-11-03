@@ -65,37 +65,3 @@ source_dirs = ["app"]
 # How long to wait after a file change before running tests
 # Default: 100
 debounce = 200
-
-# =============================================================================
-# WATCH MAPPING SETTINGS
-# Configure how files map to their test files
-# =============================================================================
-
-[watch.mappings]
-# Show suggestions when no mapping is found
-# Default: true
-show_suggestions = true
-
-# Provide feedback about mapping results
-# Default: true
-provide_feedback = true
-
-# Note: Mapping rules are now defined within task configurations
-# You can customize mappings per task:
-
-# Example of custom task with mappings:
-# [task.custom]
-# run = "bin/rspec"
-# test_glob = "spec/**/*_spec.rb"
-# source_dirs = ["app", "lib", "config"]
-# [[task.custom.mappings]]
-# pattern = "config/*.rb"
-# target = "spec/config/{{name}}_spec.rb"
-# [[task.custom.mappings]]
-# pattern = "app/services/**/*.rb"
-# target = "spec/services/{{path}}/{{name}}_spec.rb"
-
-# Variables available in target patterns:
-# {{file}} - the full file path
-# {{path}} - the directory path (without lib/ or app/ prefix)
-# {{name}} - filename without extension
