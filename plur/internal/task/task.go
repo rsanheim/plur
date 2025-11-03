@@ -5,27 +5,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/minitest"
 	"github.com/rsanheim/plur/rspec"
 	"github.com/rsanheim/plur/types"
 )
 
-// MappingRule defines how source files map to test files
-type MappingRule struct {
-	Pattern string `toml:"pattern"` // Source file glob pattern
-	Target  string `toml:"target"`  // Target pattern with {{path}}, {{name}}, {{file}} tokens
-}
-
 // Task defines how to run tests, linters, or other jobs in a project
 type Task struct {
-	Name        string        `toml:"-"`           // Task name (e.g., "rspec", "minitest")
-	Description string        `toml:"description"` // Human-readable description
-	Run         string        `toml:"run"`         // Command to run (e.g., "bundle exec rspec")
-	SourceDirs  []string      `toml:"source_dirs"` // Directories to watch/search
-	Mappings    []MappingRule `toml:"mappings"`    // File mapping rules
-	TestGlob    string        `toml:"test_glob"`   // Glob pattern for test files (e.g., "spec/**/*_spec.rb")
+	Name        string   `toml:"-"`           // Task name (e.g., "rspec", "minitest")
+	Description string   `toml:"description"` // Human-readable description
+	Run         string   `toml:"run"`         // Command to run (e.g., "bundle exec rspec")
+	SourceDirs  []string `toml:"source_dirs"` // Directories to watch/search
+	TestGlob    string   `toml:"test_glob"`   // Glob pattern for test files (e.g., "spec/**/*_spec.rb")
 }
 
 // BuildCommand constructs the command to execute for this task
@@ -187,65 +179,6 @@ func (t *Task) addRSpecArgs(args []string, globalConfig *config.GlobalConfig) []
 	return args
 }
 
-// MapFilesToTarget maps source files to their corresponding test files
-func (t *Task) MapFilesToTarget(sourceFiles []string) []string {
-	var targetFiles []string
-	seen := make(map[string]bool)
-
-	for _, sourceFile := range sourceFiles {
-		// Try each mapping rule in order
-		for _, mapping := range t.Mappings {
-			// Check if source file matches the pattern
-			matched, err := doublestar.Match(mapping.Pattern, sourceFile)
-			if err != nil || !matched {
-				continue
-			}
-
-			// Apply the mapping transformation
-			target := t.applyMapping(sourceFile, mapping.Target)
-			if target != "" && !seen[target] {
-				seen[target] = true
-				targetFiles = append(targetFiles, target)
-			}
-			break // Use first matching rule
-		}
-	}
-
-	return targetFiles
-}
-
-// applyMapping transforms a source file path using a target pattern
-func (t *Task) applyMapping(sourceFile, targetPattern string) string {
-	// Extract components from source file
-	dir := filepath.Dir(sourceFile)
-	base := filepath.Base(sourceFile)
-	ext := filepath.Ext(base)
-	name := strings.TrimSuffix(base, ext)
-
-	// Remove leading directory if it matches a source dir
-	path := dir
-	for _, sourceDir := range t.SourceDirs {
-		if strings.HasPrefix(dir, sourceDir+"/") {
-			path = strings.TrimPrefix(dir, sourceDir+"/")
-			break
-		} else if dir == sourceDir {
-			path = ""
-			break
-		}
-	}
-
-	// Replace tokens in target pattern
-	result := targetPattern
-	result = strings.ReplaceAll(result, "{{file}}", sourceFile)
-	result = strings.ReplaceAll(result, "{{path}}", path)
-	result = strings.ReplaceAll(result, "{{name}}", name)
-
-	// Clean up any double slashes or leading/trailing slashes
-	result = filepath.Clean(result)
-
-	return result
-}
-
 // NewRSpecTask creates the default RSpec task configuration
 func NewRSpecTask() *Task {
 	return &Task{
@@ -253,29 +186,7 @@ func NewRSpecTask() *Task {
 		Description: "Run RSpec specs",
 		Run:         "bundle exec rspec",
 		SourceDirs:  []string{"spec", "lib", "app"},
-		Mappings: []MappingRule{
-			{
-				Pattern: "spec/spec_helper.rb",
-				Target:  "spec",
-			},
-			{
-				Pattern: "spec/rails_helper.rb",
-				Target:  "spec",
-			},
-			{
-				Pattern: "lib/**/*.rb",
-				Target:  "spec/{{path}}/{{name}}_spec.rb",
-			},
-			{
-				Pattern: "app/**/*.rb",
-				Target:  "spec/{{path}}/{{name}}_spec.rb",
-			},
-			{
-				Pattern: "spec/**/*_spec.rb",
-				Target:  "{{file}}",
-			},
-		},
-		TestGlob: "spec/**/*_spec.rb",
+		TestGlob:    "spec/**/*_spec.rb",
 	}
 }
 
@@ -286,25 +197,7 @@ func NewMinitestTask() *Task {
 		Description: "Run Minitest tests",
 		Run:         "", // Special handling in BuildCommand
 		SourceDirs:  []string{"test", "lib", "app"},
-		Mappings: []MappingRule{
-			{
-				Pattern: "test/test_helper.rb",
-				Target:  "test",
-			},
-			{
-				Pattern: "lib/**/*.rb",
-				Target:  "test/{{path}}/{{name}}_test.rb",
-			},
-			{
-				Pattern: "app/**/*.rb",
-				Target:  "test/{{path}}/{{name}}_test.rb",
-			},
-			{
-				Pattern: "test/**/*_test.rb",
-				Target:  "{{file}}",
-			},
-		},
-		TestGlob: "test/**/*_test.rb",
+		TestGlob:    "test/**/*_test.rb",
 	}
 }
 
