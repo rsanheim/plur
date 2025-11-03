@@ -52,8 +52,8 @@ RSpec.describe "plur watch command", :skip_if_ci do
       end
 
       # Watch now only reports file changes, doesn't run tests
-      expect(result.out).to include("File changed:")
-      expect(result.out).to include("calculator_spec.rb")
+      expect(result.err).to include("Running: [handler for file]")
+      expect(result.err).to include("calculator_spec.rb")
       expect(result.success?).to be true
     end
   end

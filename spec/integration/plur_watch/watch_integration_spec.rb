@@ -30,7 +30,8 @@ RSpec.describe "plur watch integration" do
     expect(result.err).to include("watch event=modify type=file")
     expect(result.err).to include("path=./lib/calculator.rb")
     # Watch now only reports file changes, doesn't run tests
-    expect(result.out).to include("File changed: ./lib/calculator.rb")
+    expect(result.err).to include("Running: [handler for file]")
+    expect(result.err).to include("path=./lib/calculator.rb")
   end
 
   it "detects spec_helper.rb changes" do
@@ -48,7 +49,8 @@ RSpec.describe "plur watch integration" do
 
     expect_file_change_logged(result.err, "./spec/spec_helper.rb")
     # Watch now only reports file changes, doesn't run tests
-    expect(result.out).to include("File changed: ./spec/spec_helper.rb")
+    expect(result.err).to include("Running: [handler for file]")
+    expect(result.err).to include("path=./spec/spec_helper.rb")
   end
 
   it "detects spec file changes" do
@@ -69,7 +71,8 @@ RSpec.describe "plur watch integration" do
 
     expect_file_change_logged(result.err, "./spec/calculator_spec.rb")
     # Watch now only reports file changes, doesn't run tests
-    expect(result.out).to include("File changed: ./spec/calculator_spec.rb")
+    expect(result.err).to include("Running: [handler for file]")
+    expect(result.err).to include("path=./spec/calculator_spec.rb")
   ensure
     # Restore original content
     File.write(spec_path, contents) if contents
@@ -130,8 +133,9 @@ RSpec.describe "plur watch integration" do
     expect_file_change_logged(result.err, "./lib/validator.rb")
 
     # Watch now only reports file changes, doesn't run tests
-    expect(result.out).to include("File changed: ./lib/calculator.rb")
-    expect(result.out).to include("File changed: ./lib/string_utils.rb")
-    expect(result.out).to include("File changed: ./lib/validator.rb")
+    expect(result.err).to include("Running: [handler for file]")
+    expect(result.err).to include("path=./lib/calculator.rb")
+    expect(result.err).to include("path=./lib/string_utils.rb")
+    expect(result.err).to include("path=./lib/validator.rb")
   end
 end

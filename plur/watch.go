@@ -209,8 +209,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			}
 
 			// Just report the file change - no mapping or test execution
-			logger.Logger.Info("File changed", "path", "./"+relPath)
-			fmt.Printf("File changed: %s\n", "./"+relPath)
+			logger.Logger.Info("Running: [handler for file]", "path", "./"+relPath)
 			fmt.Print("plur> ")
 
 		case err := <-manager.Errors():
