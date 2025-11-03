@@ -58,6 +58,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		"project", projectName,
 		"directories", watchDirs,
 		"task", currentTask.Name,
+		"debug", globalConfig.Debug,
+		"verbose", globalConfig.Verbose,
 		"debounce", watchCmd.Debounce,
 		"timeout", watchCmd.Timeout)
 	if watchCmd.Timeout > 0 {

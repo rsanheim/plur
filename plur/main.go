@@ -115,7 +115,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 }
 
 type WatchCmd struct {
-	Run     WatchRunCmd     `cmd:"" default:"" help:"Run watch mode"`
+	Run     WatchRunCmd     `cmd:"" default:"withargs" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
 	Find    WatchFindCmd    `cmd:"" help:"Placeholder - functionality being rebuilt"`
 }
