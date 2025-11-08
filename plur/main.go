@@ -11,6 +11,7 @@ import (
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/watch"
 )
 
 // TaskConfig defines the structure for task configurations that Kong can parse from TOML
@@ -117,7 +118,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 type WatchCmd struct {
 	Run     WatchRunCmd     `cmd:"" default:"withargs" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
-	Find    WatchFindCmd    `cmd:"" help:"Placeholder - functionality being rebuilt"`
+	Find    WatchFindCmd    `cmd:"" help:"Show what would be executed for a given file change"`
 }
 
 type WatchRunCmd struct {
@@ -165,7 +166,7 @@ func (w *WatchRunCmd) Run(parent *PlurCLI) error {
 		return err
 	}
 
-	return runWatchWithConfig(config, w, currentTask)
+	return runWatchWithConfig(config, w, currentTask, parent)
 }
 
 type WatchInstallCmd struct{}
@@ -233,6 +234,10 @@ type PlurCLI struct {
 
 	// Task configurations from [task.NAME] sections in TOML - parsed by Kong
 	Task map[string]TaskConfig `help:"Task configurations (config file only)" hidden:""`
+
+	// New job and watch configuration (optional, more flexible than tasks)
+	Job           map[string]watch.Job `help:"Job configurations (config file only)" hidden:""`
+	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" toml:"watch"`
 
 	// Processed task configurations (converted from TaskConfig)
 	Tasks map[string]*task.Task `kong:"-"`

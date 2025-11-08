@@ -29,9 +29,103 @@ func runWatchInstall(force bool) error {
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
-func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, currentTask *task.Task) error {
+// loadWatchConfiguration loads job and watch mappings from config or defaults
+func loadWatchConfiguration(cli *PlurCLI, currentTask *task.Task) (map[string]*watch.Job, []*watch.WatchMapping, error) {
+	// Start with user-configured jobs and watches
+	jobs := make(map[string]*watch.Job)
+	var watches []*watch.WatchMapping
+
+	// Load jobs from config
+	for name, job := range cli.Job {
+		jobCopy := job
+		jobCopy.Name = name
+		jobs[name] = &jobCopy
+	}
+
+	// Load watch mappings from config
+	for i := range cli.WatchMappings {
+		watches = append(watches, &cli.WatchMappings[i])
+	}
+
+	// If no configuration provided, use autodetected defaults
+	if len(jobs) == 0 && len(watches) == 0 {
+		defaultJobs, defaultWatches := watch.GetAutodetectedDefaults()
+		jobs = defaultJobs
+		watches = defaultWatches
+
+		if len(jobs) > 0 {
+			logger.LogVerbose("Using autodetected default configuration",
+				"profile", watch.AutodetectProfile())
+		}
+	}
+
+	// Validate configuration
+	if len(watches) > 0 {
+		if err := watch.ValidateConfig(jobs, watches); err != nil {
+			return nil, nil, fmt.Errorf("invalid watch configuration: %w", err)
+		}
+	}
+
+	return jobs, watches, nil
+}
+
+// executeJob runs a job with the given target files
+func executeJob(job *watch.Job, targetFiles []string, cwd string) error {
+	if len(targetFiles) == 0 {
+		return nil
+	}
+
+	logger.Logger.Info("Executing job", "job", job.Name, "targets", len(targetFiles))
+
+	// Build command for each target file
+	for _, target := range targetFiles {
+		// Make target relative to cwd if it's absolute
+		relTarget := target
+		if filepath.IsAbs(target) {
+			if rel, err := filepath.Rel(cwd, target); err == nil {
+				relTarget = rel
+			}
+		}
+
+		cmd := watch.BuildJobCmd(job, relTarget)
+		logger.LogVerbose("Running command", "cmd", strings.Join(cmd, " "))
+
+		// Execute command
+		execCmd := exec.Command(cmd[0], cmd[1:]...)
+		execCmd.Dir = cwd
+		execCmd.Stdout = os.Stdout
+		execCmd.Stderr = os.Stderr
+		execCmd.Env = append(os.Environ(), job.Env...)
+
+		if err := execCmd.Run(); err != nil {
+			// Log error but don't fail - continue watching
+			logger.Logger.Warn("Job execution failed", "job", job.Name, "error", err)
+		}
+	}
+
+	return nil
+}
+
+func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, currentTask *task.Task, cli *PlurCLI) error {
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
+
+	// Load watch configuration (jobs and watch mappings)
+	jobs, watches, err := loadWatchConfiguration(cli, currentTask)
+	if err != nil {
+		return fmt.Errorf("failed to load watch configuration: %w", err)
+	}
+
+	// Create event processor if we have watch mappings
+	var processor *watch.EventProcessor
+	if len(watches) > 0 {
+		processor = watch.NewEventProcessor(jobs, watches)
+		logger.LogVerbose("Watch configuration loaded",
+			"jobs", len(jobs),
+			"watch_mappings", len(watches))
+	} else {
+		logger.LogVerbose("No watch mappings configured, file changes will not trigger tests")
+	}
 
 	// Create debounce delay (for future use)
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
@@ -210,9 +304,43 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				continue
 			}
 
-			// Just report the file change - no mapping or test execution
-			logger.Logger.Info("Running: [handler for file]", "path", "./"+relPath)
-			fmt.Print("plur> ")
+			// Process the file change through EventProcessor if configured
+			if processor != nil {
+				logger.Logger.Info("File changed", "path", "./"+relPath)
+
+				// Map file to jobs and target files
+				jobTargets, err := processor.ProcessPath(relPath)
+				if err != nil {
+					logger.Logger.Warn("Error processing file change", "path", relPath, "error", err)
+					fmt.Print("plur> ")
+					continue
+				}
+
+				if len(jobTargets) == 0 {
+					logger.LogVerbose("No matching watch rules for file", "path", "./"+relPath)
+					fmt.Print("plur> ")
+					continue
+				}
+
+				// Execute each job with its targets
+				for jobName, targets := range jobTargets {
+					job, exists := jobs[jobName]
+					if !exists {
+						logger.Logger.Warn("Job not found", "job", jobName)
+						continue
+					}
+
+					if err := executeJob(job, targets, cwd); err != nil {
+						logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
+					}
+				}
+
+				fmt.Print("\nplur> ")
+			} else {
+				// No processor - just report the file change
+				logger.Logger.Info("File changed (no watch mapping configured)", "path", "./"+relPath)
+				fmt.Print("plur> ")
+			}
 
 		case err := <-manager.Errors():
 			return fmt.Errorf("watcher error: %v", err)

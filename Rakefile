@@ -76,7 +76,7 @@ namespace :lint do
   task :go do
     Dir.chdir(Plur.config.plur_dir) do
       puts "[lint:go] Running go fmt and go vet"
-      sh "go fmt -mod=mod ./..."
+      sh "go", "fmt", "-mod=mod", "./..."
       sh "go vet -mod=mod ./..."
     end
   end
