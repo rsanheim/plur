@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -19,11 +18,8 @@ type WatchFindCmd struct {
 }
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
-	// Get current task for context
-	currentTask := task.DetectFramework()
-
 	// Load watch configuration using the same logic as watch mode
-	jobs, watches, err := loadWatchConfiguration(globals, currentTask)
+	jobs, watches, err := loadWatchConfiguration(globals)
 	if err != nil {
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}

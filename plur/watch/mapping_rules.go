@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-
-	"github.com/rsanheim/plur/internal/task"
 )
 
 // ExpandTarget expands a target pattern with variables using {{key}} syntax
@@ -23,8 +21,8 @@ func ExpandTarget(target string, vars map[string]string) string {
 
 // GenerateSuggestions generates spec file suggestions for an unmapped file
 func GenerateSuggestions(filePath string) []string {
-	currentTask := task.DetectFramework()
-	return GenerateSuggestionsForFramework(filePath, currentTask.Name)
+	framework := AutodetectProfile()
+	return GenerateSuggestionsForFramework(filePath, framework)
 }
 
 // GenerateSuggestionsForFramework generates spec/test file suggestions for an unmapped file

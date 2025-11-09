@@ -9,19 +9,10 @@ import (
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
-
-// TaskConfig defines the structure for task configurations that Kong can parse from TOML
-type TaskConfig struct {
-	Description string   `toml:"description"` // Human-readable description
-	Run         string   `toml:"run"`         // Command to run (e.g., "bundle exec rspec")
-	SourceDirs  []string `toml:"source_dirs"` // Directories to watch/search
-	TestGlob    string   `toml:"test_glob"`   // Glob pattern for test files
-}
 
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
@@ -179,43 +170,12 @@ type WatchRunCmd struct {
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
 	config := parent.globalConfig
 
-	// Get the appropriate task with overrides applied
-	// Priority: CLI --use, config use, auto-detect
-	taskName := w.Use
-	wasExplicit := w.Use != ""
-	if taskName == "" && parent.Use != "" {
-		taskName = parent.Use
-		wasExplicit = true
-	}
-	if taskName == "" {
-		detectedTask := task.DetectFramework()
-		taskName = detectedTask.Name
-		wasExplicit = false
-	}
-
-	// Validate task exists if explicitly requested
-	if err := parent.validateTaskExists(taskName, wasExplicit); err != nil {
-		return err
-	}
-
-	currentTask := parent.getTaskWithOverrides(taskName)
-
-	// Show hint if both frameworks exist and we auto-detected
-	if !wasExplicit && task.BothFrameworksExist() {
-		otherFramework := "minitest"
-		if currentTask.Name == "minitest" {
-			otherFramework = "rspec"
-		}
-		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Use -t %s to run %s instead.",
-			currentTask.Name, otherFramework, otherFramework))
-	}
-
 	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}
 
-	return runWatchWithConfig(config, w, currentTask, parent)
+	return runWatchWithConfig(config, w, parent)
 }
 
 type WatchInstallCmd struct{}
@@ -281,15 +241,9 @@ type PlurCLI struct {
 	Version    bool   `help:"Show version information"`
 	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 
-	// Task configurations from [task.NAME] sections in TOML - parsed by Kong
-	Task map[string]TaskConfig `help:"Task configurations (config file only)" hidden:""`
-
-	// New job and watch configuration (optional, more flexible than tasks)
+	// Job and watch configuration
 	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
 	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" toml:"watch"`
-
-	// Processed task configurations (converted from TaskConfig)
-	Tasks map[string]*task.Task `kong:"-"`
 
 	// Store the built global config
 	globalConfig *config.GlobalConfig `kong:"-"`
@@ -335,101 +289,7 @@ func (r *PlurCLI) AfterApply() error {
 		LoadedConfigs: loadedConfigs,
 	}
 
-	// Convert TaskConfig map to task.Task map
-	r.Tasks = make(map[string]*task.Task)
-	for taskName, taskConfig := range r.Task {
-		// Convert TaskConfig to task.Task
-		taskObj := &task.Task{
-			Name:        taskName,
-			Description: taskConfig.Description,
-			Run:         taskConfig.Run,
-			SourceDirs:  taskConfig.SourceDirs,
-			TestGlob:    taskConfig.TestGlob,
-		}
-		r.Tasks[taskName] = taskObj
-	}
-
 	return nil
-}
-
-// validateTaskExists checks if a task exists when explicitly requested
-// Returns nil if task exists or was auto-detected
-// Returns error with available tasks if explicitly requested task doesn't exist
-func (r *PlurCLI) validateTaskExists(taskName string, wasExplicit bool) error {
-	if !wasExplicit {
-		return nil // Auto-detected tasks are always valid
-	}
-
-	// Check built-in tasks
-	if taskName == "rspec" || taskName == "minitest" {
-		return nil
-	}
-
-	// Check custom tasks from config
-	if _, exists := r.Tasks[taskName]; exists {
-		return nil
-	}
-
-	// Task not found - build helpful error message with deduplication
-	availableMap := make(map[string]bool)
-	availableMap["rspec"] = true
-	availableMap["minitest"] = true
-	for name := range r.Tasks {
-		availableMap[name] = true
-	}
-
-	// Convert to sorted slice for consistent output
-	available := make([]string, 0, len(availableMap))
-	for name := range availableMap {
-		available = append(available, name)
-	}
-	sort.Strings(available)
-
-	return fmt.Errorf("task '%s' not found. Available tasks: %s",
-		taskName, strings.Join(available, ", "))
-}
-
-// mergeTaskConfig merges non-empty fields from override into base task
-func (r *PlurCLI) mergeTaskConfig(base *task.Task, override *task.Task) {
-	// Always preserve Name from override (custom task name, not detected framework name)
-	if override.Name != "" {
-		base.Name = override.Name
-	}
-	if override.Description != "" {
-		base.Description = override.Description
-	}
-	if override.Run != "" {
-		base.Run = override.Run
-	}
-	if len(override.SourceDirs) > 0 {
-		base.SourceDirs = override.SourceDirs
-	}
-	if override.TestGlob != "" {
-		base.TestGlob = override.TestGlob
-	}
-}
-
-// getTaskWithOverrides returns the appropriate task with CLI/config overrides applied
-func (r *PlurCLI) getTaskWithOverrides(taskName string) *task.Task {
-	var baseTask *task.Task
-
-	// Start with appropriate default task
-	switch taskName {
-	case "rspec":
-		baseTask = task.NewRSpecTask()
-	case "minitest":
-		baseTask = task.NewMinitestTask()
-	default:
-		// Custom tasks inherit from auto-detected framework
-		baseTask = task.DetectFramework()
-	}
-
-	// Merge TOML config overrides if they exist (for both built-in and custom tasks)
-	if configTask, exists := r.Tasks[taskName]; exists {
-		r.mergeTaskConfig(baseTask, configTask)
-	}
-
-	return baseTask
 }
 
 // handleHelpCommand converts "help" command to "-h" flag for better UX.

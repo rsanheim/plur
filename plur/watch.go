@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -31,7 +30,7 @@ func runWatchInstall(force bool) error {
 }
 
 // loadWatchConfiguration loads job and watch mappings from config or defaults
-func loadWatchConfiguration(cli *PlurCLI, currentTask *task.Task) (map[string]*job.Job, []*watch.WatchMapping, error) {
+func loadWatchConfiguration(cli *PlurCLI) (map[string]*job.Job, []*watch.WatchMapping, error) {
 	// Start with user-configured jobs and watches
 	jobs := make(map[string]*job.Job)
 	var watches []*watch.WatchMapping
@@ -107,12 +106,12 @@ func executeJob(j *job.Job, targetFiles []string, cwd string) error {
 	return nil
 }
 
-func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, currentTask *task.Task, cli *PlurCLI) error {
+func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, cli *PlurCLI) error {
 	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
 	// Load watch configuration (jobs and watch mappings)
-	jobs, watches, err := loadWatchConfiguration(cli, currentTask)
+	jobs, watches, err := loadWatchConfiguration(cli)
 	if err != nil {
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}
@@ -132,15 +131,21 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
 	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
 
-	// Determine which directories to watch from Task's SourceDirs
-	watchDirs := []string{}
-	for _, dir := range currentTask.SourceDirs {
-		if _, err := os.Stat(dir); err == nil {
-			watchDirs = append(watchDirs, dir)
+	// Determine which directories to watch from jobs' WatchDirs
+	watchDirsMap := make(map[string]struct{})
+	for _, j := range jobs {
+		for _, dir := range j.WatchDirs {
+			if _, err := os.Stat(dir); err == nil {
+				watchDirsMap[dir] = struct{}{}
+			}
 		}
 	}
+	watchDirs := make([]string, 0, len(watchDirsMap))
+	for dir := range watchDirsMap {
+		watchDirs = append(watchDirs, dir)
+	}
 	if len(watchDirs) == 0 {
-		return fmt.Errorf("no directories to watch found (tried: %v)", currentTask.SourceDirs)
+		return fmt.Errorf("no directories to watch found in job configurations")
 	}
 
 	// Get project name from current directory
@@ -152,7 +157,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	logger.Logger.Info("plur configuration info",
 		"project", projectName,
 		"directories", watchDirs,
-		"task", currentTask.Name,
+		"jobs", len(jobs),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,
 		"debounce", watchCmd.Debounce,
@@ -234,10 +239,28 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		case input := <-stdinChan:
 			switch input {
 			case "":
-				// User pressed Enter - run all specs
+				// User pressed Enter - run all tests using first job
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
-				runCommand("spec", currentTask.Run)
+				// Find first test job (rspec or minitest) or use any job
+				var firstJob *job.Job
+				if j, exists := jobs["rspec"]; exists {
+					firstJob = j
+				} else if j, exists := jobs["minitest"]; exists {
+					firstJob = j
+				} else {
+					// Use first available job
+					for _, j := range jobs {
+						firstJob = j
+						break
+					}
+				}
+				if firstJob != nil {
+					cmd := job.BuildJobAllCmd(firstJob)
+					runCommandArgs(cmd)
+				} else {
+					fmt.Println("No jobs configured")
+				}
 				fmt.Print("\nplur> ")
 			case "reload":
 				// User requested process reload
@@ -355,6 +378,23 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			fmt.Printf("\nReceived signal %v, shutting down gracefully...\n", sig)
 			return nil
 		}
+	}
+}
+
+// runCommandArgs runs a command from a slice of arguments
+func runCommandArgs(args []string) {
+	if len(args) == 0 {
+		return
+	}
+
+	fmt.Println("running:", strings.Join(args, " "))
+
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
 	}
 }
 
