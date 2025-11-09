@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestFindTestFiles(t *testing.T) {
-	// Test the runner version more thoroughly
+func TestFindFilesFromJob(t *testing.T) {
+	// Test the job-based file discovery
 	originalDir, _ := os.Getwd()
 	defer os.Chdir(originalDir)
 
@@ -25,10 +25,13 @@ func TestFindTestFiles(t *testing.T) {
 	os.Chdir(tempDir)
 
 	// Test empty directory
-	rspecTask := task.NewRSpecTask()
-	files, err := FindTestFiles(rspecTask)
-	assert.NoError(t, err, "FindTestFiles() should not return error")
-	assert.Empty(t, files, "FindTestFiles() should return empty slice for empty directory")
+	rspecJob := &job.Job{
+		Name:          "rspec",
+		TargetPattern: "spec/**/*_spec.rb",
+	}
+	files, err := FindFilesFromJob(rspecJob)
+	assert.NoError(t, err, "FindFilesFromJob() should not return error")
+	assert.Empty(t, files, "FindFilesFromJob() should return empty slice for empty directory")
 
 	// Create complex directory structure
 	os.MkdirAll("spec/models", 0755)
@@ -50,11 +53,11 @@ func TestFindTestFiles(t *testing.T) {
 		f.Close()
 	}
 
-	files, err = FindTestFiles(rspecTask)
-	assert.NoError(t, err, "FindTestFiles() should not return error")
+	files, err = FindFilesFromJob(rspecJob)
+	assert.NoError(t, err, "FindFilesFromJob() should not return error")
 
 	expectedFiles := 5 // Only *_spec.rb files
-	assert.Len(t, files, expectedFiles, "FindTestFiles() should find exactly 5 spec files")
+	assert.Len(t, files, expectedFiles, "FindFilesFromJob() should find exactly 5 spec files")
 
 	// Verify all expected spec files were found
 	expectedSpecs := map[string]bool{

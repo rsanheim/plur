@@ -1,20 +1,21 @@
-# Configuration file with task definitions
+# Configuration file with job definitions
 workers = 2
 color = false
 
-[task.rspec]
+[job.rspec]
 description = "Custom RSpec configuration"
-run = "bin/rspec --format documentation"
-source_dirs = ["spec", "lib", "app"]
-test_glob = "spec/**/*_spec.rb"
+cmd = ["bin/rspec", "--format", "documentation", "{{target}}"]
+watch_dirs = ["spec", "lib", "app"]
+target_pattern = "spec/**/*_spec.rb"
 
-[task.minitest]
+[job.minitest]
 description = "Custom Minitest configuration"
-run = "bundle exec ruby -I test"
-source_dirs = ["test", "lib", "app"]
-test_glob = "test/**/*_test.rb"
+cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
+watch_dirs = ["test", "lib", "app"]
+target_pattern = "test/**/*_test.rb"
 
-[task.custom]
+[job.custom]
 description = "Custom test runner"
-run = "echo 'CUSTOM TASK:'"
-# Intentionally minimal - should inherit source_dirs, test_glob from auto-detected RSpec
+cmd = ["echo", "CUSTOM TASK:", "{{target}}"]
+target_pattern = "spec/**/*_spec.rb"
+# Minimal job definition with required target_pattern for plur spec

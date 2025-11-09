@@ -150,9 +150,9 @@ RSpec.describe "Configuration integration" do
     end
   end
 
-  describe "task configuration loading" do
-    context "with TOML task definitions" do
-      it "applies task-specific run commands from TOML" do
+  describe "job configuration loading" do
+    context "with TOML job definitions" do
+      it "applies job-specific run commands from TOML" do
         _, output, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
@@ -161,12 +161,12 @@ RSpec.describe "Configuration integration" do
         end
 
         expect(status).to be_success
-        # Should use the custom task's run command
+        # Should use the custom job's run command
         expect(output).to include("echo 'CUSTOM TASK:'")
       end
     end
 
-    context "when explicitly requesting a non-existent task" do
+    context "when explicitly requesting a non-existent job" do
       it "fails with a clear error message for spec command" do
         _, error, status = Open3.capture3(
           {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
@@ -174,8 +174,8 @@ RSpec.describe "Configuration integration" do
         )
 
         expect(status).not_to be_success
-        expect(error).to include("task 'nonexistent' not found")
-        # Should list available tasks
+        expect(error).to include("job 'nonexistent' not found")
+        # Should list available jobs
         expect(error).to include("rspec")
         expect(error).to include("minitest")
         expect(error).to include("custom")
@@ -190,7 +190,7 @@ RSpec.describe "Configuration integration" do
         )
 
         expect(status).not_to be_success
-        expect(error).to include("task 'nonexistent' not found")
+        expect(error).to include("job 'nonexistent' not found")
       end
     end
   end
