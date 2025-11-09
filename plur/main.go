@@ -10,6 +10,7 @@ import (
 	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -236,7 +237,7 @@ type PlurCLI struct {
 	Task map[string]TaskConfig `help:"Task configurations (config file only)" hidden:""`
 
 	// New job and watch configuration (optional, more flexible than tasks)
-	Job           map[string]watch.Job `help:"Job configurations (config file only)" hidden:""`
+	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
 	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" toml:"watch"`
 
 	// Processed task configurations (converted from TaskConfig)

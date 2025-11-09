@@ -4,12 +4,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEventProcessorBasicMapping(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
@@ -74,7 +75,7 @@ func TestEventProcessorBasicMapping(t *testing.T) {
 }
 
 func TestEventProcessorNoTargets(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
@@ -101,7 +102,7 @@ func TestEventProcessorNoTargets(t *testing.T) {
 }
 
 func TestEventProcessorMultipleJobs(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
@@ -134,7 +135,7 @@ func TestEventProcessorMultipleJobs(t *testing.T) {
 }
 
 func TestEventProcessorMultipleTargets(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
@@ -164,7 +165,7 @@ func TestEventProcessorMultipleTargets(t *testing.T) {
 }
 
 func TestEventProcessorExcludePatterns(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
@@ -221,7 +222,7 @@ func TestEventProcessorExcludePatterns(t *testing.T) {
 }
 
 func TestEventProcessorMultipleWatches(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
@@ -288,7 +289,7 @@ func TestEventProcessorMultipleWatches(t *testing.T) {
 }
 
 func TestEventProcessorDeduplication(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
@@ -315,7 +316,7 @@ func TestEventProcessorDeduplication(t *testing.T) {
 }
 
 func TestEventProcessorUndefinedJob(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
@@ -340,7 +341,7 @@ func TestEventProcessorUndefinedJob(t *testing.T) {
 }
 
 func TestValidateConfig(t *testing.T) {
-	jobs := map[string]*Job{
+	jobs := map[string]*job.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},

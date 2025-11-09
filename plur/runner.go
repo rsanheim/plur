@@ -14,6 +14,7 @@ import (
 
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -355,4 +356,85 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 	fmt.Println()
 
 	return allResults, time.Since(start)
+}
+
+// insertBeforeFiles inserts additional arguments before the file arguments in a command
+// This is used to add formatter and color flags for RSpec before the spec file paths
+func insertBeforeFiles(args []string, files []string, newArgs ...string) []string {
+	// Find where the files start in args
+	filesStart := -1
+	for i, arg := range args {
+		for _, file := range files {
+			if arg == file {
+				filesStart = i
+				break
+			}
+		}
+		if filesStart != -1 {
+			break
+		}
+	}
+
+	// If we didn't find files, just append new args
+	if filesStart == -1 {
+		return append(args, newArgs...)
+	}
+
+	// Insert new args before files
+	result := make([]string, 0, len(args)+len(newArgs))
+	result = append(result, args[:filesStart]...)
+	result = append(result, newArgs...)
+	result = append(result, args[filesStart:]...)
+	return result
+}
+
+// buildRSpecCommand builds an RSpec command with framework-specific flags
+// Adds formatter (if available) and color flags before the file arguments
+func buildRSpecCommand(j *job.Job, files []string, globalConfig *config.GlobalConfig) []string {
+	// Start with base command from BuildJobCmd
+	args := job.BuildJobCmd(j, files)
+
+	// Add formatter if available
+	if globalConfig.ConfigPaths != nil {
+		formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
+		if formatterPath != "" {
+			// Insert before files
+			args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
+		}
+	}
+
+	// Add color flags
+	if !globalConfig.ColorOutput {
+		args = insertBeforeFiles(args, files, "--no-color")
+	} else {
+		args = insertBeforeFiles(args, files, "--force-color", "--tty")
+	}
+
+	return args
+}
+
+// buildMinitestCommand builds a Minitest command with framework-specific handling
+// For multiple files, uses special -e require pattern
+// For single file, uses BuildJobCmd directly
+func buildMinitestCommand(j *job.Job, files []string, globalConfig *config.GlobalConfig) []string {
+	// For multiple files, use special -e require pattern
+	if len(files) > 1 {
+		cmd := []string{"bundle", "exec", "ruby", "-Itest"}
+		requires := make([]string, 0, len(files))
+		for _, file := range files {
+			// Strip the "test/" prefix if present since we're using -Itest
+			testFile := strings.TrimPrefix(file, "test/")
+			// Remove the .rb extension for require
+			testFile = strings.TrimSuffix(testFile, ".rb")
+			requires = append(requires, testFile)
+		}
+
+		// Create the require pattern
+		requireList := `"` + strings.Join(requires, `", "`) + `"`
+		cmd = append(cmd, "-e", `[`+requireList+`].each { |f| require f }`)
+		return cmd
+	}
+
+	// For single file, use BuildJobCmd directly
+	return job.BuildJobCmd(j, files)
 }

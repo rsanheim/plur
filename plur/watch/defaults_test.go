@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -304,7 +305,7 @@ func TestDefaultProfileCopy(t *testing.T) {
 	require.NotNil(t, profile2)
 
 	// Modify profile1's jobs
-	profile1.Jobs["rspec"] = Job{Name: "modified", Cmd: []string{"modified"}}
+	profile1.Jobs["rspec"] = job.Job{Name: "modified", Cmd: []string{"modified"}}
 
 	// Verify profile2 is not affected
 	assert.NotEqual(t, profile1.Jobs["rspec"].Cmd, profile2.Jobs["rspec"].Cmd)
@@ -316,7 +317,7 @@ func TestDefaultsWithEventProcessor(t *testing.T) {
 	require.NotNil(t, profile)
 
 	// Convert to pointer maps as EventProcessor expects
-	jobs := make(map[string]*Job)
+	jobs := make(map[string]*job.Job)
 	for name, job := range profile.Jobs {
 		jobCopy := job
 		jobCopy.Name = name

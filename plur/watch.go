@@ -15,6 +15,7 @@ import (
 
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -30,14 +31,14 @@ func runWatchInstall(force bool) error {
 }
 
 // loadWatchConfiguration loads job and watch mappings from config or defaults
-func loadWatchConfiguration(cli *PlurCLI, currentTask *task.Task) (map[string]*watch.Job, []*watch.WatchMapping, error) {
+func loadWatchConfiguration(cli *PlurCLI, currentTask *task.Task) (map[string]*job.Job, []*watch.WatchMapping, error) {
 	// Start with user-configured jobs and watches
-	jobs := make(map[string]*watch.Job)
+	jobs := make(map[string]*job.Job)
 	var watches []*watch.WatchMapping
 
 	// Load jobs from config
-	for name, job := range cli.Job {
-		jobCopy := job
+	for name, j := range cli.Job {
+		jobCopy := j
 		jobCopy.Name = name
 		jobs[name] = &jobCopy
 	}
@@ -70,12 +71,12 @@ func loadWatchConfiguration(cli *PlurCLI, currentTask *task.Task) (map[string]*w
 }
 
 // executeJob runs a job with the given target files
-func executeJob(job *watch.Job, targetFiles []string, cwd string) error {
+func executeJob(j *job.Job, targetFiles []string, cwd string) error {
 	if len(targetFiles) == 0 {
 		return nil
 	}
 
-	logger.Logger.Info("Executing job", "job", job.Name, "targets", len(targetFiles))
+	logger.Logger.Info("Executing job", "job", j.Name, "targets", len(targetFiles))
 
 	// Build command for each target file
 	for _, target := range targetFiles {
@@ -87,7 +88,7 @@ func executeJob(job *watch.Job, targetFiles []string, cwd string) error {
 			}
 		}
 
-		cmd := watch.BuildJobCmd(job, relTarget)
+		cmd := job.BuildJobCmd(j, []string{relTarget})
 		logger.LogVerbose("Running command", "cmd", strings.Join(cmd, " "))
 
 		// Execute command
@@ -95,11 +96,11 @@ func executeJob(job *watch.Job, targetFiles []string, cwd string) error {
 		execCmd.Dir = cwd
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
-		execCmd.Env = append(os.Environ(), job.Env...)
+		execCmd.Env = append(os.Environ(), j.Env...)
 
 		if err := execCmd.Run(); err != nil {
 			// Log error but don't fail - continue watching
-			logger.Logger.Warn("Job execution failed", "job", job.Name, "error", err)
+			logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
 		}
 	}
 

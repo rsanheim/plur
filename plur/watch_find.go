@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -84,21 +85,21 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	// Display what would be executed
 	fmt.Println("Matched watch rules:")
 	for jobName, targets := range jobTargets {
-		job, exists := jobs[jobName]
+		j, exists := jobs[jobName]
 		if !exists {
 			logger.Logger.Warn("Job not found", "job", jobName)
 			continue
 		}
 
 		fmt.Printf("\nJob: %s\n", jobName)
-		fmt.Printf("  Command template: %s\n", strings.Join(job.Cmd, " "))
-		if len(job.Env) > 0 {
-			fmt.Printf("  Environment: %s\n", strings.Join(job.Env, ", "))
+		fmt.Printf("  Command template: %s\n", strings.Join(j.Cmd, " "))
+		if len(j.Env) > 0 {
+			fmt.Printf("  Environment: %s\n", strings.Join(j.Env, ", "))
 		}
 		fmt.Printf("  Target files (%d):\n", len(targets))
 		for _, target := range targets {
 			// Build actual command that would be executed
-			cmd := watch.BuildJobCmd(job, target)
+			cmd := job.BuildJobCmd(j, []string{target})
 			fmt.Printf("    - %s\n", target)
 			fmt.Printf("      Command: %s\n", strings.Join(cmd, " "))
 		}

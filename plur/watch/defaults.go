@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/pelletier/go-toml"
+	"github.com/rsanheim/plur/job"
 )
 
 //go:embed defaults.toml
@@ -18,8 +19,8 @@ type DefaultsConfig struct {
 
 // DefaultProfile represents a complete configuration profile for a project type
 type DefaultProfile struct {
-	Jobs    map[string]Job `toml:"job"`
-	Watches []WatchMapping `toml:"watch"`
+	Jobs    map[string]job.Job `toml:"job"`
+	Watches []WatchMapping     `toml:"watch"`
 }
 
 var builtinDefaults DefaultsConfig
@@ -61,7 +62,7 @@ func AutodetectProfile() string {
 func GetDefaultProfile(name string) *DefaultProfile {
 	if profile, exists := builtinDefaults.Defaults[name]; exists {
 		// Deep copy to avoid modifications to builtin defaults
-		jobsCopy := make(map[string]Job, len(profile.Jobs))
+		jobsCopy := make(map[string]job.Job, len(profile.Jobs))
 		for k, v := range profile.Jobs {
 			jobsCopy[k] = v
 		}
@@ -79,21 +80,21 @@ func GetDefaultProfile(name string) *DefaultProfile {
 
 // GetAutodetectedDefaults returns jobs and watches for the autodetected project type
 // Returns empty maps/slices if no profile is detected
-func GetAutodetectedDefaults() (map[string]*Job, []*WatchMapping) {
+func GetAutodetectedDefaults() (map[string]*job.Job, []*WatchMapping) {
 	profileName := AutodetectProfile()
 	if profileName == "" {
-		return make(map[string]*Job), []*WatchMapping{}
+		return make(map[string]*job.Job), []*WatchMapping{}
 	}
 
 	profile := GetDefaultProfile(profileName)
 	if profile == nil {
-		return make(map[string]*Job), []*WatchMapping{}
+		return make(map[string]*job.Job), []*WatchMapping{}
 	}
 
 	// Convert to pointer maps for consistency with rest of codebase
-	jobs := make(map[string]*Job, len(profile.Jobs))
-	for name, job := range profile.Jobs {
-		jobCopy := job
+	jobs := make(map[string]*job.Job, len(profile.Jobs))
+	for name, j := range profile.Jobs {
+		jobCopy := j
 		jobCopy.Name = name
 		jobs[name] = &jobCopy
 	}

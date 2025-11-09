@@ -5,18 +5,60 @@ import (
 	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/rsanheim/plur/job"
 )
+
+// WatchMapping represents a source->target mapping rule for watch mode
+type WatchMapping struct {
+	Name    string       `toml:"name,omitempty" json:"name,omitempty"`
+	Source  string       `toml:"source" json:"source"`
+	Targets *MultiString `toml:"targets,omitempty" json:"targets,omitempty"`
+	Jobs    MultiString  `toml:"jobs" json:"jobs"`
+	Exclude []string     `toml:"exclude,omitempty" json:"exclude,omitempty"`
+}
+
+// MultiString allows single string or array in TOML configuration
+// This enables both: jobs = "rspec" and jobs = ["rspec", "lint"]
+type MultiString []string
+
+// UnmarshalTOML implements custom TOML unmarshaling for MultiString
+// It accepts both a single string and an array of strings
+func (ms *MultiString) UnmarshalTOML(value any) error {
+	switch v := value.(type) {
+	case string:
+		*ms = []string{v}
+		return nil
+	case []any:
+		strs := make([]string, len(v))
+		for i, item := range v {
+			str, ok := item.(string)
+			if !ok {
+				return fmt.Errorf("expected string in array, got %T", item)
+			}
+			strs[i] = str
+		}
+		*ms = strs
+		return nil
+	default:
+		return fmt.Errorf("expected string or array of strings, got %T", v)
+	}
+}
+
+// Slice returns a copy of the underlying string slice
+func (ms MultiString) Slice() []string {
+	return append([]string(nil), ms...)
+}
 
 // EventProcessor maps file change events to jobs with target files
 // It does NOT watch files (that's WatcherManager's job)
 // It only determines: "given a file changed, what jobs should run and with what targets?"
 type EventProcessor struct {
-	jobs    map[string]*Job
+	jobs    map[string]*job.Job
 	watches []*WatchMapping
 }
 
 // NewEventProcessor creates a new EventProcessor with the given jobs and watch mappings
-func NewEventProcessor(jobs map[string]*Job, watches []*WatchMapping) *EventProcessor {
+func NewEventProcessor(jobs map[string]*job.Job, watches []*WatchMapping) *EventProcessor {
 	return &EventProcessor{
 		jobs:    jobs,
 		watches: watches,
@@ -125,7 +167,7 @@ func deduplicate(items []string) []string {
 
 // ValidateConfig validates the configuration before creating the processor
 // It checks that all jobs referenced in watches exist
-func ValidateConfig(jobs map[string]*Job, watches []*WatchMapping) error {
+func ValidateConfig(jobs map[string]*job.Job, watches []*WatchMapping) error {
 	for _, watch := range watches {
 		for _, jobName := range watch.Jobs.Slice() {
 			if _, exists := jobs[jobName]; !exists {
