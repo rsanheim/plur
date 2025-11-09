@@ -180,3 +180,13 @@ When renaming or refactoring:
 4. Do NOT leave deprecated versions "for compatibility"
 
 This is a hard rule. Break things if needed - we prefer clean breaks over technical debt.
+
+## Planning and Estimates
+
+**NEVER** include time estimates or effort calculations in plans or documentation. Focus on:
+- Clear description of what needs to be done
+- Dependencies and ordering
+- Testing strategy
+- Success criteria
+
+Skip any discussion of "hours", "days", or "effort estimates" - we don't track or care about those.
