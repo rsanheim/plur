@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -175,11 +174,20 @@ func checkConfiguration(globalConfig *config.GlobalConfig) error {
 
 	// Check for watch directories
 	fmt.Println("\n  Watch Directories:")
-	currentTask := task.DetectFramework()
-	watchDirs := currentTask.GetWatchDirs()
+	autodetectedJobs, _ := watch.GetAutodetectedDefaults()
+	var watchDirs []string
+	var currentJobName string
+	// Find the first autodetected job with watch dirs
+	for name, j := range autodetectedJobs {
+		if len(j.WatchDirs) > 0 {
+			watchDirs = j.WatchDirs
+			currentJobName = name
+			break
+		}
+	}
 	if len(watchDirs) == 0 {
 		dirList := "spec/, lib/, app/"
-		if currentTask.IsMinitestStyle() {
+		if currentJobName == "minitest" {
 			dirList = "test/, lib/, app/"
 		}
 		fmt.Printf("    Warning: No watch directories found (checked: %s)\n", dirList)

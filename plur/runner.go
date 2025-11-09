@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -150,7 +149,7 @@ func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 }
 
 // RunTestFiles executes multiple test files in a single test process
-func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
+func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentJob *job.Job) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -167,7 +166,16 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		}
 	}
 
-	args := currentTask.BuildCommand(testFiles, globalConfig, "")
+	// Build command using framework-specific wrappers
+	var args []string
+	switch currentJob.Name {
+	case "rspec":
+		args = buildRSpecCommand(currentJob, testFiles, globalConfig)
+	case "minitest":
+		args = buildMinitestCommand(currentJob, testFiles, globalConfig)
+	default:
+		args = job.BuildJobCmd(currentJob, testFiles)
+	}
 
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
 
@@ -214,7 +222,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
-	parser, err := currentTask.CreateParser()
+	parser, err := currentJob.CreateParser()
 	if err != nil {
 		return errorResult(testFile, err, start)
 	}
@@ -265,7 +273,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 }
 
 // RunTestsInParallel runs spec or test files in parallel
-func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentTask *task.Task) ([]WorkerResult, time.Duration) {
+func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentJob *job.Job) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 
@@ -326,7 +334,7 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
 			logger.LogVerbose("starting", "worker", workerIndex, "file_count", len(files))
-			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentTask)
+			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentJob)
 			logger.LogVerbose("finished", "worker", workerIndex, "success", result.Success())
 			results <- result
 		}(i, group.Files)

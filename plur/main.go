@@ -32,43 +32,91 @@ type SpecCmd struct {
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg := parent.globalConfig
 
-	// Get the appropriate task with overrides applied
+	// Determine which job to use
 	// Priority: CLI --use, config use, auto-detect
-	taskName := r.Use
+	jobName := r.Use
 	wasExplicit := r.Use != ""
-	if taskName == "" && parent.Use != "" {
-		taskName = parent.Use
+	if jobName == "" && parent.Use != "" {
+		jobName = parent.Use
 		wasExplicit = true
 	}
-	if taskName == "" {
-		detectedTask := task.DetectFramework()
-		taskName = detectedTask.Name
+
+	// Get job from config or autodetection
+	var currentJob *job.Job
+	var autodetectedJobs map[string]*job.Job
+
+	if jobName == "" {
+		// Autodetect framework
+		autodetectedJobs, _ = watch.GetAutodetectedDefaults()
+		// Prioritize rspec/minitest over other jobs
+		if j, exists := autodetectedJobs["rspec"]; exists && j.TargetPattern != "" {
+			jobName = "rspec"
+			currentJob = j
+		} else if j, exists := autodetectedJobs["minitest"]; exists && j.TargetPattern != "" {
+			jobName = "minitest"
+			currentJob = j
+		} else {
+			// Fall back to any job with a target_pattern
+			for name, j := range autodetectedJobs {
+				if j.TargetPattern != "" {
+					jobName = name
+					currentJob = j
+					break
+				}
+			}
+		}
+		if currentJob == nil {
+			return fmt.Errorf("no test framework detected. Please create a .plur.toml with a job configuration")
+		}
 		wasExplicit = false
+	} else {
+		// Use explicit job name
+		if j, exists := parent.Job[jobName]; exists {
+			jobCopy := j
+			jobCopy.Name = jobName
+			currentJob = &jobCopy
+		} else {
+			// Try autodetected jobs
+			autodetectedJobs, _ = watch.GetAutodetectedDefaults()
+			if j, exists := autodetectedJobs[jobName]; exists {
+				currentJob = j
+			} else {
+				// Build helpful error message
+				availableJobs := make([]string, 0, len(parent.Job)+len(autodetectedJobs))
+				for name := range parent.Job {
+					availableJobs = append(availableJobs, name)
+				}
+				for name := range autodetectedJobs {
+					availableJobs = append(availableJobs, name)
+				}
+				sort.Strings(availableJobs)
+				return fmt.Errorf("job '%s' not found. Available jobs: %s", jobName, strings.Join(availableJobs, ", "))
+			}
+		}
 	}
 
-	// Validate task exists if explicitly requested
-	if err := parent.validateTaskExists(taskName, wasExplicit); err != nil {
-		return err
+	// Validate job has target_pattern for file discovery
+	if currentJob.TargetPattern == "" {
+		return fmt.Errorf("job '%s' cannot be used with plur spec because it has no target_pattern configured", jobName)
 	}
 
-	currentTask := parent.getTaskWithOverrides(taskName)
-	logger.Logger.Debug("SpecCmd.Run", "command", currentTask.Run, "patterns", r.Patterns, "task", currentTask.Name)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.TargetPattern)
 
 	// Show hint if both frameworks exist and we auto-detected
-	if !wasExplicit && task.BothFrameworksExist() {
+	if !wasExplicit && autodetectedJobs != nil && len(autodetectedJobs) > 1 {
 		otherFramework := "minitest"
-		if currentTask.Name == "minitest" {
+		if currentJob.Name == "minitest" {
 			otherFramework = "rspec"
 		}
-		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Use -t %s to run %s instead.",
-			currentTask.Name, otherFramework, otherFramework))
+		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Use --use=%s to run %s instead.",
+			currentJob.Name, otherFramework, otherFramework))
 	}
 
 	// Discover test files
 	var testFiles []string
 	var err error
 	if len(r.Patterns) > 0 {
-		testFiles, err = ExpandGlobPatterns(r.Patterns, currentTask)
+		testFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob)
 		if err != nil {
 			return err
 		}
@@ -76,14 +124,14 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return fmt.Errorf("no test files found matching provided patterns")
 		}
 	} else {
-		testFiles, err = FindTestFiles(currentTask)
+		testFiles, err = FindFilesFromJob(currentJob)
 		if err != nil {
 			return err
 		}
 		if len(testFiles) == 0 {
-			suffix := currentTask.GetTestSuffix()
-			// Determine directory from task's test pattern
-			pattern := currentTask.GetTestPattern()
+			suffix := currentJob.GetTargetSuffix()
+			// Determine directory from job's target pattern
+			pattern := currentJob.TargetPattern
 			dir := "spec"
 			if strings.HasPrefix(pattern, "test/") {
 				dir = "test"
@@ -104,7 +152,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	// Create and run executor with Auto flag
 	cfg.Auto = r.Auto
-	executor := NewTestExecutor(cfg, testFiles, currentTask)
+	executor := NewTestExecutor(cfg, testFiles, currentJob)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {
