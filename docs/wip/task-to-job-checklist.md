@@ -79,8 +79,10 @@ Consolidating Task and Job concepts into a unified Job model for both parallel e
   - [ ] Map all call sites: where is autodetection used? (spec command, watch command, doctor, etc.)
   - [ ] Identify responsibility: is autodetection just for watching, or broader?
   - [ ] Evaluate coupling: should autodetection be split by concern?
+  - [ ] Are there refactorings we should do first to prepare the way for helpful, clear, and consistent autodetection?
 - [ ] Design clear, non-magical autodetection
   - [ ] How do we make it obvious why plur picks specific defaults?
+  - [ ] Whatever mechanim(s) /logging we have, they should be available via `plur doctor` and `plur watch`, and `plur spec`, and should use the **same** code
   - [ ] Where should we log/show autodetection decisions?
   - [ ] How can users debug "why did plur choose X?" questions?
   - [ ] Should we have explicit "autodetection report" or debug output?
