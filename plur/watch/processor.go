@@ -8,15 +8,6 @@ import (
 	"github.com/rsanheim/plur/job"
 )
 
-// WatchMapping represents a source->target mapping rule for watch mode
-type WatchMapping struct {
-	Name    string       `toml:"name,omitempty" json:"name,omitempty"`
-	Source  string       `toml:"source" json:"source"`
-	Targets *MultiString `toml:"targets,omitempty" json:"targets,omitempty"`
-	Jobs    MultiString  `toml:"jobs" json:"jobs"`
-	Exclude []string     `toml:"exclude,omitempty" json:"exclude,omitempty"`
-}
-
 // MultiString allows single string or array in TOML configuration
 // This enables both: jobs = "rspec" and jobs = ["rspec", "lint"]
 type MultiString []string
