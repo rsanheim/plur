@@ -52,8 +52,8 @@ RSpec.describe "plur watch with multiple directories" do
       result = run_plur_watch(dir: tmpdir, timeout: 2)
 
       # Should start watchers for spec and lib only (in stderr)
-      expect(result.err).to include("directories=[spec lib]")
-      expect(result.err).not_to include("directories=[spec lib app]")
+      expect(result.err).to include("directories=[lib spec]")
+      expect(result.err).not_to include("directories=[app lib spec]")
     end
   end
 

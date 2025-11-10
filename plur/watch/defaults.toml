@@ -4,12 +4,10 @@
 [defaults.ruby.job.rspec]
 cmd = ["bundle", "exec", "rspec", "{{target}}"]
 target_pattern = "spec/**/*_spec.rb"
-watch_dirs = ["spec", "lib", "app"]
 
 [defaults.ruby.job.minitest]
 cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
 target_pattern = "test/**/*_test.rb"
-watch_dirs = ["test", "lib", "app"]
 
 [defaults.ruby.job.rubocop]
 cmd = ["bundle", "exec", "rubocop", "{{target}}"]

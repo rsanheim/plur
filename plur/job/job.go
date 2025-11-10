@@ -16,7 +16,6 @@ type Job struct {
 	Cmd           []string `toml:"cmd" json:"cmd"`
 	Env           []string `toml:"env,omitempty" json:"env,omitempty"`
 	TargetPattern string   `toml:"target_pattern,omitempty" json:"target_pattern,omitempty"` // Glob pattern for file discovery (e.g., "spec/**/*_spec.rb")
-	WatchDirs     []string `toml:"watch_dirs,omitempty" json:"watch_dirs,omitempty"`         // Directories to watch for changes
 }
 
 // BuildJobCmd builds the command array for a job with specific targets

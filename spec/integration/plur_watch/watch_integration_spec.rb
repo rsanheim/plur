@@ -11,7 +11,7 @@ RSpec.describe "plur watch integration" do
 
     expect(result.err).to include("plur watch starting!")
     expect(result.err).to include("plur configuration info")
-    expect(result.err).to include("directories=[spec lib]")
+    expect(result.err).to include("directories=[lib spec]")
     expect(result.err).to include("Debounce delay ms=100")
   end
 

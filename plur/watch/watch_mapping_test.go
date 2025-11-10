@@ -50,3 +50,11 @@ func TestSourceDirForDirectory(t *testing.T) {
 	}
 	assert.Equal(t, "test/package/stuff/things", watchMapping.SourceDir())
 }
+
+func TestSourceDirForRootDirectory(t *testing.T) {
+	watchMapping := WatchMapping{
+		Source: ".",
+		Jobs:   MultiString{"rspec"},
+	}
+	assert.Equal(t, ".", watchMapping.SourceDir())
+}

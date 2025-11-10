@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
+	"sort"
 	"strings"
 
 	"github.com/rsanheim/plur/config"
@@ -174,23 +176,19 @@ func checkConfiguration(globalConfig *config.GlobalConfig) error {
 
 	// Check for watch directories
 	fmt.Println("\n  Watch Directories:")
-	autodetectedJobs, _ := watch.GetAutodetectedDefaults()
+	_, watchMappings := watch.GetAutodetectedDefaults()
+	// Extract watch directories from watch mappings
 	var watchDirs []string
-	var currentJobName string
-	// Find the first autodetected job with watch dirs
-	for name, j := range autodetectedJobs {
-		if len(j.WatchDirs) > 0 {
-			watchDirs = j.WatchDirs
-			currentJobName = name
-			break
+	for _, mapping := range watchMappings {
+		dir := mapping.SourceDir()
+		if _, err := os.Stat(dir); err == nil {
+			watchDirs = append(watchDirs, dir)
 		}
 	}
+	sort.Strings(watchDirs)
+	watchDirs = slices.Compact(watchDirs) // Remove duplicates from sorted slice
 	if len(watchDirs) == 0 {
-		dirList := "spec/, lib/, app/"
-		if currentJobName == "minitest" {
-			dirList = "test/, lib/, app/"
-		}
-		fmt.Printf("    Warning: No watch directories found (checked: %s)\n", dirList)
+		fmt.Println("    Warning: No watch directories found in watch mappings")
 	} else {
 		for _, dir := range watchDirs {
 			fmt.Printf("    %s/ (exists)\n", dir)

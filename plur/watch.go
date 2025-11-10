@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -131,21 +133,18 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
 	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
 
-	// Determine which directories to watch from jobs' WatchDirs
-	watchDirsMap := make(map[string]struct{})
-	for _, j := range jobs {
-		for _, dir := range j.WatchDirs {
-			if _, err := os.Stat(dir); err == nil {
-				watchDirsMap[dir] = struct{}{}
-			}
+	// Determine which directories to watch from watch mappings
+	var watchDirs []string
+	for _, mapping := range watches {
+		dir := mapping.SourceDir()
+		if _, err := os.Stat(dir); err == nil {
+			watchDirs = append(watchDirs, dir)
 		}
 	}
-	watchDirs := make([]string, 0, len(watchDirsMap))
-	for dir := range watchDirsMap {
-		watchDirs = append(watchDirs, dir)
-	}
+	sort.Strings(watchDirs)
+	watchDirs = slices.Compact(watchDirs)
 	if len(watchDirs) == 0 {
-		return fmt.Errorf("no directories to watch found in job configurations")
+		return fmt.Errorf("no directories to watch found in watch mappings")
 	}
 
 	// Get project name from current directory

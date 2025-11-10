@@ -8,7 +8,7 @@ RSpec.describe "plur watch command", :skip_if_ci do
       result = run_plur_watch(timeout: 2)
 
       expect(result.err).to include("plur watch starting!")
-      expect(result.err).to include("directories=[spec lib]")
+      expect(result.err).to include("directories=[lib spec]")
       expect(result.err).to include("timeout=2")
       expect(result.out).to include("Timeout reached, exiting!")
       expect(result.success?).to be true
@@ -29,7 +29,6 @@ RSpec.describe "plur watch command", :skip_if_ci do
 
         expect(result.success?).to be false
         expect(result.err).to match(/no directories to watch found/i)
-        expect(result.err).to include("spec")
       end
     end
   end
