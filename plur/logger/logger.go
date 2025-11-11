@@ -10,8 +10,11 @@ import (
 )
 
 var (
-	// Logger is the global slog logger instance
+	// Logger is the global slog logger instance (writes to stderr)
 	Logger *slog.Logger
+
+	// StdoutLogger writes to stdout for user-facing command output
+	StdoutLogger *slog.Logger
 
 	// VerboseMode indicates if verbose logging is enabled
 	VerboseMode bool
@@ -102,6 +105,12 @@ func InitLogger(verbose bool, debug bool) {
 
 	// Set as default logger
 	slog.SetDefault(Logger)
+
+	// Create stdout logger for user-facing command output
+	stdoutHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+	StdoutLogger = slog.New(stdoutHandler)
 }
 
 // LogVerbose logs a message only if verbose mode is enabled

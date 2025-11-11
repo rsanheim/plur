@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -407,9 +408,24 @@ func main() {
 	logger.Logger.Debug("running plur", "args", os.Args[1:], "command", ctx.Command())
 	err = ctx.Run(ctx)
 	if err != nil {
+		// Check if it's a custom exit code (don't log as error)
+		var exitErr ExitCode
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.Code)
+		}
+		// Regular error - log and exit with code 1
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+// ExitCode is an error type that specifies a custom exit code
+type ExitCode struct {
+	Code int
+}
+
+func (e ExitCode) Error() string {
+	return fmt.Sprintf("exit code %d", e.Code)
 }
 
 // dirExists checks if a directory exists

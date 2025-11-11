@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -31,9 +30,6 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return nil
 	}
 
-	// Create event processor
-	processor := watch.NewEventProcessor(jobs, watches)
-
 	// Get the current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -48,57 +44,60 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		}
 	}
 
-	// Process the file path through EventProcessor
-	fmt.Printf("Checking file: %s\n\n", filePath)
+	out := logger.StdoutLogger
 
-	jobTargets, err := processor.ProcessPath(filePath)
+	out.Info("checking watch", "file", filePath)
+
+	// Use shared find logic
+	result, err := watch.FindTargetsForFile(filePath, jobs, watches)
 	if err != nil {
 		return fmt.Errorf("error processing file: %w", err)
 	}
 
-	if len(jobTargets) == 0 {
-		fmt.Println("No matching watch rules for this file.")
-		fmt.Println("\nConfigured watch mappings:")
-		for i, w := range watches {
-			fmt.Printf("  %d. %s\n", i+1, w.Source)
-			if w.Name != "" {
-				fmt.Printf("     Name: %s\n", w.Name)
-			}
-			if w.Targets != nil {
-				fmt.Printf("     Targets: %v\n", *w.Targets)
-			} else {
-				fmt.Printf("     Targets: [source file]\n")
-			}
-			fmt.Printf("     Jobs: %v\n", w.Jobs.Slice())
-			if len(w.Exclude) > 0 {
-				fmt.Printf("     Exclude: %v\n", w.Exclude)
-			}
-			fmt.Println()
-		}
-		return nil
+	// Show matched rules
+	if len(result.MatchedRules) == 0 {
+		out.Info("found rules", "count", 0)
+		return ExitCode{Code: 2}
 	}
 
-	// Display what would be executed
-	fmt.Println("Matched watch rules:")
-	for jobName, targets := range jobTargets {
-		j, exists := jobs[jobName]
-		if !exists {
-			logger.Logger.Warn("Job not found", "job", jobName)
-			continue
+	// Print matched rules in concise format
+	for _, rule := range result.MatchedRules {
+		name := rule.Name
+		if name == "" {
+			name = "(unnamed)"
 		}
+		targetTemplate := "[source file]"
+		if rule.Targets != nil && len(*rule.Targets) > 0 {
+			targetTemplate = (*rule.Targets)[0]
+		}
+		out.Info("found rules",
+			"name", name,
+			"source", rule.Source,
+			"jobs", rule.Jobs.Slice(),
+			"target", targetTemplate)
+	}
 
-		fmt.Printf("\nJob: %s\n", jobName)
-		fmt.Printf("  Command template: %s\n", strings.Join(j.Cmd, " "))
-		if len(j.Env) > 0 {
-			fmt.Printf("  Environment: %s\n", strings.Join(j.Env, ", "))
+	// Show found files
+	if result.HasExistingTargets() {
+		var allFiles []string
+		for _, targets := range result.ExistingTargets {
+			allFiles = append(allFiles, targets...)
 		}
-		fmt.Printf("  Target files (%d):\n", len(targets))
-		for _, target := range targets {
-			// Build actual command that would be executed
-			cmd := job.BuildJobCmd(j, []string{target})
-			fmt.Printf("    - %s\n", target)
-			fmt.Printf("      Command: %s\n", strings.Join(cmd, " "))
+		out.Info("found files", "files", strings.Join(allFiles, ", "))
+	}
+
+	// Show missing files
+	if result.HasMissingTargets() {
+		for _, targets := range result.MissingTargets {
+			for _, target := range targets {
+				out.Warn("not found", "file", target)
+			}
 		}
+	}
+
+	// Exit code 2 if nothing would actually run
+	if !result.HasExistingTargets() {
+		return ExitCode{Code: 2}
 	}
 
 	return nil
