@@ -1,4 +1,4 @@
-package watch
+package autodetect
 
 import (
 	_ "embed"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/pelletier/go-toml"
 	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/watch"
 )
 
 //go:embed defaults.toml
@@ -19,8 +20,8 @@ type DefaultsConfig struct {
 
 // DefaultProfile represents a complete configuration profile for a project type
 type DefaultProfile struct {
-	Jobs    map[string]job.Job `toml:"job"`
-	Watches []WatchMapping     `toml:"watch"`
+	Jobs    map[string]job.Job   `toml:"job"`
+	Watches []watch.WatchMapping `toml:"watch"`
 }
 
 var builtinDefaults DefaultsConfig
@@ -39,18 +40,9 @@ func AutodetectProfile() string {
 		return "go"
 	}
 
-	// Check for Ruby project with RSpec
-	if fileExists("Gemfile") && dirExists("spec") {
-		return "ruby"
-	}
-
-	// Check for Ruby project with Minitest
-	if fileExists("Gemfile") && dirExists("test") {
-		return "ruby"
-	}
-
-	// Check for Ruby project with just lib directory
-	if dirExists("lib") && (dirExists("spec") || dirExists("test")) {
+	// Check for Ruby project - be permissive for backward compatibility
+	// Accept any of: Gemfile, spec/, test/, or lib/ directory
+	if fileExists("Gemfile") || dirExists("spec") || dirExists("test") || dirExists("lib") {
 		return "ruby"
 	}
 
@@ -67,7 +59,7 @@ func GetDefaultProfile(name string) *DefaultProfile {
 			jobsCopy[k] = v
 		}
 
-		watchesCopy := make([]WatchMapping, len(profile.Watches))
+		watchesCopy := make([]watch.WatchMapping, len(profile.Watches))
 		copy(watchesCopy, profile.Watches)
 
 		return &DefaultProfile{
@@ -80,15 +72,15 @@ func GetDefaultProfile(name string) *DefaultProfile {
 
 // GetAutodetectedDefaults returns jobs and watches for the autodetected project type
 // Returns empty maps/slices if no profile is detected
-func GetAutodetectedDefaults() (map[string]*job.Job, []*WatchMapping) {
+func GetAutodetectedDefaults() (map[string]*job.Job, []*watch.WatchMapping) {
 	profileName := AutodetectProfile()
 	if profileName == "" {
-		return make(map[string]*job.Job), []*WatchMapping{}
+		return make(map[string]*job.Job), []*watch.WatchMapping{}
 	}
 
 	profile := GetDefaultProfile(profileName)
 	if profile == nil {
-		return make(map[string]*job.Job), []*WatchMapping{}
+		return make(map[string]*job.Job), []*watch.WatchMapping{}
 	}
 
 	// Convert to pointer maps for consistency with rest of codebase
@@ -100,7 +92,7 @@ func GetAutodetectedDefaults() (map[string]*job.Job, []*WatchMapping) {
 	}
 
 	// Convert to pointer slice
-	watches := make([]*WatchMapping, len(profile.Watches))
+	watches := make([]*watch.WatchMapping, len(profile.Watches))
 	for i := range profile.Watches {
 		watches[i] = &profile.Watches[i]
 	}

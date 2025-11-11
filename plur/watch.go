@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
@@ -51,13 +52,13 @@ func loadWatchConfiguration(cli *PlurCLI) (map[string]*job.Job, []*watch.WatchMa
 
 	// If no configuration provided, use autodetected defaults
 	if len(jobs) == 0 && len(watches) == 0 {
-		defaultJobs, defaultWatches := watch.GetAutodetectedDefaults()
+		defaultJobs, defaultWatches := autodetect.GetAutodetectedDefaults()
 		jobs = defaultJobs
 		watches = defaultWatches
 
 		if len(jobs) > 0 {
 			logger.LogVerbose("Using autodetected default configuration",
-				"profile", watch.AutodetectProfile())
+				"profile", autodetect.AutodetectProfile())
 		}
 	}
 

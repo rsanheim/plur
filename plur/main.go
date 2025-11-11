@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/alecthomas/kong-toml"
+	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
@@ -38,24 +39,47 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	if jobName == "" {
 		// Autodetect framework
-		autodetectedJobs, _ = watch.GetAutodetectedDefaults()
-		// Prioritize rspec/minitest over other jobs
-		if j, exists := autodetectedJobs["rspec"]; exists && j.TargetPattern != "" {
-			jobName = "rspec"
-			currentJob = j
-		} else if j, exists := autodetectedJobs["minitest"]; exists && j.TargetPattern != "" {
-			jobName = "minitest"
-			currentJob = j
+		autodetectedJobs, _ = autodetect.GetAutodetectedDefaults()
+
+		// Smart framework selection based on directory structure
+		// If only spec/ exists, use RSpec
+		// If only test/ exists, use Minitest
+		// If both exist, prefer RSpec (more common in modern Ruby projects)
+		hasSpecDir := dirExists("spec")
+		hasTestDir := dirExists("test")
+
+		if hasSpecDir && !hasTestDir {
+			// Only spec/ directory - use RSpec
+			if j, exists := autodetectedJobs["rspec"]; exists && j.TargetPattern != "" {
+				jobName = "rspec"
+				currentJob = j
+			}
+		} else if hasTestDir && !hasSpecDir {
+			// Only test/ directory - use Minitest
+			if j, exists := autodetectedJobs["minitest"]; exists && j.TargetPattern != "" {
+				jobName = "minitest"
+				currentJob = j
+			}
 		} else {
-			// Fall back to any job with a target_pattern
-			for name, j := range autodetectedJobs {
-				if j.TargetPattern != "" {
-					jobName = name
-					currentJob = j
-					break
+			// Both exist or neither exist - use priority order: rspec > minitest > other
+			if j, exists := autodetectedJobs["rspec"]; exists && j.TargetPattern != "" {
+				jobName = "rspec"
+				currentJob = j
+			} else if j, exists := autodetectedJobs["minitest"]; exists && j.TargetPattern != "" {
+				jobName = "minitest"
+				currentJob = j
+			} else {
+				// Fall back to any job with a target_pattern
+				for name, j := range autodetectedJobs {
+					if j.TargetPattern != "" {
+						jobName = name
+						currentJob = j
+						break
+					}
 				}
 			}
 		}
+
 		if currentJob == nil {
 			return fmt.Errorf("no test framework detected. Please create a .plur.toml with a job configuration")
 		}
@@ -68,7 +92,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			currentJob = &jobCopy
 		} else {
 			// Try autodetected jobs
-			autodetectedJobs, _ = watch.GetAutodetectedDefaults()
+			autodetectedJobs, _ = autodetect.GetAutodetectedDefaults()
 			if j, exists := autodetectedJobs[jobName]; exists {
 				currentJob = j
 			} else {
@@ -386,4 +410,13 @@ func main() {
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+// dirExists checks if a directory exists
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return info.IsDir()
 }

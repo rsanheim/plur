@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/watch"
 )
@@ -176,7 +177,7 @@ func checkConfiguration(globalConfig *config.GlobalConfig) error {
 
 	// Check for watch directories
 	fmt.Println("\n  Watch Directories:")
-	_, watchMappings := watch.GetAutodetectedDefaults()
+	_, watchMappings := autodetect.GetAutodetectedDefaults()
 	// Extract watch directories from watch mappings
 	var watchDirs []string
 	for _, mapping := range watchMappings {

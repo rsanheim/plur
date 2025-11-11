@@ -1,4 +1,4 @@
-package watch
+package autodetect
 
 import (
 	"os"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -195,7 +196,7 @@ func TestRubyDefaultsConfiguration(t *testing.T) {
 	assert.Contains(t, rspecJob.Cmd, "{{target}}")
 
 	// Test lib-to-spec watch
-	var libToSpec *WatchMapping
+	var libToSpec *watch.WatchMapping
 	for i := range profile.Watches {
 		if profile.Watches[i].Name == "lib-to-spec" {
 			libToSpec = &profile.Watches[i]
@@ -220,7 +221,7 @@ func TestGoDefaultsConfiguration(t *testing.T) {
 	assert.Contains(t, goTestJob.Cmd, "test")
 
 	// Test go-source watch
-	var goSource *WatchMapping
+	var goSource *watch.WatchMapping
 	for i := range profile.Watches {
 		if profile.Watches[i].Name == "go-source" {
 			goSource = &profile.Watches[i]
@@ -324,13 +325,13 @@ func TestDefaultsWithEventProcessor(t *testing.T) {
 		jobs[name] = &jobCopy
 	}
 
-	watches := make([]*WatchMapping, len(profile.Watches))
+	watches := make([]*watch.WatchMapping, len(profile.Watches))
 	for i := range profile.Watches {
 		watches[i] = &profile.Watches[i]
 	}
 
 	// Create processor
-	processor := NewEventProcessor(jobs, watches)
+	processor := watch.NewEventProcessor(jobs, watches)
 
 	// Test lib file mapping
 	result, err := processor.ProcessPath("lib/user.rb")
