@@ -119,10 +119,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}
 
-	// Create event processor if we have watch mappings
-	var processor *watch.EventProcessor
+	// Log watch configuration
 	if len(watches) > 0 {
-		processor = watch.NewEventProcessor(jobs, watches)
 		logger.LogVerbose("Watch configuration loaded",
 			"jobs", len(jobs),
 			"watch_mappings", len(watches))
@@ -328,26 +326,36 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				continue
 			}
 
-			// Process the file change through EventProcessor if configured
-			if processor != nil {
+			// Process the file change if we have watch mappings configured
+			if len(watches) > 0 {
 				logger.Logger.Info("File changed", "path", "./"+relPath)
 
-				// Map file to jobs and target files
-				jobTargets, err := processor.ProcessPath(relPath)
+				// Find targets for this file, filtering out non-existent files
+				result, err := watch.FindTargetsForFile(relPath, jobs, watches)
 				if err != nil {
 					logger.Logger.Warn("Error processing file change", "path", relPath, "error", err)
 					fmt.Print("plur> ")
 					continue
 				}
 
-				if len(jobTargets) == 0 {
+				// Check if we have any executable targets
+				if !result.HasExistingTargets() {
 					logger.LogVerbose("No matching watch rules for file", "path", "./"+relPath)
 					fmt.Print("plur> ")
 					continue
 				}
 
-				// Execute each job with its targets
-				for jobName, targets := range jobTargets {
+				// Log warnings for missing target files
+				if result.HasMissingTargets() {
+					for jobName, targets := range result.MissingTargets {
+						for _, target := range targets {
+							logger.LogVerbose("Skipping non-existent target", "target", target, "job", jobName)
+						}
+					}
+				}
+
+				// Execute each job with its existing targets only
+				for jobName, targets := range result.ExistingTargets {
 					job, exists := jobs[jobName]
 					if !exists {
 						logger.Logger.Warn("Job not found", "job", jobName)
