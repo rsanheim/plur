@@ -18,7 +18,7 @@ import (
 
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Use      string   `short:"t" help:"Task to run (rspec/minitest/custom)" default:""`
+	Use      string   `short:"t" help:"Job to use (overrides autodetection)" default:""`
 	Auto     bool     `help:"Automatically run bundle install before tests" default:"false"`
 }
 
@@ -189,7 +189,7 @@ type WatchCmd struct {
 type WatchRunCmd struct {
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
-	Use      string `short:"t" help:"Task to run (rspec/minitest/custom)" default:""`
+	Use      string `short:"t" help:"Job to use (overrides autodetection)" default:""`
 }
 
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
@@ -261,7 +261,7 @@ type PlurCLI struct {
 	FirstIs1   bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
-	Use        string `help:"Default task configuration to use" default:"" hidden:""`
+	Use        string `help:"Default job to use (overrides autodetection)" default:"" hidden:""`
 	Verbose    bool   `short:"v" help:"Enable verbose output for debugging" default:"false"`
 	Version    bool   `help:"Show version information"`
 	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`

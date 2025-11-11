@@ -12,10 +12,10 @@ import (
 // FindResult contains the results of finding targets for a file change
 type FindResult struct {
 	FilePath        string
-	MatchedRules    []*WatchMapping           // Watch rules that matched the file
-	ExistingTargets map[string][]string       // jobName -> target files that exist
-	MissingTargets  map[string][]string       // jobName -> target files that don't exist
-	Jobs            map[string]*job.Job       // All jobs referenced
+	MatchedRules    []*WatchMapping     // Watch rules that matched the file
+	ExistingTargets map[string][]string // jobName -> target files that exist
+	MissingTargets  map[string][]string // jobName -> target files that don't exist
+	Jobs            map[string]*job.Job // All jobs referenced
 }
 
 // HasExistingTargets returns true if any targets exist

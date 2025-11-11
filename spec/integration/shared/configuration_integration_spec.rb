@@ -38,11 +38,23 @@ RSpec.describe "Configuration integration" do
     end
 
     context "with nested configuration sections" do
-      it "applies command-specific configuration" do
+      it "applies command-specific configuration with use in config" do
         _, error, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "command-specific.toml"},
             "plur", "spec", "--dry-run"
+          )
+        end
+
+        expect(status).to be_success
+        expect(error).to include("echo 'SPEC:'")
+      end
+
+      it "applies command-specific configuration with --use CLI flag" do
+        _, error, status = Dir.chdir(config_fixture_dir) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => "job-without-use.toml"},
+            "plur", "spec", "--use=rspec", "--dry-run"
           )
         end
 

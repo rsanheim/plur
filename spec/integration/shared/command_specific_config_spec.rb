@@ -21,10 +21,12 @@ RSpec.describe "Command-specific configuration" do
       File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
         # Global settings
         workers = 2
-        
-        [task.rspec]
-        run = "echo 'SPEC:'"
-        
+        use = "rspec"
+
+        [job.rspec]
+        cmd = ["echo", "'SPEC:'"]
+        target_pattern = "spec/**/*_spec.rb"
+
         [watch.run]
         command = "echo 'WATCH:'"
         debounce = 75
@@ -74,9 +76,12 @@ RSpec.describe "Command-specific configuration" do
   context "with global command setting" do
     before do
       File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
-        # Task command applies to RSpec task
-        [task.rspec]
-        run = "echo 'GLOBAL:'"
+        # Job command applies to RSpec job
+        use = "rspec"
+
+        [job.rspec]
+        cmd = ["echo", "'GLOBAL:'"]
+        target_pattern = "spec/**/*_spec.rb"
       TOML
     end
 
