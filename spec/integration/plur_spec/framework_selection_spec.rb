@@ -36,7 +36,7 @@ RSpec.describe "Framework Selection" do
     it "runs RSpec tests when -t rspec is specified" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("spec", "-t", "rspec", "--dry-run")
+          result = run_plur("spec", "-u", "rspec", "--dry-run")
           expect(result).to be_success
           expect(result.err).to include("spec/example_spec.rb")
           expect(result.err).not_to include("test/example_test.rb")
@@ -47,7 +47,7 @@ RSpec.describe "Framework Selection" do
     it "runs Minitest tests when -t minitest is specified" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("spec", "-t", "minitest", "--dry-run")
+          result = run_plur("spec", "-u", "minitest", "--dry-run")
           expect(result).to be_success
           expect(result.err).to include("test/example_test.rb")
           expect(result.err).not_to include("spec/example_spec.rb")
@@ -80,7 +80,7 @@ RSpec.describe "Framework Selection" do
       it "allows CLI flag to override config file" do
         chdir(project_dir) do
           Bundler.with_unbundled_env do
-            result = run_plur("spec", "-t", "rspec", "--dry-run")
+            result = run_plur("spec", "-u", "rspec", "--dry-run")
             expect(result).to be_success
             expect(result.err).to include("spec/example_spec.rb")
             expect(result.err).not_to include("test/example_test.rb")
