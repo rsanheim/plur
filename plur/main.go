@@ -18,7 +18,7 @@ import (
 
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Use      string   `short:"t" help:"Job to use (overrides autodetection)" default:""`
+	Use      string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Auto     bool     `help:"Automatically run bundle install before tests" default:"false"`
 }
 
@@ -189,7 +189,7 @@ type WatchCmd struct {
 type WatchRunCmd struct {
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
-	Use      string `short:"t" help:"Job to use (overrides autodetection)" default:""`
+	Use      string `short:"u" help:"Job to use (overrides autodetection)" default:""`
 }
 
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
