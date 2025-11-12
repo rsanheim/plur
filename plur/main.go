@@ -111,12 +111,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	// Validate job has target_pattern for file discovery
-	if currentJob.TargetPattern == "" {
-		return fmt.Errorf("job '%s' cannot be used with plur spec because it has no target_pattern configured", jobName)
-	}
-
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.TargetPattern)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.GetTargetPattern())
 
 	// Show hint if both frameworks exist and we auto-detected
 	if !wasExplicit && autodetectedJobs != nil && len(autodetectedJobs) > 1 {

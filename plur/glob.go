@@ -14,7 +14,7 @@ import (
 func FindFilesFromJob(j *job.Job) ([]string, error) {
 	pattern := j.GetTargetPattern()
 	if pattern == "" {
-		return nil, fmt.Errorf("job %q has no target_pattern configured", j.Name)
+		return nil, fmt.Errorf("job %q has no target_pattern configured and job name does not match any conventions (rspec/minitest)", j.Name)
 	}
 
 	matches, err := doublestar.FilepathGlob(pattern)

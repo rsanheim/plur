@@ -90,7 +90,41 @@ Tasks are selected in the following priority order:
 | `description` | string | Human-readable description of the task | No | "" |
 | `run` | string | Command to execute | Yes | "" |
 | `source_dirs` | string[] | Directories to watch/search | No | `["spec", "lib", "app"]` (rspec)<br>`["test", "lib", "app"]` (minitest) |
-| `test_glob` | string | Glob pattern for test files | No | Depends on task |
+| `test_glob` | string | Glob pattern for test files | No | **Convention-based** (see below) |
+
+### Convention-Based File Patterns
+
+Plur automatically applies test file patterns based on task names, making configuration simpler:
+
+* Tasks with **"rspec"** in the name (case-insensitive) automatically get `spec/**/*_spec.rb`
+* Tasks with **"minitest"** in the name (case-insensitive) automatically get `test/**/*_test.rb`
+
+This means you can create custom RSpec or Minitest tasks without specifying `test_glob`:
+
+```toml
+# These all get automatic patterns:
+[task.rspec-integration]
+run = "bin/rspec --tag=integration"
+# Automatically uses: spec/**/*_spec.rb
+
+[task.rspec-fast]
+run = "bin/rspec --fail-fast"
+# Automatically uses: spec/**/*_spec.rb
+
+[task.minitest-unit]
+run = "ruby -Itest"
+# Automatically uses: test/**/*_test.rb
+```
+
+You can still override the convention by specifying an explicit `test_glob`:
+
+```toml
+[task.rspec-api]
+run = "bin/rspec"
+test_glob = "spec/api/**/*_spec.rb"  # Override convention to only run API specs
+```
+
+> **Note**: Tasks that don't match naming conventions (like `rubocop` or `jest`) must have an explicit `test_glob` to work with `plur spec`.
 
 ### Built-in Tasks
 

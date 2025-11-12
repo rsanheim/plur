@@ -74,9 +74,29 @@ func BuildJobAllCmd(job *Job) []string {
 	return result
 }
 
+// GetConventionBasedTargetPattern returns a target pattern based on job name conventions
+// Jobs containing "rspec" get "spec/**/*_spec.rb", jobs containing "minitest" get "test/**/*_test.rb"
+// Returns empty string if no convention matches
+func (j *Job) GetConventionBasedTargetPattern() string {
+	// Apply conventions based on job name (case-insensitive)
+	nameLower := strings.ToLower(j.Name)
+	if strings.Contains(nameLower, "rspec") {
+		return "spec/**/*_spec.rb"
+	}
+	if strings.Contains(nameLower, "minitest") {
+		return "test/**/*_test.rb"
+	}
+
+	return ""
+}
+
 // GetTargetPattern returns the glob pattern for file discovery
+// Falls back to convention-based pattern if not explicitly set
 func (j *Job) GetTargetPattern() string {
-	return j.TargetPattern
+	if j.TargetPattern != "" {
+		return j.TargetPattern
+	}
+	return j.GetConventionBasedTargetPattern()
 }
 
 // GetTargetSuffix extracts the file suffix from the target pattern
@@ -87,7 +107,7 @@ func (j *Job) GetTargetPattern() string {
 //	"spec/**/*_spec.rb" → "_spec.rb"
 //	"test/**/*_test.rb" → "_test.rb"
 func (j *Job) GetTargetSuffix() string {
-	pattern := j.TargetPattern
+	pattern := j.GetTargetPattern()
 	if pattern == "" {
 		return ""
 	}
