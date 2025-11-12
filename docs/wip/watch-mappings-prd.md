@@ -45,3 +45,27 @@ commands `watch run` and `watch fine` still work as shells to build back on top 
 the new system, including the base file watching implemented via edant_watcher combined with our `WatcherManager` and related Go channels/goroutines.
 
 ### Questions
+
+**Resolved in Implementation:**
+1. ~~How should watch directories be derived after removing mapping system?~~
+   - Answer: From Job's WatchMapping.SourceDir() - BUT this is currently broken (see watch-mappings-checklist.md)
+
+2. ~~Should we keep `watch find` command?~~
+   - Answer: Yes, as placeholder for future rebuild
+
+3. ~~What happens to existing watch configurations in user projects?~~
+   - Answer: Removed mapping sections from TOML configs, users will need to update
+
+**Unresolved (Blocking Watch Functionality):**
+1. **Why is WatchMapping.SourceDir() not working?**
+   - Error: "no directories to watch found in watch mappings"
+   - Need to investigate Job → WatchMapping conversion
+   - May need explicit watch directory configuration in job definitions
+
+2. **Should watch directories be explicit in job config or derived?**
+   - Current approach (derive from mappings) appears broken
+   - May need to add explicit `watch_dirs` field back to Job or use `source_dirs`
+
+3. **How should error messages be updated?**
+   - Currently reference removed "watch mappings" system
+   - Need to reflect new Job-based architecture

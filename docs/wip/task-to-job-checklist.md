@@ -110,8 +110,41 @@ Consolidating Task and Job concepts into a unified Job model for both parallel e
 
 ## Final Verification
 
-- [ ] Run final full test suite (bin/rake test)
-- [ ] Verify all success criteria are met
+- [x] Run final full test suite (bin/rake test) - **FAILED: 10 failures, 4 pending**
+- [ ] Verify all success criteria are met - **BLOCKED by test failures**
+
+### Test Failures (as of 2025-11-12)
+
+**10 Failures Total:**
+
+1. **Watch Mode Failures (4 tests)**
+   - `configuration_integration_spec.rb:103` - Watch mode configuration
+   - `command_specific_config_spec.rb:47` - Watch debounce config
+   - `command_specific_config_spec.rb:57` - Watch debounce setting
+   - Error: "no directories to watch found in watch mappings"
+
+2. **-C Flag Failures (3 tests)**
+   - `change_dir_config_spec.rb:113,121,129` - All formats of -C flag broken
+   - Tests fail to find configs or execute when using -C
+   - Formats tested: `-C dir`, `-C=dir`, `--change-dir=dir`
+
+3. **Job Command Building (1 test)**
+   - `configuration_integration_spec.rb:167` - Custom job quoting
+   - Expected: `echo 'CUSTOM TASK:'` (with quotes)
+   - Actual: `echo CUSTOM TASK:` (no quotes)
+
+4. **Error Messaging (1 test)**
+   - `configuration_integration_spec.rb:196` - Nonexistent job error
+   - Should say "job 'nonexistent' not found"
+   - Actually says "no directories to watch found in watch mappings"
+
+5. **Output Formatter (1 test)**
+   - `output_performance_spec.rb:32` - RSpec formatter output
+   - Expected: dots/F pattern `[.F]+`
+   - Actual: Empty string
+
+**4 Pending Tests:**
+- Various tests marked pending/skipped
 
 ## Success Criteria
 
@@ -119,22 +152,33 @@ Consolidating Task and Job concepts into a unified Job model for both parallel e
 - [x] No Task references in codebase
 - [x] Dedicated autodetection package (plur/autodetect/)
 - [x] Simplified configuration parsing (no task merging)
-- [x] All existing tests pass (Go tests + framework selection)
+- [ ] All existing tests pass - **FAILED: 10 failures**
+  - [x] Go tests passing
+  - [x] Framework selection tests passing (8/8)
+  - [ ] Integration tests - **10 failures**
 - [x] `plur spec` works with Jobs
-- [x] `plur watch` continues to work
-- [x] Custom jobs can be defined
+- [ ] `plur watch` continues to work - **BROKEN: 4 test failures**
+- [ ] Custom jobs can be defined - **BROKEN: quoting issue**
 - [x] Autodetection provides correct defaults
-- [x] RSpec and Minitest parsers work correctly
+- [ ] RSpec and Minitest parsers work correctly - **BROKEN: output formatter issue**
+- [ ] -C flag works - **BROKEN: 3 test failures**
 
 ## Current Progress
 
-**Completed**: 56/60 tasks (93%)
-**Phases Complete**: 6/6 (Phase 6.5 enhancements remain)
+**Completed**: 56/60 implementation tasks (93%)
+**Phases Complete**: 6/6 implementation (Phase 6.5 enhancements deferred)
+**Final Verification**: ❌ FAILED - 10 test failures blocking completion
+
 **Build Status**: ✅ Passing
 **Go Tests**: ✅ All passing
-**Spec Mode**: ✅ Working (with Job autodetection)
-**Watch Mode**: ✅ Working (derives directories from watch mappings)
 **Framework Selection**: ✅ All tests passing (8/8)
+**Fixture Tests**: ✅ Passing (bin/rake test:default_ruby)
+
+**Integration Tests**: ❌ FAILING - 219 examples, 10 failures, 4 pending
+**Spec Mode**: ⚠️ Partially working (basic cases work, -C flag broken, output formatter issue)
+**Watch Mode**: ❌ BROKEN (4 test failures, "no directories to watch" error)
+**Custom Jobs**: ❌ BROKEN (command quoting issue)
+**-C Flag**: ❌ BROKEN (all formats failing)
 
 ## Key Changes Made
 

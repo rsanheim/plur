@@ -9,11 +9,17 @@ See [watch-mappings-prd.md](watch-mappings-prd.md) for the PRD.
 ## Status Summary
 
 **Phase 1 (Go Code & Tests):** ✅ COMPLETE
-**Phase 2 (Ruby Specs):** ✅ COMPLETE
+**Phase 2 (Ruby Specs):** ❌ FAILED - Watch tests now broken (4 failures)
 **Phase 3 (Documentation):** ✅ COMPLETE
-**Phase 4 (Verification):** ✅ COMPLETE
+**Phase 4 (Verification):** ❌ FAILED - Watch mode broken
 
-**Overall:** Ready for merge. All mapping logic removed, all documentation cleaned, all tests passing.
+**Overall:** NOT ready for merge. Mapping logic removed but broke watch functionality.
+
+**Current Issues (as of 2025-11-12):**
+* 4 watch-related test failures in integration specs
+* Error: "no directories to watch found in watch mappings"
+* Watch mode appears to be broken after mapping removal
+* See task-to-job-checklist.md for full test failure details
 
 ## Phase 1 - Remove all mapping related Go code and tests
 
@@ -77,3 +83,26 @@ See [watch-mappings-prd.md](watch-mappings-prd.md) for the PRD.
   * Verbose and debug flags work as expected
 
 ## Phase 5 - Lessons Learned
+
+**What Went Wrong:**
+1. **Incomplete migration** - Removed mapping system but didn't fully replace watch directory detection
+2. **Insufficient testing during removal** - Tests passing after Phase 1/2 but broke later during Task→Job migration
+3. **Coupling issues** - Watch mode was more tightly coupled to mapping system than understood
+4. **Missing replacement implementation** - Job-based watch directory derivation not fully implemented
+
+**Impact:**
+* Watch mode broken with "no directories to watch found in watch mappings" error
+* 4 integration test failures
+* Error messages still reference removed "watch mappings" system
+
+**What Needs Fixing:**
+* Implement proper watch directory derivation from Job definitions
+* Fix error messages to reflect new architecture (no more "watch mappings")
+* Ensure WatchMapping.SourceDir() properly derives from job config
+* Add tests specifically for watch directory detection in new system
+
+**Lessons for Future Refactors:**
+1. Don't mark phases "COMPLETE" until full test suite passes
+2. When removing old system, ensure replacement is fully implemented first
+3. Run integration tests after EVERY phase, not just at the end
+4. Keep better connection between what code does and what tests verify
