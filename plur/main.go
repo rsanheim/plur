@@ -36,54 +36,17 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	// Get job from config or autodetection
 	var currentJob *job.Job
-	var autodetectedJobs map[string]*job.Job
+	var wasInferredFromFiles bool
 
 	if jobName == "" {
-		// Autodetect framework
-		autodetectedJobs, _ = autodetect.GetAutodetectedDefaults()
-
-		// Smart framework selection based on directory structure
-		// If only spec/ exists, use RSpec
-		// If only test/ exists, use Minitest
-		// If both exist, prefer RSpec (more common in modern Ruby projects)
-		hasSpecDir := dirExists("spec")
-		hasTestDir := dirExists("test")
-
-		if hasSpecDir && !hasTestDir {
-			// Only spec/ directory - use RSpec
-			if j, exists := autodetectedJobs["rspec"]; exists && j.TargetPattern != "" {
-				jobName = "rspec"
-				currentJob = j
-			}
-		} else if hasTestDir && !hasSpecDir {
-			// Only test/ directory - use Minitest
-			if j, exists := autodetectedJobs["minitest"]; exists && j.TargetPattern != "" {
-				jobName = "minitest"
-				currentJob = j
-			}
-		} else {
-			// Both exist or neither exist - use priority order: rspec > minitest > other
-			if j, exists := autodetectedJobs["rspec"]; exists && j.TargetPattern != "" {
-				jobName = "rspec"
-				currentJob = j
-			} else if j, exists := autodetectedJobs["minitest"]; exists && j.TargetPattern != "" {
-				jobName = "minitest"
-				currentJob = j
-			} else {
-				// Fall back to any job with a target_pattern
-				for name, j := range autodetectedJobs {
-					if j.TargetPattern != "" {
-						jobName = name
-						currentJob = j
-						break
-					}
-				}
-			}
+		// Autodetect framework using patterns, directory structure, and profile
+		detectedName, detectedJob, inferred, err := autodetect.DetectFramework(r.Patterns)
+		if err != nil {
+			return err
 		}
-
-		if currentJob == nil {
-			return fmt.Errorf("no test framework detected. Please create a .plur.toml with a job configuration")
-		}
+		jobName = detectedName
+		currentJob = detectedJob
+		wasInferredFromFiles = inferred
 		wasExplicit = false
 	} else {
 		// Use explicit job name
@@ -93,7 +56,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			currentJob = &jobCopy
 		} else {
 			// Try autodetected jobs
-			autodetectedJobs, _ = autodetect.GetAutodetectedDefaults()
+			autodetectedJobs, _ := autodetect.GetAutodetectedDefaults()
 			if j, exists := autodetectedJobs[jobName]; exists {
 				currentJob = j
 			} else {
@@ -113,14 +76,29 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.GetTargetPattern())
 
-	// Show hint if both frameworks exist and we auto-detected
-	if !wasExplicit && autodetectedJobs != nil && len(autodetectedJobs) > 1 {
-		otherFramework := "minitest"
-		if currentJob.Name == "minitest" {
-			otherFramework = "rspec"
+	// Show hint if framework was auto-detected
+	if !wasExplicit {
+		if wasInferredFromFiles {
+			// Framework was inferred from file suffixes
+			otherFramework := "minitest"
+			if currentJob.Name == "minitest" {
+				otherFramework = "rspec"
+			}
+			logger.LogVerbose(fmt.Sprintf("Detected %s from file suffixes. Use --use=%s to run %s instead.",
+				currentJob.Name, otherFramework, otherFramework))
+		} else {
+			// Check if both directories exist for standard hint
+			hasSpecDir := dirExists("spec")
+			hasTestDir := dirExists("test")
+			if hasSpecDir && hasTestDir {
+				otherFramework := "minitest"
+				if currentJob.Name == "minitest" {
+					otherFramework = "rspec"
+				}
+				logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Specify --use=%s to run %s instead.",
+					currentJob.Name, otherFramework, otherFramework))
+			}
 		}
-		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Specify --use=%s to run %s instead.",
-			currentJob.Name, otherFramework, otherFramework))
 	}
 
 	// Discover test files
