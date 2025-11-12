@@ -198,7 +198,7 @@ RSpec.describe "Configuration integration" do
 
         _, error, status = Open3.capture3(
           {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
-          "plur", "-C", config_fixture_dir.to_s, "watch", "run", "-t", "nonexistent", "--timeout=1"
+          "plur", "-C", config_fixture_dir.to_s, "watch", "run", "-u", "nonexistent", "--timeout=1"
         )
 
         expect(status).not_to be_success
