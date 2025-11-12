@@ -124,7 +124,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		if currentJob.Name == "minitest" {
 			otherFramework = "rspec"
 		}
-		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Use --use=%s to run %s instead.",
+		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Specify --use=%s to run %s instead.",
 			currentJob.Name, otherFramework, otherFramework))
 	}
 
@@ -261,7 +261,7 @@ type PlurCLI struct {
 	FirstIs1   bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
-	Use        string `help:"Default job to use (overrides autodetection)" default:"" hidden:""`
+	Use        string `help:"Job to use (overrides autodetection)" default:"" hidden:""`
 	Verbose    bool   `short:"v" help:"Enable verbose output for debugging" default:"false"`
 	Version    bool   `help:"Show version information"`
 	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
