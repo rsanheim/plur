@@ -18,10 +18,10 @@ func TestRuntimeTracker(t *testing.T) {
 		rt.AddRuntime("spec/bar_spec.rb", 2.0)
 		rt.AddRuntime("spec/foo_spec.rb", 0.5)
 
-		runtimes := rt.GetRuntimes()
-
-		assert.Equal(t, 2.0, runtimes["spec/foo_spec.rb"], "foo_spec.rb runtime should be accumulated")
-		assert.Equal(t, 2.0, runtimes["spec/bar_spec.rb"], "bar_spec.rb runtime should be correct")
+		rt.mu.Lock()
+		assert.Equal(t, 2.0, rt.runtimes["spec/foo_spec.rb"], "foo_spec.rb runtime should be accumulated")
+		assert.Equal(t, 2.0, rt.runtimes["spec/bar_spec.rb"], "bar_spec.rb runtime should be correct")
+		rt.mu.Unlock()
 	})
 
 	t.Run("AddTestNotification extracts runtime from test notification", func(t *testing.T) {
@@ -34,8 +34,9 @@ func TestRuntimeTracker(t *testing.T) {
 
 		rt.AddTestNotification(notification)
 
-		runtimes := rt.GetRuntimes()
-		assert.InDelta(t, 0.123, runtimes["spec/test_spec.rb"], 0.001, "test_spec.rb runtime should be extracted from notification")
+		rt.mu.Lock()
+		assert.InDelta(t, 0.123, rt.runtimes["spec/test_spec.rb"], 0.001, "test_spec.rb runtime should be extracted from notification")
+		rt.mu.Unlock()
 	})
 
 	t.Run("SaveToFile creates runtime.json", func(t *testing.T) {

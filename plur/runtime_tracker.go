@@ -69,19 +69,6 @@ func GetRuntimeFilePath() (string, error) {
 	return getRuntimeFilePath()
 }
 
-// GetRuntimes returns a copy of the runtime data
-func (rt *RuntimeTracker) GetRuntimes() map[string]float64 {
-	rt.mu.Lock()
-	defer rt.mu.Unlock()
-
-	// Return a copy to avoid concurrent access issues
-	result := make(map[string]float64)
-	for k, v := range rt.runtimes {
-		result[k] = v
-	}
-	return result
-}
-
 // getProjectHash generates a hash of the current working directory
 func getProjectHash() (string, error) {
 	cwd, err := os.Getwd()
