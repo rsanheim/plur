@@ -19,7 +19,7 @@ RSpec.describe "plur watch find with mismatched directory structure" do
 
     # Should show matched rules in slog format
     expect(result.out).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb')
-    expect(result.out).to include('target=spec/{{match}}_spec.rb')
+    expect(result.out).to include("target=spec/{{match}}_spec.rb")
 
     # Should show missing files as warnings
     expect(result.out).to include('msg="not found" file=spec/example/runner_spec.rb')
