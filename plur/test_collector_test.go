@@ -75,10 +75,10 @@ func TestTestCollector_AddNotification(t *testing.T) {
 	collector.AddNotification(rawOutput)
 
 	// Verify collector state
-	assert.Len(t, collector.GetTests(), 3)
-	assert.Len(t, collector.GetFailures(), 1)
-	assert.Len(t, collector.GetPending(), 1)
-	assert.NotNil(t, collector.GetSuiteInfo())
+	assert.Len(t, collector.tests, 3)
+	assert.Len(t, collector.failures, 1)
+	assert.Len(t, collector.pending, 1)
+	assert.NotNil(t, collector.suiteInfo)
 	assert.Equal(t, "Some test output\n", collector.rawOutput.String())
 }
 

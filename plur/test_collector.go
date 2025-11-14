@@ -121,33 +121,3 @@ func (a *TestCollector) BuildResult(testFile *TestFile, duration time.Duration) 
 
 	return result
 }
-
-// GetTests returns all collected test case notifications
-func (a *TestCollector) GetTests() []types.TestCaseNotification {
-	return a.tests
-}
-
-// GetFailures returns all failure notifications
-func (a *TestCollector) GetFailures() []types.TestCaseNotification {
-	return a.failures
-}
-
-// GetPending returns all pending test notifications
-func (a *TestCollector) GetPending() []types.TestCaseNotification {
-	return a.pending
-}
-
-// GetSuiteInfo returns the suite notification if available
-func (a *TestCollector) GetSuiteInfo() *types.SuiteNotification {
-	return a.suiteInfo
-}
-
-// GetFormattedFailures returns the formatted failures if available
-func (a *TestCollector) GetFormattedFailures() string {
-	return a.formattedFailures
-}
-
-// GetFormattedSummary returns the formatted summary if available
-func (a *TestCollector) GetFormattedSummary() string {
-	return a.formattedSummary
-}

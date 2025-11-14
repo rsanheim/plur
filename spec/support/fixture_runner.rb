@@ -59,40 +59,6 @@ module FixtureRunner
 
     # Return the native result for comparison
   end
-
-  # Extract test counts from output
-  def extract_test_stats(output, framework)
-    case framework
-    when :minitest
-      if output =~ /(\d+) runs, (\d+) assertions, (\d+) failures, (\d+) errors, (\d+) skips/
-        {
-          runs: $1.to_i,
-          assertions: $2.to_i,
-          failures: $3.to_i,
-          errors: $4.to_i,
-          skips: $5.to_i
-        }
-      end
-    when :testunit
-      if output =~ /(\d+) tests, (\d+) assertions, (\d+) failures, (\d+) errors, (\d+) pendings, (\d+) omissions/
-        {
-          tests: $1.to_i,
-          assertions: $2.to_i,
-          failures: $3.to_i,
-          errors: $4.to_i,
-          pendings: $5.to_i,
-          omissions: $6.to_i
-        }
-      end
-    when :rspec
-      if output =~ /(\d+) examples?, (\d+) failures?/
-        {
-          examples: $1.to_i,
-          failures: $2.to_i
-        }
-      end
-    end
-  end
 end
 
 # Make it available in RSpec
