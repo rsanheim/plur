@@ -223,7 +223,6 @@ type PlurCLI struct {
 	DBMigrate  DBMigrateCmd  `cmd:"" name:"db:migrate" help:"Migrate test databases"`
 	DBPrepare  DBPrepareCmd  `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
 
-	// Global flags (alphabetically sorted for help display)
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
 	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
@@ -291,7 +290,6 @@ func (r *PlurCLI) AfterApply() error {
 }
 
 // handleHelpCommand converts "help" command to "-h" flag for better UX.
-// Kong doesn't have a built-in help command, so we intercept it early.
 func handleHelpCommand(args []string) []string {
 	if len(args) > 0 && args[0] == "help" {
 		// Replace "help" with "-h"
