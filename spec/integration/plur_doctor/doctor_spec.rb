@@ -12,6 +12,27 @@ RSpec.describe "plur doctor command" do
   # Normalize dynamic values for consistent golden testing
   # Very general normalization - we only care about structure, not values
   def normalize_doctor_output(str)
+    # Normalize watch directories to consistent order (lib before spec alphabetically)
+    lines = str.lines
+    watch_section_start = lines.index { |l| l.include?("Watch Directories:") }
+    if watch_section_start
+      # Find watch directory lines (lines with pattern "  dir/ (exists)")
+      watch_lines = []
+      i = watch_section_start + 1
+      while i < lines.length && lines[i].match?(/^\s+\w+\/\s+\(exists\)/)
+        watch_lines << lines[i]
+        i += 1
+      end
+      # Sort watch directory lines alphabetically
+      if watch_lines.any?
+        sorted = watch_lines.sort
+        sorted.each_with_index do |line, idx|
+          lines[watch_section_start + 1 + idx] = line
+        end
+      end
+    end
+    str = lines.join
+
     str
       .gsub(/Plur Version:\s+.+/, "Plur Version:     [VERSION]")
       .gsub(/Build Date:\s+.+/, "Build Date:      [BUILD_DATE]")
@@ -32,6 +53,8 @@ RSpec.describe "plur doctor command" do
       .gsub(/HOME:\s+.+/, "HOME:                     [HOME_PATH]")
       .gsub(/Local Config:\s+.+/, "Local Config:   [LOCAL_CONFIG_PATH]")
       .gsub(/Global Config:\s+.+/, "Global Config:  [GLOBAL_CONFIG_PATH]")
+      .gsub(/\s+- .*\.plur\.toml.*/, "    [CONFIG_FILE]")
+      .gsub(/\s+Using defaults.*/, "    [DEFAULT_CONFIG_MESSAGE]")
       .gsub(/Source:\s+.+/, "Source: [CONFIG_SOURCE]")
       .gsub(/Command:\s+.+/, "Command: [COMMAND]")
       .gsub(/Workers:\s+\d+/, "Workers: [WORKER_COUNT]")

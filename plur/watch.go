@@ -48,8 +48,6 @@ func loadWatchConfiguration(cli *PlurCLI) (map[string]*job.Job, []*watch.WatchMa
 	for i := range cli.WatchMappings {
 		watches = append(watches, &cli.WatchMappings[i])
 	}
-	logger.LogVerbose("Jobs loaded", "jobs", fmt.Sprintf("%+v", jobs))
-	logger.LogVerbose("Watch mappings loaded", "watches", fmt.Sprintf("%+v", watches))
 
 	// If no configuration provided, use autodetected defaults
 	if len(jobs) == 0 && len(watches) == 0 {
@@ -118,6 +116,19 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	jobs, watches, err := loadWatchConfiguration(cli)
 	if err != nil {
 		return fmt.Errorf("failed to load watch configuration: %w", err)
+	}
+
+	// Validate job name if explicitly specified
+	if watchCmd.Use != "" {
+		if _, exists := jobs[watchCmd.Use]; !exists {
+			// Build helpful error message
+			availableJobs := make([]string, 0, len(jobs))
+			for name := range jobs {
+				availableJobs = append(availableJobs, name)
+			}
+			sort.Strings(availableJobs)
+			return fmt.Errorf("job '%s' not found. Available jobs: %s", watchCmd.Use, strings.Join(availableJobs, ", "))
+		}
 	}
 
 	// Log watch configuration
