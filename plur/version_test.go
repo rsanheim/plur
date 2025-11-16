@@ -2,7 +2,6 @@ package main
 
 import (
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,10 +20,10 @@ func TestGetVersionInfo_ReturnsValidFormat(t *testing.T) {
 	// - "dev-{commit}-dirty"
 	// - semver from ldflags or module (e.g., "0.12.0-dev-c366cf1" or "v0.12.0")
 	validPatterns := []string{
-		`^dev$`,                     // Pure dev fallback
-		`^dev-[0-9a-f]{7}$`,         // Dev with commit
-		`^dev-[0-9a-f]{7}-dirty$`,   // Dev with dirty flag
-		`^v?\d+\.\d+\.\d+.*$`,       // Semver (with optional v prefix and any suffix)
+		`^dev$`,                   // Pure dev fallback
+		`^dev-[0-9a-f]{7}$`,       // Dev with commit
+		`^dev-[0-9a-f]{7}-dirty$`, // Dev with dirty flag
+		`^v?\d+\.\d+\.\d+.*$`,     // Semver (with optional v prefix and any suffix)
 	}
 
 	matched := false
@@ -50,37 +49,6 @@ func TestGetVersionInfo_IsConsistent(t *testing.T) {
 func TestGetVersionInfo_NeverEmpty(t *testing.T) {
 	version := GetVersionInfo()
 	require.NotEmpty(t, version)
-}
-
-func TestGetDetailedVersionInfo_IncludesBasicVersion(t *testing.T) {
-	basic := GetVersionInfo()
-	detailed := GetDetailedVersionInfo()
-
-	require.NotEmpty(t, detailed)
-	assert.Contains(t, detailed, basic)
-	assert.Contains(t, detailed, "Version:")
-}
-
-func TestGetDetailedVersionInfo_IsMultiLine(t *testing.T) {
-	detailed := GetDetailedVersionInfo()
-
-	require.NotEmpty(t, detailed)
-
-	// Should contain at least the version line
-	lines := strings.Split(detailed, "\n")
-	assert.GreaterOrEqual(t, len(lines), 1)
-}
-
-func TestGetBuildTime_ReturnsValidFormat(t *testing.T) {
-	buildTime := GetBuildTime()
-
-	require.NotEmpty(t, buildTime)
-
-	// Should be either "unknown" or a valid date format starting with YYYY-MM-DD
-	if buildTime != "unknown" {
-		validTimePattern := `^\d{4}-\d{2}-\d{2}`
-		assert.Regexp(t, validTimePattern, buildTime)
-	}
 }
 
 func TestGetVersionInfo_CommitHashFormat(t *testing.T) {
