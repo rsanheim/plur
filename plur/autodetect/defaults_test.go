@@ -271,32 +271,6 @@ func TestDefaultJobCommands(t *testing.T) {
 	}
 }
 
-func TestFileAndDirHelpers(t *testing.T) {
-	tmpDir := t.TempDir()
-	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-
-	err := os.Chdir(tmpDir)
-	require.NoError(t, err)
-
-	// Create test file and directory
-	err = os.WriteFile("test.txt", []byte("test"), 0o644)
-	require.NoError(t, err)
-
-	err = os.Mkdir("testdir", 0o755)
-	require.NoError(t, err)
-
-	// Test fileExists
-	assert.True(t, fileExists("test.txt"))
-	assert.False(t, fileExists("nonexistent.txt"))
-	assert.False(t, fileExists("testdir")) // Directory should return false
-
-	// Test dirExists
-	assert.True(t, dirExists("testdir"))
-	assert.False(t, dirExists("nonexistent"))
-	assert.False(t, dirExists("test.txt")) // File should return false
-}
-
 func TestDefaultProfileCopy(t *testing.T) {
 	// Get profile twice and verify they are independent copies
 	profile1 := GetDefaultProfile("ruby")

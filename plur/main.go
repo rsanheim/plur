@@ -11,6 +11,7 @@ import (
 	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/fsutil"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -87,9 +88,8 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			logger.LogVerbose(fmt.Sprintf("Detected %s from file suffixes. Use --use=%s to run %s instead.",
 				currentJob.Name, otherFramework, otherFramework))
 		} else {
-			// Check if both directories exist for standard hint
-			hasSpecDir := dirExists("spec")
-			hasTestDir := dirExists("test")
+			hasSpecDir := fsutil.DirExists("spec")
+			hasTestDir := fsutil.DirExists("test")
 			if hasSpecDir && hasTestDir {
 				otherFramework := "minitest"
 				if currentJob.Name == "minitest" {
@@ -241,7 +241,7 @@ type PlurCLI struct {
 
 	// Job and watch configuration
 	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
-	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" toml:"watch"`
+	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
 	// Store the built global config
 	globalConfig *config.GlobalConfig `kong:"-"`
@@ -399,13 +399,4 @@ type ExitCode struct {
 
 func (e ExitCode) Error() string {
 	return fmt.Sprintf("exit code %d", e.Code)
-}
-
-// dirExists checks if a directory exists
-func dirExists(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return info.IsDir()
 }

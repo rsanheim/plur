@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,13 +18,13 @@ func TestEventProcessorBasicMapping(t *testing.T) {
 		},
 	}
 
-	targets := MultiString{"spec/{{match}}_spec.rb"}
+	targets := config.MultiString{"spec/{{match}}_spec.rb"}
 	watches := []*WatchMapping{
 		{
 			Name:    "lib-to-spec",
 			Source:  "lib/**/*.rb",
 			Targets: &targets,
-			Jobs:    MultiString{"rspec"},
+			Jobs:    config.MultiString{"rspec"},
 		},
 	}
 
@@ -88,7 +89,7 @@ func TestEventProcessorNoTargets(t *testing.T) {
 			Name:    "spec-files",
 			Source:  "spec/**/*_spec.rb",
 			Targets: nil,
-			Jobs:    MultiString{"rspec"},
+			Jobs:    config.MultiString{"rspec"},
 		},
 	}
 
@@ -113,13 +114,13 @@ func TestEventProcessorMultipleJobs(t *testing.T) {
 		},
 	}
 
-	targets := MultiString{"spec/{{match}}_spec.rb"}
+	targets := config.MultiString{"spec/{{match}}_spec.rb"}
 	watches := []*WatchMapping{
 		{
 			Name:    "lib-to-both",
 			Source:  "lib/**/*.rb",
 			Targets: &targets,
-			Jobs:    MultiString{"rspec", "rubocop"},
+			Jobs:    config.MultiString{"rspec", "rubocop"},
 		},
 	}
 
@@ -143,13 +144,13 @@ func TestEventProcessorMultipleTargets(t *testing.T) {
 	}
 
 	// One source file can map to multiple targets
-	targets := MultiString{"spec/{{match}}_spec.rb", "spec/lib/{{match}}_spec.rb"}
+	targets := config.MultiString{"spec/{{match}}_spec.rb", "spec/lib/{{match}}_spec.rb"}
 	watches := []*WatchMapping{
 		{
 			Name:    "lib-to-multiple-specs",
 			Source:  "lib/**/*.rb",
 			Targets: &targets,
-			Jobs:    MultiString{"rspec"},
+			Jobs:    config.MultiString{"rspec"},
 		},
 	}
 
@@ -172,13 +173,13 @@ func TestEventProcessorExcludePatterns(t *testing.T) {
 		},
 	}
 
-	targets := MultiString{"spec/{{match}}_spec.rb"}
+	targets := config.MultiString{"spec/{{match}}_spec.rb"}
 	watches := []*WatchMapping{
 		{
 			Name:    "lib-to-spec",
 			Source:  "lib/**/*.rb",
 			Targets: &targets,
-			Jobs:    MultiString{"rspec"},
+			Jobs:    config.MultiString{"rspec"},
 			Exclude: []string{"lib/generators/**", "lib/vendor/**"},
 		},
 	}
@@ -229,27 +230,27 @@ func TestEventProcessorMultipleWatches(t *testing.T) {
 		},
 	}
 
-	libTargets := MultiString{"spec/{{match}}_spec.rb"}
-	appTargets := MultiString{"spec/{{match}}_spec.rb"}
+	libTargets := config.MultiString{"spec/{{match}}_spec.rb"}
+	appTargets := config.MultiString{"spec/{{match}}_spec.rb"}
 
 	watches := []*WatchMapping{
 		{
 			Name:    "lib-to-spec",
 			Source:  "lib/**/*.rb",
 			Targets: &libTargets,
-			Jobs:    MultiString{"rspec"},
+			Jobs:    config.MultiString{"rspec"},
 		},
 		{
 			Name:    "app-to-spec",
 			Source:  "app/**/*.rb",
 			Targets: &appTargets,
-			Jobs:    MultiString{"rspec"},
+			Jobs:    config.MultiString{"rspec"},
 		},
 		{
 			Name:    "spec-files",
 			Source:  "spec/**/*_spec.rb",
 			Targets: nil,
-			Jobs:    MultiString{"rspec"},
+			Jobs:    config.MultiString{"rspec"},
 		},
 	}
 
@@ -296,13 +297,13 @@ func TestEventProcessorDeduplication(t *testing.T) {
 		},
 	}
 
-	targets := MultiString{"spec/user_spec.rb", "spec/user_spec.rb"} // Duplicate targets
+	targets := config.MultiString{"spec/user_spec.rb", "spec/user_spec.rb"} // Duplicate targets
 	watches := []*WatchMapping{
 		{
 			Name:    "duplicate-targets",
 			Source:  "lib/user.rb",
 			Targets: &targets,
-			Jobs:    MultiString{"rspec"},
+			Jobs:    config.MultiString{"rspec"},
 		},
 	}
 
@@ -323,13 +324,13 @@ func TestEventProcessorUndefinedJob(t *testing.T) {
 		},
 	}
 
-	targets := MultiString{"spec/{{match}}_spec.rb"}
+	targets := config.MultiString{"spec/{{match}}_spec.rb"}
 	watches := []*WatchMapping{
 		{
 			Name:    "lib-to-spec",
 			Source:  "lib/**/*.rb",
 			Targets: &targets,
-			Jobs:    MultiString{"minitest"}, // Job doesn't exist
+			Jobs:    config.MultiString{"minitest"}, // Job doesn't exist
 		},
 	}
 
@@ -360,8 +361,8 @@ func TestValidateConfig(t *testing.T) {
 				{
 					Name:    "lib-to-spec",
 					Source:  "lib/**/*.rb",
-					Targets: &MultiString{"spec/{{match}}_spec.rb"},
-					Jobs:    MultiString{"rspec"},
+					Targets: &config.MultiString{"spec/{{match}}_spec.rb"},
+					Jobs:    config.MultiString{"rspec"},
 				},
 			},
 			wantErr: false,
@@ -372,8 +373,8 @@ func TestValidateConfig(t *testing.T) {
 				{
 					Name:    "lib-to-spec",
 					Source:  "lib/**/*.rb",
-					Targets: &MultiString{"spec/{{match}}_spec.rb"},
-					Jobs:    MultiString{"nonexistent"},
+					Targets: &config.MultiString{"spec/{{match}}_spec.rb"},
+					Jobs:    config.MultiString{"nonexistent"},
 				},
 			},
 			wantErr: true,
@@ -385,8 +386,8 @@ func TestValidateConfig(t *testing.T) {
 				{
 					Name:    "lib-to-spec",
 					Source:  "lib/**/*.rb",
-					Targets: &MultiString{"spec/{{invalid}}_spec.rb"},
-					Jobs:    MultiString{"rspec"},
+					Targets: &config.MultiString{"spec/{{invalid}}_spec.rb"},
+					Jobs:    config.MultiString{"rspec"},
 				},
 			},
 			wantErr: true,

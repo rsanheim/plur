@@ -8,38 +8,6 @@ import (
 	"github.com/rsanheim/plur/job"
 )
 
-// MultiString allows single string or array in TOML configuration
-// This enables both: jobs = "rspec" and jobs = ["rspec", "lint"]
-type MultiString []string
-
-// UnmarshalTOML implements custom TOML unmarshaling for MultiString
-// It accepts both a single string and an array of strings
-func (ms *MultiString) UnmarshalTOML(value any) error {
-	switch v := value.(type) {
-	case string:
-		*ms = []string{v}
-		return nil
-	case []any:
-		strs := make([]string, len(v))
-		for i, item := range v {
-			str, ok := item.(string)
-			if !ok {
-				return fmt.Errorf("expected string in array, got %T", item)
-			}
-			strs[i] = str
-		}
-		*ms = strs
-		return nil
-	default:
-		return fmt.Errorf("expected string or array of strings, got %T", v)
-	}
-}
-
-// Slice returns a copy of the underlying string slice
-func (ms MultiString) Slice() []string {
-	return append([]string(nil), ms...)
-}
-
 // EventProcessor maps file change events to jobs with target files
 // It does NOT watch files (that's WatcherManager's job)
 // It only determines: "given a file changed, what jobs should run and with what targets?"

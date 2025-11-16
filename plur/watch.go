@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"embed"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -49,6 +48,8 @@ func loadWatchConfiguration(cli *PlurCLI) (map[string]*job.Job, []*watch.WatchMa
 	for i := range cli.WatchMappings {
 		watches = append(watches, &cli.WatchMappings[i])
 	}
+	logger.LogVerbose("Jobs loaded", "jobs", fmt.Sprintf("%+v", jobs))
+	logger.LogVerbose("Watch mappings loaded", "watches", fmt.Sprintf("%+v", watches))
 
 	// If no configuration provided, use autodetected defaults
 	if len(jobs) == 0 && len(watches) == 0 {
@@ -398,31 +399,6 @@ func runCommandArgs(args []string) {
 	fmt.Println("running:", strings.Join(args, " "))
 
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
-	}
-}
-
-// Simple implementation using direct command call for now
-func runCommand(targetPath string, command string) {
-	var cmd *exec.Cmd
-
-	cmdParts := strings.Fields(command)
-	args := append(cmdParts, targetPath)
-	cmd_string := strings.Join(args, " ")
-
-	fmt.Println("running:", cmd_string)
-
-	if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
-		fmt.Printf("file not found: %s\n", targetPath)
-		return
-	}
-
-	cmd = exec.Command(args[0], args[1:]...)
-
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

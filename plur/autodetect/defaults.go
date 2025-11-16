@@ -3,10 +3,10 @@ package autodetect
 import (
 	_ "embed"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/pelletier/go-toml"
+	"github.com/rsanheim/plur/internal/fsutil"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/watch"
 )
@@ -37,13 +37,13 @@ func init() {
 // Returns the profile name (e.g., "ruby", "go") or empty string if no match
 func AutodetectProfile() string {
 	// Check for Go project
-	if fileExists("go.mod") {
+	if fsutil.FileExists("go.mod") {
 		return "go"
 	}
 
 	// Check for Ruby project - be permissive for backward compatibility
 	// Accept any of: Gemfile, spec/, test/, or lib/ directory
-	if fileExists("Gemfile") || dirExists("spec") || dirExists("test") || dirExists("lib") {
+	if fsutil.FileExists("Gemfile") || fsutil.DirExists("spec") || fsutil.DirExists("test") || fsutil.DirExists("lib") {
 		return "ruby"
 	}
 
@@ -101,24 +101,6 @@ func GetAutodetectedDefaults() (map[string]*job.Job, []*watch.WatchMapping) {
 	return jobs, watches
 }
 
-// fileExists checks if a file exists
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return !info.IsDir()
-}
-
-// dirExists checks if a directory exists
-func dirExists(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return info.IsDir()
-}
-
 // DetectFramework intelligently detects the test framework based on:
 // 1. File patterns (if provided) - infers from suffixes like *_spec.rb or *_test.rb
 // 2. Directory structure (spec/ vs test/)
@@ -150,8 +132,8 @@ func DetectFramework(patterns []string) (string, *job.Job, bool, error) {
 	// If only spec/ exists, use RSpec
 	// If only test/ exists, use Minitest
 	// If both exist, prefer RSpec (more common in modern Ruby projects)
-	hasSpecDir := dirExists("spec")
-	hasTestDir := dirExists("test")
+	hasSpecDir := fsutil.DirExists("spec")
+	hasTestDir := fsutil.DirExists("test")
 
 	var jobName string
 	var currentJob *job.Job
@@ -207,12 +189,12 @@ func inferFrameworkFromPatterns(patterns []string) string {
 
 	for _, pattern := range patterns {
 		// Skip glob patterns and directories - only check actual files
-		if containsGlobChars(pattern) || dirExists(pattern) {
+		if containsGlobChars(pattern) || fsutil.DirExists(pattern) {
 			continue
 		}
 
 		// Check if it's a file that exists
-		if !fileExists(pattern) {
+		if !fsutil.FileExists(pattern) {
 			continue
 		}
 

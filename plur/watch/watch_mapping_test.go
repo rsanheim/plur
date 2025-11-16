@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/rsanheim/plur/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +19,7 @@ func TestSourceDirForGlobs(t *testing.T) {
 	for _, glob := range globs {
 		watchMapping := WatchMapping{
 			Source:  glob,
-			Targets: &MultiString{glob},
+			Targets: &config.MultiString{glob},
 		}
 		assert.Equal(t, "test", watchMapping.SourceDir())
 	}
@@ -36,8 +37,8 @@ func TestSourceDirForSingleFile(t *testing.T) {
 
 		watchMapping := WatchMapping{
 			Source:  source,
-			Targets: &MultiString{source},
-			Jobs:    MultiString{"rspec"},
+			Targets: &config.MultiString{source},
+			Jobs:    config.MultiString{"rspec"},
 		}
 		assert.Equal(t, "test", watchMapping.SourceDir())
 	}
@@ -46,7 +47,7 @@ func TestSourceDirForSingleFile(t *testing.T) {
 func TestSourceDirForDirectory(t *testing.T) {
 	watchMapping := WatchMapping{
 		Source: "test/package/stuff/things/",
-		Jobs:   MultiString{"rspec"},
+		Jobs:   config.MultiString{"rspec"},
 	}
 	assert.Equal(t, "test/package/stuff/things", watchMapping.SourceDir())
 }
@@ -54,7 +55,7 @@ func TestSourceDirForDirectory(t *testing.T) {
 func TestSourceDirForRootDirectory(t *testing.T) {
 	watchMapping := WatchMapping{
 		Source: ".",
-		Jobs:   MultiString{"rspec"},
+		Jobs:   config.MultiString{"rspec"},
 	}
 	assert.Equal(t, ".", watchMapping.SourceDir())
 }
