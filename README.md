@@ -89,8 +89,8 @@ Plur supports TOML configuration files for persistent settings:
 # .plur.toml or ~/.plur.toml
 workers = 4
 
-[task.rspec]
-run = "bin/rspec"
+[job.rspec]
+cmd = ["bin/rspec"]
 
 [watch.run]
 debounce = 200  # Milliseconds to wait before running tests

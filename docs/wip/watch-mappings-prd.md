@@ -30,7 +30,7 @@ This includes:
 * `watch run` will remain and will just display files changed from the underlying
 edant_watcher library - this will give us an opporuntity to fine tune and refine
 logging and the overall file watch system, before we add back the test runner.
-* `watch fine` logic -- the CLI command can stay, but we will build back the logic behind it.
+* `watch find` logic -- the CLI command can stay, but we will build back the logic behind it.
 * _any_ related documentation, Go tests, example configs, etc.
 * For rspec tests, we may leave a few that are built from the outside in and 
 don't verify implementation details. Any that are too complicated or tied ot the 
