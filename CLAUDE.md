@@ -17,10 +17,22 @@ bin/rake test                 # Run full Ruby test suite
 bin/rake standard:fix         # Fix Ruby lint issues
 
 # Never do this:
-# rake anything         ❌ WRONG - breaks bundler context  
+# rake anything         ❌ WRONG - breaks bundler context
 # go build             ❌ WRONG - missing version info
 # cd plur && go build   ❌ WRONG - use bin/rake install
 ```
+
+### bin/rake build vs bin/rake install
+
+* **bin/rake build** - Fast local build using `go build` (creates `plur/plur`)
+  * Version detection may be incorrect (uses runtime git describe in CWD)
+  * Used by CI for speed
+  * Fine for testing, not for distribution
+
+* **bin/rake install** - Production dev install using `goreleaser build` (installs to `$GOPATH/bin/plur`)
+  * Version is correctly embedded via ldflags at build time
+  * Always shows consistent version regardless of CWD
+  * Use this for your daily workflow
 
 ## Quick Reference
 
