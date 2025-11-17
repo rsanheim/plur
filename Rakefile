@@ -33,7 +33,7 @@ task :install do
     puts "[install] Plur already installed"
   else
     Dir.chdir(Plur.config.plur_dir) do
-      sh %(goreleaser build --snapshot --single-target --clean -o $(go env GOPATH)/bin/plur)
+      sh %(goreleaser build --snapshot --single-target --clean)
     end
   end
   puts "[install] Installed plur with version: #{`plur --version`.strip}"
