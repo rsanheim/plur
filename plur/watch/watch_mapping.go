@@ -1,6 +1,8 @@
 package watch
 
 import (
+	"fmt"
+
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/config"
 )
@@ -27,4 +29,8 @@ func (w *WatchMapping) SourceDir() string {
 func (w *WatchMapping) calculateSourceDir() string {
 	base, _ := doublestar.SplitPattern(w.Source)
 	return base
+}
+
+func (w *WatchMapping) String() string {
+	return fmt.Sprintf("WatchMapping{Name: %s, Source: %s, Targets: %s, Jobs: %s, Exclude: %s, SourceDir: %s}", w.Name, w.Source, w.Targets, w.Jobs, w.Exclude, w.SourceDir())
 }

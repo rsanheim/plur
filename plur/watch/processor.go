@@ -6,6 +6,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/logger"
 )
 
 // EventProcessor maps file change events to jobs with target files

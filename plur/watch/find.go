@@ -1,10 +1,11 @@
 package watch
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/internal/fsutil"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 )
@@ -67,7 +68,8 @@ func FindTargetsForFile(filePath string, jobs map[string]*job.Job, watches []*Wa
 	// Filter targets by existence
 	for jobName, targets := range candidateTargets {
 		for _, target := range targets {
-			if fsutil.FileExists(target) {
+			fmt.Println("target", target)
+			if _, err := os.Stat(target); err == nil {
 				result.ExistingTargets[jobName] = append(result.ExistingTargets[jobName], target)
 			} else {
 				result.MissingTargets[jobName] = append(result.MissingTargets[jobName], target)

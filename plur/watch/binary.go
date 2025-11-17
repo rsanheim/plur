@@ -39,7 +39,7 @@ func InstallBinary(watcherBinaries embed.FS, binDir, plurHome string, force bool
 	}
 	if !force {
 		if _, err := os.Stat(binaryPath); err == nil {
-			LogDebug("watcher binary already installed at", "path", binaryPath)
+			logger.Logger.Debug("e-dant/watcher installed", "path", binaryPath)
 			return nil
 		}
 	}

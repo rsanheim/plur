@@ -56,8 +56,7 @@ func loadWatchConfiguration(cli *PlurCLI) (map[string]*job.Job, []*watch.WatchMa
 		watches = defaultWatches
 
 		if len(jobs) > 0 {
-			logger.LogVerbose("Using autodetected default configuration",
-				"profile", autodetect.AutodetectProfile())
+			logger.LogVerbose("Using autodetected default configuration", "profile", autodetect.AutodetectProfile())
 		}
 	}
 
@@ -77,7 +76,7 @@ func executeJob(j *job.Job, targetFiles []string, cwd string) error {
 		return nil
 	}
 
-	logger.Logger.Info("Executing job", "job", j.Name, "targets", len(targetFiles))
+	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
 
 	// Build command for each target file
 	for _, target := range targetFiles {
@@ -168,6 +167,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		"project", projectName,
 		"directories", watchDirs,
 		"jobs", len(jobs),
+		"watch", fmt.Sprintf("%+v", watches),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,
 		"debounce", watchCmd.Debounce,
@@ -182,10 +182,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}
 
-	// Log binary path in debug mode
-	logger.LogDebug("plur using e-dant/watcher", "path", watcherPath)
-
-	// Create watcher configuration
 	watcherConfig := &watch.ManagerConfig{
 		Directories:    watchDirs,
 		DebounceDelay:  debounceDelay,
@@ -228,6 +224,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	fmt.Println("Commands:")
 	fmt.Println("  [Enter]  - Run all tests")
 	fmt.Println("  reload   - Reload configuration")
+	fmt.Println("  debug    - Toggle debug output")
 	fmt.Println("  exit     - Exit watch mode")
 	fmt.Println("  Ctrl-C   - Exit watch mode")
 	fmt.Println()
@@ -291,12 +288,23 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				// Atomic process replacement (Unix/Linux/macOS only)
 				// Process is replaced in-place, maintaining the same PID
 				args := os.Args
+				if logger.IsDebugEnabled() {
+					args = append(args, "--debug")
+				}
 				env := os.Environ()
 				err = syscall.Exec(execPath, args, env)
-
-				// Only reached if exec fails
 				fmt.Fprintf(os.Stderr, "Failed to exec new process: %v\n", err)
 				os.Exit(1)
+			case "debug":
+				// Toggle debug mode
+				logger.ToggleDebug()
+				if logger.IsDebugEnabled() {
+					fmt.Println("Debug output enabled")
+					logger.Logger.Debug("Debug mode activated")
+				} else {
+					fmt.Println("Debug output disabled")
+				}
+				fmt.Print("plur> ")
 			case "exit":
 				// User typed exit command
 				logger.Logger.Info("User requested exit")
@@ -305,7 +313,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			default:
 				// Unknown command
 				fmt.Printf("Unknown command: '%s'\n", input)
-				fmt.Println("Commands: [Enter] to run all tests, 'reload' to reload config, 'exit' to quit")
+				fmt.Println("Commands: [Enter] to run all tests, 'reload' to reload config, 'debug' to toggle debug, 'exit' to quit")
 				fmt.Print("plur> ")
 			}
 
@@ -321,13 +329,11 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 			// Only process file events (not directories)
 			if event.PathType != "file" {
-				// Skip logging for directory events
 				continue
 			}
 
 			// Only process modify and create events
 			if event.EffectType != "modify" && event.EffectType != "create" {
-				// Skip logging for non-modify/create events
 				continue
 			}
 
@@ -340,20 +346,16 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 			// Process the file change if we have watch mappings configured
 			if len(watches) > 0 {
-				logger.Logger.Info("File changed", "path", "./"+relPath)
-
 				// Find targets for this file, filtering out non-existent files
 				result, err := watch.FindTargetsForFile(relPath, jobs, watches)
 				if err != nil {
 					logger.Logger.Warn("Error processing file change", "path", relPath, "error", err)
-					fmt.Print("plur> ")
 					continue
 				}
 
-				// Check if we have any executable targets
+				// Check if we have any valid targets
 				if !result.HasExistingTargets() {
-					logger.LogVerbose("No matching watch rules for file", "path", "./"+relPath)
-					fmt.Print("plur> ")
+					logger.Logger.Debug("No matching watch rules for file", "path", "./"+relPath)
 					continue
 				}
 
