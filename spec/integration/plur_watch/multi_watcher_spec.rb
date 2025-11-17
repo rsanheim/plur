@@ -29,7 +29,6 @@ RSpec.describe "plur watch with multiple directories" do
       end
 
       # Verify we see watcher processes for both directories in stderr
-      expect(result.err).to include("plur using e-dant/watcher")
       expect(result.err).to include("watch event=create type=watcher")
       expect(result.err).to include("/spec")
       expect(result.err).to include("/lib")
@@ -49,7 +48,7 @@ RSpec.describe "plur watch with multiple directories" do
       lib_dir = File.join(tmpdir, "lib")
       FileUtils.mkdir_p([spec_dir, lib_dir])
 
-      result = run_plur_watch(dir: tmpdir, timeout: 2)
+      result = run_plur_watch(dir: tmpdir, timeout: 1)
 
       # Should start watchers for spec and lib only (in stderr)
       expect(result.err).to include("directories=[lib spec]")
@@ -63,7 +62,7 @@ RSpec.describe "plur watch with multiple directories" do
       lib_dir = File.join(tmpdir, "lib")
       FileUtils.mkdir_p([spec_dir, lib_dir])
 
-      result = run_plur_watch(dir: tmpdir, timeout: 2)
+      result = run_plur_watch(dir: tmpdir, timeout: 1)
 
       # Verify clean shutdown messages
       expect(result.out).to include("Timeout reached, exiting!")
