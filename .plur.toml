@@ -1,0 +1,17 @@
+[job.plur]
+cmd = ["go", "test", "./{{target}}"]
+
+[job.rspec]
+cmd = ["bin/rspec"]
+
+# changing .plur.toml
+[[watch]]
+source = "**/*_test.go"
+targets = ["{{dir_relative}}"]
+jobs = ["plur"]
+exclude = [".git/**", "vendor/**"]
+
+[[watch]]
+source = "**/*_spec.rb"
+jobs = ["rspec"]
+exclude = [".git/**", "fixtures/**", "vendor/**"]
