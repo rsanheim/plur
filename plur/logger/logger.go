@@ -18,6 +18,9 @@ var (
 
 	// VerboseMode indicates if verbose logging is enabled
 	VerboseMode bool
+
+	// logLevel allows dynamic log level changes for the stderr logger
+	logLevel *slog.LevelVar
 )
 
 // CustomTextHandler formats logs in our preferred format: HH:MM:SS - LEVEL - message key=value
@@ -86,6 +89,9 @@ func InitLogger(verbose bool, debug bool) {
 	// Debug mode implies verbose mode
 	VerboseMode = verbose || debug
 
+	// Create LevelVar for dynamic level changes
+	logLevel = new(slog.LevelVar)
+
 	var level slog.Level
 	if debug {
 		level = slog.LevelDebug
@@ -94,10 +100,11 @@ func InitLogger(verbose bool, debug bool) {
 	} else {
 		level = slog.LevelInfo
 	}
+	logLevel.Set(level)
 
 	// Create custom text handler that writes to stderr
 	opts := &slog.HandlerOptions{
-		Level: level,
+		Level: logLevel,
 	}
 
 	handler := NewCustomTextHandler(os.Stderr, opts)
@@ -149,4 +156,32 @@ func WithWorker(workerID int) *slog.Logger {
 // WithFile returns a logger with file context
 func WithFile(file string) *slog.Logger {
 	return Logger.With("file", file)
+}
+
+// SetLogLevel changes the log level dynamically at runtime
+func SetLogLevel(level slog.Level) {
+	if logLevel != nil {
+		logLevel.Set(level)
+	}
+}
+
+// ToggleDebug toggles between debug and info log levels
+func ToggleDebug() {
+	if logLevel == nil {
+		return
+	}
+
+	if logLevel.Level() == slog.LevelDebug {
+		logLevel.Set(slog.LevelInfo)
+	} else {
+		logLevel.Set(slog.LevelDebug)
+	}
+}
+
+// IsDebugEnabled returns true if debug level logging is enabled
+func IsDebugEnabled() bool {
+	if logLevel == nil {
+		return false
+	}
+	return logLevel.Level() == slog.LevelDebug
 }
