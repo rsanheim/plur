@@ -41,17 +41,17 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 			return nil, fmt.Errorf("error matching pattern %q: %w", watch.Source, err)
 		}
 
-		if !matched {
+		if ep.isExcluded(normalizedPath, watch.Exclude) {
 			continue
 		}
-
-		// Check exclusions
-		if ep.isExcluded(normalizedPath, watch.Exclude) {
+		if !matched {
+			logger.Logger.Debug("not matched", "watch", watch.Source, "normalizedPath", normalizedPath)
 			continue
 		}
 
 		// Determine target files
 		targets, err := ep.renderTargets(watch, normalizedPath)
+		logger.Logger.Debug("renderTargets result", "normalizedPath", normalizedPath, "targets", fmt.Sprintf("%+v", targets))
 		if err != nil {
 			return nil, fmt.Errorf("error rendering targets for watch %q: %w", watch.Name, err)
 		}
