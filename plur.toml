@@ -1,7 +1,0 @@
-[run.plur-go]
-cmd = ["go", "test"]
-
-[[watch]]
-source = "**/*_test.go"
-targets = ["{{dir_relative}}"]
-exclude = ["vendor/**"]
