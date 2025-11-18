@@ -292,22 +292,22 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 	if len(runtimeData) > 0 {
 		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesByRuntime(testFiles, maxWorkers, runtimeData)
-		logger.LogVerbose("Using runtime-based grouping", "runtime_entries", len(runtimeData))
+		logger.Logger.Info("Using runtime-based grouping", "runtime_entries", len(runtimeData))
 	} else {
 		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesBySize(testFiles, maxWorkers)
-		logger.LogVerbose("Using size-based grouping (no runtime data available)")
+		logger.Logger.Info("Using size-based grouping (no runtime data available)")
 	}
 
 	// Log group assignments in verbose mode
-	if logger.VerboseMode {
+	if logger.IsVerboseEnabled() {
 		for i, group := range groups {
 			// TotalSize represents milliseconds when using runtime data, bytes when using file size
 			runtimeInfo := "by file size"
 			if len(runtimeData) > 0 {
 				runtimeInfo = fmt.Sprintf("%.2fs", float64(group.TotalSize)/1000.0)
 			}
-			logger.LogVerbose("assigned", "worker", i, "files", group.Files, "estimated_time", runtimeInfo)
+			logger.Logger.Info("assigned", "worker", i, "files", group.Files, "estimated_time", runtimeInfo)
 		}
 	}
 
@@ -333,9 +333,9 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		wg.Add(1)
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
-			logger.LogVerbose("starting", "worker", workerIndex, "file_count", len(files))
+			logger.Logger.Info("starting", "worker", workerIndex, "file_count", len(files))
 			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentJob)
-			logger.LogVerbose("finished", "worker", workerIndex, "success", result.Success())
+			logger.Logger.Info("finished", "worker", workerIndex, "success", result.Success())
 			results <- result
 		}(i, group.Files)
 	}

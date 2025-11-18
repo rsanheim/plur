@@ -56,7 +56,7 @@ func loadWatchConfiguration(cli *PlurCLI) (map[string]*job.Job, []*watch.WatchMa
 		watches = defaultWatches
 
 		if len(jobs) > 0 {
-			logger.LogVerbose("Using autodetected default configuration", "profile", autodetect.AutodetectProfile())
+			logger.Logger.Info("Using autodetected default configuration", "profile", autodetect.AutodetectProfile())
 		}
 	}
 
@@ -89,7 +89,7 @@ func executeJob(j *job.Job, targetFiles []string, cwd string) error {
 		}
 
 		cmd := job.BuildJobCmd(j, []string{relTarget})
-		logger.LogVerbose("Running command", "cmd", strings.Join(cmd, " "))
+		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
 
 		// Execute command
 		execCmd := exec.Command(cmd[0], cmd[1:]...)
@@ -132,11 +132,11 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 	// Log watch configuration
 	if len(watches) > 0 {
-		logger.LogVerbose("Watch configuration loaded",
+		logger.Logger.Info("Watch configuration loaded",
 			"jobs", len(jobs),
 			"watch_mappings", len(watches))
 	} else {
-		logger.LogVerbose("No watch mappings configured, file changes will not trigger tests")
+		logger.Logger.Info("No watch mappings configured, file changes will not trigger tests")
 	}
 
 	// Create debounce delay (for future use)
@@ -363,7 +363,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				if result.HasMissingTargets() {
 					for jobName, targets := range result.MissingTargets {
 						for _, target := range targets {
-							logger.LogVerbose("Skipping non-existent target", "target", target, "job", jobName)
+							logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
 						}
 					}
 				}

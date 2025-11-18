@@ -8,60 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestInitLogger_WithDebug(t *testing.T) {
-	// Capture original state
-	originalLogger := Logger
-	originalStdoutLogger := StdoutLogger
-	originalVerboseMode := VerboseMode
-	defer func() {
-		Logger = originalLogger
-		StdoutLogger = originalStdoutLogger
-		VerboseMode = originalVerboseMode
-	}()
-
-	InitLogger(false, true)
-
-	assert.True(t, VerboseMode, "VerboseMode should be true when debug is enabled")
-	require.NotNil(t, Logger, "Logger should be initialized")
-	require.NotNil(t, StdoutLogger, "StdoutLogger should be initialized")
-}
-
-func TestInitLogger_WithVerbose(t *testing.T) {
-	originalLogger := Logger
-	originalStdoutLogger := StdoutLogger
-	originalVerboseMode := VerboseMode
-	defer func() {
-		Logger = originalLogger
-		StdoutLogger = originalStdoutLogger
-		VerboseMode = originalVerboseMode
-	}()
-
-	InitLogger(true, false)
-
-	assert.True(t, VerboseMode, "VerboseMode should be true when verbose is enabled")
-	require.NotNil(t, Logger, "Logger should be initialized")
-	require.NotNil(t, StdoutLogger, "StdoutLogger should be initialized")
-}
-
-func TestInitLogger_NoFlags(t *testing.T) {
-	originalLogger := Logger
-	originalStdoutLogger := StdoutLogger
-	originalVerboseMode := VerboseMode
-	defer func() {
-		Logger = originalLogger
-		StdoutLogger = originalStdoutLogger
-		VerboseMode = originalVerboseMode
-	}()
-
-	InitLogger(false, false)
-
-	assert.False(t, VerboseMode, "VerboseMode should be false")
-	require.NotNil(t, Logger, "Logger should be initialized")
-	require.NotNil(t, StdoutLogger, "StdoutLogger should be initialized")
-}
 
 func TestStderrLogger_RespectsDebugLevel(t *testing.T) {
 	originalLogger := Logger
@@ -116,8 +63,8 @@ func TestStdoutLogger_AlwaysLevelInfo(t *testing.T) {
 		StdoutLogger = originalStdoutLogger
 	}()
 
-	// Initialize with debug - stdout should still be info
-	InitLogger(false, true)
+	// StdoutLogger should always be at info level (even when main logger is debug)
+	Init(slog.LevelDebug)
 
 	// Create a test stdout logger with buffer to verify behavior
 	var buf bytes.Buffer
@@ -143,8 +90,8 @@ func TestToggleDebug_EnablesDebugLevel(t *testing.T) {
 		Logger = originalLogger
 	}()
 
-	// Initialize without debug
-	InitLogger(false, false)
+	// Initialize with info level
+	Init(slog.LevelInfo)
 
 	// Verify debug is initially disabled
 	assert.False(t, IsDebugEnabled(), "Debug should be initially disabled")
@@ -162,8 +109,8 @@ func TestToggleDebug_DisablesDebugLevel(t *testing.T) {
 		Logger = originalLogger
 	}()
 
-	// Initialize with debug
-	InitLogger(false, true)
+	// Initialize with debug level
+	Init(slog.LevelDebug)
 
 	// Verify debug is initially enabled
 	assert.True(t, IsDebugEnabled(), "Debug should be initially enabled")
@@ -181,7 +128,7 @@ func TestToggleDebug_ConcurrentAccess(t *testing.T) {
 		Logger = originalLogger
 	}()
 
-	InitLogger(false, false)
+	Init(slog.LevelInfo)
 
 	// Spawn multiple goroutines that toggle debug concurrently
 	var wg sync.WaitGroup
@@ -209,17 +156,18 @@ func TestSetLogLevel_ChangesLevel(t *testing.T) {
 		Logger = originalLogger
 	}()
 
-	InitLogger(false, false)
+	// Initialize first
+	Init(slog.LevelWarn)
 
-	// Set to debug
+	// Change to debug with SetLogLevel
 	SetLogLevel(slog.LevelDebug)
 	assert.True(t, IsDebugEnabled())
 
-	// Set to info
+	// Change to info with SetLogLevel
 	SetLogLevel(slog.LevelInfo)
 	assert.False(t, IsDebugEnabled())
 
-	// Set to warn
+	// Change to warn with SetLogLevel
 	SetLogLevel(slog.LevelWarn)
 	assert.False(t, IsDebugEnabled())
 }
@@ -261,6 +209,25 @@ func TestDynamicLevel_TakesEffectImmediately(t *testing.T) {
 	// Debug message should NOT appear again
 	testLogger.Debug("debug 3")
 	assert.NotContains(t, buf.String(), "debug 3")
+}
+
+func TestIsVerboseEnabled(t *testing.T) {
+	// Test various log levels
+	testCases := []struct {
+		level   slog.Level
+		verbose bool
+	}{
+		{slog.LevelDebug, true},  // Debug is verbose
+		{slog.LevelInfo, true},   // Info is verbose
+		{slog.LevelWarn, false},  // Warn is not verbose
+		{slog.LevelError, false}, // Error is not verbose
+	}
+
+	for _, tc := range testCases {
+		Init(tc.level)
+		result := IsVerboseEnabled()
+		assert.Equal(t, tc.verbose, result, "Expected IsVerboseEnabled()=%v for level %v", tc.verbose, tc.level)
+	}
 }
 
 // Helper function to redirect stderr for testing

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
@@ -85,7 +86,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			if currentJob.Name == "minitest" {
 				otherFramework = "rspec"
 			}
-			logger.LogVerbose(fmt.Sprintf("Detected %s from file suffixes. Use --use=%s to run %s instead.",
+			logger.Logger.Info(fmt.Sprintf("Detected %s from file suffixes. Use --use=%s to run %s instead.",
 				currentJob.Name, otherFramework, otherFramework))
 		} else {
 			hasSpecDir := fsutil.DirExists("spec")
@@ -95,7 +96,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 				if currentJob.Name == "minitest" {
 					otherFramework = "rspec"
 				}
-				logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Specify --use=%s to run %s instead.",
+				logger.Logger.Info(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Specify --use=%s to run %s instead.",
 					currentJob.Name, otherFramework, otherFramework))
 			}
 		}
@@ -129,7 +130,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 	msg := fmt.Sprintf("found %v test files", len(testFiles))
-	logger.LogVerbose(msg, "testFiles", testFiles)
+	logger.Logger.Info(msg, "testFiles", testFiles)
 
 	// Run bundle install if --auto flag is set
 	if r.Auto && !cfg.DryRun {
@@ -250,9 +251,15 @@ type PlurCLI struct {
 }
 
 func (r *PlurCLI) AfterApply() error {
-	// Initialize logger early so we can use it
-	// Kong has already resolved r.Debug from CLI flag, env var, or config file
-	logger.InitLogger(r.Verbose, r.Debug)
+	// Initialize logger with appropriate level
+	// Kong has already resolved r.Debug and r.Verbose from CLI flag, env var, or config file
+	level := slog.LevelWarn // quiet by default
+	if r.Debug {
+		level = slog.LevelDebug
+	} else if r.Verbose {
+		level = slog.LevelInfo
+	}
+	logger.Init(level)
 
 	if r.Version {
 		fmt.Println(GetVersionInfo())

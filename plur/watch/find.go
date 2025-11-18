@@ -1,7 +1,6 @@
 package watch
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -68,12 +67,11 @@ func FindTargetsForFile(filePath string, jobs map[string]*job.Job, watches []*Wa
 	// Filter targets by existence
 	for jobName, targets := range candidateTargets {
 		for _, target := range targets {
-			fmt.Println("target", target)
 			if _, err := os.Stat(target); err == nil {
 				result.ExistingTargets[jobName] = append(result.ExistingTargets[jobName], target)
 			} else {
 				result.MissingTargets[jobName] = append(result.MissingTargets[jobName], target)
-				logger.LogVerbose("Skipping non-existent target", "target", target, "job", jobName)
+				logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
 			}
 		}
 	}

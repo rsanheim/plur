@@ -16,12 +16,29 @@ var (
 	// StdoutLogger writes to stdout for user-facing command output
 	StdoutLogger *slog.Logger
 
-	// VerboseMode indicates if verbose logging is enabled
-	VerboseMode bool
-
 	// logLevel allows dynamic log level changes for the stderr logger
-	logLevel *slog.LevelVar
+	logLevel slog.LevelVar
 )
+
+func init() {
+	// Initialize with default quiet level
+	logLevel.Set(slog.LevelWarn)
+
+	Logger = slog.New(NewCustomTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: &logLevel,
+	}))
+
+	StdoutLogger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
+	slog.SetDefault(Logger)
+}
+
+// Init sets the log level (called from main to override default)
+func Init(level slog.Level) {
+	logLevel.Set(level)
+}
 
 // CustomTextHandler formats logs in our preferred format: HH:MM:SS - LEVEL - message key=value
 type CustomTextHandler struct {
@@ -84,49 +101,6 @@ func (h *CustomTextHandler) WithGroup(name string) slog.Handler {
 	return h
 }
 
-// InitLogger initializes the slog logger based on the verbose flag and debug mode
-func InitLogger(verbose bool, debug bool) {
-	// Debug mode implies verbose mode
-	VerboseMode = verbose || debug
-
-	// Create LevelVar for dynamic level changes
-	logLevel = new(slog.LevelVar)
-
-	var level slog.Level
-	if debug {
-		level = slog.LevelDebug
-	} else if verbose {
-		level = slog.LevelInfo
-	} else {
-		level = slog.LevelInfo
-	}
-	logLevel.Set(level)
-
-	// Create custom text handler that writes to stderr
-	opts := &slog.HandlerOptions{
-		Level: logLevel,
-	}
-
-	handler := NewCustomTextHandler(os.Stderr, opts)
-	Logger = slog.New(handler)
-
-	// Set as default logger
-	slog.SetDefault(Logger)
-
-	// Create stdout logger for user-facing command output
-	stdoutHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	})
-	StdoutLogger = slog.New(stdoutHandler)
-}
-
-// LogVerbose logs a message only if verbose mode is enabled
-func LogVerbose(msg string, args ...any) {
-	if VerboseMode {
-		Logger.Info(msg, args...)
-	}
-}
-
 // LogDebug logs a debug message (only shown with PLUR_DEBUG=1)
 func LogDebug(msg string, args ...any) {
 	Logger.Debug(msg, args...)
@@ -160,17 +134,11 @@ func WithFile(file string) *slog.Logger {
 
 // SetLogLevel changes the log level dynamically at runtime
 func SetLogLevel(level slog.Level) {
-	if logLevel != nil {
-		logLevel.Set(level)
-	}
+	logLevel.Set(level)
 }
 
 // ToggleDebug toggles between debug and info log levels
 func ToggleDebug() {
-	if logLevel == nil {
-		return
-	}
-
 	if logLevel.Level() == slog.LevelDebug {
 		logLevel.Set(slog.LevelInfo)
 	} else {
@@ -180,8 +148,10 @@ func ToggleDebug() {
 
 // IsDebugEnabled returns true if debug level logging is enabled
 func IsDebugEnabled() bool {
-	if logLevel == nil {
-		return false
-	}
 	return logLevel.Level() == slog.LevelDebug
+}
+
+// IsVerboseEnabled returns true if verbose logging is enabled (info level or lower)
+func IsVerboseEnabled() bool {
+	return logLevel.Level() <= slog.LevelInfo
 }
