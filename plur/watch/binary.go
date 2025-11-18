@@ -10,11 +10,6 @@ import (
 	"github.com/rsanheim/plur/logger"
 )
 
-// LogDebug logs a debug message with key-value pairs
-func LogDebug(msg string, args ...interface{}) {
-	logger.LogDebug(msg, args...)
-}
-
 // GetWatcherBinaryPath returns the path to the installed watcher binary
 // It checks if the binary exists and returns an error with helpful message if not
 func GetWatcherBinaryPath(binDir string) (string, error) {

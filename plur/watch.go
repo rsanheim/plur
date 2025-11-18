@@ -141,7 +141,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 	// Create debounce delay (for future use)
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
-	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
+	logger.Logger.Debug("Debounce delay", "ms", watchCmd.Debounce)
 
 	// Determine which directories to watch from watch mappings
 	var watchDirs []string
@@ -173,7 +173,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		"debounce", watchCmd.Debounce,
 		"timeout", watchCmd.Timeout)
 	if watchCmd.Timeout > 0 {
-		logger.LogDebug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", watchCmd.Timeout) + " seconds")
+		logger.Logger.Debug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", watchCmd.Timeout) + " seconds")
 	}
 
 	// Get the watcher binary path
@@ -234,7 +234,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	cwd, _ := os.Getwd()
 	if resolvedCwd, err := filepath.EvalSymlinks(cwd); err == nil {
 		if resolvedCwd != cwd {
-			logger.LogDebug("watch", "cwd_symlink_resolved", true,
+			logger.Logger.Debug("watch", "cwd_symlink_resolved", true,
 				"original", cwd, "resolved", resolvedCwd)
 		}
 		cwd = resolvedCwd
@@ -271,7 +271,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				fmt.Print("\nplur> ")
 			case "reload":
 				// User requested process reload
-				logger.LogDebug("User requested process reload")
+				logger.Logger.Debug("User requested process reload")
 				fmt.Println("Reloading plur...")
 
 				// Get current executable path
@@ -324,7 +324,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				relPath = "./" + rel
 			}
 
-			logger.LogDebug("watch", "event", event.EffectType, "type", event.PathType,
+			logger.Logger.Debug("watch", "event", event.EffectType, "type", event.PathType,
 				"associated", fmt.Sprintf("%v", event.Associated), "path", relPath)
 
 			// Only process file events (not directories)

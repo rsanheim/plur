@@ -101,37 +101,6 @@ func (h *CustomTextHandler) WithGroup(name string) slog.Handler {
 	return h
 }
 
-// LogDebug logs a debug message (only shown with PLUR_DEBUG=1)
-func LogDebug(msg string, args ...any) {
-	Logger.Debug(msg, args...)
-}
-
-// LogError logs an error message (always shown)
-func LogError(msg string, err error, args ...any) {
-	allArgs := append([]any{"error", err}, args...)
-	Logger.Error(msg, allArgs...)
-}
-
-// LogWarn logs a warning message (always shown)
-func LogWarn(msg string, args ...any) {
-	Logger.Warn(msg, args...)
-}
-
-// WithContext returns a logger with context values
-func WithContext(ctx context.Context) *slog.Logger {
-	return Logger
-}
-
-// WithWorker returns a logger with worker ID context
-func WithWorker(workerID int) *slog.Logger {
-	return Logger.With("worker", workerID)
-}
-
-// WithFile returns a logger with file context
-func WithFile(file string) *slog.Logger {
-	return Logger.With("file", file)
-}
-
 // SetLogLevel changes the log level dynamically at runtime
 func SetLogLevel(level slog.Level) {
 	logLevel.Set(level)

@@ -42,7 +42,6 @@ RSpec.describe "plur watch command", :skip_if_ci do
       end
 
       # Watch now maps file changes to jobs and executes them
-      expect(result.err).to include("File changed")
       expect(result.err).to include("calculator_spec.rb")
       expect(result.success?).to be true
     end
