@@ -64,7 +64,6 @@ site/
 
 # Python
 .venv/
-docs/.venv/
 docs/.python-version
 docs/.cache/
 __pycache__/

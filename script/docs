@@ -33,7 +33,7 @@ Examples:
 
 Environment:
   Uses mise + uv for Python dependency management.
-  Configuration in docs/.mise.toml and docs/pyproject.toml
+  Configuration in .mise.toml and pyproject.toml
 
 EOF
 }
@@ -66,9 +66,7 @@ EOF
 
 # Setup Python environment
 setup_environment() {
-  cd "${DOCS_DIR}"
-
-  # mise automatically creates .venv via uv when we cd here (uv_venv_auto setting)
+  # mise automatically creates .venv via uv when we are in the project root
   # Just ensure dependencies are installed
   if ! uv run mkdocs --version &> /dev/null 2>&1; then
     echo "Installing MkDocs and dependencies..."
@@ -88,8 +86,6 @@ main() {
   # Parse command
   local command="${1:-serve}"
 
-  cd "${DOCS_DIR}"
-
   case "${command}" in
     clean)
       echo "Cleaning build artifacts..."
@@ -99,14 +95,14 @@ main() {
 
     build)
       echo "Building documentation..."
-      uv run mkdocs build -f "${PROJECT_ROOT}/mkdocs.yml"
+      uv run mkdocs build
       echo "Documentation built in site/"
       ;;
 
     clean-build)
       echo "Cleaning and building documentation..."
       rm -rf "${PROJECT_ROOT}/site/"
-      uv run mkdocs build -f "${PROJECT_ROOT}/mkdocs.yml"
+      uv run mkdocs build
       echo "✓ Documentation rebuilt in site/"
       ;;
 
@@ -114,7 +110,7 @@ main() {
       echo "Starting MkDocs server..."
       echo "Documentation will be available at http://localhost:8000"
       echo "Press Ctrl+C to stop"
-      uv run mkdocs serve -f "${PROJECT_ROOT}/mkdocs.yml"
+      uv run mkdocs serve
       ;;
 
     help|--help|-h)
