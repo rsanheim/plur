@@ -19,13 +19,6 @@
 * add gh cli for circle [#113](https://github.com/rsanheim/plur/pull/113)
 * Update rails example project [#112](https://github.com/rsanheim/plur/pull/112)
 
-## v0.11.0 - 2025-10-17
-
-* Default to Rspec first
-* fail fast if custom task doesn't exist [#116](https://github.com/rsanheim/plur/pull/116)
-* Modernize python mkdocs [#115](https://github.com/rsanheim/plur/pull/115)
-* Release testing and refinement [#114](https://github.com/rsanheim/plur/pull/114)
-
 ## v0.10.0 - 2025-08-21
 
 * Consolidate to `Task` to for defining how to run things [#100](https://github.com/rsanheim/plur/pull/100)
