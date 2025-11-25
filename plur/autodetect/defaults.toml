@@ -17,40 +17,40 @@ cmd = ["bundle", "exec", "rubocop", "{{target}}"]
 name = "lib-to-spec"
 source = "lib/**/*.rb"
 targets = ["spec/{{match}}_spec.rb"]
-jobs = "rspec"
+jobs = ["rspec"]
 
 # Watch mapping: app files -> spec files
 [[defaults.ruby.watch]]
 name = "app-to-spec"
 source = "app/**/*.rb"
 targets = ["spec/{{match}}_spec.rb"]
-jobs = "rspec"
+jobs = ["rspec"]
 
 # Watch mapping: spec files run themselves
 [[defaults.ruby.watch]]
 name = "spec-files"
 source = "spec/**/*_spec.rb"
-jobs = "rspec"
+jobs = ["rspec"]
 
 # Watch mapping: lib files -> test files
 [[defaults.ruby.watch]]
 name = "lib-to-test"
 source = "lib/**/*.rb"
 targets = ["test/{{match}}_test.rb"]
-jobs = "minitest"
+jobs = ["minitest"]
 
 # Watch mapping: app files -> test files
 [[defaults.ruby.watch]]
 name = "app-to-test"
 source = "app/**/*.rb"
 targets = ["test/{{match}}_test.rb"]
-jobs = "minitest"
+jobs = ["minitest"]
 
 # Watch mapping: test files run themselves
 [[defaults.ruby.watch]]
 name = "test-files"
 source = "test/**/*_test.rb"
-jobs = "minitest"
+jobs = ["minitest"]
 
 [defaults.go.job.go-test]
 cmd = ["go", "test", "{{target}}"]
@@ -64,7 +64,7 @@ cmd = ["go", "vet", "{{target}}"]
 name = "go-source"
 source = "**/*.go"
 targets = ["{{dir_relative}}"]
-jobs = "go-test"
+jobs = ["go-test"]
 exclude = ["vendor/**", "**/testdata/**"]
 
 # Watch mapping: Go test files run themselves
@@ -72,5 +72,5 @@ exclude = ["vendor/**", "**/testdata/**"]
 name = "go-tests"
 source = "**/*_test.go"
 targets = ["{{dir_relative}}"]
-jobs = "go-test"
+jobs = ["go-test"]
 exclude = ["vendor/**"]

@@ -149,7 +149,7 @@ func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 }
 
 // RunTestFiles executes multiple test files in a single test process
-func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentJob *job.Job) WorkerResult {
+func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentJob job.Job) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -273,7 +273,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 }
 
 // RunTestsInParallel runs spec or test files in parallel
-func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentJob *job.Job) ([]WorkerResult, time.Duration) {
+func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentJob job.Job) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 
@@ -398,7 +398,7 @@ func insertBeforeFiles(args []string, files []string, newArgs ...string) []strin
 
 // buildRSpecCommand builds an RSpec command with framework-specific flags
 // Adds formatter (if available) and color flags before the file arguments
-func buildRSpecCommand(j *job.Job, files []string, globalConfig *config.GlobalConfig) []string {
+func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
 	// Start with base command from BuildJobCmd
 	args := job.BuildJobCmd(j, files)
 
@@ -424,7 +424,7 @@ func buildRSpecCommand(j *job.Job, files []string, globalConfig *config.GlobalCo
 // buildMinitestCommand builds a Minitest command with framework-specific handling
 // For multiple files, uses special -e require pattern
 // For single file, uses BuildJobCmd directly
-func buildMinitestCommand(j *job.Job, files []string, globalConfig *config.GlobalConfig) []string {
+func buildMinitestCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
 	// For multiple files, use special -e require pattern
 	if len(files) > 1 {
 		cmd := []string{"bundle", "exec", "ruby", "-Itest"}

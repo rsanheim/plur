@@ -37,7 +37,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	// Get job from config or autodetection
-	var currentJob *job.Job
+	var currentJob job.Job
 	var wasInferredFromFiles bool
 
 	if jobName == "" {
@@ -53,9 +53,8 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	} else {
 		// Use explicit job name
 		if j, exists := parent.Job[jobName]; exists {
-			jobCopy := j
-			jobCopy.Name = jobName
-			currentJob = &jobCopy
+			j.Name = jobName
+			currentJob = j
 		} else {
 			// Try autodetected jobs
 			autodetectedJobs, _ := autodetect.GetAutodetectedDefaults()

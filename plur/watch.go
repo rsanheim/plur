@@ -32,21 +32,20 @@ func runWatchInstall(force bool) error {
 }
 
 // loadWatchConfiguration loads job and watch mappings from config or defaults
-func loadWatchConfiguration(cli *PlurCLI) (map[string]*job.Job, []*watch.WatchMapping, error) {
+func loadWatchConfiguration(cli *PlurCLI) (map[string]job.Job, []watch.WatchMapping, error) {
 	// Start with user-configured jobs and watches
-	jobs := make(map[string]*job.Job)
-	var watches []*watch.WatchMapping
+	jobs := make(map[string]job.Job)
+	var watches []watch.WatchMapping
 
 	// Load jobs from config
 	for name, j := range cli.Job {
-		jobCopy := j
-		jobCopy.Name = name
-		jobs[name] = &jobCopy
+		j.Name = name
+		jobs[name] = j
 	}
 
 	// Load watch mappings from config
 	for i := range cli.WatchMappings {
-		watches = append(watches, &cli.WatchMappings[i])
+		watches = append(watches, cli.WatchMappings[i])
 	}
 
 	// If no configuration provided, use autodetected defaults
@@ -71,7 +70,7 @@ func loadWatchConfiguration(cli *PlurCLI) (map[string]*job.Job, []*watch.WatchMa
 }
 
 // executeJob runs a job with the given target files
-func executeJob(j *job.Job, targetFiles []string, cwd string) error {
+func executeJob(j job.Job, targetFiles []string, cwd string) error {
 	if len(targetFiles) == 0 {
 		return nil
 	}
@@ -250,19 +249,23 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
 				// Find first test job (rspec or minitest) or use any job
-				var firstJob *job.Job
+				var firstJob job.Job
+				var found bool
 				if j, exists := jobs["rspec"]; exists {
 					firstJob = j
+					found = true
 				} else if j, exists := jobs["minitest"]; exists {
 					firstJob = j
+					found = true
 				} else {
 					// Use first available job
 					for _, j := range jobs {
 						firstJob = j
+						found = true
 						break
 					}
 				}
-				if firstJob != nil {
+				if found {
 					cmd := job.BuildJobAllCmd(firstJob)
 					runCommandArgs(cmd)
 				} else {

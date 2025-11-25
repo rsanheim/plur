@@ -104,47 +104,7 @@ type EventProcessor struct {
 
 ## MEDIUM PRIORITY Issues
 
-### M1: Unnecessary Parser Abstraction
-`plur/job/job.go:134-143` • Size: Small
-
-Factory pattern creating parser interfaces for just 3 concrete types, with single implementation per type.
-
-*Problems:*
-* Factory pattern for 3 concrete types
-* Interface with single implementation per type
-* Abstraction without benefit
-
-*Alternative:*
-Inline the logic where used:
-```go
-if strings.Contains(file, "_spec.rb") {
-    parseRSpecOutput(output)
-} else if strings.Contains(file, "_test.rb") {
-    parseMinitestOutput(output)
-}
-```
-
-*Impact:* Remove parser factory, simplify code flow
-
-### M2: MultiString Configuration Complexity
-`plur/config/multi_string.go` • Size: Small
-
-49 lines to support both `jobs = "rspec"` and `jobs = ["rspec", "lint"]` in TOML configuration.
-
-*Problems:*
-* Two ways to express same thing
-* Custom unmarshaling logic
-* Cognitive overhead for no benefit
-
-*Alternative:*
-Always use arrays:
-```toml
-jobs = ["rspec"]  # Even for single values
-```
-
-*Impact:* Remove MultiString type, standardize configuration
-
-### M3: Token-Based Watch Mappings
+### M1: Token-Based Watch Mappings
 `plur/watch/tokens.go` • Size: Large
 
 137 lines implementing 8 different token types (`{{dir}}`, `{{name}}`, `{{ext}}`, etc.) with full text/template integration.
@@ -165,7 +125,7 @@ type WatchMap struct {
 
 *Impact:* Remove entire token system, use simple glob patterns
 
-### M4: Duplicate Command Building
+### M2: Duplicate Command Building
 Multiple files • Size: Medium
 
 Command building logic scattered across `BuildJobCmd` in job.go, `buildRSpecCommand` in runner, and various framework-specific builders.
@@ -296,10 +256,8 @@ plur doctor   # Debug issues
 4. **Token system** (~137 lines) - Replace with simple patterns
 
 ### Functions to Inline/Simplify
-1. Parser factory - Direct type switches
-2. BuildJobCmd - Simple append
-3. Convention helpers - Remove entirely
-4. MultiString unmarshal - Use arrays only
+1. BuildJobCmd - Simple append
+2. Convention helpers - Remove entirely
 
 ### Potential Impact
 * **Conservative estimate**: Remove 800-1000 lines (20-25% reduction)
@@ -377,15 +335,13 @@ Replace:
 
 ### Phase 1: Simplify Core (High Impact, Low Risk)
 1. Replace `{{target}}` templating with simple append
-2. Remove parser factory abstraction
-3. Fix performance issues (validation, copying)
-4. Update documentation
+2. Fix performance issues (validation, copying)
+3. Update documentation
 
 ### Phase 2: Reduce Complexity (Medium Impact, Medium Risk)
 1. Remove autodetection in favor of explicit config
 2. Collapse job package into runner
 3. Simplify watch to simple glob mapping
-4. Remove MultiString type
 
 ### Phase 3: Polish (Low Impact, Low Risk)
 1. Add visibility commands

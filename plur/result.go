@@ -34,7 +34,7 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob *job.Job) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob job.Job) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
@@ -90,7 +90,7 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 }
 
 // PrintResults displays a test summary
-func PrintResults(summary TestSummary, colorOutput bool, currentJob *job.Job) {
+func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	parser, err := currentJob.CreateParser()
 	if err != nil {
 		// Fallback to basic output

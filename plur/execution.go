@@ -16,11 +16,11 @@ type TestExecutor struct {
 	testFiles      []string
 	testLabel      string
 	runtimeTracker *RuntimeTracker
-	currentJob     *job.Job
+	currentJob     job.Job
 }
 
 // NewTestExecutor creates a new test executor
-func NewTestExecutor(globalConfig *config.GlobalConfig, testFiles []string, currentJob *job.Job) *TestExecutor {
+func NewTestExecutor(globalConfig *config.GlobalConfig, testFiles []string, currentJob job.Job) *TestExecutor {
 	var label string
 	switch currentJob.Name {
 	case "rspec":

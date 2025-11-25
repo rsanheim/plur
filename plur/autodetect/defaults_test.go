@@ -196,17 +196,18 @@ func TestRubyDefaultsConfiguration(t *testing.T) {
 	assert.Contains(t, rspecJob.Cmd, "{{target}}")
 
 	// Test lib-to-spec watch
-	var libToSpec *watch.WatchMapping
-	for i := range profile.Watches {
-		if profile.Watches[i].Name == "lib-to-spec" {
-			libToSpec = &profile.Watches[i]
+	var libToSpec watch.WatchMapping
+	var found bool
+	for _, w := range profile.Watches {
+		if w.Name == "lib-to-spec" {
+			libToSpec = w
+			found = true
 			break
 		}
 	}
-	require.NotNil(t, libToSpec)
+	require.True(t, found, "lib-to-spec watch not found")
 	assert.Equal(t, "lib/**/*.rb", libToSpec.Source)
-	assert.NotNil(t, libToSpec.Targets)
-	assert.Contains(t, *libToSpec.Targets, "spec/{{match}}_spec.rb")
+	assert.Contains(t, libToSpec.Targets, "spec/{{match}}_spec.rb")
 	assert.Contains(t, libToSpec.Jobs, "rspec")
 }
 
@@ -221,17 +222,18 @@ func TestGoDefaultsConfiguration(t *testing.T) {
 	assert.Contains(t, goTestJob.Cmd, "test")
 
 	// Test go-source watch
-	var goSource *watch.WatchMapping
-	for i := range profile.Watches {
-		if profile.Watches[i].Name == "go-source" {
-			goSource = &profile.Watches[i]
+	var goSource watch.WatchMapping
+	var found bool
+	for _, w := range profile.Watches {
+		if w.Name == "go-source" {
+			goSource = w
+			found = true
 			break
 		}
 	}
-	require.NotNil(t, goSource)
+	require.True(t, found, "go-source watch not found")
 	assert.Equal(t, "**/*.go", goSource.Source)
-	assert.NotNil(t, goSource.Targets)
-	assert.Contains(t, *goSource.Targets, "{{dir_relative}}")
+	assert.Contains(t, goSource.Targets, "{{dir_relative}}")
 	assert.Contains(t, goSource.Jobs, "go-test")
 	assert.Contains(t, goSource.Exclude, "vendor/**")
 }
@@ -291,21 +293,15 @@ func TestDefaultsWithEventProcessor(t *testing.T) {
 	profile := GetDefaultProfile("ruby")
 	require.NotNil(t, profile)
 
-	// Convert to pointer maps as EventProcessor expects
-	jobs := make(map[string]*job.Job)
-	for name, job := range profile.Jobs {
-		jobCopy := job
-		jobCopy.Name = name
-		jobs[name] = &jobCopy
-	}
-
-	watches := make([]*watch.WatchMapping, len(profile.Watches))
-	for i := range profile.Watches {
-		watches[i] = &profile.Watches[i]
+	// Copy jobs and set names
+	jobs := make(map[string]job.Job)
+	for name, j := range profile.Jobs {
+		j.Name = name
+		jobs[name] = j
 	}
 
 	// Create processor
-	processor := watch.NewEventProcessor(jobs, watches)
+	processor := watch.NewEventProcessor(jobs, profile.Watches)
 
 	// Test lib file mapping
 	result, err := processor.ProcessPath("lib/user.rb")

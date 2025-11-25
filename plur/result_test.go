@@ -69,7 +69,7 @@ func TestBuildTestSummary(t *testing.T) {
 	}
 
 	wallTime := 250 * time.Millisecond
-	testJob := &job.Job{Name: "rspec"}
+	testJob := job.Job{Name: "rspec"}
 	summary := BuildTestSummary(results, wallTime, testJob)
 
 	assert := assert.New(t)
@@ -113,7 +113,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 		},
 	}
 
-	testJob := &job.Job{Name: "rspec"}
+	testJob := job.Job{Name: "rspec"}
 	summary := BuildTestSummary(results, 250*time.Millisecond, testJob)
 
 	assert.Equal(t, 15, summary.TotalExamples)
@@ -140,7 +140,7 @@ func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 		},
 	}
 
-	testJob := &job.Job{Name: "rspec"}
+	testJob := job.Job{Name: "rspec"}
 	summary := BuildTestSummary(results, 100*time.Millisecond, testJob)
 
 	assert.Equal(t, 10, summary.TotalExamples)

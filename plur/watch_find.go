@@ -67,13 +67,13 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 			name = "(unnamed)"
 		}
 		targetTemplate := "[source file]"
-		if rule.Targets != nil && len(*rule.Targets) > 0 {
-			targetTemplate = (*rule.Targets)[0]
+		if len(rule.Targets) > 0 {
+			targetTemplate = rule.Targets[0]
 		}
 		out.Info("found rules",
 			"name", name,
 			"source", rule.Source,
-			"jobs", rule.Jobs.Slice(),
+			"jobs", rule.Jobs,
 			"target", targetTemplate)
 	}
 

@@ -25,7 +25,7 @@ func TestFindFilesFromJob(t *testing.T) {
 	os.Chdir(tempDir)
 
 	// Test empty directory
-	rspecJob := &job.Job{
+	rspecJob := job.Job{
 		Name:          "rspec",
 		TargetPattern: "spec/**/*_spec.rb",
 	}

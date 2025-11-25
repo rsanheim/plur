@@ -31,7 +31,7 @@ type Job struct {
 //	BuildJobCmd(job, []string{"test1.rb", "test2.rb"})
 //	  with Cmd = ["my-runner", "--file={{target}}"]
 //	  → ["my-runner", "--file=test1.rb", "--file=test2.rb"]
-func BuildJobCmd(job *Job, targets []string) []string {
+func BuildJobCmd(job Job, targets []string) []string {
 	result := []string{}
 	foundToken := false
 
@@ -62,7 +62,7 @@ func BuildJobCmd(job *Job, targets []string) []string {
 
 // BuildJobAllCmd builds the command for running a job without a specific target
 // This removes any {{target}} tokens from the command
-func BuildJobAllCmd(job *Job) []string {
+func BuildJobAllCmd(job Job) []string {
 	result := []string{}
 
 	for _, part := range job.Cmd {
@@ -77,7 +77,7 @@ func BuildJobAllCmd(job *Job) []string {
 // GetConventionBasedTargetPattern returns a target pattern based on job name conventions
 // Jobs containing "rspec" get "spec/**/*_spec.rb", jobs containing "minitest" get "test/**/*_test.rb"
 // Returns empty string if no convention matches
-func (j *Job) GetConventionBasedTargetPattern() string {
+func (j Job) GetConventionBasedTargetPattern() string {
 	// Apply conventions based on job name (case-insensitive)
 	nameLower := strings.ToLower(j.Name)
 	if strings.Contains(nameLower, "rspec") {
@@ -92,7 +92,7 @@ func (j *Job) GetConventionBasedTargetPattern() string {
 
 // GetTargetPattern returns the glob pattern for file discovery
 // Falls back to convention-based pattern if not explicitly set
-func (j *Job) GetTargetPattern() string {
+func (j Job) GetTargetPattern() string {
 	if j.TargetPattern != "" {
 		return j.TargetPattern
 	}
@@ -106,7 +106,7 @@ func (j *Job) GetTargetPattern() string {
 //
 //	"spec/**/*_spec.rb" → "_spec.rb"
 //	"test/**/*_test.rb" → "_test.rb"
-func (j *Job) GetTargetSuffix() string {
+func (j Job) GetTargetSuffix() string {
 	pattern := j.GetTargetPattern()
 	if pattern == "" {
 		return ""
@@ -131,7 +131,7 @@ func (j *Job) GetTargetSuffix() string {
 
 // CreateParser creates the appropriate test output parser for this job
 // Returns passthrough parser for custom jobs (non-rspec/minitest)
-func (j *Job) CreateParser() (types.TestOutputParser, error) {
+func (j Job) CreateParser() (types.TestOutputParser, error) {
 	switch j.Name {
 	case "rspec":
 		return rspec.NewOutputParser(), nil
@@ -143,6 +143,6 @@ func (j *Job) CreateParser() (types.TestOutputParser, error) {
 }
 
 // IsMinitestStyle returns true if this job is minitest-style (for formatting decisions)
-func (j *Job) IsMinitestStyle() bool {
+func (j Job) IsMinitestStyle() bool {
 	return j.Name == "minitest"
 }

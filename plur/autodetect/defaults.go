@@ -73,32 +73,25 @@ func GetDefaultProfile(name string) *DefaultProfile {
 
 // GetAutodetectedDefaults returns jobs and watches for the autodetected project type
 // Returns empty maps/slices if no profile is detected
-func GetAutodetectedDefaults() (map[string]*job.Job, []*watch.WatchMapping) {
+func GetAutodetectedDefaults() (map[string]job.Job, []watch.WatchMapping) {
 	profileName := AutodetectProfile()
 	if profileName == "" {
-		return make(map[string]*job.Job), []*watch.WatchMapping{}
+		return make(map[string]job.Job), []watch.WatchMapping{}
 	}
 
 	profile := GetDefaultProfile(profileName)
 	if profile == nil {
-		return make(map[string]*job.Job), []*watch.WatchMapping{}
+		return make(map[string]job.Job), []watch.WatchMapping{}
 	}
 
-	// Convert to pointer maps for consistency with rest of codebase
-	jobs := make(map[string]*job.Job, len(profile.Jobs))
+	// Copy jobs and set names
+	jobs := make(map[string]job.Job, len(profile.Jobs))
 	for name, j := range profile.Jobs {
-		jobCopy := j
-		jobCopy.Name = name
-		jobs[name] = &jobCopy
+		j.Name = name
+		jobs[name] = j
 	}
 
-	// Convert to pointer slice
-	watches := make([]*watch.WatchMapping, len(profile.Watches))
-	for i := range profile.Watches {
-		watches[i] = &profile.Watches[i]
-	}
-
-	return jobs, watches
+	return jobs, profile.Watches
 }
 
 // DetectFramework intelligently detects the test framework based on:
@@ -106,8 +99,8 @@ func GetAutodetectedDefaults() (map[string]*job.Job, []*watch.WatchMapping) {
 // 2. Directory structure (spec/ vs test/)
 // 3. Profile autodetection (Gemfile, go.mod, etc.)
 //
-// Returns: jobName, *job.Job, wasInferredFromFiles, error
-func DetectFramework(patterns []string) (string, *job.Job, bool, error) {
+// Returns: jobName, job.Job, wasInferredFromFiles, error
+func DetectFramework(patterns []string) (string, job.Job, bool, error) {
 	// Step 1: Try to infer from file patterns if provided
 	if len(patterns) > 0 {
 		frameworkFromFiles := inferFrameworkFromPatterns(patterns)
@@ -117,9 +110,8 @@ func DetectFramework(patterns []string) (string, *job.Job, bool, error) {
 			rubyProfile := GetDefaultProfile("ruby")
 			if rubyProfile != nil {
 				if j, exists := rubyProfile.Jobs[frameworkFromFiles]; exists {
-					jobCopy := j
-					jobCopy.Name = frameworkFromFiles
-					return frameworkFromFiles, &jobCopy, true, nil
+					j.Name = frameworkFromFiles
+					return frameworkFromFiles, j, true, nil
 				}
 			}
 		}
@@ -136,42 +128,48 @@ func DetectFramework(patterns []string) (string, *job.Job, bool, error) {
 	hasTestDir := fsutil.DirExists("test")
 
 	var jobName string
-	var currentJob *job.Job
+	var currentJob job.Job
+	var found bool
 
 	if hasSpecDir && !hasTestDir {
 		// Only spec/ directory - use RSpec
 		if j, exists := autodetectedJobs["rspec"]; exists {
 			jobName = "rspec"
 			currentJob = j
+			found = true
 		}
 	} else if hasTestDir && !hasSpecDir {
 		// Only test/ directory - use Minitest
 		if j, exists := autodetectedJobs["minitest"]; exists {
 			jobName = "minitest"
 			currentJob = j
+			found = true
 		}
 	} else {
 		// Both exist or neither exist - use priority order: rspec > minitest > other
 		if j, exists := autodetectedJobs["rspec"]; exists {
 			jobName = "rspec"
 			currentJob = j
+			found = true
 		} else if j, exists := autodetectedJobs["minitest"]; exists {
 			jobName = "minitest"
 			currentJob = j
+			found = true
 		} else {
 			// Fall back to any job with a target_pattern
 			for name, j := range autodetectedJobs {
 				if j.GetTargetPattern() != "" {
 					jobName = name
 					currentJob = j
+					found = true
 					break
 				}
 			}
 		}
 	}
 
-	if currentJob == nil {
-		return "", nil, false, fmt.Errorf("no test framework detected. Please create a .plur.toml with a job configuration")
+	if !found {
+		return "", job.Job{}, false, fmt.Errorf("no test framework detected. Please create a .plur.toml with a job configuration")
 	}
 
 	return jobName, currentJob, false, nil

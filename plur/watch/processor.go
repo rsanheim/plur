@@ -13,12 +13,12 @@ import (
 // It does NOT watch files (that's WatcherManager's job)
 // It only determines: "given a file changed, what jobs should run and with what targets?"
 type EventProcessor struct {
-	jobs    map[string]*job.Job
-	watches []*WatchMapping
+	jobs    map[string]job.Job
+	watches []WatchMapping
 }
 
 // NewEventProcessor creates a new EventProcessor with the given jobs and watch mappings
-func NewEventProcessor(jobs map[string]*job.Job, watches []*WatchMapping) *EventProcessor {
+func NewEventProcessor(jobs map[string]job.Job, watches []WatchMapping) *EventProcessor {
 	return &EventProcessor{
 		jobs:    jobs,
 		watches: watches,
@@ -57,7 +57,7 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 		}
 
 		// Add targets to each job specified in this watch
-		for _, jobName := range watch.Jobs.Slice() {
+		for _, jobName := range watch.Jobs {
 			// Validate job exists
 			if _, exists := ep.jobs[jobName]; !exists {
 				return nil, fmt.Errorf("watch %q references undefined job %q", watch.Name, jobName)
@@ -76,10 +76,10 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 }
 
 // renderTargets renders the target templates for a watch mapping
-// If no targets are specified (Targets == nil), returns the source path
-func (ep *EventProcessor) renderTargets(watch *WatchMapping, path string) ([]string, error) {
+// If no targets are specified (empty slice), returns the source path
+func (ep *EventProcessor) renderTargets(watch WatchMapping, path string) ([]string, error) {
 	// If no targets specified, use the source file itself
-	if watch.Targets == nil {
+	if len(watch.Targets) == 0 {
 		return []string{filepath.FromSlash(path)}, nil
 	}
 
@@ -87,8 +87,8 @@ func (ep *EventProcessor) renderTargets(watch *WatchMapping, path string) ([]str
 	tokens := BuildTokens(path, watch.Source)
 
 	// Render each target template
-	targets := make([]string, 0, len(*watch.Targets))
-	for _, targetTemplate := range *watch.Targets {
+	targets := make([]string, 0, len(watch.Targets))
+	for _, targetTemplate := range watch.Targets {
 		rendered, err := RenderTemplate(targetTemplate, tokens)
 		if err != nil {
 			return nil, fmt.Errorf("error rendering target template %q: %w", targetTemplate, err)
@@ -127,9 +127,9 @@ func deduplicate(items []string) []string {
 
 // ValidateConfig validates the configuration before creating the processor
 // It checks that all jobs referenced in watches exist
-func ValidateConfig(jobs map[string]*job.Job, watches []*WatchMapping) error {
+func ValidateConfig(jobs map[string]job.Job, watches []WatchMapping) error {
 	for _, watch := range watches {
-		for _, jobName := range watch.Jobs.Slice() {
+		for _, jobName := range watch.Jobs {
 			if _, exists := jobs[jobName]; !exists {
 				name := watch.Name
 				if name == "" {
@@ -140,15 +140,13 @@ func ValidateConfig(jobs map[string]*job.Job, watches []*WatchMapping) error {
 		}
 
 		// Validate target templates
-		if watch.Targets != nil {
-			for _, target := range *watch.Targets {
-				if err := ValidateTemplate(target); err != nil {
-					name := watch.Name
-					if name == "" {
-						name = fmt.Sprintf("watch with source %q", watch.Source)
-					}
-					return fmt.Errorf("%s has invalid target template %q: %w", name, target, err)
+		for _, target := range watch.Targets {
+			if err := ValidateTemplate(target); err != nil {
+				name := watch.Name
+				if name == "" {
+					name = fmt.Sprintf("watch with source %q", watch.Source)
 				}
+				return fmt.Errorf("%s has invalid target template %q: %w", name, target, err)
 			}
 		}
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 // FindFilesFromJob discovers all files based on the job's target pattern
-func FindFilesFromJob(j *job.Job) ([]string, error) {
+func FindFilesFromJob(j job.Job) ([]string, error) {
 	pattern := j.GetTargetPattern()
 	if pattern == "" {
 		return nil, fmt.Errorf("job %q has no target_pattern configured and job name does not match any conventions (rspec/minitest)", j.Name)
@@ -26,7 +26,7 @@ func FindFilesFromJob(j *job.Job) ([]string, error) {
 
 // ExpandPatternsFromJob takes a list of file paths/patterns and expands any glob patterns
 // Uses the job's target suffix for directory expansion
-func ExpandPatternsFromJob(patterns []string, j *job.Job) ([]string, error) {
+func ExpandPatternsFromJob(patterns []string, j job.Job) ([]string, error) {
 	seenFiles := make(map[string]struct{})
 	suffix := j.GetTargetSuffix()
 

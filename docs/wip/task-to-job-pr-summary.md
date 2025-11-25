@@ -69,8 +69,6 @@ The Job templating and watch token systems add complexity without proportional v
 * **Recommendation**: Update docs before release
 
 ### 4. Unnecessary Abstractions
-* Parser factory for 3 parser types
-* MultiString type for TOML flexibility
 * Deep configuration copying on every default access
 * **Recommendation**: Inline or remove these abstractions
 
@@ -107,8 +105,7 @@ The Job templating and watch token systems add complexity without proportional v
 
 ### Short Term
 1. Decompose large functions (especially watch.go)
-2. Remove unnecessary abstractions (parser factory, MultiString)
-3. Add visibility commands (`plur config:show`, enhanced doctor)
+2. Add visibility commands (`plur config:show`, enhanced doctor)
 
 ### Consider for Future
 1. Replace autodetection with required explicit config
