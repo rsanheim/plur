@@ -1,7 +1,8 @@
 # plur CHANGELOG
 
 ## v0.13.0 - 2025-11-25
-Internal refactoring and simplification of job resolution logic [#131](https://github.com/rsanheim/plur/pull/131)
+* Major internal refactor (task→job) [#131](https://github.com/rsanheim/plur/pull/131)
+* Remove dead code: test-only getters and unused Ruby helper [#133](https://github.com/rsanheim/plur/pull/133)
 
 ## v0.12.0 - 2025-10-31
 
