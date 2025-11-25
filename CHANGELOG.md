@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## v0.13.0 - 2025-11-25
+Internal refactoring and simplification of job resolution logic [#131](https://github.com/rsanheim/plur/pull/131)
+
 ## v0.12.0 - 2025-10-31
 
 * Add plur watch reload command [#126](https://github.com/rsanheim/plur/pull/126)
