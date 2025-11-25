@@ -7,7 +7,7 @@ module Plur
 
     def initialize
       # Version information
-      @edant_watcher_version = "0.13.6"
+      @edant_watcher_version = "0.13.8"
 
       # Directory paths
       @root_dir = Pathname.new(__dir__).join("../..").expand_path

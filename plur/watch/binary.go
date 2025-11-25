@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 
@@ -51,6 +52,14 @@ func InstallBinary(watcherBinaries embed.FS, binDir, plurHome string, force bool
 
 	if err := os.WriteFile(binaryPath, data, 0755); err != nil {
 		return fmt.Errorf("failed to write watcher binary: %v", err)
+	}
+
+	// Ad-hoc sign on macOS to satisfy Gatekeeper
+	if runtime.GOOS == "darwin" {
+		cmd := exec.Command("codesign", "--force", "--sign", "-", binaryPath)
+		if err := cmd.Run(); err != nil {
+			logger.Logger.Warn("failed to ad-hoc sign watcher binary", "error", err)
+		}
 	}
 
 	// Print success message
