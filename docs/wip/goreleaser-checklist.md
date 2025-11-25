@@ -3,10 +3,12 @@
 This checklist tracks the implementation of GoReleaser for plur, following the [GoReleaser PRD](../archive/2025-10-goreleaser-prd.md).
 
 ## Current State Summary
-* **Release Process**: Manual from main branch using `script/release`
+* **Release Process**: Two-step with GitHub Actions
+  * `script/release prepare v0.14.0` - Generate changelog
+  * `script/release push v0.14.0` - Tag and push (triggers GitHub Actions)
 * **Version Format**: Semver with `v` prefix (e.g., `v0.13.0`)
 * **Latest Release**: v0.13.0 (2025-11-25)
-* **Status**: ✅ Production releases working
+* **Status**: ✅ Production releases working via GitHub Actions
 * **Last Updated**: 2025-11-25
 
 ---
@@ -88,14 +90,14 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 
 ## Phase 2: Enhanced Developer Experience ✅ COMPLETED
 
-### 2.1 Script Integration
-* [x] Enhanced `script/release` to use GoReleaser internally
-* [x] Added `--extract-notes` flag to extract changelog entries for CI
-* [x] Added `--automated` flag for CI/CD (skips confirmation prompts)
-* [x] Added `--draft`/`--no-draft` flags to control release visibility
+### 2.1 Script Integration (Updated 2025-11-25)
+* [x] Refactored `script/release` to subcommands:
+  * [x] `prepare VERSION` - Generate changelog entries (doesn't commit)
+  * [x] `push VERSION` - Verify, commit, tag, and push
+  * [x] `extract-notes VERSION` - Extract release notes for CI
 * [x] Integrated PR-based changelog with GoReleaser release notes
 * [x] Disabled GoReleaser auto-changelog (we provide our own)
-* [x] Maintained backward compatibility - same `script/release v0.x.x` command
+* [x] GitHub Actions handles GoReleaser execution (not local)
 
 ### 2.2 Version Management Enhancement
 * [x] Ensure `plur/version.go` properly handles:
@@ -109,23 +111,25 @@ This checklist tracks the implementation of GoReleaser for plur, following the [
 
 ---
 
-## Phase 3: CI/CD Readiness ✅ COMPLETED (Test Release Automation Removed)
+## Phase 3: CI/CD Readiness ✅ COMPLETED
 
 ### 3.1 GoReleaser in CI
-* [x] `test-goreleaser` job validates builds on every push
+* [x] `test-goreleaser` job validates builds on every push (CircleCI)
 * [x] Snapshot builds tested in CI
 * [x] Artifacts stored for verification
 
-### 3.2 Release Configuration
+### 3.2 GitHub Actions Release Workflow (Added 2025-11-25)
+* [x] Created `.github/workflows/release.yml`
+* [x] Tag-triggered GoReleaser execution (`v*` tags)
+* [x] Extracts release notes from CHANGELOG.md
+* [x] Builds and publishes multi-platform binaries automatically
+
+### 3.3 Release Configuration
 * [x] Configure release section in `.goreleaser.yml`:
   * [x] GitHub release creation
   * [x] Release notes from CHANGELOG.md
-  * [x] Draft mode configurable via `--draft` flag
 * [x] Set up artifact upload configuration
 * [x] Configure release name template
-
-### 3.3 Test Release Automation (REMOVED)
-~~The CircleCI `release` job for automated test releases was removed as it was never used in practice.~~ All releases are done manually from main branch using `script/release`, which provides better control and visibility.
 
 ---
 
@@ -201,12 +205,20 @@ Production releases (v0.11.0, v0.12.0, v0.13.0) have validated the entire releas
   * These were created during initial testing and are no longer needed
   * Run: `gh release list --json tagName -q '.[].tagName' | grep test | xargs -I {} gh release delete {} --yes`
 
+## Completed Cleanup
+
+* [x] Removed `lib/tasks/multi_platform.rake` - obsolete now that goreleaser handles builds
+* [x] Added `--dry-run` flag to `script/release` for safe testing
+* [x] Deleted `docs/development/multi-platform-builds.md` - documented obsolete rake tasks
+
 ---
 
 ## Notes & References
 
 * [GoReleaser Documentation](https://goreleaser.com/intro/)
-* Current release script: `script/release`
+* [GoReleaser GitHub Actions](https://goreleaser.com/ci/actions/)
+* Release script: `script/release` (subcommands: prepare, push, extract-notes)
+* GitHub Actions workflow: `.github/workflows/release.yml`
 * Version management: `plur/version.go`
 * GoReleaser config: `plur/.goreleaser.yml`
 
@@ -222,6 +234,11 @@ Production releases (v0.11.0, v0.12.0, v0.13.0) have validated the entire releas
 * **Production Releases**: v0.11.0 (2025-10-17), v0.12.0 (2025-10-31), v0.13.0 (2025-11-25)
 
 ### Update History
+
+**2025-11-25 (GitHub Actions)**
+* Added GitHub Actions workflow for tag-triggered releases
+* Refactored `script/release` to subcommands (prepare/push/extract-notes)
+* GoReleaser now runs in GitHub Actions, not locally
 
 **2025-11-25**
 * Marked Phase 4 as complete - production releases validate the pipeline

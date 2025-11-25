@@ -3,135 +3,88 @@
 ## Quick Start
 
 ```bash
-# Create a new release (interactive, creates draft)
-script/release v0.7.0
+# 1. Prepare release (generates changelog)
+script/release prepare v0.14.0
 
-# Create and publish immediately
-script/release v0.7.0 --no-draft
+# 2. Review and edit CHANGELOG.md if needed
 
-# Automated release (for CI/CD)
-script/release v0.7.0 --automated --draft
+# 3. Commit changelog
+git add CHANGELOG.md && git commit -m "Changelog for v0.14.0"
+
+# 4. Push release (tags and triggers GitHub Actions)
+script/release push v0.14.0
 ```
 
 ## Prerequisites
 
-- GitHub CLI (`gh`) installed and authenticated
-- GoReleaser installed (`brew install goreleaser`)
-- Clean working directory on `main` branch
-- Push access to the repository
-- GITHUB_TOKEN for automated releases (in CI)
+* GitHub CLI (`gh`) installed and authenticated
+* Clean working directory on `main` branch
+* Push access to the repository
 
-## Release Options
+## Commands
 
-### Manual Releases (Developer Machine)
+### `script/release prepare VERSION`
 
-```bash
-# Standard release (interactive, creates draft)
-script/release v0.7.1
-
-# Publish immediately (no draft)
-script/release v1.0.0 --no-draft
-
-# Extract changelog notes only
-script/release v0.7.0 --extract-notes
-```
-
-### Automated Releases (CI/CD)
+Generates changelog entries by finding PRs merged since the last release:
 
 ```bash
-# Automated draft release (no prompts)
-script/release v0.7.0 --automated --draft
-
-# Automated published release
-script/release v0.7.0 --automated --no-draft
-
-# CI example with build number
-script/release v0.10.4-$BUILD_NUM-test --automated --draft
+script/release prepare v0.14.0
 ```
 
-## What Happens
+This updates `CHANGELOG.md` with PR titles and links. Review and edit as needed before committing.
 
-### Interactive Mode (default)
-1. Verifies prerequisites
-2. Builds plur to ensure it compiles
-3. Updates CHANGELOG.md with PRs since last release
-4. Shows summary and **asks for confirmation**
-5. Commits changelog updates
-6. Creates git tag
-7. Pushes tag to GitHub
-8. Runs GoReleaser to:
-   - Build multi-platform binaries
-   - Generate checksums
-   - Create GitHub release with artifacts
-   - Upload release notes from CHANGELOG
+### `script/release push VERSION`
 
-### Automated Mode (`--automated`)
-Same as above but:
-- **Skips confirmation prompt**
-- Logs all actions
-- Suitable for CI/CD pipelines
-
-## Release Workflows
-
-### Production Releases (from main branch)
-Production releases are created manually from the main branch:
+Tags and pushes to trigger the release:
 
 ```bash
-# On main branch, create a production release
-git checkout main
-git pull origin main
-
-# Interactive release (creates draft for review)
-script/release v0.11.0
-
-# Or publish immediately
-script/release v0.11.0 --no-draft
+script/release push v0.14.0
 ```
 
-### Test Releases (CI validation)
-Test releases are automated via CircleCI on `test-releases/*` branches:
+This command:
+1. Verifies you're on `main` branch
+2. Verifies git status is clean
+3. Verifies changelog has entry for version
+4. Creates annotated git tag
+5. Pushes tag to origin
 
-1. Create a test branch:
-   ```bash
-   git checkout -b test-releases/validate-v0.11
-   git push origin test-releases/validate-v0.11
-   ```
+Pushing the tag triggers GitHub Actions to run GoReleaser.
 
-2. CircleCI automatically creates test releases with format:
-   ```
-   v0.10.4-{BUILD_NUMBER}-test
-   ```
+### `script/release extract-notes VERSION`
 
-3. These are **draft releases** used for:
-   - Validating the release pipeline
-   - Testing multi-platform binaries
-   - Verifying GoReleaser configuration
-   - **NOT for production use**
+Extracts release notes from CHANGELOG.md (used by CI):
 
-### CircleCI Configuration
-```yaml
-workflows:
-  release:
-    jobs:
-      - release:
-          context: github-releases
-          filters:
-            branches:
-              only: /test-releases.*/  # Test branches only
+```bash
+script/release extract-notes v0.14.0
 ```
 
-### Required Environment Variables
-- `GITHUB_TOKEN`: Personal access token with repo permissions
-- Must be stored in CircleCI context or project settings
+### `--dry-run` Flag
 
-## Release Flags
+All commands support `--dry-run` to see what would happen without executing:
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--automated` | Skip confirmation prompts (for CI) | Interactive |
-| `--draft` | Create draft release | Yes |
-| `--no-draft` | Publish immediately | No |
-| `--extract-notes` | Only extract changelog notes | No |
+```bash
+script/release prepare v0.14.0 --dry-run
+script/release push v0.14.0 --dry-run
+```
+
+## What Happens After Push
+
+GitHub Actions (`.github/workflows/release.yml`) automatically:
+
+1. Extracts release notes from CHANGELOG.md
+2. Runs GoReleaser to build multi-platform binaries
+3. Creates GitHub release with artifacts
+
+## Platform Artifacts
+
+Each release includes binaries for:
+
+* macOS ARM64 (Apple Silicon)
+* Linux x86_64
+* Linux ARM64
+* Windows x86_64 (experimental)
+
+All artifacts include SHA256 checksums, README, LICENSE, and CHANGELOG.
 
 ## Manual Release (Emergency)
 
@@ -143,23 +96,11 @@ git commit -am "Update CHANGELOG for vX.Y.Z"
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin main --tags
 
-# GoReleaser will use existing tag
-cd plur
-goreleaser release --clean
-
-# Or create GitHub release manually
-gh release create vX.Y.Z --title vX.Y.Z --notes "See CHANGELOG.md"
+# GitHub Actions will handle the rest
+# Or run GoReleaser locally:
+cd plur && goreleaser release --clean
 ```
 
-## Platform Artifacts
+## Version Format
 
-Each release includes binaries for:
-- macOS ARM64 (Apple Silicon)
-- Linux x86_64
-- Linux ARM64
-- Windows x86_64 (experimental)
-
-All artifacts include:
-- SHA256 checksums
-- README, LICENSE, and CHANGELOG
-- Compressed archives (tar.gz for Unix, zip for Windows)
+Versions must be semver with `v` prefix: `vX.Y.Z` (e.g., `v0.14.0`, `v1.0.0-rc1`)

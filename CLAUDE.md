@@ -103,24 +103,6 @@ When both `spec/` and `test/` directories exist:
 4. Fix issues with `bin/rake standard:fix`
 5. `git add -A && git commit`
 
-### Multi-Platform Builds & Docker
-
-```bash
-# Build Linux binaries (amd64 & arm64)
-bin/rake build:linux
-
-# Install plur in Docker container
-script/install-plur-docker CONTAINER_NAME
-
-# Install in docker-compose container
-script/install-plur-docker SERVICE_NAME -C COMPOSE_PREFIX
-
-# Use plur in container
-docker exec CONTAINER_NAME plur
-```
-
-Cross-compilation uses Go's GOOS/GOARCH with CGO_ENABLED=0 for static binaries.
-
 ## Testing from Outside-In
 
 ALWAYS use integration specs as guardrails:
