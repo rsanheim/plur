@@ -142,40 +142,7 @@ Single location for all command building
 
 ## LOW PRIORITY Issues
 
-### L1: Inconsistent Pointer Usage
-Throughout codebase • Size: Small
-
-Jobs are sometimes `*job.Job`, sometimes `job.Job` with no clear pattern.
-
-*Problems:*
-* Cognitive overhead
-* Potential nil pointer issues
-* Inconsistent patterns
-
-*Alternative:*
-Always use values for small structs like Job
-
-*Impact:* Consistency, eliminate nil checks
-
-### L2: Verbose Error Handling
-Throughout codebase • Size: Medium
-
-Every error wrapped with detailed context messages like `"failed to do X while Y because Z: %w"`.
-
-*Problems:*
-* Overly detailed for single-user tool
-* Repetitive wrapping
-* Code bloat
-
-*Alternative:*
-For CLI tool with single user, consider:
-```go
-check(err) // Panic with clear message if err != nil
-```
-
-*Impact:* Reduce boilerplate, cleaner code
-
-### L3: Convention-Based Pattern Detection
+### L1: Convention-Based Pattern Detection (consider keeping)
 `plur/job/job.go:77-130` • Size: Medium
 
 Three functions determining test patterns based on job names through string manipulation.
@@ -190,7 +157,7 @@ Explicit patterns only
 
 *Impact:* Remove convention code, clearer configuration
 
-### L4: Unused Configuration Fields
+### L2: Unused Configuration Fields
 `plur/job/job.go` • Size: Tiny
 
 Several fields exist but are barely or never used: `Env` field in Job, `Name` field in WatchMapping, `exclude` in watch mappings.
@@ -345,9 +312,7 @@ Replace:
 
 ### Phase 3: Polish (Low Impact, Low Risk)
 1. Add visibility commands
-2. Standardize pointer usage
-3. Clean up error handling
-4. Remove unused fields
+2. Remove unused fields
 
 ## Conclusion
 
