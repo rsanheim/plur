@@ -27,13 +27,19 @@ task build: ["vendor:download:current", "lint:go"] do
   end
 end
 
-desc "Install plur to GOPATH/bin"
+desc "Install plur to GOBIN"
 task :install do
   if ENV["CI"] && system("which plur")
     puts "[install] Plur already installed"
   else
     Dir.chdir(Plur.config.plur_dir) do
-      sh %(go install -mod=mod)
+      gobin = ENV.fetch("GOBIN")
+      final = File.join(gobin, "plur")
+      temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
+
+      sh %(goreleaser build --snapshot --single-target --clean -o #{temp})
+      File.chmod(0o755, temp)
+      File.rename(temp, final)
     end
   end
   puts "[install] Installed plur with version: #{`plur --version`.strip}"
@@ -76,7 +82,7 @@ namespace :lint do
   task :go do
     Dir.chdir(Plur.config.plur_dir) do
       puts "[lint:go] Running go fmt and go vet"
-      sh "go fmt -mod=mod ./..."
+      sh "go", "fmt", "-mod=mod", "./..."
       sh "go vet -mod=mod ./..."
     end
   end

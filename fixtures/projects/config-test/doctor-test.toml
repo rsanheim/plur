@@ -2,8 +2,8 @@ workers = 4
 color = true
 use = "doctor-test"
 
-[task.doctor-test]
-description = "Custom test task for doctor verification"
-run = "echo 'DOCTOR TEST TASK'"
-source_dirs = ["spec", "lib"]
-test_glob = "spec/**/*_spec.rb"
+[job.doctor-test]
+description = "Custom test job for doctor verification"
+cmd = ["echo", "DOCTOR TEST TASK"]
+watch_dirs = ["spec", "lib"]
+target_pattern = "spec/**/*_spec.rb"

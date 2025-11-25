@@ -5,10 +5,12 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
+	"sort"
 	"strings"
 
+	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -173,20 +175,39 @@ func checkConfiguration(globalConfig *config.GlobalConfig) error {
 	// Show active task if set
 	// Note: We'd need to pass the active task name from PlurCLI if we want to show it here
 
+	// Job resolution
+	fmt.Println("\n  Job Resolution:")
+	result, err := autodetect.ResolveJob("", nil, nil)
+	if err != nil {
+		fmt.Printf("    %v\n", err)
+	} else {
+		fmt.Printf("    Active Job:      %s\n", result.Name)
+		fmt.Printf("    Command:         %v\n", result.Job.Cmd)
+		fmt.Printf("    Target Pattern:  %s\n", result.Job.GetTargetPattern())
+	}
+
 	// Check for watch directories
 	fmt.Println("\n  Watch Directories:")
-	currentTask := task.DetectFramework()
-	watchDirs := currentTask.GetWatchDirs()
-	if len(watchDirs) == 0 {
-		dirList := "spec/, lib/, app/"
-		if currentTask.IsMinitestStyle() {
-			dirList = "test/, lib/, app/"
+	if result != nil && len(result.Watches) > 0 {
+		// Extract watch directories from watch mappings
+		var watchDirs []string
+		for _, mapping := range result.Watches {
+			dir := mapping.SourceDir()
+			if _, err := os.Stat(dir); err == nil {
+				watchDirs = append(watchDirs, dir)
+			}
 		}
-		fmt.Printf("    Warning: No watch directories found (checked: %s)\n", dirList)
+		sort.Strings(watchDirs)
+		watchDirs = slices.Compact(watchDirs) // Remove duplicates from sorted slice
+		if len(watchDirs) == 0 {
+			fmt.Println("    Warning: No watch directories found in watch mappings")
+		} else {
+			for _, dir := range watchDirs {
+				fmt.Printf("    %s/ (exists)\n", dir)
+			}
+		}
 	} else {
-		for _, dir := range watchDirs {
-			fmt.Printf("    %s/ (exists)\n", dir)
-		}
+		fmt.Println("    Warning: No watch mappings available")
 	}
 
 	return nil

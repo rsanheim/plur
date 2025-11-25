@@ -1,5 +1,5 @@
 ---
-first_recorded_at: '2025-08-21T02:56:03-05:00'
+first_recorded_at: '2025-11-16T00:50:27-06:00'
 format_version: '2.0'
 commands:
 - command_type: Open3::Capture3
@@ -10,22 +10,22 @@ commands:
     Plur Doctor
     ==========
 
-    Plur Version:    dev
-    Build Date:      unknown
-    Git Commit:      unknown
+    Plur Version:    v0.12.0-55-gfc3b3fa-dirty
+    Build Date:      2025-11-16T06:14:52Z
+    Git Commit:      fc3b3fa
     Built By:        unknown
 
     Operating System: darwin
     Architecture:     arm64
-    CPU Count:        14
-    Go Version:       go1.25.0
+    CPU Count:        20
+    Go Version:       go1.25.4
 
-    Working Dir:      /Users/rsanheim/src/rsanheim/plur
-    Plur Binary:     /Users/rsanheim/go/bin/plur
+    Working Dir:      /Users/rsanheim/src/oss/plur
+    Plur Binary:     /Users/rsanheim/.local/share/mise/installs/go/1.25.4/bin/plur
 
     Ruby Environment:
-      Ruby Version:   ruby 3.4.5 (2025-07-16 revision 20cda200d3) +PRISM [arm64-darwin24]
-      Bundler:        Bundler version 2.6.9
+      Ruby Version:   ruby 3.4.7 (2025-10-08 revision 7a5688e2a2) +PRISM [arm64-darwin24]
+      Bundler:        Bundler version 2.7.2
       RSpec:          RSpec 3.13
       - rspec-core 3.13.3
       - rspec-expectations 3.13.4
@@ -39,7 +39,7 @@ commands:
       Platform:       darwin/arm64
 
     Cache Directory:  /Users/rsanheim/.plur/cache
-    Runtime Data:     /Users/rsanheim/.plur/runtime/2053983d.json
+    Runtime Data:     /Users/rsanheim/.plur/runtime/fb25e668.json
                       (file exists)
 
     Environment Variables:
@@ -51,17 +51,22 @@ commands:
 
     Configuration:
       Active Configuration Files:
-        Using defaults (no configuration files found)
+        - /Users/rsanheim/src/oss/plur/.plur.toml
 
       Active Settings:
-        Workers:     12
+        Workers:     18
         Color:       true
         Debug:       false
         Verbose:     false
 
+      Job Resolution:
+        Active Job:      rspec
+        Command:         [bundle exec rspec {{target}}]
+        Target Pattern:  spec/**/*_spec.rb
+
       Watch Directories:
-        spec/ (exists)
         lib/ (exists)
+        spec/ (exists)
   stderr: ''
   status: 0
-  recorded_at: '2025-08-21T02:56:03-05:00'
+  recorded_at: '2025-11-16T00:50:27-06:00'

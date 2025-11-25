@@ -17,10 +17,22 @@ bin/rake test                 # Run full Ruby test suite
 bin/rake standard:fix         # Fix Ruby lint issues
 
 # Never do this:
-# rake anything         ❌ WRONG - breaks bundler context  
+# rake anything         ❌ WRONG - breaks bundler context
 # go build             ❌ WRONG - missing version info
 # cd plur && go build   ❌ WRONG - use bin/rake install
 ```
+
+### bin/rake build vs bin/rake install
+
+* **bin/rake build** - Fast local build using `go build` (creates `plur/plur`)
+  * Version detection may be incorrect (uses runtime git describe in CWD)
+  * Used by CI for speed
+  * Fine for testing, not for distribution
+
+* **bin/rake install** - Production dev install using `goreleaser build` (installs to `$GOPATH/bin/plur`)
+  * Version is correctly embedded via ldflags at build time
+  * Always shows consistent version regardless of CWD
+  * Use this for your daily workflow
 
 ## Quick Reference
 
@@ -32,7 +44,7 @@ plur -C path/to/project   # Change to directory before running (like git -C)
 plur --dry-run            # Preview what will run
 plur doctor               # Debug installation issues
 plur watch                # Auto-run tests on file changes (experimental)
-plur spec                      # Run tests with detected task
+plur spec                      # Run tests with detected job
 ```
 
 ### Configuration Files
@@ -43,20 +55,19 @@ Plur supports TOML configuration files for persistent settings:
 # .plur.toml or ~/.plur.toml
 workers = 4              # Number of parallel workers
 color = true             # Enable colored output
-use = "rspec"            # Default task to use (can be overridden with --use)
+use = "rspec"            # Default job to use (can be overridden with --use)
 
-[task.rspec]
-run = "bin/rspec"        # Override default "bundle exec rspec"
+[job.rspec]
+cmd = ["bin/rspec"]        # Override default command
 
-[task.custom-lint]
-run = "bundle exec rubocop"
-source_dirs = ["lib", "spec"]
-test_glob = "**/*.rb"
+[job.custom-lint]
+cmd = ["bundle", "exec", "rubocop"]
+target_pattern = "**/*.rb"
 ```
 
 Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (global) > defaults
 
-See [Configuration Documentation](docs/configuration.md#task-configuration) for full details on creating custom tasks.
+See [Configuration Documentation](docs/configuration.md#job-configuration) for full details on creating custom jobs.
 
 ### Common Fixes
 - **"cannot load such file -- backspin"** → `bundle install` at root

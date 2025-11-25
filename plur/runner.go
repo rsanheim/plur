@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -149,7 +149,7 @@ func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 }
 
 // RunTestFiles executes multiple test files in a single test process
-func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentTask *task.Task) WorkerResult {
+func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentJob job.Job) WorkerResult {
 	start := time.Now()
 
 	// Create TestFile for the primary file (or combined representation)
@@ -166,7 +166,16 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		}
 	}
 
-	args := currentTask.BuildCommand(testFiles, globalConfig, "")
+	// Build command using framework-specific wrappers
+	var args []string
+	switch currentJob.Name {
+	case "rspec":
+		args = buildRSpecCommand(currentJob, testFiles, globalConfig)
+	case "minitest":
+		args = buildMinitestCommand(currentJob, testFiles, globalConfig)
+	default:
+		args = job.BuildJobCmd(currentJob, testFiles)
+	}
 
 	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
 
@@ -213,7 +222,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
-	parser, err := currentTask.CreateParser()
+	parser, err := currentJob.CreateParser()
 	if err != nil {
 		return errorResult(testFile, err, start)
 	}
@@ -264,7 +273,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 }
 
 // RunTestsInParallel runs spec or test files in parallel
-func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentTask *task.Task) ([]WorkerResult, time.Duration) {
+func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentJob job.Job) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 
@@ -283,22 +292,22 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 	if len(runtimeData) > 0 {
 		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesByRuntime(testFiles, maxWorkers, runtimeData)
-		logger.LogVerbose("Using runtime-based grouping", "runtime_entries", len(runtimeData))
+		logger.Logger.Info("Using runtime-based grouping", "runtime_entries", len(runtimeData))
 	} else {
 		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesBySize(testFiles, maxWorkers)
-		logger.LogVerbose("Using size-based grouping (no runtime data available)")
+		logger.Logger.Info("Using size-based grouping (no runtime data available)")
 	}
 
 	// Log group assignments in verbose mode
-	if logger.VerboseMode {
+	if logger.IsVerboseEnabled() {
 		for i, group := range groups {
 			// TotalSize represents milliseconds when using runtime data, bytes when using file size
 			runtimeInfo := "by file size"
 			if len(runtimeData) > 0 {
 				runtimeInfo = fmt.Sprintf("%.2fs", float64(group.TotalSize)/1000.0)
 			}
-			logger.LogVerbose("assigned", "worker", i, "files", group.Files, "estimated_time", runtimeInfo)
+			logger.Logger.Info("assigned", "worker", i, "files", group.Files, "estimated_time", runtimeInfo)
 		}
 	}
 
@@ -324,9 +333,9 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		wg.Add(1)
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
-			logger.LogVerbose("starting", "worker", workerIndex, "file_count", len(files))
-			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentTask)
-			logger.LogVerbose("finished", "worker", workerIndex, "success", result.Success())
+			logger.Logger.Info("starting", "worker", workerIndex, "file_count", len(files))
+			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentJob)
+			logger.Logger.Info("finished", "worker", workerIndex, "success", result.Success())
 			results <- result
 		}(i, group.Files)
 	}
@@ -355,4 +364,85 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 	fmt.Println()
 
 	return allResults, time.Since(start)
+}
+
+// insertBeforeFiles inserts additional arguments before the file arguments in a command
+// This is used to add formatter and color flags for RSpec before the spec file paths
+func insertBeforeFiles(args []string, files []string, newArgs ...string) []string {
+	// Find where the files start in args
+	filesStart := -1
+	for i, arg := range args {
+		for _, file := range files {
+			if arg == file {
+				filesStart = i
+				break
+			}
+		}
+		if filesStart != -1 {
+			break
+		}
+	}
+
+	// If we didn't find files, just append new args
+	if filesStart == -1 {
+		return append(args, newArgs...)
+	}
+
+	// Insert new args before files
+	result := make([]string, 0, len(args)+len(newArgs))
+	result = append(result, args[:filesStart]...)
+	result = append(result, newArgs...)
+	result = append(result, args[filesStart:]...)
+	return result
+}
+
+// buildRSpecCommand builds an RSpec command with framework-specific flags
+// Adds formatter (if available) and color flags before the file arguments
+func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
+	// Start with base command from BuildJobCmd
+	args := job.BuildJobCmd(j, files)
+
+	// Add formatter if available
+	if globalConfig.ConfigPaths != nil {
+		formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
+		if formatterPath != "" {
+			// Insert before files
+			args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
+		}
+	}
+
+	// Add color flags
+	if !globalConfig.ColorOutput {
+		args = insertBeforeFiles(args, files, "--no-color")
+	} else {
+		args = insertBeforeFiles(args, files, "--force-color", "--tty")
+	}
+
+	return args
+}
+
+// buildMinitestCommand builds a Minitest command with framework-specific handling
+// For multiple files, uses special -e require pattern
+// For single file, uses BuildJobCmd directly
+func buildMinitestCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
+	// For multiple files, use special -e require pattern
+	if len(files) > 1 {
+		cmd := []string{"bundle", "exec", "ruby", "-Itest"}
+		requires := make([]string, 0, len(files))
+		for _, file := range files {
+			// Strip the "test/" prefix if present since we're using -Itest
+			testFile := strings.TrimPrefix(file, "test/")
+			// Remove the .rb extension for require
+			testFile = strings.TrimSuffix(testFile, ".rb")
+			requires = append(requires, testFile)
+		}
+
+		// Create the require pattern
+		requireList := `"` + strings.Join(requires, `", "`) + `"`
+		cmd = append(cmd, "-e", `[`+requireList+`].each { |f| require f }`)
+		return cmd
+	}
+
+	// For single file, use BuildJobCmd directly
+	return job.BuildJobCmd(j, files)
 }

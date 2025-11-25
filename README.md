@@ -89,8 +89,8 @@ Plur supports TOML configuration files for persistent settings:
 # .plur.toml or ~/.plur.toml
 workers = 4
 
-[task.rspec]
-run = "bin/rspec"
+[job.rspec]
+cmd = ["bin/rspec"]
 
 [watch.run]
 debounce = 200  # Milliseconds to wait before running tests
@@ -178,7 +178,7 @@ We use MkDocs Material for browsing documentation. To view the docs locally:
 script/docs
 ```
 
-The documentation setup uses mise for Python version management and uv for dependency management. All Python dependencies are managed in `docs/pyproject.toml`.
+The documentation setup uses mise for Python version management and uv for dependency management. All Python dependencies are managed in `pyproject.toml`.
 
 For more documentation commands:
 ```bash

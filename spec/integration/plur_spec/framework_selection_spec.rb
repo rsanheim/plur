@@ -36,7 +36,7 @@ RSpec.describe "Framework Selection" do
     it "runs RSpec tests when -t rspec is specified" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("spec", "-t", "rspec", "--dry-run")
+          result = run_plur("spec", "-u", "rspec", "--dry-run")
           expect(result).to be_success
           expect(result.err).to include("spec/example_spec.rb")
           expect(result.err).not_to include("test/example_test.rb")
@@ -47,7 +47,7 @@ RSpec.describe "Framework Selection" do
     it "runs Minitest tests when -t minitest is specified" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("spec", "-t", "minitest", "--dry-run")
+          result = run_plur("spec", "-u", "minitest", "--dry-run")
           expect(result).to be_success
           expect(result.err).to include("test/example_test.rb")
           expect(result.err).not_to include("spec/example_spec.rb")
@@ -80,7 +80,7 @@ RSpec.describe "Framework Selection" do
       it "allows CLI flag to override config file" do
         chdir(project_dir) do
           Bundler.with_unbundled_env do
-            result = run_plur("spec", "-t", "rspec", "--dry-run")
+            result = run_plur("spec", "-u", "rspec", "--dry-run")
             expect(result).to be_success
             expect(result.err).to include("spec/example_spec.rb")
             expect(result.err).not_to include("test/example_test.rb")
@@ -131,17 +131,13 @@ RSpec.describe "Framework Selection" do
   end
 
   describe "with neither spec/ nor test/ directory" do
-    it "defaults to RSpec for backward compatibility" do
-      # This will show no files to run, but we can check the detected framework
-      # by looking at the error message
+    it "fails with clear error message when no framework detected" do
+      # With no indicators (Gemfile, spec/, test/, lib/), should fail with clear message
       output = run_plur_in_dir(test_dir, "--dry-run", allow_failure: true)
 
-      # The error message should mention looking for RSpec files
-      expect(output).to include("*_spec.rb")
-      expect(output).to include("spec/")
-      # And not mention Minitest patterns
-      expect(output).not_to include("*_test.rb")
-      expect(output).not_to include("test/")
+      # The error message should indicate no framework was detected
+      expect(output).to include("no test framework detected")
+      expect(output).to include(".plur.toml")
     end
   end
 

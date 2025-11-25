@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -16,13 +16,13 @@ type TestExecutor struct {
 	testFiles      []string
 	testLabel      string
 	runtimeTracker *RuntimeTracker
-	currentTask    *task.Task
+	currentJob     job.Job
 }
 
 // NewTestExecutor creates a new test executor
-func NewTestExecutor(globalConfig *config.GlobalConfig, testFiles []string, currentTask *task.Task) *TestExecutor {
+func NewTestExecutor(globalConfig *config.GlobalConfig, testFiles []string, currentJob job.Job) *TestExecutor {
 	var label string
-	switch currentTask.Name {
+	switch currentJob.Name {
 	case "rspec":
 		label = pluralize(len(testFiles), "spec", "specs")
 	case "minitest":
@@ -35,7 +35,7 @@ func NewTestExecutor(globalConfig *config.GlobalConfig, testFiles []string, curr
 		testFiles:      testFiles,
 		testLabel:      label,
 		runtimeTracker: NewRuntimeTracker(),
-		currentTask:    currentTask,
+		currentJob:     currentJob,
 	}
 }
 
@@ -85,7 +85,16 @@ func (e *TestExecutor) executeDryRun() error {
 
 	// Display what would be executed
 	for i, group := range groups {
-		args := e.currentTask.BuildCommand(group.Files, e.globalConfig, "")
+		// Build command using framework-specific wrappers
+		var args []string
+		switch e.currentJob.Name {
+		case "rspec":
+			args = buildRSpecCommand(e.currentJob, group.Files, e.globalConfig)
+		case "minitest":
+			args = buildMinitestCommand(e.currentJob, group.Files, e.globalConfig)
+		default:
+			args = job.BuildJobCmd(e.currentJob, group.Files)
+		}
 		toStdErr(e.globalConfig.DryRun, "Worker %d: %s\n", i, strings.Join(args, " "))
 	}
 
@@ -96,7 +105,7 @@ func (e *TestExecutor) executeDryRun() error {
 func (e *TestExecutor) executeTests() error {
 	e.summaryMsg()
 
-	results, wallTime := RunTestsInParallel(e.globalConfig, e.testFiles, e.runtimeTracker, e.currentTask)
+	results, wallTime := RunTestsInParallel(e.globalConfig, e.testFiles, e.runtimeTracker, e.currentJob)
 
 	// Save runtime data only if some tests actually ran
 	hasValidRuntimeData := false
@@ -117,8 +126,8 @@ func (e *TestExecutor) executeTests() error {
 		}
 	}
 
-	summary := BuildTestSummary(results, wallTime, e.currentTask)
-	PrintResults(summary, e.globalConfig.ColorOutput, e.currentTask)
+	summary := BuildTestSummary(results, wallTime, e.currentJob)
+	PrintResults(summary, e.globalConfig.ColorOutput, e.currentJob)
 
 	// Return error if tests failed
 	if !summary.Success {

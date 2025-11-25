@@ -1,20 +1,11 @@
 package minitest
 
 import (
-	"log/slog"
 	"testing"
 
-	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	// Initialize logger for tests
-	logger.Logger = slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
-		Level: slog.LevelError, // Only show errors during tests
-	}))
-}
 
 func TestOutputParser_BasicFlow(t *testing.T) {
 	assert := assert.New(t)

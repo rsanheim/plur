@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -34,7 +34,7 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentTask *task.Task) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob job.Job) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
@@ -90,8 +90,8 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentTas
 }
 
 // PrintResults displays a test summary
-func PrintResults(summary TestSummary, colorOutput bool, currentTask *task.Task) {
-	parser, err := currentTask.CreateParser()
+func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
+	parser, err := currentJob.CreateParser()
 	if err != nil {
 		// Fallback to basic output
 		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
@@ -99,7 +99,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentTask *task.Task)
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
-	if currentTask.IsMinitestStyle() && summary.HasFailures {
+	if currentJob.IsMinitestStyle() && summary.HasFailures {
 		// Collect all output from failed workers
 		for _, result := range summary.AllResults {
 			if result.State == types.StateFailed && result.Output != "" {
@@ -130,7 +130,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentTask *task.Task)
 
 	// Print failed examples list only if we didn't get a formatted summary
 	// (RSpec's formatted summary already includes the failed examples list)
-	if !hasFormattedSummary && !currentTask.IsMinitestStyle() {
+	if !hasFormattedSummary && !currentJob.IsMinitestStyle() {
 		// Skip for minitest since we already printed the raw output
 		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
 			fmt.Println("\nFailed examples:")

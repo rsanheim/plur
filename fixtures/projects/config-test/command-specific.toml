@@ -1,8 +1,10 @@
 # Global settings
 workers = 2
+use = "rspec"
 
-[task.rspec]
-run = "echo 'SPEC:'"
+[job.rspec]
+cmd = ["echo", "'SPEC:'"]
+target_pattern = "spec/**/*_spec.rb"
 
 [watch.run]
 command = "echo 'WATCH:'"

@@ -7,23 +7,28 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 )
 
-// FindTestFiles discovers all test files based on the task
-func FindTestFiles(currentTask *task.Task) ([]string, error) {
-	pattern := currentTask.GetTestPattern()
+// FindFilesFromJob discovers all files based on the job's target pattern
+func FindFilesFromJob(j job.Job) ([]string, error) {
+	pattern := j.GetTargetPattern()
+	if pattern == "" {
+		return nil, fmt.Errorf("job %q has no target_pattern configured and job name does not match any conventions (rspec/minitest)", j.Name)
+	}
+
 	matches, err := doublestar.FilepathGlob(pattern)
 	if err != nil {
-		return nil, fmt.Errorf("error finding test files: %v", err)
+		return nil, fmt.Errorf("error finding files with pattern %q: %w", pattern, err)
 	}
 	return matches, nil
 }
 
-// ExpandGlobPatterns takes a list of file paths/patterns and expands any glob patterns
-func ExpandGlobPatterns(patterns []string, currentTask *task.Task) ([]string, error) {
+// ExpandPatternsFromJob takes a list of file paths/patterns and expands any glob patterns
+// Uses the job's target suffix for directory expansion
+func ExpandPatternsFromJob(patterns []string, j job.Job) ([]string, error) {
 	seenFiles := make(map[string]struct{})
-	suffix := currentTask.GetTestSuffix()
+	suffix := j.GetTargetSuffix()
 
 	for _, pattern := range patterns {
 		var matches []string
@@ -37,12 +42,12 @@ func ExpandGlobPatterns(patterns []string, currentTask *task.Task) ([]string, er
 			}
 
 			if fileInfo.IsDir() {
-				// Directory: use task's test glob pattern within this directory
+				// Directory: use job's target suffix within this directory
 				dirPattern := filepath.Join(pattern, "**", "*"+suffix)
 				matches, err = doublestar.FilepathGlob(dirPattern)
 			} else {
 				// Single file: pass it through but warn if it doesn't match expected pattern
-				if !strings.HasSuffix(pattern, suffix) {
+				if suffix != "" && !strings.HasSuffix(pattern, suffix) {
 					fmt.Fprintf(os.Stderr, "Warning: %s does not end with %s\n", pattern, suffix)
 				}
 				matches = []string{pattern}

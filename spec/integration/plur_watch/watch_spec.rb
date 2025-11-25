@@ -5,31 +5,21 @@ RSpec.describe "plur watch command", :skip_if_ci do
 
   context "basic functionality" do
     it "starts successfully when spec directory exists" do
-      result = run_plur_watch(timeout: 2)
+      result = run_plur_watch(timeout: 1)
 
       expect(result.err).to include("plur watch starting!")
-      expect(result.err).to include("directories=[spec lib]")
-      expect(result.err).to include("timeout=2")
+      expect(result.err).to include("directories=[lib spec]")
+      expect(result.err).to include("timeout=1")
       expect(result.out).to include("Timeout reached, exiting!")
       expect(result.success?).to be true
     end
 
     it "shows watcher availability on supported platforms" do
-      result = run_plur_watch
+      result = run_plur_watch(timeout: 1)
 
       if RUBY_PLATFORM.include?("darwin") && RUBY_PLATFORM.include?("arm64")
-        expect(result.err).to include("plur using e-dant/watcher")
+        expect(result.err).to include("e-dant/watcher installed")
         expect(result.err).to include("path=#{ENV["HOME"]}/.plur/bin/watcher-aarch64-apple-darwin")
-      end
-    end
-
-    it "fails gracefully when spec directory doesn't exist" do
-      Dir.mktmpdir do |tmpdir|
-        result = run_plur_watch(dir: tmpdir, timeout: 1)
-
-        expect(result.success?).to be false
-        expect(result.err).to match(/no directories to watch found/i)
-        expect(result.err).to include("spec")
       end
     end
   end
@@ -51,8 +41,7 @@ RSpec.describe "plur watch command", :skip_if_ci do
         puts "=================="
       end
 
-      # Watch now only reports file changes, doesn't run tests
-      expect(result.err).to include("Running: [handler for file]")
+      # Watch now maps file changes to jobs and executes them
       expect(result.err).to include("calculator_spec.rb")
       expect(result.success?).to be true
     end

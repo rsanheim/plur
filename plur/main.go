@@ -1,72 +1,75 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"log/slog"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/alecthomas/kong-toml"
+	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/internal/fsutil"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/watch"
 )
-
-// TaskConfig defines the structure for task configurations that Kong can parse from TOML
-type TaskConfig struct {
-	Description string   `toml:"description"` // Human-readable description
-	Run         string   `toml:"run"`         // Command to run (e.g., "bundle exec rspec")
-	SourceDirs  []string `toml:"source_dirs"` // Directories to watch/search
-	TestGlob    string   `toml:"test_glob"`   // Glob pattern for test files
-}
 
 type SpecCmd struct {
 	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Use      string   `short:"t" help:"Task to run (rspec/minitest/custom)" default:""`
+	Use      string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Auto     bool     `help:"Automatically run bundle install before tests" default:"false"`
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg := parent.globalConfig
 
-	// Get the appropriate task with overrides applied
-	// Priority: CLI --use, config use, auto-detect
-	taskName := r.Use
-	wasExplicit := r.Use != ""
-	if taskName == "" && parent.Use != "" {
-		taskName = parent.Use
-		wasExplicit = true
-	}
-	if taskName == "" {
-		detectedTask := task.DetectFramework()
-		taskName = detectedTask.Name
-		wasExplicit = false
+	// Determine explicit job name (CLI or config)
+	explicitName := r.Use
+	if explicitName == "" {
+		explicitName = parent.Use
 	}
 
-	// Validate task exists if explicitly requested
-	if err := parent.validateTaskExists(taskName, wasExplicit); err != nil {
+	// Resolve job using unified logic
+	result, err := autodetect.ResolveJob(explicitName, parent.Job, r.Patterns)
+	if err != nil {
 		return err
 	}
 
-	currentTask := parent.getTaskWithOverrides(taskName)
-	logger.Logger.Debug("SpecCmd.Run", "command", currentTask.Run, "patterns", r.Patterns, "task", currentTask.Name)
+	currentJob := result.Job
 
-	// Show hint if both frameworks exist and we auto-detected
-	if !wasExplicit && task.BothFrameworksExist() {
-		otherFramework := "minitest"
-		if currentTask.Name == "minitest" {
-			otherFramework = "rspec"
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.GetTargetPattern())
+
+	// Show hint if framework was auto-detected (not explicit)
+	if explicitName == "" {
+		if result.WasInferred {
+			// Framework was inferred from file suffixes
+			otherFramework := "minitest"
+			if currentJob.Name == "minitest" {
+				otherFramework = "rspec"
+			}
+			logger.Logger.Info(fmt.Sprintf("Detected %s from file suffixes. Use --use=%s to run %s instead.",
+				currentJob.Name, otherFramework, otherFramework))
+		} else {
+			hasSpecDir := fsutil.DirExists("spec")
+			hasTestDir := fsutil.DirExists("test")
+			if hasSpecDir && hasTestDir {
+				otherFramework := "minitest"
+				if currentJob.Name == "minitest" {
+					otherFramework = "rspec"
+				}
+				logger.Logger.Info(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Specify --use=%s to run %s instead.",
+					currentJob.Name, otherFramework, otherFramework))
+			}
 		}
-		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Use -t %s to run %s instead.",
-			currentTask.Name, otherFramework, otherFramework))
 	}
 
 	// Discover test files
 	var testFiles []string
-	var err error
 	if len(r.Patterns) > 0 {
-		testFiles, err = ExpandGlobPatterns(r.Patterns, currentTask)
+		testFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob)
 		if err != nil {
 			return err
 		}
@@ -74,14 +77,14 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return fmt.Errorf("no test files found matching provided patterns")
 		}
 	} else {
-		testFiles, err = FindTestFiles(currentTask)
+		testFiles, err = FindFilesFromJob(currentJob)
 		if err != nil {
 			return err
 		}
 		if len(testFiles) == 0 {
-			suffix := currentTask.GetTestSuffix()
-			// Determine directory from task's test pattern
-			pattern := currentTask.GetTestPattern()
+			suffix := currentJob.GetTargetSuffix()
+			// Determine directory from job's target pattern
+			pattern := currentJob.TargetPattern
 			dir := "spec"
 			if strings.HasPrefix(pattern, "test/") {
 				dir = "test"
@@ -90,7 +93,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 	msg := fmt.Sprintf("found %v test files", len(testFiles))
-	logger.LogVerbose(msg, "testFiles", testFiles)
+	logger.Logger.Info(msg, "testFiles", testFiles)
 
 	// Run bundle install if --auto flag is set
 	if r.Auto && !cfg.DryRun {
@@ -102,7 +105,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	// Create and run executor with Auto flag
 	cfg.Auto = r.Auto
-	executor := NewTestExecutor(cfg, testFiles, currentTask)
+	executor := NewTestExecutor(cfg, testFiles, currentJob)
 	if err := executor.Execute(); err != nil {
 		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {
@@ -117,55 +120,24 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 type WatchCmd struct {
 	Run     WatchRunCmd     `cmd:"" default:"withargs" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
-	Find    WatchFindCmd    `cmd:"" help:"Placeholder - functionality being rebuilt"`
+	Find    WatchFindCmd    `cmd:"" help:"Show what would be executed for a given file change"`
 }
 
 type WatchRunCmd struct {
 	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
 	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
-	Use      string `short:"t" help:"Task to run (rspec/minitest/custom)" default:""`
+	Use      string `short:"u" help:"Job to use (overrides autodetection)" default:""`
 }
 
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
 	config := parent.globalConfig
-
-	// Get the appropriate task with overrides applied
-	// Priority: CLI --use, config use, auto-detect
-	taskName := w.Use
-	wasExplicit := w.Use != ""
-	if taskName == "" && parent.Use != "" {
-		taskName = parent.Use
-		wasExplicit = true
-	}
-	if taskName == "" {
-		detectedTask := task.DetectFramework()
-		taskName = detectedTask.Name
-		wasExplicit = false
-	}
-
-	// Validate task exists if explicitly requested
-	if err := parent.validateTaskExists(taskName, wasExplicit); err != nil {
-		return err
-	}
-
-	currentTask := parent.getTaskWithOverrides(taskName)
-
-	// Show hint if both frameworks exist and we auto-detected
-	if !wasExplicit && task.BothFrameworksExist() {
-		otherFramework := "minitest"
-		if currentTask.Name == "minitest" {
-			otherFramework = "rspec"
-		}
-		logger.LogVerbose(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Use -t %s to run %s instead.",
-			currentTask.Name, otherFramework, otherFramework))
-	}
 
 	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}
 
-	return runWatchWithConfig(config, w, currentTask)
+	return runWatchWithConfig(config, w, parent)
 }
 
 type WatchInstallCmd struct{}
@@ -215,7 +187,6 @@ type PlurCLI struct {
 	DBMigrate  DBMigrateCmd  `cmd:"" name:"db:migrate" help:"Migrate test databases"`
 	DBPrepare  DBPrepareCmd  `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
 
-	// Global flags (alphabetically sorted for help display)
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
 	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
@@ -226,16 +197,14 @@ type PlurCLI struct {
 	FirstIs1   bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	JSON       string `help:"Save detailed test results as JSON to the specified file" default:""`
 	RuntimeDir string `help:"Custom directory for runtime data" default:""`
-	Use        string `help:"Default task configuration to use" default:"" hidden:""`
+	Use        string `help:"Job to use (overrides autodetection)" default:"" hidden:""`
 	Verbose    bool   `short:"v" help:"Enable verbose output for debugging" default:"false"`
 	Version    bool   `help:"Show version information"`
 	Workers    int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
 
-	// Task configurations from [task.NAME] sections in TOML - parsed by Kong
-	Task map[string]TaskConfig `help:"Task configurations (config file only)" hidden:""`
-
-	// Processed task configurations (converted from TaskConfig)
-	Tasks map[string]*task.Task `kong:"-"`
+	// Job and watch configuration
+	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
+	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
 	// Store the built global config
 	globalConfig *config.GlobalConfig `kong:"-"`
@@ -245,9 +214,15 @@ type PlurCLI struct {
 }
 
 func (r *PlurCLI) AfterApply() error {
-	// Initialize logger early so we can use it
-	// Kong has already resolved r.Debug from CLI flag, env var, or config file
-	logger.InitLogger(r.Verbose, r.Debug)
+	// Initialize logger with appropriate level
+	// Kong has already resolved r.Debug and r.Verbose from CLI flag, env var, or config file
+	level := slog.LevelWarn // quiet by default
+	if r.Debug {
+		level = slog.LevelDebug
+	} else if r.Verbose {
+		level = slog.LevelInfo
+	}
+	logger.Init(level)
 
 	if r.Version {
 		fmt.Println(GetVersionInfo())
@@ -281,105 +256,10 @@ func (r *PlurCLI) AfterApply() error {
 		LoadedConfigs: loadedConfigs,
 	}
 
-	// Convert TaskConfig map to task.Task map
-	r.Tasks = make(map[string]*task.Task)
-	for taskName, taskConfig := range r.Task {
-		// Convert TaskConfig to task.Task
-		taskObj := &task.Task{
-			Name:        taskName,
-			Description: taskConfig.Description,
-			Run:         taskConfig.Run,
-			SourceDirs:  taskConfig.SourceDirs,
-			TestGlob:    taskConfig.TestGlob,
-		}
-		r.Tasks[taskName] = taskObj
-	}
-
 	return nil
 }
 
-// validateTaskExists checks if a task exists when explicitly requested
-// Returns nil if task exists or was auto-detected
-// Returns error with available tasks if explicitly requested task doesn't exist
-func (r *PlurCLI) validateTaskExists(taskName string, wasExplicit bool) error {
-	if !wasExplicit {
-		return nil // Auto-detected tasks are always valid
-	}
-
-	// Check built-in tasks
-	if taskName == "rspec" || taskName == "minitest" {
-		return nil
-	}
-
-	// Check custom tasks from config
-	if _, exists := r.Tasks[taskName]; exists {
-		return nil
-	}
-
-	// Task not found - build helpful error message with deduplication
-	availableMap := make(map[string]bool)
-	availableMap["rspec"] = true
-	availableMap["minitest"] = true
-	for name := range r.Tasks {
-		availableMap[name] = true
-	}
-
-	// Convert to sorted slice for consistent output
-	available := make([]string, 0, len(availableMap))
-	for name := range availableMap {
-		available = append(available, name)
-	}
-	sort.Strings(available)
-
-	return fmt.Errorf("task '%s' not found. Available tasks: %s",
-		taskName, strings.Join(available, ", "))
-}
-
-// mergeTaskConfig merges non-empty fields from override into base task
-func (r *PlurCLI) mergeTaskConfig(base *task.Task, override *task.Task) {
-	// Always preserve Name from override (custom task name, not detected framework name)
-	if override.Name != "" {
-		base.Name = override.Name
-	}
-	if override.Description != "" {
-		base.Description = override.Description
-	}
-	if override.Run != "" {
-		base.Run = override.Run
-	}
-	if len(override.SourceDirs) > 0 {
-		base.SourceDirs = override.SourceDirs
-	}
-	if override.TestGlob != "" {
-		base.TestGlob = override.TestGlob
-	}
-}
-
-// getTaskWithOverrides returns the appropriate task with CLI/config overrides applied
-func (r *PlurCLI) getTaskWithOverrides(taskName string) *task.Task {
-	var baseTask *task.Task
-
-	// Start with appropriate default task
-	switch taskName {
-	case "rspec":
-		baseTask = task.NewRSpecTask()
-	case "minitest":
-		baseTask = task.NewMinitestTask()
-	default:
-		// Custom tasks inherit from auto-detected framework
-		baseTask = task.DetectFramework()
-	}
-
-	// Merge TOML config overrides if they exist (for both built-in and custom tasks)
-	if configTask, exists := r.Tasks[taskName]; exists {
-		r.mergeTaskConfig(baseTask, configTask)
-	}
-
-	return baseTask
-}
-
 // handleHelpCommand converts "help" command to "-h" flag for better UX.
-// Kong doesn't have a built-in help command, so we intercept it early.
 func handleHelpCommand(args []string) []string {
 	if len(args) > 0 && args[0] == "help" {
 		// Replace "help" with "-h"
@@ -469,7 +349,22 @@ func main() {
 	logger.Logger.Debug("running plur", "args", os.Args[1:], "command", ctx.Command())
 	err = ctx.Run(ctx)
 	if err != nil {
+		// Check if it's a custom exit code (don't log as error)
+		var exitErr ExitCode
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.Code)
+		}
+		// Regular error - log and exit with code 1
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+// ExitCode is an error type that specifies a custom exit code
+type ExitCode struct {
+	Code int
+}
+
+func (e ExitCode) Error() string {
+	return fmt.Sprintf("exit code %d", e.Code)
 }

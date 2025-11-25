@@ -3,18 +3,20 @@ package main
 import (
 	"bufio"
 	"embed"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/task"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -29,23 +31,95 @@ func runWatchInstall(force bool) error {
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
-func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, currentTask *task.Task) error {
-	// Log startup info
+// loadWatchConfiguration resolves job and watch mappings
+func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (job.Job, []watch.WatchMapping, error) {
+	result, err := autodetect.ResolveJob(explicitJobName, cli.Job, nil)
+	if err != nil {
+		return job.Job{}, nil, err
+	}
+
+	// Use user's watches if provided, else from resolved result
+	watches := cli.WatchMappings
+	if len(watches) == 0 {
+		watches = result.Watches
+	}
+
+	return result.Job, watches, nil
+}
+
+// executeJob runs a job with the given target files
+func executeJob(j job.Job, targetFiles []string, cwd string) error {
+	if len(targetFiles) == 0 {
+		return nil
+	}
+
+	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
+
+	// Build command for each target file
+	for _, target := range targetFiles {
+		// Make target relative to cwd if it's absolute
+		relTarget := target
+		if filepath.IsAbs(target) {
+			if rel, err := filepath.Rel(cwd, target); err == nil {
+				relTarget = rel
+			}
+		}
+
+		cmd := job.BuildJobCmd(j, []string{relTarget})
+		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
+
+		// Execute command
+		execCmd := exec.Command(cmd[0], cmd[1:]...)
+		execCmd.Dir = cwd
+		execCmd.Stdout = os.Stdout
+		execCmd.Stderr = os.Stderr
+		execCmd.Env = append(os.Environ(), j.Env...)
+
+		if err := execCmd.Run(); err != nil {
+			// Log error but don't fail - continue watching
+			logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
+		}
+	}
+
+	return nil
+}
+
+func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
+
+	resolvedJob, watches, err := loadWatchConfiguration(cli, watchCmd.Use)
+	if err != nil {
+		return fmt.Errorf("failed to load watch configuration: %w", err)
+	}
+
+	// Build jobs map for FindTargetsForFile (expects map)
+	jobs := map[string]job.Job{resolvedJob.Name: resolvedJob}
+
+	// Log watch configuration
+	if len(watches) > 0 {
+		logger.Logger.Info("Watch configuration loaded",
+			"job", resolvedJob.Name,
+			"watch_mappings", len(watches))
+	} else {
+		logger.Logger.Info("No watch mappings configured, file changes will not trigger tests")
+	}
 
 	// Create debounce delay (for future use)
 	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
-	logger.LogDebug("Debounce delay", "ms", watchCmd.Debounce)
+	logger.Logger.Debug("Debounce delay", "ms", watchCmd.Debounce)
 
-	// Determine which directories to watch from Task's SourceDirs
-	watchDirs := []string{}
-	for _, dir := range currentTask.SourceDirs {
+	// Determine which directories to watch from watch mappings
+	var watchDirs []string
+	for _, mapping := range watches {
+		dir := mapping.SourceDir()
 		if _, err := os.Stat(dir); err == nil {
 			watchDirs = append(watchDirs, dir)
 		}
 	}
+	sort.Strings(watchDirs)
+	watchDirs = slices.Compact(watchDirs)
 	if len(watchDirs) == 0 {
-		return fmt.Errorf("no directories to watch found (tried: %v)", currentTask.SourceDirs)
+		return fmt.Errorf("no directories to watch found in watch mappings")
 	}
 
 	// Get project name from current directory
@@ -57,13 +131,14 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	logger.Logger.Info("plur configuration info",
 		"project", projectName,
 		"directories", watchDirs,
-		"task", currentTask.Name,
+		"job", resolvedJob.Name,
+		"watch", fmt.Sprintf("%+v", watches),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,
 		"debounce", watchCmd.Debounce,
 		"timeout", watchCmd.Timeout)
 	if watchCmd.Timeout > 0 {
-		logger.LogDebug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", watchCmd.Timeout) + " seconds")
+		logger.Logger.Debug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", watchCmd.Timeout) + " seconds")
 	}
 
 	// Get the watcher binary path
@@ -72,10 +147,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}
 
-	// Log binary path in debug mode
-	logger.LogDebug("plur using e-dant/watcher", "path", watcherPath)
-
-	// Create watcher configuration
 	watcherConfig := &watch.ManagerConfig{
 		Directories:    watchDirs,
 		DebounceDelay:  debounceDelay,
@@ -118,6 +189,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	fmt.Println("Commands:")
 	fmt.Println("  [Enter]  - Run all tests")
 	fmt.Println("  reload   - Reload configuration")
+	fmt.Println("  debug    - Toggle debug output")
 	fmt.Println("  exit     - Exit watch mode")
 	fmt.Println("  Ctrl-C   - Exit watch mode")
 	fmt.Println()
@@ -127,7 +199,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	cwd, _ := os.Getwd()
 	if resolvedCwd, err := filepath.EvalSymlinks(cwd); err == nil {
 		if resolvedCwd != cwd {
-			logger.LogDebug("watch", "cwd_symlink_resolved", true,
+			logger.Logger.Debug("watch", "cwd_symlink_resolved", true,
 				"original", cwd, "resolved", resolvedCwd)
 		}
 		cwd = resolvedCwd
@@ -139,14 +211,15 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		case input := <-stdinChan:
 			switch input {
 			case "":
-				// User pressed Enter - run all specs
+				// User pressed Enter - run all tests
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
-				runCommand("spec", currentTask.Run)
+				cmd := job.BuildJobAllCmd(resolvedJob)
+				runCommandArgs(cmd)
 				fmt.Print("\nplur> ")
 			case "reload":
 				// User requested process reload
-				logger.LogDebug("User requested process reload")
+				logger.Logger.Debug("User requested process reload")
 				fmt.Println("Reloading plur...")
 
 				// Get current executable path
@@ -163,12 +236,23 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				// Atomic process replacement (Unix/Linux/macOS only)
 				// Process is replaced in-place, maintaining the same PID
 				args := os.Args
+				if logger.IsDebugEnabled() {
+					args = append(args, "--debug")
+				}
 				env := os.Environ()
 				err = syscall.Exec(execPath, args, env)
-
-				// Only reached if exec fails
 				fmt.Fprintf(os.Stderr, "Failed to exec new process: %v\n", err)
 				os.Exit(1)
+			case "debug":
+				// Toggle debug mode
+				logger.ToggleDebug()
+				if logger.IsDebugEnabled() {
+					fmt.Println("Debug output enabled")
+					logger.Logger.Debug("Debug mode activated")
+				} else {
+					fmt.Println("Debug output disabled")
+				}
+				fmt.Print("plur> ")
 			case "exit":
 				// User typed exit command
 				logger.Logger.Info("User requested exit")
@@ -177,7 +261,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			default:
 				// Unknown command
 				fmt.Printf("Unknown command: '%s'\n", input)
-				fmt.Println("Commands: [Enter] to run all tests, 'reload' to reload config, 'exit' to quit")
+				fmt.Println("Commands: [Enter] to run all tests, 'reload' to reload config, 'debug' to toggle debug, 'exit' to quit")
 				fmt.Print("plur> ")
 			}
 
@@ -188,18 +272,16 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				relPath = "./" + rel
 			}
 
-			logger.LogDebug("watch", "event", event.EffectType, "type", event.PathType,
+			logger.Logger.Debug("watch", "event", event.EffectType, "type", event.PathType,
 				"associated", fmt.Sprintf("%v", event.Associated), "path", relPath)
 
 			// Only process file events (not directories)
 			if event.PathType != "file" {
-				// Skip logging for directory events
 				continue
 			}
 
 			// Only process modify and create events
 			if event.EffectType != "modify" && event.EffectType != "create" {
-				// Skip logging for non-modify/create events
 				continue
 			}
 
@@ -210,9 +292,49 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				continue
 			}
 
-			// Just report the file change - no mapping or test execution
-			logger.Logger.Info("Running: [handler for file]", "path", "./"+relPath)
-			fmt.Print("plur> ")
+			// Process the file change if we have watch mappings configured
+			if len(watches) > 0 {
+				// Find targets for this file, filtering out non-existent files
+				result, err := watch.FindTargetsForFile(relPath, jobs, watches)
+				if err != nil {
+					logger.Logger.Warn("Error processing file change", "path", relPath, "error", err)
+					continue
+				}
+
+				// Check if we have any valid targets
+				if !result.HasExistingTargets() {
+					logger.Logger.Debug("No matching watch rules for file", "path", "./"+relPath)
+					continue
+				}
+
+				// Log warnings for missing target files
+				if result.HasMissingTargets() {
+					for jobName, targets := range result.MissingTargets {
+						for _, target := range targets {
+							logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
+						}
+					}
+				}
+
+				// Execute each job with its existing targets only
+				for jobName, targets := range result.ExistingTargets {
+					job, exists := jobs[jobName]
+					if !exists {
+						logger.Logger.Warn("Job not found", "job", jobName)
+						continue
+					}
+
+					if err := executeJob(job, targets, cwd); err != nil {
+						logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
+					}
+				}
+
+				fmt.Print("\nplur> ")
+			} else {
+				// No processor - just report the file change
+				logger.Logger.Info("File changed (no watch mapping configured)", "path", "./"+relPath)
+				fmt.Print("plur> ")
+			}
 
 		case err := <-manager.Errors():
 			return fmt.Errorf("watcher error: %v", err)
@@ -229,23 +351,15 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	}
 }
 
-// Simple implementation using direct command call for now
-func runCommand(targetPath string, command string) {
-	var cmd *exec.Cmd
-
-	cmdParts := strings.Fields(command)
-	args := append(cmdParts, targetPath)
-	cmd_string := strings.Join(args, " ")
-
-	fmt.Println("running:", cmd_string)
-
-	if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
-		fmt.Printf("file not found: %s\n", targetPath)
+// runCommandArgs runs a command from a slice of arguments
+func runCommandArgs(args []string) {
+	if len(args) == 0 {
 		return
 	}
 
-	cmd = exec.Command(args[0], args[1:]...)
+	fmt.Println("running:", strings.Join(args, " "))
 
+	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

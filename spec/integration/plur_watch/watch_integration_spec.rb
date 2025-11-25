@@ -11,7 +11,7 @@ RSpec.describe "plur watch integration" do
 
     expect(result.err).to include("plur watch starting!")
     expect(result.err).to include("plur configuration info")
-    expect(result.err).to include("directories=[spec lib]")
+    expect(result.err).to include("directories=[lib spec]")
     expect(result.err).to include("Debounce delay ms=100")
   end
 
@@ -29,9 +29,8 @@ RSpec.describe "plur watch integration" do
 
     expect(result.err).to include("watch event=modify type=file")
     expect(result.err).to include("path=./lib/calculator.rb")
-    # Watch now only reports file changes, doesn't run tests
-    expect(result.err).to include("Running: [handler for file]")
-    expect(result.err).to include("path=./lib/calculator.rb")
+    # Watch now maps file changes to jobs and executes them
+    expect(result.err).to include("Executing job")
   end
 
   it "detects spec_helper.rb changes" do
@@ -48,9 +47,9 @@ RSpec.describe "plur watch integration" do
     end
 
     expect_file_change_logged(result.err, "./spec/spec_helper.rb")
-    # Watch now only reports file changes, doesn't run tests
-    expect(result.err).to include("Running: [handler for file]")
-    expect(result.err).to include("path=./spec/spec_helper.rb")
+    # spec_helper.rb changes are detected but don't trigger jobs
+    # (by design - spec_helper doesn't match *_spec.rb pattern)
+    expect(result.err).to include("No matching watch rules for file")
   end
 
   it "detects spec file changes" do
@@ -70,9 +69,8 @@ RSpec.describe "plur watch integration" do
     end
 
     expect_file_change_logged(result.err, "./spec/calculator_spec.rb")
-    # Watch now only reports file changes, doesn't run tests
-    expect(result.err).to include("Running: [handler for file]")
-    expect(result.err).to include("path=./spec/calculator_spec.rb")
+    # Watch now maps file changes to jobs and executes them
+    expect(result.err).to include("Executing job")
   ensure
     # Restore original content
     File.write(spec_path, contents) if contents
@@ -132,10 +130,7 @@ RSpec.describe "plur watch integration" do
     expect_file_change_logged(result.err, "./lib/string_utils.rb")
     expect_file_change_logged(result.err, "./lib/validator.rb")
 
-    # Watch now only reports file changes, doesn't run tests
-    expect(result.err).to include("Running: [handler for file]")
-    expect(result.err).to include("path=./lib/calculator.rb")
-    expect(result.err).to include("path=./lib/string_utils.rb")
-    expect(result.err).to include("path=./lib/validator.rb")
+    # Watch now maps file changes to jobs and executes them
+    expect(result.err).to include("Executing job")
   end
 end

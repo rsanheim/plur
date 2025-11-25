@@ -1,0 +1,7 @@
+# Config file with job definition but no 'use' field
+# Tests that --use CLI flag works to select configured jobs
+workers = 2
+
+[job.rspec]
+cmd = ["echo", "'SPEC:'"]
+target_pattern = "spec/**/*_spec.rb"
