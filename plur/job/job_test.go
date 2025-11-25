@@ -113,7 +113,7 @@ func TestGetConventionBasedTargetPattern(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := &Job{
+			j := Job{
 				Name:          tt.jobName,
 				TargetPattern: tt.explicitPattern,
 			}
@@ -164,7 +164,7 @@ func TestGetTargetSuffix_WithConventions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := &Job{
+			j := Job{
 				Name:          tt.jobName,
 				TargetPattern: tt.explicitPattern,
 			}
