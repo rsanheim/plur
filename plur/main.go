@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -27,59 +26,25 @@ type SpecCmd struct {
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg := parent.globalConfig
 
-	// Determine which job to use
-	// Priority: CLI --use, config use, auto-detect
-	jobName := r.Use
-	wasExplicit := r.Use != ""
-	if jobName == "" && parent.Use != "" {
-		jobName = parent.Use
-		wasExplicit = true
+	// Determine explicit job name (CLI or config)
+	explicitName := r.Use
+	if explicitName == "" {
+		explicitName = parent.Use
 	}
 
-	// Get job from config or autodetection
-	var currentJob job.Job
-	var wasInferredFromFiles bool
-
-	if jobName == "" {
-		// Autodetect framework using patterns, directory structure, and profile
-		detectedName, detectedJob, inferred, err := autodetect.DetectFramework(r.Patterns)
-		if err != nil {
-			return err
-		}
-		jobName = detectedName
-		currentJob = detectedJob
-		wasInferredFromFiles = inferred
-		wasExplicit = false
-	} else {
-		// Use explicit job name
-		if j, exists := parent.Job[jobName]; exists {
-			j.Name = jobName
-			currentJob = j
-		} else {
-			// Try autodetected jobs
-			autodetectedJobs, _ := autodetect.GetAutodetectedDefaults()
-			if j, exists := autodetectedJobs[jobName]; exists {
-				currentJob = j
-			} else {
-				// Build helpful error message
-				availableJobs := make([]string, 0, len(parent.Job)+len(autodetectedJobs))
-				for name := range parent.Job {
-					availableJobs = append(availableJobs, name)
-				}
-				for name := range autodetectedJobs {
-					availableJobs = append(availableJobs, name)
-				}
-				sort.Strings(availableJobs)
-				return fmt.Errorf("job '%s' not found. Available jobs: %s", jobName, strings.Join(availableJobs, ", "))
-			}
-		}
+	// Resolve job using unified logic
+	result, err := autodetect.ResolveJob(explicitName, parent.Job, r.Patterns)
+	if err != nil {
+		return err
 	}
+
+	currentJob := result.Job
 
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.GetTargetPattern())
 
-	// Show hint if framework was auto-detected
-	if !wasExplicit {
-		if wasInferredFromFiles {
+	// Show hint if framework was auto-detected (not explicit)
+	if explicitName == "" {
+		if result.WasInferred {
 			// Framework was inferred from file suffixes
 			otherFramework := "minitest"
 			if currentJob.Name == "minitest" {
@@ -103,7 +68,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	// Discover test files
 	var testFiles []string
-	var err error
 	if len(r.Patterns) > 0 {
 		testFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob)
 		if err != nil {

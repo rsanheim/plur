@@ -52,17 +52,17 @@ RSpec.describe "plur watch find with mismatched directory structure" do
     expect(result.exit_status).to eq(0)
   end
 
-  it "shows both executable and missing targets when mixed" do
+  it "shows executable targets for the resolved job only" do
     cmd = TTY::Command.new(uuid: false, printer: :null)
     result = cmd.run!("plur watch find lib/example.rb", chdir: fixture_dir)
 
-    # Should show found files in slog format
+    # Should show found files for rspec (the resolved job)
     expect(result.out).to include('msg="found files" files=spec/example_spec.rb')
 
-    # Should also show missing files as warnings
-    expect(result.out).to include('msg="not found" file=test/example_test.rb')
+    # Should NOT show minitest warnings - we only check the resolved job's watches
+    expect(result.out).not_to include("test/example_test.rb")
 
-    # Exit code 0 because at least one target exists
+    # Exit code 0 because target exists
     expect(result.exit_status).to eq(0)
   end
 end

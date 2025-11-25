@@ -31,42 +31,20 @@ func runWatchInstall(force bool) error {
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
-// loadWatchConfiguration loads job and watch mappings from config or defaults
-func loadWatchConfiguration(cli *PlurCLI) (map[string]job.Job, []watch.WatchMapping, error) {
-	// Start with user-configured jobs and watches
-	jobs := make(map[string]job.Job)
-	var watches []watch.WatchMapping
-
-	// Load jobs from config
-	for name, j := range cli.Job {
-		j.Name = name
-		jobs[name] = j
+// loadWatchConfiguration resolves job and watch mappings
+func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (job.Job, []watch.WatchMapping, error) {
+	result, err := autodetect.ResolveJob(explicitJobName, cli.Job, nil)
+	if err != nil {
+		return job.Job{}, nil, err
 	}
 
-	// Load watch mappings from config
-	for i := range cli.WatchMappings {
-		watches = append(watches, cli.WatchMappings[i])
+	// Use user's watches if provided, else from resolved result
+	watches := cli.WatchMappings
+	if len(watches) == 0 {
+		watches = result.Watches
 	}
 
-	// If no configuration provided, use autodetected defaults
-	if len(jobs) == 0 && len(watches) == 0 {
-		defaultJobs, defaultWatches := autodetect.GetAutodetectedDefaults()
-		jobs = defaultJobs
-		watches = defaultWatches
-
-		if len(jobs) > 0 {
-			logger.Logger.Info("Using autodetected default configuration", "profile", autodetect.AutodetectProfile())
-		}
-	}
-
-	// Validate configuration
-	if len(watches) > 0 {
-		if err := watch.ValidateConfig(jobs, watches); err != nil {
-			return nil, nil, fmt.Errorf("invalid watch configuration: %w", err)
-		}
-	}
-
-	return jobs, watches, nil
+	return result.Job, watches, nil
 }
 
 // executeJob runs a job with the given target files
@@ -107,32 +85,20 @@ func executeJob(j job.Job, targetFiles []string, cwd string) error {
 }
 
 func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, cli *PlurCLI) error {
-	// Log startup info
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
-	// Load watch configuration (jobs and watch mappings)
-	jobs, watches, err := loadWatchConfiguration(cli)
+	resolvedJob, watches, err := loadWatchConfiguration(cli, watchCmd.Use)
 	if err != nil {
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}
 
-	// Validate job name if explicitly specified
-	if watchCmd.Use != "" {
-		if _, exists := jobs[watchCmd.Use]; !exists {
-			// Build helpful error message
-			availableJobs := make([]string, 0, len(jobs))
-			for name := range jobs {
-				availableJobs = append(availableJobs, name)
-			}
-			sort.Strings(availableJobs)
-			return fmt.Errorf("job '%s' not found. Available jobs: %s", watchCmd.Use, strings.Join(availableJobs, ", "))
-		}
-	}
+	// Build jobs map for FindTargetsForFile (expects map)
+	jobs := map[string]job.Job{resolvedJob.Name: resolvedJob}
 
 	// Log watch configuration
 	if len(watches) > 0 {
 		logger.Logger.Info("Watch configuration loaded",
-			"jobs", len(jobs),
+			"job", resolvedJob.Name,
 			"watch_mappings", len(watches))
 	} else {
 		logger.Logger.Info("No watch mappings configured, file changes will not trigger tests")
@@ -165,7 +131,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	logger.Logger.Info("plur configuration info",
 		"project", projectName,
 		"directories", watchDirs,
-		"jobs", len(jobs),
+		"job", resolvedJob.Name,
 		"watch", fmt.Sprintf("%+v", watches),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,
@@ -245,32 +211,11 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		case input := <-stdinChan:
 			switch input {
 			case "":
-				// User pressed Enter - run all tests using first job
+				// User pressed Enter - run all tests
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
-				// Find first test job (rspec or minitest) or use any job
-				var firstJob job.Job
-				var found bool
-				if j, exists := jobs["rspec"]; exists {
-					firstJob = j
-					found = true
-				} else if j, exists := jobs["minitest"]; exists {
-					firstJob = j
-					found = true
-				} else {
-					// Use first available job
-					for _, j := range jobs {
-						firstJob = j
-						found = true
-						break
-					}
-				}
-				if found {
-					cmd := job.BuildJobAllCmd(firstJob)
-					runCommandArgs(cmd)
-				} else {
-					fmt.Println("No jobs configured")
-				}
+				cmd := job.BuildJobAllCmd(resolvedJob)
+				runCommandArgs(cmd)
 				fmt.Print("\nplur> ")
 			case "reload":
 				// User requested process reload

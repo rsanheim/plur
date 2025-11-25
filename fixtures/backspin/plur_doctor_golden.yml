@@ -59,6 +59,11 @@ commands:
         Debug:       false
         Verbose:     false
 
+      Job Resolution:
+        Active Job:      rspec
+        Command:         [bundle exec rspec {{target}}]
+        Target Pattern:  spec/**/*_spec.rb
+
       Watch Directories:
         lib/ (exists)
         spec/ (exists)

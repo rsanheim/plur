@@ -3,8 +3,10 @@ package autodetect
 import (
 	_ "embed"
 	"fmt"
+	"sort"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/pelletier/go-toml"
 	"github.com/rsanheim/plur/internal/fsutil"
 	"github.com/rsanheim/plur/job"
@@ -14,15 +16,12 @@ import (
 //go:embed defaults.toml
 var defaultsFile []byte
 
-// DefaultsConfig holds all default profiles
+// DefaultsConfig holds embedded default jobs and watches (flat structure)
 type DefaultsConfig struct {
-	Defaults map[string]DefaultProfile `toml:"defaults"`
-}
-
-// DefaultProfile represents a complete configuration profile for a project type
-type DefaultProfile struct {
-	Jobs    map[string]job.Job   `toml:"job"`
-	Watches []watch.WatchMapping `toml:"watch"`
+	Defaults struct {
+		Jobs    map[string]job.Job   `toml:"job"`
+		Watches []watch.WatchMapping `toml:"watch"`
+	} `toml:"defaults"`
 }
 
 var builtinDefaults DefaultsConfig
@@ -33,146 +32,136 @@ func init() {
 	}
 }
 
-// AutodetectProfile determines the best default profile based on project structure
-// Returns the profile name (e.g., "ruby", "go") or empty string if no match
-func AutodetectProfile() string {
-	// Check for Go project
-	if fsutil.FileExists("go.mod") {
-		return "go"
-	}
-
-	// Check for Ruby project - be permissive for backward compatibility
-	// Accept any of: Gemfile, spec/, test/, or lib/ directory
-	if fsutil.FileExists("Gemfile") || fsutil.DirExists("spec") || fsutil.DirExists("test") || fsutil.DirExists("lib") {
-		return "ruby"
-	}
-
-	return ""
+// ResolveJobResult contains the resolved job and metadata
+type ResolveJobResult struct {
+	Job         job.Job
+	Name        string
+	WasInferred bool                 // true if inferred from file patterns
+	Watches     []watch.WatchMapping // watches that reference this job
 }
 
-// GetDefaultProfile returns the default profile for a given name
-// Returns nil if the profile doesn't exist
-func GetDefaultProfile(name string) *DefaultProfile {
-	if profile, exists := builtinDefaults.Defaults[name]; exists {
-		// Deep copy to avoid modifications to builtin defaults
-		jobsCopy := make(map[string]job.Job, len(profile.Jobs))
-		for k, v := range profile.Jobs {
-			jobsCopy[k] = v
-		}
+// ResolveJob determines which job to use based on explicit selection or autodetection.
+//
+// Resolution order:
+//  1. If explicitName provided → look up in userJobs, then built-in defaults
+//  2. If patterns provided → infer from file suffixes (_spec.rb, _test.rb)
+//  3. Autodetect → check which jobs have matching files (priority: rspec > minitest > go-test)
+func ResolveJob(explicitName string, userJobs map[string]job.Job, patterns []string) (*ResolveJobResult, error) {
+	// 1. If explicit name provided, look it up (user config first, then defaults)
+	if explicitName != "" {
+		return resolveExplicitJob(explicitName, userJobs)
+	}
 
-		watchesCopy := make([]watch.WatchMapping, len(profile.Watches))
-		copy(watchesCopy, profile.Watches)
-
-		return &DefaultProfile{
-			Jobs:    jobsCopy,
-			Watches: watchesCopy,
+	// 2. If file patterns provided, infer from suffixes
+	if len(patterns) > 0 {
+		if result := resolveFromPatterns(patterns); result != nil {
+			return result, nil
 		}
+	}
+
+	// 3. Autodetect from file system (with priority order)
+	return autodetectJob()
+}
+
+func resolveExplicitJob(name string, userJobs map[string]job.Job) (*ResolveJobResult, error) {
+	// Check user config first
+	if j, exists := userJobs[name]; exists {
+		j.Name = name
+		return &ResolveJobResult{Job: j, Name: name, Watches: getWatchesForJob(name)}, nil
+	}
+	// Fall back to built-in defaults
+	if j, exists := builtinDefaults.Defaults.Jobs[name]; exists {
+		j.Name = name
+		return &ResolveJobResult{Job: j, Name: name, Watches: getWatchesForJob(name)}, nil
+	}
+	return nil, buildJobNotFoundError(name, userJobs)
+}
+
+func resolveFromPatterns(patterns []string) *ResolveJobResult {
+	framework := inferFrameworkFromPatterns(patterns)
+	if framework == "" {
+		return nil
+	}
+	if j, exists := builtinDefaults.Defaults.Jobs[framework]; exists {
+		j.Name = framework
+		return &ResolveJobResult{Job: j, Name: framework, WasInferred: true, Watches: getWatchesForJob(framework)}
 	}
 	return nil
 }
 
-// GetAutodetectedDefaults returns jobs and watches for the autodetected project type
-// Returns empty maps/slices if no profile is detected
-func GetAutodetectedDefaults() (map[string]job.Job, []watch.WatchMapping) {
-	profileName := AutodetectProfile()
-	if profileName == "" {
-		return make(map[string]job.Job), []watch.WatchMapping{}
+func autodetectJob() (*ResolveJobResult, error) {
+	// Explicit priority order: rspec > minitest > go-test
+	priority := []string{"rspec", "minitest", "go-test"}
+
+	// First pass: check for actual test files
+	for _, name := range priority {
+		j, exists := builtinDefaults.Defaults.Jobs[name]
+		if !exists || j.TargetPattern == "" {
+			continue
+		}
+		matches, _ := doublestar.FilepathGlob(j.TargetPattern)
+		if len(matches) > 0 {
+			j.Name = name
+			return &ResolveJobResult{Job: j, Name: name, Watches: getWatchesForJob(name)}, nil
+		}
 	}
 
-	profile := GetDefaultProfile(profileName)
-	if profile == nil {
-		return make(map[string]job.Job), []watch.WatchMapping{}
+	// Second pass: check for directories (for watch mode setup before tests exist)
+	if fsutil.DirExists("spec") {
+		if j, exists := builtinDefaults.Defaults.Jobs["rspec"]; exists {
+			j.Name = "rspec"
+			return &ResolveJobResult{Job: j, Name: "rspec", Watches: getWatchesForJob("rspec")}, nil
+		}
+	}
+	if fsutil.DirExists("test") {
+		if j, exists := builtinDefaults.Defaults.Jobs["minitest"]; exists {
+			j.Name = "minitest"
+			return &ResolveJobResult{Job: j, Name: "minitest", Watches: getWatchesForJob("minitest")}, nil
+		}
+	}
+	if fsutil.FileExists("go.mod") {
+		if j, exists := builtinDefaults.Defaults.Jobs["go-test"]; exists {
+			j.Name = "go-test"
+			return &ResolveJobResult{Job: j, Name: "go-test", Watches: getWatchesForJob("go-test")}, nil
+		}
 	}
 
-	// Copy jobs and set names
-	jobs := make(map[string]job.Job, len(profile.Jobs))
-	for name, j := range profile.Jobs {
-		j.Name = name
-		jobs[name] = j
-	}
-
-	return jobs, profile.Watches
+	return nil, fmt.Errorf("no test framework detected. Please create a .plur.toml with a job configuration")
 }
 
-// DetectFramework intelligently detects the test framework based on:
-// 1. File patterns (if provided) - infers from suffixes like *_spec.rb or *_test.rb
-// 2. Directory structure (spec/ vs test/)
-// 3. Profile autodetection (Gemfile, go.mod, etc.)
-//
-// Returns: jobName, job.Job, wasInferredFromFiles, error
-func DetectFramework(patterns []string) (string, job.Job, bool, error) {
-	// Step 1: Try to infer from file patterns if provided
-	if len(patterns) > 0 {
-		frameworkFromFiles := inferFrameworkFromPatterns(patterns)
-		if frameworkFromFiles != "" {
-			// Get the default job for this framework from the "ruby" profile
-			// This works even without Gemfile/spec/test directories
-			rubyProfile := GetDefaultProfile("ruby")
-			if rubyProfile != nil {
-				if j, exists := rubyProfile.Jobs[frameworkFromFiles]; exists {
-					j.Name = frameworkFromFiles
-					return frameworkFromFiles, j, true, nil
-				}
+func getWatchesForJob(jobName string) []watch.WatchMapping {
+	var result []watch.WatchMapping
+	for _, w := range builtinDefaults.Defaults.Watches {
+		for _, j := range w.Jobs {
+			if j == jobName {
+				result = append(result, w)
+				break
 			}
 		}
 	}
+	return result
+}
 
-	// Step 2: Try autodetection based on current directory
-	autodetectedJobs, _ := GetAutodetectedDefaults()
-
-	// Smart framework selection based on directory structure
-	// If only spec/ exists, use RSpec
-	// If only test/ exists, use Minitest
-	// If both exist, prefer RSpec (more common in modern Ruby projects)
-	hasSpecDir := fsutil.DirExists("spec")
-	hasTestDir := fsutil.DirExists("test")
-
-	var jobName string
-	var currentJob job.Job
-	var found bool
-
-	if hasSpecDir && !hasTestDir {
-		// Only spec/ directory - use RSpec
-		if j, exists := autodetectedJobs["rspec"]; exists {
-			jobName = "rspec"
-			currentJob = j
-			found = true
-		}
-	} else if hasTestDir && !hasSpecDir {
-		// Only test/ directory - use Minitest
-		if j, exists := autodetectedJobs["minitest"]; exists {
-			jobName = "minitest"
-			currentJob = j
-			found = true
-		}
-	} else {
-		// Both exist or neither exist - use priority order: rspec > minitest > other
-		if j, exists := autodetectedJobs["rspec"]; exists {
-			jobName = "rspec"
-			currentJob = j
-			found = true
-		} else if j, exists := autodetectedJobs["minitest"]; exists {
-			jobName = "minitest"
-			currentJob = j
-			found = true
-		} else {
-			// Fall back to any job with a target_pattern
-			for name, j := range autodetectedJobs {
-				if j.GetTargetPattern() != "" {
-					jobName = name
-					currentJob = j
-					found = true
-					break
-				}
+func buildJobNotFoundError(name string, userJobs map[string]job.Job) error {
+	availableJobs := make([]string, 0, len(userJobs)+len(builtinDefaults.Defaults.Jobs))
+	for jobName := range userJobs {
+		availableJobs = append(availableJobs, jobName)
+	}
+	for jobName := range builtinDefaults.Defaults.Jobs {
+		// Avoid duplicates
+		found := false
+		for _, existing := range availableJobs {
+			if existing == jobName {
+				found = true
+				break
 			}
 		}
+		if !found {
+			availableJobs = append(availableJobs, jobName)
+		}
 	}
-
-	if !found {
-		return "", job.Job{}, false, fmt.Errorf("no test framework detected. Please create a .plur.toml with a job configuration")
-	}
-
-	return jobName, currentJob, false, nil
+	sort.Strings(availableJobs)
+	return fmt.Errorf("job '%s' not found. Available jobs: %s", name, strings.Join(availableJobs, ", "))
 }
 
 // inferFrameworkFromPatterns examines file patterns to infer the framework

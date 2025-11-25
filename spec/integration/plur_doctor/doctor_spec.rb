@@ -57,6 +57,8 @@ RSpec.describe "plur doctor command" do
       .gsub(/\s+Using defaults.*/, "    [DEFAULT_CONFIG_MESSAGE]")
       .gsub(/Source:\s+.+/, "Source: [CONFIG_SOURCE]")
       .gsub(/Command:\s+.+/, "Command: [COMMAND]")
+      .gsub(/Active Job:\s+.+/, "Active Job: [JOB_NAME]")
+      .gsub(/Target Pattern:\s+.+/, "Target Pattern: [TARGET_PATTERN]")
       .gsub(/Workers:\s+\d+/, "Workers: [WORKER_COUNT]")
       .gsub(/Color:\s+.+/, "Color: [COLOR_VALUE]")
       .gsub(/Debounce:\s+\d+ms/, "Debounce: [DEBOUNCE_MS]")
