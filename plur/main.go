@@ -82,7 +82,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg.Auto = r.Auto
 	executor := NewTestExecutor(cfg, testFiles, currentJob)
 	if err := executor.Execute(); err != nil {
-		// Exit with error code 1 for test failures
 		if strings.Contains(err.Error(), "test run failed") {
 			os.Exit(1)
 		}
@@ -188,10 +187,10 @@ type PlurCLI struct {
 	configFiles []string `kong:"-"`
 }
 
+// Initialize logger with appropriate level
+// At this point, Kong has already resolved r.Debug and r.Verbose
 func (r *PlurCLI) AfterApply() error {
-	// Initialize logger with appropriate level
-	// Kong has already resolved r.Debug and r.Verbose from CLI flag, env var, or config file
-	level := slog.LevelWarn // quiet by default
+	level := slog.LevelWarn
 	if r.Debug {
 		level = slog.LevelDebug
 	} else if r.Verbose {
