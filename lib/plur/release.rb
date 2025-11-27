@@ -17,7 +17,11 @@ module Plur
         end
       end
 
-      def find_prs_since_last_release
+      def find_prs_since_last_release(dry_run: false)
+        if dry_run
+          return [{number: 123, title: "Example PR", url: "https://github.com/example/pr/123"}]
+        end
+
         tag = last_release_tag
         commit_range = tag ? "#{tag}..main" : "main"
 
@@ -47,7 +51,7 @@ module Plur
       end
 
       def call
-        prs = find_prs_since_last_release
+        prs = find_prs_since_last_release(dry_run: @dry_run)
         changelog = Plur::Changelog.new(@version, prs)
 
         if @dry_run
