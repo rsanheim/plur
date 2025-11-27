@@ -5,6 +5,22 @@ require_relative "changelog"
 module Plur
   module Release
     module Helpers
+      def run_or_dry_run(cmd)
+        if dry_run
+          puts "[dry-run]: #{cmd}"
+        else
+          run(cmd)
+        end
+      end
+
+      def system_or_dry_run(cmd, exception: true)
+        if dry_run
+          puts "[dry-run]: #{cmd}"
+        else
+          system(cmd, exception: exception)
+        end
+      end
+
       def run(cmd)
         stdout, stderr, status = Open3.capture3(cmd)
         abort "Error running '#{cmd}': #{stderr}" unless status.success?
@@ -37,8 +53,6 @@ module Plur
       def fetch_pr_info(pr_number)
         data = JSON.parse(run("gh pr view #{pr_number} --json number,title,url"))
         {number: data["number"], title: data["title"], url: data["url"]}
-      rescue
-        nil
       end
     end
 
@@ -55,8 +69,8 @@ module Plur
         changelog = Plur::Changelog.new(@version, prs)
 
         if @dry_run
-          puts "[DRY RUN] Would write changelog for #{@version} with #{prs.size} PRs"
-          puts "[DRY RUN] PRs: #{prs.map { |pr| "##{pr[:number]}" }.join(", ")}" unless prs.empty?
+          puts "[dry-run]: Would write changelog for #{@version} with #{prs.size} PRs"
+          puts "[dry-run]: PRs: #{prs.map { |pr| "##{pr[:number]}" }.join(", ")}" unless prs.empty?
         else
           File.write("CHANGELOG.md", changelog.generate_updated_content)
           print_summary(prs)
@@ -88,6 +102,8 @@ module Plur
     class Push
       include Helpers
 
+      attr_reader :version, :dry_run
+
       def initialize(version, dry_run: false)
         @version = version
         @dry_run = dry_run
@@ -97,44 +113,40 @@ module Plur
         verify_on_main!
         verify_clean!
         verify_changelog!
+        tag_and_push!
 
-        if @dry_run
-          puts "[DRY RUN] Would execute: git tag -a #{@version} -m 'Release #{@version}'"
-          puts "[DRY RUN] Would execute: git push origin tag #{@version}"
-          puts "[DRY RUN] All checks passed. Release would proceed."
-        else
-          tag_and_push!
-          print_success
-        end
+        print_success
       end
 
       private
 
       def verify_on_main!
-        branch = run("git branch --show-current")
-        abort "Error: Must be on 'main' branch to release (currently on '#{branch}')" unless branch == "main"
+        branch = run_or_dry_run("git branch --show-current")
+        abort "Error: Must be on 'main' branch to release (currently on '#{branch}')" unless dry_run || branch == "main"
         puts "✓ On main branch"
       end
 
       def verify_clean!
-        status = run("git status --porcelain")
-        abort "Error: Uncommitted changes. Commit or stash first.\n#{status}" unless status.empty?
+        status = run_or_dry_run("git status --porcelain")
+        abort "Error: Uncommitted changes. Commit or stash first.\n#{status}" unless dry_run || status.empty?
         puts "✓ Git status clean"
       end
 
       def verify_changelog!
-        abort "Error: CHANGELOG.md not found" unless File.exist?("CHANGELOG.md")
-        content = File.read("CHANGELOG.md")
-        abort "Error: No changelog entry for #{@version}. Run 'script/release prepare #{@version}' first." unless content.include?("## #{@version}")
+        unless dry_run
+          abort "Error: CHANGELOG.md not found" unless File.exist?("CHANGELOG.md")
+          content = File.read("CHANGELOG.md")
+          abort "Error: No changelog entry for #{@version}. Run 'script/release prepare #{@version}' first." unless content.include?("## #{@version}")
+        end
         puts "✓ Changelog entry found for #{@version}"
       end
 
       def tag_and_push!
         puts "→ Creating tag #{@version}..."
-        system("git tag -a #{@version} -m 'Release #{@version}'", exception: true)
+        system_or_dry_run("git tag -a #{@version} -m 'Release #{@version}'", exception: true)
 
         puts "→ Pushing tag..."
-        system("git push origin tag #{@version}", exception: true)
+        system_or_dry_run("git push origin tag #{@version}", exception: true)
       end
 
       def print_success
