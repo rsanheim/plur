@@ -7,6 +7,7 @@ import (
 
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -77,10 +78,10 @@ func (e *TestExecutor) executeDryRun() error {
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
 		groups = GroupSpecFilesByRuntime(e.testFiles, e.globalConfig.WorkerCount, runtimeData)
-		toStdErr(e.globalConfig.DryRun, "Using runtime-based grouped execution: %d groups\n", len(groups))
+		logger.Logger.Debug("Using runtime-based grouped execution", "group_count", len(groups))
 	} else {
 		groups = GroupSpecFilesBySize(e.testFiles, e.globalConfig.WorkerCount)
-		toStdErr(e.globalConfig.DryRun, "Using size-based grouped execution: %d groups\n", len(groups))
+		logger.Logger.Debug("Using size-based grouped execution", "group_count", len(groups))
 	}
 
 	// Display what would be executed

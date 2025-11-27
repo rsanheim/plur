@@ -10,18 +10,13 @@ import (
 )
 
 var (
-	// Logger is the global slog logger instance (writes to stderr)
-	Logger *slog.Logger
-
-	// StdoutLogger writes to stdout for user-facing command output
+	Logger       *slog.Logger
 	StdoutLogger *slog.Logger
-
 	// logLevel allows dynamic log level changes for the stderr logger
 	logLevel slog.LevelVar
 )
 
 func init() {
-	// Initialize with default quiet level
 	logLevel.Set(slog.LevelWarn)
 
 	Logger = slog.New(NewCustomTextHandler(os.Stderr, &slog.HandlerOptions{
@@ -75,7 +70,7 @@ func (h *CustomTextHandler) Handle(_ context.Context, r slog.Record) error {
 		var value string
 		switch v := a.Value.Any().(type) {
 		case string:
-			value = v
+			value = fmt.Sprintf("%q", v)
 		case []string:
 			value = fmt.Sprintf("[%s]", strings.Join(v, " "))
 		default:

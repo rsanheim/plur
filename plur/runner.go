@@ -166,7 +166,6 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		}
 	}
 
-	// Build command using framework-specific wrappers
 	var args []string
 	switch currentJob.Name {
 	case "rspec":
@@ -177,33 +176,29 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		args = job.BuildJobCmd(currentJob, testFiles)
 	}
 
-	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
+	commandString := strings.Join(args, " ")
+	logger.Logger.Debug("command", commandString, "worker", workerIndex)
 
 	if globalConfig.DryRun {
 		return WorkerResult{
 			File:     testFile,
 			State:    types.StateSuccess,
-			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
+			Output:   fmt.Sprintf("[dry-run] %s", commandString),
 			Error:    nil,
 			Duration: time.Since(start),
 		}
 	}
 
-	// Create command with context for timeout handling
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-
-	// Set up environment variables for parallel testing
 	env := os.Environ()
 	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
-
 	if !globalConfig.IsSerial() {
 		testEnvNumber := GetTestEnvNumber(workerIndex, globalConfig)
 		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
 	}
 
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = env
 
-	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
@@ -290,33 +285,16 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 	// Group files using runtime data if available, otherwise by size
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesByRuntime(testFiles, maxWorkers, runtimeData)
-		logger.Logger.Info("Using runtime-based grouping", "runtime_entries", len(runtimeData))
+		logger.Logger.Debug("Using runtime-based grouping", "runtime_entries", len(runtimeData))
 	} else {
-		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesBySize(testFiles, maxWorkers)
-		logger.Logger.Info("Using size-based grouping (no runtime data available)")
-	}
-
-	// Log group assignments in verbose mode
-	if logger.IsVerboseEnabled() {
-		for i, group := range groups {
-			// TotalSize represents milliseconds when using runtime data, bytes when using file size
-			runtimeInfo := "by file size"
-			if len(runtimeData) > 0 {
-				runtimeInfo = fmt.Sprintf("%.2fs", float64(group.TotalSize)/1000.0)
-			}
-			logger.Logger.Info("assigned", "worker", i, "files", group.Files, "estimated_time", runtimeInfo)
-		}
+		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
 	}
 
 	results := make(chan WorkerResult, len(groups))
-
-	// Create buffered channel for output messages
 	outputChan := make(chan OutputMessage, maxWorkers*10)
 
-	// Start output aggregator goroutine
 	var outputWg sync.WaitGroup
 	outputWg.Add(1)
 	go func() {
@@ -324,7 +302,6 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		outputAggregator(outputChan, colorOutput)
 	}()
 
-	// Set PARALLEL_TEST_GROUPS environment variable
 	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(groups)))
 
 	// Run each group in parallel
@@ -333,7 +310,7 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		wg.Add(1)
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
-			logger.Logger.Info("starting", "worker", workerIndex, "file_count", len(files))
+			logger.Logger.Debug("starting", "worker", workerIndex, "file_count", len(files), "files", files)
 			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentJob)
 			logger.Logger.Info("finished", "worker", workerIndex, "success", result.Success())
 			results <- result
