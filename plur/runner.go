@@ -177,7 +177,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 	}
 
 	commandString := strings.Join(args, " ")
-	logger.Logger.Debug("command", commandString, "worker", workerIndex)
+	logger.Logger.Info("running", "cmd", commandString, "worker", workerIndex)
 
 	if globalConfig.DryRun {
 		return WorkerResult{

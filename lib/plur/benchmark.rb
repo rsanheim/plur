@@ -3,6 +3,7 @@ require "fileutils"
 require "time"
 require "open3"
 require "pathname"
+require "bundler"
 require_relative "../plur"
 
 module Plur
