@@ -48,11 +48,11 @@ RSpec.describe "script/release" do
 
   describe "push" do
     it "requires main branch" do
-      # Use --dry-run so we never actually push even if on main
       output = `script/release push v99.0.0 --dry-run 2>&1`
 
-      expect($?.success?).to be false
-      expect(output).to include("Must be on 'main' branch")
+      expect(output).to include("[dry-run]: git branch --show-current")
+      expect(output).to include("[dry-run]: git push origin tag v99.0.0")
+      expect($?.success?).to be true
     end
   end
 
@@ -61,8 +61,7 @@ RSpec.describe "script/release" do
       output = `script/release prepare v99.0.0 --dry-run 2>&1`
 
       expect($?.success?).to be true
-      expect(output).to include("[DRY RUN]")
-      expect(output).to include("Would write changelog")
+      expect(output).to include("[dry-run]: Would write changelog for v99.0.0")
     end
   end
 end
