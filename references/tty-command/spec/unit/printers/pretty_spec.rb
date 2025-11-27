@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe TTY::Command::Printers::Pretty do
+  $stderr.puts Bundler::Env.environment
+  $stderr.puts $LOAD_PATH
+  $stderr.puts Bundler.root.to_s
+
   let(:output) { StringIO.new }
   let(:uuid) { "aaaaaa-xxx" }
 

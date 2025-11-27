@@ -18,6 +18,7 @@ end
 require "tty-command"
 require "tmpdir"
 
+$stderr.puts "IN SPEC HELPER"
 module TestHelpers
   module Paths
     def gem_root
