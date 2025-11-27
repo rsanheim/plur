@@ -120,13 +120,13 @@ module Plur
 
       def verify_on_main!
         branch = run_or_dry_run("git branch --show-current")
-        abort "Error: Must be on 'main' branch to release (currently on '#{branch}')" unless (dry_run || branch == "main")
+        abort "Error: Must be on 'main' branch to release (currently on '#{branch}')" unless dry_run || branch == "main"
         puts "✓ On main branch"
       end
 
       def verify_clean!
         status = run_or_dry_run("git status --porcelain")
-        abort "Error: Uncommitted changes. Commit or stash first.\n#{status}" unless (dry_run || status.empty?)
+        abort "Error: Uncommitted changes. Commit or stash first.\n#{status}" unless dry_run || status.empty?
         puts "✓ Git status clean"
       end
 
