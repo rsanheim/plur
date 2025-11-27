@@ -15,10 +15,10 @@ PLUR_CORES = Plur.config.plur_cores
 
 # Default task runs all checks
 desc "Run all tests and linting"
-task default: ["build", "test:all", "lint:ruby"]
+task default: ["lint:all", "build", "test:all"]
 
 desc "Build the plur Go binary"
-task build: ["vendor:download:current", "lint:go"] do
+task build: ["vendor:download:current"] do
   Dir.chdir(Plur.config.plur_dir) do
     puts "[build] Building plur"
     sh %(go build -mod=mod -o plur .)
@@ -89,6 +89,7 @@ namespace :lint do
 
   desc "Lint Ruby code with Standard"
   task :ruby do
+    puts "[lint:ruby] Running StandardRB linter"
     Rake::Task["standard"].invoke
   end
 
