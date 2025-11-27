@@ -198,6 +198,7 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = env
+	logger.Logger.Info("actual cmd", "cmd", cmd.String())
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -224,16 +225,11 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 
 	collector := NewTestCollector()
 
-	// Stream output through parser and collector
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles)
 
-	// Wait for command to complete
 	err = cmd.Wait()
-
-	// Build the final result from the collector
 	result := collector.BuildResult(testFile, time.Since(start))
 
-	// Determine success based on exit code
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
@@ -312,7 +308,7 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 			defer wg.Done()
 			logger.Logger.Debug("starting", "worker", workerIndex, "file_count", len(files), "files", files)
 			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentJob)
-			logger.Logger.Info("finished", "worker", workerIndex, "success", result.Success())
+			logger.Logger.Debug("finished", "worker", workerIndex, "success", result.Success())
 			results <- result
 		}(i, group.Files)
 	}
@@ -384,7 +380,7 @@ func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalCon
 		formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
 		if formatterPath != "" {
 			// Insert before files
-			args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
+			args = insertBeforeFiles(args, files, "--require", "spec_helper", "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
 		}
 	}
 
