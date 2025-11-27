@@ -13,6 +13,14 @@ module Plur
         end
       end
 
+      def system_or_dry_run(cmd, exception: true)
+        if dry_run
+          puts "[dry-run]: #{cmd}"
+        else
+          system(cmd, exception: exception)
+        end
+      end
+
       def run(cmd)
         stdout, stderr, status = Open3.capture3(cmd)
         abort "Error running '#{cmd}': #{stderr}" unless status.success?
@@ -105,15 +113,9 @@ module Plur
         verify_on_main!
         verify_clean!
         verify_changelog!
+        tag_and_push!
 
-        if dry_run
-          puts "[dry-run]: git tag -a #{@version} -m 'Release #{@version}'"
-          puts "[dry-run]: git push origin tag #{@version}"
-          puts "[dry-run]: All checks passed. Release would proceed."
-        else
-          tag_and_push!
-          print_success
-        end
+        print_success
       end
 
       private
@@ -141,10 +143,10 @@ module Plur
 
       def tag_and_push!
         puts "→ Creating tag #{@version}..."
-        system("git tag -a #{@version} -m 'Release #{@version}'", exception: true)
+        system_or_dry_run("git tag -a #{@version} -m 'Release #{@version}'", exception: true)
 
         puts "→ Pushing tag..."
-        system("git push origin tag #{@version}", exception: true)
+        system_or_dry_run("git push origin tag #{@version}", exception: true)
       end
 
       def print_success
