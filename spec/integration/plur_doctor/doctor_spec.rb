@@ -44,6 +44,7 @@ RSpec.describe "plur doctor command" do
       .gsub(/Working Dir:\s+.+/, "Working Dir:      [WORKING_DIR]")
       .gsub(/Plur Binary:\s+.+/, "Plur Binary:       [PLUR_BINARY]")
       .gsub(/Binary Path:\s+.+/, "Binary Path:    [WATCHER_PATH]")
+      .gsub(/^\s+Version:\s+.+/, "  Version:        [WATCHER_VERSION]")
       .gsub(/Cache Directory:\s+.+/, "Cache Directory:  [CACHE_DIR]")
       .gsub(/Runtime Data:\s+.+/, "Runtime Data:     [RUNTIME_PATH]")
       .gsub(/Ruby Version:\s+.+/, "Ruby Version:   [RUBY_VERSION]")

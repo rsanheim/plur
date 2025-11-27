@@ -132,39 +132,6 @@ jobs:
           command: |
             bin/rake test
 
-  release:
-    docker:
-      - image: cimg/ruby:3.4.5
-    resource_class: medium
-    working_directory: ~/project
-    steps:
-      - checkout
-      - go/install:
-          version: 1.25.2
-      - gh/setup
-      - ruby/install-deps:
-          include-branch-in-cache-key: false
-      - go/install-goreleaser
-      - run:
-          name: Verify GoReleaser installation
-          command: goreleaser --version
-      - run:
-          name: Configure Git for automated commits
-          command: |
-            git config user.email "rsanheim@gmail.com"
-            git config user.name "Rob Sanheim"
-      - run:
-          name: Configure Git authentication for pushing
-          command: |
-            # Switch origin to use HTTPS with GitHub token
-            git remote set-url origin https://${GITHUB_TOKEN}@github.com/rsanheim/plur.git
-
-            # Verify the change (token will be masked in output)
-            git remote -v
-      - run:
-          name: Release with GoReleaser
-          command: bundle exec script/release v0.10.4-$CIRCLE_BUILD_NUM-test --automated --draft
-
 workflows:
   test-all:
     jobs:

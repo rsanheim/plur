@@ -2,67 +2,57 @@
 
 require "bundler/setup"
 Bundler.require(:default)
-require "optparse"
 require_relative "../lib/plur/release"
 
-options = {}
-
-parser = OptionParser.new do |opts|
-  opts.banner = "Usage: script/release VERSION [OPTIONS]"
-
-  opts.on("-h", "--help", "Show this help message") do
-    puts opts
-    exit
-  end
-
-  opts.on("-a", "--automated", "Automated release - will not prompt for confirmation") do
-    options[:automated] = true
-  end
-
-  opts.on("-d", "--draft", "Create a draft release (default)") do
-    options[:draft] = true
-  end
-
-  opts.on("--no-draft", "Publish release immediately (not as draft)") do
-    options[:draft] = false
-  end
-
-  opts.on("--extract-notes", "Extract release notes for VERSION from CHANGELOG.md and print to stdout") do
-    options[:extract_notes] = true
-  end
-
-  opts.separator ""
-  opts.separator "Examples:"
-  opts.separator "  script/release v0.7.0                    # Create draft release v0.7.0"
-  opts.separator "  script/release v1.0.0 --no-draft         # Create and publish release"
-  opts.separator "  script/release v0.7.0 --automated        # Automated release (no prompts)"
-  opts.separator "  script/release v0.7.0 --extract-notes    # Extract notes for v0.7.0"
-  opts.separator ""
-  opts.separator "Version must be in format vX.Y.Z"
+def current_version
+  `gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null`.strip.tap { |v| return "(no releases)" if v.empty? }
 end
 
-# Handle options first if the first argument is a flag
-if ARGV[0]&.start_with?("-")
-  parser.parse!
-  version = ARGV[0]  # Get version after parsing options
-else
-  # Traditional flow: version first, then options
-  version = ARGV.shift
-  parser.parse!
+def print_usage
+  puts <<~USAGE
+    Usage: script/release <command> <version> [options]
+
+    Current version: #{current_version}
+
+    Commands:
+      prepare VERSION       Generate changelog entries for VERSION
+      push VERSION          Tag and push VERSION (triggers GitHub Actions release)
+      extract-notes VERSION Extract release notes from CHANGELOG.md (used by CI)
+
+    Options:
+      --dry-run             Show what would be done without executing
+
+    Workflow:
+      1. script/release prepare v0.14.0
+      2. Review/edit CHANGELOG.md
+      3. git add CHANGELOG.md && git commit -m "Changelog for v0.14.0"
+      4. script/release push v0.14.0
+
+    Version must be in format vX.Y.Z (e.g., v0.14.0, v1.0.0-rc1)
+  USAGE
 end
 
-unless version
-  puts parser
-  exit 1
+def validate_version!(version)
+  unless version&.match?(/^v\d+\.\d+\.\d+(-.*)?$/)
+    abort "Error: Invalid version #{version.inspect}. Version must be in format vX.Y.Z"
+  end
 end
 
-unless version.match?(/^v\d+\.\d+\.\d+(-.*)?$/)
-  puts "Error - invalid version #{version.inspect}. Version must be in format vX.Y.Z or vX.Y.Z-suffix (e.g., v0.7.0, v0.7.0-rc1)"
-  exit 1
-end
+command = ARGV[0]
+version = ARGV[1]
+dry_run = ARGV.include?("--dry-run")
 
-if options[:extract_notes]
-  # Just extract and print the notes for this version
+case command
+when "prepare"
+  validate_version!(version)
+  Plur::Release::Prepare.new(version, dry_run: dry_run).call
+
+when "push"
+  validate_version!(version)
+  Plur::Release::Push.new(version, dry_run: dry_run).call
+
+when "extract-notes"
+  validate_version!(version)
   unless File.exist?("CHANGELOG.md")
     abort "Error: CHANGELOG.md not found in current directory"
   end
@@ -75,7 +65,13 @@ if options[:extract_notes]
   else
     abort "Error: No changelog entry found for version #{version}"
   end
+
+when "-h", "--help", "help", nil
+  print_usage
+  exit(command.nil? ? 1 : 0)
+
 else
-  # Normal release flow
-  Plur::Release.new(version, options).call
+  puts "Unknown command: #{command}"
+  print_usage
+  exit 1
 end

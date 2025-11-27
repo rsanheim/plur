@@ -42,6 +42,7 @@ def download_watcher_binary(platform)
   require "uri/https"
   require "open-uri"
   require "tmpdir"
+  require "digest"
 
   binary_path = watcher_binary_path(platform)
 
@@ -67,6 +68,18 @@ def download_watcher_binary(platform)
     uri.open do |remote_file|
       temp_file.binwrite(remote_file.read)
     end
+
+    # Verify checksum
+    checksum_url = "#{url}.sha256sum"
+    expected_checksum = URI(checksum_url).open { |f| f.read.strip }
+    actual_checksum = Digest::SHA256.file(temp_file).hexdigest
+
+    if actual_checksum != expected_checksum
+      raise "Checksum mismatch for #{platform}.tar!\n" \
+            "  Expected: #{expected_checksum}\n" \
+            "  Actual:   #{actual_checksum}"
+    end
+    puts "Checksum verified: #{actual_checksum[0..7]}..."
 
     # Extract the binary
     puts "Extracting watcher binary..."

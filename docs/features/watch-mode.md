@@ -115,11 +115,11 @@ Watch mode uses a multi-process architecture where each directory gets its own w
 
 Embedded watcher binaries for:
 - macOS ARM64 (Apple Silicon)
-- macOS x86_64 (Intel)
-- Linux ARM64
 - Linux x86_64
+- Linux ARM64
+- Windows x86_64 (experimental)
 
-Binaries are extracted on first use to `~/.cache/plur/bin/`.
+Binaries are extracted on first use to `~/.plur/bin/` (or `$PLUR_HOME/bin/`).
 
 ## Implementation Details
 
