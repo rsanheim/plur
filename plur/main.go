@@ -11,7 +11,6 @@ import (
 	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/fsutil"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -41,30 +40,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	currentJob := result.Job
 
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.GetTargetPattern())
-
-	// Show hint if framework was auto-detected (not explicit)
-	if explicitName == "" {
-		if result.WasInferred {
-			// Framework was inferred from file suffixes
-			otherFramework := "minitest"
-			if currentJob.Name == "minitest" {
-				otherFramework = "rspec"
-			}
-			logger.Logger.Info(fmt.Sprintf("Detected %s from file suffixes. Use --use=%s to run %s instead.",
-				currentJob.Name, otherFramework, otherFramework))
-		} else {
-			hasSpecDir := fsutil.DirExists("spec")
-			hasTestDir := fsutil.DirExists("test")
-			if hasSpecDir && hasTestDir {
-				otherFramework := "minitest"
-				if currentJob.Name == "minitest" {
-					otherFramework = "rspec"
-				}
-				logger.Logger.Info(fmt.Sprintf("Both spec/ and test/ directories detected. Using %s. Specify --use=%s to run %s instead.",
-					currentJob.Name, otherFramework, otherFramework))
-			}
-		}
-	}
 
 	// Discover test files
 	var testFiles []string
