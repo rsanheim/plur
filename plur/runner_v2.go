@@ -205,7 +205,6 @@ func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd,
 		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
 	}
 
-	logger.Logger.Debug("starting", "worker", workerIdx, "file_count", len(testFiles), "files", testFiles)
 	if err := cmd.Start(); err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
