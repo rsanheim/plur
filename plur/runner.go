@@ -379,8 +379,7 @@ func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalCon
 	if globalConfig.ConfigPaths != nil {
 		formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
 		if formatterPath != "" {
-			// Insert before files
-			args = insertBeforeFiles(args, files, "--require", "spec_helper", "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
+			args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
 		}
 	}
 
