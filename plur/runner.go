@@ -198,19 +198,15 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = env
-	logger.Logger.Info("actual cmd", "cmd", cmd.String())
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
 	}
-
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
 	}
-
-	// Start the command
 	func() {
 		err = cmd.Start()
 	}()
@@ -313,15 +309,12 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		}(i, group.Files)
 	}
 
-	// Wait for all groups to complete
 	wg.Wait()
 	close(results)
 
-	// Close output channel and wait for aggregator to finish
 	close(outputChan)
 	outputWg.Wait()
 
-	// Collect results
 	var allResults []WorkerResult
 	for result := range results {
 		allResults = append(allResults, result)
@@ -333,7 +326,6 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		}
 	}
 
-	// Ensure newline after dots
 	fmt.Println()
 
 	return allResults, time.Since(start)
@@ -342,7 +334,6 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 // insertBeforeFiles inserts additional arguments before the file arguments in a command
 // This is used to add formatter and color flags for RSpec before the spec file paths
 func insertBeforeFiles(args []string, files []string, newArgs ...string) []string {
-	// Find where the files start in args
 	filesStart := -1
 	for i, arg := range args {
 		for _, file := range files {
@@ -394,17 +385,18 @@ func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalCon
 }
 
 // buildMinitestCommand builds a Minitest command with framework-specific handling
-// For multiple files, uses special -e require pattern
+// For multiple files, uses -e option "execute given ruby code" - we use this to require
+// all necessary test files.
 // For single file, uses BuildJobCmd directly
-func buildMinitestCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
-	// For multiple files, use special -e require pattern
+// TODO - this should probably use `job.BuildJobCmd` instead of building the command manually...
+// but running multiple minitest files using just the stock lib is hard
+func buildMinitestCommand(j job.Job, files []string, _globalConfig *config.GlobalConfig) []string {
 	if len(files) > 1 {
 		cmd := []string{"bundle", "exec", "ruby", "-Itest"}
 		requires := make([]string, 0, len(files))
 		for _, file := range files {
-			// Strip the "test/" prefix if present since we're using -Itest
+			// Strip the "test/" prefix if present since we're using -Itest, and strip the .rb extension
 			testFile := strings.TrimPrefix(file, "test/")
-			// Remove the .rb extension for require
 			testFile = strings.TrimSuffix(testFile, ".rb")
 			requires = append(requires, testFile)
 		}
