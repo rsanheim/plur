@@ -26,7 +26,6 @@ type RunnerV2 struct {
 	tracker *RuntimeTracker
 }
 
-// NewRunnerV2 creates a new runner with the given configuration
 func NewRunnerV2(cfg *config.GlobalConfig, files []string, j job.Job) *RunnerV2 {
 	return &RunnerV2{
 		config:  cfg,
@@ -36,9 +35,6 @@ func NewRunnerV2(cfg *config.GlobalConfig, files []string, j job.Job) *RunnerV2 
 	}
 }
 
-// Run executes the test run with clean PLAN/EXECUTE phases.
-// Returns results, wall time, and any error.
-// For dry-run mode, returns nil results and zero duration.
 func (r *RunnerV2) Run() ([]WorkerResult, time.Duration, error) {
 	// === PHASE 1: PLAN (single-threaded) ===
 	groups := r.groupFiles()
@@ -58,8 +54,6 @@ func (r *RunnerV2) Run() ([]WorkerResult, time.Duration, error) {
 	return results, wallTime, nil
 }
 
-// groupFiles loads runtime data and groups files for distribution across workers.
-// Uses runtime-based grouping if historical data exists, otherwise falls back to size-based.
 func (r *RunnerV2) groupFiles() []FileGroup {
 	runtimeData, err := LoadRuntimeData()
 	if err != nil {
@@ -78,7 +72,6 @@ func (r *RunnerV2) groupFiles() []FileGroup {
 	return groups
 }
 
-// buildCommands creates exec.Cmd for each file group with environment pre-configured.
 func (r *RunnerV2) buildCommands(groups []FileGroup) []*exec.Cmd {
 	commands := make([]*exec.Cmd, len(groups))
 
@@ -101,7 +94,6 @@ func (r *RunnerV2) buildCommands(groups []FileGroup) []*exec.Cmd {
 	return commands
 }
 
-// buildEnv creates the environment for a worker command.
 func (r *RunnerV2) buildEnv(workerIndex, totalGroups int) []string {
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("PARALLEL_TEST_GROUPS=%d", totalGroups))
@@ -114,7 +106,6 @@ func (r *RunnerV2) buildEnv(workerIndex, totalGroups int) []string {
 	return env
 }
 
-// printSummary outputs the run summary (number of files, workers, etc.)
 func (r *RunnerV2) printSummary(workerCount int) {
 	actualWorkers := workerCount
 	if len(r.files) < workerCount {
@@ -126,7 +117,6 @@ func (r *RunnerV2) printSummary(workerCount int) {
 		len(r.files), label, actualWorkers)
 }
 
-// testLabel returns the appropriate label for the test type (spec/specs, test/tests)
 func (r *RunnerV2) testLabel() string {
 	switch r.job.Name {
 	case "rspec":
@@ -138,7 +128,6 @@ func (r *RunnerV2) testLabel() string {
 	}
 }
 
-// executeWorkers spawns worker goroutines to execute pre-built commands.
 func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
@@ -150,7 +139,6 @@ func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Du
 	// it's available globally for any child process inspection)
 	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(commands)))
 
-	// Output aggregator goroutine
 	var outputWg sync.WaitGroup
 	outputWg.Add(1)
 	go func() {
@@ -158,7 +146,6 @@ func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Du
 		outputAggregator(outputChan, r.config.ColorOutput)
 	}()
 
-	// Launch workers
 	var wg sync.WaitGroup
 	for i, cmd := range commands {
 		wg.Add(1)
@@ -175,11 +162,9 @@ func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Du
 	close(outputChan)
 	outputWg.Wait()
 
-	// Collect results and track runtime data
 	var allResults []WorkerResult
 	for result := range results {
 		allResults = append(allResults, result)
-		// Track runtime data if tests actually ran
 		if result.State != types.StateError && len(result.Tests) > 0 {
 			for _, test := range result.Tests {
 				r.tracker.AddTestNotification(test)
@@ -192,12 +177,8 @@ func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Du
 	return allResults, time.Since(start)
 }
 
-// runCommand executes a single pre-built command and returns the result.
-// This is the worker function - it receives a fully configured command.
 func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
 	start := time.Now()
-
-	// Extract test files from command args for result tracking
 	testFiles := r.extractTestFiles(cmd.Args)
 	var testFile *TestFile
 	if len(testFiles) > 0 {
@@ -215,7 +196,6 @@ func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd,
 	commandString := strings.Join(cmd.Args, " ")
 	logger.Logger.Info("running", "cmd", commandString, "worker", workerIdx)
 
-	// Set up pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
@@ -225,36 +205,27 @@ func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd,
 		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
 	}
 
-	// Start command
 	logger.Logger.Debug("starting", "worker", workerIdx, "file_count", len(testFiles), "files", testFiles)
 	if err := cmd.Start(); err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
 	}
 
-	// Create parser and collector
 	parser, err := r.job.CreateParser()
 	if err != nil {
 		return errorResult(testFile, err, start)
 	}
 	collector := NewTestCollector()
-
-	// Stream output
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, testFiles)
-
-	// Wait for command to complete
 	err = cmd.Wait()
 	result := collector.BuildResult(testFile, time.Since(start))
 
 	logger.Logger.Debug("finished", "worker", workerIdx, "success", err == nil)
 
-	// Determine exit code
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
 	}
 	success := exitCode == 0
-
-	// Determine state
 	state := types.StateSuccess
 	output := result.Output + stderrOutput
 
@@ -280,14 +251,11 @@ func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd,
 	}
 }
 
-// extractTestFiles extracts test file paths from command arguments.
-// This looks for arguments that match test file patterns based on the job type.
 func (r *RunnerV2) extractTestFiles(args []string) []string {
 	var files []string
 
 	suffix := r.job.GetTargetSuffix()
 	if suffix == "" {
-		// Fallback based on job name
 		switch r.job.Name {
 		case "rspec":
 			suffix = "_spec.rb"
@@ -307,7 +275,6 @@ func (r *RunnerV2) extractTestFiles(args []string) []string {
 	return files
 }
 
-// Tracker returns the runtime tracker for saving results.
 func (r *RunnerV2) Tracker() *RuntimeTracker {
 	return r.tracker
 }
