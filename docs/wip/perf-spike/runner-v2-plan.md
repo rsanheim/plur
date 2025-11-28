@@ -160,7 +160,7 @@ This means we can write focused unit/integration tests that verify planning logi
 - [x] Remove dead code from runner.go (RunTestFiles, RunTestsInParallel)
 - [x] Apply same seam pattern to DependencyManager
 - [x] All tests pass (223 Ruby integration, Go unit tests)
-- [ ] Remove unnecessary comments from runner_v2.go
+- [x] Remove unnecessary comments from runner_v2.go
 - [ ] Add baseline tests for runner_v2.go
 - [ ] Move remaining utility code from runner.go into runner_v2.go
 - [ ] Delete runner.go
