@@ -25,7 +25,7 @@ type WorkerResult struct {
 	Output       string
 	Error        error
 	Duration     time.Duration
-	FileLoadTime time.Duration // Time to load spec files before running tests
+	FileLoadTime time.Duration
 	ExampleCount int
 	FailureCount int
 	PendingCount int
@@ -363,18 +363,14 @@ func insertBeforeFiles(args []string, files []string, newArgs ...string) []strin
 // buildRSpecCommand builds an RSpec command with framework-specific flags
 // Adds formatter (if available) and color flags before the file arguments
 func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
-	// Start with base command from BuildJobCmd
 	args := job.BuildJobCmd(j, files)
 
 	// Add formatter if available
-	if globalConfig.ConfigPaths != nil {
-		formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
-		if formatterPath != "" {
-			args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
-		}
+	formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
+	if formatterPath != "" {
+		args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
 	}
 
-	// Add color flags
 	if !globalConfig.ColorOutput {
 		args = insertBeforeFiles(args, files, "--no-color")
 	} else {
