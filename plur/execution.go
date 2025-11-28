@@ -122,7 +122,7 @@ func (e *TestExecutor) executeTests() error {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
 			if runtimePath, err := GetRuntimeFilePath(); err == nil {
-				fmt.Fprintf(os.Stderr, "Runtime data saved to: %s\n", runtimePath)
+				logger.Logger.Debug("Runtime data saved", "runtime_path", runtimePath)
 			}
 		}
 	}
