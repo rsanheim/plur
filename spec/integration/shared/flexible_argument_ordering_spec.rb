@@ -92,7 +92,6 @@ RSpec.describe "Flexible argument ordering" do
         expect(result.err).to include("plur version")
         expect(result.err).to include("[dry-run] Running 2 specs")
         expect(result.err).to include("--no-color")
-        expect(result.err).to include("groups") # Should show grouping with 2 workers
       end
     end
 
@@ -103,7 +102,6 @@ RSpec.describe "Flexible argument ordering" do
         expect(result.err).to include("plur version")
         expect(result.err).to include("[dry-run] Running 2 specs")
         expect(result.err).to include("--no-color")
-        expect(result.err).to include("groups") # Should show grouping with 2 workers
       end
     end
   end

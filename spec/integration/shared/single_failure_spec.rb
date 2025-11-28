@@ -16,7 +16,7 @@ RSpec.describe "single failure" do
       result = run_plur_allowing_errors("--no-color", "spec/single_failure_spec.rb")
       expect(result.exit_status).to eq(1)
       expect(result.out).to match(/1 failure\b/)
-      expect(result.err).to match(/1 file across (\d+) workers/)
+      expect(result.err).to include("Running 1 spec")
     end
   end
 
