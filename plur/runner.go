@@ -15,7 +15,6 @@ import (
 
 // WorkerResult represents the accumulated results from a worker executing one or more test files
 type WorkerResult struct {
-	File         *TestFile // Primary file (first file when multiple files are run together)
 	State        types.TestState
 	Output       string
 	Error        error
@@ -36,12 +35,10 @@ func (r WorkerResult) Success() bool {
 	return r.State == types.StateSuccess
 }
 
-// OutputMessage represents a message to be output
 type OutputMessage struct {
 	WorkerID int
 	Type     string // "dot", "failure", "pending", "error", "stderr"
-	Content  string // For error messages
-	Files    string // For stderr messages - comma-separated list of files
+	Content  string
 }
 
 // GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
@@ -126,16 +123,13 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 	}
 }
 
-// creates a WorkerResult for error cases
-func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
-	// Extract error message for output
+func errorResult(err error, start time.Time) WorkerResult {
 	errorOutput := ""
 	if err != nil {
 		errorOutput = fmt.Sprintf("Error: %v\n", err)
 	}
 
 	return WorkerResult{
-		File:     testFile,
 		State:    types.StateError,
 		Output:   errorOutput,
 		Error:    err,

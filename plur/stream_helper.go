@@ -17,15 +17,12 @@ import (
 const ScannerBufferSize = 256 * 1024
 const StdErrBufferSize = 1024 * 8
 
-// streamTestOutput handles the common pattern of streaming test output through a parser
-// and collector while sending progress updates to the output channel
 func streamTestOutput(
 	stdout, stderr io.Reader,
 	parser types.TestOutputParser,
 	collector *TestCollector,
 	outputChan chan<- OutputMessage,
 	workerIndex int,
-	testFiles []string,
 ) (stderrOutput string) {
 	var stderrBuilder strings.Builder
 	stderrBuilder.Grow(StdErrBufferSize) // Pre-allocate for typical stderr output
@@ -96,7 +93,6 @@ func streamTestOutput(
 					WorkerID: workerIndex,
 					Type:     "stderr",
 					Content:  line,
-					Files:    strings.Join(testFiles, ","),
 				}
 			}
 		}

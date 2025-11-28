@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -179,44 +178,31 @@ func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Du
 
 func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
 	start := time.Now()
-	testFiles := r.extractTestFiles(cmd.Args)
-	var testFile *TestFile
-	if len(testFiles) > 0 {
-		testFile = &TestFile{
-			Path:     testFiles[0],
-			Filename: filepath.Base(testFiles[0]),
-		}
-	} else {
-		testFile = &TestFile{
-			Path:     "unknown",
-			Filename: "unknown",
-		}
-	}
 
 	commandString := strings.Join(cmd.Args, " ")
 	logger.Logger.Info("running", "cmd", commandString, "worker", workerIdx)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
+		return errorResult(fmt.Errorf("failed to create stdout pipe: %v", err), start)
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
+		return errorResult(fmt.Errorf("failed to create stderr pipe: %v", err), start)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
+		return errorResult(fmt.Errorf("failed to start command: %v", err), start)
 	}
 
 	parser, err := r.job.CreateParser()
 	if err != nil {
-		return errorResult(testFile, err, start)
+		return errorResult(err, start)
 	}
 	collector := NewTestCollector()
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, testFiles)
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx)
 	err = cmd.Wait()
-	result := collector.BuildResult(testFile, time.Since(start))
+	result := collector.BuildResult(time.Since(start))
 
 	logger.Logger.Debug("finished", "worker", workerIdx, "success", err == nil)
 
@@ -235,7 +221,6 @@ func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd,
 	}
 
 	return WorkerResult{
-		File:              testFile,
 		State:             state,
 		Output:            output,
 		Error:             err,
@@ -248,30 +233,6 @@ func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd,
 		FormattedFailures: result.FormattedFailures,
 		FormattedSummary:  result.FormattedSummary,
 	}
-}
-
-func (r *RunnerV2) extractTestFiles(args []string) []string {
-	var files []string
-
-	suffix := r.job.GetTargetSuffix()
-	if suffix == "" {
-		switch r.job.Name {
-		case "rspec":
-			suffix = "_spec.rb"
-		case "minitest":
-			suffix = "_test.rb"
-		default:
-			suffix = ".rb"
-		}
-	}
-
-	for _, arg := range args {
-		if strings.HasSuffix(arg, suffix) {
-			files = append(files, arg)
-		}
-	}
-
-	return files
 }
 
 func (r *RunnerV2) Tracker() *RuntimeTracker {

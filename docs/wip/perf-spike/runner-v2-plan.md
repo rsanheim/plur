@@ -161,6 +161,12 @@ This means we can write focused unit/integration tests that verify planning logi
 - [x] Apply same seam pattern to DependencyManager
 - [x] All tests pass (223 Ruby integration, Go unit tests)
 - [x] Remove unnecessary comments from runner_v2.go
+- [x] Remove test file awareness from workers (workers only know commands)
+  - Deleted `extractTestFiles` function
+  - Removed `File *TestFile` from WorkerResult
+  - Deleted `TestFile` struct from result.go
+  - Removed `testFiles` param from streamTestOutput
+  - Removed `Files` field from OutputMessage
 - [ ] Add baseline tests for runner_v2.go
 - [ ] Move remaining utility code from runner.go into runner_v2.go
 - [ ] Delete runner.go

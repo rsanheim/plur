@@ -8,12 +8,6 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
-// TestFile represents a test file
-type TestFile struct {
-	Path     string // Full path to the file
-	Filename string // Just the filename
-}
-
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
 	TotalExamples     int
