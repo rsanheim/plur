@@ -167,6 +167,9 @@ This means we can write focused unit/integration tests that verify planning logi
   - Deleted `TestFile` struct from result.go
   - Removed `testFiles` param from streamTestOutput
   - Removed `Files` field from OutputMessage
+- [x] Dry-run shows env vars (PARALLEL_TEST_GROUPS, TEST_ENV_NUMBER)
+  - Added `dryRunString(cmd)` function
+  - Added constants for env var names
 - [ ] Add baseline tests for runner_v2.go
 - [ ] Move remaining utility code from runner.go into runner_v2.go
 - [ ] Delete runner.go
