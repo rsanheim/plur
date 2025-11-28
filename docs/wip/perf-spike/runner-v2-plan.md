@@ -147,3 +147,32 @@ This means we can write focused unit/integration tests that verify planning logi
 - Changing any logging output
 - Changing RuntimeTracker behavior
 - Watch mode (uses different entry point)
+
+---
+
+## Status
+
+- [x] Create runner_v2.go with RunnerV2 struct
+- [x] Implement Run() with PLAN/EXECUTE phases and dry-run seam
+- [x] Implement groupFiles(), buildCommands(), executeWorkers(), runCommand()
+- [x] Wire up in main.go (SpecCmd.Run uses NewRunnerV2)
+- [x] Delete execution.go
+- [x] Remove dead code from runner.go (RunTestFiles, RunTestsInParallel)
+- [x] Apply same seam pattern to DependencyManager
+- [x] All tests pass (223 Ruby integration, Go unit tests)
+- [ ] Remove unnecessary comments from runner_v2.go
+- [ ] Add baseline tests for runner_v2.go
+- [ ] Move remaining utility code from runner.go into runner_v2.go
+- [ ] Delete runner.go
+
+### Remaining in runner.go
+
+Code still in runner.go that needs a home:
+
+* `WorkerResult`, `OutputMessage` - result types
+* `GetWorkerCount`, `GetTestEnvNumber` - worker config helpers
+* `outputAggregator`, `errorResult` - output handling
+* `buildRSpecCommand`, `buildMinitestCommand`, `insertBeforeFiles` - command builders
+* ANSI color constants and pre-compiled output bytes
+
+These are all used by runner_v2.go. Move them in, then delete runner.go.
