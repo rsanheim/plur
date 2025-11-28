@@ -15,6 +15,28 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
+const (
+	EnvTestEnvNumber      = "TEST_ENV_NUMBER"
+	EnvParallelTestGroups = "PARALLEL_TEST_GROUPS"
+)
+
+// dryRunString returns a shell-executable representation of the command,
+// including only the env vars that plur sets (not the full inherited env).
+func dryRunString(cmd *exec.Cmd) string {
+	var extras []string
+	for _, env := range cmd.Env {
+		if strings.HasPrefix(env, EnvTestEnvNumber+"=") ||
+			strings.HasPrefix(env, EnvParallelTestGroups+"=") {
+			extras = append(extras, env)
+		}
+	}
+	cmdStr := strings.Join(cmd.Args, " ")
+	if len(extras) > 0 {
+		return strings.Join(extras, " ") + " " + cmdStr
+	}
+	return cmdStr
+}
+
 // RunnerV2 implements the clean execution architecture where:
 // - Phase 1 (PLAN): Single-threaded - load runtime data, group files, build commands
 // - Phase 2 (EXECUTE): The dry-run seam - either print commands or spawn workers
@@ -44,7 +66,7 @@ func (r *RunnerV2) Run() ([]WorkerResult, time.Duration, error) {
 	// === PHASE 2: EXECUTE (the dry-run seam) ===
 	if r.config.DryRun {
 		for i, cmd := range commands {
-			toStdErr(true, "Worker %d: %s\n", i, strings.Join(cmd.Args, " "))
+			toStdErr(true, "Worker %d: %s\n", i, dryRunString(cmd))
 		}
 		return nil, 0, nil
 	}
@@ -95,11 +117,11 @@ func (r *RunnerV2) buildCommands(groups []FileGroup) []*exec.Cmd {
 
 func (r *RunnerV2) buildEnv(workerIndex, totalGroups int) []string {
 	env := os.Environ()
-	env = append(env, fmt.Sprintf("PARALLEL_TEST_GROUPS=%d", totalGroups))
+	env = append(env, fmt.Sprintf("%s=%d", EnvParallelTestGroups, totalGroups))
 
 	if !r.config.IsSerial() {
 		testEnvNumber := GetTestEnvNumber(workerIndex, r.config)
-		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
+		env = append(env, EnvTestEnvNumber+"="+testEnvNumber)
 	}
 
 	return env
@@ -136,7 +158,7 @@ func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Du
 
 	// Set PARALLEL_TEST_GROUPS env var (also set per-command, but this ensures
 	// it's available globally for any child process inspection)
-	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(commands)))
+	os.Setenv(EnvParallelTestGroups, fmt.Sprintf("%d", len(commands)))
 
 	var outputWg sync.WaitGroup
 	outputWg.Add(1)
