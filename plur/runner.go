@@ -1,20 +1,15 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/job"
-	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -146,189 +141,6 @@ func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 		Error:    err,
 		Duration: time.Since(start),
 	}
-}
-
-// RunTestFiles executes multiple test files in a single test process
-func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentJob job.Job) WorkerResult {
-	start := time.Now()
-
-	// Create TestFile for the primary file (or combined representation)
-	var testFile *TestFile
-	if len(testFiles) > 0 {
-		testFile = &TestFile{
-			Path:     testFiles[0], // Use first file as primary
-			Filename: filepath.Base(testFiles[0]),
-		}
-	} else {
-		testFile = &TestFile{
-			Path:     "unknown",
-			Filename: "unknown",
-		}
-	}
-
-	var args []string
-	switch currentJob.Name {
-	case "rspec":
-		args = buildRSpecCommand(currentJob, testFiles, globalConfig)
-	case "minitest":
-		args = buildMinitestCommand(currentJob, testFiles, globalConfig)
-	default:
-		args = job.BuildJobCmd(currentJob, testFiles)
-	}
-
-	commandString := strings.Join(args, " ")
-	logger.Logger.Info("running", "cmd", commandString, "worker", workerIndex)
-
-	if globalConfig.DryRun {
-		return WorkerResult{
-			File:     testFile,
-			State:    types.StateSuccess,
-			Output:   fmt.Sprintf("[dry-run] %s", commandString),
-			Error:    nil,
-			Duration: time.Since(start),
-		}
-	}
-
-	env := os.Environ()
-	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
-	if !globalConfig.IsSerial() {
-		testEnvNumber := GetTestEnvNumber(workerIndex, globalConfig)
-		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
-	}
-
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	cmd.Env = env
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
-	}
-	func() {
-		err = cmd.Start()
-	}()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
-	}
-
-	parser, err := currentJob.CreateParser()
-	if err != nil {
-		return errorResult(testFile, err, start)
-	}
-
-	collector := NewTestCollector()
-
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles)
-
-	err = cmd.Wait()
-	result := collector.BuildResult(testFile, time.Since(start))
-
-	exitCode := 0
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		exitCode = exitErr.ExitCode()
-	}
-	success := exitCode == 0
-
-	// Determine the state based on the execution outcome
-	state := types.StateSuccess
-	output := result.Output + stderrOutput
-
-	// Check if this is an execution error (couldn't run tests at all)
-	if err != nil && result.ExampleCount == 0 {
-		state = types.StateError
-	} else if !success {
-		state = types.StateFailed
-	}
-
-	return WorkerResult{
-		File:              testFile,
-		State:             state,
-		Output:            output,
-		Error:             err,
-		Duration:          result.Duration,
-		FileLoadTime:      result.FileLoadTime,
-		ExampleCount:      result.ExampleCount,
-		FailureCount:      result.FailureCount,
-		PendingCount:      result.PendingCount,
-		Tests:             result.Tests,
-		FormattedFailures: result.FormattedFailures,
-		FormattedSummary:  result.FormattedSummary,
-	}
-}
-
-// RunTestsInParallel runs spec or test files in parallel
-func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentJob job.Job) ([]WorkerResult, time.Duration) {
-	start := time.Now()
-	ctx := context.Background()
-
-	// Load runtime data if available
-	runtimeData, err := LoadRuntimeData()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
-		runtimeData = make(map[string]float64)
-	}
-
-	maxWorkers := globalConfig.WorkerCount
-	colorOutput := globalConfig.ColorOutput
-
-	// Group files using runtime data if available, otherwise by size
-	var groups []FileGroup
-	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(testFiles, maxWorkers, runtimeData)
-		logger.Logger.Debug("Using runtime-based grouping", "runtime_entries", len(runtimeData))
-	} else {
-		groups = GroupSpecFilesBySize(testFiles, maxWorkers)
-		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
-	}
-
-	results := make(chan WorkerResult, len(groups))
-	outputChan := make(chan OutputMessage, maxWorkers*10)
-
-	var outputWg sync.WaitGroup
-	outputWg.Add(1)
-	go func() {
-		defer outputWg.Done()
-		outputAggregator(outputChan, colorOutput)
-	}()
-
-	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(groups)))
-
-	// Run each group in parallel
-	var wg sync.WaitGroup
-	for i, group := range groups {
-		wg.Add(1)
-		go func(workerIndex int, files []string) {
-			defer wg.Done()
-			logger.Logger.Debug("starting", "worker", workerIndex, "file_count", len(files), "files", files)
-			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentJob)
-			logger.Logger.Debug("finished", "worker", workerIndex, "success", result.Success())
-			results <- result
-		}(i, group.Files)
-	}
-
-	wg.Wait()
-	close(results)
-
-	close(outputChan)
-	outputWg.Wait()
-
-	var allResults []WorkerResult
-	for result := range results {
-		allResults = append(allResults, result)
-		// Track runtime data if tracker is available and tests actually ran
-		if runtimeTracker != nil && result.State != types.StateError && len(result.Tests) > 0 {
-			for _, test := range result.Tests {
-				runtimeTracker.AddTestNotification(test)
-			}
-		}
-	}
-
-	fmt.Println()
-
-	return allResults, time.Since(start)
 }
 
 // insertBeforeFiles inserts additional arguments before the file arguments in a command
