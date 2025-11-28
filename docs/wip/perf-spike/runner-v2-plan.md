@@ -170,9 +170,18 @@ This means we can write focused unit/integration tests that verify planning logi
 - [x] Dry-run shows env vars (PARALLEL_TEST_GROUPS, TEST_ENV_NUMBER)
   - Added `dryRunString(cmd)` function
   - Added constants for env var names
-- [ ] Add baseline tests for runner_v2.go
+- [x] Add baseline tests for runner_v2.go (runner_v2_test.go)
+  - `dryRunString` tests (env var extraction, edge cases)
+  - `buildEnv` tests (serial/parallel mode, FirstIs1 behavior)
+  - Design edge case tests with documented decisions
 - [ ] Move remaining utility code from runner.go into runner_v2.go
 - [ ] Delete runner.go
+
+### Design Edge Cases (documented in tests)
+
+* **Single file with parallel mode**: If WorkerCount=4 but only 1 file, TEST_ENV_NUMBER is still set. This is intentional - user requested parallel mode, databases should be configured for it.
+* **Serial mode (WorkerCount=1)**: Only true serial mode omits TEST_ENV_NUMBER, allowing the "default" database without suffix.
+* **PARALLEL_TEST_GROUPS**: Reflects actual groups created, not requested workers. With 3 files and 10 workers requested, PARALLEL_TEST_GROUPS=3.
 
 ### Remaining in runner.go
 
