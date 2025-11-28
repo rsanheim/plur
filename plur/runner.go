@@ -25,7 +25,7 @@ type WorkerResult struct {
 	Output       string
 	Error        error
 	Duration     time.Duration
-	FileLoadTime time.Duration // Time to load spec files before running tests
+	FileLoadTime time.Duration
 	ExampleCount int
 	FailureCount int
 	PendingCount int
@@ -166,7 +166,6 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		}
 	}
 
-	// Build command using framework-specific wrappers
 	var args []string
 	switch currentJob.Name {
 	case "rspec":
@@ -177,44 +176,37 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 		args = job.BuildJobCmd(currentJob, testFiles)
 	}
 
-	logger.Logger.Debug("executing command", "worker", workerIndex, "command", strings.Join(args, " "))
+	commandString := strings.Join(args, " ")
+	logger.Logger.Info("running", "cmd", commandString, "worker", workerIndex)
 
 	if globalConfig.DryRun {
 		return WorkerResult{
 			File:     testFile,
 			State:    types.StateSuccess,
-			Output:   fmt.Sprintf("[dry-run] %s", strings.Join(args, " ")),
+			Output:   fmt.Sprintf("[dry-run] %s", commandString),
 			Error:    nil,
 			Duration: time.Since(start),
 		}
 	}
 
-	// Create command with context for timeout handling
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-
-	// Set up environment variables for parallel testing
 	env := os.Environ()
 	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
-
 	if !globalConfig.IsSerial() {
 		testEnvNumber := GetTestEnvNumber(workerIndex, globalConfig)
 		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
 	}
 
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = env
 
-	// Set up stdout and stderr pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
 	}
-
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
 	}
-
-	// Start the command
 	func() {
 		err = cmd.Start()
 	}()
@@ -229,16 +221,11 @@ func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFi
 
 	collector := NewTestCollector()
 
-	// Stream output through parser and collector
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles)
 
-	// Wait for command to complete
 	err = cmd.Wait()
-
-	// Build the final result from the collector
 	result := collector.BuildResult(testFile, time.Since(start))
 
-	// Determine success based on exit code
 	exitCode := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
@@ -290,33 +277,16 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 	// Group files using runtime data if available, otherwise by size
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		fmt.Fprintf(os.Stderr, "Using runtime-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesByRuntime(testFiles, maxWorkers, runtimeData)
-		logger.Logger.Info("Using runtime-based grouping", "runtime_entries", len(runtimeData))
+		logger.Logger.Debug("Using runtime-based grouping", "runtime_entries", len(runtimeData))
 	} else {
-		fmt.Fprintf(os.Stderr, "Using size-based grouped execution: %d %s across %d workers\n", len(testFiles), pluralize(len(testFiles), "file", "files"), maxWorkers)
 		groups = GroupSpecFilesBySize(testFiles, maxWorkers)
-		logger.Logger.Info("Using size-based grouping (no runtime data available)")
-	}
-
-	// Log group assignments in verbose mode
-	if logger.IsVerboseEnabled() {
-		for i, group := range groups {
-			// TotalSize represents milliseconds when using runtime data, bytes when using file size
-			runtimeInfo := "by file size"
-			if len(runtimeData) > 0 {
-				runtimeInfo = fmt.Sprintf("%.2fs", float64(group.TotalSize)/1000.0)
-			}
-			logger.Logger.Info("assigned", "worker", i, "files", group.Files, "estimated_time", runtimeInfo)
-		}
+		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
 	}
 
 	results := make(chan WorkerResult, len(groups))
-
-	// Create buffered channel for output messages
 	outputChan := make(chan OutputMessage, maxWorkers*10)
 
-	// Start output aggregator goroutine
 	var outputWg sync.WaitGroup
 	outputWg.Add(1)
 	go func() {
@@ -324,7 +294,6 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		outputAggregator(outputChan, colorOutput)
 	}()
 
-	// Set PARALLEL_TEST_GROUPS environment variable
 	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(groups)))
 
 	// Run each group in parallel
@@ -333,22 +302,19 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		wg.Add(1)
 		go func(workerIndex int, files []string) {
 			defer wg.Done()
-			logger.Logger.Info("starting", "worker", workerIndex, "file_count", len(files))
+			logger.Logger.Debug("starting", "worker", workerIndex, "file_count", len(files), "files", files)
 			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentJob)
-			logger.Logger.Info("finished", "worker", workerIndex, "success", result.Success())
+			logger.Logger.Debug("finished", "worker", workerIndex, "success", result.Success())
 			results <- result
 		}(i, group.Files)
 	}
 
-	// Wait for all groups to complete
 	wg.Wait()
 	close(results)
 
-	// Close output channel and wait for aggregator to finish
 	close(outputChan)
 	outputWg.Wait()
 
-	// Collect results
 	var allResults []WorkerResult
 	for result := range results {
 		allResults = append(allResults, result)
@@ -360,7 +326,6 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 		}
 	}
 
-	// Ensure newline after dots
 	fmt.Println()
 
 	return allResults, time.Since(start)
@@ -369,7 +334,6 @@ func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, r
 // insertBeforeFiles inserts additional arguments before the file arguments in a command
 // This is used to add formatter and color flags for RSpec before the spec file paths
 func insertBeforeFiles(args []string, files []string, newArgs ...string) []string {
-	// Find where the files start in args
 	filesStart := -1
 	for i, arg := range args {
 		for _, file := range files {
@@ -399,19 +363,14 @@ func insertBeforeFiles(args []string, files []string, newArgs ...string) []strin
 // buildRSpecCommand builds an RSpec command with framework-specific flags
 // Adds formatter (if available) and color flags before the file arguments
 func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
-	// Start with base command from BuildJobCmd
 	args := job.BuildJobCmd(j, files)
 
 	// Add formatter if available
-	if globalConfig.ConfigPaths != nil {
-		formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
-		if formatterPath != "" {
-			// Insert before files
-			args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
-		}
+	formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
+	if formatterPath != "" {
+		args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
 	}
 
-	// Add color flags
 	if !globalConfig.ColorOutput {
 		args = insertBeforeFiles(args, files, "--no-color")
 	} else {
@@ -422,17 +381,18 @@ func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalCon
 }
 
 // buildMinitestCommand builds a Minitest command with framework-specific handling
-// For multiple files, uses special -e require pattern
+// For multiple files, uses -e option "execute given ruby code" - we use this to require
+// all necessary test files.
 // For single file, uses BuildJobCmd directly
-func buildMinitestCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
-	// For multiple files, use special -e require pattern
+// TODO - this should probably use `job.BuildJobCmd` instead of building the command manually...
+// but running multiple minitest files using just the stock lib is hard
+func buildMinitestCommand(j job.Job, files []string, _globalConfig *config.GlobalConfig) []string {
 	if len(files) > 1 {
 		cmd := []string{"bundle", "exec", "ruby", "-Itest"}
 		requires := make([]string, 0, len(files))
 		for _, file := range files {
-			// Strip the "test/" prefix if present since we're using -Itest
+			// Strip the "test/" prefix if present since we're using -Itest, and strip the .rb extension
 			testFile := strings.TrimPrefix(file, "test/")
-			// Remove the .rb extension for require
 			testFile = strings.TrimSuffix(testFile, ".rb")
 			requires = append(requires, testFile)
 		}

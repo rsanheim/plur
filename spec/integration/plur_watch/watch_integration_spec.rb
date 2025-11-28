@@ -27,8 +27,8 @@ RSpec.describe "plur watch integration" do
       end
     end
 
-    expect(result.err).to include("watch event=modify type=file")
-    expect(result.err).to include("path=./lib/calculator.rb")
+    expect(result.err).to include('event="modify" type="file"')
+    expect(result.err).to include('path="./lib/calculator.rb"')
     # Watch now maps file changes to jobs and executes them
     expect(result.err).to include("Executing job")
   end

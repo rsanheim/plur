@@ -65,8 +65,8 @@ RSpec.describe "plur -C with config files", type: :integration do
         expect(result.err).to include("rspec")
         expect(result.err).not_to include("bundle exec")
 
-        # Should use 2 workers from config (check in the grouping output)
-        expect(result.err).to include("2 groups")
+        # Should use 2 workers from config
+        expect(result.err).to include("using 2 workers")
       end
     end
 
@@ -83,8 +83,8 @@ RSpec.describe "plur -C with config files", type: :integration do
         # Should use config from test_project, not from temp_dir
         expect(result.err).to include("rspec")
         expect(result.err).not_to include("--format progress")
-        expect(result.err).to include("2 groups")
-        expect(result.err).not_to include("8 groups")
+        expect(result.err).to include("using 2 workers")
+        expect(result.err).not_to include("using 8 workers")
       end
     end
   end

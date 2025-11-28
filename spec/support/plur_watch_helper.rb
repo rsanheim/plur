@@ -71,13 +71,14 @@ module PlurWatchHelper
   end
 
   # Helper to check for file change events in the new log format
+  # Note: Logger now quotes string values, so we match the quoted format
   def expect_file_change_logged(output, file_path)
-    expect(output).to include("watch event=modify type=file")
-    expect(output).to include("path=#{file_path}")
+    expect(output).to include('event="modify" type="file"')
+    expect(output).to include("path=\"#{file_path}\"")
   end
 
   # Helper to check for spec run events in the new log format
   def expect_spec_run_logged(output, spec_path)
-    expect(output).to include("plur event=run_command path=#{spec_path}")
+    expect(output).to include("event=\"run_command\" path=\"#{spec_path}\"")
   end
 end

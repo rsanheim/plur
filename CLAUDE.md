@@ -76,6 +76,10 @@ See [Configuration Documentation](docs/configuration.md#job-configuration) for f
 - **Tests fail in rake but pass alone** → Use `bin/rake` not `rake`
 - **Testing fixtures is cumbersome** → Use `plur -C fixtures/minitest-success` instead of `cd`
 
+### Temporary Files
+- **ALWAYS use plur project root `./tmp` directory** for temporary files, never `/tmp` or subproject tmp dirs
+- Use `./tmp` relative to `/Users/rsanheim/src/oss/plur`, not relative to fixtures or reference projects
+
 ### Framework Detection (Updated Behavior)
 When both `spec/` and `test/` directories exist:
 - **Current behavior (as of commit 7796831)**: Plur defaults to RSpec

@@ -3,12 +3,13 @@
 require "json"
 require "rspec/core"
 require "rspec/core/formatters"
+require "rspec/core/formatters/base_formatter"
 require "rspec/core/notifications"
 
 module Plur
   # A streaming JSON formatter for plur that outputs one JSON object per line
   # Based on TurboTests::JsonRowsFormatter but simplified for plur usage
-  class JsonRowsFormatter
+  class JsonRowsFormatter < RSpec::Core::Formatters::BaseFormatter
     RSpec::Core::Formatters.register(
       self,
       :start,
@@ -24,10 +25,8 @@ module Plur
       :dump_summary
     )
 
-    attr_reader :output
-
     def initialize(output)
-      @output = output
+      super(output)
       @separator = ENV["PLUR_FORMATTER_SEPARATOR"] || "PLUR_JSON:"
     end
 

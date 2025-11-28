@@ -23,13 +23,12 @@ RSpec.describe "Plur runtime tracking" do
 
     it "saves runtime data after running specs" do
       Dir.chdir(default_ruby_dir) do
-        result = run_plur("-n", "2")
+        run_plur("-n", "2")
 
-        runtime_file_match = result.err.match(/Runtime data saved to: (.+)/)
-        expect(runtime_file_match).not_to be_nil
-        runtime_file = runtime_file_match[1].strip
-
-        expect(File.exist?(runtime_file)).to be true
+        # Find the runtime file directly instead of parsing logs
+        runtime_files = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
+        expect(runtime_files.size).to eq(1)
+        runtime_file = runtime_files.first
 
         runtime_data = JSON.parse(File.read(runtime_file))
         expect(runtime_data).to be_a(Hash)
@@ -43,18 +42,13 @@ RSpec.describe "Plur runtime tracking" do
 
     it "uses runtime data for grouping when available" do
       chdir(default_ruby_dir) do
-        result = run_plur("-n", "2")
-        expect(result.err).to include("Using size-based grouped execution")
+        # First run creates runtime data (use --debug to see log messages)
+        result = run_plur("-n", "2", "--debug")
+        expect(result.err).to include("Using size-based grouping")
 
+        # Second run should use runtime data
         result = run_plur("-n", "2", "--debug", "--dry-run")
         expect(result.err).to include("Using runtime-based grouped execution")
-      end
-    end
-
-    it "falls back to size-based grouping when no runtime data exists" do
-      Dir.chdir(default_ruby_dir) do
-        result = run_plur("--dry-run", "-n", "2")
-        expect(result.err).to include("[dry-run] Using size-based grouped execution")
       end
     end
   end
@@ -80,8 +74,8 @@ RSpec.describe "Plur runtime tracking" do
 
         File.write(File.join(temp_cache_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
 
-        # Run dry-run to see grouping
-        result = run_plur("--dry-run", "-n", "2", "--runtime-dir", temp_cache_dir)
+        # Run dry-run with debug to see grouping strategy
+        result = run_plur("--dry-run", "--debug", "-n", "2", "--runtime-dir", temp_cache_dir)
 
         # The slow file should be in its own group or with minimal other files
         expect(result.err).to include("Using runtime-based grouped execution")

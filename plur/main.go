@@ -68,9 +68,8 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 	msg := fmt.Sprintf("found %v test files", len(testFiles))
-	logger.Logger.Info(msg, "testFiles", testFiles)
+	logger.Logger.Debug(msg, "testFiles", testFiles)
 
-	// Run bundle install if --auto flag is set
 	if r.Auto && !cfg.DryRun {
 		depManager := NewDependencyManager()
 		if err := depManager.InstallDependencies(); err != nil {
@@ -78,7 +77,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	// Create and run executor with Auto flag
 	cfg.Auto = r.Auto
 	executor := NewTestExecutor(cfg, testFiles, currentJob)
 	if err := executor.Execute(); err != nil {
@@ -106,7 +104,6 @@ type WatchRunCmd struct {
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
 	config := parent.globalConfig
 
-	// Auto-install watcher binary if needed
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}

@@ -99,23 +99,6 @@ namespace :lint do
   end
 end
 
-namespace :bench do
-  desc "Run all benchmarks"
-  task all: %i[default_ruby default_rails]
-
-  desc "Run benchmarks on default-ruby"
-  task default_ruby: [:build] do
-    puts "[bench:default_ruby] Running benchmarks on default-ruby..."
-    sh "./script/bench #{Plur.config.default_ruby_dir}"
-  end
-
-  desc "Run benchmarks on default-rails"
-  task default_rails: [:build] do
-    puts "[bench:default_rails] Running benchmarks on default-rails..."
-    sh "./script/bench #{Plur.config.default_rails_dir}"
-  end
-end
-
 # ========================================
 # Convenience Tasks (top-level)
 # ========================================
