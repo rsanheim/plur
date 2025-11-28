@@ -3,11 +3,12 @@
 ## Goal
 
 Create `runner_v2.go` with a cleaner architecture where:
-- **Command** = data describing what to run
+- **Command** = data describing what to run - **important** this is just the go standard library's "exec.Command" struct
 - **Worker** = thing that executes a Command
 - **Dry-run seam** = right before `cmd.Start()`, not a high-level branch
 
 ## Success State
+This comes **at the end**, after we have runner_v2 working and accepted.
 
 ```go
 // In main.go or SpecCmd.Run()
@@ -40,7 +41,7 @@ Phase 2: EXECUTE (the seam)
 
 ### Step 1: Copy runner.go → runner_v2.go
 
-Start with existing code as base.
+Start with existing code as base. Copy the `runner.go` file to `runner_v2.go` and refactor it to use the new architecture.
 
 ### Step 2: Create RunnerV2 struct
 
@@ -98,9 +99,16 @@ func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) error {
 }
 ```
 
+### Step 6.1: review new design for correctness and clarity
+* can we remove code? do we have unnecessary abstractions?
+* are there things we should inline based on the original runner.go?
+* how do we feel about this? does it meet our goals?
+
 ### Step 7: Wire up in main.go
 
 Replace current executor creation with RunnerV2.
+Run full test suite (including ruby integration specs).
+Run manual tests. Are there regressions?
 
 ### Step 8: Delete old code
 
@@ -136,5 +144,6 @@ This means we can write focused unit/integration tests that verify planning logi
 
 - Changing the grouping algorithms
 - Changing output format
+- Changing any logging output
 - Changing RuntimeTracker behavior
 - Watch mode (uses different entry point)
