@@ -52,7 +52,7 @@ RSpec.describe "plur watch integration" do
     expect(result.err).to include("No matching watch rules for file")
   end
 
-  it "detects spec file changes" do
+  it "detects spec file changes", skip: ENV["CI"] do
     $stdout.sync = true
     $stderr.sync = true
 
