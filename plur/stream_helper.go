@@ -17,15 +17,30 @@ import (
 const ScannerBufferSize = 256 * 1024
 const StdErrBufferSize = 1024 * 8
 
-// streamTestOutput handles the common pattern of streaming test output through a parser
-// and collector while sending progress updates to the output channel
+// ANSI color codes
+const (
+	colorGreen  = "\033[32m"
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorReset  = "\033[0m"
+)
+
+// Pre-compiled output strings to avoid repeated concatenation
+var (
+	greenDot   = []byte(colorGreen + "." + colorReset)
+	redF       = []byte(colorRed + "F" + colorReset)
+	yellowStar = []byte(colorYellow + "*" + colorReset)
+	plainDot   = []byte(".")
+	plainF     = []byte("F")
+	plainStar  = []byte("*")
+)
+
 func streamTestOutput(
 	stdout, stderr io.Reader,
 	parser types.TestOutputParser,
 	collector *TestCollector,
 	outputChan chan<- OutputMessage,
 	workerIndex int,
-	testFiles []string,
 ) (stderrOutput string) {
 	var stderrBuilder strings.Builder
 	stderrBuilder.Grow(StdErrBufferSize) // Pre-allocate for typical stderr output
@@ -96,7 +111,6 @@ func streamTestOutput(
 					WorkerID: workerIndex,
 					Type:     "stderr",
 					Content:  line,
-					Files:    strings.Join(testFiles, ","),
 				}
 			}
 		}

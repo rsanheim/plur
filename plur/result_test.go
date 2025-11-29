@@ -11,15 +11,8 @@ import (
 )
 
 func TestBuildTestSummary(t *testing.T) {
-	// Create test files
-	modelFile := &TestFile{Path: "spec/model_spec.rb", Filename: "model_spec.rb"}
-	controllerFile := &TestFile{Path: "spec/controller_spec.rb", Filename: "controller_spec.rb"}
-	brokenFile := &TestFile{Path: "spec/broken_spec.rb", Filename: "broken_spec.rb"}
-
-	// Create test results
 	results := []WorkerResult{
 		{
-			File:         modelFile,
 			State:        types.StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
@@ -28,7 +21,6 @@ func TestBuildTestSummary(t *testing.T) {
 			Tests:        []types.TestCaseNotification{},
 		},
 		{
-			File:         controllerFile,
 			State:        types.StateFailed,
 			ExampleCount: 5,
 			FailureCount: 2,
@@ -58,7 +50,6 @@ func TestBuildTestSummary(t *testing.T) {
 			},
 		},
 		{
-			File:         brokenFile,
 			State:        types.StateError,
 			ExampleCount: 0,
 			FailureCount: 0,
@@ -85,18 +76,11 @@ func TestBuildTestSummary(t *testing.T) {
 	assert.False(summary.Success, "should not be successful when there are failures")
 
 	assert.Len(summary.ErroredFiles, 1, "errored files")
-	assert.Equal("spec/broken_spec.rb", summary.ErroredFiles[0].File.Path, "errored file name")
 }
 
-// Test that summary correctly identifies when there are no failures
 func TestBuildTestSummaryNoFailures(t *testing.T) {
-	// Create test files
-	modelFile := &TestFile{Path: "spec/model_spec.rb", Filename: "model_spec.rb"}
-	controllerFile := &TestFile{Path: "spec/controller_spec.rb", Filename: "controller_spec.rb"}
-
 	results := []WorkerResult{
 		{
-			File:         modelFile,
 			State:        types.StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
@@ -104,7 +88,6 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 			FileLoadTime: 40 * time.Millisecond,
 		},
 		{
-			File:         controllerFile,
 			State:        types.StateSuccess,
 			ExampleCount: 5,
 			FailureCount: 0,
@@ -126,11 +109,8 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 }
 
 func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
-	modelFile := &TestFile{Path: "spec/model_spec.rb", Filename: "model_spec.rb"}
-
 	results := []WorkerResult{
 		{
-			File:             modelFile,
 			State:            types.StateSuccess,
 			ExampleCount:     10,
 			FailureCount:     0,

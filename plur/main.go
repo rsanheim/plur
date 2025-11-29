@@ -13,6 +13,7 @@ import (
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/types"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -24,6 +25,7 @@ type SpecCmd struct {
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg := parent.globalConfig
+	fmt.Fprintf(os.Stderr, "plur version version=%s\n", GetVersionInfo())
 
 	// Determine explicit job name (CLI or config)
 	explicitName := r.Use
@@ -70,20 +72,50 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	msg := fmt.Sprintf("found %v test files", len(testFiles))
 	logger.Logger.Debug(msg, "testFiles", testFiles)
 
-	if r.Auto && !cfg.DryRun {
-		depManager := NewDependencyManager()
+	if r.Auto {
+		depManager := NewDependencyManager(cfg.DryRun)
 		if err := depManager.InstallDependencies(); err != nil {
 			return err
 		}
 	}
 
 	cfg.Auto = r.Auto
-	executor := NewTestExecutor(cfg, testFiles, currentJob)
-	if err := executor.Execute(); err != nil {
-		if strings.Contains(err.Error(), "test run failed") {
-			os.Exit(1)
-		}
+
+	runner := NewRunner(cfg, testFiles, currentJob)
+	results, wallTime, err := runner.Run()
+	if err != nil {
 		return err
+	}
+
+	// Dry-run returns nil results
+	if cfg.DryRun {
+		return nil
+	}
+
+	// Save runtime data if tests actually ran
+	hasValidRuntimeData := false
+	for _, result := range results {
+		if result.State != types.StateError && result.ExampleCount > 0 {
+			hasValidRuntimeData = true
+			break
+		}
+	}
+
+	if hasValidRuntimeData {
+		if err := runner.Tracker().SaveToFile(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
+		} else {
+			if runtimePath, err := GetRuntimeFilePath(); err == nil {
+				logger.Logger.Debug("Runtime data saved", "runtime_path", runtimePath)
+			}
+		}
+	}
+
+	summary := BuildTestSummary(results, wallTime, currentJob)
+	PrintResults(summary, cfg.ColorOutput, currentJob)
+
+	if !summary.Success {
+		os.Exit(1)
 	}
 
 	return nil

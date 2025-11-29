@@ -82,10 +82,8 @@ func (a *TestCollector) AddNotification(n types.TestNotification) {
 	}
 }
 
-// BuildResult creates a WorkerResult from collected notifications
-func (a *TestCollector) BuildResult(testFile *TestFile, duration time.Duration) WorkerResult {
+func (a *TestCollector) BuildResult(duration time.Duration) WorkerResult {
 	result := WorkerResult{
-		File:              testFile,
 		Output:            a.rawOutput.String(),
 		Duration:          duration,
 		ExampleCount:      len(a.tests),

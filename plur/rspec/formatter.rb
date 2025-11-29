@@ -1,15 +1,12 @@
 # frozen_string_literal: true
 
 require "json"
-require "rspec/core"
-require "rspec/core/formatters"
-require "rspec/core/formatters/base_formatter"
-require "rspec/core/notifications"
 
 module Plur
   # A streaming JSON formatter for plur that outputs one JSON object per line
   # Based on TurboTests::JsonRowsFormatter but simplified for plur usage
-  class JsonRowsFormatter < RSpec::Core::Formatters::BaseFormatter
+  class JsonRowsFormatter
+    attr_reader :output
     RSpec::Core::Formatters.register(
       self,
       :start,
@@ -26,7 +23,7 @@ module Plur
     )
 
     def initialize(output)
-      super(output)
+      @output = output
       @separator = ENV["PLUR_FORMATTER_SEPARATOR"] || "PLUR_JSON:"
     end
 
@@ -153,11 +150,19 @@ module Plur
       }
     end
 
+    # Use RSpec's built-in backtrace filtering for filtering, though we have a rescue 
+    # here to handle the case where RSpec's backtrace formatter fails.
+    # This can happen if the test suite is changing the cwd in around hook for parallel runs.
+    # This is done in Rspec suite's for example: 
+    # https://github.com/rspec/rspec/blob/0c37a88d4ff511debd563d68e10c1c7672318c3c/rspec-support/lib/rspec/support/spec/with_isolated_directory.rb#L5-L15
+    #
+    # Returns the backtrace as an array of strings
     def format_backtrace(backtrace)
       return [] unless backtrace
 
-      # Use RSpec's built-in backtrace filtering
       RSpec.configuration.backtrace_formatter.format_backtrace(backtrace)
+    rescue Errno::ENOENT
+      backtrace
     end
 
     def output_row(obj)

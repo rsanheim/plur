@@ -8,10 +8,33 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
-// TestFile represents a test file
-type TestFile struct {
-	Path     string // Full path to the file
-	Filename string // Just the filename
+// WorkerResult represents the accumulated results from a worker executing one or more test files
+type WorkerResult struct {
+	State        types.TestState
+	Output       string
+	Error        error
+	Duration     time.Duration
+	FileLoadTime time.Duration
+	ExampleCount int
+	FailureCount int
+	PendingCount int
+	Tests        []types.TestCaseNotification // All test notifications
+
+	// Formatted output from RSpec
+	FormattedFailures string
+	FormattedSummary  string
+}
+
+// Success returns true if the test execution was successful (no failures or errors)
+func (r WorkerResult) Success() bool {
+	return r.State == types.StateSuccess
+}
+
+// OutputMessage is a message from workers for output aggregation
+type OutputMessage struct {
+	WorkerID int
+	Type     string // "dot", "failure", "pending", "error", "stderr"
+	Content  string
 }
 
 // TestSummary represents the aggregated summary of all test results

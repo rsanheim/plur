@@ -85,11 +85,6 @@ func TestTestCollector_AddNotification(t *testing.T) {
 func TestTestCollector_BuildResult(t *testing.T) {
 	collector := NewTestCollector()
 
-	testFile := &TestFile{
-		Path:     "spec/example_spec.rb",
-		Filename: "example_spec.rb",
-	}
-
 	// Add a passing test
 	collector.AddNotification(types.TestCaseNotification{
 		Event:           types.TestPassed,
@@ -131,10 +126,9 @@ func TestTestCollector_BuildResult(t *testing.T) {
 
 	// Build result
 	duration := 500 * time.Millisecond
-	result := collector.BuildResult(testFile, duration)
+	result := collector.BuildResult(duration)
 
 	// Verify result
-	require.Equal(t, testFile, result.File)
 	assert.Equal(t, duration, result.Duration)
 	assert.Equal(t, 2, result.ExampleCount)
 	assert.Equal(t, 1, result.FailureCount)
@@ -160,11 +154,6 @@ func TestTestCollector_BuildResult(t *testing.T) {
 func TestTestCollector_BuildResult_Success(t *testing.T) {
 	collector := NewTestCollector()
 
-	testFile := &TestFile{
-		Path:     "spec/example_spec.rb",
-		Filename: "example_spec.rb",
-	}
-
 	// Add only passing tests
 	collector.AddNotification(types.TestCaseNotification{
 		Event:  types.TestPassed,
@@ -175,7 +164,7 @@ func TestTestCollector_BuildResult_Success(t *testing.T) {
 		TestID: "test-2",
 	})
 
-	result := collector.BuildResult(testFile, 100*time.Millisecond)
+	result := collector.BuildResult(100 * time.Millisecond)
 
 	assert.Equal(t, types.StateSuccess, result.State)
 	assert.Equal(t, 2, result.ExampleCount)
@@ -192,11 +181,6 @@ func TestTestCollector_BuildResult_Success(t *testing.T) {
 
 func TestTestCollector_SuiteStartedPreservesLoadTime(t *testing.T) {
 	collector := NewTestCollector()
-
-	testFile := &TestFile{
-		Path:     "spec/example_spec.rb",
-		Filename: "example_spec.rb",
-	}
 
 	// First, add SuiteStarted with LoadTime (this comes from RSpec's start notification)
 	collector.AddNotification(types.SuiteNotification{
@@ -226,7 +210,7 @@ func TestTestCollector_SuiteStartedPreservesLoadTime(t *testing.T) {
 	})
 
 	// Build result
-	result := collector.BuildResult(testFile, 2*time.Second)
+	result := collector.BuildResult(2 * time.Second)
 
 	// Verify that LoadTime from SuiteStarted is preserved
 	assert.Equal(t, 1500*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should be preserved")
@@ -236,11 +220,6 @@ func TestTestCollector_SuiteStartedPreservesLoadTime(t *testing.T) {
 
 func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {
 	collector := NewTestCollector()
-
-	testFile := &TestFile{
-		Path:     "spec/example_spec.rb",
-		Filename: "example_spec.rb",
-	}
 
 	// Add SuiteStarted with LoadTime
 	collector.AddNotification(types.SuiteNotification{
@@ -257,7 +236,7 @@ func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {
 		LoadTime:     500 * time.Millisecond, // Different value
 	})
 
-	result := collector.BuildResult(testFile, 1*time.Second)
+	result := collector.BuildResult(1 * time.Second)
 
 	// Should preserve LoadTime from SuiteStarted, not SuiteFinished
 	assert.Equal(t, 800*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should take precedence")

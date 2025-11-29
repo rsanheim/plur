@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -18,35 +17,249 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
-// WorkerResult represents the accumulated results from a worker executing one or more test files
-type WorkerResult struct {
-	File         *TestFile // Primary file (first file when multiple files are run together)
-	State        types.TestState
-	Output       string
-	Error        error
-	Duration     time.Duration
-	FileLoadTime time.Duration
-	ExampleCount int
-	FailureCount int
-	PendingCount int
-	Tests        []types.TestCaseNotification // All test notifications
+const (
+	EnvTestEnvNumber      = "TEST_ENV_NUMBER"
+	EnvParallelTestGroups = "PARALLEL_TEST_GROUPS"
+)
 
-	// Formatted output from RSpec
-	FormattedFailures string
-	FormattedSummary  string
+// dryRunString returns a shell-executable representation of the command,
+// including only the env vars that plur sets (not the full inherited env).
+func dryRunString(cmd *exec.Cmd) string {
+	var extras []string
+	for _, env := range cmd.Env {
+		if strings.HasPrefix(env, EnvTestEnvNumber+"=") ||
+			strings.HasPrefix(env, EnvParallelTestGroups+"=") {
+			extras = append(extras, env)
+		}
+	}
+	cmdStr := strings.Join(cmd.Args, " ")
+	if len(extras) > 0 {
+		return strings.Join(extras, " ") + " " + cmdStr
+	}
+	return cmdStr
 }
 
-// Success returns true if the test execution was successful (no failures or errors)
-func (r WorkerResult) Success() bool {
-	return r.State == types.StateSuccess
+// Handles grouping files into worker assignments and building the commands to run.
+// - Phase 1 (PLAN): Single-threaded - load runtime data, group files, build commands
+// - Phase 2 (EXECUTE): The dry-run seam - either print commands or spawn workers
+type Runner struct {
+	config  *config.GlobalConfig
+	files   []string
+	job     job.Job
+	tracker *RuntimeTracker
 }
 
-// OutputMessage represents a message to be output
-type OutputMessage struct {
-	WorkerID int
-	Type     string // "dot", "failure", "pending", "error", "stderr"
-	Content  string // For error messages
-	Files    string // For stderr messages - comma-separated list of files
+func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job) *Runner {
+	return &Runner{
+		config:  cfg,
+		files:   files,
+		job:     j,
+		tracker: NewRuntimeTracker(),
+	}
+}
+
+// Group files, build the commands, then either print them for dry-run or execute them
+func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
+	// planning...
+	groups := r.groupFiles()
+	commands := r.buildCommands(groups)
+
+	r.printSummary(len(commands))
+
+	// executing...
+	if r.config.DryRun {
+		for i, cmd := range commands {
+			toStdErr(true, "Worker %d: %s\n", i, dryRunString(cmd))
+		}
+		return nil, 0, nil
+	}
+
+	results, wallTime := r.executeWorkers(commands)
+	return results, wallTime, nil
+}
+
+func (r *Runner) groupFiles() []FileGroup {
+	runtimeData, err := LoadRuntimeData()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
+		runtimeData = make(map[string]float64)
+	}
+
+	var groups []FileGroup
+	if len(runtimeData) > 0 {
+		groups = GroupSpecFilesByRuntime(r.files, r.config.WorkerCount, runtimeData)
+		logger.Logger.Debug("Using runtime-based grouped execution", "group_count", len(groups))
+	} else {
+		groups = GroupSpecFilesBySize(r.files, r.config.WorkerCount)
+		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
+	}
+	return groups
+}
+
+func (r *Runner) buildCommands(groups []FileGroup) []*exec.Cmd {
+	commands := make([]*exec.Cmd, len(groups))
+
+	for i, group := range groups {
+		var args []string
+		switch r.job.Name {
+		case "rspec":
+			args = buildRSpecCommand(r.job, group.Files, r.config)
+		case "minitest":
+			args = buildMinitestCommand(r.job, group.Files, r.config)
+		default:
+			args = job.BuildJobCmd(r.job, group.Files)
+		}
+
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Env = r.buildEnv(i, len(groups))
+		commands[i] = cmd
+	}
+
+	return commands
+}
+
+func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
+	env := os.Environ()
+	env = append(env, fmt.Sprintf("%s=%d", EnvParallelTestGroups, totalGroups))
+
+	if !r.config.IsSerial() {
+		testEnvNumber := GetTestEnvNumber(workerIndex, r.config)
+		env = append(env, EnvTestEnvNumber+"="+testEnvNumber)
+	}
+
+	return env
+}
+
+func (r *Runner) printSummary(workerCount int) {
+	actualWorkers := workerCount
+	if len(r.files) < workerCount {
+		actualWorkers = len(r.files)
+	}
+
+	label := r.testLabel()
+	toStdErr(r.config.DryRun, "Running %d %s in parallel using %d workers\n",
+		len(r.files), label, actualWorkers)
+}
+
+func (r *Runner) testLabel() string {
+	switch r.job.Name {
+	case "rspec":
+		return pluralize(len(r.files), "spec", "specs")
+	case "minitest":
+		return pluralize(len(r.files), "test", "tests")
+	default:
+		return pluralize(len(r.files), "test", "tests")
+	}
+}
+
+func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
+	start := time.Now()
+	ctx := context.Background()
+
+	results := make(chan WorkerResult, len(commands))
+	outputChan := make(chan OutputMessage, len(commands)*10)
+
+	// Set PARALLEL_TEST_GROUPS env var (also set per-command, but this ensures
+	// it's available globally for any child process inspection)
+	os.Setenv(EnvParallelTestGroups, fmt.Sprintf("%d", len(commands)))
+
+	var outputWg sync.WaitGroup
+	outputWg.Add(1)
+	go func() {
+		defer outputWg.Done()
+		outputAggregator(outputChan, r.config.ColorOutput)
+	}()
+
+	var wg sync.WaitGroup
+	for i, cmd := range commands {
+		wg.Add(1)
+		go func(workerIdx int, c *exec.Cmd) {
+			defer wg.Done()
+			result := r.runCommand(ctx, workerIdx, c, outputChan)
+			results <- result
+		}(i, cmd)
+	}
+
+	wg.Wait()
+	close(results)
+
+	close(outputChan)
+	outputWg.Wait()
+
+	var allResults []WorkerResult
+	for result := range results {
+		allResults = append(allResults, result)
+		if result.State != types.StateError && len(result.Tests) > 0 {
+			for _, test := range result.Tests {
+				r.tracker.AddTestNotification(test)
+			}
+		}
+	}
+
+	fmt.Println() // newline after dots
+
+	return allResults, time.Since(start)
+}
+
+func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
+	start := time.Now()
+
+	logger.Logger.Info("running", "cmd", dryRunString(cmd), "worker", workerIdx)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return errorResult(fmt.Errorf("failed to create stdout pipe: %v", err), start)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return errorResult(fmt.Errorf("failed to create stderr pipe: %v", err), start)
+	}
+	if err := cmd.Start(); err != nil {
+		return errorResult(fmt.Errorf("failed to start command: %v", err), start)
+	}
+
+	parser, err := r.job.CreateParser()
+	if err != nil {
+		return errorResult(err, start)
+	}
+	collector := NewTestCollector()
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx)
+	err = cmd.Wait()
+	result := collector.BuildResult(time.Since(start))
+
+	logger.Logger.Debug("finished", "worker", workerIdx, "success", err == nil)
+
+	exitCode := 0
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		exitCode = exitErr.ExitCode()
+	}
+	success := exitCode == 0
+	state := types.StateSuccess
+	output := result.Output + stderrOutput
+
+	if err != nil && result.ExampleCount == 0 {
+		state = types.StateError
+	} else if !success {
+		state = types.StateFailed
+	}
+
+	return WorkerResult{
+		State:             state,
+		Output:            output,
+		Error:             err,
+		Duration:          result.Duration,
+		FileLoadTime:      result.FileLoadTime,
+		ExampleCount:      result.ExampleCount,
+		FailureCount:      result.FailureCount,
+		PendingCount:      result.PendingCount,
+		Tests:             result.Tests,
+		FormattedFailures: result.FormattedFailures,
+		FormattedSummary:  result.FormattedSummary,
+	}
+}
+
+func (r *Runner) Tracker() *RuntimeTracker {
+	return r.tracker
 }
 
 // GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
@@ -75,30 +288,12 @@ func GetTestEnvNumber(workerIndex int, config *config.GlobalConfig) string {
 		return fmt.Sprintf("%d", workerIndex+1)
 	}
 
-	// Legacy behavior: first worker gets "", others get 2,3,4...
+	// if first-is-1 is false, the first worker gets "", others get 2,3,4...
 	if workerIndex == 0 {
 		return ""
 	}
 	return fmt.Sprintf("%d", workerIndex+1)
 }
-
-// ANSI color codes
-const (
-	colorGreen  = "\033[32m"
-	colorRed    = "\033[31m"
-	colorYellow = "\033[33m"
-	colorReset  = "\033[0m"
-)
-
-// Pre-compiled output strings to avoid repeated concatenation
-var (
-	greenDot   = []byte(colorGreen + "." + colorReset)
-	redF       = []byte(colorRed + "F" + colorReset)
-	yellowStar = []byte(colorYellow + "*" + colorReset)
-	plainDot   = []byte(".")
-	plainF     = []byte("F")
-	plainStar  = []byte("*")
-)
 
 // outputAggregator handles all output from workers to avoid lock contention
 func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
@@ -131,16 +326,13 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 	}
 }
 
-// creates a WorkerResult for error cases
-func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
-	// Extract error message for output
+func errorResult(err error, start time.Time) WorkerResult {
 	errorOutput := ""
 	if err != nil {
 		errorOutput = fmt.Sprintf("Error: %v\n", err)
 	}
 
 	return WorkerResult{
-		File:     testFile,
 		State:    types.StateError,
 		Output:   errorOutput,
 		Error:    err,
@@ -148,191 +340,7 @@ func errorResult(testFile *TestFile, err error, start time.Time) WorkerResult {
 	}
 }
 
-// RunTestFiles executes multiple test files in a single test process
-func RunTestFiles(ctx context.Context, globalConfig *config.GlobalConfig, testFiles []string, workerIndex int, outputChan chan<- OutputMessage, currentJob job.Job) WorkerResult {
-	start := time.Now()
-
-	// Create TestFile for the primary file (or combined representation)
-	var testFile *TestFile
-	if len(testFiles) > 0 {
-		testFile = &TestFile{
-			Path:     testFiles[0], // Use first file as primary
-			Filename: filepath.Base(testFiles[0]),
-		}
-	} else {
-		testFile = &TestFile{
-			Path:     "unknown",
-			Filename: "unknown",
-		}
-	}
-
-	var args []string
-	switch currentJob.Name {
-	case "rspec":
-		args = buildRSpecCommand(currentJob, testFiles, globalConfig)
-	case "minitest":
-		args = buildMinitestCommand(currentJob, testFiles, globalConfig)
-	default:
-		args = job.BuildJobCmd(currentJob, testFiles)
-	}
-
-	commandString := strings.Join(args, " ")
-	logger.Logger.Info("running", "cmd", commandString, "worker", workerIndex)
-
-	if globalConfig.DryRun {
-		return WorkerResult{
-			File:     testFile,
-			State:    types.StateSuccess,
-			Output:   fmt.Sprintf("[dry-run] %s", commandString),
-			Error:    nil,
-			Duration: time.Since(start),
-		}
-	}
-
-	env := os.Environ()
-	env = append(env, "PARALLEL_TEST_GROUPS="+os.Getenv("PARALLEL_TEST_GROUPS"))
-	if !globalConfig.IsSerial() {
-		testEnvNumber := GetTestEnvNumber(workerIndex, globalConfig)
-		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
-	}
-
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	cmd.Env = env
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stdout pipe: %v", err), start)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to create stderr pipe: %v", err), start)
-	}
-	func() {
-		err = cmd.Start()
-	}()
-	if err != nil {
-		return errorResult(testFile, fmt.Errorf("failed to start command: %v", err), start)
-	}
-
-	parser, err := currentJob.CreateParser()
-	if err != nil {
-		return errorResult(testFile, err, start)
-	}
-
-	collector := NewTestCollector()
-
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIndex, testFiles)
-
-	err = cmd.Wait()
-	result := collector.BuildResult(testFile, time.Since(start))
-
-	exitCode := 0
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		exitCode = exitErr.ExitCode()
-	}
-	success := exitCode == 0
-
-	// Determine the state based on the execution outcome
-	state := types.StateSuccess
-	output := result.Output + stderrOutput
-
-	// Check if this is an execution error (couldn't run tests at all)
-	if err != nil && result.ExampleCount == 0 {
-		state = types.StateError
-	} else if !success {
-		state = types.StateFailed
-	}
-
-	return WorkerResult{
-		File:              testFile,
-		State:             state,
-		Output:            output,
-		Error:             err,
-		Duration:          result.Duration,
-		FileLoadTime:      result.FileLoadTime,
-		ExampleCount:      result.ExampleCount,
-		FailureCount:      result.FailureCount,
-		PendingCount:      result.PendingCount,
-		Tests:             result.Tests,
-		FormattedFailures: result.FormattedFailures,
-		FormattedSummary:  result.FormattedSummary,
-	}
-}
-
-// RunTestsInParallel runs spec or test files in parallel
-func RunTestsInParallel(globalConfig *config.GlobalConfig, testFiles []string, runtimeTracker *RuntimeTracker, currentJob job.Job) ([]WorkerResult, time.Duration) {
-	start := time.Now()
-	ctx := context.Background()
-
-	// Load runtime data if available
-	runtimeData, err := LoadRuntimeData()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
-		runtimeData = make(map[string]float64)
-	}
-
-	maxWorkers := globalConfig.WorkerCount
-	colorOutput := globalConfig.ColorOutput
-
-	// Group files using runtime data if available, otherwise by size
-	var groups []FileGroup
-	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(testFiles, maxWorkers, runtimeData)
-		logger.Logger.Debug("Using runtime-based grouping", "runtime_entries", len(runtimeData))
-	} else {
-		groups = GroupSpecFilesBySize(testFiles, maxWorkers)
-		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
-	}
-
-	results := make(chan WorkerResult, len(groups))
-	outputChan := make(chan OutputMessage, maxWorkers*10)
-
-	var outputWg sync.WaitGroup
-	outputWg.Add(1)
-	go func() {
-		defer outputWg.Done()
-		outputAggregator(outputChan, colorOutput)
-	}()
-
-	os.Setenv("PARALLEL_TEST_GROUPS", fmt.Sprintf("%d", len(groups)))
-
-	// Run each group in parallel
-	var wg sync.WaitGroup
-	for i, group := range groups {
-		wg.Add(1)
-		go func(workerIndex int, files []string) {
-			defer wg.Done()
-			logger.Logger.Debug("starting", "worker", workerIndex, "file_count", len(files), "files", files)
-			result := RunTestFiles(ctx, globalConfig, files, workerIndex, outputChan, currentJob)
-			logger.Logger.Debug("finished", "worker", workerIndex, "success", result.Success())
-			results <- result
-		}(i, group.Files)
-	}
-
-	wg.Wait()
-	close(results)
-
-	close(outputChan)
-	outputWg.Wait()
-
-	var allResults []WorkerResult
-	for result := range results {
-		allResults = append(allResults, result)
-		// Track runtime data if tracker is available and tests actually ran
-		if runtimeTracker != nil && result.State != types.StateError && len(result.Tests) > 0 {
-			for _, test := range result.Tests {
-				runtimeTracker.AddTestNotification(test)
-			}
-		}
-	}
-
-	fmt.Println()
-
-	return allResults, time.Since(start)
-}
-
 // insertBeforeFiles inserts additional arguments before the file arguments in a command
-// This is used to add formatter and color flags for RSpec before the spec file paths
 func insertBeforeFiles(args []string, files []string, newArgs ...string) []string {
 	filesStart := -1
 	for i, arg := range args {
@@ -347,7 +355,6 @@ func insertBeforeFiles(args []string, files []string, newArgs ...string) []strin
 		}
 	}
 
-	// If we didn't find files, just append new args
 	if filesStart == -1 {
 		return append(args, newArgs...)
 	}
@@ -361,7 +368,6 @@ func insertBeforeFiles(args []string, files []string, newArgs ...string) []strin
 }
 
 // buildRSpecCommand builds an RSpec command with framework-specific flags
-// Adds formatter (if available) and color flags before the file arguments
 func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
 	args := job.BuildJobCmd(j, files)
 
@@ -381,11 +387,6 @@ func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalCon
 }
 
 // buildMinitestCommand builds a Minitest command with framework-specific handling
-// For multiple files, uses -e option "execute given ruby code" - we use this to require
-// all necessary test files.
-// For single file, uses BuildJobCmd directly
-// TODO - this should probably use `job.BuildJobCmd` instead of building the command manually...
-// but running multiple minitest files using just the stock lib is hard
 func buildMinitestCommand(j job.Job, files []string, _globalConfig *config.GlobalConfig) []string {
 	if len(files) > 1 {
 		cmd := []string{"bundle", "exec", "ruby", "-Itest"}
