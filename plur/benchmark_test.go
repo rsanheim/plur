@@ -226,54 +226,46 @@ func generateTestNotifications(count int, failureRate float64) []types.TestCaseN
 // Grouper Scale Benchmarks
 // =============================================================================
 
-func BenchmarkGroupSpecFilesBySize_1000Files(b *testing.B) {
-	files := generateSpecFiles(1000)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		GroupSpecFilesBySize(files, 8)
+func BenchmarkGroupSpecFilesBySize(b *testing.B) {
+	cases := []struct {
+		count   int
+		workers int
+	}{
+		{count: 1000, workers: 8},
+		{count: 5000, workers: 8},
+		{count: 10000, workers: 16},
+	}
+
+	for _, tc := range cases {
+		b.Run(fmt.Sprintf("Files=%d_Workers=%d", tc.count, tc.workers), func(b *testing.B) {
+			files := generateSpecFiles(tc.count)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				GroupSpecFilesBySize(files, tc.workers)
+			}
+		})
 	}
 }
 
-func BenchmarkGroupSpecFilesBySize_5000Files(b *testing.B) {
-	files := generateSpecFiles(5000)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		GroupSpecFilesBySize(files, 8)
+func BenchmarkGroupSpecFilesByRuntime(b *testing.B) {
+	cases := []struct {
+		count   int
+		workers int
+	}{
+		{count: 1000, workers: 8},
+		{count: 5000, workers: 8},
+		{count: 10000, workers: 16},
 	}
-}
 
-func BenchmarkGroupSpecFilesBySize_10000Files(b *testing.B) {
-	files := generateSpecFiles(10000)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		GroupSpecFilesBySize(files, 16)
-	}
-}
-
-func BenchmarkGroupSpecFilesByRuntime_1000Files(b *testing.B) {
-	files := generateSpecFiles(1000)
-	runtimeData := generateRuntimeData(files)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		GroupSpecFilesByRuntime(files, 8, runtimeData)
-	}
-}
-
-func BenchmarkGroupSpecFilesByRuntime_5000Files(b *testing.B) {
-	files := generateSpecFiles(5000)
-	runtimeData := generateRuntimeData(files)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		GroupSpecFilesByRuntime(files, 8, runtimeData)
-	}
-}
-
-func BenchmarkGroupSpecFilesByRuntime_10000Files(b *testing.B) {
-	files := generateSpecFiles(10000)
-	runtimeData := generateRuntimeData(files)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		GroupSpecFilesByRuntime(files, 16, runtimeData)
+	for _, tc := range cases {
+		b.Run(fmt.Sprintf("Files=%d_Workers=%d", tc.count, tc.workers), func(b *testing.B) {
+			files := generateSpecFiles(tc.count)
+			runtimeData := generateRuntimeData(files)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				GroupSpecFilesByRuntime(files, tc.workers, runtimeData)
+			}
+		})
 	}
 }
 
@@ -281,71 +273,46 @@ func BenchmarkGroupSpecFilesByRuntime_10000Files(b *testing.B) {
 // RSpec Parser Scale Benchmarks
 // =============================================================================
 
-func BenchmarkRSpecParseLine_JSONEvent(b *testing.B) {
-	parser := rspec.NewOutputParser()
-	line := `PLUR_JSON:{"type":"example_passed","example":{"description":"test 1","full_description":"should work 1","file_path":"spec/model_spec.rb","line_number":10,"status":"passed","run_time":0.05}}`
+func BenchmarkRSpecParseLine(b *testing.B) {
+	cases := []struct {
+		name string
+		line string
+	}{
+		{
+			name: "JSONEvent",
+			line: `PLUR_JSON:{"type":"example_passed","example":{"description":"test 1","full_description":"should work 1","file_path":"spec/model_spec.rb","line_number":10,"status":"passed","run_time":0.05}}`,
+		},
+		{
+			name: "RawOutput",
+			line: "Running tests... some typical test output that is not JSON",
+		},
+	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		parser.ParseLine(line)
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			parser := rspec.NewOutputParser()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				parser.ParseLine(tc.line)
+			}
+		})
 	}
 }
 
-func BenchmarkRSpecParseLine_RawOutput(b *testing.B) {
-	parser := rspec.NewOutputParser()
-	line := "Running tests... some typical test output that is not JSON"
+func BenchmarkRSpecParser(b *testing.B) {
+	counts := []int{1000, 5000, 10000, 30000}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		parser.ParseLine(line)
-	}
-}
-
-func BenchmarkRSpecParser_1000Tests(b *testing.B) {
-	lines := generateRSpecJSONLines(1000, 0.02)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		parser := rspec.NewOutputParser()
-		for _, line := range lines {
-			parser.ParseLine(line)
-		}
-	}
-}
-
-func BenchmarkRSpecParser_5000Tests(b *testing.B) {
-	lines := generateRSpecJSONLines(5000, 0.02)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		parser := rspec.NewOutputParser()
-		for _, line := range lines {
-			parser.ParseLine(line)
-		}
-	}
-}
-
-func BenchmarkRSpecParser_10000Tests(b *testing.B) {
-	lines := generateRSpecJSONLines(10000, 0.02)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		parser := rspec.NewOutputParser()
-		for _, line := range lines {
-			parser.ParseLine(line)
-		}
-	}
-}
-
-func BenchmarkRSpecParser_30000Tests(b *testing.B) {
-	lines := generateRSpecJSONLines(30000, 0.02)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		parser := rspec.NewOutputParser()
-		for _, line := range lines {
-			parser.ParseLine(line)
-		}
+	for _, count := range counts {
+		b.Run(fmt.Sprintf("Tests=%d", count), func(b *testing.B) {
+			lines := generateRSpecJSONLines(count, 0.02)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				parser := rspec.NewOutputParser()
+				for _, line := range lines {
+					parser.ParseLine(line)
+				}
+			}
+		})
 	}
 }
 
@@ -353,54 +320,20 @@ func BenchmarkRSpecParser_30000Tests(b *testing.B) {
 // TestCollector Scale Benchmarks
 // =============================================================================
 
-func BenchmarkTestCollector_1000Tests(b *testing.B) {
-	notifications := generateTestNotifications(1000, 0.05)
+func BenchmarkTestCollector(b *testing.B) {
+	counts := []int{1000, 5000, 10000, 30000}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		collector := NewTestCollector()
-		for _, n := range notifications {
-			collector.AddNotification(n)
-		}
-		collector.BuildResult(5 * time.Second)
-	}
-}
-
-func BenchmarkTestCollector_5000Tests(b *testing.B) {
-	notifications := generateTestNotifications(5000, 0.05)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		collector := NewTestCollector()
-		for _, n := range notifications {
-			collector.AddNotification(n)
-		}
-		collector.BuildResult(5 * time.Second)
-	}
-}
-
-func BenchmarkTestCollector_10000Tests(b *testing.B) {
-	notifications := generateTestNotifications(10000, 0.05)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		collector := NewTestCollector()
-		for _, n := range notifications {
-			collector.AddNotification(n)
-		}
-		collector.BuildResult(5 * time.Second)
-	}
-}
-
-func BenchmarkTestCollector_30000Tests(b *testing.B) {
-	notifications := generateTestNotifications(30000, 0.05)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		collector := NewTestCollector()
-		for _, n := range notifications {
-			collector.AddNotification(n)
-		}
-		collector.BuildResult(5 * time.Second)
+	for _, count := range counts {
+		b.Run(fmt.Sprintf("Tests=%d", count), func(b *testing.B) {
+			notifications := generateTestNotifications(count, 0.05)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				collector := NewTestCollector()
+				for _, n := range notifications {
+					collector.AddNotification(n)
+				}
+				collector.BuildResult(5 * time.Second)
+			}
+		})
 	}
 }
