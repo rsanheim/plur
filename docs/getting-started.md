@@ -11,8 +11,8 @@ Quick start guide for using Plur.
 
 ```bash
 # From source
-git clone https://github.com/rsanheim/plur-meta.git
-cd plur-meta
+git clone https://github.com/rsanheim/plur.git
+cd plur
 bin/rake install
 
 # Verify installation

@@ -69,14 +69,7 @@ use = "rspec"  # Default job
 - [x] Run `script/docs` - build running (linkcheckmd validated internal links)
 - [x] Test example configs with `plur doctor` - shows correct job config
 
-## Files To Modify
-
-1. **docs/configuration.md** - Complete rewrite of config sections
-
-## Source of Truth Files (read-only reference)
-
-* `plur/job/job.go` - Job struct definition
-* `plur/watch/watch_mapping.go` - WatchMapping struct
-* `plur/autodetect/defaults.toml` - Built-in defaults
-* `.plur.toml` - Working example config
-* `CLAUDE.md` - Already has correct syntax
+### Phase 6: Example Files & Repo Rename
+- [x] Fix `examples/plur.toml.example` - converted to correct API
+- [x] Fix `examples/plur.toml.frameworks` - converted to correct API
+- [x] Update all `plur-meta` → `plur` references across docs and CHANGELOG

@@ -43,7 +43,7 @@ plur --auto                  # Auto-detect and show worker count
 ## Project Structure
 
 ```
-/Users/rsanheim/src/oss/plur-meta/
+/Users/rsanheim/src/oss/plur/
 ├── plur/                    # Main Go implementation
 │   ├── main.go            # Core plur CLI and parallel execution
 │   ├── go.mod/go.sum      # Go dependencies
