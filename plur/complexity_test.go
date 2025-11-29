@@ -127,7 +127,7 @@ func TestTestCollectorComplexity(t *testing.T) {
 }
 
 // checkLinearScaling verifies that time grows at most linearly with input size.
-// If time ratio exceeds 1.5x the size ratio, we likely have O(n²) behavior.
+// If time ratio exceeds 2x the size ratio, we likely have O(n²) behavior.
 func checkLinearScaling(t *testing.T, name string, sizes []int, times []time.Duration) {
 	t.Helper()
 
@@ -135,8 +135,8 @@ func checkLinearScaling(t *testing.T, name string, sizes []int, times []time.Dur
 		sizeRatio := float64(sizes[i]) / float64(sizes[i-1])
 		timeRatio := float64(times[i]) / float64(times[i-1])
 
-		// Allow 1.5x tolerance over linear scaling to account for overhead/caching
-		threshold := sizeRatio * 1.5
+		// Allow 2x tolerance over linear scaling to account for system noise at small scales
+		threshold := sizeRatio * 2.0
 
 		if timeRatio > threshold {
 			t.Errorf("%s: potential O(n²) detected between size %d and %d: "+

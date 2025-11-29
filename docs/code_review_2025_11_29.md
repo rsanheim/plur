@@ -67,3 +67,11 @@ Overall, the code quality is high, with idiomatic Go usage. The "complexity test
 
 5.  **Script Portability:**
     The bash scripts are well-written but rely on `benchstat` being installable via `go install`. This assumes the environment has Go configured correctly (PATH, etc.), which is a safe assumption for this project but worth noting.
+
+## 4. Action Items Status
+
+- [x] **Refactor Benchmarks to Use `b.Run`** (Completed)
+- [ ] **Address Stability of Complexity Tests**
+- [ ] **Replace Hardcoded Magic Number in Parser**
+- [ ] **Add Comments on Non-Existent Files in Benchmarks**
+- [ ] **Verify Script Portability**
