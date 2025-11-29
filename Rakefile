@@ -21,7 +21,7 @@ desc "Build the plur Go binary"
 task build: ["vendor:download:current"] do
   Dir.chdir(Plur.config.plur_dir) do
     puts "[build] Building plur"
-    sh %(go build -mod=mod -o plur .)
+    sh %(go build .)
     version = `./plur --version`.strip
     puts "[build] Binary created at plur/plur with version: #{version}"
   end
