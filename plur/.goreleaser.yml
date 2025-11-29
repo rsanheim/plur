@@ -103,9 +103,8 @@ release:
   name_template: "v{{.Version}}"
 
 # Changelog configuration
-# We use PR-based changelog generation via script/release, so disable auto-generation
-changelog:
-  disable: true
+# Auto-generation disabled via --release-notes CLI flag (passing our custom notes file)
+# Note: Do NOT use changelog: disable: true as it ignores the --release-notes flag entirely
 
 # Homebrew tap configuration (commented out for now)
 # brews:
