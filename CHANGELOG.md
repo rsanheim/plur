@@ -1,5 +1,11 @@
 # plur CHANGELOG
 
+## v0.14.0 - 2025-11-28
+* more docs clean up [#138](https://github.com/rsanheim/plur/pull/138)
+* Clean ups [#137](https://github.com/rsanheim/plur/pull/137)
+* Remove framework hints [#136](https://github.com/rsanheim/plur/pull/136)
+* Migrate release process to GitHub Actions [#135](https://github.com/rsanheim/plur/pull/135)
+
 ## v0.13.0 - 2025-11-25
 * Major internal refactor (task→job) [#131](https://github.com/rsanheim/plur/pull/131)
 * Remove dead code: test-only getters and unused Ruby helper [#133](https://github.com/rsanheim/plur/pull/133)
