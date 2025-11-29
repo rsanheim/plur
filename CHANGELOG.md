@@ -3,6 +3,11 @@
 
 
 
+
+## v0.15.3 - 2025-11-29
+
+* Actually fix release notes (remove changelog:disable that blocked --release-notes flag)
+
 ## v0.15.2 - 2025-11-29
 
 * Fix release notes not appearing in GitHub releases
