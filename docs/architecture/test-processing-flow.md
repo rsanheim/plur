@@ -2,222 +2,142 @@
 
 This document provides a comprehensive view of how Plur processes test output, from the runner through all components including the parser, collector, and output aggregator.
 
-**Updated**: Reflects current architecture with WorkerResult, ProgressEvent, unified test representation, and framework-aware formatting.
-
-**Note**: While this diagram uses Minitest as the example, the architecture applies to all test frameworks (RSpec, Minitest, etc.) with framework-specific implementations in the parser layer.
+The architecture is framework-agnostic: RSpec and Minitest use the same flow with framework-specific parsers.
 
 ## Full System Flow - Test Execution
 
-!!! tip "Viewing Large Diagrams"
-    This diagram supports pan and zoom! Use your mouse wheel to zoom in/out and drag to pan around. Double-click to reset the view.
-
 ```mermaid
 sequenceDiagram
-    participant Main as Main/CLI
-    participant Executor as TestExecutor
-    participant Runner as RunSpecsInParallel
+    participant CLI as SpecCmd.Run
+    participant Runner as Runner
     participant Worker as Worker Goroutine
-    participant RunSpec as RunSpecFile
-    participant RunMini as RunMinitestFiles
     participant Cmd as exec.Command
     participant Stream as streamTestOutput
-    participant Parser as MinitestParser
+    participant Parser as Parser (RSpec/Minitest)
     participant Collector as TestCollector
     participant OutChan as outputChan
-    participant Aggregator as outputAggregator
-    participant Console as Console Output
+    participant Agg as outputAggregator
+    participant Console as Console
 
-    Main->>Executor: Execute(config, specFiles)
-    Executor->>Runner: RunSpecsInParallel(config, specFiles)
-    
-    Note over Runner: Group files by runtime/size
-    Runner->>Runner: Create outputChan (buffered)
-    Runner->>Aggregator: Start outputAggregator goroutine
-    
-    Runner->>Worker: Launch worker goroutines
-    
-    loop For each file group
-        Worker->>RunSpec: RunSpecFile(files, outputChan)
-        
-        alt Framework = Minitest
-            RunSpec->>RunMini: RunMinitestFiles(files, outputChan)
-            
-            RunMini->>RunMini: Build command args
-            Note over RunMini: ruby -Itest test1.rb test2.rb...
-            
-            RunMini->>Cmd: Create & start process
-            RunMini->>Cmd: Set up stdout/stderr pipes
-            
-            RunMini->>Parser: NewTestOutputParser(Minitest)
-            RunMini->>Collector: NewTestCollector()
-            
-            RunMini->>Stream: streamTestOutput(stdout, stderr, parser, collector, outputChan)
-            
-            rect rgb(240, 240, 255)
-                Note over Stream,Aggregator: Concurrent Processing
-                
-                par Process stdout
-                    loop For each line
-                        Stream->>Parser: ParseLine(line)
-                        
-                        alt Line = "# Running:"
-                            Parser->>Parser: testsRunning = true
-                            Parser-->>Stream: [SuiteStarted], false
-                        else Line = "Finished in..."
-                            Parser->>Parser: testsRunning = false
-                            Parser-->>Stream: [], false
-                        else testsRunning && has progress chars
-                            Parser->>Parser: parseProgressLine()
-                            alt char = '.'
-                                Parser-->>Stream: [ProgressEvent{'.'}], false
-                            else char = 'F'
-                                Parser-->>Stream: [ProgressEvent{'F'}], false
-                            else char = 'E'
-                                Parser-->>Stream: [ProgressEvent{'E'}], false
-                            else char = 'S'
-                                Parser-->>Stream: [ProgressEvent{'S'}], false
-                            end
-                        else Other lines
-                            Parser-->>Stream: [], false
-                        end
-                        
-                        Note over Stream: Always preserve raw output
-                        Stream->>Collector: AddNotification(OutputNotification{line})
-                        
-                        loop For each notification
-                            Stream->>Collector: AddNotification(notification)
-                            
-                            alt ProgressEvent with '.'
-                                Stream->>OutChan: {Type: "dot", WorkerID: i}
-                            else ProgressEvent with 'F' or 'E'
-                                Stream->>OutChan: {Type: "failure", WorkerID: i}
-                            else ProgressEvent with 'S'
-                                Stream->>OutChan: {Type: "pending", WorkerID: i}
-                            end
-                        end
+    CLI->>Runner: NewRunner(config, files, job)
+    CLI->>Runner: Run()
+
+    Note over Runner: Phase 1: Planning
+    Runner->>Runner: groupFiles() - by runtime or size
+    Runner->>Runner: buildCommands() - exec.Cmd per group
+
+    Note over Runner: Phase 2: Execution
+    Runner->>OutChan: Create buffered channel
+    Runner->>Agg: Start goroutine
+
+    loop For each command
+        Runner->>Worker: Spawn goroutine
+        Worker->>Worker: runCommand(cmd, outputChan)
+
+        Worker->>Cmd: StdoutPipe(), StderrPipe()
+        Worker->>Cmd: Start()
+        Worker->>Parser: job.CreateParser()
+        Worker->>Collector: NewTestCollector()
+        Worker->>Stream: streamTestOutput(stdout, stderr, parser, collector, outputChan)
+
+        rect rgb(240, 248, 255)
+            Note over Stream,Agg: Concurrent Output Processing
+
+            par stdout goroutine
+                loop For each line
+                    Stream->>Parser: ParseLine(line)
+                    Parser-->>Stream: notifications, consumed
+
+                    alt !consumed (raw output like puts)
+                        Stream->>Collector: AddNotification(RawOutput)
+                        Note over Stream: ⚠️ NOT sent to outputChan
                     end
-                and Process stderr
-                    loop For each line
-                        Stream->>OutChan: {Type: "stderr", Content: line}
-                    end
-                and Aggregate output
-                    loop For each message
-                        Aggregator->>Aggregator: Read from outputChan
-                        alt Type = "dot"
-                            Aggregator->>Console: Write green dot
-                        else Type = "failure"
-                            Aggregator->>Console: Write red F
-                        else Type = "pending"
-                            Aggregator->>Console: Write yellow *
-                        else Type = "stderr"
-                            Aggregator->>Console: Write to stderr
+
+                    loop For each notification
+                        Stream->>Collector: AddNotification(n)
+                        alt ProgressEvent
+                            Stream->>OutChan: {Type: dot/failure/pending}
                         end
                     end
                 end
+            and stderr goroutine
+                loop For each line
+                    Stream->>OutChan: {Type: "stderr", Content: line}
+                end
+            and aggregator goroutine
+                loop For each message
+                    alt dot
+                        Agg->>Console: Write green .
+                    else failure
+                        Agg->>Console: Write red F
+                    else pending
+                        Agg->>Console: Write yellow *
+                    else stderr
+                        Agg->>Console: Write to stderr
+                    end
+                end
             end
-            
-            Stream-->>RunMini: Return stderr output
-            
-            RunMini->>Cmd: Wait for completion
-            RunMini->>Collector: BuildResult(testFile, duration)
-            
-            Note over Collector: Accumulate counts from notifications
-            Collector-->>RunMini: WorkerResult{ExampleCount, FailureCount, Output, etc}
-            
-            RunMini->>RunMini: Convert to RSpec-compatible format
-            Note over RunMini: Preserves framework context
-            
-            RunMini-->>Worker: WorkerResult
         end
-        
-        Worker-->>Runner: Send result to results channel
+
+        Stream-->>Worker: stderrOutput
+        Worker->>Cmd: Wait()
+        Worker->>Collector: BuildResult(duration)
+        Collector-->>Worker: WorkerResult
     end
-    
-    Runner->>Runner: Close outputChan
-    Runner->>Aggregator: Wait for completion
-    Runner->>Console: Print newline after dots
-    
-    Runner->>Runner: Collect all results
-    Runner-->>Executor: []WorkerResult, wallTime
-    
-    Executor->>Executor: BuildTestSummary(results)
-    Note over Executor: Summary includes Framework field
-    Executor->>Console: PrintResults(summary)
-    
-    alt Framework = Minitest
-        Console->>Parser: NewTestOutputParser(Minitest)
-        Parser->>Parser: FormatSummary(...)
-        Console->>Console: Display minitest format:<br/>"X runs, Y assertions, Z failures..."
-    else Framework = RSpec
-        Console->>Console: Display RSpec format:<br/>"X examples, Y failures"
-    end
+
+    Runner->>Runner: Close outputChan, wait for aggregator
+    Runner->>Console: Print newline
+
+    Note over Runner: Phase 3: Summary
+    Runner-->>CLI: []WorkerResult, wallTime
+    CLI->>CLI: BuildTestSummary(results)
+    CLI->>Console: PrintResults(summary)
 ```
 
 ## Key Components
 
-### 1. **RunSpecsInParallel**
-- Groups test files by runtime or size
-- Creates output channel for progress updates
-- Launches worker goroutines
-- Starts output aggregator
+### 1. **Runner** (runner.go)
+Orchestrates the entire test execution:
+* `Run()` - Entry point with three phases: planning, execution, results
+* `groupFiles()` - Groups files by runtime data (preferred) or file size (fallback)
+* `buildCommands()` - Creates `exec.Cmd` for each file group with framework-specific args
+* `executeWorkers()` - Spawns worker goroutines, manages channels, waits for completion
+* `runCommand()` - Runs a single command: pipes, parser, collector, streamTestOutput
 
-### 2. **Worker Goroutines**
-- Each worker processes a group of files
-- Calls RunSpecFile which dispatches to framework-specific runner
+### 2. **streamTestOutput** (stream_helper.go)
+Handles real-time output processing with two concurrent goroutines:
+* **stdout goroutine**: Parses lines via `parser.ParseLine()`, sends progress to `outputChan`, collects raw output
+* **stderr goroutine**: Passes through to `outputChan` with type "stderr"
 
-### 3. **RunMinitestFiles**
-- Builds minitest command (`ruby -Itest ...`)
-- Creates pipes for stdout/stderr
-- Instantiates parser and collector
-- Calls streamTestOutput
+**Known issue**: Raw stdout (unconsumed lines like `puts`) is collected but NOT sent to `outputChan` - see issue #85.
 
-### 4. **streamTestOutput (stream_helper.go)**
-- Runs two concurrent goroutines:
-  - One for stdout (parsing)
-  - One for stderr (pass-through)
-- Always preserves raw output as OutputNotification
-- Sends progress indicators to outputChan
+### 3. **Parser** (rspec/ or minitest/)
+Framework-specific output parsing:
+* `ParseLine(line)` returns `(notifications, consumed)`
+* Emits `ProgressEvent` for dots/failures, `TestCaseNotification` for test results
+* `FormatSummary()` for framework-native summary output
 
-### 5. **MinitestParser (minitest/output_parser.go)**
-- State machine with multiple states (parsingProgress, afterFinished, inFailureDetails)
-- Emits ProgressEvent for real-time display (., F, E, S)
-- Parses failure details after test execution
-- Creates complete TestCaseNotification objects with failure information
-- Implements FormatSummary for framework-specific output
+### 4. **TestCollector** (test_collector.go)
+Accumulates notifications from parser:
+* Tracks tests, failures, pending counts
+* Stores raw output in `rawOutput` string builder
+* `BuildResult()` creates final `WorkerResult`
 
-### 6. **TestCollector**
-- Accumulates all notifications
-- Separates progress tracking from test results
-- Stores complete TestCaseNotification objects
-- Stores raw output lines
-- BuildResult creates final WorkerResult with framework context
+### 5. **outputAggregator** (runner.go)
+Single goroutine that serializes all output:
+* Reads from `outputChan`
+* Writes colored progress indicators (., F, *) to stdout
+* Writes stderr lines to stderr
 
-### 7. **outputAggregator**
-- Reads from outputChan
-- Writes colored progress indicators to console
-- Handles stderr output
-- Runs concurrently with test execution
+### 6. **PrintResults** (result.go)
+Displays final summary:
+* `BuildTestSummary()` aggregates all WorkerResults
+* Framework-aware formatting via `parser.FormatSummary()`
+* Shows failures, then summary line
 
-### 8. **PrintResults (result.go)**
-- Framework-aware formatting
-- Uses parser.FormatSummary for framework-specific output
-- Minitest shows: "X runs, Y assertions, Z failures, W errors, V skips"
-- RSpec shows: "X examples, Y failures"
-- Falls back to generic formatting if parser unavailable
+## Architecture Highlights
 
-## Key Improvements Since Initial Implementation
-
-1. **Framework Context Preserved**: WorkerResult and TestSummary include Framework field
-2. **Unified Test Representation**: Single TestCaseNotification type for all test results
-3. **Progress Events**: Separate ProgressEvent type for real-time display without duplication
-4. **Framework-Aware Formatting**: PrintResults uses parser.FormatSummary for native output
-5. **Complete Failure Parsing**: Minitest parser extracts full failure details
-6. **Better Naming**: TestResult renamed to WorkerResult to clarify it represents multiple files from one worker
-
-## Current Architecture Highlights
-
-1. **Event-Based Design**: Clean separation between parsing, accumulation, and display
-2. **Parser Factory Pattern**: Framework-specific parsers created via factory
-3. **Shared Streaming Logic**: Common output streaming for both frameworks
-4. **Tell Don't Ask**: Parsers tell the runner how to format output
-5. **No Type Proliferation**: Eliminated redundant TestFailure type
+* **Framework-agnostic flow**: Same Runner/streaming for RSpec and Minitest
+* **Channel-based output**: No lock contention, single aggregator serializes output
+* **Event-based parsing**: Parsers emit typed notifications, not raw strings
+* **Unified WorkerResult**: Each worker returns one result covering multiple test files
