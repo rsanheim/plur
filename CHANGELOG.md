@@ -1,5 +1,10 @@
 # plur CHANGELOG
 
+
+## v0.15.0 - 2025-11-28
+
+* Redesign Runner [#139](https://github.com/rsanheim/plur/pull/139)
+
 ## v0.14.0 - 2025-11-28
 * more docs clean up [#138](https://github.com/rsanheim/plur/pull/138)
 * Clean ups [#137](https://github.com/rsanheim/plur/pull/137)
