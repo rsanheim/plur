@@ -94,7 +94,7 @@ snapshot:
 
 # Release configuration
 release:
-  # GitHub releases
+  mode: replace  # Overwrite any existing release body (GitHub may create empty releases on tag push)
   github:
     owner: rsanheim
     name: plur
