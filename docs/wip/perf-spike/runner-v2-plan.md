@@ -174,8 +174,12 @@ This means we can write focused unit/integration tests that verify planning logi
   - `dryRunString` tests (env var extraction, edge cases)
   - `buildEnv` tests (serial/parallel mode, FirstIs1 behavior)
   - Design edge case tests with documented decisions
-- [ ] Move remaining utility code from runner.go into runner_v2.go
-- [ ] Delete runner.go
+- [x] Figure out where code in old runner.go should live
+  - Types (`WorkerResult`, `OutputMessage`) → result.go
+  - ANSI constants → stream_helper.go
+  - All functions → runner_v2.go
+- [x] Do the actual move(s) of code out of runner.go
+- [x] Delete runner.go
 
 ### Design Edge Cases (documented in tests)
 
@@ -183,14 +187,11 @@ This means we can write focused unit/integration tests that verify planning logi
 * **Serial mode (WorkerCount=1)**: Only true serial mode omits TEST_ENV_NUMBER, allowing the "default" database without suffix.
 * **PARALLEL_TEST_GROUPS**: Reflects actual groups created, not requested workers. With 3 files and 10 workers requested, PARALLEL_TEST_GROUPS=3.
 
-### Remaining in runner.go
+## ✓ COMPLETE
 
-Code still in runner.go that needs a home:
-
-* `WorkerResult`, `OutputMessage` - result types
-* `GetWorkerCount`, `GetTestEnvNumber` - worker config helpers
-* `outputAggregator`, `errorResult` - output handling
-* `buildRSpecCommand`, `buildMinitestCommand`, `insertBeforeFiles` - command builders
-* ANSI color constants and pre-compiled output bytes
-
-These are all used by runner_v2.go. Move them in, then delete runner.go.
+All runner.go code has been moved to appropriate locations:
+* `WorkerResult`, `OutputMessage` → result.go
+* ANSI constants (`colorGreen`, etc.) → stream_helper.go
+* Functions (`GetWorkerCount`, `GetTestEnvNumber`, `outputAggregator`, `errorResult`, `buildRSpecCommand`, `buildMinitestCommand`, `insertBeforeFiles`) → runner_v2.go
+* runner.go deleted
+* All 223 Ruby integration tests + Go unit tests pass
