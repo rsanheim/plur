@@ -81,7 +81,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	cfg.Auto = r.Auto
 
-	runner := NewRunnerV2(cfg, testFiles, currentJob)
+	runner := NewRunner(cfg, testFiles, currentJob)
 	results, wallTime, err := runner.Run()
 	if err != nil {
 		return err

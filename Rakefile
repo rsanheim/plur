@@ -27,7 +27,7 @@ task build: ["vendor:download:current"] do
   end
 end
 
-desc "Install plur to GOBIN"
+desc "Install plur globally to $GOBIN"
 task :install do
   if ENV["CI"] && system("which plur")
     puts "[install] Plur already installed"
@@ -37,6 +37,7 @@ task :install do
       final = File.join(gobin, "plur")
       temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
 
+      # We build to a temp file and then rename it to the final name to handle this atomically
       sh %(goreleaser build --snapshot --single-target --clean -o #{temp})
       File.chmod(0o755, temp)
       File.rename(temp, final)

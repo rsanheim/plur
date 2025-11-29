@@ -39,18 +39,18 @@ func dryRunString(cmd *exec.Cmd) string {
 	return cmdStr
 }
 
-// RunnerV2 implements the clean execution architecture where:
+// Handles grouping files into worker assignments and building the commands to run.
 // - Phase 1 (PLAN): Single-threaded - load runtime data, group files, build commands
 // - Phase 2 (EXECUTE): The dry-run seam - either print commands or spawn workers
-type RunnerV2 struct {
+type Runner struct {
 	config  *config.GlobalConfig
 	files   []string
 	job     job.Job
 	tracker *RuntimeTracker
 }
 
-func NewRunnerV2(cfg *config.GlobalConfig, files []string, j job.Job) *RunnerV2 {
-	return &RunnerV2{
+func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job) *Runner {
+	return &Runner{
 		config:  cfg,
 		files:   files,
 		job:     j,
@@ -58,14 +58,15 @@ func NewRunnerV2(cfg *config.GlobalConfig, files []string, j job.Job) *RunnerV2 
 	}
 }
 
-func (r *RunnerV2) Run() ([]WorkerResult, time.Duration, error) {
-	// === PHASE 1: PLAN (single-threaded) ===
+// Group files, build the commands, then either print them for dry-run or execute them
+func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
+	// planning...
 	groups := r.groupFiles()
 	commands := r.buildCommands(groups)
 
 	r.printSummary(len(commands))
 
-	// === PHASE 2: EXECUTE (the dry-run seam) ===
+	// executing...
 	if r.config.DryRun {
 		for i, cmd := range commands {
 			toStdErr(true, "Worker %d: %s\n", i, dryRunString(cmd))
@@ -77,7 +78,7 @@ func (r *RunnerV2) Run() ([]WorkerResult, time.Duration, error) {
 	return results, wallTime, nil
 }
 
-func (r *RunnerV2) groupFiles() []FileGroup {
+func (r *Runner) groupFiles() []FileGroup {
 	runtimeData, err := LoadRuntimeData()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
@@ -95,7 +96,7 @@ func (r *RunnerV2) groupFiles() []FileGroup {
 	return groups
 }
 
-func (r *RunnerV2) buildCommands(groups []FileGroup) []*exec.Cmd {
+func (r *Runner) buildCommands(groups []FileGroup) []*exec.Cmd {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
@@ -117,7 +118,7 @@ func (r *RunnerV2) buildCommands(groups []FileGroup) []*exec.Cmd {
 	return commands
 }
 
-func (r *RunnerV2) buildEnv(workerIndex, totalGroups int) []string {
+func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("%s=%d", EnvParallelTestGroups, totalGroups))
 
@@ -129,7 +130,7 @@ func (r *RunnerV2) buildEnv(workerIndex, totalGroups int) []string {
 	return env
 }
 
-func (r *RunnerV2) printSummary(workerCount int) {
+func (r *Runner) printSummary(workerCount int) {
 	actualWorkers := workerCount
 	if len(r.files) < workerCount {
 		actualWorkers = len(r.files)
@@ -140,7 +141,7 @@ func (r *RunnerV2) printSummary(workerCount int) {
 		len(r.files), label, actualWorkers)
 }
 
-func (r *RunnerV2) testLabel() string {
+func (r *Runner) testLabel() string {
 	switch r.job.Name {
 	case "rspec":
 		return pluralize(len(r.files), "spec", "specs")
@@ -151,7 +152,7 @@ func (r *RunnerV2) testLabel() string {
 	}
 }
 
-func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
+func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 	ctx := context.Background()
 
@@ -200,11 +201,10 @@ func (r *RunnerV2) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Du
 	return allResults, time.Since(start)
 }
 
-func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
+func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
 	start := time.Now()
 
-	commandString := strings.Join(cmd.Args, " ")
-	logger.Logger.Info("running", "cmd", commandString, "worker", workerIdx)
+	logger.Logger.Info("running", "cmd", dryRunString(cmd), "worker", workerIdx)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -214,7 +214,6 @@ func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd,
 	if err != nil {
 		return errorResult(fmt.Errorf("failed to create stderr pipe: %v", err), start)
 	}
-
 	if err := cmd.Start(); err != nil {
 		return errorResult(fmt.Errorf("failed to start command: %v", err), start)
 	}
@@ -259,7 +258,7 @@ func (r *RunnerV2) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd,
 	}
 }
 
-func (r *RunnerV2) Tracker() *RuntimeTracker {
+func (r *Runner) Tracker() *RuntimeTracker {
 	return r.tracker
 }
 
@@ -289,7 +288,7 @@ func GetTestEnvNumber(workerIndex int, config *config.GlobalConfig) string {
 		return fmt.Sprintf("%d", workerIndex+1)
 	}
 
-	// Legacy behavior: first worker gets "", others get 2,3,4...
+	// if first-is-1 is false, the first worker gets "", others get 2,3,4...
 	if workerIndex == 0 {
 		return ""
 	}
@@ -356,7 +355,6 @@ func insertBeforeFiles(args []string, files []string, newArgs ...string) []strin
 		}
 	}
 
-	// If we didn't find files, just append new args
 	if filesStart == -1 {
 		return append(args, newArgs...)
 	}
