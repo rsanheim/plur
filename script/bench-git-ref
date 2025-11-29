@@ -1,0 +1,213 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optimist"
+require "fileutils"
+require "pathname"
+require "time"
+
+PLUR_ROOT = Pathname.new(__dir__).parent.expand_path
+WORKTREE_BASE = PLUR_ROOT.parent.join("plur-worktrees")
+RESULTS_DIR = PLUR_ROOT.join("results")
+
+# Helper functions
+
+def last_n_tags(n)
+  tags = `git tag --sort=-version:refname`.lines.map(&:strip).reject(&:empty?)
+  tags.first(n)
+end
+
+def sanitize_ref(ref)
+  ref.gsub(%r{[/\\]}, "-")
+end
+
+def validate_ref(ref)
+  system("git rev-parse --verify #{ref} > /dev/null 2>&1") || abort("Error: Invalid git ref '#{ref}'")
+end
+
+def worktree_path(ref)
+  WORKTREE_BASE.join("bench-#{sanitize_ref(ref)}")
+end
+
+# Build plur at the given ref
+#
+# Inject version via ldflags since detached worktrees don't have VCS info
+# We also download the watcher binaries if they are missing.
+def build_plur(worktree, ref)
+  plur_dir = worktree.join("plur")
+  puts "  Building plur at #{ref}..."
+  if worktree.join("plur").glob("embedded/watcher/watcher*").empty?
+    puts "  watcher binaries missing; download them..."
+    Dir.chdir(worktree) do
+      system("bundle check || bundle install")
+      system("bin/rake vendor:download:current") || system("bin/rake vendor:build", exception: true)
+    end
+  end
+
+  Dir.chdir(plur_dir) do
+    ldflags = %(-ldflags "-X main.version=#{ref}")
+    system("go build #{ldflags} .", exception: true)
+  end
+
+  plur_dir.join("plur")
+end
+
+def create_worktree(ref)
+  path = worktree_path(ref)
+  if path.exist?
+    puts "  Reusing existing worktree at #{path}"
+  else
+    puts "  Creating worktree for #{ref} at #{path}..."
+    system("git worktree add -d #{path} #{ref}", exception: true)
+  end
+  path
+end
+
+def remove_worktree(ref)
+  path = worktree_path(ref)
+  puts "  Removing worktree at #{path}..."
+  system("git worktree remove #{path}", exception: true)
+end
+
+# CLI parsing
+
+opts = Optimist.options do
+  version "bench-git-ref 0.1.0"
+  banner <<~BANNER
+    Benchmark plur across git refs using hyperfine.
+
+    Uses git worktrees to build plur at each ref, then benchmarks them
+    against a target Ruby project.
+
+    Worktrees: #{WORKTREE_BASE}/bench-<ref>
+    Results:   results/<timestamp>-git-ref.md
+
+    Usage:
+      script/bench-git-ref [OPTIONS]
+
+    Examples:
+      script/bench-git-ref                              # Compare last 3 tags on rubocop
+      script/bench-git-ref --refs v0.15.0 v0.14.0 main  # Compare specific refs
+      script/bench-git-ref -p ~/src/oss/rspec-core      # Different target project
+      script/bench-git-ref --runs 5 --warmup 2          # More runs for accuracy
+      script/bench-git-ref --cleanup                    # Remove worktrees after
+
+    Options:
+  BANNER
+
+  opt :cleanup, "Remove worktrees after benchmarking", default: false
+  opt :dry_run, "Show what would run without executing", default: false
+  opt :ignore_failure, "Ignore non-zero exit codes from benchmarked commands", short: "i", default: false
+  opt :project, "Path to target Ruby project", short: "p", type: :string, default: File.expand_path("~/src/oss/rubocop")
+  opt :refs, "Git refs to compare (tags, branches, commits)", type: :strings, default: last_n_tags(3)
+  opt :runs, "Number of benchmark runs", type: :integer, default: 2
+  opt :warmup, "Number of warmup runs", type: :integer, default: 1
+  opt :workers, "Number of workers for plur", short: "n", type: :integer, default: 4
+end
+
+refs = opts[:refs]
+project = File.expand_path(opts[:project])
+project_name = File.basename(project)
+dry_run = opts[:dry_run]
+warmup = opts[:warmup]
+runs = opts[:runs]
+workers = opts[:workers]
+cleanup = opts[:cleanup]
+ignore_failure = opts[:ignore_failure]
+now = Time.now.getlocal("-06:00") # Central Time
+timestamp = now.strftime("%Y%m%d-%H%M%S")
+
+# Validate inputs
+
+puts "Benchmarking plur against #{project_name} (#{project}) with #{refs.inspect}"
+puts
+
+File.directory?(project) || abort("Error: Project directory not found: #{project}")
+
+refs.each { |ref| validate_ref(ref) }
+sanitized_refs = refs.map { |r| sanitize_ref(r) }
+
+markdown_file = RESULTS_DIR.join("#{timestamp}-git-ref.md")
+
+benchmark_info = <<~INFO
+  ## Benchmark Info
+
+  Refs: #{refs.join(", ")}
+  Project: #{project_name} (#{project})
+  Workers: #{workers}
+  Warmup: #{warmup}
+  Runs: #{runs}
+  Date: #{now.strftime("%Y-%m-%d %H:%M:%S")} CT
+INFO
+
+puts benchmark_info
+
+hyperfine_cmd = [
+  "hyperfine",
+  "--warmup", warmup.to_s,
+  "--runs", runs.to_s,
+  "--setup", "cd #{project} && (bundle check || bundle install)",
+  "--export-markdown", markdown_file.to_s,
+  "--parameter-list", "ref", sanitized_refs.join(",")
+]
+
+hyperfine_cmd << "--ignore-failure" if ignore_failure
+hyperfine_cmd += ["--command-name", "plur-{ref}-#{project_name}"]
+hyperfine_cmd << "#{WORKTREE_BASE}/bench-{ref}/plur/plur -C #{project} -n #{workers}"
+
+if dry_run
+  puts "\n=== DRY RUN ==="
+  puts "\nWould create worktrees at:"
+  refs.each do |ref|
+    puts "  #{worktree_path(ref)}"
+  end
+
+  puts "\nWould run hyperfine command:"
+  puts "  #{hyperfine_cmd.join(" \\\n    ")}"
+
+  puts "\nResults would be saved to:"
+  puts "  #{markdown_file}"
+  exit 0
+end
+
+# Create worktrees and build plur
+
+puts "Setting up worktrees and building plur..."
+plur_binaries = {}
+
+refs.each do |ref|
+  worktree = create_worktree(ref)
+  plur_binaries[ref] = build_plur(worktree, ref)
+end
+
+puts "\nPlur binaries ready:"
+plur_binaries.each do |ref, binary|
+  version = `#{binary} --version 2>/dev/null`.strip
+  puts "  #{ref}: #{version}"
+end
+
+puts "\nRunning hyperfine benchmark..."
+FileUtils.mkdir_p(RESULTS_DIR)
+
+system(*hyperfine_cmd, exception: true)
+
+# Prepend benchmark info to markdown file
+if File.exist?(markdown_file)
+  hyperfine_output = File.read(markdown_file)
+  File.write(markdown_file, "#{benchmark_info}\n## Results\n\n#{hyperfine_output}")
+end
+
+puts "\nResults saved to: #{markdown_file}"
+
+if File.exist?(markdown_file)
+  puts "\n" + "=" * 60
+  puts File.read(markdown_file)
+  puts "=" * 60
+end
+
+if cleanup
+  puts "\nCleaning up worktrees..."
+  refs.each { |ref| remove_worktree(ref) }
+end
+
+puts "\nDone!"
