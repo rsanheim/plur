@@ -107,6 +107,16 @@ When both `spec/` and `test/` directories exist:
 4. Fix issues with `bin/rake standard:fix`
 5. `git add -A && git commit`
 
+### Benchmarking Across Versions
+
+Use `script/bench-git` to compare plur performance across git refs:
+
+```bash
+script/bench-git --refs v0.15.0 v0.14.0 main -p ~/src/oss/rspec-core
+```
+
+See `script/bench-git --help` for all options. Results saved to `results/`.
+
 ## Testing from Outside-In
 
 ALWAYS use integration specs as guardrails:
