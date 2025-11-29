@@ -80,7 +80,7 @@ opts = Optimist.options do
     against a target Ruby project.
 
     Worktrees: #{WORKTREE_BASE}/bench-<ref>
-    Results:   results/<timestamp>-git-ref.md
+    Results:   results/<timestamp>-<project_name>-bench-git.md
 
     Usage:
       script/bench-git-ref [OPTIONS]
@@ -117,7 +117,6 @@ ignore_failure = opts[:ignore_failure]
 now = Time.now.getlocal("-06:00") # Central Time
 timestamp = now.strftime("%Y%m%d-%H%M%S")
 
-# Validate inputs
 
 puts "Benchmarking plur against #{project_name} (#{project}) with #{refs.inspect}"
 puts
@@ -127,7 +126,7 @@ File.directory?(project) || abort("Error: Project directory not found: #{project
 refs.each { |ref| validate_ref(ref) }
 sanitized_refs = refs.map { |r| sanitize_ref(r) }
 
-markdown_file = RESULTS_DIR.join("#{timestamp}-git-ref.md")
+markdown_file = RESULTS_DIR.join("#{timestamp}-#{project_name}-bench-git.md")
 
 benchmark_info = <<~INFO
   ## Benchmark Info
