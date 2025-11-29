@@ -25,15 +25,13 @@ Plur automatically loads configuration from TOML files using the following searc
 # .plur.toml
 workers = 4
 color = true
+use = "rspec"  # Default job to use
 
-[task.rspec]
-run = "bin/rspec"
+[job.rspec]
+cmd = ["bin/rspec"]  # Override default command
 
-[task.minitest]
-run = "bin/rake test"
-
-[watch.run]
-debounce = 200
+[job.minitest]
+cmd = ["bundle", "exec", "ruby", "-Itest"]
 ```
 
 ### Available Options
@@ -43,39 +41,38 @@ debounce = 200
 * `workers` - Number of parallel workers (default: auto-detect)
 * `color` - Enable colored output (default: true)
 * `verbose` - Enable verbose output (default: false)
-* `use` - Default task to use (default: auto-detect based on project structure)
+* `use` - Default job to use (default: auto-detect based on project structure)
 
-## Task Configuration
+## Job Configuration
 
-Tasks are the core of Plur's test execution system. They define how to run tests, linters, or other commands.
+Jobs are the core of Plur's test execution system. They define how to run tests, linters, or other commands.
 
-### Task Overview
+### Job Overview
 
-A Task in Plur encapsulates:
+A Job in Plur encapsulates:
 
-* The command to run
-* Which directories to watch or search
-* File patterns to match
+* The command to run (as an array)
+* File patterns to match for test discovery
 
-Plur comes with built-in tasks for RSpec and Minitest, but you can define custom tasks for any tool.
+Plur comes with built-in jobs for RSpec, Minitest, and Go tests, but you can define custom jobs for any tool.
 
-### Task Selection Priority
+### Job Selection Priority
 
-Tasks are selected in the following priority order:
+Jobs are selected in the following priority order:
 
-1. CLI flag: `plur spec -t custom-task`
-2. Config file: `use = "custom-task"` in `.plur.toml`
+1. CLI flag: `plur --use=custom-job`
+2. Config file: `use = "custom-job"` in `.plur.toml`
 3. Auto-detection: Based on directory structure (spec/ → rspec, test/ → minitest)
 
-> **💡 Tip for Projects with Multiple Frameworks**
+> **Tip for Projects with Multiple Frameworks**
 >
 > If your project has both `spec/` and `test/` directories, plur will default to RSpec.
-> Use the `-t` flag or config file setting to select a different framework:
+> Use the `--use` flag or config file setting to select a different framework:
 >
 > ```bash
 > plur                    # Runs RSpec tests (default)
-> plur spec -t minitest   # Run Minitest tests instead
-> plur spec -t rspec      # Explicitly run RSpec tests
+> plur --use=minitest     # Run Minitest tests instead
+> plur --use=rspec        # Explicitly run RSpec tests
 > ```
 >
 > Or add to `.plur.toml`:
@@ -83,125 +80,111 @@ Tasks are selected in the following priority order:
 > use = "minitest"  # Override default to use Minitest
 > ```
 
-### Task Configuration Fields
+### Job Configuration Fields
 
 | Field | Type | Description | Required | Default |
 |-------|------|-------------|----------|------|
-| `description` | string | Human-readable description of the task | No | "" |
-| `run` | string | Command to execute | Yes | "" |
-| `source_dirs` | string[] | Directories to watch/search | No | `["spec", "lib", "app"]` (rspec)<br>`["test", "lib", "app"]` (minitest) |
-| `test_glob` | string | Glob pattern for test files | No | **Convention-based** (see below) |
+| `cmd` | string[] | Command array to execute | Yes | (built-in default) |
+| `target_pattern` | string | Glob pattern for test files | No | **Convention-based** (see below) |
+| `env` | string[] | Environment variables (e.g., `["VAR=value"]`) | No | `[]` |
+
+**Note**: Targets are automatically appended to the end of the command. Use `{{target}}` in the `cmd` array only when you need targets in a specific position (e.g., before other flags).
 
 ### Convention-Based File Patterns
 
-Plur automatically applies test file patterns based on task names, making configuration simpler:
+Plur automatically applies test file patterns based on job names, making configuration simpler:
 
-* Tasks with **"rspec"** in the name (case-insensitive) automatically get `spec/**/*_spec.rb`
-* Tasks with **"minitest"** in the name (case-insensitive) automatically get `test/**/*_test.rb`
+* Jobs with **"rspec"** in the name (case-insensitive) automatically get `spec/**/*_spec.rb`
+* Jobs with **"minitest"** in the name (case-insensitive) automatically get `test/**/*_test.rb`
 
-This means you can create custom RSpec or Minitest tasks without specifying `test_glob`:
+This means you can create custom RSpec or Minitest jobs without specifying `target_pattern`:
 
 ```toml
 # These all get automatic patterns:
-[task.rspec-integration]
-run = "bin/rspec --tag=integration"
+[job.rspec-integration]
+cmd = ["bin/rspec", "--tag=integration"]
 # Automatically uses: spec/**/*_spec.rb
 
-[task.rspec-fast]
-run = "bin/rspec --fail-fast"
+[job.rspec-fast]
+cmd = ["bin/rspec", "--fail-fast"]
 # Automatically uses: spec/**/*_spec.rb
 
-[task.minitest-unit]
-run = "ruby -Itest"
+[job.minitest-unit]
+cmd = ["ruby", "-Itest"]
 # Automatically uses: test/**/*_test.rb
 ```
 
-You can still override the convention by specifying an explicit `test_glob`:
+You can still override the convention by specifying an explicit `target_pattern`:
 
 ```toml
-[task.rspec-api]
-run = "bin/rspec"
-test_glob = "spec/api/**/*_spec.rb"  # Override convention to only run API specs
+[job.rspec-api]
+cmd = ["bin/rspec"]
+target_pattern = "spec/api/**/*_spec.rb"  # Override convention to only run API specs
 ```
 
-> **Note**: Tasks that don't match naming conventions (like `rubocop` or `jest`) must have an explicit `test_glob` to work with `plur spec`.
+> **Note**: Jobs that don't match naming conventions (like `rubocop` or `jest`) must have an explicit `target_pattern` to work with plur.
 
-### Built-in Tasks
+### Built-in Jobs
 
 #### RSpec (default)
 ```toml
-[task.rspec]
-run = "bundle exec rspec"
-source_dirs = ["spec", "lib", "app"]
-test_glob = "spec/**/*_spec.rb"
+[job.rspec]
+cmd = ["bundle", "exec", "rspec"]
+target_pattern = "spec/**/*_spec.rb"
 ```
 
 #### Minitest
 ```toml
-[task.minitest]
-run = "ruby -Itest"  # Plur handles test file arguments specially for minitest
-source_dirs = ["test", "lib", "app"]
-test_glob = "test/**/*_test.rb"
-```
-
-### Custom Task Examples
-
-#### Custom RSpec with Spring
-```toml
-[task.spring-rspec]
-description = "RSpec with Spring preloader"
-run = "bin/spring rspec"
-source_dirs = ["spec", "lib", "app"]
-test_glob = "spec/**/*_spec.rb"
-```
-
-#### Linter Task
-```toml
-[task.rubocop]
-description = "Run RuboCop linter"
-run = "bundle exec rubocop"
-source_dirs = ["lib", "spec", "app"]
-test_glob = "**/*.rb"
-```
-
-#### JavaScript Test Runner
-```toml
-[task.jest]
-description = "Run Jest tests"
-run = "npm test"
-source_dirs = ["src", "test"]
-test_glob = "test/**/*.test.js"
+[job.minitest]
+cmd = ["bundle", "exec", "ruby", "-Itest"]
+target_pattern = "test/**/*_test.rb"
 ```
 
 #### Go Tests
 ```toml
-[task.go-test]
-description = "Run Go tests"
-run = "go test"
-source_dirs = ["."]
-test_glob = "**/*_test.go"
+[job.go-test]
+cmd = ["go", "test"]
+target_pattern = "**/*_test.go"
 ```
 
-### Multiple Task Definitions
+### Custom Job Examples
 
-You can define multiple tasks and switch between them:
+#### Custom RSpec with Spring
+```toml
+[job.spring-rspec]
+cmd = ["bin/spring", "rspec"]
+target_pattern = "spec/**/*_spec.rb"
+```
+
+#### Linter Job
+```toml
+[job.rubocop]
+cmd = ["bundle", "exec", "rubocop"]
+target_pattern = "**/*.rb"
+```
+
+#### JavaScript Test Runner
+```toml
+[job.jest]
+cmd = ["npm", "test", "--"]
+target_pattern = "test/**/*.test.js"
+```
+
+### Multiple Job Definitions
+
+You can define multiple jobs and switch between them:
 
 ```toml
 # .plur.toml
-[task.rspec]
-run = "bundle exec rspec"
+[job.rspec]
+cmd = ["bundle", "exec", "rspec"]
 
-[task.rspec-fast]
-description = "RSpec with fail-fast"
-run = "bundle exec rspec --fail-fast"
-source_dirs = ["spec", "lib"]
-test_glob = "spec/**/*_spec.rb"
+[job.rspec-fast]
+cmd = ["bundle", "exec", "rspec", "--fail-fast"]
 
-[task.integration]
-description = "Integration tests only"
-run = "bundle exec rspec"
-source_dirs = ["spec/integration"]
-test_glob = "spec/integration/**/*_spec.rb"
+[job.integration]
+cmd = ["bundle", "exec", "rspec"]
+target_pattern = "spec/integration/**/*_spec.rb"
 ```
 
 Use them with:
@@ -210,21 +193,56 @@ plur --use=rspec-fast
 plur --use=integration
 ```
 
-### Watch Mode Integration
+## Watch Configuration
 
-Tasks work seamlessly with watch mode. The `source_dirs` determine which directories are watched:
+Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a source file changes, plur finds the matching watch rule and runs the corresponding job.
 
-```bash
-plur watch --use=custom-task
+### Watch Mapping Fields
+
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `name` | string | Optional identifier for the rule | No |
+| `source` | string | Glob pattern for files to watch | Yes |
+| `targets` | string[] | Target patterns with placeholders | No |
+| `jobs` | string[] | Jobs to trigger when source matches | Yes |
+| `exclude` | string[] | Patterns to exclude from watching | No |
+
+### Placeholder Variables
+
+* `{{match}}` - The matched portion of the source path (e.g., `lib/foo.rb` → `foo`)
+* `{{dir_relative}}` - The relative directory of the matched file
+
+### Watch Configuration Examples
+
+```toml
+# Ruby: lib files trigger corresponding spec files
+[[watch]]
+name = "lib-to-spec"
+source = "lib/**/*.rb"
+targets = ["spec/{{match}}_spec.rb"]
+jobs = ["rspec"]
+
+# Ruby: spec files run themselves
+[[watch]]
+name = "spec-files"
+source = "spec/**/*_spec.rb"
+jobs = ["rspec"]
+
+# Go: source files trigger package tests
+[[watch]]
+name = "go-source"
+source = "**/*.go"
+targets = ["{{dir_relative}}"]
+jobs = ["go-test"]
+exclude = ["vendor/**", "**/testdata/**"]
 ```
 
-When a file changes, plur reports the change. File-to-test mapping functionality is being rebuilt with a simpler, cleaner design.
+### Using Watch Mode
 
-### `[watch.run]` section
-
-Settings for `plur watch` command:
-
-* `debounce` - Delay in milliseconds before running tests (default: 100)
+```bash
+plur watch                    # Watch with auto-detected job
+plur watch --use=custom-job   # Watch with specific job
+```
 
 ## Worker Configuration
 
@@ -306,16 +324,6 @@ Plur matches RSpec's behavior:
 * **Single files**: Pass through with warning if not matching test suffix
 * **Glob patterns**: Filter results to only test files
 
-## Watch Mode Configuration
-
-### File Watching
-
-Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with support for Ruby and Rails conventions. The watcher automatically detects changes in:
-
-* `spec/` directory for test files
-* `lib/` directory for source files
-* `app/` directory for Rails applications
-
 ## Environment Variables
 
 ### Recognized Variables
@@ -323,20 +331,20 @@ Uses an embedded [e-dant/watcher binary](https://github.com/e-dant/watcher) with
 * `PARALLEL_TEST_PROCESSORS` - Number of workers
 * `PLUR_DEBUG` - Enable debug output
 
-## Task Troubleshooting
+## Troubleshooting
 
 ### Tests Not Found
 
-Check that your `test_glob` pattern matches your test files:
+Check that your `target_pattern` matches your test files:
 
 ```bash
 # List files that would be run
-plur --dry-run --use=your-task
+plur --dry-run --use=your-job
 ```
 
 ### Command Not Running
 
-Ensure the `run` command is executable and in your PATH:
+Ensure the first element of your `cmd` array is executable and in your PATH:
 
 ```bash
 # Test the command directly
@@ -345,10 +353,9 @@ bundle exec rspec --version
 
 ## Tips and Best Practices
 
-1. **Start Simple**: Begin with just overriding the `run` command for existing tasks
-2. **Use Descriptive Names**: Name custom tasks clearly (e.g., `rspec-fast`, `integration-tests`)
-3. **Leverage Glob Patterns**: Use standard glob patterns for maximum flexibility
-4. **Document Complex Tasks**: Use the `description` field to explain what custom tasks do
+1. **Start Simple**: Begin with just overriding the `cmd` for existing jobs
+2. **Use Descriptive Names**: Name custom jobs clearly (e.g., `rspec-fast`, `integration-tests`)
+3. **Leverage Glob Patterns**: Use standard glob patterns for `target_pattern`
 
 ## Next Steps
 

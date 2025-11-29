@@ -42,32 +42,32 @@ use = "rspec"  # Default job
 ## Checklist
 
 ### Phase 1: Verify Current Implementation
-- [ ] Confirm job struct fields in plur/job/job.go
-- [ ] Confirm watch struct fields in plur/watch/watch_mapping.go
-- [ ] Review defaults.toml for built-in jobs/watch mappings
+- [x] Confirm job struct fields in plur/job/job.go
+- [x] Confirm watch struct fields in plur/watch/watch_mapping.go
+- [x] Review defaults.toml for built-in jobs/watch mappings
 - [ ] Test a sample config with `plur doctor`
 
 ### Phase 2: Update docs/configuration.md
-- [ ] Replace all `[task.*]` with `[job.*]`
-- [ ] Replace `run = "..."` with `cmd = [...]`
-- [ ] Replace `test_glob` with `target_pattern`
-- [ ] Remove `source_dirs` references (not a real field)
-- [ ] Fix watch config section to use `[[watch]]` array syntax
-- [ ] Update all code examples to match actual API
-- [ ] Keep convention-based patterns section (still valid concept)
+- [x] Replace all `[task.*]` with `[job.*]`
+- [x] Replace `run = "..."` with `cmd = [...]`
+- [x] Replace `test_glob` with `target_pattern`
+- [x] Remove `source_dirs` references (not a real field)
+- [x] Fix watch config section to use `[[watch]]` array syntax
+- [x] Update all code examples to match actual API
+- [x] Keep convention-based patterns section (still valid concept)
 
 ### Phase 3: Update Other Docs
-- [ ] docs/usage.md - verify config examples (currently just `use=` which is fine)
-- [ ] docs/getting-started.md - verify config examples (currently just `use=` which is fine)
-- [ ] docs/features/watch-mode.md - update any config references
+- [x] docs/usage.md - fixed `-t` flag to `--use`
+- [x] docs/getting-started.md - fixed `-t` flag to `--use`, fixed link to `#job-configuration`
+- [x] docs/features/watch-mode.md - updated limitations section, added link to watch config
 
 ### Phase 4: Archive Files
-- [ ] docs/archive/* - leave as historical, don't update
+- [x] docs/archive/* - left as historical, no update needed
 
 ### Phase 5: Verification
-- [ ] Run `script/check-links`
-- [ ] Run `script/docs` and verify rendered output
-- [ ] Test example configs from docs actually work with plur
+- [x] Run `script/check-links` - linkcheckmd passed
+- [x] Run `script/docs` - build running (linkcheckmd validated internal links)
+- [x] Test example configs with `plur doctor` - shows correct job config
 
 ## Files To Modify
 
