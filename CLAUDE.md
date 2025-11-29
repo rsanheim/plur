@@ -123,28 +123,28 @@ Run all specs via: `bin/rake test` or target specific: `bundle exec rspec spec/[
 - `assert` for non-critical assertions that can continue
 - Only add descriptive messages when the assertion itself isn't self-explanatory (e.g., complex conditions or domain-specific checks)
 
+### Benchmarking Across Versions
+
+Use `script/bench-git` to compare plur performance across git refs for a given Ruby project. See `script/bench-git --help` for details.
+
+```bash
+script/bench-git --refs v0.15.0 v0.14.0 main -p ~/src/oss/rspec-core
+```
+
 ## Kong CLI Patterns
 
 **IMPORTANT**: When implementing Kong subcommands, be aware that Kong executes commands in reverse order (from deepest subcommand up to parent). Parent commands must check the context to avoid running when a subcommand is invoked. See `docs/development/kong-cli-patterns.md` for critical implementation details.
 
-## MCP Server Integration
-
-This project includes MCP (Model Context Protocol) servers configured in `.mcp.json`:
-
-- **GitHub MCP**: Create/manage PRs and issues, access repo metadata
-- **CircleCI MCP**: Check CI status, run pipelines, debug failures
-
-### Quick CI Status Check
+### Check CircleCI status
 ```bash
-# Check current branch CI status via CircleCI MCP
-mcp__circleci__get_latest_pipeline_status
+circle-auth && circle-status
 ```
 
-For complex GitHub searches, prefer `gh` CLI for better control:
+### GitHub CLI
+Prefer the `gh` CLI for searching GitHub or getting info about related repos, issues, etc:
 ```bash
 # Search with specific fields
 gh search repos --language=go --stars=">50" glob --json name,owner,stargazersCount
-
 # Get commit info
 gh api repos/owner/repo/commits/SHA --jq '{sha: .sha, message: .commit.message}'
 ```
@@ -164,11 +164,9 @@ Keep documentation focused on the **current state** of the project:
 
 ## ⚠️ No Backward Compatibility Without Explicit Instruction
 
-**NEVER** keep old code around for backward compatibility unless explicitly instructed to do so. This includes:
-- No deprecated aliases or wrapper functions
-- No "backward compatibility" comments or code paths
+**NEVER** keep old code around for backward compatibility UNLESS explicitly instructed to do so. This includes:
+- No deprecated aliases or wrapper functions, no 'backwards compatibility' comments or code paths
 - No maintaining old method names or interfaces
-- Remove old code immediately when refactoring
 
 When renaming or refactoring:
 1. Change the code directly
