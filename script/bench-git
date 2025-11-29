@@ -117,7 +117,6 @@ ignore_failure = opts[:ignore_failure]
 now = Time.now.getlocal("-06:00") # Central Time
 timestamp = now.strftime("%Y%m%d-%H%M%S")
 
-
 puts "Benchmarking plur against #{project_name} (#{project}) with #{refs.inspect}"
 puts
 
