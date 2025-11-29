@@ -2,6 +2,11 @@
 
 
 
+
+## v0.15.2 - 2025-11-29
+
+* Fix release notes not appearing in GitHub releases
+
 ## v0.15.1 - 2025-11-29
 
 * Add `script/bench-git` [#140](https://github.com/rsanheim/plur/pull/140)
