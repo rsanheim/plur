@@ -50,7 +50,9 @@ sequenceDiagram
 
                     alt !consumed (raw output like puts)
                         Stream->>Collector: AddNotification(RawOutput)
-                        Note over Stream: ⚠️ NOT sent to outputChan
+                        alt RSpec (streamStdout=true)
+                            Stream->>OutChan: {Type: "stdout", Content: line}
+                        end
                     end
 
                     loop For each notification
@@ -74,6 +76,8 @@ sequenceDiagram
                         Agg->>Console: Write yellow *
                     else stderr
                         Agg->>Console: Write to stderr
+                    else stdout
+                        Agg->>Console: Write to stdout
                     end
                 end
             end
@@ -107,9 +111,9 @@ Orchestrates the entire test execution:
 ### 2. **streamTestOutput** (stream_helper.go)
 Handles real-time output processing with two concurrent goroutines:
 * **stdout goroutine**: Parses lines via `parser.ParseLine()`, sends progress to `outputChan`, collects raw output
+  * For RSpec: Also streams unconsumed stdout (puts/pp) in real-time via `outputChan`
+  * For Minitest: Raw stdout is collected but NOT streamed (Minitest returns consumed=false for all lines)
 * **stderr goroutine**: Passes through to `outputChan` with type "stderr"
-
-**Known issue**: Raw stdout (unconsumed lines like `puts`) is collected but NOT sent to `outputChan` - see issue #85.
 
 ### 3. **Parser** (rspec/ or minitest/)
 Framework-specific output parsing:
@@ -127,6 +131,7 @@ Accumulates notifications from parser:
 Single goroutine that serializes all output:
 * Reads from `outputChan`
 * Writes colored progress indicators (., F, *) to stdout
+* Writes raw stdout (puts/pp output) to stdout (RSpec only)
 * Writes stderr lines to stderr
 
 ### 6. **PrintResults** (result.go)
