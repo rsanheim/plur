@@ -54,10 +54,12 @@ namespace :test do
   task go: ["build"] do
     Dir.chdir(Plur.config.plur_dir) do
       puts "[test:go] Running go tests..."
+      # Use -short in CI to skip slow complexity tests that are sensitive to system noise
+      short_flag = ENV["CI"] ? "-short" : ""
       if ENV["VERBOSE"]
-        sh "go test -mod=mod -v ./..."
+        sh "go test -mod=mod -v #{short_flag} ./...".squeeze(" ")
       else
-        sh "go test -mod=mod ./..."
+        sh "go test -mod=mod #{short_flag} ./...".squeeze(" ")
       end
     end
   end

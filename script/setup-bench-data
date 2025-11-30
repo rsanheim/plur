@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# script/setup-bench-data - Prepare real repositories for benchmarking
+# Uses git-cache if available, otherwise standard git clone.
+
+DATA_DIR="tmp/bench_data"
+mkdir -p "$DATA_DIR"
+
+# Repositories to clone
+# We use large repos to get enough files for scale testing
+REPOS=(
+    "https://github.com/rails/rails.git"
+    "https://github.com/mastodon/mastodon.git"
+)
+
+for repo_url in "${REPOS[@]}"; do
+    repo_name=$(basename "$repo_url" .git)
+    target_path="$DATA_DIR/$repo_name"
+
+    if [ -d "$target_path" ]; then
+        echo "Repo $repo_name already exists at $target_path"
+        continue
+    fi
+
+    echo "Cloning $repo_name..."
+    if command -v git-cache &> /dev/null; then
+        git-cache clone "$repo_url" "$target_path"
+    else
+        git clone --depth 1 "$repo_url" "$target_path"
+    fi
+done
+
+echo "Benchmark data ready in $DATA_DIR"
+echo "File counts:"
+find "$DATA_DIR" -maxdepth 2 -name ".git" -prune -o -type f | cut -d/ -f1-3 | uniq -c

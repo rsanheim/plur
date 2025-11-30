@@ -4,6 +4,11 @@
 
 
 
+
+## v0.15.4 - 2025-11-30
+
+* feat: add comprehensive benchstat integration for scale testing [#142](https://github.com/rsanheim/plur/pull/142)
+
 ## v0.15.3 - 2025-11-29
 
 * Actually fix release notes (remove changelog:disable that blocked --release-notes flag)
