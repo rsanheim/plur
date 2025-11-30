@@ -11,8 +11,8 @@ Quick start guide for using Plur.
 
 ```bash
 # From source
-git clone https://github.com/rsanheim/plur-meta.git
-cd plur-meta
+git clone https://github.com/rsanheim/plur.git
+cd plur
 bin/rake install
 
 # Verify installation
@@ -37,15 +37,15 @@ plur --dry-run
 If your project has both `spec/` (RSpec) and `test/` (Minitest) directories:
 
 ```bash
-# Select framework with -t flag
-plur spec -t rspec
-plur spec -t minitest
+# Select framework with --use flag
+plur --use=rspec
+plur --use=minitest
 
 # Or set default in .plur.toml
 echo 'use = "minitest"' > .plur.toml
 ```
 
-See [Configuration](configuration.md#task-configuration) for more details.
+See [Configuration](configuration.md#job-configuration) for more details.
 
 ## Next Steps
 

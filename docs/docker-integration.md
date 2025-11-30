@@ -440,5 +440,4 @@ CMD ["plur", "--version"]
 ## Next Steps
 
 * Review [Installation Guide](installation.md) for non-Docker installation methods
-* See [Multi-Platform Builds](development/multi-platform-builds.md) for building custom binaries
 * Check [Configuration](configuration.md) for plur configuration options

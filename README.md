@@ -1,4 +1,4 @@
-# plur-meta
+# plur
 
 `plur` is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) designed to outperform existing solutions like turbo_tests and parallel_tests.
 
@@ -92,8 +92,11 @@ workers = 4
 [job.rspec]
 cmd = ["bin/rspec"]
 
-[watch.run]
-debounce = 200  # Milliseconds to wait before running tests
+[[watch]]
+name = "lib-to-spec"
+source = "lib/**/*.rb"
+targets = ["spec/{{match}}_spec.rb"]
+jobs = ["rspec"]
 ```
 
 See `examples/` directory for more configuration examples.

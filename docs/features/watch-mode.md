@@ -159,9 +159,9 @@ This is a known issue currently. The functionality works correctly despite the o
 
 ### Current Limitations
 - Serial test execution only (no parallel mode in watch)
-- No support for custom file mappings
-- Limited to Ruby/Rails conventions
-- No ignore patterns beyond built-in exclusions
+- Limited to Ruby/Rails conventions by default (custom mappings available via `[[watch]]` config)
+
+See [Watch Configuration](../configuration.md#watch-configuration) for custom file mapping options.
 
 ## Troubleshooting
 

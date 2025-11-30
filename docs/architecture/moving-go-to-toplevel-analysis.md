@@ -9,7 +9,7 @@ This document analyzes the feasibility and trade-offs of moving the Go code from
 The repository is currently organized as a polyglot project:
 
 ```
-plur-meta/
+plur/
 ├── bin/              # Ruby binstubs
 ├── lib/              # Ruby rake tasks
 ├── spec/             # Ruby integration tests  
@@ -84,7 +84,7 @@ plur-meta/
 
 If we rename to "plur", the repository could be:
 - `plur` - Just the Go code (move `plur/` contents here)
-- `plur-meta` - Keep this repo for integration testing and tooling
+- `plur-tools` - Keep a separate repo for integration testing and tooling
 
 This would give us the best of both worlds: a clean Go repository and a separate testing/tooling repository.
 

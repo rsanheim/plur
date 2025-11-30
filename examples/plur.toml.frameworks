@@ -1,5 +1,5 @@
 # Framework-specific plur.toml examples
-# 
+#
 # This file contains configuration examples for different Ruby testing frameworks
 # and project types. Copy the relevant section to your .plur.toml file.
 
@@ -9,28 +9,34 @@
 
 # workers = 8                          # More workers for larger test suites
 # color = true
-# 
-# [task.rspec]
-# run = "bin/rails test"               # Use Rails binstubs
-# test_glob = "spec/**/*_spec.rb"
-# source_dirs = ["app", "lib"]
-# 
-# [watch.run]
-# debounce = 300                       # Longer debounce for asset compilation
+# use = "rspec"
+#
+# [job.rspec]
+# cmd = ["bin/rspec"]                   # Use Rails binstubs
+# target_pattern = "spec/**/*_spec.rb"
+#
+# [[watch]]
+# name = "app-to-spec"
+# source = "app/**/*.rb"
+# targets = ["spec/{{match}}_spec.rb"]
+# jobs = ["rspec"]
 
 # =============================================================================
 # MINITEST PROJECT
 # =============================================================================
 
 # workers = 4
-# 
-# [task.minitest]
-# run = "bundle exec ruby -Itest"      # Standard Minitest invocation
-# test_glob = "test/**/*_test.rb"
-# source_dirs = ["lib", "app"]
-# 
-# [watch.run]
-# debounce = 150
+# use = "minitest"
+#
+# [job.minitest]
+# cmd = ["bundle", "exec", "ruby", "-Itest"]
+# target_pattern = "test/**/*_test.rb"
+#
+# [[watch]]
+# name = "lib-to-test"
+# source = "lib/**/*.rb"
+# targets = ["test/{{match}}_test.rb"]
+# jobs = ["minitest"]
 
 # =============================================================================
 # CI/PRODUCTION OPTIMIZED
@@ -39,56 +45,55 @@
 # workers = 16                         # Max out CI workers
 # color = false                        # Disable color for log files
 # verbose = true                       # More output for debugging
-# 
-# [task.rspec]
-# run = "rspec"                        # Bare rspec for maximum performance
-# 
-# [watch.run]
-# debounce = 200
+#
+# [job.rspec]
+# cmd = ["rspec"]                       # Bare rspec for maximum performance
+# target_pattern = "spec/**/*_spec.rb"
 
 # =============================================================================
 # MONOREPO WITH MULTIPLE APPS
 # =============================================================================
 
-# [task.backend]
-# run = "cd backend && bundle exec rspec"
-# test_glob = "backend/spec/**/*_spec.rb"
-# source_dirs = ["backend/app", "backend/lib"]
-# 
-# [task.frontend]
-# run = "cd frontend && npm test"
-# test_glob = "frontend/test/**/*.test.js"
-# source_dirs = ["frontend/src"]
+# [job.backend]
+# cmd = ["bundle", "exec", "rspec"]
+# target_pattern = "backend/spec/**/*_spec.rb"
+#
+# [job.frontend-jest]
+# cmd = ["npm", "test", "--"]
+# target_pattern = "frontend/test/**/*.test.js"
 
 # =============================================================================
 # GEM DEVELOPMENT
 # =============================================================================
 
 # workers = 4
-# 
-# [task.rspec]
-# run = "bundle exec rspec --require spec_helper"
-# 
-# [watch.run]
-# debounce = 100                       # Quick feedback for gem development
+# use = "rspec"
+#
+# [job.rspec]
+# cmd = ["bundle", "exec", "rspec", "--require", "spec_helper"]
+# target_pattern = "spec/**/*_spec.rb"
+#
+# [[watch]]
+# name = "lib-to-spec"
+# source = "lib/**/*.rb"
+# targets = ["spec/{{match}}_spec.rb"]
+# jobs = ["rspec"]
 
 # =============================================================================
-# CUSTOM TASK EXAMPLES
+# CUSTOM JOB EXAMPLES
 # =============================================================================
 
 # # Integration tests only
-# [task.integration]
-# run = "rspec --tag integration"
-# test_glob = "spec/integration/**/*_spec.rb"
-# source_dirs = ["app"]
-# 
+# [job.integration]
+# cmd = ["rspec", "--tag", "integration"]
+# target_pattern = "spec/integration/**/*_spec.rb"
+#
 # # Fast unit tests only
-# [task.unit]
-# run = "rspec --tag ~integration --fail-fast"
-# test_glob = "spec/unit/**/*_spec.rb"
-# source_dirs = ["lib"]
-# 
-# # Linting task
-# [task.lint]
-# run = "rubocop"
-# source_dirs = ["."]
+# [job.unit]
+# cmd = ["rspec", "--tag", "~integration", "--fail-fast"]
+# target_pattern = "spec/unit/**/*_spec.rb"
+#
+# # Linting job (runs rubocop on all Ruby files)
+# [job.rubocop]
+# cmd = ["bundle", "exec", "rubocop"]
+# target_pattern = "**/*.rb"

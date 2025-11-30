@@ -20,7 +20,6 @@ Last generated: 2025-10-19 02:57
 | [Watcher Binary Packaging Strategy for GoReleaser](archive/2025-08-27-watcher-packaging-strategy.md) | `...5-08-27-watcher-packaging-strategy.md` | Archive | 2025-10-19 |
 | [Code Review: Interactive Config Branch](archive/2025-08-16-code-review-interactive-config.md) | `...-16-code-review-interactive-config.md` | Archive | 2025-10-19 |
 | [WIP: Help Output Improvements for Plur](archive/2025-10-13-wip-help-improvements.md) | `...e/2025-10-13-wip-help-improvements.md` | Archive | 2025-10-19 |
-| [Consolidation Analysis: plur spec and plur watch](archive/2025-08-17-consolidate-watch-and-spec-report.md) | `...-consolidate-watch-and-spec-report.md` | Archive | 2025-10-19 |
 | [Go File Pattern Matching Libraries Research](archive/2025-file-pattern-matching-libraries.md) | `...25-file-pattern-matching-libraries.md` | Archive | 2025-10-19 |
 | [Bundler Optimization Research](archive/2025-08-22-bundler-optimization.md) | `...ve/2025-08-22-bundler-optimization.md` | Archive | 2025-10-19 |
 | [GoReleaser Implementation Summary](archive/2025-10-goreleaser-implementation-summary.md) | `...-goreleaser-implementation-summary.md` | Archive | 2025-10-19 |
@@ -36,12 +35,10 @@ Last generated: 2025-10-19 02:57
 | [Binary Distribution and Package Manager Research for plur](research/binary-distribution-package-managers.md) | `...nary-distribution-package-managers.md` | Research | 2025-10-12 |
 | [Docker Integration Guide](docker-integration.md) | `docker-integration.md` | Root | 2025-10-12 |
 | [Release Process](development/release-process.md) | `development/release-process.md` | Development | 2025-10-11 |
-| [File Mapping](architecture/file-mapping.md) | `architecture/file-mapping.md` | Architecture | 2025-08-22 |
 | [Plur Watch Architecture](architecture/plur-watch-architecture.md) | `architecture/plur-watch-architecture.md` | Architecture | 2025-08-12 |
 | [Plur Usage Guide](development/user-guide.md) | `development/user-guide.md` | Development | 2025-08-06 |
 | [Parallel Execution](features/parallel-execution.md) | `features/parallel-execution.md` | Features | 2025-08-06 |
 | [Testing Plur](development/testing.md) | `development/testing.md` | Development | 2025-08-01 |
-| [Multi-Platform Builds](development/multi-platform-builds.md) | `development/multi-platform-builds.md` | Development | 2025-07-21 |
 | [Plur CLI Verbosity Levels - Design Document](research/verbosity-levels-plan.md) | `research/verbosity-levels-plan.md` | Research | 2025-07-17 |
 | [Performance Tracing in Plur](archive/2025-07-11-performance-tracing.md) | `...ive/2025-07-11-performance-tracing.md` | Archive | 2025-07-17 |
 | [Doctor Command](features/doctor-command.md) | `features/doctor-command.md` | Features | 2025-07-17 |
