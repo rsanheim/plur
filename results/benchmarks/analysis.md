@@ -6,6 +6,40 @@ Comprehensive benchmarking of plur's hot code paths at realistic scale (up to 30
 
 **Key Finding:** All components scale linearly (O(n)) - no algorithmic complexity issues detected.
 
+## JSON Parsing Optimization Results
+
+The RSpec JSON parser was the primary hotspot. Two optimization phases were tested:
+
+### Phase 1: Typed Structs (Committed)
+
+Switched from `map[string]interface{}` to typed struct unmarshaling.
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Allocs/line | 38 | 18 | **-52.6%** |
+| Memory/line | 1,561 B | 968 B | **-38.0%** |
+| 30K test allocs | 1.17M | 570K | **-51.3%** |
+| 30K test memory | 45.7 MB | 28.1 MB | **-38.5%** |
+| 30K test time | 63.9 ms | 58.7 ms | **-8.1%** |
+
+*Commit: `1a162cf` - "perf: reduce JSON parsing allocations by 52% with typed structs"*
+
+### Phase 2: Go 1.25 JSON v2 Experimental (Available, Not Committed)
+
+Enabling `GOEXPERIMENT=jsonv2` provides additional gains on top of typed structs:
+
+| Metric | Baseline | Typed Structs | + JSON v2 | Total Improvement |
+|--------|----------|---------------|-----------|-------------------|
+| Allocs/line | 38 | 18 | **7** | **-81.6%** |
+| Memory/line | 1,561 B | 968 B | **633 B** | **-59.5%** |
+| 30K test time | 63.9 ms | 58.7 ms | **32.9 ms** | **-48.6%** |
+
+To enable JSON v2: `GOEXPERIMENT=jsonv2 go build ./...`
+
+Reference: https://go.dev/blog/jsonv2-exp
+
+---
+
 ## Performance Baseline
 
 ### Grouper (File Distribution)
