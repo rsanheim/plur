@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## v0.16.0 - 2025-12-01
+* Stream stdout for RSpec tests [#143](https://github.com/rsanheim/plur/pull/143)
+
 ## v0.15.5 - 2025-11-30
 * Internal clean up; remove `colour` option
 
