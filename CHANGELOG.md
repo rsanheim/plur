@@ -1,24 +1,18 @@
 # plur CHANGELOG
 
-
-
-
-
+## v0.15.5 - 2025-11-30
+* Internal clean up; remove `colour` option
 
 ## v0.15.4 - 2025-11-30
-
 * feat: add comprehensive benchstat integration for scale testing [#142](https://github.com/rsanheim/plur/pull/142)
 
 ## v0.15.3 - 2025-11-29
-
 * Actually fix release notes (remove changelog:disable that blocked --release-notes flag)
 
 ## v0.15.2 - 2025-11-29
-
 * Fix release notes not appearing in GitHub releases
 
 ## v0.15.1 - 2025-11-29
-
 * Add `script/bench-git` [#140](https://github.com/rsanheim/plur/pull/140)
 
 ## v0.15.0 - 2025-11-28
