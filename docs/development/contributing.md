@@ -4,8 +4,8 @@ We welcome contributions! This guide will help you get started.
 
 ```bash
 # Clone the repository
-git clone https://github.com/rsanheim/plur-meta.git
-cd plur-meta
+git clone https://github.com/rsanheim/plur.git
+cd plur
 
 # Install dependencies
 bundle install

@@ -41,24 +41,4 @@ module PlurHomeHelper
   def run_plur_allowing_errors(*args, env: {})
     run_plur(*args, allow_error: true, env: env)
   end
-
-  # Run plur using Open3.capture3 without argument escaping
-  # Useful for testing glob expansion and shell metacharacters
-  # Returns TTY::Command::Result for consistency with run_plur
-  def run_plur_capture3(*args, allow_error: false, env: {})
-    stdout, stderr, status = Open3.capture3(env, "plur", *args)
-
-    result = TTY::Command::Result.new(
-      stdout,
-      stderr,
-      status.exitstatus
-    )
-
-    # Raise if command failed and allow_error is false
-    if !allow_error && status.exitstatus != 0
-      raise TTY::Command::ExitError.new("plur command failed", result)
-    end
-
-    result
-  end
 end

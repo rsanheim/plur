@@ -1,15 +1,99 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Simple script to run memory benchmarks for plur
-# Usage: script/benchmark-memory [filter]
-# Examples:
+# script/benchmark-memory - Memory-focused Go benchmarks
+#
+# Usage:
 #   script/benchmark-memory               # Run all benchmarks
 #   script/benchmark-memory Collector     # Run only Collector benchmarks
 #   script/benchmark-memory -v            # Verbose output
+#   script/benchmark-memory --count 5     # Run 5 iterations (for benchstat)
+#   script/benchmark-memory --save NAME   # Save results with custom name
+#   script/benchmark-memory --compare     # Compare two most recent results
+#
+# Examples:
+#   script/benchmark-memory --count 5 --save baseline
+#   script/benchmark-memory --count 5 --save after-optimization
+#   script/benchmark-memory --compare
 
-FILTER="${1:-}"
-VERBOSE="${2:-}"
+RESULTS_DIR="results/benchmarks"
+FILTER=""
+VERBOSE=false
+COUNT=1
+SAVE_NAME=""
+COMPARE_MODE=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --count)
+            COUNT="$2"
+            shift 2
+            ;;
+        --save)
+            SAVE_NAME="$2"
+            shift 2
+            ;;
+        --compare)
+            COMPARE_MODE=true
+            shift
+            ;;
+        -v)
+            VERBOSE=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: script/benchmark-memory [FILTER] [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --count N      Run N iterations (default: 1, use 5-10 for benchstat)"
+            echo "  --save NAME    Save results with custom name"
+            echo "  --compare      Compare two most recent results"
+            echo "  -v             Verbose output"
+            echo "  -h, --help     Show this help"
+            echo ""
+            echo "Examples:"
+            echo "  script/benchmark-memory Collector          # Filter to Collector benchmarks"
+            echo "  script/benchmark-memory --count 5          # 5 iterations for benchstat"
+            echo "  script/benchmark-memory --save baseline    # Save as baseline"
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+        *)
+            FILTER="$1"
+            shift
+            ;;
+    esac
+done
+
+mkdir -p "$RESULTS_DIR"
+
+# Compare mode
+if [ "$COMPARE_MODE" = true ]; then
+    # Ensure benchstat is installed
+    if ! command -v benchstat &> /dev/null; then
+        echo "Installing benchstat..."
+        go install golang.org/x/perf/cmd/benchstat@latest
+    fi
+
+    RECENT=$(ls -t "$RESULTS_DIR"/*.txt 2>/dev/null | head -2)
+    if [ "$(echo "$RECENT" | wc -l)" -lt 2 ]; then
+        echo "Need at least 2 benchmark files to compare"
+        echo "Run benchmarks with --save to create files"
+        exit 1
+    fi
+    OLD=$(echo "$RECENT" | tail -1)
+    NEW=$(echo "$RECENT" | head -1)
+    echo "Comparing:"
+    echo "  Old: $OLD"
+    echo "  New: $NEW"
+    echo ""
+    benchstat "$OLD" "$NEW"
+    exit 0
+fi
 
 echo "Running memory benchmarks for plur..."
 echo "=================================="
@@ -17,14 +101,37 @@ echo ""
 
 cd plur
 
-if [ -n "$FILTER" ] && [ "$FILTER" != "-v" ]; then
+# Build benchmark command
+BENCH_CMD="go test -benchmem -benchtime=10s"
+
+if [ -n "$FILTER" ]; then
     echo "Filter: $FILTER"
-    go test -bench="$FILTER" -benchmem -benchtime=10s
-elif [ "$VERBOSE" = "-v" ] || [ "$FILTER" = "-v" ]; then
-    echo "Running with verbose output..."
-    go test -bench=. -benchmem -benchtime=10s -v
+    BENCH_CMD="$BENCH_CMD -bench=$FILTER"
 else
-    go test -bench=. -benchmem -benchtime=10s
+    BENCH_CMD="$BENCH_CMD -bench=."
+fi
+
+if [ "$COUNT" -gt 1 ]; then
+    echo "Count: $COUNT iterations"
+    BENCH_CMD="$BENCH_CMD -count=$COUNT"
+fi
+
+BENCH_CMD="$BENCH_CMD -run='^$'"
+
+if [ "$VERBOSE" = true ]; then
+    BENCH_CMD="$BENCH_CMD -v"
+fi
+
+echo ""
+
+# Execute benchmarks
+if [ -n "$SAVE_NAME" ]; then
+    OUTPUT_FILE="../$RESULTS_DIR/${SAVE_NAME}.txt"
+    eval "$BENCH_CMD" | tee "$OUTPUT_FILE"
+    echo ""
+    echo "Results saved to: $OUTPUT_FILE"
+else
+    eval "$BENCH_CMD"
 fi
 
 echo ""
@@ -32,11 +139,7 @@ echo "=================================="
 echo "Benchmark complete!"
 echo ""
 echo "To compare before/after optimization:"
-echo "1. Save current results: script/benchmark-memory > before.txt"
-echo "2. Make your optimization changes"
-echo "3. Run again: script/benchmark-memory > after.txt"
-echo "4. Compare: diff before.txt after.txt"
-echo ""
-echo "Or use benchstat for better comparison:"
-echo "  go install golang.org/x/perf/cmd/benchstat@latest"
-echo "  benchstat before.txt after.txt"
+echo "  script/benchmark-memory --count 5 --save before"
+echo "  # Make changes..."
+echo "  script/benchmark-memory --count 5 --save after"
+echo "  script/benchmark-memory --compare"

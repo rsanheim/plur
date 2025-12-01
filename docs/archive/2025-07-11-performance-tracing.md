@@ -16,7 +16,7 @@ plur --trace spec/unit/*_spec.rb  # Trace specific files
 
 Trace files are written to the repository's tmp directory:
 ```
-Tracing enabled, writing to: /path/to/plur-meta/tmp/plur-traces/plur-trace-20250528-044523.json
+Tracing enabled, writing to: /path/to/plur/tmp/plur-traces/plur-trace-20250528-044523.json
 ```
 
 ## Analyzing Traces

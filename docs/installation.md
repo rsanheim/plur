@@ -18,8 +18,8 @@ Binary releases will be available for:
 
 ```bash
 # Clone the repository
-git clone https://github.com/rsanheim/plur-meta.git
-cd plur-meta
+git clone https://github.com/rsanheim/plur.git
+cd plur
 
 # Install using rake (recommended)
 bin/rake install
@@ -32,7 +32,7 @@ bin/rake install
 
 ```bash
 # Install directly with go
-go install github.com/rsanheim/plur-meta/plur@latest
+go install github.com/rsanheim/plur@latest
 ```
 
 ## Verify Installation
