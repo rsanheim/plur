@@ -29,10 +29,12 @@ jobs = ["rspec"]
 ```
 
 Plur starts TWO watcher processes:
+
 * Watcher 1: monitoring `.` (project root)
 * Watcher 2: monitoring `lib`
 
 When `lib/plur/benchmark.rb` changes:
+
 * Watcher 1 sees it (lib is under .)
 * Watcher 2 sees it (lib is its root)
 
@@ -111,6 +113,7 @@ func (w WatchMapping) SourceDir() string {
 ```
 
 Examples:
+
 * `lib/**/*.rb` → `lib`
 * `**/*_spec.rb` → `.`
 * `app/models/**/*.rb` → `app/models`
@@ -307,6 +310,7 @@ if isExcludedByGlobal(path, globalExcludes) {
 **Approach:** Keep multiple watchers for performance, but deduplicate at aggregation level.
 
 Combine Options A and B:
+
 1. Filter obvious overlaps (parent/child directories)
 2. Still deduplicate events in aggregation as safety net
 
@@ -411,6 +415,7 @@ echo "fs.inotify.max_user_watches=524288" | sudo tee /etc/sysctl.d/90-inotify.co
 ### e-dant/watcher Performance
 
 From project documentation:
+
 * Handles **100,000+ paths** before stuttering (with "warthog" platform-independent adapter)
 * "Overhead of detecting and sending an event is an order of magnitude less than filesystem operations"
 * Binary size: 50-80KB
@@ -419,6 +424,7 @@ From project documentation:
 ### Implication for plur
 
 Given e-dant/watcher's ability to handle 100k+ paths efficiently on modern systems:
+
 * **Linux (fanotify)**: No practical path limit with root privileges
 * **Linux (inotify)**: 8k default, easily increased
 * **macOS (FSEvents)**: No practical limit
