@@ -33,7 +33,7 @@ func (r WorkerResult) Success() bool {
 // OutputMessage is a message from workers for output aggregation
 type OutputMessage struct {
 	WorkerID int
-	Type     string // "dot", "failure", "pending", "error", "stderr"
+	Type     string // "dot", "failure", "pending", "error", "stderr", "stdout"
 	Content  string
 }
 

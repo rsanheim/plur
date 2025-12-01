@@ -28,9 +28,8 @@ RSpec.describe "plur watch integration" do
     end
 
     expect(result.err).to include('event="modify" type="file"')
-    expect(result.err).to include('path="./lib/calculator.rb"')
-    # Watch now maps file changes to jobs and executes them
-    expect(result.err).to include("Executing job")
+    expect(result.err).to include('path="lib/calculator.rb"')
+    expect(result.err).to include('Executing job job="rspec"')
   end
 
   it "detects spec_helper.rb changes" do
@@ -46,9 +45,8 @@ RSpec.describe "plur watch integration" do
       end
     end
 
-    expect_file_change_logged(result.err, "./spec/spec_helper.rb")
-    # spec_helper.rb changes are detected but don't trigger jobs
-    # (by design - spec_helper doesn't match *_spec.rb pattern)
+    expect_file_change_logged(result.err, "spec/spec_helper.rb")
+    # spec_helper.rb changes are detected but don't trigger jobs currently
     expect(result.err).to include("No matching watch rules for file")
   end
 
@@ -68,7 +66,7 @@ RSpec.describe "plur watch integration" do
       end
     end
 
-    expect_file_change_logged(result.err, "./spec/calculator_spec.rb")
+    expect_file_change_logged(result.err, "spec/calculator_spec.rb")
     # Watch now maps file changes to jobs and executes them
     expect(result.err).to include("Executing job")
   ensure
@@ -126,11 +124,9 @@ RSpec.describe "plur watch integration" do
     end
 
     # Should see all changes in stderr
-    expect_file_change_logged(result.err, "./lib/calculator.rb")
-    expect_file_change_logged(result.err, "./lib/string_utils.rb")
-    expect_file_change_logged(result.err, "./lib/validator.rb")
-
-    # Watch now maps file changes to jobs and executes them
+    expect_file_change_logged(result.err, "lib/calculator.rb")
+    expect_file_change_logged(result.err, "lib/string_utils.rb")
+    expect_file_change_logged(result.err, "lib/validator.rb")
     expect(result.err).to include("Executing job")
   end
 end

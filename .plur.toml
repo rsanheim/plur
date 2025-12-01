@@ -15,3 +15,9 @@ exclude = [".git/**", "vendor/**"]
 source = "**/*_spec.rb"
 jobs = ["rspec"]
 exclude = [".git/**", "fixtures/**", "vendor/**"]
+
+[[watch]]
+source = "lib/**/*.rb"
+targets = ["spec/{{match}}_spec.rb"]
+jobs = ["rspec"]
+exclude = [".git/**", "fixtures/**", "vendor/**"]

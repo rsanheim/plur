@@ -223,7 +223,9 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		return errorResult(err, start)
 	}
 	collector := NewTestCollector()
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx)
+	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
+	streamStdout := !r.job.IsMinitestStyle()
+	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
 
@@ -322,6 +324,9 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 		case "error":
 			// For JSON parse errors or other output
 			fmt.Fprintln(os.Stderr, msg.Content)
+		case "stdout":
+			// Raw stdout from tests (puts/pp output)
+			fmt.Fprintln(os.Stdout, msg.Content)
 		}
 	}
 }

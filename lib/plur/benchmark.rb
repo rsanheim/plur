@@ -72,26 +72,26 @@ module Plur
 
       def benchmark_project(project_path)
         unless File.directory?(project_path)
-          puts "Warning: Directory not found: #{project_path}"
+          puts "Warning: project directory not found: #{project_path}"
           return nil
         end
 
         project_name = File.basename(project_path)
+        results_path = Pathname.new(config.results_dir)
+        json_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.json").to_s
+        markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
         puts "\n=== Benchmarking #{project_name} ==="
 
         Dir.chdir(project_path) do
           spec_count = Dir.glob("spec/**/*_spec.rb").count
           puts "Found #{spec_count} spec files"
 
-          run_hyperfine(project_name)
+          hyperfine_cmd = build_hyperfine_command(project_name, json_file, markdown_file)
+          run_hyperfine(project_name, hyperfine_cmd, json_file: json_file, markdown_file: markdown_file)
         end
       end
 
-      def run_hyperfine(project_name)
-        results_path = Pathname.new(config.results_dir)
-        json_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.json").to_s
-        markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
-
+      def build_hyperfine_command(project_name, json_file, markdown_file)
         plur_cmd = "plur -n #{config.workers}"
 
         hyperfine_cmd = [
@@ -113,11 +113,13 @@ module Plur
           hyperfine_cmd += ["--export-markdown", markdown_file] if config.checkpoint
         end
 
-        hyperfine_cmd += [
+        hyperfine_cmd + [
           "turbo_tests -n #{config.workers}",
           plur_cmd
         ]
+      end
 
+      def run_hyperfine(project_name, hyperfine_cmd, json_file:, markdown_file:)
         puts "Running benchmarks with #{config.workers} workers, #{config.warmup} warmup runs, #{config.runs} runs"
         puts "Plur version: #{plur_version}"
         puts "Command: #{hyperfine_cmd.join(" ")}"

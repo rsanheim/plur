@@ -41,6 +41,7 @@ func streamTestOutput(
 	collector *TestCollector,
 	outputChan chan<- OutputMessage,
 	workerIndex int,
+	streamStdout bool, // Only stream unconsumed stdout for RSpec (JSON makes it safe)
 ) (stderrOutput string) {
 	var stderrBuilder strings.Builder
 	stderrBuilder.Grow(StdErrBufferSize) // Pre-allocate for typical stderr output
@@ -65,6 +66,16 @@ func streamTestOutput(
 					Event:   types.RawOutput,
 					Content: line,
 				})
+				// Stream stdout in real-time for RSpec (JSON formatter makes this safe)
+				// Don't stream for Minitest - it returns consumed=false for everything,
+				// so streaming would duplicate all output
+				if outputChan != nil && streamStdout {
+					outputChan <- OutputMessage{
+						WorkerID: workerIndex,
+						Type:     "stdout",
+						Content:  line,
+					}
+				}
 			}
 			// Process each notification
 			for _, notification := range notifications {
