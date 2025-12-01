@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.describe "Plur spec output" do
+RSpec.describe "plur spec output handling" do
   describe "concurrent output handling" do
     it "produces valid output with high worker count" do
       Dir.chdir(default_ruby_dir) do
