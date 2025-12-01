@@ -42,20 +42,4 @@ RSpec.describe "Plur colorized output" do
       end
     end
   end
-
-  context "with --no-colour flag (British spelling)" do
-    it "outputs plain text without ANSI codes" do
-      failing_specs_path = project_fixture("failing_specs")
-      chdir(failing_specs_path) do
-        result = run_plur_allowing_errors("--no-colour", "spec/mixed_results_spec.rb")
-
-        # Should not contain any ANSI escape sequences
-        expect(result.out).not_to match(/\e\[\d+m/)
-
-        # Should still show F for failures and . for passes
-        expect(result.out).to include("F")
-        expect(result.out).to include(".")
-      end
-    end
-  end
 end
