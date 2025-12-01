@@ -207,10 +207,12 @@ func filterSubdirectories(dirs []string) []string {
 ```
 
 **Pros:**
+
 * Simple, fixes the immediate bug
 * Minimal code change
 
 **Cons:**
+
 * Defeats original design goal - now watching `.git`, `node_modules`, etc.
 * May be noisy/slow on large projects
 * User loses ability to watch only specific subdirectories
@@ -243,11 +245,13 @@ func (wm *WatcherManager) aggregateEvents(w *Watcher) {
 ```
 
 **Pros:**
+
 * Preserves focused watching (original design goal)
 * Handles any source of duplicate events
 * Works with debounce delay configuration
 
 **Cons:**
+
 * More complex
 * Memory overhead for tracking recent events
 * Need to clean up stale entries periodically
@@ -271,11 +275,13 @@ case event := <-manager.Events():
 ```
 
 **Pros:**
+
 * Uses existing code
 * Batches rapid changes together
 * Already handles the timing logic
 
 **Cons:**
+
 * Debouncer batches by FILE, not by event source
 * Two events for same file from different watchers would still both be processed (just batched together)
 * May not fully solve the problem without additional deduplication
@@ -296,11 +302,13 @@ if isExcludedByGlobal(path, globalExcludes) {
 ```
 
 **Pros:**
+
 * Simple mental model - one watcher
 * No overlap possible
 * Application has full control over filtering
 
 **Cons:**
+
 * Watcher binary still receives ALL events (just filtered in Go)
 * May have performance implications on large codebases
 * e-dant/watcher may still emit events we'll discard
@@ -315,11 +323,13 @@ Combine Options A and B:
 2. Still deduplicate events in aggregation as safety net
 
 **Pros:**
+
 * Best of both worlds
 * Handles edge cases
 * Maintains performance benefits of focused watching
 
 **Cons:**
+
 * Most complex implementation
 * Two layers of logic to maintain
 
@@ -333,6 +343,7 @@ Combine Options A and B:
 4. Can be enhanced later if needed
 
 **Implementation priority:**
+
 1. Add event deduplication in `WatcherManager.aggregateEvents()`
 2. Use existing debounce delay for the dedup window
 3. Add periodic cleanup of stale entries
@@ -354,16 +365,19 @@ The lack of ignore/filter capability in e-dant/watcher is **industry-standard**,
 ### Relevant GitHub Issues
 
 **fsnotify (Go):**
+
 * [Issue #18: User-space recursive watcher](https://github.com/fsnotify/fsnotify/issues/18) - Open since June 2014. "If you monitor a directory with FSEvents then the monitor is recursive; there is no non-recursive option." Platform inconsistency is the core challenge.
 * [Issue #41: Removing recursive watches](https://github.com/fsnotify/fsnotify/issues/41) - Users must track the full tree of watches themselves.
 * [Issue #21: Subtree watch on Windows](https://github.com/fsnotify/fsnotify/issues/21) - Proposal for `w.Add("dir/...")` syntax.
 * [Issue #223: Recursive Directory Watcher](https://github.com/fsnotify/fsnotify/issues/223) - More recent discussion of the same limitation.
 
 **notify-rs (Rust):**
+
 * [Issue #204: Filtered recursive watchers](https://github.com/notify-rs/notify/issues/204) - Proposes `RecursiveFiltered(Box<Filter>)` enum variant. Was on 5.0 milestone, then removed (Aug 2022). Still open.
 * [Issue #291: User-defined filtering](https://github.com/notify-rs/notify/issues/291) - Maintainers "dislike adding more callbacks as we really don't want to block in the core watcher implementation."
 
 **Why no built-in filtering?**
+
 1. Filter callbacks could block the watcher's event loop
 2. Different apps need different filtering semantics (gitignore vs glob vs regex)
 3. It's simpler/safer to filter events after receiving them
@@ -373,6 +387,7 @@ The lack of ignore/filter capability in e-dant/watcher is **industry-standard**,
 #### Linux
 
 **inotify (kernel < 5.9 or non-root):**
+
 * Default `max_user_watches`: **8,192** (can be increased via sysctl)
 * Each watch consumes ~1KB kernel memory (64-bit)
 * Shared across ALL applications per user
@@ -390,6 +405,7 @@ echo "fs.inotify.max_user_watches=524288" | sudo tee /etc/sysctl.d/90-inotify.co
 ```
 
 **fanotify (kernel ≥ 5.9 with root):**
+
 * **No per-path limits** - watches entire mount/filesystem
 * e-dant/watcher uses fanotify when available (Linux 5.9+, root privileges)
 * Falls back to inotify otherwise
@@ -400,11 +416,13 @@ echo "fs.inotify.max_user_watches=524288" | sudo tee /etc/sysctl.d/90-inotify.co
 #### macOS
 
 **FSEvents (default on macOS):**
+
 * **No known limitations** - scales to 500GB+ filesystems
 * Native recursive watching
 * Directory-level granularity
 
 **kqueue (BSD fallback):**
+
 * Requires one file descriptor per watched item
 * Default per-process limit: **256** (extremely low!)
 * System-wide limit: ~10,000 on typical BSD
