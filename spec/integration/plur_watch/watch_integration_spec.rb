@@ -28,7 +28,7 @@ RSpec.describe "plur watch integration" do
     end
 
     expect(result.err).to include('event="modify" type="file"')
-    expect(result.err).to include('relPath="lib/calculator.rb"')
+    expect(result.err).to include('path="lib/calculator.rb"')
     expect(result.err).to include('Executing job job="rspec"')
   end
 
@@ -46,8 +46,7 @@ RSpec.describe "plur watch integration" do
     end
 
     expect_file_change_logged(result.err, "spec/spec_helper.rb")
-    # spec_helper.rb changes are detected but don't trigger jobs
-    # (by design - spec_helper doesn't match *_spec.rb pattern)
+    # spec_helper.rb changes are detected but don't trigger jobs currently
     expect(result.err).to include("No matching watch rules for file")
   end
 
