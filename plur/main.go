@@ -194,7 +194,6 @@ type PlurCLI struct {
 	// directory change is handled early in main() before config loading
 	ChangeDir  string `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Color      bool   `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
-	Colour     bool   `help:"Force colorized output (British spelling)" negatable:"" default:"true" hidden:""`
 	Debug      bool   `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
 	DryRun     bool   `help:"Print what would be executed without running" default:"false"`
 	FirstIs1   bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
@@ -218,44 +217,40 @@ type PlurCLI struct {
 
 // Initialize logger with appropriate level
 // At this point, Kong has already resolved r.Debug and r.Verbose
-func (r *PlurCLI) AfterApply() error {
+func (cli *PlurCLI) AfterApply() error {
 	level := slog.LevelWarn
-	if r.Debug {
+	if cli.Debug {
 		level = slog.LevelDebug
-	} else if r.Verbose {
+	} else if cli.Verbose {
 		level = slog.LevelInfo
 	}
 	logger.Init(level)
 
-	if r.Version {
+	if cli.Version {
 		fmt.Println(GetVersionInfo())
 		os.Exit(0)
-	}
-
-	if !r.Colour || !r.Color { // silly british spelling
-		r.Color = false
 	}
 
 	configPaths := config.InitConfigPaths()
 
 	var loadedConfigs []string
-	for _, configFile := range r.configFiles {
+	for _, configFile := range cli.configFiles {
 		expandedPath := kong.ExpandPath(configFile)
 		if _, err := os.Stat(expandedPath); err == nil {
 			loadedConfigs = append(loadedConfigs, expandedPath)
 		}
 	}
 
-	r.globalConfig = &config.GlobalConfig{
-		ColorOutput:   r.Color,
+	cli.globalConfig = &config.GlobalConfig{
+		ColorOutput:   cli.Color,
 		ConfigPaths:   configPaths,
-		Debug:         r.Debug,
-		Verbose:       r.Verbose,
-		DryRun:        r.DryRun,
-		WorkerCount:   GetWorkerCount(r.Workers),
-		RuntimeDir:    r.RuntimeDir,
-		JSON:          r.JSON,
-		FirstIs1:      r.FirstIs1,
+		Debug:         cli.Debug,
+		Verbose:       cli.Verbose,
+		DryRun:        cli.DryRun,
+		WorkerCount:   GetWorkerCount(cli.Workers),
+		RuntimeDir:    cli.RuntimeDir,
+		JSON:          cli.JSON,
+		FirstIs1:      cli.FirstIs1,
 		LoadedConfigs: loadedConfigs,
 	}
 
