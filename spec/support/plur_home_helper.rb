@@ -41,5 +41,4 @@ module PlurHomeHelper
   def run_plur_allowing_errors(*args, env: {})
     run_plur(*args, allow_error: true, env: env)
   end
-
 end
