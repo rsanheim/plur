@@ -29,7 +29,7 @@ RSpec.describe "plur watch integration" do
 
     expect(result.err).to include('event="modify" type="file"')
     expect(result.err).to include('relPath="lib/calculator.rb"')
-    expect(result.err).to include(%q|Executing job job="rspec"|)
+    expect(result.err).to include('Executing job job="rspec"')
   end
 
   it "detects spec_helper.rb changes" do
