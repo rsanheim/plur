@@ -85,6 +85,7 @@ func (ep *EventProcessor) renderTargets(watch WatchMapping, path string) ([]stri
 
 	// Build tokens from path and source pattern
 	tokens := BuildTokens(path, watch.Source)
+	logger.Logger.Debug("tokens", "tokens", fmt.Sprintf("%+v", tokens))
 
 	// Render each target template
 	targets := make([]string, 0, len(watch.Targets))

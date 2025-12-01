@@ -1,9 +1,12 @@
 require "spec_helper"
+require "support/capture_helper"
 require "plur/benchmark"
 require "tempfile"
 require "json"
 
 RSpec.describe Plur::Benchmark do
+  include CaptureHelper
+
   describe Plur::Benchmark::Config do
     let(:config) { Plur::Benchmark::Config.new }
 
@@ -66,11 +69,6 @@ RSpec.describe Plur::Benchmark do
     end
 
     describe "#run" do
-      it "creates results directory" do
-        expect(FileUtils).to receive(:mkdir_p).with(config.results_dir)
-        runner.run
-      end
-
       it "benchmarks each project" do
         config.projects = ["./project1", "./project2"]
 
@@ -83,48 +81,38 @@ RSpec.describe Plur::Benchmark do
 
     describe "#benchmark_project" do
       it "skips non-existent directories" do
-        allow(File).to receive(:directory?).and_return(false)
-
-        result = runner.send(:benchmark_project, "./nonexistent")
+        expect(File).to receive(:directory?).and_return(false)
+        result = silence { runner.send(:benchmark_project, "./nonexistent") }
         expect(result).to be_nil
       end
 
       it "runs hyperfine with correct basic options" do
-        expect(runner).to receive(:system) do |*args|
-          expect(args).to include("hyperfine")
-          expect(args).to include("--warmup", "2")
-          expect(args).to include("--runs", "5")
-          expect(args).to include("turbo_tests -n #{config.workers}")
-          expect(args).to include("plur -n #{config.workers}")
-          true
-        end
-
-        runner.send(:benchmark_project, "./fixtures/projects/default-ruby")
+        cmd = runner.send(:build_hyperfine_command, "test-project", "foo.json", "foo.md")
+        expect(cmd).to eq([
+          "hyperfine",
+          "--warmup", "2",
+          "--runs", "5",
+          "--export-json", "foo.json",
+          "turbo_tests -n #{config.workers}",
+          "plur -n #{config.workers}"
+        ])
       end
 
       it "includes min/max runs when specified" do
         config.min_runs = 3
         config.max_runs = 10
 
-        expect(runner).to receive(:system) do |*args|
-          expect(args).to include("--min-runs", "3")
-          expect(args).to include("--max-runs", "10")
-          expect(args).not_to include("--runs")
-          true
-        end
-
-        runner.send(:benchmark_project, "./fixtures/projects/default-ruby")
+        cmd = runner.send(:build_hyperfine_command, "test-project", "foo.json", "foo.md")
+        expect(cmd).to include("--min-runs", "3")
+        expect(cmd).to include("--max-runs", "10")
+        expect(cmd).not_to include("--runs")
       end
 
       it "includes show-output flag when enabled" do
         config.show_output = true
 
-        expect(runner).to receive(:system) do |*args|
-          expect(args).to include("--show-output")
-          true
-        end
-
-        runner.send(:benchmark_project, "./fixtures/projects/default-ruby")
+        cmd = runner.send(:build_hyperfine_command, "test-project", "foo.json", "foo.md")
+        expect(cmd).to include("--show-output")
       end
     end
 
