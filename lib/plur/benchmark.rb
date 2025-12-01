@@ -92,7 +92,6 @@ module Plur
       end
 
       def build_hyperfine_command(project_name, json_file, markdown_file)
-
         plur_cmd = "plur -n #{config.workers}"
 
         hyperfine_cmd = [
@@ -114,7 +113,7 @@ module Plur
           hyperfine_cmd += ["--export-markdown", markdown_file] if config.checkpoint
         end
 
-        hyperfine_cmd += [
+        hyperfine_cmd + [
           "turbo_tests -n #{config.workers}",
           plur_cmd
         ]

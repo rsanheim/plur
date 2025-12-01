@@ -31,7 +31,6 @@ func NewEventProcessor(jobs map[string]job.Job, watches []WatchMapping) *EventPr
 func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) {
 	results := make(map[string][]string)
 
-	// Normalize to forward slashes for pattern matching
 	normalizedPath := filepath.ToSlash(path)
 
 	for _, watch := range ep.watches {
@@ -45,13 +44,13 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 			continue
 		}
 		if !matched {
-			logger.Logger.Debug("not matched", "watch", watch.Source, "normalizedPath", normalizedPath)
+			logger.Logger.Debug("path does not match", "watch", watch.Source, "normalizedPath", normalizedPath)
 			continue
 		}
 
 		// Determine target files
 		targets, err := ep.renderTargets(watch, normalizedPath)
-		logger.Logger.Debug("renderTargets result", "normalizedPath", normalizedPath, "targets", fmt.Sprintf("%+v", targets))
+		logger.Logger.Debug("renderTargets result", "normalizedPath", normalizedPath, "watch", watch.Source, "targets", targets)
 		if err != nil {
 			return nil, fmt.Errorf("error rendering targets for watch %q: %w", watch.Name, err)
 		}
@@ -85,7 +84,7 @@ func (ep *EventProcessor) renderTargets(watch WatchMapping, path string) ([]stri
 
 	// Build tokens from path and source pattern
 	tokens := BuildTokens(path, watch.Source)
-	logger.Logger.Debug("tokens", "tokens", fmt.Sprintf("%+v", tokens))
+	logger.Logger.Debug("tokens", "path", path, "watch", watch.Source, "tokens", fmt.Sprintf("%+v", tokens))
 
 	// Render each target template
 	targets := make([]string, 0, len(watch.Targets))

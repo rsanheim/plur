@@ -266,44 +266,32 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			}
 
 		case event := <-manager.Events():
-			// Compute relative path for debug logging
-			relPath := event.PathName
-			if rel, err := filepath.Rel(cwd, event.PathName); err == nil {
-				relPath = "./" + rel
-			}
-
-			logger.Logger.Debug("watch", "event", event.EffectType, "type", event.PathType,
-				"associated", fmt.Sprintf("%v", event.Associated), "path", relPath)
-
-			// Only process file events (not directories)
-			if event.PathType != "file" {
+			if event.PathType == "watcher" { // log watcher lifecycle events and continue
+				logger.Logger.Debug("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
 				continue
 			}
 
-			// Only process modify and create events
+			path, err := filepath.Rel(cwd, event.PathName)
+			if err != nil {
+				logger.Logger.Warn("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "error", fmt.Sprintf("failed to get relative path: %v", err))
+				continue
+			}
+
+			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
+
 			if event.EffectType != "modify" && event.EffectType != "create" {
 				continue
 			}
 
-			// Convert absolute path to relative path for display
-			relPath, err = filepath.Rel(cwd, event.PathName)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get relative path: %v\n", err)
-				continue
-			}
-
-			// Process the file change if we have watch mappings configured
 			if len(watches) > 0 {
-				// Find targets for this file, filtering out non-existent files
-				result, err := watch.FindTargetsForFile(relPath, jobs, watches)
+				result, err := watch.FindTargetsForFile(path, jobs, watches)
 				if err != nil {
-					logger.Logger.Warn("Error processing file change", "path", relPath, "error", err)
+					logger.Logger.Warn("Error processing file change", "path", path, "error", err)
 					continue
 				}
 
-				// Check if we have any valid targets
 				if !result.HasExistingTargets() {
-					logger.Logger.Debug("No matching watch rules for file", "path", "./"+relPath)
+					logger.Logger.Debug("No matching watch rules for file", "path", path)
 					continue
 				}
 
@@ -331,8 +319,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 				fmt.Print("\nplur> ")
 			} else {
-				// No processor - just report the file change
-				logger.Logger.Info("File changed (no watch mapping configured)", "path", "./"+relPath)
+				logger.Logger.Info("File changed (no watch mapping configured)", "path", path)
 				fmt.Print("plur> ")
 			}
 
