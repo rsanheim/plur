@@ -11,12 +11,6 @@ RSpec.describe "single failure golden test" do
     Open3.capture3(*cmd_array)
   end
 
-  def run_rspec(file_or_glob, *args)
-    cmd_array = %W[bundle exec rspec #{file_or_glob}]
-    cmd_array += args if args.any?
-    Open3.capture3(*cmd_array)
-  end
-
   # Replace timing information to make output deterministic
   def make_summary_line_consistent(str)
     str.gsub(/Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,

@@ -9,12 +9,15 @@ require "timecop"
 require "tmpdir"
 require "tty-command"
 
-require "backspin"
-
 ROOT_PATH = Pathname.new(__dir__).parent
 DEFAULT_RUBY_DIR = ROOT_PATH.join("fixtures", "projects", "default-ruby")
 
-# Load all support files
+require "backspin"
+
+Backspin.configure do |config|
+  config.backspin_dir = ROOT_PATH.join("fixtures", "backspin")
+end
+
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
@@ -42,6 +45,12 @@ RSpec.configure do |config|
 
   def project_fixture(name)
     Pathname.new(__dir__).parent.join("fixtures", "projects", name)
+  end
+
+  def run_rspec(file_or_glob, *args)
+    cmd_array = %W[bundle exec rspec #{file_or_glob}]
+    cmd_array += args if args.any?
+    Open3.capture3(*cmd_array)
   end
 
   def project_fixture!(name)

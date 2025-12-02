@@ -38,7 +38,7 @@ module PlurHomeHelper
     end
   end
 
-  def run_plur_allowing_errors(*args, env: {})
-    run_plur(*args, allow_error: true, env: env)
+  def run_plur_allowing_errors(*args, printer: :null, env: {})
+    run_plur(*args, allow_error: true, printer: printer, env: env)
   end
 end

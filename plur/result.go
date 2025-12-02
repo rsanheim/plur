@@ -22,6 +22,7 @@ type WorkerResult struct {
 
 	// Formatted output from RSpec
 	FormattedFailures string
+	FormattedPending  string
 	FormattedSummary  string
 }
 
@@ -53,6 +54,7 @@ type TestSummary struct {
 
 	// Formatted output from RSpec
 	FormattedFailures string
+	FormattedPending  string
 	FormattedSummary  string
 }
 
@@ -97,9 +99,12 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 			// StateSuccess requires no action - summary.Success defaults to true
 		}
 
-		// Collect formatted failures (concatenate them)
+		// Collect formatted failures and pending (concatenate them)
 		if result.FormattedFailures != "" {
 			summary.FormattedFailures += result.FormattedFailures
+		}
+		if result.FormattedPending != "" {
+			summary.FormattedPending += result.FormattedPending
 		}
 		// In single-worker mode, we can use the formatted summary directly
 		if singleWorkerMode && result.FormattedSummary != "" {
@@ -119,6 +124,11 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 		// Fallback to basic output
 		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
 		return
+	}
+
+	// Print pending section first (RSpec outputs pending before failures)
+	if summary.FormattedPending != "" {
+		fmt.Print(summary.FormattedPending)
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
