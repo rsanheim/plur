@@ -40,7 +40,7 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 			return nil, fmt.Errorf("error matching pattern %q: %w", watch.Source, err)
 		}
 
-		if ep.isExcluded(normalizedPath, watch.Exclude) {
+		if ep.isIgnored(normalizedPath, watch.Ignore) {
 			continue
 		}
 		if !matched {
@@ -99,9 +99,9 @@ func (ep *EventProcessor) renderTargets(watch WatchMapping, path string) ([]stri
 	return targets, nil
 }
 
-// isExcluded checks if a path matches any of the exclude patterns
-func (ep *EventProcessor) isExcluded(path string, excludePatterns []string) bool {
-	for _, pattern := range excludePatterns {
+// isIgnored checks if a path matches any of the ignore patterns
+func (ep *EventProcessor) isIgnored(path string, ignorePatterns []string) bool {
+	for _, pattern := range ignorePatterns {
 		matched, err := doublestar.Match(filepath.ToSlash(pattern), path)
 		if err == nil && matched {
 			return true

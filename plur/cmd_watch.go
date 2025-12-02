@@ -5,11 +5,8 @@ import (
 	"embed"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"slices"
-	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -47,44 +44,7 @@ func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (job.Job, []wa
 	return result.Job, watches, nil
 }
 
-// executeJob runs a job with the given target files
-func executeJob(j job.Job, targetFiles []string, cwd string) error {
-	if len(targetFiles) == 0 {
-		return nil
-	}
-
-	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
-
-	// Build command for each target file
-	for _, target := range targetFiles {
-		// Make target relative to cwd if it's absolute
-		relTarget := target
-		if filepath.IsAbs(target) {
-			if rel, err := filepath.Rel(cwd, target); err == nil {
-				relTarget = rel
-			}
-		}
-
-		cmd := job.BuildJobCmd(j, []string{relTarget})
-		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
-
-		// Execute command
-		execCmd := exec.Command(cmd[0], cmd[1:]...)
-		execCmd.Dir = cwd
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
-		execCmd.Env = append(os.Environ(), j.Env...)
-
-		if err := execCmd.Run(); err != nil {
-			// Log error but don't fail - continue watching
-			logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
-		}
-	}
-
-	return nil
-}
-
-func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, cli *PlurCLI) error {
+func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
 	resolvedJob, watches, err := loadWatchConfiguration(cli, watchCmd.Use)
@@ -105,22 +65,33 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	}
 
 	// Create debounce delay (for future use)
-	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
-	logger.Logger.Debug("Debounce delay", "ms", watchCmd.Debounce)
+	debounceDelay := time.Duration(runCmd.Debounce) * time.Millisecond
+	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
 
 	// Determine which directories to watch from watch mappings
 	var watchDirs []string
 	for _, mapping := range watches {
 		dir := mapping.SourceDir()
-		if _, err := os.Stat(dir); err == nil {
-			watchDirs = append(watchDirs, dir)
-		}
+		watchDirs = append(watchDirs, dir)
 	}
-	sort.Strings(watchDirs)
-	watchDirs = slices.Compact(watchDirs)
+
+	logger.Logger.Debug("Watch directories before filtering", "dirs", watchDirs)
+	watchDirs, err = watch.FilterDirectories(watchDirs)
+	if err != nil {
+		return fmt.Errorf("failed to filter watch directories: %w", err)
+	}
+	logger.Logger.Debug("Watch directories after filtering", "dirs", watchDirs)
+
 	if len(watchDirs) == 0 {
 		return fmt.Errorf("no directories to watch found in watch mappings")
 	}
+
+	// Set up global ignore patterns (use defaults if not configured)
+	globalIgnorePatterns := watchCmd.Ignore
+	if len(globalIgnorePatterns) == 0 {
+		globalIgnorePatterns = watch.DefaultIgnorePatterns
+	}
+	logger.Logger.Debug("Global watch ignore patterns", "patterns", globalIgnorePatterns)
 
 	// Get project name from current directory
 	projectName := "unknown"
@@ -135,10 +106,10 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		"watch", fmt.Sprintf("%+v", watches),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,
-		"debounce", watchCmd.Debounce,
-		"timeout", watchCmd.Timeout)
-	if watchCmd.Timeout > 0 {
-		logger.Logger.Debug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", watchCmd.Timeout) + " seconds")
+		"debounce", runCmd.Debounce,
+		"timeout", runCmd.Timeout)
+	if runCmd.Timeout > 0 {
+		logger.Logger.Debug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", runCmd.Timeout) + " seconds")
 	}
 
 	// Get the watcher binary path
@@ -150,7 +121,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	watcherConfig := &watch.ManagerConfig{
 		Directories:    watchDirs,
 		DebounceDelay:  debounceDelay,
-		TimeoutSeconds: watchCmd.Timeout,
+		TimeoutSeconds: runCmd.Timeout,
 	}
 
 	// Create and start the watcher manager
@@ -162,8 +133,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 	// Set up timeout if specified
 	var timeoutChan <-chan time.Time
-	if watchCmd.Timeout > 0 {
-		timeoutChan = time.After(time.Duration(watchCmd.Timeout) * time.Second)
+	if runCmd.Timeout > 0 {
+		timeoutChan = time.After(time.Duration(runCmd.Timeout) * time.Second)
 	}
 
 	// Set up signal handling for graceful shutdown
@@ -205,24 +176,22 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		cwd = resolvedCwd
 	}
 
-	// Process events with watchCmd.Timeout
+	// Process events with runCmd.Timeout
 	for {
 		select {
 		case input := <-stdinChan:
+			logger.Logger.Debug("watch stdin", "input", input)
 			switch input {
 			case "":
-				// User pressed Enter - run all tests
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
 				cmd := job.BuildJobAllCmd(resolvedJob)
-				runCommandArgs(cmd)
+				watch.RunCommand(cmd)
 				fmt.Print("\nplur> ")
 			case "reload":
-				// User requested process reload
 				logger.Logger.Debug("User requested process reload")
 				fmt.Println("Reloading plur...")
 
-				// Get current executable path
 				execPath, err := os.Executable()
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to reload: %v\n", err)
@@ -244,7 +213,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				fmt.Fprintf(os.Stderr, "Failed to exec new process: %v\n", err)
 				os.Exit(1)
 			case "debug":
-				// Toggle debug mode
 				logger.ToggleDebug()
 				if logger.IsDebugEnabled() {
 					fmt.Println("Debug output enabled")
@@ -254,7 +222,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				}
 				fmt.Print("plur> ")
 			case "exit":
-				// User typed exit command
 				logger.Logger.Info("User requested exit")
 				fmt.Println("Exiting watch mode...")
 				return nil
@@ -283,6 +250,12 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				continue
 			}
 
+			// Skip globally ignored paths (.git, node_modules, etc.)
+			if watch.IsIgnored(path, globalIgnorePatterns) {
+				logger.Logger.Debug("Skipping globally ignored path", "path", path)
+				continue
+			}
+
 			if len(watches) > 0 {
 				result, err := watch.FindTargetsForFile(path, jobs, watches)
 				if err != nil {
@@ -306,13 +279,13 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 				// Execute each job with its existing targets only
 				for jobName, targets := range result.ExistingTargets {
-					job, exists := jobs[jobName]
+					j, exists := jobs[jobName]
 					if !exists {
 						logger.Logger.Warn("Job not found", "job", jobName)
 						continue
 					}
 
-					if err := executeJob(job, targets, cwd); err != nil {
+					if err := watch.ExecuteJob(j, targets, cwd); err != nil {
 						logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
 					}
 				}
@@ -327,7 +300,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			return fmt.Errorf("watcher error: %v", err)
 
 		case <-timeoutChan:
-			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", watchCmd.Timeout)
+			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", runCmd.Timeout)
 			fmt.Println("\nTimeout reached, exiting!")
 			return nil
 
@@ -335,22 +308,5 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			fmt.Printf("\nReceived signal %v, shutting down gracefully...\n", sig)
 			return nil
 		}
-	}
-}
-
-// runCommandArgs runs a command from a slice of arguments
-func runCommandArgs(args []string) {
-	if len(args) == 0 {
-		return
-	}
-
-	fmt.Println("running:", strings.Join(args, " "))
-
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
 	}
 }

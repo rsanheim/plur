@@ -9,15 +9,15 @@ cmd = ["bin/rspec"]
 source = "**/*_test.go"
 targets = ["{{dir_relative}}"]
 jobs = ["plur"]
-exclude = [".git/**", "vendor/**"]
+ignore = [".git/**", "vendor/**"]
 
 [[watch]]
 source = "**/*_spec.rb"
 jobs = ["rspec"]
-exclude = [".git/**", "fixtures/**", "vendor/**"]
+ignore = [".git/**", "fixtures/**", "vendor/**"]
 
 [[watch]]
 source = "lib/**/*.rb"
 targets = ["spec/{{match}}_spec.rb"]
 jobs = ["rspec"]
-exclude = [".git/**", "fixtures/**", "vendor/**"]
+ignore = [".git/**", "fixtures/**", "vendor/**"]

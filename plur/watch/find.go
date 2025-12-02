@@ -83,9 +83,9 @@ func FindTargetsForFile(filePath string, jobs map[string]job.Job, watches []Watc
 // This duplicates some logic from EventProcessor.ProcessPath but is needed
 // to identify which rules matched without re-implementing the whole thing
 func matchesWatch(filePath string, w WatchMapping) bool {
-	// Check exclude patterns first
-	for _, exclude := range w.Exclude {
-		if matches(filePath, exclude) {
+	// Check ignore patterns first
+	for _, ignore := range w.Ignore {
+		if matches(filePath, ignore) {
 			return false
 		}
 	}

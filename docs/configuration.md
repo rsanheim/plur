@@ -205,7 +205,7 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 | `source` | string | Glob pattern for files to watch | Yes |
 | `targets` | string[] | Target patterns with placeholders | No |
 | `jobs` | string[] | Jobs to trigger when source matches | Yes |
-| `exclude` | string[] | Patterns to exclude from watching | No |
+| `ignore` | string[] | Patterns to ignore from watching | No |
 
 ### Placeholder Variables
 
@@ -234,7 +234,7 @@ name = "go-source"
 source = "**/*.go"
 targets = ["{{dir_relative}}"]
 jobs = ["go-test"]
-exclude = ["vendor/**", "**/testdata/**"]
+ignore = ["vendor/**", "**/testdata/**"]
 ```
 
 ### Using Watch Mode

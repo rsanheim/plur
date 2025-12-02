@@ -18,7 +18,7 @@ func TestGrouperComplexity(t *testing.T) {
 		t.Skip("skipping complexity test in short mode")
 	}
 
-	sizes := []int{100, 500, 1000, 2000, 5000}
+	sizes := []int{1000, 2000, 4000, 8000}
 	workers := 8
 	iterations := 50
 
@@ -45,7 +45,7 @@ func TestGrouperRuntimeComplexity(t *testing.T) {
 		t.Skip("skipping complexity test in short mode")
 	}
 
-	sizes := []int{100, 500, 1000, 2000, 5000}
+	sizes := []int{1000, 2000, 4000, 8000}
 	workers := 8
 	iterations := 50
 
@@ -73,7 +73,7 @@ func TestRSpecParserComplexity(t *testing.T) {
 		t.Skip("skipping complexity test in short mode")
 	}
 
-	sizes := []int{100, 500, 1000, 2000, 5000}
+	sizes := []int{1000, 2000, 4000, 8000}
 	iterations := 20
 
 	times := make([]time.Duration, len(sizes))
@@ -102,7 +102,7 @@ func TestTestCollectorComplexity(t *testing.T) {
 		t.Skip("skipping complexity test in short mode")
 	}
 
-	sizes := []int{100, 500, 1000, 2000, 5000}
+	sizes := []int{1000, 2000, 4000, 8000}
 	iterations := 20
 
 	times := make([]time.Duration, len(sizes))

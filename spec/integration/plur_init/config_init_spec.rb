@@ -1,12 +1,12 @@
 require "spec_helper"
 
-RSpec.describe "plur config:init command" do
+RSpec.describe "plur config init command" do
   let(:test_dir) { Dir.mktmpdir }
 
   describe "creating local config files" do
     it "creates a simple config file by default" do
       output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "config:init")
+        Open3.capture3("plur", "config", "init")
       end
 
       expect(status).to be_success
@@ -19,7 +19,7 @@ RSpec.describe "plur config:init command" do
 
     it "creates a Rails config with --template=rails" do
       output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "config:init", "--template=rails")
+        Open3.capture3("plur", "config", "init", "--template=rails")
       end
 
       expect(status).to be_success
@@ -32,7 +32,7 @@ RSpec.describe "plur config:init command" do
 
     it "creates a Minitest config with --template=minitest" do
       output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "config:init", "--template=minitest")
+        Open3.capture3("plur", "config", "init", "--template=minitest")
       end
 
       expect(status).to be_success
@@ -50,7 +50,7 @@ RSpec.describe "plur config:init command" do
       File.write(File.join(test_dir, ".plur.toml"), "existing = true")
 
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "config:init")
+        Open3.capture3("plur", "config", "init")
       end
 
       expect(status).not_to be_success
@@ -63,7 +63,7 @@ RSpec.describe "plur config:init command" do
       File.write(File.join(test_dir, ".plur.toml"), "existing = true")
 
       output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "config:init", "--force")
+        Open3.capture3("plur", "config", "init", "--force")
       end
 
       expect(status).to be_success
@@ -77,7 +77,7 @@ RSpec.describe "plur config:init command" do
 
     it "fails with unknown template" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "config:init", "--template=unknown")
+        Open3.capture3("plur", "config", "init", "--template=unknown")
       end
 
       expect(status).not_to be_success
@@ -99,7 +99,7 @@ RSpec.describe "plur config:init command" do
 
     it "creates config in home directory with --global" do
       output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "config:init", "--global")
+        Open3.capture3("plur", "config", "init", "--global")
       end
 
       expect(status).to be_success

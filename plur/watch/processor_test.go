@@ -1,8 +1,10 @@
 package watch
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
@@ -161,7 +163,7 @@ func TestEventProcessorMultipleTargets(t *testing.T) {
 	assert.Contains(t, result["rspec"], filepath.FromSlash("spec/lib/user_spec.rb"))
 }
 
-func TestEventProcessorExcludePatterns(t *testing.T) {
+func TestEventProcessorIgnorePatterns(t *testing.T) {
 	jobs := map[string]job.Job{
 		"rspec": {
 			Name: "rspec",
@@ -175,7 +177,7 @@ func TestEventProcessorExcludePatterns(t *testing.T) {
 			Source:  "lib/**/*.rb",
 			Targets: []string{"spec/{{match}}_spec.rb"},
 			Jobs:    []string{"rspec"},
-			Exclude: []string{"lib/generators/**", "lib/vendor/**"},
+			Ignore:  []string{"lib/generators/**", "lib/vendor/**"},
 		},
 	}
 
@@ -192,12 +194,12 @@ func TestEventProcessorExcludePatterns(t *testing.T) {
 			shouldMatch: true,
 		},
 		{
-			name:        "generators file (excluded)",
+			name:        "generators file (ignored)",
 			path:        "lib/generators/model.rb",
 			shouldMatch: false,
 		},
 		{
-			name:        "vendor file (excluded)",
+			name:        "vendor file (ignored)",
 			path:        "lib/vendor/gem.rb",
 			shouldMatch: false,
 		},
@@ -397,5 +399,69 @@ func TestValidateConfig(t *testing.T) {
 				assert.NoError(t, err)
 			}
 		})
+	}
+}
+
+// TestEventProcessorComplexity detects if path processing degrades beyond O(n)
+func TestEventProcessorComplexity(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping complexity test in short mode")
+	}
+
+	sizes := []int{1000, 2000, 4000, 8000} // number of watch rules
+	iterations := 20
+
+	times := make([]time.Duration, len(sizes))
+
+	for idx, size := range sizes {
+		watches := generateWatchMappings(size)
+		jobs := map[string]job.Job{"rspec": {Name: "rspec"}}
+		processor := NewEventProcessor(jobs, watches)
+
+		// Use a path that won't match any rules to test full iteration
+		testPath := "lib/foo/bar.rb"
+
+		start := time.Now()
+		for i := 0; i < iterations; i++ {
+			processor.ProcessPath(testPath)
+		}
+		times[idx] = time.Since(start) / time.Duration(iterations)
+
+		t.Logf("EventProcessor: rules=%5d, time=%v", size, times[idx])
+	}
+
+	checkLinearScaling(t, "EventProcessor", sizes, times)
+}
+
+func generateWatchMappings(n int) []WatchMapping {
+	mappings := make([]WatchMapping, n)
+	for i := 0; i < n; i++ {
+		mappings[i] = WatchMapping{
+			Name:    fmt.Sprintf("rule-%d", i),
+			Source:  fmt.Sprintf("src/dir%d/**/*.rb", i),
+			Targets: []string{"spec/{{match}}_spec.rb"},
+			Jobs:    []string{"rspec"},
+		}
+	}
+	return mappings
+}
+
+// checkLinearScaling verifies that time grows at most linearly with input size.
+// If time ratio exceeds 2x the size ratio, we likely have O(n²) behavior.
+func checkLinearScaling(t *testing.T, name string, sizes []int, times []time.Duration) {
+	t.Helper()
+
+	for i := 1; i < len(sizes); i++ {
+		sizeRatio := float64(sizes[i]) / float64(sizes[i-1])
+		timeRatio := float64(times[i]) / float64(times[i-1])
+
+		// Allow 2x tolerance over linear scaling to account for system noise
+		threshold := sizeRatio * 2.0
+
+		if timeRatio > threshold {
+			t.Errorf("%s: potential O(n²) detected between size %d and %d: "+
+				"size ratio=%.2f, time ratio=%.2f (threshold=%.2f)",
+				name, sizes[i-1], sizes[i], sizeRatio, timeRatio, threshold)
+		}
 	}
 }
