@@ -100,7 +100,6 @@ module Plur
     end
 
     def dump_failures(notification)
-      # Don't output anything if there are no failures
       return if notification.failure_notifications.empty?
 
       # Capture the fully formatted failures with colors

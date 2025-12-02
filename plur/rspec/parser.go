@@ -64,13 +64,17 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 	return summary
 }
 
-// ParseLine parses a single line of RSpec output
+const jsonPrefix string = "PLUR_JSON:"
+const jsonPrefixLen int = len(jsonPrefix)
+
+// ParseLine parses a single line of RSpec output from our Ruby based Plur::JsonRowsFormatter
+// See plur/rspec/formatter.rb for the formatter implementation.
 func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	notifications := []types.TestNotification{}
 
 	// Check if it's a JSON line
-	if strings.HasPrefix(line, "PLUR_JSON:") {
-		jsonStr := line[10:] // Skip "PLUR_JSON:" prefix without allocation
+	if strings.HasPrefix(line, jsonPrefix) {
+		jsonStr := line[jsonPrefixLen:]
 
 		var msg StreamingMessage
 		if err := json.Unmarshal([]byte(jsonStr), &msg); err != nil {
@@ -79,14 +83,12 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 
 		switch msg.Type {
 		case "message":
-			// Handle error messages from RSpec (e.g., syntax errors, load errors)
 			if msg.Message != "" {
 				notifications = append(notifications, types.OutputNotification{
 					Event:   types.RawOutput,
 					Content: msg.Message,
 				})
 			}
-
 		case "load_summary":
 			if msg.Summary != nil {
 				notifications = append(notifications, types.SuiteNotification{
@@ -95,29 +97,19 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 					LoadTime:  time.Duration(msg.Summary.LoadTime * float64(time.Second)),
 				})
 			}
-
 		case "example_passed", "example_failed", "example_pending":
 			if msg.Example != nil {
 				notification := p.parseStreamExample(msg.Type, msg.Example)
 				notifications = append(notifications, notification)
 			}
-
 		case "dump_failures":
-			// Handle formatted failure output from RSpec
 			if msg.FormattedOutput != "" {
-				notifications = append(notifications, types.FormattedFailuresNotification{
-					Content: msg.FormattedOutput,
-				})
+				notifications = append(notifications, types.FormattedFailuresNotification{Content: msg.FormattedOutput})
 			}
-
 		case "dump_pending":
-			// Handle formatted pending output from RSpec
 			if msg.FormattedOutput != "" {
-				notifications = append(notifications, types.FormattedPendingNotification{
-					Content: msg.FormattedOutput,
-				})
+				notifications = append(notifications, types.FormattedPendingNotification{Content: msg.FormattedOutput})
 			}
-
 		case "dump_summary":
 			notifications = append(notifications, types.SuiteNotification{
 				Event:        types.SuiteFinished,
