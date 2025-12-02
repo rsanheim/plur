@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## v0.17.0 - 2025-12-02
+* Watcher consolidation [#146](https://github.com/rsanheim/plur/pull/146)
+
 ## v0.16.0 - 2025-12-01
 * Stream stdout for RSpec tests [#143](https://github.com/rsanheim/plur/pull/143)
 
