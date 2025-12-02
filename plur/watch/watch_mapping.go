@@ -12,7 +12,7 @@ type WatchMapping struct {
 	Source  string   `toml:"source" json:"source"`
 	Targets []string `toml:"targets,omitempty" json:"targets,omitempty"`
 	Jobs    []string `toml:"jobs" json:"jobs"`
-	Ignore []string `toml:"ignore,omitempty" json:"ignore,omitempty"`
+	Ignore  []string `toml:"ignore,omitempty" json:"ignore,omitempty"`
 }
 
 // SourceDir returns the directory part of the source pattern

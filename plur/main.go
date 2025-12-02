@@ -126,7 +126,7 @@ type WatchCmd struct {
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
 	Find    WatchFindCmd    `cmd:"" help:"Show what would be executed for a given file change"`
 
-	Use     string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Use    string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Ignore []string `help:"Patterns to ignore from watch events (default: .git/**, node_modules/**)" name:"ignore"`
 }
 
@@ -187,14 +187,14 @@ type ConfigCmd struct {
 
 type PlurCLI struct {
 	// Commands
-	Spec   SpecCmd   `cmd:"" help:"Run tests" default:"withargs"`
-	Watch  WatchCmd  `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Doctor DoctorCmd `cmd:"" help:"Diagnose Plur installation and environment"`
-	Config ConfigCmd `cmd:"" help:"Configuration commands"`
-	DBSetup    DBSetupCmd    `cmd:"" name:"db:setup" help:"Setup test databases"`
-	DBCreate   DBCreateCmd   `cmd:"" name:"db:create" help:"Create test databases"`
-	DBMigrate  DBMigrateCmd  `cmd:"" name:"db:migrate" help:"Migrate test databases"`
-	DBPrepare  DBPrepareCmd  `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
+	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
+	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Plur installation and environment"`
+	Config    ConfigCmd    `cmd:"" help:"Configuration commands"`
+	DBSetup   DBSetupCmd   `cmd:"" name:"db:setup" help:"Setup test databases"`
+	DBCreate  DBCreateCmd  `cmd:"" name:"db:create" help:"Create test databases"`
+	DBMigrate DBMigrateCmd `cmd:"" name:"db:migrate" help:"Migrate test databases"`
+	DBPrepare DBPrepareCmd `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading

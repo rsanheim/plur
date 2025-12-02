@@ -177,7 +177,7 @@ func TestEventProcessorIgnorePatterns(t *testing.T) {
 			Source:  "lib/**/*.rb",
 			Targets: []string{"spec/{{match}}_spec.rb"},
 			Jobs:    []string{"rspec"},
-			Ignore: []string{"lib/generators/**", "lib/vendor/**"},
+			Ignore:  []string{"lib/generators/**", "lib/vendor/**"},
 		},
 	}
 
