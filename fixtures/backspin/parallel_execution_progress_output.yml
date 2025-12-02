@@ -1,5 +1,5 @@
 ---
-first_recorded_at: '2025-12-02T14:35:36-06:00'
+first_recorded_at: '2025-12-02T14:59:05-06:00'
 format_version: '2.0'
 commands:
 - command_type: Backspin::Capturer
@@ -102,7 +102,7 @@ commands:
                 got: nil
          # ./spec/expectation_failures_spec.rb:26:in 'block (3 levels) in <top (required)>'
 
-    Finished in 0.01004 seconds (files took 0.03849 seconds to load)
+    Finished in 0.00968 seconds (files took 0.03705 seconds to load)
     14 examples, 8 failures, 3 pending
 
     Failed examples:
@@ -118,5 +118,5 @@ commands:
 
   stderr: ''
   status: 0
-  recorded_at: '2025-12-02T14:35:36-06:00'
+  recorded_at: '2025-12-02T14:59:05-06:00'
 ...

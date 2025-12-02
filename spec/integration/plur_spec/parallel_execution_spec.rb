@@ -55,6 +55,7 @@ RSpec.describe "Plur parallel execution" do
   end
 
   describe "progress output" do
+    let(:failing_specs_path) { project_fixture("failing_specs") }
     def system_rspec(file_or_glob, *args)
       system("bundle", "exec", "rspec", file_or_glob, *args)
     end
@@ -76,15 +77,14 @@ RSpec.describe "Plur parallel execution" do
 
     it "rspec output" do
       pending "needs work, see docs/fix-duplicate-headers-multi-worker.md"
-      failing_specs_path = project_fixture("failing_specs")
-      Backspin.capture("parallel_execution_progress_output") do
+      matcher = {
+        stdout: ->(recorded, actual) { normalize_test_output(recorded) == normalize_test_output(actual) }
+      }
+      Backspin.capture("parallel_execution_progress_output", matcher: matcher) do
         chdir(failing_specs_path) do
           system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
         end
       end
-      matcher = {
-        stdout: ->(recorded, actual) { normalize_test_output(recorded) == normalize_test_output(actual) }
-      }
       Backspin.capture("parallel_execution_progress_output", mode: :verify, matcher: matcher) do
         chdir(failing_specs_path) do
           run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
@@ -93,10 +93,9 @@ RSpec.describe "Plur parallel execution" do
     end
 
     it "shows combined progress from all workers" do
-      chdir(failing_specs_path) do
+      chdir(project_fixture("failing_specs")) do
         result = run_plur_allowing_errors("-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
 
-        pp result.out
         expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots
         expect(result.out).to match(/\e\[31mF\e\[0m/) # Red F's
 
