@@ -1,4 +1,4 @@
-package main
+package watch
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFilterWatchDirectories(t *testing.T) {
+func TestFilterDirectories(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create subdirectories
@@ -37,7 +37,7 @@ func TestFilterWatchDirectories(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := filterWatchDirectories(tt.input)
+			result, err := FilterDirectories(tt.input)
 			require.NoError(t, err)
 			sort.Strings(result)
 			sort.Strings(tt.expected)
@@ -46,7 +46,7 @@ func TestFilterWatchDirectories(t *testing.T) {
 	}
 }
 
-func TestFilterWatchDirectories_SymlinkDedup(t *testing.T) {
+func TestFilterDirectories_SymlinkDedup(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	realLib := filepath.Join(tmpDir, "real_lib")
@@ -61,12 +61,12 @@ func TestFilterWatchDirectories_SymlinkDedup(t *testing.T) {
 	require.NoError(t, os.Symlink("real_lib", symLib))
 
 	// Both point to same location - should keep only one
-	result, err := filterWatchDirectories([]string{"lib", "real_lib"})
+	result, err := FilterDirectories([]string{"lib", "real_lib"})
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
 }
 
-func TestFilterWatchDirectories_RejectsEscapingSymlinks(t *testing.T) {
+func TestFilterDirectories_RejectsEscapingSymlinks(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create symlink pointing outside the project (to /tmp or similar)
@@ -81,12 +81,12 @@ func TestFilterWatchDirectories_RejectsEscapingSymlinks(t *testing.T) {
 	defer os.Chdir(origDir)
 
 	// "escape" symlink should be rejected, "valid" should remain
-	result, err := filterWatchDirectories([]string{"escape", "valid"})
+	result, err := FilterDirectories([]string{"escape", "valid"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"valid"}, result)
 }
 
-func TestFilterWatchDirectories_NonexistentDirSkipped(t *testing.T) {
+func TestFilterDirectories_NonexistentDirSkipped(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create only one valid directory
@@ -97,12 +97,12 @@ func TestFilterWatchDirectories_NonexistentDirSkipped(t *testing.T) {
 	defer os.Chdir(origDir)
 
 	// "nonexistent" should be skipped, "exists" should remain
-	result, err := filterWatchDirectories([]string{"nonexistent", "exists"})
+	result, err := FilterDirectories([]string{"nonexistent", "exists"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"exists"}, result)
 }
 
-func TestIsGloballyExcluded(t *testing.T) {
+func TestIsExcluded(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
@@ -155,20 +155,20 @@ func TestIsGloballyExcluded(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isGloballyExcluded(tt.path, tt.patterns)
+			result := IsExcluded(tt.path, tt.patterns)
 			assert.Equal(t, tt.expected, result, "path: %q, patterns: %v", tt.path, tt.patterns)
 		})
 	}
 }
 
-func TestDefaultWatchExcludePatterns(t *testing.T) {
+func TestDefaultExcludePatterns(t *testing.T) {
 	// Verify defaults are sensible
-	assert.Contains(t, defaultWatchExcludePatterns, ".git/**")
-	assert.Contains(t, defaultWatchExcludePatterns, "node_modules/**")
-	assert.Len(t, defaultWatchExcludePatterns, 2)
+	assert.Contains(t, DefaultExcludePatterns, ".git/**")
+	assert.Contains(t, DefaultExcludePatterns, "node_modules/**")
+	assert.Len(t, DefaultExcludePatterns, 2)
 
 	// Verify they actually work
-	assert.True(t, isGloballyExcluded(".git/config", defaultWatchExcludePatterns))
-	assert.True(t, isGloballyExcluded("node_modules/lodash/index.js", defaultWatchExcludePatterns))
-	assert.False(t, isGloballyExcluded("lib/user.rb", defaultWatchExcludePatterns))
+	assert.True(t, IsExcluded(".git/config", DefaultExcludePatterns))
+	assert.True(t, IsExcluded("node_modules/lodash/index.js", DefaultExcludePatterns))
+	assert.False(t, IsExcluded("lib/user.rb", DefaultExcludePatterns))
 }
