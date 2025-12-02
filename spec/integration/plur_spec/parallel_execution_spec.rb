@@ -59,25 +59,18 @@ RSpec.describe "Plur parallel execution" do
       system("bundle", "exec", "rspec", file_or_glob, *args)
     end
 
+    # make output more deterministic
     def normalize_test_output(output)
-      lines = output.lines
-
-      # Strip plur header lines
-      lines = lines.reject { |l| l.match?(/^plur version|^Running \d+ specs/) }
-
-      # Find and normalize progress line (dots, F's, asterisks)
+      lines = output.lines.reject { |l| l.match?(/^plur version|^Running \d+ specs/) }
       lines = lines.map do |line|
         if line.match?(/^[.F*]+$/)
-          # Sort the progress characters so order doesn't matter
           line.strip.chars.sort.join + "\n"
         elsif line.match?(/^Finished in \d/)
-          # Normalize timing line
           "Finished in X seconds\n"
         else
           line
         end
       end
-
       lines.join
     end
 
@@ -89,20 +82,14 @@ RSpec.describe "Plur parallel execution" do
         end
       end
       result = nil
-      begin 
-        result = Backspin.capture("parallel_execution_progress_output", mode: :verify,
-          matcher: {
-            stdout: ->(recorded, actual) {
-              normalize_test_output(recorded) == normalize_test_output(actual)
-            }
-          }) do
+      matcher = {
+        stdout: ->(recorded, actual) { normalize_test_output(recorded) == normalize_test_output(actual) }
+      }
+      result = Backspin.capture("parallel_execution_progress_output", mode: :verify, matcher: matcher) do
           chdir(failing_specs_path) do
             run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
           end
         end
-      rescue Backspin::VerificationError => e
-        puts e
-      end
       pp result
     end
 

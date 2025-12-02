@@ -44,6 +44,12 @@ RSpec.configure do |config|
     Pathname.new(__dir__).parent.join("fixtures", "projects", name)
   end
 
+  def run_rspec(file_or_glob, *args)
+    cmd_array = %W[bundle exec rspec #{file_or_glob}]
+    cmd_array += args if args.any?
+    Open3.capture3(*cmd_array)
+  end
+
   def project_fixture!(name)
     project_fixture(name).tap do |path|
       unless path.exist?
