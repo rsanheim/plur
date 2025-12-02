@@ -125,23 +125,24 @@ type WatchCmd struct {
 	Run     WatchRunCmd     `cmd:"" default:"withargs" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
 	Find    WatchFindCmd    `cmd:"" help:"Show what would be executed for a given file change"`
+
+	Use     string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Exclude []string `help:"Patterns to exclude from watch events (default: .git/**, node_modules/**)" name:"exclude"`
 }
 
 type WatchRunCmd struct {
-	Timeout  int      `help:"Exit after specified seconds (default: run until Ctrl-C)"`
-	Debounce int      `help:"Debounce delay in milliseconds" default:"100"`
-	Use      string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
-	Exclude  []string `help:"Patterns to exclude from watch events (default: .git/**, node_modules/**)" name:"exclude"`
+	Timeout  int `help:"Exit after specified seconds (default: run until Ctrl-C)"`
+	Debounce int `help:"Debounce delay in milliseconds" default:"100"`
 }
 
-func (w *WatchRunCmd) Run(parent *PlurCLI) error {
-	config := parent.globalConfig
+func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
+	config := globals.globalConfig
 
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}
 
-	return runWatchWithConfig(config, w, parent)
+	return runWatchWithConfig(config, w, parent, globals)
 }
 
 type WatchInstallCmd struct{}

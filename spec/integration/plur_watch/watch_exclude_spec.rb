@@ -37,6 +37,14 @@ RSpec.describe "plur watch --exclude flag" do
   end
 
   describe "help output" do
+    it "shows --exclude in plur watch --help" do
+      cmd = TTY::Command.new(uuid: false, printer: :null)
+      result = cmd.run!("plur watch --help")
+
+      expect(result.out).to include("--exclude")
+      expect(result.out).to include("Patterns to exclude from watch events")
+    end
+
     it "shows --exclude in plur watch run --help" do
       cmd = TTY::Command.new(uuid: false, printer: :null)
       result = cmd.run!("plur watch run --help")

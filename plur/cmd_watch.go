@@ -44,7 +44,7 @@ func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (job.Job, []wa
 	return result.Job, watches, nil
 }
 
-func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd, cli *PlurCLI) error {
+func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
 	resolvedJob, watches, err := loadWatchConfiguration(cli, watchCmd.Use)
@@ -65,8 +65,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	}
 
 	// Create debounce delay (for future use)
-	debounceDelay := time.Duration(watchCmd.Debounce) * time.Millisecond
-	logger.Logger.Debug("Debounce delay", "ms", watchCmd.Debounce)
+	debounceDelay := time.Duration(runCmd.Debounce) * time.Millisecond
+	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
 
 	// Determine which directories to watch from watch mappings
 	var watchDirs []string
@@ -106,10 +106,10 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		"watch", fmt.Sprintf("%+v", watches),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,
-		"debounce", watchCmd.Debounce,
-		"timeout", watchCmd.Timeout)
-	if watchCmd.Timeout > 0 {
-		logger.Logger.Debug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", watchCmd.Timeout) + " seconds")
+		"debounce", runCmd.Debounce,
+		"timeout", runCmd.Timeout)
+	if runCmd.Timeout > 0 {
+		logger.Logger.Debug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", runCmd.Timeout) + " seconds")
 	}
 
 	// Get the watcher binary path
@@ -121,7 +121,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	watcherConfig := &watch.ManagerConfig{
 		Directories:    watchDirs,
 		DebounceDelay:  debounceDelay,
-		TimeoutSeconds: watchCmd.Timeout,
+		TimeoutSeconds: runCmd.Timeout,
 	}
 
 	// Create and start the watcher manager
@@ -133,8 +133,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 
 	// Set up timeout if specified
 	var timeoutChan <-chan time.Time
-	if watchCmd.Timeout > 0 {
-		timeoutChan = time.After(time.Duration(watchCmd.Timeout) * time.Second)
+	if runCmd.Timeout > 0 {
+		timeoutChan = time.After(time.Duration(runCmd.Timeout) * time.Second)
 	}
 
 	// Set up signal handling for graceful shutdown
@@ -176,7 +176,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 		cwd = resolvedCwd
 	}
 
-	// Process events with watchCmd.Timeout
+	// Process events with runCmd.Timeout
 	for {
 		select {
 		case input := <-stdinChan:
@@ -300,7 +300,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			return fmt.Errorf("watcher error: %v", err)
 
 		case <-timeoutChan:
-			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", watchCmd.Timeout)
+			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", runCmd.Timeout)
 			fmt.Println("\nTimeout reached, exiting!")
 			return nil
 
