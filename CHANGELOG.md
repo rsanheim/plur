@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## Unreleased
+* Pending specs output [#147](https://github.com/rsanheim/plur/pull/147)
+
 ## v0.17.0 - 2025-12-02
 * Watcher consolidation [#146](https://github.com/rsanheim/plur/pull/146)
 
