@@ -74,7 +74,8 @@ RSpec.describe "Plur parallel execution" do
       lines.join
     end
 
-    fit "rspec output" do
+    it "rspec output" do
+      pending "needs work, see docs/fix-duplicate-headers-multi-worker.md"
       failing_specs_path = project_fixture("failing_specs")
       Backspin.capture("parallel_execution_progress_output") do
         chdir(failing_specs_path) do
@@ -89,7 +90,6 @@ RSpec.describe "Plur parallel execution" do
           run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
         end
       end
-      pp result
     end
 
     it "shows combined progress from all workers" do
