@@ -85,7 +85,7 @@ RSpec.describe "Plur parallel execution" do
       matcher = {
         stdout: ->(recorded, actual) { normalize_test_output(recorded) == normalize_test_output(actual) }
       }
-      result = Backspin.capture("parallel_execution_progress_output", mode: :verify, matcher: matcher) do
+      Backspin.capture("parallel_execution_progress_output", mode: :verify, matcher: matcher) do
         chdir(failing_specs_path) do
           run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
         end
