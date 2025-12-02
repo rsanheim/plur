@@ -55,10 +55,46 @@ RSpec.describe "Plur parallel execution" do
   end
 
   describe "progress output" do
+    let(:failing_specs_path) { project_fixture("failing_specs") }
+    def system_rspec(file_or_glob, *args)
+      system("bundle", "exec", "rspec", file_or_glob, *args)
+    end
+
+    # make output more deterministic
+    def normalize_test_output(output)
+      lines = output.lines.reject { |l| l.match?(/^plur version|^Running \d+ specs/) }
+      lines = lines.map do |line|
+        if line.match?(/^[.F*]+$/)
+          line.strip.chars.sort.join + "\n"
+        elsif line.match?(/^Finished in \d/)
+          "Finished in X seconds\n"
+        else
+          line
+        end
+      end
+      lines.join
+    end
+
+    it "rspec output" do
+      pending "needs work, see docs/fix-duplicate-headers-multi-worker.md"
+      matcher = {
+        stdout: ->(recorded, actual) { normalize_test_output(recorded) == normalize_test_output(actual) }
+      }
+      Backspin.capture("parallel_execution_progress_output", matcher: matcher) do
+        chdir(failing_specs_path) do
+          system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
+        end
+      end
+      Backspin.capture("parallel_execution_progress_output", mode: :verify, matcher: matcher) do
+        chdir(failing_specs_path) do
+          run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
+        end
+      end
+    end
+
     it "shows combined progress from all workers" do
-      failing_specs_path = project_fixture("failing_specs")
-      chdir(failing_specs_path) do
-        result = run_plur_allowing_errors("--color", "spec/mixed_results_spec.rb")
+      chdir(project_fixture("failing_specs")) do
+        result = run_plur_allowing_errors("-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
 
         expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots
         expect(result.out).to match(/\e\[31mF\e\[0m/) # Red F's

@@ -31,36 +31,17 @@ bin/rake install
 ### Using Go Install
 
 ```bash
-# Install directly with go
 go install github.com/rsanheim/plur@latest
 ```
 
 ## Verify Installation
 
 ```bash
-# Check version
 plur --version
 
 # Run doctor command to verify setup
 plur doctor
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-**"command not found: plur"**
-- Ensure `$GOPATH/bin` is in your PATH
-- Run `echo $PATH` to verify
-- Add to your shell profile: `export PATH=$GOPATH/bin:$PATH`
-
-**"cannot load such file -- backspin"**
-- Run `bundle install` in your project root
-- Backspin is required for golden testing features
-
-**Build failures**
-- Ensure Go 1.21+ is installed: `go version`
-- Try cleaning and rebuilding: `bin/rake clean install`
 
 ## Next Steps
 

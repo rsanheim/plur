@@ -15,6 +15,7 @@ type TestCollector struct {
 	suiteInfo         *types.SuiteNotification
 	rawOutput         strings.Builder
 	formattedFailures string
+	formattedPending  string
 	formattedSummary  string
 }
 
@@ -74,6 +75,8 @@ func (a *TestCollector) AddNotification(n types.TestNotification) {
 		switch v := n.(type) {
 		case types.FormattedFailuresNotification:
 			a.formattedFailures = v.Content
+		case types.FormattedPendingNotification:
+			a.formattedPending = v.Content
 		case types.FormattedSummaryNotification:
 			a.formattedSummary = v.Content
 		case types.OutputNotification:
@@ -92,6 +95,7 @@ func (a *TestCollector) BuildResult(duration time.Duration) WorkerResult {
 		Tests:             a.tests,
 		State:             types.StateSuccess,
 		FormattedFailures: a.formattedFailures,
+		FormattedPending:  a.formattedPending,
 		FormattedSummary:  a.formattedSummary,
 	}
 

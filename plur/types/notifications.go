@@ -91,6 +91,14 @@ type FormattedFailuresNotification struct {
 func (n FormattedFailuresNotification) GetEvent() TestEvent { return RawOutput }
 func (n FormattedFailuresNotification) GetTestID() string   { return "" }
 
+// FormattedPendingNotification is a special notification for RSpec's formatted pending output
+type FormattedPendingNotification struct {
+	Content string
+}
+
+func (n FormattedPendingNotification) GetEvent() TestEvent { return RawOutput }
+func (n FormattedPendingNotification) GetTestID() string   { return "" }
+
 // FormattedSummaryNotification is a special notification for RSpec's formatted summary
 type FormattedSummaryNotification struct {
 	Content string

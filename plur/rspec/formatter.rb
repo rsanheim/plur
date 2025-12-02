@@ -19,6 +19,7 @@ module Plur
       :message,
       :seed,
       :dump_failures,
+      :dump_pending,
       :dump_summary
     )
 
@@ -99,13 +100,21 @@ module Plur
     end
 
     def dump_failures(notification)
-      # Don't output anything if there are no failures
       return if notification.failure_notifications.empty?
 
       # Capture the fully formatted failures with colors
       output_row(
         type: :dump_failures,
         formatted_output: notification.fully_formatted_failed_examples
+      )
+    end
+
+    def dump_pending(notification)
+      return if notification.pending_notifications.empty?
+
+      output_row(
+        type: :dump_pending,
+        formatted_output: notification.fully_formatted_pending_examples
       )
     end
 

@@ -2,7 +2,7 @@ require "tty-command"
 require "open3"
 
 module PlurWatchHelper
-  DEFAULT_PLUR_WATCH_TIMEOUT = ENV["CI"] ? 12 : 3
+  DEFAULT_PLUR_WATCH_TIMEOUT = ENV["CI"] ? 12 : 5
 
   # Runs plur watch with TTY::Command and returns a proper result object
   # @param dir [String] directory to run in
