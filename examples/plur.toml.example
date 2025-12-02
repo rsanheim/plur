@@ -60,6 +60,11 @@ target_pattern = "spec/integration/**/*_spec.rb"
 # Settings for 'plur watch' - maps source files to tests
 # =============================================================================
 
+# Global exclusion patterns for watch mode
+# These paths are ignored before any watch rules are evaluated
+# Default: [".git/**", "node_modules/**"]
+# watch_exclude = [".git/**", "node_modules/**", "vendor/**", ".bundle/**"]
+
 # Watch lib files and run corresponding specs
 [[watch]]
 name = "lib-to-spec"

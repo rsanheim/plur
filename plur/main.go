@@ -207,6 +207,7 @@ type PlurCLI struct {
 	// Job and watch configuration
 	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
 	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
+	WatchExclude  []string             `help:"Global patterns to exclude from watch events (default: .git/**, node_modules/**)" hidden:"" name:"watch_exclude" toml:"watch_exclude"`
 
 	// Store the built global config
 	globalConfig *config.GlobalConfig `kong:"-"`

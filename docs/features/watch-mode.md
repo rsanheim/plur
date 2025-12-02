@@ -39,11 +39,13 @@ plur watch --timeout 60
 ### What Gets Watched
 
 By default, plur watch monitors:
+
 - `spec/**/*_spec.rb` - Test files (runs the changed spec)
 - `lib/**/*.rb` - Library files (runs corresponding spec)
 - `app/**/*.rb` - Rails app files (runs corresponding spec)
 
 Special files:
+
 - `spec/spec_helper.rb` - Triggers all specs
 - `spec/rails_helper.rb` - Triggers all specs
 
@@ -57,40 +59,61 @@ Special files:
 | `app/controllers/posts_controller.rb` | `spec/controllers/posts_controller_spec.rb` |
 | `spec/models/user_spec.rb` | `spec/models/user_spec.rb` (itself) |
 
+### Global Exclusions
+
+By default, events from certain directories are ignored to reduce noise:
+
+* `.git/**` - Git internal files
+* `node_modules/**` - JavaScript dependencies
+
+These exclusions are applied globally before any watch rules are evaluated. You can customize this via the `watch_exclude` config option:
+
+```toml
+# .plur.toml
+watch_exclude = [".git/**", "node_modules/**", "vendor/**", ".bundle/**"]
+```
+
+Setting `watch_exclude` replaces the defaults entirely - include `.git/**` and `node_modules/**` if you still want them excluded.
+
 ## Architecture
 
 ### Multi-Process Design
 
-Watch mode uses a multi-process architecture where each directory gets its own watcher process:
+Watch mode uses a multi-process architecture. Before spawning watchers, directories are
+filtered to remove overlaps (e.g., if watching `.`, subdirectories like `lib/` are removed
+to prevent duplicate events):
 
 ```
 ┌─────────────────┐
-│   plur watch     │
+│   plur watch    │
 └────────┬────────┘
+         │
+  filterWatchDirectories()
+  (remove overlaps, validate paths)
          │
 ┌────────▼────────┐
 │ WatcherManager  │
 └────────┬────────┘
          │
-   ┌─────┴─────┬─────────┬─────────┐
-   │           │         │         │
-┌──▼──┐    ┌──▼──┐  ┌──▼──┐  ┌──▼──┐
-│spec │    │ lib │  │ app │  │test │  (Individual Watcher Processes)
-└──┬──┘    └──┬──┘  └──┬──┘  └──┬──┘
-   │          │         │         │
-   └──────────┴────┬────┴─────────┘
-                   │
-            ┌──────▼──────┐
-            │Event Channel│  (Aggregated Events)
-            └──────┬──────┘
-                   │
-            ┌──────▼──────┐
-            │  Debouncer  │
-            └──────┬──────┘
-                   │
-            ┌──────▼──────┐
-            │ Test Runner │
-            └─────────────┘
+   ┌─────┴─────┬─────────┐
+   │           │         │
+┌──▼──┐    ┌──▼──┐  ┌──▼──┐
+│  .  │ or │ lib │  │spec │  (Filtered directories → Watcher Processes)
+└──┬──┘    └──┬──┘  └──┬──┘
+   │          │        │
+   └──────────┴───┬────┘
+                  │
+           ┌──────▼──────┐
+           │Event Channel│  (Aggregated Events)
+           └──────┬──────┘
+                  │
+           ┌──────▼──────┐
+           │  Debouncer  │
+           └──────┬──────┘
+                  │
+           ┌──────▼──────┐
+           │ Test Runner │
+           └─────────────┘
 ```
 
 ### Key Components
@@ -114,6 +137,7 @@ Watch mode uses a multi-process architecture where each directory gets its own w
 ### Platform Support
 
 Embedded watcher binaries for:
+
 - macOS ARM64 (Apple Silicon)
 - Linux x86_64
 - Linux ARM64
@@ -136,6 +160,7 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 ### Event Types
 
 The watcher detects:
+
 - `create` - New files
 - `modify` - Content changes (metadata-only changes like `touch` are ignored)
 - `destroy` - Deleted files
@@ -151,6 +176,7 @@ The watcher detects:
 
 ### Concurrent Output
 When multiple file changes occur rapidly, concurrent test runs can execute, leading to:
+
 - Interleaved output from different test runs
 - Multiple "plur> " prompts appearing
 - Generally "janky" terminal experience
@@ -158,6 +184,7 @@ When multiple file changes occur rapidly, concurrent test runs can execute, lead
 This is a known issue currently. The functionality works correctly despite the output confusion.
 
 ### Current Limitations
+
 - Serial test execution only (no parallel mode in watch)
 - Limited to Ruby/Rails conventions by default (custom mappings available via `[[watch]]` config)
 
@@ -168,11 +195,13 @@ See [Watch Configuration](../configuration.md#watch-configuration) for custom fi
 ### Common Issues
 
 **"watcher binary not found"**
+
 - Binary should auto-extract to `~/.cache/plur/bin/`
 - Check permissions on cache directory
 - Run `plur doctor` for diagnostics
 
 **Tests not running on file change**
+
 - Verify file is not in .gitignore
 - Check that spec file exists at expected location
 - Use `plur --debug watch` to see file system events
@@ -197,18 +226,22 @@ plur watch --verbose
 ## Technical Decision Log
 
 ### Why e-dant/watcher?
+
 - Go alternatives have complex macOS support issues
 - fsnotify would require CGO, adding complexity
 - C++ binary works "out of the box" on all platforms
 - Excellent performance and low resource usage
 
 ### Why Multiple Processes?
+
 - The watcher binary only processes the first path argument
 - Spawning one process per directory was simpler than patching
+- **Overlapping directories are filtered at startup to prevent duplicate events**
 - Allows independent monitoring with unified event stream
 - Clean process isolation and error handling
 
 ### Why Embed Binaries?
+
 - Single binary distribution - no runtime downloads
 - No network dependencies or version conflicts  
 - Simpler installation - just copy plur binary

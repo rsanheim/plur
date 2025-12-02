@@ -8,12 +8,12 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/job"
@@ -112,15 +112,26 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	var watchDirs []string
 	for _, mapping := range watches {
 		dir := mapping.SourceDir()
-		if _, err := os.Stat(dir); err == nil {
-			watchDirs = append(watchDirs, dir)
-		}
+		watchDirs = append(watchDirs, dir)
 	}
-	sort.Strings(watchDirs)
-	watchDirs = slices.Compact(watchDirs)
+
+	logger.Logger.Debug("Watch directories before filtering", "dirs", watchDirs)
+	watchDirs, err = filterWatchDirectories(watchDirs)
+	if err != nil {
+		return fmt.Errorf("failed to filter watch directories: %w", err)
+	}
+	logger.Logger.Debug("Watch directories after filtering", "dirs", watchDirs)
+
 	if len(watchDirs) == 0 {
 		return fmt.Errorf("no directories to watch found in watch mappings")
 	}
+
+	// Set up global exclusion patterns (use defaults if not configured)
+	globalExcludePatterns := cli.WatchExclude
+	if len(globalExcludePatterns) == 0 {
+		globalExcludePatterns = defaultWatchExcludePatterns
+	}
+	logger.Logger.Debug("Global watch exclusion patterns", "patterns", globalExcludePatterns)
 
 	// Get project name from current directory
 	projectName := "unknown"
@@ -209,20 +220,18 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	for {
 		select {
 		case input := <-stdinChan:
+			logger.Logger.Debug("watch stdin", "input", input)
 			switch input {
 			case "":
-				// User pressed Enter - run all tests
 				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
 				cmd := job.BuildJobAllCmd(resolvedJob)
 				runCommandArgs(cmd)
 				fmt.Print("\nplur> ")
 			case "reload":
-				// User requested process reload
 				logger.Logger.Debug("User requested process reload")
 				fmt.Println("Reloading plur...")
 
-				// Get current executable path
 				execPath, err := os.Executable()
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to reload: %v\n", err)
@@ -244,7 +253,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				fmt.Fprintf(os.Stderr, "Failed to exec new process: %v\n", err)
 				os.Exit(1)
 			case "debug":
-				// Toggle debug mode
 				logger.ToggleDebug()
 				if logger.IsDebugEnabled() {
 					fmt.Println("Debug output enabled")
@@ -254,7 +262,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 				}
 				fmt.Print("plur> ")
 			case "exit":
-				// User typed exit command
 				logger.Logger.Info("User requested exit")
 				fmt.Println("Exiting watch mode...")
 				return nil
@@ -280,6 +287,12 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
 
 			if event.EffectType != "modify" && event.EffectType != "create" {
+				continue
+			}
+
+			// Skip globally excluded paths (.git, node_modules, etc.)
+			if isGloballyExcluded(path, globalExcludePatterns) {
+				logger.Logger.Debug("Skipping globally excluded path", "path", path)
 				continue
 			}
 
@@ -353,4 +366,108 @@ func runCommandArgs(args []string) {
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
 	}
+}
+
+// filterWatchDirectories validates and filters watch directories:
+// 1. Security: Rejects paths that escape the project root (e.g., symlinks to "/")
+// 2. Deduplication: Removes symlinks pointing to the same actual directory
+// 3. Parent filtering: If dir A contains dir B, keeps only A
+//
+// Uses os.Root to safely confine operations to the working directory.
+func filterWatchDirectories(dirs []string) ([]string, error) {
+	if len(dirs) == 0 {
+		return dirs, nil
+	}
+
+	root, err := os.OpenRoot(".")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open root directory: %w", err)
+	}
+	defer root.Close()
+
+	// Step 1: Validate all directories are within root
+	type validDir struct {
+		path string
+		info os.FileInfo
+	}
+	valid := []validDir{}
+
+	for _, dir := range dirs {
+		info, err := root.Stat(dir)
+		if err != nil {
+			// Path escapes root or doesn't exist - skip with warning
+			logger.Logger.Warn("Skipping watch directory (escapes project root or doesn't exist)",
+				"dir", dir, "error", err)
+			continue
+		}
+		if !info.IsDir() {
+			logger.Logger.Warn("Skipping watch path (not a directory)", "path", dir)
+			continue
+		}
+		valid = append(valid, validDir{path: dir, info: info})
+	}
+
+	if len(valid) == 0 {
+		return []string{}, nil
+	}
+
+	// Step 2: Remove duplicates (symlinks to same location) using os.SameFile
+	deduped := []validDir{}
+	for _, v := range valid {
+		isDupe := false
+		for _, existing := range deduped {
+			if os.SameFile(v.info, existing.info) {
+				logger.Logger.Debug("Filtering duplicate watch directory",
+					"dir", v.path, "same_as", existing.path)
+				isDupe = true
+				break
+			}
+		}
+		if !isDupe {
+			deduped = append(deduped, v)
+		}
+	}
+
+	// Step 3: Filter subdirectories (if A contains B, keep only A)
+	// Sort by path length (shorter paths = likely parents)
+	sort.Slice(deduped, func(i, j int) bool {
+		return len(deduped[i].path) < len(deduped[j].path)
+	})
+
+	result := []string{}
+	for _, v := range deduped {
+		isSubdir := false
+		for _, parent := range result {
+			rel, err := filepath.Rel(parent, v.path)
+			// v is a subdirectory of parent if:
+			// - Rel() succeeds
+			// - result doesn't start with ".." (not escaping parent)
+			// - result isn't "." (same directory)
+			if err == nil && !strings.HasPrefix(rel, "..") && rel != "." {
+				logger.Logger.Debug("Filtering subdirectory of existing watch",
+					"subdir", v.path, "parent", parent)
+				isSubdir = true
+				break
+			}
+		}
+		if !isSubdir {
+			result = append(result, v.path)
+		}
+	}
+
+	return result, nil
+}
+
+// defaultWatchExcludePatterns returns the default patterns to exclude from watch events
+var defaultWatchExcludePatterns = []string{".git/**", "node_modules/**"}
+
+// isGloballyExcluded checks if a path matches any of the global exclusion patterns
+func isGloballyExcluded(path string, patterns []string) bool {
+	normalizedPath := filepath.ToSlash(path)
+	for _, pattern := range patterns {
+		if matched, _ := doublestar.Match(pattern, normalizedPath); matched {
+			return true
+		}
+	}
+	return false
 }

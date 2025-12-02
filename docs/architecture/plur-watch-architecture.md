@@ -7,23 +7,27 @@ The `plur watch` command provides automatic test execution when files change, us
 ## Key Components
 
 ### 1. WatcherManager (`watch/watcher_manager.go`)
+
 - Central orchestrator that manages multiple watcher processes
 - Creates one watcher process per directory (spec, lib, app)
 - Aggregates events from all watchers into a single event stream
 - Handles graceful shutdown and process cleanup
 
 ### 2. Watcher (`watch/watcher.go`)
+
 - Wrapper around the external watcher binary (C++ fsnotify implementation)
 - Each instance monitors a single directory
 - Communicates via JSON events over stdout/stderr
 - Keeps process alive via stdin pipe
 
 ### 3. FileMapper (`watch/file_mapper.go`)
+
 - Maps source files to their corresponding test files
 - Supports Rails conventions (app/models → spec/models)
 - Handles special cases (spec_helper.rb runs all specs)
 
 ### 4. Debouncer (`watch/debouncer.go`)
+
 - Prevents duplicate test runs when multiple files change rapidly
 - Configurable delay (default 100ms)
 - Batches related changes together
@@ -56,13 +60,39 @@ runSpecsOrDirectory() (execute tests)
 
 ## Multi-Process Design
 
-The key insight that led to this architecture: the watcher binary only processes the first path argument, so we spawn one process per directory:
+### Why Filter Overlapping Directories?
+
+The embedded [e-dant/watcher](https://github.com/e-dant/watcher) binary watches a directory
+**recursively** and emits events for **all** file changes within that tree. It has no
+built-in ignore or exclusion capability - every change is reported.
+
+This means if we start two watchers on overlapping paths (e.g., `.` and `lib/`), a change
+to `lib/foo.rb` would trigger events from *both* watchers, causing duplicate test executions.
+
+To prevent this, plur filters the directory list before spawning watchers:
+
+1. **Security validation**: Directories must be within project root (rejects symlinks escaping to `/`)
+2. **Symlink deduplication**: Multiple paths resolving to same directory are consolidated
+3. **Subdirectory filtering**: If a parent directory is watched, child directories are removed
+
+### Filtering Examples
+
+| Input directories | After filtering | Watchers |
+|-------------------|-----------------|----------|
+| `[., lib, spec]` | `[.]` | 1 (lib/spec are subdirs of .) |
+| `[lib, spec, app]` | `[lib, spec, app]` | 3 (siblings, no overlap) |
+| `[lib, lib/foo]` | `[lib]` | 1 (lib/foo is subdir of lib) |
+
+### Process Spawning
+
+After filtering, one watcher process is spawned per remaining directory:
 
 - `spec/` → watcher process 1
-- `lib/` → watcher process 2  
+- `lib/` → watcher process 2
 - `app/` → watcher process 3 (if exists)
 
-All events are aggregated into a single channel for unified processing.
+All events are aggregated into a single channel for unified processing in Go, where the
+actual file matching against watch patterns occurs.
 
 ## Event Types
 
@@ -78,12 +108,14 @@ The watcher binary emits JSON events with the following structure:
 ```
 
 ### Path Types
+
 - `"watcher"` - Internal watcher lifecycle events (live/die)
 - `"file"` - File system changes
 - `"dir"` - Directory changes (ignored)
 - `"other"` - Other fs objects (ignored)
 
 ### Effect Types
+
 - `"create"` - File created
 - `"modify"` - File modified (content change)
 - `"destroy"` - File deleted
@@ -114,11 +146,13 @@ The downloaded binaries are stored in `plur/embedded/watcher/` and embedded into
 ## Configuration
 
 ### Debounce Delay
+
 - Default: 100ms
 - Configurable via `--debounce` flag
 - Example: `plur watch --debounce 250`
 
 ### Timeout
+
 - For testing/CI: `--timeout` flag sets automatic exit
 - Example: `plur watch --timeout 60` (exits after 60 seconds)
 
