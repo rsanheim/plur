@@ -19,6 +19,7 @@ module Plur
       :message,
       :seed,
       :dump_failures,
+      :dump_pending,
       :dump_summary
     )
 
@@ -106,6 +107,15 @@ module Plur
       output_row(
         type: :dump_failures,
         formatted_output: notification.fully_formatted_failed_examples
+      )
+    end
+
+    def dump_pending(notification)
+      return if notification.pending_notifications.empty?
+
+      output_row(
+        type: :dump_pending,
+        formatted_output: notification.fully_formatted_pending_examples
       )
     end
 

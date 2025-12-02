@@ -110,6 +110,14 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 				})
 			}
 
+		case "dump_pending":
+			// Handle formatted pending output from RSpec
+			if msg.FormattedOutput != "" {
+				notifications = append(notifications, types.FormattedPendingNotification{
+					Content: msg.FormattedOutput,
+				})
+			}
+
 		case "dump_summary":
 			notifications = append(notifications, types.SuiteNotification{
 				Event:        types.SuiteFinished,

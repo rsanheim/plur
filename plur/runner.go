@@ -256,6 +256,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		PendingCount:      result.PendingCount,
 		Tests:             result.Tests,
 		FormattedFailures: result.FormattedFailures,
+		FormattedPending:  result.FormattedPending,
 		FormattedSummary:  result.FormattedSummary,
 	}
 }
