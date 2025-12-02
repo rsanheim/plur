@@ -81,20 +81,18 @@ RSpec.describe "Plur parallel execution" do
           system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
         end
       end
-      result = nil
       matcher = {
         stdout: ->(recorded, actual) { normalize_test_output(recorded) == normalize_test_output(actual) }
       }
       result = Backspin.capture("parallel_execution_progress_output", mode: :verify, matcher: matcher) do
-          chdir(failing_specs_path) do
-            run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
-          end
+        chdir(failing_specs_path) do
+          run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
         end
+      end
       pp result
     end
 
     it "shows combined progress from all workers" do
-
       chdir(failing_specs_path) do
         result = run_plur_allowing_errors("-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
 
