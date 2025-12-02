@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  ruby: circleci/ruby@2.5.3
+  ruby: circleci/ruby@2.6.0
   go: circleci/go@3.0.3
   gh: circleci/github-cli@2.7.2
 
@@ -76,7 +76,7 @@ jobs:
 
   test-ruby-integration:
     docker:
-      - image: cimg/ruby:3.4.5
+      - image: cimg/ruby:3.4.7
     resource_class: large
     working_directory: ~/project/
     steps:
