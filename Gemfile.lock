@@ -3,7 +3,7 @@ GEM
   specs:
     ast (2.4.3)
     attr_extras (7.1.0)
-    backspin (0.7.0)
+    backspin (0.7.1)
       ostruct
       rspec-mocks (~> 3)
     benchmark (0.5.0)
