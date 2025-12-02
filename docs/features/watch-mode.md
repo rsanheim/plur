@@ -66,14 +66,14 @@ By default, events from certain directories are ignored to reduce noise:
 * `.git/**` - Git internal files
 * `node_modules/**` - JavaScript dependencies
 
-These exclusions are applied globally before any watch rules are evaluated. You can customize this via the `watch_exclude` config option:
+These patterns are applied globally before any watch rules are evaluated. You can customize this via the `watch_ignore` config option:
 
 ```toml
 # .plur.toml
-watch_exclude = [".git/**", "node_modules/**", "vendor/**", ".bundle/**"]
+watch_ignore = [".git/**", "node_modules/**", "vendor/**", ".bundle/**"]
 ```
 
-Setting `watch_exclude` replaces the defaults entirely - include `.git/**` and `node_modules/**` if you still want them excluded.
+Setting `watch_ignore` replaces the defaults entirely - include `.git/**` and `node_modules/**` if you still want them ignored.
 
 ## Architecture
 

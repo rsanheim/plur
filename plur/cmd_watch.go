@@ -86,12 +86,12 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		return fmt.Errorf("no directories to watch found in watch mappings")
 	}
 
-	// Set up global exclusion patterns (use defaults if not configured)
-	globalExcludePatterns := watchCmd.Exclude
-	if len(globalExcludePatterns) == 0 {
-		globalExcludePatterns = watch.DefaultExcludePatterns
+	// Set up global ignore patterns (use defaults if not configured)
+	globalIgnorePatterns := watchCmd.Ignore
+	if len(globalIgnorePatterns) == 0 {
+		globalIgnorePatterns = watch.DefaultIgnorePatterns
 	}
-	logger.Logger.Debug("Global watch exclusion patterns", "patterns", globalExcludePatterns)
+	logger.Logger.Debug("Global watch ignore patterns", "patterns", globalIgnorePatterns)
 
 	// Get project name from current directory
 	projectName := "unknown"
@@ -250,9 +250,9 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				continue
 			}
 
-			// Skip globally excluded paths (.git, node_modules, etc.)
-			if watch.IsExcluded(path, globalExcludePatterns) {
-				logger.Logger.Debug("Skipping globally excluded path", "path", path)
+			// Skip globally ignored paths (.git, node_modules, etc.)
+			if watch.IsIgnored(path, globalIgnorePatterns) {
+				logger.Logger.Debug("Skipping globally ignored path", "path", path)
 				continue
 			}
 

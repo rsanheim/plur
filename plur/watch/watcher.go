@@ -157,8 +157,8 @@ func (w *Watcher) readErrors(stderr io.Reader) {
 	}
 }
 
-// DefaultExcludePatterns are the default patterns to exclude from watch events
-var DefaultExcludePatterns = []string{".git/**", "node_modules/**"}
+// DefaultIgnorePatterns are the default patterns to ignore from watch events
+var DefaultIgnorePatterns = []string{".git/**", "node_modules/**"}
 
 // RunCommand runs a command from a slice of arguments
 func RunCommand(args []string) {
@@ -203,8 +203,8 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 	return nil
 }
 
-// IsExcluded checks if a path matches any of the exclusion patterns
-func IsExcluded(path string, patterns []string) bool {
+// IsIgnored checks if a path matches any of the ignore patterns
+func IsIgnored(path string, patterns []string) bool {
 	normalizedPath := filepath.ToSlash(path)
 	for _, pattern := range patterns {
 		if matched, _ := doublestar.Match(pattern, normalizedPath); matched {

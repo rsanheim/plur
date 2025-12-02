@@ -12,7 +12,7 @@ type ConfigInitCmd struct {
 	Template string `help:"Template to use (simple, rails, minitest)" default:"simple"`
 }
 
-func (c *ConfigInitCmd) Run(parent *PlurCLI) error {
+func (c *ConfigInitCmd) Run(parent *ConfigCmd, globals *PlurCLI) error {
 	var configPath string
 	var configContent string
 

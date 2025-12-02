@@ -102,7 +102,7 @@ func TestFilterDirectories_NonexistentDirSkipped(t *testing.T) {
 	assert.Equal(t, []string{"exists"}, result)
 }
 
-func TestIsExcluded(t *testing.T) {
+func TestIsIgnored(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
@@ -140,7 +140,7 @@ func TestIsExcluded(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "empty patterns excludes nothing",
+			name:     "empty patterns ignores nothing",
 			path:     ".git/config",
 			patterns: []string{},
 			expected: false,
@@ -155,20 +155,20 @@ func TestIsExcluded(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := IsExcluded(tt.path, tt.patterns)
+			result := IsIgnored(tt.path, tt.patterns)
 			assert.Equal(t, tt.expected, result, "path: %q, patterns: %v", tt.path, tt.patterns)
 		})
 	}
 }
 
-func TestDefaultExcludePatterns(t *testing.T) {
+func TestDefaultIgnorePatterns(t *testing.T) {
 	// Verify defaults are sensible
-	assert.Contains(t, DefaultExcludePatterns, ".git/**")
-	assert.Contains(t, DefaultExcludePatterns, "node_modules/**")
-	assert.Len(t, DefaultExcludePatterns, 2)
+	assert.Contains(t, DefaultIgnorePatterns, ".git/**")
+	assert.Contains(t, DefaultIgnorePatterns, "node_modules/**")
+	assert.Len(t, DefaultIgnorePatterns, 2)
 
 	// Verify they actually work
-	assert.True(t, IsExcluded(".git/config", DefaultExcludePatterns))
-	assert.True(t, IsExcluded("node_modules/lodash/index.js", DefaultExcludePatterns))
-	assert.False(t, IsExcluded("lib/user.rb", DefaultExcludePatterns))
+	assert.True(t, IsIgnored(".git/config", DefaultIgnorePatterns))
+	assert.True(t, IsIgnored("node_modules/lodash/index.js", DefaultIgnorePatterns))
+	assert.False(t, IsIgnored("lib/user.rb", DefaultIgnorePatterns))
 }

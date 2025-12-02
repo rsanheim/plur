@@ -63,7 +63,7 @@ name = "go-source"
 source = "**/*.go"
 targets = ["{{dir_relative}}"]
 jobs = ["go-test"]
-exclude = ["vendor/**", "**/testdata/**"]
+ignore = ["vendor/**", "**/testdata/**"]
 
 # Go: test files run themselves
 [[defaults.watch]]
@@ -71,4 +71,4 @@ name = "go-tests"
 source = "**/*_test.go"
 targets = ["{{dir_relative}}"]
 jobs = ["go-test"]
-exclude = ["vendor/**"]
+ignore = ["vendor/**"]

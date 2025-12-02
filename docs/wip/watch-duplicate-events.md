@@ -76,7 +76,7 @@ Event filtering (PathType, EffectType)
     ↓
 watch.FindTargetsForFile() maps file → targets
     ↓
-EventProcessor.ProcessPath() matches patterns, checks excludes
+EventProcessor.ProcessPath() matches patterns, checks ignores
     ↓
 executeJob() runs tests
 ```
@@ -294,9 +294,9 @@ case event := <-manager.Events():
 // Always start single watcher at project root
 watchDirs = []string{"."}
 
-// In event loop, check against global excludes
-globalExcludes := []string{".git/**", "node_modules/**", "vendor/**", "tmp/**"}
-if isExcludedByGlobal(path, globalExcludes) {
+// In event loop, check against global ignores
+globalIgnores := []string{".git/**", "node_modules/**", "vendor/**", "tmp/**"}
+if isIgnoredByGlobal(path, globalIgnores) {
     continue
 }
 ```

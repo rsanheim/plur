@@ -163,7 +163,7 @@ func TestEventProcessorMultipleTargets(t *testing.T) {
 	assert.Contains(t, result["rspec"], filepath.FromSlash("spec/lib/user_spec.rb"))
 }
 
-func TestEventProcessorExcludePatterns(t *testing.T) {
+func TestEventProcessorIgnorePatterns(t *testing.T) {
 	jobs := map[string]job.Job{
 		"rspec": {
 			Name: "rspec",
@@ -177,7 +177,7 @@ func TestEventProcessorExcludePatterns(t *testing.T) {
 			Source:  "lib/**/*.rb",
 			Targets: []string{"spec/{{match}}_spec.rb"},
 			Jobs:    []string{"rspec"},
-			Exclude: []string{"lib/generators/**", "lib/vendor/**"},
+			Ignore: []string{"lib/generators/**", "lib/vendor/**"},
 		},
 	}
 
@@ -194,12 +194,12 @@ func TestEventProcessorExcludePatterns(t *testing.T) {
 			shouldMatch: true,
 		},
 		{
-			name:        "generators file (excluded)",
+			name:        "generators file (ignored)",
 			path:        "lib/generators/model.rb",
 			shouldMatch: false,
 		},
 		{
-			name:        "vendor file (excluded)",
+			name:        "vendor file (ignored)",
 			path:        "lib/vendor/gem.rb",
 			shouldMatch: false,
 		},
