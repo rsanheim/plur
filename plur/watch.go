@@ -57,18 +57,9 @@ func executeJob(j job.Job, targetFiles []string, cwd string) error {
 
 	// Build command for each target file
 	for _, target := range targetFiles {
-		// Make target relative to cwd if it's absolute
-		relTarget := target
-		if filepath.IsAbs(target) {
-			if rel, err := filepath.Rel(cwd, target); err == nil {
-				relTarget = rel
-			}
-		}
-
-		cmd := job.BuildJobCmd(j, []string{relTarget})
+		cmd := job.BuildJobCmd(j, []string{target})
 		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
 
-		// Execute command
 		execCmd := exec.Command(cmd[0], cmd[1:]...)
 		execCmd.Dir = cwd
 		execCmd.Stdout = os.Stdout
