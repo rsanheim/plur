@@ -128,9 +128,10 @@ type WatchCmd struct {
 }
 
 type WatchRunCmd struct {
-	Timeout  int    `help:"Exit after specified seconds (default: run until Ctrl-C)"`
-	Debounce int    `help:"Debounce delay in milliseconds" default:"100"`
-	Use      string `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Timeout  int      `help:"Exit after specified seconds (default: run until Ctrl-C)"`
+	Debounce int      `help:"Debounce delay in milliseconds" default:"100"`
+	Use      string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Exclude  []string `help:"Patterns to exclude from watch events (default: .git/**, node_modules/**)" name:"exclude"`
 }
 
 func (w *WatchRunCmd) Run(parent *PlurCLI) error {
@@ -207,7 +208,6 @@ type PlurCLI struct {
 	// Job and watch configuration
 	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
 	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
-	WatchExclude  []string             `help:"Global patterns to exclude from watch events (default: .git/**, node_modules/**)" hidden:"" name:"watch_exclude" toml:"watch_exclude"`
 
 	// Store the built global config
 	globalConfig *config.GlobalConfig `kong:"-"`

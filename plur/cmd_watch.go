@@ -87,7 +87,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, watchCmd *WatchRunCmd
 	}
 
 	// Set up global exclusion patterns (use defaults if not configured)
-	globalExcludePatterns := cli.WatchExclude
+	globalExcludePatterns := watchCmd.Exclude
 	if len(globalExcludePatterns) == 0 {
 		globalExcludePatterns = watch.DefaultExcludePatterns
 	}
