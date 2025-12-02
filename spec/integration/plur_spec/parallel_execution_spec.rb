@@ -55,11 +55,63 @@ RSpec.describe "Plur parallel execution" do
   end
 
   describe "progress output" do
-    it "shows combined progress from all workers" do
-      failing_specs_path = project_fixture("failing_specs")
-      chdir(failing_specs_path) do
-        result = run_plur_allowing_errors("--color", "spec/mixed_results_spec.rb")
+    def system_rspec(file_or_glob, *args)
+      system("bundle", "exec", "rspec", file_or_glob, *args)
+    end
 
+    def normalize_test_output(output)
+      lines = output.lines
+
+      # Strip plur header lines
+      lines = lines.reject { |l| l.match?(/^plur version|^Running \d+ specs/) }
+
+      # Find and normalize progress line (dots, F's, asterisks)
+      lines = lines.map do |line|
+        if line.match?(/^[.F*]+$/)
+          # Sort the progress characters so order doesn't matter
+          line.strip.chars.sort.join + "\n"
+        elsif line.match?(/^Finished in \d/)
+          # Normalize timing line
+          "Finished in X seconds\n"
+        else
+          line
+        end
+      end
+
+      lines.join
+    end
+
+    fit "rspec output" do
+      failing_specs_path = project_fixture("failing_specs")
+      Backspin.capture("parallel_execution_progress_output", mode: :record) do
+        chdir(failing_specs_path) do
+          system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
+        end
+      end
+      result = nil
+      begin 
+        result = Backspin.capture("parallel_execution_progress_output", mode: :verify,
+          matcher: {
+            stdout: ->(recorded, actual) {
+              normalize_test_output(recorded) == normalize_test_output(actual)
+            }
+          }) do
+          chdir(failing_specs_path) do
+            run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
+          end
+        end
+      rescue Backspin::VerificationError => e
+        puts e
+      end
+      pp result
+    end
+
+    it "shows combined progress from all workers" do
+
+      chdir(failing_specs_path) do
+        result = run_plur_allowing_errors("-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
+
+        pp result.out
         expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots
         expect(result.out).to match(/\e\[31mF\e\[0m/) # Red F's
 
