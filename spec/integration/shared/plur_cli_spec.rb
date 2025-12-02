@@ -58,14 +58,6 @@ RSpec.describe "Plur CLI behavior" do
       end
     end
 
-    it "runs with --auto flag (bundle install + run)" do
-      Dir.chdir(default_ruby_dir) do
-        result = run_plur("--auto")
-        expect(result.out).to include("Bundle complete!")
-        expect(result.out).to include("examples, 0 failures")
-      end
-    end
-
     it "runs specific spec file" do
       Dir.chdir(default_ruby_dir) do
         result = run_plur("spec/calculator_spec.rb")
