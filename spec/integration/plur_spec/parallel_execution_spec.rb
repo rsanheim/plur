@@ -76,7 +76,7 @@ RSpec.describe "Plur parallel execution" do
 
     fit "rspec output" do
       failing_specs_path = project_fixture("failing_specs")
-      Backspin.capture("parallel_execution_progress_output", mode: :record) do
+      Backspin.capture("parallel_execution_progress_output") do
         chdir(failing_specs_path) do
           system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
         end

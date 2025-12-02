@@ -14,6 +14,10 @@ require "backspin"
 ROOT_PATH = Pathname.new(__dir__).parent
 DEFAULT_RUBY_DIR = ROOT_PATH.join("fixtures", "projects", "default-ruby")
 
+Backspin.configure do |config|
+  config.backspin_dir = ROOT_PATH.join("spec", "backspin")
+end
+
 # Load all support files
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 

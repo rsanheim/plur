@@ -1,0 +1,122 @@
+---
+first_recorded_at: '2025-12-02T14:35:36-06:00'
+format_version: '2.0'
+commands:
+- command_type: Backspin::Capturer
+  args: []
+  stdout: |+
+    .F.F.***FFFFFF
+
+    Pending: (Failures listed here are expected and do not affect your suite's status)
+
+      1) MixedResults pending examples is pending
+         # Not implemented yet
+         Failure/Error: fail
+         RuntimeError:
+         # ./spec/mixed_results_spec.rb:27:in 'block (3 levels) in <top (required)>'
+
+      2) MixedResults pending examples is skipped
+         # Temporarily skipped with xit
+         # ./spec/mixed_results_spec.rb:30
+
+      3) MixedResults pending examples is also pending
+         # Waiting for feature
+         Failure/Error: expect(true).to be false
+
+           expected false
+                got true
+         # ./spec/mixed_results_spec.rb:35:in 'block (3 levels) in <top (required)>'
+
+    Failures:
+
+      1) MixedResults some pass, some fail fails this test
+         Failure/Error: expect("foo").to eq("bar")
+
+           expected: "bar"
+                got: "foo"
+
+           (compared using ==)
+         # ./spec/mixed_results_spec.rb:8:in 'block (3 levels) in <top (required)>'
+
+      2) MixedResults some pass, some fail has an error
+         Failure/Error: raise "Unexpected error"
+
+         RuntimeError:
+           Unexpected error
+         # ./spec/mixed_results_spec.rb:16:in 'block (3 levels) in <top (required)>'
+
+      3) ExpectationFailures basic failures fails with incorrect math
+         Failure/Error: expect(1 + 1).to eq(3)
+
+           expected: 3
+                got: 2
+
+           (compared using ==)
+         # ./spec/expectation_failures_spec.rb:4:in 'block (3 levels) in <top (required)>'
+
+      4) ExpectationFailures basic failures fails with string mismatch
+         Failure/Error: expect("hello").to eq("goodbye")
+
+           expected: "goodbye"
+                got: "hello"
+
+           (compared using ==)
+         # ./spec/expectation_failures_spec.rb:8:in 'block (3 levels) in <top (required)>'
+
+      5) ExpectationFailures basic failures fails with false expectation
+         Failure/Error: expect(true).to be false
+
+           expected false
+                got true
+         # ./spec/expectation_failures_spec.rb:12:in 'block (3 levels) in <top (required)>'
+
+      6) ExpectationFailures complex failures fails with array mismatch
+         Failure/Error: expect([1, 2, 3]).to eq([4, 5, 6])
+
+           expected: [4, 5, 6]
+                got: [1, 2, 3]
+
+           (compared using ==)
+         # ./spec/expectation_failures_spec.rb:18:in 'block (3 levels) in <top (required)>'
+
+      7) ExpectationFailures complex failures fails with hash mismatch
+         Failure/Error: expect({a: 1, b: 2}).to eq({c: 3, d: 4})
+
+           expected: {c: 3, d: 4}
+                got: {a: 1, b: 2}
+
+           (compared using ==)
+
+           Diff:
+           @@ -1,2 +1,2 @@
+           -:c => 3,
+           -:d => 4,
+           +:a => 1,
+           +:b => 2,
+         # ./spec/expectation_failures_spec.rb:22:in 'block (3 levels) in <top (required)>'
+
+      8) ExpectationFailures complex failures fails with nil check
+         Failure/Error: expect(nil).not_to be_nil
+
+           expected: not nil
+                got: nil
+         # ./spec/expectation_failures_spec.rb:26:in 'block (3 levels) in <top (required)>'
+
+    Finished in 0.01004 seconds (files took 0.03849 seconds to load)
+    14 examples, 8 failures, 3 pending
+
+    Failed examples:
+
+    rspec ./spec/mixed_results_spec.rb:7 # MixedResults some pass, some fail fails this test
+    rspec ./spec/mixed_results_spec.rb:15 # MixedResults some pass, some fail has an error
+    rspec ./spec/expectation_failures_spec.rb:3 # ExpectationFailures basic failures fails with incorrect math
+    rspec ./spec/expectation_failures_spec.rb:7 # ExpectationFailures basic failures fails with string mismatch
+    rspec ./spec/expectation_failures_spec.rb:11 # ExpectationFailures basic failures fails with false expectation
+    rspec ./spec/expectation_failures_spec.rb:17 # ExpectationFailures complex failures fails with array mismatch
+    rspec ./spec/expectation_failures_spec.rb:21 # ExpectationFailures complex failures fails with hash mismatch
+    rspec ./spec/expectation_failures_spec.rb:25 # ExpectationFailures complex failures fails with nil check
+
+  stderr: ''
+  status: 0
+  recorded_at: '2025-12-02T14:35:36-06:00'
+...
