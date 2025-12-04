@@ -131,6 +131,18 @@ func renumberFailures(output string) string {
 	return output
 }
 
+// renumberPending replaces {{PNUM}} placeholders with incrementing numbers.
+// The Ruby formatter outputs {{PNUM}} instead of actual numbers so plur can
+// correctly number pending specs after aggregating from multiple workers.
+func renumberPending(output string) string {
+	count := 0
+	for strings.Contains(output, "{{PNUM}}") {
+		count++
+		output = strings.Replace(output, "{{PNUM}}", strconv.Itoa(count), 1)
+	}
+	return output
+}
+
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	parser, err := currentJob.CreateParser()
@@ -141,8 +153,10 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	}
 
 	// Print pending section first (RSpec outputs pending before failures)
+	// Add single "Pending:" header and renumber {{PNUM}} placeholders
 	if summary.FormattedPending != "" {
-		fmt.Print(summary.FormattedPending)
+		fmt.Print("\nPending: (Failures listed here are expected and do not affect your suite's status)\n")
+		fmt.Print(renumberPending(summary.FormattedPending))
 	}
 
 	// For minitest with failures, print the raw output which contains failure details

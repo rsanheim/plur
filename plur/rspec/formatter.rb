@@ -99,8 +99,9 @@ module Plur
       )
     end
 
-    # Placeholder for failure numbers - Go replaces with actual incrementing numbers
+    # Placeholders for numbers - Go replaces with actual incrementing numbers
     FAILURE_PLACEHOLDER = "{{FNUM}}"
+    PENDING_PLACEHOLDER = "{{PNUM}}"
 
     # Sends formatted failures WITHOUT "Failures:" header (Go adds that once).
     # Uses {{FNUM}} placeholder instead of actual numbers since each formatter
@@ -123,12 +124,23 @@ module Plur
       )
     end
 
+    # Sends formatted pending WITHOUT "Pending:" header (Go adds that once).
+    # Uses {{PNUM}} placeholder instead of actual numbers since each formatter
+    # runs in its own process and can't know the global pending count.
     def dump_pending(notification)
       return if notification.pending_notifications.empty?
 
+      formatted_without_headers = ""
+      notification.pending_notifications.each do |n|
+        formatted = n.fully_formatted(0)
+        # Replace "  0)" with "  {{PNUM}})" to preserve indentation
+        formatted = formatted.sub(/\n(\s*)0\)/, "\n\\1#{PENDING_PLACEHOLDER})")
+        formatted_without_headers += formatted
+      end
+
       output_row(
         type: :dump_pending,
-        formatted_output: notification.fully_formatted_pending_examples
+        formatted_output: formatted_without_headers
       )
     end
 

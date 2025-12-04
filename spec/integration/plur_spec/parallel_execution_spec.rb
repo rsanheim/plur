@@ -54,6 +54,24 @@ RSpec.describe "Plur parallel execution" do
     end
   end
 
+  describe "pending output" do
+    it "shows single Pending header with multi-worker" do
+      chdir(project_fixture("failing_specs")) do
+        result = run_plur_allowing_errors("-n", "2",
+          "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
+
+        # Exactly ONE "Pending:" header (not one per worker)
+        pending_headers = result.out.scan(/^Pending:/).count
+        expect(pending_headers).to eq(1), "Expected 1 Pending header, got #{pending_headers}"
+
+        # Sequential numbering across workers (mixed_results_spec.rb has 3 pending)
+        expect(result.out).to match(/1\).*pending/i)
+        expect(result.out).to match(/2\).*pending/i)
+        expect(result.out).to match(/3\).*pending/i)
+      end
+    end
+  end
+
   describe "progress output" do
     let(:failing_specs_path) { project_fixture("failing_specs") }
     def system_rspec(file_or_glob, *args)

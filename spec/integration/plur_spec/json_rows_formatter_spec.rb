@@ -192,6 +192,35 @@ RSpec.describe Plur::JsonRowsFormatter do
     end
   end
 
+  describe "#dump_pending" do
+    it "outputs a dump_pending message when there are pending specs" do
+      # fully_formatted(0) returns the formatted pending with "0)" as index
+      # The formatter replaces "0)" with "{{PNUM}})" for Go to renumber
+      pending_example = double("pending")
+      allow(pending_example).to receive(:fully_formatted).with(0).and_return("\n  0) Example pending\n")
+
+      notification = double("notification", pending_notifications: [pending_example])
+
+      formatter.dump_pending(notification)
+
+      messages = json_messages
+      expect(messages.size).to eq(1)
+      expect(messages[0]).to eq({
+        "type" => "dump_pending",
+        "formatted_output" => "\n  {{PNUM}}) Example pending\n"
+      })
+    end
+
+    it "outputs nothing when there are no pending specs" do
+      notification = double("notification", pending_notifications: [])
+
+      formatter.dump_pending(notification)
+
+      messages = json_messages
+      expect(messages).to be_empty
+    end
+  end
+
   describe "#dump_summary" do
     it "outputs a dump_summary message" do
       summary = double("summary",
