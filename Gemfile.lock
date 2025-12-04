@@ -2,7 +2,6 @@ GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.3)
-    attr_extras (7.1.0)
     backspin (0.7.1)
       ostruct
       rspec-mocks (~> 3)
@@ -54,8 +53,6 @@ GEM
       racc
     pastel (0.8.0)
       tty-color (~> 0.5)
-    patience_diff (1.2.0)
-      optimist (~> 3.0)
     prism (1.6.0)
     pry (0.15.2)
       coderay (~> 1.1)
@@ -114,10 +111,6 @@ GEM
     standard-performance (1.8.0)
       lint_roller (~> 1.1)
       rubocop-performance (~> 1.25.0)
-    super_diff (0.17.0)
-      attr_extras (>= 6.2.4)
-      diff-lcs
-      patience_diff
     thor (1.4.0)
     timecop (0.9.10)
     tty-color (0.6.0)
@@ -144,7 +137,6 @@ DEPENDENCIES
   rake
   rspec (~> 3)
   standard
-  super_diff
   timecop
   tty-command
   turbo_tests

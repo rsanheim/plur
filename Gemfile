@@ -9,7 +9,6 @@ gem "parallel", require: false
 gem "rake"
 gem "rspec", "~> 3"
 gem "standard"
-gem "super_diff"
 gem "timecop", require: false
 gem "tty-command"
 gem "turbo_tests", require: false

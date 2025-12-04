@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rsanheim/plur/job"
@@ -117,6 +119,18 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 	return summary
 }
 
+// renumberFailures replaces {{FNUM}} placeholders with incrementing numbers.
+// The Ruby formatter outputs {{FNUM}} instead of actual numbers so plur can
+// correctly number failures after aggregating from multiple workers.
+func renumberFailures(output string) string {
+	count := 0
+	for strings.Contains(output, "{{FNUM}}") {
+		count++
+		output = strings.Replace(output, "{{FNUM}}", strconv.Itoa(count), 1)
+	}
+	return output
+}
+
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	parser, err := currentJob.CreateParser()
@@ -141,8 +155,9 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 			}
 		}
 	} else if summary.HasFailures && summary.FormattedFailures != "" {
-		// For RSpec, use the formatted failures
-		fmt.Print(summary.FormattedFailures)
+		// Add single "Failures:" header and renumber {{FNUM}} placeholders
+		fmt.Print("\nFailures:\n")
+		fmt.Print(renumberFailures(summary.FormattedFailures))
 	}
 
 	// Print summary

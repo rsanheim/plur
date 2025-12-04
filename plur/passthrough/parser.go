@@ -30,11 +30,6 @@ func (p *Parser) FormatSummary(suite *types.SuiteNotification, totalExamples int
 	return ""
 }
 
-// FormatFailures returns empty string since we don't format failures
-func (p *Parser) FormatFailures(failures []types.TestCaseNotification) string {
-	return ""
-}
-
 // FormatFailuresList returns empty string since we don't format failure lists
 func (p *Parser) FormatFailuresList(failures []types.TestCaseNotification) string {
 	return ""

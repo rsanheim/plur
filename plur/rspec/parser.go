@@ -185,38 +185,6 @@ func (p *outputParser) parseStreamExample(msgType string, ex *StreamExample) typ
 	return notification
 }
 
-// FormatFailures formats individual failure details in RSpec style
-func (p *outputParser) FormatFailures(failures []types.TestCaseNotification) string {
-	// RSpec provides pre-formatted failures via FormattedFailuresNotification
-	// This method is only used as a fallback
-	if len(failures) == 0 {
-		return ""
-	}
-
-	var sb strings.Builder
-	sb.WriteString("\nFailures:\n")
-
-	// Convert TestCaseNotification to FailureDetail and use existing formatter
-	for i, failure := range failures {
-		detail := FailureDetail{
-			Description: failure.FullDescription,
-			FilePath:    failure.FilePath,
-			LineNumber:  failure.LineNumber,
-		}
-
-		if failure.Exception != nil {
-			detail.ErrorClass = failure.Exception.Class
-			detail.Message = failure.Exception.Message
-			detail.Backtrace = failure.Exception.Backtrace
-		}
-
-		sb.WriteString(FormatFailure(i+1, detail))
-		sb.WriteString("\n") // Extra line between failures
-	}
-
-	return sb.String()
-}
-
 // FormatFailuresList formats a list of failures with file:line references for re-running
 func (p *outputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
 	if len(failures) == 0 {

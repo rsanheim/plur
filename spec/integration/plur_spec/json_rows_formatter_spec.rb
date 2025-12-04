@@ -165,9 +165,12 @@ RSpec.describe Plur::JsonRowsFormatter do
 
   describe "#dump_failures" do
     it "outputs a dump_failures message when there are failures" do
-      notification = double("notification",
-        failure_notifications: [double("failure")],
-        fully_formatted_failed_examples: "Failures:\n  1) Example failed\n")
+      # fully_formatted(0) returns the formatted failure with "0)" as index
+      # The formatter replaces "0)" with "{{FNUM}})" for Go to renumber
+      failure = double("failure")
+      allow(failure).to receive(:fully_formatted).with(0).and_return("\n  0) Example failed\n")
+
+      notification = double("notification", failure_notifications: [failure])
 
       formatter.dump_failures(notification)
 
@@ -175,7 +178,7 @@ RSpec.describe Plur::JsonRowsFormatter do
       expect(messages.size).to eq(1)
       expect(messages[0]).to eq({
         "type" => "dump_failures",
-        "formatted_output" => "Failures:\n  1) Example failed\n"
+        "formatted_output" => "\n  {{FNUM}}) Example failed\n"
       })
     end
 

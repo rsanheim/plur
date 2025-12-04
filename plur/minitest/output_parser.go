@@ -224,12 +224,6 @@ func isSummaryLine(line string) bool {
 	return summaryRegex.MatchString(line)
 }
 
-// FormatFailures returns empty string since minitest formats its own failures
-func (p *outputParser) FormatFailures(failures []types.TestCaseNotification) string {
-	// Minitest already formats failures in its output, so we don't reformat
-	return ""
-}
-
 // FormatFailuresList returns empty string since minitest doesn't use failure lists
 func (p *outputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
 	// Minitest doesn't typically show a re-run command list like RSpec
