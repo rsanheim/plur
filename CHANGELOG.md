@@ -1,6 +1,11 @@
 # plur CHANGELOG
 
 ## Unreleased
+
+## v0.17.2 - 2025-12-04
+* Fix duplicate Failures headers in multi-worker output [#149](https://github.com/rsanheim/plur/pull/149)
+
+## v0.17.1 - 2025-12-04
 * Pending specs output [#147](https://github.com/rsanheim/plur/pull/147)
 
 ## v0.17.0 - 2025-12-02
