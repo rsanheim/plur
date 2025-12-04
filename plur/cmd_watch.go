@@ -52,8 +52,13 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}
 
-	// Build jobs map for FindTargetsForFile (expects map)
-	jobs := map[string]job.Job{resolvedJob.Name: resolvedJob}
+	// Build jobs map for FindTargetsForFile - include all user-defined jobs
+	// plus the resolved job (for when auto-detection is used)
+	jobs := make(map[string]job.Job)
+	for name, j := range cli.Job {
+		jobs[name] = j
+	}
+	jobs[resolvedJob.Name] = resolvedJob
 
 	// Log watch configuration
 	if len(watches) > 0 {

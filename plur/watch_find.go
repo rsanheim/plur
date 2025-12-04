@@ -24,8 +24,12 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}
 
-	// Build jobs map for FindTargetsForFile
-	jobs := map[string]job.Job{resolvedJob.Name: resolvedJob}
+	// Build jobs map for FindTargetsForFile - include all user-defined jobs
+	jobs := make(map[string]job.Job)
+	for name, j := range globals.Job {
+		jobs[name] = j
+	}
+	jobs[resolvedJob.Name] = resolvedJob
 
 	if len(watches) == 0 {
 		fmt.Println("No watch mappings configured.")
