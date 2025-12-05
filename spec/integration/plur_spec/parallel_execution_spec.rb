@@ -97,14 +97,17 @@ RSpec.describe "Plur parallel execution" do
       lines.sort.reject { |line| line.strip.empty? }.join
     end
 
-    it "matches rspec output" do
-      matcher = {
-        stdout: ->(recorded, actual) { normalize_test_output(recorded) == normalize_test_output(actual) }
-      }
+    it "matches rspec output and has correct pending and failure output" do
       chdir(failing_specs_path) do
-        rspec_output, rspec_stderr, rspec_status = system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
-        plur_output, plur_stderr, plur_status = run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :null)
-        expect(normalize_test_output(rspec_output)).to eq(normalize_test_output(plur_output))
+        rspec_output, _, _ = system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
+        plur_output, _, _ = run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :null)
+        # ensure we get a single Pending: and Failure: header for plur, not one per worker
+        pending_headers = plur_output.scan(/^Pending:/).count
+        failure_headers = plur_output.scan(/^Failures:/).count
+        expect(pending_headers).to eq(1), "Expected 1 Pending header, got #{pending_headers}"
+        expect(failure_headers).to eq(1), "Expected 1 Failure header, got #{failure_headers}"
+        # verify normalized output against rspec
+        expect(normalize_test_output(plur_output)).to eq(normalize_test_output(rspec_output))
       end
     end
 
