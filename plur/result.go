@@ -124,9 +124,9 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 // correctly number failures after aggregating from multiple workers.
 func renumberFailures(output string) string {
 	count := 0
-	for strings.Contains(output, "{{FNUM}}") {
+	for strings.Contains(output, "‽)") {
 		count++
-		output = strings.Replace(output, "{{FNUM}}", strconv.Itoa(count), 1)
+		output = strings.Replace(output, "‽", strconv.Itoa(count), 1)
 	}
 	return output
 }

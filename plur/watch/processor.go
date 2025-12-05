@@ -34,17 +34,18 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 	normalizedPath := filepath.ToSlash(path)
 
 	for _, watch := range ep.watches {
+		if ep.isIgnored(normalizedPath, watch.Ignore) {
+			continue
+		}
+
 		// Check if path matches the source pattern
 		matched, err := doublestar.Match(filepath.ToSlash(watch.Source), normalizedPath)
 		if err != nil {
 			return nil, fmt.Errorf("error matching pattern %q: %w", watch.Source, err)
 		}
 
-		if ep.isIgnored(normalizedPath, watch.Ignore) {
-			continue
-		}
 		if !matched {
-			logger.Logger.Debug("path does not match", "watch", watch.Source, "normalizedPath", normalizedPath)
+			// logger.Logger.Debug("path does not match", "watch", watch.Source, "normalizedPath", normalizedPath)
 			continue
 		}
 

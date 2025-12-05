@@ -146,3 +146,14 @@ func (j Job) CreateParser() (types.TestOutputParser, error) {
 func (j Job) IsMinitestStyle() bool {
 	return j.Name == "minitest"
 }
+
+// UsesTargets returns true if the job command expects target files
+// (i.e., contains {{target}} placeholder)
+func (j Job) UsesTargets() bool {
+	for _, part := range j.Cmd {
+		if strings.Contains(part, "{{target}}") {
+			return true
+		}
+	}
+	return false
+}

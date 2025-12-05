@@ -164,22 +164,40 @@ RSpec.describe Plur::JsonRowsFormatter do
   end
 
   describe "#dump_failures" do
+    # We are using real rspec objects as much as possible to try and catch any regressions
+    # in in between rspec versions.
     it "outputs a dump_failures message when there are failures" do
-      # fully_formatted(0) returns the formatted failure with "0)" as index
-      # The formatter replaces "0)" with "{{FNUM}})" for Go to renumber
-      failure = double("failure")
-      allow(failure).to receive(:fully_formatted).with(0).and_return("\n  0) Example failed\n")
+      result = RSpec::Core::Example::ExecutionResult.new
+      result.started_at = Time.now
+      result.record_finished(:failed, Time.now)
+      result.exception = RuntimeError.new("Something went wrong")
 
-      notification = double("notification", failure_notifications: [failure])
+      example_group = class_double(RSpec::Core::ExampleGroup, description: "TestGroup")
+      allow(example_group).to receive(:parent_groups).and_return([example_group])
+
+      example = instance_double(
+        RSpec::Core::Example,
+        description: "Example failed",
+        full_description: "TestGroup Example failed",
+        example_group: example_group,
+        execution_result: result,
+        location: "./spec/example_spec.rb:10",
+        location_rerun_argument: "./spec/example_spec.rb:10",
+        metadata: {shared_group_inclusion_backtrace: []}
+      )
+
+      failure_notification = RSpec::Core::Notifications::ExampleNotification.for(example)
+      notification = Struct.new(:failure_notifications).new([failure_notification])
 
       formatter.dump_failures(notification)
 
       messages = json_messages
       expect(messages.size).to eq(1)
-      expect(messages[0]).to eq({
-        "type" => "dump_failures",
-        "formatted_output" => "\n  {{FNUM}}) Example failed\n"
-      })
+      expect(messages[0]["type"]).to eq("dump_failures")
+      # The real fully_formatted output will have "0)" replaced with "{{FNUM}})"
+      pp messages[0]["formatted_output"]
+      expect(messages[0]["formatted_output"]).to include("{{FNUM}})")
+      expect(messages[0]["formatted_output"]).to include("Example failed")
     end
 
     it "outputs nothing when there are no failures" do
@@ -194,21 +212,37 @@ RSpec.describe Plur::JsonRowsFormatter do
 
   describe "#dump_pending" do
     it "outputs a dump_pending message when there are pending specs" do
-      # fully_formatted(0) returns the formatted pending with "0)" as index
-      # The formatter replaces "0)" with "{{PNUM}})" for Go to renumber
-      pending_example = double("pending")
-      allow(pending_example).to receive(:fully_formatted).with(0).and_return("\n  0) Example pending\n")
+      # Following RSpec's own test pattern: real ExecutionResult + instance_double Example
+      result = RSpec::Core::Example::ExecutionResult.new
+      result.started_at = Time.now
+      result.record_finished(:pending, Time.now)
+      result.pending_message = "Not yet implemented"
 
-      notification = double("notification", pending_notifications: [pending_example])
+      example_group = class_double(RSpec::Core::ExampleGroup, description: "TestGroup")
+      allow(example_group).to receive(:parent_groups).and_return([example_group])
+
+      example = instance_double(
+        RSpec::Core::Example,
+        description: "Example pending",
+        full_description: "TestGroup Example pending",
+        example_group: example_group,
+        execution_result: result,
+        location: "./spec/example_spec.rb:20",
+        location_rerun_argument: "./spec/example_spec.rb:20",
+        metadata: {shared_group_inclusion_backtrace: []}
+      )
+
+      pending_notification = RSpec::Core::Notifications::ExampleNotification.for(example)
+      notification = Struct.new(:pending_notifications).new([pending_notification])
 
       formatter.dump_pending(notification)
 
       messages = json_messages
       expect(messages.size).to eq(1)
-      expect(messages[0]).to eq({
-        "type" => "dump_pending",
-        "formatted_output" => "\n  {{PNUM}}) Example pending\n"
-      })
+      expect(messages[0]["type"]).to eq("dump_pending")
+      # The real fully_formatted output will have "0)" replaced with "{{PNUM}})"
+      expect(messages[0]["formatted_output"]).to include("{{PNUM}})")
+      expect(messages[0]["formatted_output"]).to include("Example pending")
     end
 
     it "outputs nothing when there are no pending specs" do
