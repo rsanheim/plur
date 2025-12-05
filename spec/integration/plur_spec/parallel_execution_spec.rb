@@ -75,10 +75,14 @@ RSpec.describe "Plur parallel execution" do
   describe "progress output" do
     let(:failing_specs_path) { project_fixture("failing_specs") }
     def system_rspec(file_or_glob, *args)
-      system("bundle", "exec", "rspec", file_or_glob, *args)
+      Open3.capture3("bundle", "exec", "rspec", file_or_glob, *args)
     end
 
-    # make output more deterministic
+    # Make output more deterministic:
+    # * sort progress characters
+    # * filter timing information
+    # * remove plur version information
+    # * remove empty lines
     def normalize_test_output(output)
       lines = output.lines.reject { |l| l.match?(/^plur version|^Running \d+ specs/) }
       lines = lines.map do |line|
@@ -90,23 +94,17 @@ RSpec.describe "Plur parallel execution" do
           line
         end
       end
-      lines.join
+      lines.sort.reject { |line| line.strip.empty? }.join
     end
 
-    it "rspec output" do
-      pending "needs work, see docs/fix-duplicate-headers-multi-worker.md"
+    it "matches rspec output" do
       matcher = {
         stdout: ->(recorded, actual) { normalize_test_output(recorded) == normalize_test_output(actual) }
       }
-      Backspin.capture("parallel_execution_progress_output", matcher: matcher) do
-        chdir(failing_specs_path) do
-          system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
-        end
-      end
-      Backspin.capture("parallel_execution_progress_output", mode: :verify, matcher: matcher) do
-        chdir(failing_specs_path) do
-          run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :quiet)
-        end
+      chdir(failing_specs_path) do
+        rspec_output, rspec_stderr, rspec_status = system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
+        plur_output, plur_stderr, plur_status = run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :null)
+        expect(normalize_test_output(rspec_output)).to eq(normalize_test_output(plur_output))
       end
     end
 
