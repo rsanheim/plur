@@ -33,6 +33,11 @@ func NewOutputParser() types.TestOutputParser {
 	}
 }
 
+// CurrentFile returns empty string for minitest (no structured file tracking)
+func (p *outputParser) CurrentFile() string {
+	return ""
+}
+
 // Converts a TestNotification to a progress type (just a string for now) for streaming to output
 func (p *outputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
 	if notification.GetEvent() != types.Progress {

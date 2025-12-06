@@ -38,6 +38,7 @@ type OutputMessage struct {
 	WorkerID int
 	Type     string // "dot", "failure", "pending", "error", "stderr", "stdout"
 	Content  string
+	FilePath string // Source file path (for trace-output mode, may be empty)
 }
 
 // TestSummary represents the aggregated summary of all test results

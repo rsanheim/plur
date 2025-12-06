@@ -167,7 +167,7 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	outputWg.Add(1)
 	go func() {
 		defer outputWg.Done()
-		outputAggregator(outputChan, r.config.ColorOutput)
+		outputAggregator(outputChan, r.config.ColorOutput, r.config.TraceOutput)
 	}()
 
 	var wg sync.WaitGroup
@@ -299,7 +299,7 @@ func GetTestEnvNumber(workerIndex int, config *config.GlobalConfig) string {
 }
 
 // outputAggregator handles all output from workers to avoid lock contention
-func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
+func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOutput bool) {
 	for msg := range outputChan {
 		switch msg.Type {
 		case "dot":
@@ -321,13 +321,21 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool) {
 				os.Stdout.Write(plainStar)
 			}
 		case "stderr":
-			fmt.Fprintln(os.Stderr, msg.Content)
+			if traceOutput && msg.FilePath != "" {
+				fmt.Fprintf(os.Stderr, "\n[%s]: %s\n", msg.FilePath, msg.Content)
+			} else {
+				fmt.Fprintln(os.Stderr, msg.Content)
+			}
 		case "error":
 			// For JSON parse errors or other output
 			fmt.Fprintln(os.Stderr, msg.Content)
 		case "stdout":
 			// Raw stdout from tests (puts/pp output)
-			fmt.Fprintln(os.Stdout, msg.Content)
+			if traceOutput && msg.FilePath != "" {
+				fmt.Fprintf(os.Stdout, "\n[%s]: %s\n", msg.FilePath, msg.Content)
+			} else {
+				fmt.Fprintln(os.Stdout, msg.Content)
+			}
 		}
 	}
 }

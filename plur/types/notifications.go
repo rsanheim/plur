@@ -107,6 +107,14 @@ type FormattedSummaryNotification struct {
 func (n FormattedSummaryNotification) GetEvent() TestEvent { return RawOutput }
 func (n FormattedSummaryNotification) GetTestID() string   { return "" }
 
+// GroupStartedNotification represents a test group (describe block) starting
+type GroupStartedNotification struct {
+	FilePath string
+}
+
+func (n GroupStartedNotification) GetEvent() TestEvent { return SuiteStarted }
+func (n GroupStartedNotification) GetTestID() string   { return "" }
+
 // ProgressEvent represents a progress indicator for real-time display only
 // This is not a test result, just a display notification
 type ProgressEvent struct {

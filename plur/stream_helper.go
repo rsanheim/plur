@@ -60,6 +60,23 @@ func streamTestOutput(
 
 			notifications, consumed := parser.ParseLine(line)
 
+			// Process notifications (parser updates currentFile internally on group_started)
+			for _, notification := range notifications {
+				progressType, isProgress := parser.NotificationToProgress(notification)
+				// Handle progress notifications
+				if isProgress {
+					if outputChan != nil {
+						outputChan <- OutputMessage{
+							WorkerID: workerIndex,
+							Type:     progressType,
+						}
+					}
+				}
+
+				// Add all notifications to collector (ProgressEvents will be ignored)
+				collector.AddNotification(notification)
+			}
+
 			// If line wasn't consumed by parser, add it as raw output
 			if !consumed {
 				collector.AddNotification(types.OutputNotification{
@@ -74,26 +91,9 @@ func streamTestOutput(
 						WorkerID: workerIndex,
 						Type:     "stdout",
 						Content:  line,
+						FilePath: parser.CurrentFile(),
 					}
 				}
-			}
-			// Process each notification
-			for _, notification := range notifications {
-
-				progressType, isProgress := parser.NotificationToProgress(notification)
-				// Handle progress notifications and then continue to next notification
-				if isProgress {
-					if outputChan != nil {
-						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     progressType,
-						}
-					}
-				}
-
-				// Add all notifications to collector (ProgressEvents will be ignored)
-				collector.AddNotification(notification)
-
 			}
 
 			// Debug output if enabled
@@ -122,6 +122,7 @@ func streamTestOutput(
 					WorkerID: workerIndex,
 					Type:     "stderr",
 					Content:  line,
+					FilePath: parser.CurrentFile(),
 				}
 			}
 		}
