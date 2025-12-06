@@ -167,10 +167,17 @@ RSpec.describe Plur::JsonRowsFormatter do
     # We are using real rspec objects as much as possible to try and catch any regressions
     # in in between rspec versions.
     it "outputs a dump_failures message when there are failures" do
+      error = nil
+      # force a failure and catch it to use in our test
+      begin
+        expect(2).to eq(3)
+      rescue RSpec::Expectations::ExpectationNotMetError => e
+        error = e
+      end
       result = RSpec::Core::Example::ExecutionResult.new
       result.started_at = Time.now
       result.record_finished(:failed, Time.now)
-      result.exception = RuntimeError.new("Something went wrong")
+      result.exception = error
 
       example_group = class_double(RSpec::Core::ExampleGroup, description: "TestGroup")
       allow(example_group).to receive(:parent_groups).and_return([example_group])
@@ -194,10 +201,9 @@ RSpec.describe Plur::JsonRowsFormatter do
       messages = json_messages
       expect(messages.size).to eq(1)
       expect(messages[0]["type"]).to eq("dump_failures")
-      # The real fully_formatted output will have "0)" replaced with "{{FNUM}})"
-      pp messages[0]["formatted_output"]
-      expect(messages[0]["formatted_output"]).to include("{{FNUM}})")
+      expect(messages[0]["formatted_output"]).to include(described_class::FAILURE_PLACEHOLDER + ")")
       expect(messages[0]["formatted_output"]).to include("Example failed")
+      expect(messages[0]["formatted_output"]).to include(File.basename(__FILE__))
     end
 
     it "outputs nothing when there are no failures" do
@@ -240,8 +246,7 @@ RSpec.describe Plur::JsonRowsFormatter do
       messages = json_messages
       expect(messages.size).to eq(1)
       expect(messages[0]["type"]).to eq("dump_pending")
-      # The real fully_formatted output will have "0)" replaced with "{{PNUM}})"
-      expect(messages[0]["formatted_output"]).to include("{{PNUM}})")
+      expect(messages[0]["formatted_output"]).to include(Plur::JsonRowsFormatter::PENDING_PLACEHOLDER + ")")
       expect(messages[0]["formatted_output"]).to include("Example pending")
     end
 

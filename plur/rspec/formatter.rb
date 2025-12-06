@@ -6,6 +6,10 @@ module Plur
   # A streaming JSON formatter for plur that outputs one JSON object per line
   # Based on TurboTests::JsonRowsFormatter but simplified for plur usage
   class JsonRowsFormatter
+    # Placeholders for numbers - Go replaces with actual incrementing numbers
+    FAILURE_PLACEHOLDER = "‽"
+    PENDING_PLACEHOLDER = "‽"
+
     attr_reader :output
     RSpec::Core::Formatters.register(
       self,
@@ -99,23 +103,19 @@ module Plur
       )
     end
 
-    # Placeholders for numbers - Go replaces with actual incrementing numbers
-    FAILURE_PLACEHOLDER = "‽"
-    PENDING_PLACEHOLDER = "{{PNUM}}"
-
     # Sends formatted failures WITHOUT "Failures:" header (Go adds that once).
     # Uses our own placeholder for the index since each formatter runs in its own process and can't know the global failure count.
     def dump_failures(notification)
       return if notification.failure_notifications.empty?
 
-      formatted_output = ""
+      formatted_without_headers = ""
       notification.failure_notifications.each do |n|
-        formatted_output = n.fully_formatted(FAILURE_PLACEHOLDER)
+        formatted_without_headers += n.fully_formatted(FAILURE_PLACEHOLDER)
       end
 
       output_row(
         type: :dump_failures,
-        formatted_output: formatted_output
+        formatted_output: formatted_without_headers
       )
     end
 
@@ -127,10 +127,7 @@ module Plur
 
       formatted_without_headers = ""
       notification.pending_notifications.each do |n|
-        formatted = n.fully_formatted(0)
-        # Replace "  0)" with "  {{PNUM}})" to preserve indentation
-        formatted = formatted.sub(/\n(\s*)0\)/, "\n\\1#{PENDING_PLACEHOLDER})")
-        formatted_without_headers += formatted
+        formatted_without_headers += n.fully_formatted(PENDING_PLACEHOLDER)
       end
 
       output_row(

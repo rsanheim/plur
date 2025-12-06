@@ -119,26 +119,17 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 	return summary
 }
 
-// renumberFailures replaces {{FNUM}} placeholders with incrementing numbers.
-// The Ruby formatter outputs {{FNUM}} instead of actual numbers so plur can
-// correctly number failures after aggregating from multiple workers.
-func renumberFailures(output string) string {
-	count := 0
-	for strings.Contains(output, "‽)") {
-		count++
-		output = strings.Replace(output, "‽", strconv.Itoa(count), 1)
-	}
-	return output
-}
+const placeholder string = "‽"
+const placeholderWithParentheses string = "‽)"
 
-// renumberPending replaces {{PNUM}} placeholders with incrementing numbers.
-// The Ruby formatter outputs {{PNUM}} instead of actual numbers so plur can
-// correctly number pending specs after aggregating from multiple workers.
-func renumberPending(output string) string {
+// renumberFailures replaces ‽ placeholders with incrementing numbers.
+// The Ruby formatter outputs ‽ instead of actual numbers so plur can
+// correctly number failures after aggregating from multiple workers.
+func renumberSummaryOutput(output string) string {
 	count := 0
-	for strings.Contains(output, "{{PNUM}}") {
+	for strings.Contains(output, placeholderWithParentheses) {
 		count++
-		output = strings.Replace(output, "{{PNUM}}", strconv.Itoa(count), 1)
+		output = strings.Replace(output, placeholder, strconv.Itoa(count), 1)
 	}
 	return output
 }
@@ -156,7 +147,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	// Add single "Pending:" header and renumber {{PNUM}} placeholders
 	if summary.FormattedPending != "" {
 		fmt.Print("\nPending: (Failures listed here are expected and do not affect your suite's status)\n")
-		fmt.Print(renumberPending(summary.FormattedPending))
+		fmt.Print(renumberSummaryOutput(summary.FormattedPending))
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
@@ -171,7 +162,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	} else if summary.HasFailures && summary.FormattedFailures != "" {
 		// Add single "Failures:" header and renumber {{FNUM}} placeholders
 		fmt.Print("\nFailures:\n")
-		fmt.Print(renumberFailures(summary.FormattedFailures))
+		fmt.Print(renumberSummaryOutput(summary.FormattedFailures))
 	}
 
 	// Print summary
