@@ -120,7 +120,7 @@ module Plur
     end
 
     # Sends formatted pending WITHOUT "Pending:" header (Go adds that once).
-    # Uses {{PNUM}} placeholder instead of actual numbers since each formatter
+    # Uses placeholder instead of actual numbers since each formatter
     # runs in its own process and can't know the global pending count.
     def dump_pending(notification)
       return if notification.pending_notifications.empty?
@@ -136,8 +136,8 @@ module Plur
       )
     end
 
+    # Capture the fully formatted summary with colors
     def dump_summary(summary)
-      # Capture the fully formatted summary with colors
       output_row(
         type: :dump_summary,
         formatted_output: summary.fully_formatted,

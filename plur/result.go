@@ -144,7 +144,6 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	}
 
 	// Print pending section first (RSpec outputs pending before failures)
-	// Add single "Pending:" header and renumber {{PNUM}} placeholders
 	if summary.FormattedPending != "" {
 		fmt.Print("\nPending: (Failures listed here are expected and do not affect your suite's status)\n")
 		fmt.Print(renumberSummaryOutput(summary.FormattedPending))
@@ -160,7 +159,6 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 			}
 		}
 	} else if summary.HasFailures && summary.FormattedFailures != "" {
-		// Add single "Failures:" header and renumber {{FNUM}} placeholders
 		fmt.Print("\nFailures:\n")
 		fmt.Print(renumberSummaryOutput(summary.FormattedFailures))
 	}
