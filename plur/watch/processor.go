@@ -45,7 +45,7 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 		}
 
 		if !matched {
-			// logger.Logger.Debug("path does not match", "watch", watch.Source, "normalizedPath", normalizedPath)
+			// trace: logger.Logger.Debug("path does not match", "watch", watch.Source, "normalizedPath", normalizedPath)
 			continue
 		}
 

@@ -2,8 +2,8 @@ require "spec_helper"
 require "tmpdir"
 require "fileutils"
 
-RSpec.describe "Plur --trace-output flag" do
-  describe "with trace-output enabled" do
+RSpec.describe "Plur --rspec-trace flag" do
+  describe "with rspec-trace enabled" do
     it "prefixes stdout with file path" do
       Dir.mktmpdir do |tmpdir|
         spec_file = File.join(tmpdir, "traced_spec.rb")
@@ -16,7 +16,7 @@ RSpec.describe "Plur --trace-output flag" do
           end
         RUBY
 
-        result = run_plur("-C", tmpdir, "--trace-output", "traced_spec.rb")
+        result = run_plur("-C", tmpdir, "--rspec-trace", "traced_spec.rb")
 
         expect(result.out).to include("[./traced_spec.rb]: TRACE_ME_PLEASE")
         expect(result.exit_status).to eq(0)
@@ -35,7 +35,7 @@ RSpec.describe "Plur --trace-output flag" do
           end
         RUBY
 
-        result = run_plur("-C", tmpdir, "--trace-output", "newline_spec.rb")
+        result = run_plur("-C", tmpdir, "--rspec-trace", "newline_spec.rb")
 
         # Should have newline before the prefix (to separate from dots)
         expect(result.out).to match(/\n\[\.\/newline_spec\.rb\]:/)
@@ -44,7 +44,7 @@ RSpec.describe "Plur --trace-output flag" do
     end
   end
 
-  describe "without trace-output (default)" do
+  describe "without rspec-trace (default)" do
     it "does not prefix output with file path" do
       Dir.mktmpdir do |tmpdir|
         spec_file = File.join(tmpdir, "untraced_spec.rb")
@@ -89,7 +89,7 @@ RSpec.describe "Plur --trace-output flag" do
           end
         RUBY
 
-        result = run_plur("-C", tmpdir, "--trace-output", "-n", "2", "file_a_spec.rb", "file_b_spec.rb")
+        result = run_plur("-C", tmpdir, "--rspec-trace", "-n", "2", "file_a_spec.rb", "file_b_spec.rb")
 
         expect(result.out).to include("[./file_a_spec.rb]: FROM_FILE_A")
         expect(result.out).to include("[./file_b_spec.rb]: FROM_FILE_B")

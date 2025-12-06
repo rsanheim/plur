@@ -289,7 +289,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 
 			// Skip globally ignored paths (.git, node_modules, etc.)
 			if watch.IsIgnored(path, globalIgnorePatterns) {
-				// logger.Logger.Debug("Skipping globally ignored path", "path", path)
+				// trace: logger.Logger.Debug("Skipping globally ignored path", "path", path)
 				continue
 			}
 

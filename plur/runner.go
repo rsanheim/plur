@@ -167,7 +167,7 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	outputWg.Add(1)
 	go func() {
 		defer outputWg.Done()
-		outputAggregator(outputChan, r.config.ColorOutput, r.config.TraceOutput)
+		outputAggregator(outputChan, r.config.ColorOutput, r.config.RspecTrace)
 	}()
 
 	var wg sync.WaitGroup
