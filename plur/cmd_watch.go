@@ -5,8 +5,10 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -44,6 +46,54 @@ func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (job.Job, []wa
 	return result.Job, watches, nil
 }
 
+// resetTerminal restores terminal to a known good state.
+// This handles cases where jobs (like goreleaser with progress bars) may have
+// left the terminal in raw mode with echo disabled.
+func resetTerminal() {
+	cmd := exec.Command("stty", "sane")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	_ = cmd.Run() // Best effort, ignore errors
+}
+
+func reload(manager *watch.WatcherManager) error {
+	fmt.Println("Reloading plur...")
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	// Must cleanup before exec - defers won't run
+	manager.Stop()
+
+	// Reset terminal to sane state before exec
+	// Jobs may have left terminal in raw mode (e.g., goreleaser progress bars)
+	resetTerminal()
+
+	args := os.Args
+	hasDebugFlag := slices.Contains(args, "--debug") || slices.Contains(args, "-d")
+	if logger.IsDebugEnabled() && !hasDebugFlag {
+		args = append(args, "--debug")
+	}
+	if !logger.IsDebugEnabled() && hasDebugFlag {
+		args = slices.DeleteFunc(args, func(arg string) bool {
+			return arg == "--debug" || arg == "-d"
+		})
+	}
+
+	// Atomic process replacement (Unix/Linux/macOS only)
+	// Process is replaced in-place, maintaining the same PID
+	env := os.Environ()
+	err = syscall.Exec(execPath, args, env)
+	if err != nil {
+		return fmt.Errorf("failed to exec new process: %w", err)
+	}
+	os.Exit(1)
+	return nil
+}
+
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
@@ -52,14 +102,17 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}
 
-	// Build jobs map for FindTargetsForFile (expects map)
-	jobs := map[string]job.Job{resolvedJob.Name: resolvedJob}
+	// Build jobs map for FindTargetsForFile - include all user-defined jobs
+	// plus the resolved job (for when auto-detection is used)
+	jobs := make(map[string]job.Job)
+	for name, j := range cli.Job {
+		jobs[name] = j
+	}
+	jobs[resolvedJob.Name] = resolvedJob
 
 	// Log watch configuration
 	if len(watches) > 0 {
-		logger.Logger.Info("Watch configuration loaded",
-			"job", resolvedJob.Name,
-			"watch_mappings", len(watches))
+		logger.Logger.Info("Watch configuration loaded", "job", resolvedJob.Name, "watch_mappings", len(watches))
 	} else {
 		logger.Logger.Info("No watch mappings configured, file changes will not trigger tests")
 	}
@@ -139,7 +192,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 	// Set up stdin monitoring for commands
 	stdinChan := make(chan string)
@@ -189,29 +242,13 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				watch.RunCommand(cmd)
 				fmt.Print("\nplur> ")
 			case "reload":
-				logger.Logger.Debug("User requested process reload")
-				fmt.Println("Reloading plur...")
-
-				execPath, err := os.Executable()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to reload: %v\n", err)
+				logger.Logger.Info("User requested process reload")
+				if err := reload(manager); err != nil {
+					logger.Logger.Error("Failed to reload", "error", err)
+					fmt.Println("Failed to reload:", err)
 					fmt.Print("plur> ")
 					continue
 				}
-
-				// Must cleanup before exec - defers won't run
-				manager.Stop()
-
-				// Atomic process replacement (Unix/Linux/macOS only)
-				// Process is replaced in-place, maintaining the same PID
-				args := os.Args
-				if logger.IsDebugEnabled() {
-					args = append(args, "--debug")
-				}
-				env := os.Environ()
-				err = syscall.Exec(execPath, args, env)
-				fmt.Fprintf(os.Stderr, "Failed to exec new process: %v\n", err)
-				os.Exit(1)
 			case "debug":
 				logger.ToggleDebug()
 				if logger.IsDebugEnabled() {
@@ -252,7 +289,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 
 			// Skip globally ignored paths (.git, node_modules, etc.)
 			if watch.IsIgnored(path, globalIgnorePatterns) {
-				logger.Logger.Debug("Skipping globally ignored path", "path", path)
+				// logger.Logger.Debug("Skipping globally ignored path", "path", path)
 				continue
 			}
 
@@ -277,16 +314,38 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 					}
 				}
 
-				// Execute each job with its existing targets only
-				for jobName, targets := range result.ExistingTargets {
-					j, exists := jobs[jobName]
-					if !exists {
-						logger.Logger.Warn("Job not found", "job", jobName)
-						continue
-					}
+				// Execute jobs in the order they appear in MatchedRules
+				// (maps have non-deterministic iteration order)
+				seenJobs := make(map[string]bool)
+				for _, rule := range result.MatchedRules {
+					for _, jobName := range rule.Jobs {
+						if seenJobs[jobName] {
+							continue
+						}
+						seenJobs[jobName] = true
 
-					if err := watch.ExecuteJob(j, targets, cwd); err != nil {
-						logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
+						j, exists := jobs[jobName]
+						if !exists {
+							logger.Logger.Warn("Job not found", "job", jobName)
+							continue
+						}
+
+						targets := result.ExistingTargets[jobName]
+						if err := watch.ExecuteJob(j, targets, cwd); err != nil {
+							logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
+						}
+					}
+				}
+
+				// After executing all jobs, check if any matched rule wants reload
+				for _, rule := range result.MatchedRules {
+					if rule.Reload {
+						logger.Logger.Info("Watch rule triggered reload", "source", rule.Source)
+						if err := reload(manager); err != nil {
+							logger.Logger.Error("Failed to reload", "error", err)
+							fmt.Println("Failed to reload:", err)
+						}
+						break // Only reload once
 					}
 				}
 
@@ -305,8 +364,27 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			return nil
 
 		case sig := <-sigChan:
-			fmt.Printf("\nReceived signal %v, shutting down gracefully...\n", sig)
-			return nil
+			switch sig {
+			case syscall.SIGINT:
+				fmt.Println("\nReceived SIGINT, shutting down gracefully...")
+				return nil
+			case syscall.SIGTERM:
+				fmt.Println("\nReceived SIGTERM, shutting down gracefully...")
+				return nil
+			case syscall.SIGHUP:
+				fmt.Println("\nReceived SIGHUP, reloading plur...")
+				if err := reload(manager); err != nil {
+					logger.Logger.Error("Failed to reload", "error", err)
+					fmt.Println("Failed to reload:", err)
+					fmt.Print("plur> ")
+					continue
+				}
+				// reload() calls syscall.Exec which replaces process, so we never reach here on success
+				return nil
+			default:
+				fmt.Printf("\nReceived signal %v, shutting down gracefully...\n", sig)
+				return nil
+			}
 		}
 	}
 }

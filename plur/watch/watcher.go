@@ -41,6 +41,7 @@ type Watcher struct {
 	eventChan  chan Event
 	errorChan  chan error
 	stopChan   chan struct{}
+	done       chan struct{} // Signals cleanup is complete
 }
 
 // NewWatcher creates a new watcher instance
@@ -51,6 +52,7 @@ func NewWatcher(config *WatcherConfig, binaryPath string) *Watcher {
 		eventChan:  make(chan Event, 100),
 		errorChan:  make(chan error, 10),
 		stopChan:   make(chan struct{}),
+		done:       make(chan struct{}),
 	}
 }
 
@@ -98,14 +100,16 @@ func (w *Watcher) Start() error {
 		stdinPipe.Close()
 		w.process.Process.Kill()
 		w.process.Wait()
+		close(w.done) // Signal cleanup complete
 	}()
 
 	return nil
 }
 
-// Stop stops the watcher
+// Stop stops the watcher and waits for cleanup to complete
 func (w *Watcher) Stop() {
 	close(w.stopChan)
+	<-w.done // Wait for subprocess to be killed and reaped
 }
 
 // Events returns the event channel
@@ -178,12 +182,32 @@ func RunCommand(args []string) {
 }
 
 // ExecuteJob runs a job with the given target files
+// If the job doesn't use targets (no {{target}} in cmd), it runs once without targets
 func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
-	if len(targetFiles) == 0 {
+	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
+
+	// Jobs without {{target}} placeholder run once without targets
+	if !j.UsesTargets() {
+		cmd := j.Cmd
+		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
+
+		execCmd := exec.Command(cmd[0], cmd[1:]...)
+		execCmd.Dir = cwd
+		execCmd.Stdout = os.Stdout
+		execCmd.Stderr = os.Stderr
+		execCmd.Env = append(os.Environ(), j.Env...)
+
+		if err := execCmd.Run(); err != nil {
+			logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
+			return err
+		}
 		return nil
 	}
 
-	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
+	// Jobs with {{target}} run once per target
+	if len(targetFiles) == 0 {
+		return nil
+	}
 
 	for _, target := range targetFiles {
 		cmd := job.BuildJobCmd(j, []string{target})

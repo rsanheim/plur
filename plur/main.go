@@ -350,7 +350,8 @@ func main() {
 	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(err)
 
-	logger.Logger.Debug("running plur", "args", os.Args[1:], "command", ctx.Command())
+	logger.Logger.Debug("running plur", "command", ctx.Command(), "args", os.Args[1:])
+
 	err = ctx.Run(ctx)
 	if err != nil {
 		// Check if it's a custom exit code (don't log as error)

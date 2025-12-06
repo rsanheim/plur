@@ -1,10 +1,20 @@
 [job.plur]
 cmd = ["go", "test", "./{{target}}"]
 
+[job.build]
+cmd = ["bin/rake", "install"]
+
 [job.rspec]
 cmd = ["bin/rspec"]
 
-# changing .plur.toml
+# Go source files -> rebuild plur and reload
+[[watch]]
+source = "plur/**/*.go"
+jobs = ["build"]
+reload = true
+ignore = [".git/**", "**/*_test.go", "**/vendor/**"]
+
+# Go test files -> run tests
 [[watch]]
 source = "**/*_test.go"
 targets = ["{{dir_relative}}"]

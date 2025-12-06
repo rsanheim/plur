@@ -167,6 +167,138 @@ The downloaded binaries are stored in `plur/embedded/watcher/` and embedded into
 
 ## Signal Handling
 
-- Gracefully handles SIGINT (Ctrl+C) and SIGTERM
-- Cleanly shuts down all watcher processes
-- Ensures no zombie processes are left behind
+* **SIGINT** (Ctrl+C) and **SIGTERM**: Graceful shutdown, cleanly stops all watcher processes
+* **SIGHUP**: Triggers process reload (re-exec with same arguments)
+* Terminal state is reset before reload to handle jobs that may leave terminal in raw mode
+
+## Reload Functionality
+
+Watch mappings can specify `reload = true` to trigger a process reload after jobs complete:
+
+```toml
+[[watch]]
+source = "plur/**/*.go"
+jobs = ["build"]
+reload = true  # Reload plur after build completes
+```
+
+This is useful for development workflows where plur rebuilds itself.
+
+## Goroutine Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           MAIN PROCESS (plur watch)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐                                                        │
+│  │ Main Goroutine  │  runWatchWithConfig() - main select loop               │
+│  │ (cmd_watch.go)  │  Owns: sigChan, timeoutChan                            │
+│  └────────┬────────┘                                                        │
+│           │                                                                 │
+│           │ select {                                                        │
+│           │   case <-stdinChan:        // user commands                     │
+│           │   case <-manager.Events(): // file changes                      │
+│           │   case <-manager.Errors(): // watcher errors                    │
+│           │   case <-sigChan:          // SIGINT/SIGTERM/SIGHUP             │
+│           │   case <-timeoutChan:      // timeout (if set)                  │
+│           │ }                                                               │
+│           │                                                                 │
+│  ┌────────▼────────┐                                                        │
+│  │ stdin Goroutine │  bufio.Scanner on os.Stdin                             │
+│  │ (line 176-186)  │  Sends to: stdinChan                                   │
+│  └─────────────────┘                                                        │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                      WatcherManager                                 │    │
+│  │                                                                     │    │
+│  │  Owns: wm.stopChan, wm.eventChan, wm.errorChan, wm.wg              │    │
+│  │                                                                     │    │
+│  │  ┌─────────────────────┐    ┌─────────────────────┐                │    │
+│  │  │ aggregateEvents     │    │ aggregateEvents     │   (1 per dir)  │    │
+│  │  │ goroutine           │    │ goroutine           │                │    │
+│  │  │ Waits: wm.stopChan  │    │ Waits: wm.stopChan  │                │    │
+│  │  └──────────┬──────────┘    └──────────┬──────────┘                │    │
+│  │             │                          │                           │    │
+│  │  ┌──────────▼──────────┐    ┌──────────▼──────────┐                │    │
+│  │  │      Watcher        │    │      Watcher        │                │    │
+│  │  │                     │    │                     │                │    │
+│  │  │ ┌─────────────────┐ │    │ ┌─────────────────┐ │                │    │
+│  │  │ │ lifecycle       │ │    │ │ lifecycle       │ │                │    │
+│  │  │ │ goroutine       │ │    │ │ goroutine       │ │                │    │
+│  │  │ │ Waits: stopChan │ │    │ │ Waits: stopChan │ │                │    │
+│  │  │ └─────────────────┘ │    │ └─────────────────┘ │                │    │
+│  │  │ ┌─────────────────┐ │    │ ┌─────────────────┐ │                │    │
+│  │  │ │ readEvents      │ │    │ │ readEvents      │ │                │    │
+│  │  │ │ goroutine       │ │    │ │ goroutine       │ │                │    │
+│  │  │ └─────────────────┘ │    │ └─────────────────┘ │                │    │
+│  │  │ ┌─────────────────┐ │    │ ┌─────────────────┐ │                │    │
+│  │  │ │ readErrors      │ │    │ │ readErrors      │ │                │    │
+│  │  │ │ goroutine       │ │    │ │ goroutine       │ │                │    │
+│  │  │ └─────────────────┘ │    │ └─────────────────┘ │                │    │
+│  │  │                     │    │                     │                │    │
+│  │  │   ┌───────────┐     │    │   ┌───────────┐     │                │    │
+│  │  │   │ watcher   │     │    │   │ watcher   │     │  (C++ binary)  │    │
+│  │  │   │ subprocess│     │    │   │ subprocess│     │                │    │
+│  │  │   └───────────┘     │    │   └───────────┘     │                │    │
+│  │  └─────────────────────┘    └─────────────────────┘                │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Shutdown & Reload Paths
+
+### Normal Exit (SIGINT/SIGTERM or "exit" command)
+
+```
+Signal or command received
+    │
+    ▼
+Main loop returns nil
+    │
+    ▼
+defer manager.Stop() executes
+    │
+    ▼
+manager.Stop():
+  1. close(stopChan)     → signals aggregateEvents goroutines
+  2. cleanup()           → calls w.Stop() on each watcher
+  3. wg.Wait()           → waits for aggregate goroutines
+  4. close channels
+    │
+    ▼
+w.Stop():
+  1. close(stopChan)     → signals lifecycle goroutine
+  2. <-done              → waits for subprocess cleanup
+    │
+    ▼
+lifecycle goroutine:
+  stdinPipe.Close()
+  process.Kill()
+  process.Wait()
+  close(done)
+    │
+    ▼
+Process exits cleanly
+```
+
+### Reload (SIGHUP, "reload" command, or rule.Reload)
+
+```
+Reload triggered
+    │
+    ▼
+reload(manager) called
+    │
+    ▼
+manager.Stop()           → synchronous cleanup (waits for subprocesses)
+    │
+    ▼
+resetTerminal()          → stty sane (restore terminal state)
+    │
+    ▼
+syscall.Exec(...)        → replaces process image
+    │
+    ▼
+New plur process starts fresh
+```
