@@ -107,6 +107,12 @@ When both `spec/` and `test/` directories exist:
 4. Fix issues with `bin/rake standard:fix`
 5. `git add -A && git commit`
 
+### Git Operations
+Keep git operations simple:
+* Prefer new commits over amending or rebasing
+* Avoid `--force` pushes unless absolutely necessary
+* Don't squash commits unnecessarily - commit history is useful
+
 ## Testing from Outside-In
 
 ALWAYS use integration specs as guardrails:
