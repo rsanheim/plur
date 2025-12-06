@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.18.0 - 2025-12-06
+* Add `--rspec-trace` flag to prefix stdout/stderr with source file path [#153](https://github.com/rsanheim/plur/pull/153)
+* Fix duplicate "Pending:" headers in multi-worker output
+
 ## v0.17.2 - 2025-12-04
 * Fix duplicate Failures headers in multi-worker output [#149](https://github.com/rsanheim/plur/pull/149)
 
