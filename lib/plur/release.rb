@@ -66,12 +66,12 @@ module Plur
 
       def call
         prs = find_prs_since_last_release(dry_run: @dry_run)
-        changelog = Plur::Changelog.new(@version, prs)
 
         if @dry_run
           puts "[dry-run]: Would write changelog for #{@version} with #{prs.size} PRs"
           puts "[dry-run]: PRs: #{prs.map { |pr| "##{pr[:number]}" }.join(", ")}" unless prs.empty?
         else
+          changelog = Plur::Changelog.new(@version, prs, changelog_input: File.open("CHANGELOG.md"))
           File.write("CHANGELOG.md", changelog.generate_updated_content)
           print_summary(prs)
         end
