@@ -60,28 +60,9 @@ func streamTestOutput(
 
 			notifications, consumed := parser.ParseLine(line)
 
-			// If line wasn't consumed by parser, add it as raw output
-			if !consumed {
-				collector.AddNotification(types.OutputNotification{
-					Event:   types.RawOutput,
-					Content: line,
-				})
-				// Stream stdout in real-time for RSpec (JSON formatter makes this safe)
-				// Don't stream for Minitest - it returns consumed=false for everything,
-				// so streaming would duplicate all output
-				if outputChan != nil && streamStdout {
-					outputChan <- OutputMessage{
-						WorkerID: workerIndex,
-						Type:     "stdout",
-						Content:  line,
-					}
-				}
-			}
-			// Process each notification
 			for _, notification := range notifications {
-
 				progressType, isProgress := parser.NotificationToProgress(notification)
-				// Handle progress notifications and then continue to next notification
+				// Handle progress notifications
 				if isProgress {
 					if outputChan != nil {
 						outputChan <- OutputMessage{
@@ -93,7 +74,25 @@ func streamTestOutput(
 
 				// Add all notifications to collector (ProgressEvents will be ignored)
 				collector.AddNotification(notification)
+			}
 
+			// If line wasn't consumed by parser, add it as raw output
+			if !consumed {
+				collector.AddNotification(types.OutputNotification{
+					Event:   types.RawOutput,
+					Content: line,
+				})
+				// Stream stdout in real-time for RSpec (JSON formatter makes this safe)
+				// Don't stream for Minitest - it returns consumed=false for everything,
+				// so streaming would duplicate all output
+				if outputChan != nil && streamStdout {
+					outputChan <- OutputMessage{
+						WorkerID:    workerIndex,
+						Type:        "stdout",
+						Content:     line,
+						CurrentFile: parser.CurrentFile(),
+					}
+				}
 			}
 
 			// Debug output if enabled
@@ -116,12 +115,13 @@ func streamTestOutput(
 		scanner.Buffer(make([]byte, 0, ScannerBufferSize), ScannerBufferSize)
 		for scanner.Scan() {
 			line := scanner.Text()
-			stderrBuilder.WriteString("STDERR: " + line + "\n")
+			stderrBuilder.WriteString(line + "\n")
 			if outputChan != nil {
 				outputChan <- OutputMessage{
-					WorkerID: workerIndex,
-					Type:     "stderr",
-					Content:  line,
+					WorkerID:    workerIndex,
+					Type:        "stderr",
+					Content:     line,
+					CurrentFile: parser.CurrentFile(),
 				}
 			}
 		}

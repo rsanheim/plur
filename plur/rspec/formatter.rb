@@ -7,8 +7,8 @@ module Plur
   # Based on TurboTests::JsonRowsFormatter but simplified for plur usage
   class JsonRowsFormatter
     # Placeholders for numbers - Go replaces with actual incrementing numbers
-    FAILURE_PLACEHOLDER = "‽"
-    PENDING_PLACEHOLDER = "‽"
+    FAILURE_PLACEHOLDER = "‽" unless const_defined?(:FAILURE_PLACEHOLDER, false)
+    PENDING_PLACEHOLDER = "‽" unless const_defined?(:PENDING_PLACEHOLDER, false)
 
     attr_reader :output
     RSpec::Core::Formatters.register(

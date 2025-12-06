@@ -20,6 +20,7 @@ type GlobalConfig struct {
 	RuntimeDir  string
 	JSON        string // JSON output file
 	FirstIs1    bool   // Start TEST_ENV_NUMBER at 1 instead of empty string
+	RspecTrace  bool   // Prefix stdout/stderr with source file path (RSpec only)
 
 	// Configuration source tracking
 	LoadedConfigs []string // List of config files that actually exist and were loaded

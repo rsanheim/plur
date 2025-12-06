@@ -14,4 +14,6 @@ type TestOutputParser interface {
 	FormatFailuresList(failures []TestCaseNotification) string
 	// ColorizeSummary applies color to a summary based on success/failure state
 	ColorizeSummary(summary string, hasFailures bool) string
+	// CurrentFile returns the current file being tested (for trace-output)
+	CurrentFile() string
 }

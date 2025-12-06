@@ -18,9 +18,10 @@ import (
 )
 
 type SpecCmd struct {
-	Patterns []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Use      string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
-	Auto     bool     `help:"Automatically run bundle install before tests" default:"false"`
+	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
+	Use        string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
+	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
@@ -33,7 +34,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		explicitName = parent.Use
 	}
 
-	// Resolve job using unified logic
 	result, err := autodetect.ResolveJob(explicitName, parent.Job, r.Patterns)
 	if err != nil {
 		return err
@@ -80,6 +80,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	cfg.Auto = r.Auto
+	cfg.RspecTrace = r.RspecTrace
 
 	runner := NewRunner(cfg, testFiles, currentJob)
 	results, wallTime, err := runner.Run()
@@ -87,7 +88,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		return err
 	}
 
-	// Dry-run returns nil results
 	if cfg.DryRun {
 		return nil
 	}

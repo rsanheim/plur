@@ -35,9 +35,10 @@ func (r WorkerResult) Success() bool {
 
 // OutputMessage is a message from workers for output aggregation
 type OutputMessage struct {
-	WorkerID int
-	Type     string // "dot", "failure", "pending", "error", "stderr", "stdout"
-	Content  string
+	WorkerID    int
+	Type        string // "dot", "failure", "pending", "error", "stderr", "stdout"
+	Content     string
+	CurrentFile string // Source file path (for rspec-trace mode, may be empty)
 }
 
 // TestSummary represents the aggregated summary of all test results

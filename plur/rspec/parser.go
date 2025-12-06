@@ -11,11 +11,18 @@ import (
 )
 
 // outputParser parses RSpec JSON output into notifications
-type outputParser struct{}
+type outputParser struct {
+	currentFile string // tracks the current file being tested (from group_started)
+}
 
 // NewOutputParser creates a new RSpec output parser
 func NewOutputParser() types.TestOutputParser {
 	return &outputParser{}
+}
+
+// CurrentFile returns the current file being tested
+func (p *outputParser) CurrentFile() string {
+	return p.currentFile
 }
 
 func (p *outputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
@@ -95,6 +102,13 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 					Event:     types.SuiteStarted,
 					TestCount: msg.Summary.Count,
 					LoadTime:  time.Duration(msg.Summary.LoadTime * float64(time.Second)),
+				})
+			}
+		case "group_started":
+			if msg.ExampleGroup != nil && msg.ExampleGroup.FilePath != "" {
+				p.currentFile = msg.ExampleGroup.FilePath
+				notifications = append(notifications, types.GroupStartedNotification{
+					FilePath: msg.ExampleGroup.FilePath,
 				})
 			}
 		case "example_passed", "example_failed", "example_pending":

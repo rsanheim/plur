@@ -39,3 +39,8 @@ func (p *Parser) FormatFailuresList(failures []types.TestCaseNotification) strin
 func (p *Parser) ColorizeSummary(summary string, hasFailures bool) string {
 	return summary
 }
+
+// CurrentFile returns empty string since passthrough doesn't track files
+func (p *Parser) CurrentFile() string {
+	return ""
+}
