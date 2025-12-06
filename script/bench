@@ -48,6 +48,10 @@ OptionParser.new do |opts|
     config.show_output = true
   end
 
+  opts.on("-i", "--ignore-failure", "Continue benchmarking even if commands fail") do
+    config.ignore_failure = true
+  end
+
   opts.on("-h", "--help", "Show this help message") do
     puts opts
     puts <<~HELP
