@@ -60,7 +60,6 @@ func streamTestOutput(
 
 			notifications, consumed := parser.ParseLine(line)
 
-			// Process notifications (parser updates currentFile internally on group_started)
 			for _, notification := range notifications {
 				progressType, isProgress := parser.NotificationToProgress(notification)
 				// Handle progress notifications
@@ -88,10 +87,10 @@ func streamTestOutput(
 				// so streaming would duplicate all output
 				if outputChan != nil && streamStdout {
 					outputChan <- OutputMessage{
-						WorkerID: workerIndex,
-						Type:     "stdout",
-						Content:  line,
-						FilePath: parser.CurrentFile(),
+						WorkerID:    workerIndex,
+						Type:        "stdout",
+						Content:     line,
+						CurrentFile: parser.CurrentFile(),
 					}
 				}
 			}
@@ -116,13 +115,13 @@ func streamTestOutput(
 		scanner.Buffer(make([]byte, 0, ScannerBufferSize), ScannerBufferSize)
 		for scanner.Scan() {
 			line := scanner.Text()
-			stderrBuilder.WriteString("STDERR: " + line + "\n")
+			stderrBuilder.WriteString(line + "\n")
 			if outputChan != nil {
 				outputChan <- OutputMessage{
-					WorkerID: workerIndex,
-					Type:     "stderr",
-					Content:  line,
-					FilePath: parser.CurrentFile(),
+					WorkerID:    workerIndex,
+					Type:        "stderr",
+					Content:     line,
+					CurrentFile: parser.CurrentFile(),
 				}
 			}
 		}

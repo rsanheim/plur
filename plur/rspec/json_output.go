@@ -176,7 +176,7 @@ func ExtractFailingLine(filePath string, lineNumber int) string {
 type StreamingMessage struct {
 	Type            string         `json:"type"`
 	Example         *StreamExample `json:"example,omitempty"`
-	Group           *StreamGroup   `json:"group,omitempty"`
+	ExampleGroup    *ExampleGroup  `json:"group,omitempty"`
 	Summary         *LoadSummary   `json:"summary,omitempty"`
 	Message         string         `json:"message,omitempty"`
 	FormattedOutput string         `json:"formatted_output,omitempty"`
@@ -187,8 +187,8 @@ type StreamingMessage struct {
 	Duration     float64 `json:"duration,omitempty"`
 }
 
-// StreamGroup matches the group format from the Ruby formatter
-type StreamGroup struct {
+// ExampleGroup matches the group format from the Ruby formatter
+type ExampleGroup struct {
 	Description string `json:"description"`
 	FilePath    string `json:"file_path"`
 	LineNumber  int    `json:"line_number"`

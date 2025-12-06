@@ -321,8 +321,8 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 				os.Stdout.Write(plainStar)
 			}
 		case "stderr":
-			if traceOutput && msg.FilePath != "" {
-				fmt.Fprintf(os.Stderr, "\n[%s]: %s\n", msg.FilePath, msg.Content)
+			if traceOutput && msg.CurrentFile != "" {
+				fmt.Fprintf(os.Stderr, "\n[%s]: %s\n", msg.CurrentFile, msg.Content)
 			} else {
 				fmt.Fprintln(os.Stderr, msg.Content)
 			}
@@ -331,8 +331,8 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 			fmt.Fprintln(os.Stderr, msg.Content)
 		case "stdout":
 			// Raw stdout from tests (puts/pp output)
-			if traceOutput && msg.FilePath != "" {
-				fmt.Fprintf(os.Stdout, "\n[%s]: %s\n", msg.FilePath, msg.Content)
+			if traceOutput && msg.CurrentFile != "" {
+				fmt.Fprintf(os.Stdout, "\n[%s]: %s\n", msg.CurrentFile, msg.Content)
 			} else {
 				fmt.Fprintln(os.Stdout, msg.Content)
 			}

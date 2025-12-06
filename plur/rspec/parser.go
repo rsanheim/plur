@@ -105,10 +105,10 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 				})
 			}
 		case "group_started":
-			if msg.Group != nil && msg.Group.FilePath != "" {
-				p.currentFile = msg.Group.FilePath
+			if msg.ExampleGroup != nil && msg.ExampleGroup.FilePath != "" {
+				p.currentFile = msg.ExampleGroup.FilePath
 				notifications = append(notifications, types.GroupStartedNotification{
-					FilePath: msg.Group.FilePath,
+					FilePath: msg.ExampleGroup.FilePath,
 				})
 			}
 		case "example_passed", "example_failed", "example_pending":
