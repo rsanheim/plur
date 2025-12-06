@@ -1,0 +1,12 @@
+{
+  "commit": "e15cfba0ae3fc023ea825f593589fece368baea0",
+  "timestamp": "20251206-230207",
+  "plur_version": "0.18.0-dev-e15cfba0",
+  "projects": [
+    "example-project"
+  ],
+  "dx_results": {
+    "json_file": "/Users/rsanheim/src/oss/plur/results/20251206-230207-e15cfba0-example-project.json",
+    "markdown_file": "/Users/rsanheim/src/oss/plur/results/20251206-230207-e15cfba0-example-project.md"
+  }
+}
