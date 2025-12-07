@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"sort"
+
+	"github.com/rsanheim/plur/logger"
 )
 
 // FileGroup represents a group of spec files that will run in one process
@@ -84,19 +86,26 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 		runtime float64
 	}
 
-	// Get runtime for each file
+	// Get runtime for each file, tracking hits/misses
 	filesWithRuntimes := make([]fileWithRuntime, 0, len(specFiles))
-	totalRuntime := 0.0
+	hits, misses := 0, 0
 
 	for _, file := range specFiles {
 		runtime, ok := runtimeData[file]
 		if !ok {
 			// Default runtime for files without history (1 second)
 			runtime = 1.0
+			misses++
+		} else {
+			hits++
 		}
 		filesWithRuntimes = append(filesWithRuntimes, fileWithRuntime{file, runtime})
-		totalRuntime += runtime
 	}
+
+	logger.Logger.Debug("runtime data lookup",
+		"hits", hits,
+		"misses", misses,
+		"hit_rate", float64(hits)/float64(len(specFiles))*100)
 
 	// Sort by runtime descending (slowest first)
 	sort.Slice(filesWithRuntimes, func(i, j int) bool {
