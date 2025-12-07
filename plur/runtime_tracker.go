@@ -6,15 +6,14 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/types"
 )
 
-// RuntimeTracker accumulates runtime data for spec files
+// RuntimeTracker accumulates runtime data for spec files.
+// Note: This is used single-threaded after all workers complete, so no mutex needed.
 type RuntimeTracker struct {
-	mu       sync.Mutex
 	runtimes map[string]float64 // map[filepath]total_runtime_seconds
 }
 
@@ -27,10 +26,6 @@ func NewRuntimeTracker() *RuntimeTracker {
 
 // AddRuntime adds runtime for a spec file
 func (rt *RuntimeTracker) AddRuntime(filePath string, runtime float64) {
-	rt.mu.Lock()
-	defer rt.mu.Unlock()
-
-	// Accumulate runtimes for the same file
 	rt.runtimes[filePath] += runtime
 }
 
@@ -43,9 +38,6 @@ func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotific
 
 // SaveToFile writes the runtime data to a project-specific JSON file
 func (rt *RuntimeTracker) SaveToFile() error {
-	rt.mu.Lock()
-	defer rt.mu.Unlock()
-
 	// Get the project-specific runtime file path
 	runtimeFile, err := getRuntimeFilePath()
 	if err != nil {
