@@ -32,7 +32,8 @@ RSpec.describe "Plur runtime tracking" do
 
         runtime_data = JSON.parse(File.read(runtime_file))
         expect(runtime_data).to be_a(Hash)
-        expect(runtime_data.keys).to include("./spec/calculator_spec.rb")
+        # Paths are saved without "./" prefix (matches glob discovery)
+        expect(runtime_data.keys).to include("spec/calculator_spec.rb")
         expect(runtime_data.values.all? { |v| v.is_a?(Numeric) && v > 0 }).to be true
 
         # Verify it's in the temp directory with a hash filename
@@ -63,13 +64,14 @@ RSpec.describe "Plur runtime tracking" do
         project_hash = Digest::SHA256.hexdigest(File.expand_path(default_ruby_dir))[0..7]
 
         # Create fake runtime data with uneven distribution
+        # Paths should NOT have "./" prefix (matches glob discovery format)
         runtime_data = {
-          "./spec/calculator_spec.rb" => 5.0,  # Very slow file
-          "./spec/counter_spec.rb" => 0.1,
-          "./spec/validator_spec.rb" => 0.1,
-          "./spec/string_utils_spec.rb" => 0.1,
-          "./spec/array_helpers_spec.rb" => 0.1,
-          "./spec/date_formatter_spec.rb" => 0.1
+          "spec/calculator_spec.rb" => 5.0,  # Very slow file
+          "spec/counter_spec.rb" => 0.1,
+          "spec/validator_spec.rb" => 0.1,
+          "spec/string_utils_spec.rb" => 0.1,
+          "spec/array_helpers_spec.rb" => 0.1,
+          "spec/date_formatter_spec.rb" => 0.1
         }
 
         File.write(File.join(temp_cache_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
