@@ -79,7 +79,7 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 }
 
 func (r *Runner) groupFiles() []FileGroup {
-	runtimeData, err := LoadRuntimeData()
+	runtimeData, err := LoadRuntimeData(r.config.RuntimeDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
 		runtimeData = make(map[string]float64)
