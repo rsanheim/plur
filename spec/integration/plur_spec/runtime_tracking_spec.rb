@@ -65,13 +65,20 @@ RSpec.describe "Plur runtime tracking" do
 
         # Create fake runtime data with uneven distribution
         # Paths should NOT have "./" prefix (matches glob discovery format)
+        # Must match actual file paths including subdirectories
         runtime_data = {
           "spec/calculator_spec.rb" => 5.0,  # Very slow file
           "spec/counter_spec.rb" => 0.1,
           "spec/validator_spec.rb" => 0.1,
           "spec/string_utils_spec.rb" => 0.1,
           "spec/array_helpers_spec.rb" => 0.1,
-          "spec/date_formatter_spec.rb" => 0.1
+          "spec/date_formatter_spec.rb" => 0.1,
+          "spec/example_scenarios_spec.rb" => 0.1,
+          "spec/plur_ruby_spec.rb" => 0.1,
+          "spec/env_test_spec.rb" => 0.1,
+          "spec/failing_examples_spec.rb" => 0.1,
+          "spec/models/user_spec.rb" => 0.1,
+          "spec/services/email_service_spec.rb" => 0.1
         }
 
         File.write(File.join(temp_cache_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))

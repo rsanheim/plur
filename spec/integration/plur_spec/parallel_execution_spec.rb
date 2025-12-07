@@ -83,6 +83,7 @@ RSpec.describe "Plur parallel execution" do
     # * filter timing information
     # * remove plur version information
     # * strip failure/pending numbers (vary by parallel execution order)
+    # * normalize path prefixes (rspec uses ./ prefix, plur doesn't)
     # * remove empty lines
     def normalize_test_output(output)
       lines = output.lines.reject { |l| l.match?(/^plur version|^Running \d+ specs/) }
@@ -92,7 +93,8 @@ RSpec.describe "Plur parallel execution" do
         elsif line.match?(/^Finished in \d/)
           "Finished in X seconds\n"
         else
-          line.gsub(/^(\s*)\d+\)/, '\1)')
+          # Normalize path prefixes and failure numbers
+          line.gsub(/^(\s*)\d+\)/, '\1)').gsub(%r{ \./spec/}, " spec/")
         end
       end
       lines.sort.reject { |line| line.strip.empty? }.join
