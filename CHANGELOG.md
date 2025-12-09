@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.18.1 - 2025-12-09
+* Benchmarking fix: use the same command as turbo_tests for our comparison [#156](https://github.com/rsanheim/plur/pull/156)
+* other misc internal cleanups
+
 ## v0.18.0 - 2025-12-06
 * Add `--rspec-trace` flag to prefix stdout/stderr with source file path [#153](https://github.com/rsanheim/plur/pull/153)
 * Fix duplicate "Pending:" headers in multi-worker output
