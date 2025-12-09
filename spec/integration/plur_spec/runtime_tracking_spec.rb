@@ -55,13 +55,13 @@ RSpec.describe "Plur runtime tracking" do
   end
 
   context "runtime-based grouping" do
-    let(:temp_cache_dir) { Dir.mktmpdir }
+    around_with_tmp_plur_home
 
     it "distributes files based on their runtime" do
       Dir.chdir(default_ruby_dir) do
         # Calculate project hash
         require "digest"
-        project_hash = Digest::SHA256.hexdigest(File.expand_path(default_ruby_dir))[0..7]
+        project_hash = Digest::SHA256.hexdigest(File.expand_path("."))[0..7]
 
         # Create fake runtime data with uneven distribution
         # Paths should NOT have "./" prefix (matches glob discovery format)
@@ -81,10 +81,13 @@ RSpec.describe "Plur runtime tracking" do
           "spec/services/email_service_spec.rb" => 0.1
         }
 
-        File.write(File.join(temp_cache_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
+        # Write fake runtime data to PLUR_HOME/runtime
+        runtime_dir = File.join(tmp_plur_home, "runtime")
+        FileUtils.mkdir_p(runtime_dir)
+        File.write(File.join(runtime_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
 
         # Run dry-run with debug to see grouping strategy
-        result = run_plur("--dry-run", "--debug", "-n", "2", "--runtime-dir", temp_cache_dir)
+        result = run_plur("--dry-run", "--debug", "-n", "2")
 
         # The slow file should be in its own group or with minimal other files
         expect(result.err).to include("Using runtime-based grouped execution")

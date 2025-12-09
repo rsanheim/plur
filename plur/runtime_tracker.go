@@ -82,19 +82,7 @@ func getProjectHash() (string, error) {
 
 // getRuntimeFilePath returns the project-specific runtime file path
 func getRuntimeFilePath() (string, error) {
-	return getRuntimeFilePathWithDir("")
-}
-
-// getRuntimeFilePathWithDir returns the project-specific runtime file path,
-// optionally using a custom runtime directory.
-func getRuntimeFilePathWithDir(customRuntimeDir string) (string, error) {
-	var runtimesDir string
-	if customRuntimeDir != "" {
-		runtimesDir = customRuntimeDir
-	} else {
-		configPaths := config.InitConfigPaths()
-		runtimesDir = configPaths.RuntimeDir
-	}
+	configPaths := config.InitConfigPaths()
 
 	// Get project hash for filename
 	projectHash, err := getProjectHash()
@@ -102,13 +90,12 @@ func getRuntimeFilePathWithDir(customRuntimeDir string) (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(runtimesDir, projectHash+".json"), nil
+	return filepath.Join(configPaths.RuntimeDir, projectHash+".json"), nil
 }
 
-// LoadRuntimeData loads runtime data from the cache directory.
-// If customRuntimeDir is non-empty, it will be used instead of the default.
-func LoadRuntimeData(customRuntimeDir string) (map[string]float64, error) {
-	runtimeFile, err := getRuntimeFilePathWithDir(customRuntimeDir)
+// LoadRuntimeData loads runtime data from the cache directory
+func LoadRuntimeData() (map[string]float64, error) {
+	runtimeFile, err := getRuntimeFilePath()
 	if err != nil {
 		return nil, err
 	}
