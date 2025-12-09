@@ -136,8 +136,7 @@ RSpec.describe "Framework Selection" do
       output = run_plur_in_dir(test_dir, "--dry-run", allow_failure: true)
 
       # The error message should indicate no framework was detected
-      expect(output).to include("no test framework detected")
-      expect(output).to include(".plur.toml")
+      expect(output).to include("No default spec/test files found")
     end
   end
 

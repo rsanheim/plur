@@ -230,6 +230,15 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		}
 	}
 
+	// Set up reload channel - buffered to coalesce multiple reload requests
+	reloadChan := make(chan struct{}, 1)
+	triggerReload := func() {
+		select {
+		case reloadChan <- struct{}{}:
+		default: // already queued, skip
+		}
+	}
+
 	printWatchInfo(watchDirs)
 	printHelp()
 	showPrompt()
@@ -265,11 +274,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				showPrompt()
 			case "reload":
 				logger.Logger.Debug("User requested process reload")
-				if err := reload(manager); err != nil {
-					logger.Logger.Error("Failed to reload", "error", err)
-					fmt.Println("Failed to reload:", err)
-					showPrompt()
-				}
+				triggerReload()
 			case "debug":
 				logger.ToggleDebug()
 				if logger.IsDebugEnabled() {
@@ -314,10 +319,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			debouncer.Debounce([]string{path}, func(paths []string) {
 				result := handler.HandleBatch(paths)
 				if result.ShouldReload {
-					if err := reload(manager); err != nil {
-						logger.Logger.Error("Failed to reload", "error", err)
-						fmt.Println("Failed to reload:", err)
-					}
+					triggerReload()
 				}
 				if len(result.ExecutedJobs) > 0 {
 					fmt.Println()
@@ -358,6 +360,13 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 
 		case <-promptChan:
 			fmt.Print("[plur] > ")
+
+		case <-reloadChan:
+			if err := reload(manager); err != nil {
+				logger.Logger.Error("Failed to reload", "error", err)
+				fmt.Println("Failed to reload:", err)
+				showPrompt()
+			}
 		}
 	}
 }

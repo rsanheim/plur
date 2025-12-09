@@ -23,6 +23,7 @@ type WatcherManager struct {
 	binaryPath string
 	wg         sync.WaitGroup
 	mu         sync.Mutex
+	stopOnce   sync.Once
 }
 
 // NewWatcherManager creates a new watcher manager instance
@@ -67,20 +68,22 @@ func (wm *WatcherManager) Start() error {
 	return nil
 }
 
-// Stop stops all watchers
+// Stop stops all watchers. Safe to call multiple times.
 func (wm *WatcherManager) Stop() {
-	// Signal all goroutines to stop
-	close(wm.stopChan)
+	wm.stopOnce.Do(func() {
+		// Signal all goroutines to stop
+		close(wm.stopChan)
 
-	// Clean up all watchers
-	wm.cleanup()
+		// Clean up all watchers
+		wm.cleanup()
 
-	// Wait for all goroutines to finish
-	wm.wg.Wait()
+		// Wait for all goroutines to finish
+		wm.wg.Wait()
 
-	// Close channels
-	close(wm.eventChan)
-	close(wm.errorChan)
+		// Close channels
+		close(wm.eventChan)
+		close(wm.errorChan)
+	})
 }
 
 // Events returns the aggregated event channel
