@@ -137,6 +137,9 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	debounceDelay := time.Duration(runCmd.Debounce) * time.Millisecond
 	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
 
+	// Create debouncer and file event handler
+	debouncer := watch.NewDebouncer(debounceDelay)
+
 	var watchDirs []string
 	for _, mapping := range watches {
 		dir := mapping.SourceDir()
@@ -239,6 +242,13 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		cwd = resolvedCwd
 	}
 
+	// Create file event handler
+	handler := &watch.FileEventHandler{
+		Jobs:    jobs,
+		Watches: watches,
+		CWD:     cwd,
+	}
+
 	for {
 		select {
 		case input := <-stdinChan:
@@ -278,7 +288,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			}
 
 		case event := <-manager.Events():
-			if event.PathType == "watcher" { // log watcher lifecycle events and continue
+			// Early filtering - skip events we don't care about
+			if event.PathType == "watcher" {
 				logger.Logger.Debug("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
 				continue
 			}
@@ -290,77 +301,29 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			}
 
 			if watch.IsIgnored(path, globalIgnorePatterns) {
-				// trace: logger.Logger.Debug("Skipping globally ignored path", "path", path)
 				continue
 			}
-
-			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
 
 			if event.EffectType != "modify" && event.EffectType != "create" {
 				continue
 			}
 
-			if len(watches) > 0 {
-				result, err := watch.FindTargetsForFile(path, jobs, watches)
-				if err != nil {
-					logger.Logger.Warn("Error processing file change", "path", path, "error", err)
-					continue
-				}
+			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
-				if !result.HasExistingTargets() {
-					logger.Logger.Debug("No matching watch rules for file", "path", path)
-					continue
-				}
-
-				// Log warnings for missing target files
-				if result.HasMissingTargets() {
-					for jobName, targets := range result.MissingTargets {
-						for _, target := range targets {
-							logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
-						}
+			// Debounce and process
+			debouncer.Debounce([]string{path}, func(paths []string) {
+				result := handler.HandleBatch(paths)
+				if result.ShouldReload {
+					if err := reload(manager); err != nil {
+						logger.Logger.Error("Failed to reload", "error", err)
+						fmt.Println("Failed to reload:", err)
 					}
 				}
-
-				// Execute jobs in the order they appear in MatchedRules
-				seenJobs := make(map[string]bool)
-				for _, rule := range result.MatchedRules {
-					for _, jobName := range rule.Jobs {
-						if seenJobs[jobName] {
-							continue
-						}
-						seenJobs[jobName] = true
-
-						j, exists := jobs[jobName]
-						if !exists {
-							logger.Logger.Warn("Job not found", "job", jobName)
-							continue
-						}
-
-						targets := result.ExistingTargets[jobName]
-						if err := watch.ExecuteJob(j, targets, cwd); err != nil {
-							logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
-						}
-					}
+				if len(result.ExecutedJobs) > 0 {
+					fmt.Println()
+					showPrompt()
 				}
-
-				// After executing all jobs, check if any matched rule wants reload
-				for _, rule := range result.MatchedRules {
-					if rule.Reload {
-						logger.Logger.Info("Watch rule triggered reload", "source", rule.Source)
-						if err := reload(manager); err != nil {
-							logger.Logger.Error("Failed to reload", "error", err)
-							fmt.Println("Failed to reload:", err)
-						}
-						break // Only reload once
-					}
-				}
-
-				fmt.Println()
-				showPrompt()
-			} else {
-				logger.Logger.Info("File changed, but no watch mapping configured", "path", path)
-				showPrompt()
-			}
+			})
 
 		case err := <-manager.Errors():
 			return fmt.Errorf("watcher error: %v", err)

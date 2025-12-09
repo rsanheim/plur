@@ -133,7 +133,7 @@ type WatchCmd struct {
 
 type WatchRunCmd struct {
 	Timeout  int `help:"Exit after specified seconds (default: run until Ctrl-C)"`
-	Debounce int `help:"Debounce delay in milliseconds" default:"100"`
+	Debounce int `help:"Debounce delay in milliseconds" default:"30"`
 }
 
 func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
