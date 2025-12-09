@@ -95,9 +95,12 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
 	fmt.Printf("Cache Directory:  %s\n", cacheDir)
 
 	// Runtime data
-	runtimePath, err := GetRuntimeFilePath()
+	var runtimePath string
+	rt, err := NewRuntimeTracker(globalConfig.RuntimeDir)
 	if err != nil {
 		runtimePath = fmt.Sprintf("error: %v", err)
+	} else {
+		runtimePath = rt.RuntimeFilePath()
 	}
 	fmt.Printf("Runtime Data:     %s\n", runtimePath)
 

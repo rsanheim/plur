@@ -10,7 +10,7 @@ module Plur
   module Benchmark
     class Config
       attr_accessor :workers, :warmup, :runs, :min_runs, :max_runs, :projects, :save_results,
-        :show_output, :checkpoint, :results_dir, :timestamp
+        :show_output, :ignore_failure, :checkpoint, :results_dir, :timestamp
 
       def initialize
         @workers = Plur.config.plur_cores
@@ -22,6 +22,7 @@ module Plur
         @trace = false
         @save_results = true
         @show_output = false
+        @ignore_failure = false
         @checkpoint = false
         @results_dir = File.join(Dir.pwd, "results")
         @timestamp = ENV["BENCH_TIMESTAMP"] || Time.now.utc.strftime("%Y%m%d-%H%M%S")
@@ -107,6 +108,7 @@ module Plur
         end
 
         hyperfine_cmd += ["--show-output"] if config.show_output
+        hyperfine_cmd += ["--ignore-failure"] if config.ignore_failure
 
         if config.save_results
           hyperfine_cmd += ["--export-json", json_file]

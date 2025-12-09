@@ -106,9 +106,11 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 			}
 		case "group_started":
 			if msg.ExampleGroup != nil && msg.ExampleGroup.FilePath != "" {
-				p.currentFile = msg.ExampleGroup.FilePath
+				// RSpec outputs paths with "./" prefix, normalize to match glob discovery
+				filePath := strings.TrimPrefix(msg.ExampleGroup.FilePath, "./")
+				p.currentFile = filePath
 				notifications = append(notifications, types.GroupStartedNotification{
-					FilePath: msg.ExampleGroup.FilePath,
+					FilePath: filePath,
 				})
 			}
 		case "example_passed", "example_failed", "example_pending":
@@ -178,7 +180,7 @@ func (p *outputParser) parseStreamExample(msgType string, ex *StreamExample) typ
 		Description:     ex.Description,
 		FullDescription: ex.FullDescription,
 		Location:        ex.Location,
-		FilePath:        ex.FilePath,
+		FilePath:        strings.TrimPrefix(ex.FilePath, "./"),
 		LineNumber:      ex.LineNumber,
 		Status:          ex.Status,
 		Duration:        time.Duration(ex.RunTime * float64(time.Second)),

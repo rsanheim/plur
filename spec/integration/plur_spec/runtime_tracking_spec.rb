@@ -32,7 +32,8 @@ RSpec.describe "Plur runtime tracking" do
 
         runtime_data = JSON.parse(File.read(runtime_file))
         expect(runtime_data).to be_a(Hash)
-        expect(runtime_data.keys).to include("./spec/calculator_spec.rb")
+        # Paths are saved without "./" prefix (matches glob discovery)
+        expect(runtime_data.keys).to include("spec/calculator_spec.rb")
         expect(runtime_data.values.all? { |v| v.is_a?(Numeric) && v > 0 }).to be true
 
         # Verify it's in the temp directory with a hash filename
@@ -54,28 +55,39 @@ RSpec.describe "Plur runtime tracking" do
   end
 
   context "runtime-based grouping" do
-    let(:temp_cache_dir) { Dir.mktmpdir }
+    around_with_tmp_plur_home
 
     it "distributes files based on their runtime" do
       Dir.chdir(default_ruby_dir) do
         # Calculate project hash
         require "digest"
-        project_hash = Digest::SHA256.hexdigest(File.expand_path(default_ruby_dir))[0..7]
+        project_hash = Digest::SHA256.hexdigest(File.expand_path("."))[0..7]
 
         # Create fake runtime data with uneven distribution
+        # Paths should NOT have "./" prefix (matches glob discovery format)
+        # Must match actual file paths including subdirectories
         runtime_data = {
-          "./spec/calculator_spec.rb" => 5.0,  # Very slow file
-          "./spec/counter_spec.rb" => 0.1,
-          "./spec/validator_spec.rb" => 0.1,
-          "./spec/string_utils_spec.rb" => 0.1,
-          "./spec/array_helpers_spec.rb" => 0.1,
-          "./spec/date_formatter_spec.rb" => 0.1
+          "spec/calculator_spec.rb" => 5.0,  # Very slow file
+          "spec/counter_spec.rb" => 0.1,
+          "spec/validator_spec.rb" => 0.1,
+          "spec/string_utils_spec.rb" => 0.1,
+          "spec/array_helpers_spec.rb" => 0.1,
+          "spec/date_formatter_spec.rb" => 0.1,
+          "spec/example_scenarios_spec.rb" => 0.1,
+          "spec/plur_ruby_spec.rb" => 0.1,
+          "spec/env_test_spec.rb" => 0.1,
+          "spec/failing_examples_spec.rb" => 0.1,
+          "spec/models/user_spec.rb" => 0.1,
+          "spec/services/email_service_spec.rb" => 0.1
         }
 
-        File.write(File.join(temp_cache_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
+        # Write fake runtime data to PLUR_HOME/runtime
+        runtime_dir = File.join(tmp_plur_home, "runtime")
+        FileUtils.mkdir_p(runtime_dir)
+        File.write(File.join(runtime_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
 
         # Run dry-run with debug to see grouping strategy
-        result = run_plur("--dry-run", "--debug", "-n", "2", "--runtime-dir", temp_cache_dir)
+        result = run_plur("--dry-run", "--debug", "-n", "2")
 
         # The slow file should be in its own group or with minimal other files
         expect(result.err).to include("Using runtime-based grouped execution")
@@ -99,6 +111,39 @@ RSpec.describe "Plur runtime tracking" do
         else
           # Worker 1 has the slow file, so it should have fewer total files
           expect(worker1_files.size).to be <= worker0_files.size
+        end
+      end
+    end
+  end
+
+  context "merge behavior" do
+    around_with_tmp_plur_home
+
+    it "preserves runtime data for unrun files when running a subset" do
+      Dir.chdir(default_ruby_dir) do
+        # Run all specs to generate initial runtime data
+        run_plur("-n", "2")
+
+        # Read the initial runtime data
+        runtime_files = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
+        expect(runtime_files.size).to eq(1)
+        runtime_file = runtime_files.first
+        initial_data = JSON.parse(File.read(runtime_file))
+
+        # Run only a subset of specs
+        run_plur("-n", "1", "spec/calculator_spec.rb")
+
+        # Read the updated runtime data
+        updated_data = JSON.parse(File.read(runtime_file))
+
+        # Should still have all files, not just calculator
+        expect(updated_data.keys).to include("spec/calculator_spec.rb")
+        expect(updated_data.keys.size).to eq(initial_data.keys.size)
+
+        # Other files should have their original timing preserved
+        initial_data.each do |file, time|
+          next if file == "spec/calculator_spec.rb" # This one may have changed
+          expect(updated_data[file]).to eq(time), "#{file} runtime should be preserved"
         end
       end
     end

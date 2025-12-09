@@ -18,7 +18,7 @@ RSpec.describe "Plur --rspec-trace flag" do
 
         result = run_plur("-C", tmpdir, "--rspec-trace", "traced_spec.rb")
 
-        expect(result.out).to include("[./traced_spec.rb]: TRACE_ME_PLEASE")
+        expect(result.out).to include("[traced_spec.rb]: TRACE_ME_PLEASE")
         expect(result.exit_status).to eq(0)
       end
     end
@@ -38,7 +38,7 @@ RSpec.describe "Plur --rspec-trace flag" do
         result = run_plur("-C", tmpdir, "--rspec-trace", "newline_spec.rb")
 
         # Should have newline before the prefix (to separate from dots)
-        expect(result.out).to match(/\n\[\.\/newline_spec\.rb\]:/)
+        expect(result.out).to match(/\n\[newline_spec\.rb\]:/)
         expect(result.exit_status).to eq(0)
       end
     end
@@ -60,7 +60,7 @@ RSpec.describe "Plur --rspec-trace flag" do
         result = run_plur("-C", tmpdir, "untraced_spec.rb")
 
         expect(result.out).to include("NO_TRACE")
-        expect(result.out).not_to include("[./untraced_spec.rb]:")
+        expect(result.out).not_to include("[untraced_spec.rb]:")
         expect(result.exit_status).to eq(0)
       end
     end
@@ -91,8 +91,8 @@ RSpec.describe "Plur --rspec-trace flag" do
 
         result = run_plur("-C", tmpdir, "--rspec-trace", "-n", "2", "file_a_spec.rb", "file_b_spec.rb")
 
-        expect(result.out).to include("[./file_a_spec.rb]: FROM_FILE_A")
-        expect(result.out).to include("[./file_b_spec.rb]: FROM_FILE_B")
+        expect(result.out).to include("[file_a_spec.rb]: FROM_FILE_A")
+        expect(result.out).to include("[file_b_spec.rb]: FROM_FILE_B")
         expect(result.exit_status).to eq(0)
       end
     end
