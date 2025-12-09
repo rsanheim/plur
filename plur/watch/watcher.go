@@ -189,7 +189,7 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 	// Jobs without {{target}} placeholder run once without targets
 	if !j.UsesTargets() {
 		cmd := j.Cmd
-		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
+		fmt.Printf("\n> %s\n", strings.Join(cmd, " "))
 
 		execCmd := exec.Command(cmd[0], cmd[1:]...)
 		execCmd.Dir = cwd
@@ -211,7 +211,7 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 
 	for _, target := range targetFiles {
 		cmd := job.BuildJobCmd(j, []string{target})
-		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
+		fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
 
 		execCmd := exec.Command(cmd[0], cmd[1:]...)
 		execCmd.Dir = cwd

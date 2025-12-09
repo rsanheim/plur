@@ -126,7 +126,7 @@ func autodetectJob() (*ResolveJobResult, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("No default spec/test files found")
+	return nil, fmt.Errorf("No default spec/test files found using default patterns")
 }
 
 func getWatchesForJob(jobName string) []watch.WatchMapping {
