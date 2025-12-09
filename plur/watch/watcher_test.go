@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -171,4 +172,79 @@ func TestDefaultIgnorePatterns(t *testing.T) {
 	assert.True(t, IsIgnored(".git/config", DefaultIgnorePatterns))
 	assert.True(t, IsIgnored("node_modules/lodash/index.js", DefaultIgnorePatterns))
 	assert.False(t, IsIgnored("lib/user.rb", DefaultIgnorePatterns))
+}
+
+func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "args.txt")
+
+	// Job that writes all arguments to a file - verifies batching behavior
+	j := job.Job{
+		Name: "test-batch",
+		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
+	}
+
+	err := ExecuteJob(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	// All three files should appear in a single command invocation
+	output := string(content)
+	assert.Contains(t, output, "file1.rb")
+	assert.Contains(t, output, "file2.rb")
+	assert.Contains(t, output, "file3.rb")
+}
+
+func TestExecuteJob_SingleTarget(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "args.txt")
+
+	j := job.Job{
+		Name: "test-single",
+		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
+	}
+
+	err := ExecuteJob(j, []string{"only_file.rb"}, tmpDir)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "only_file.rb")
+}
+
+func TestExecuteJob_NoTargets(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "args.txt")
+
+	j := job.Job{
+		Name: "test-empty",
+		Cmd:  []string{"sh", "-c", "echo ran > " + outputFile, "--", "{{target}}"},
+	}
+
+	err := ExecuteJob(j, []string{}, tmpDir)
+	require.NoError(t, err)
+
+	// Command should not run at all with empty targets
+	_, err = os.ReadFile(outputFile)
+	assert.True(t, os.IsNotExist(err), "Command should not execute with no targets")
+}
+
+func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "ran.txt")
+
+	// Job without {{target}} runs once regardless of targets
+	j := job.Job{
+		Name: "test-no-placeholder",
+		Cmd:  []string{"sh", "-c", "echo executed > " + outputFile},
+	}
+
+	err := ExecuteJob(j, []string{"ignored1.rb", "ignored2.rb"}, tmpDir)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+	assert.Equal(t, "executed\n", string(content))
 }

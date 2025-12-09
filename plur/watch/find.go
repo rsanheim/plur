@@ -38,9 +38,10 @@ func (r *FindResult) HasMissingTargets() bool {
 	return false
 }
 
-// FindTargetsForFile determines what would be executed for a given file change
-// It returns all matched rules and separates existing vs missing target files
-func FindTargetsForFile(filePath string, jobs map[string]job.Job, watches []WatchMapping) (*FindResult, error) {
+// FindTargetsForFile determines what would be executed for a given file change.
+// The cwd parameter is used to resolve relative target paths for existence checks.
+// It returns all matched rules and separates existing vs missing target files.
+func FindTargetsForFile(filePath string, jobs map[string]job.Job, watches []WatchMapping, cwd string) (*FindResult, error) {
 	processor := NewEventProcessor(jobs, watches)
 
 	// Get candidate targets from event processor
@@ -64,10 +65,14 @@ func FindTargetsForFile(filePath string, jobs map[string]job.Job, watches []Watc
 		}
 	}
 
-	// Filter targets by existence
+	// Filter targets by existence (resolve relative paths against cwd)
 	for jobName, targets := range candidateTargets {
 		for _, target := range targets {
-			if _, err := os.Stat(target); err == nil {
+			targetPath := target
+			if cwd != "" && !filepath.IsAbs(target) {
+				targetPath = filepath.Join(cwd, target)
+			}
+			if _, err := os.Stat(targetPath); err == nil {
 				result.ExistingTargets[jobName] = append(result.ExistingTargets[jobName], target)
 			} else {
 				result.MissingTargets[jobName] = append(result.MissingTargets[jobName], target)

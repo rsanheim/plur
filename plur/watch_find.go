@@ -57,7 +57,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	out.Info("checking watch", "file", filePath)
 
 	// Use shared find logic
-	result, err := watch.FindTargetsForFile(filePath, jobs, watches)
+	result, err := watch.FindTargetsForFile(filePath, jobs, watches, cwd)
 	if err != nil {
 		return fmt.Errorf("error processing file: %w", err)
 	}

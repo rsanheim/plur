@@ -126,7 +126,7 @@ func autodetectJob() (*ResolveJobResult, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("no test framework detected. Please create a .plur.toml with a job configuration")
+	return nil, fmt.Errorf("No default spec/test files found using default patterns")
 }
 
 func getWatchesForJob(jobName string) []watch.WatchMapping {

@@ -144,7 +144,7 @@ func TestResolveJobAutodetectNoMatch(t *testing.T) {
 	// Empty directory - no test files
 	_, err := ResolveJob("", nil, nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no test framework detected")
+	assert.Contains(t, err.Error(), "No default spec/test files found using default patterns")
 }
 
 func TestResolveJobReturnsWatches(t *testing.T) {

@@ -170,7 +170,7 @@ func RunCommand(args []string) {
 		return
 	}
 
-	fmt.Println("running:", strings.Join(args, " "))
+	fmt.Printf("\n[plur] %s\n", strings.Join(args, " "))
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
@@ -189,7 +189,7 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 	// Jobs without {{target}} placeholder run once without targets
 	if !j.UsesTargets() {
 		cmd := j.Cmd
-		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
+		fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
 
 		execCmd := exec.Command(cmd[0], cmd[1:]...)
 		execCmd.Dir = cwd
@@ -204,24 +204,23 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 		return nil
 	}
 
-	// Jobs with {{target}} run once per target
+	// Jobs with {{target}} run once with all target files batched together
 	if len(targetFiles) == 0 {
 		return nil
 	}
 
-	for _, target := range targetFiles {
-		cmd := job.BuildJobCmd(j, []string{target})
-		logger.Logger.Info("Running command", "cmd", strings.Join(cmd, " "))
+	cmd := job.BuildJobCmd(j, targetFiles)
+	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
 
-		execCmd := exec.Command(cmd[0], cmd[1:]...)
-		execCmd.Dir = cwd
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
-		execCmd.Env = append(os.Environ(), j.Env...)
+	execCmd := exec.Command(cmd[0], cmd[1:]...)
+	execCmd.Dir = cwd
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+	execCmd.Env = append(os.Environ(), j.Env...)
 
-		if err := execCmd.Run(); err != nil {
-			logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
-		}
+	if err := execCmd.Run(); err != nil {
+		logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
+		return err
 	}
 
 	return nil
@@ -314,8 +313,6 @@ func FilterDirectories(dirs []string) ([]string, error) {
 			// - result doesn't start with ".." (not escaping parent)
 			// - result isn't "." (same directory)
 			if err == nil && !strings.HasPrefix(rel, "..") && rel != "." {
-				logger.Logger.Debug("Filtering subdirectory of existing watch",
-					"subdir", v.path, "parent", parent)
 				isSubdir = true
 				break
 			}

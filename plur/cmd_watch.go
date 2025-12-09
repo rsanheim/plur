@@ -30,6 +30,17 @@ func runWatchInstall(force bool) error {
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
+func printHelp() {
+	cmdWidth := 20
+	fmt.Println("Available commands")
+	fmt.Printf("  %-*s %s\n", cmdWidth, "[Enter]", "Run all tests")
+	fmt.Printf("  %-*s %s\n", cmdWidth, "debug", "Toggle debug mode")
+	fmt.Printf("  %-*s %s\n", cmdWidth, "help", "Show this help")
+	fmt.Printf("  %-*s %s\n", cmdWidth, "reload", "Reload plur")
+	fmt.Printf("  %-*s %s\n", cmdWidth, "exit (Ctrl-C)", "Exit watch mode")
+	fmt.Println()
+}
+
 // loadWatchConfiguration resolves job and watch mappings
 func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (job.Job, []watch.WatchMapping, error) {
 	result, err := autodetect.ResolveJob(explicitJobName, cli.Job, nil)
@@ -57,8 +68,11 @@ func resetTerminal() {
 	_ = cmd.Run() // Best effort, ignore errors
 }
 
+// reload performs an atomic process replacement (Unix/Linux/macOS only)
+// and also maintains same args & env, including the debug state from previous process
 func reload(manager *watch.WatcherManager) error {
 	fmt.Println("Reloading plur...")
+	fmt.Println()
 
 	execPath, err := os.Executable()
 	if err != nil {
@@ -67,9 +81,6 @@ func reload(manager *watch.WatcherManager) error {
 
 	// Must cleanup before exec - defers won't run
 	manager.Stop()
-
-	// Reset terminal to sane state before exec
-	// Jobs may have left terminal in raw mode (e.g., goreleaser progress bars)
 	resetTerminal()
 
 	args := os.Args
@@ -83,8 +94,6 @@ func reload(manager *watch.WatcherManager) error {
 		})
 	}
 
-	// Atomic process replacement (Unix/Linux/macOS only)
-	// Process is replaced in-place, maintaining the same PID
 	env := os.Environ()
 	err = syscall.Exec(execPath, args, env)
 	if err != nil {
@@ -92,6 +101,15 @@ func reload(manager *watch.WatcherManager) error {
 	}
 	os.Exit(1)
 	return nil
+}
+
+func printWatchInfo(watchDirs []string) {
+	absoluteWatchDirs := make([]string, len(watchDirs))
+	for i, dir := range watchDirs {
+		absoluteWatchDirs[i], _ = filepath.Abs(dir)
+	}
+	fmt.Printf("plur %s ready and watching %v\n", GetVersionInfo(), strings.Join(absoluteWatchDirs, ", "))
+	fmt.Println()
 }
 
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
@@ -110,18 +128,18 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	}
 	jobs[resolvedJob.Name] = resolvedJob
 
-	// Log watch configuration
 	if len(watches) > 0 {
 		logger.Logger.Info("Watch configuration loaded", "job", resolvedJob.Name, "watch_mappings", len(watches))
 	} else {
 		logger.Logger.Info("No watch mappings configured, file changes will not trigger tests")
 	}
 
-	// Create debounce delay (for future use)
 	debounceDelay := time.Duration(runCmd.Debounce) * time.Millisecond
 	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
 
-	// Determine which directories to watch from watch mappings
+	// Create debouncer and file event handler
+	debouncer := watch.NewDebouncer(debounceDelay)
+
 	var watchDirs []string
 	for _, mapping := range watches {
 		dir := mapping.SourceDir()
@@ -139,14 +157,12 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		return fmt.Errorf("no directories to watch found in watch mappings")
 	}
 
-	// Set up global ignore patterns (use defaults if not configured)
 	globalIgnorePatterns := watchCmd.Ignore
 	if len(globalIgnorePatterns) == 0 {
 		globalIgnorePatterns = watch.DefaultIgnorePatterns
 	}
 	logger.Logger.Debug("Global watch ignore patterns", "patterns", globalIgnorePatterns)
 
-	// Get project name from current directory
 	projectName := "unknown"
 	if cwd, err := os.Getwd(); err == nil {
 		projectName = filepath.Base(cwd)
@@ -165,7 +181,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		logger.Logger.Debug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", runCmd.Timeout) + " seconds")
 	}
 
-	// Get the watcher binary path
 	watcherPath, err := watch.GetWatcherBinaryPath(globalConfig.ConfigPaths.BinDir)
 	if err != nil {
 		return fmt.Errorf("failed to find watcher binary: %v", err)
@@ -184,7 +199,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	}
 	defer manager.Stop()
 
-	// Set up timeout if specified
 	var timeoutChan <-chan time.Time
 	if runCmd.Timeout > 0 {
 		timeoutChan = time.After(time.Duration(runCmd.Timeout) * time.Second)
@@ -194,7 +208,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	// Set up stdin monitoring for commands
 	stdinChan := make(chan string)
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -208,69 +221,80 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		}
 	}()
 
-	// Show instructions to user
-	fmt.Println("Watching for file changes.")
-	fmt.Println("Commands:")
-	fmt.Println("  [Enter]  - Run all tests")
-	fmt.Println("  reload   - Reload configuration")
-	fmt.Println("  debug    - Toggle debug output")
-	fmt.Println("  exit     - Exit watch mode")
-	fmt.Println("  Ctrl-C   - Exit watch mode")
-	fmt.Println()
-	fmt.Print("plur> ")
+	// Set up prompt channel - buffered to coalesce multiple prompt requests
+	promptChan := make(chan struct{}, 1)
+	showPrompt := func() {
+		select {
+		case promptChan <- struct{}{}:
+		default: // already queued, skip
+		}
+	}
 
-	// Resolve the working directory in case we're in a symlinked directory
+	// Set up reload channel - buffered to coalesce multiple reload requests
+	reloadChan := make(chan struct{}, 1)
+	triggerReload := func() {
+		select {
+		case reloadChan <- struct{}{}:
+		default: // already queued, skip
+		}
+	}
+
+	printWatchInfo(watchDirs)
+	printHelp()
+	showPrompt()
+
 	cwd, _ := os.Getwd()
 	if resolvedCwd, err := filepath.EvalSymlinks(cwd); err == nil {
 		if resolvedCwd != cwd {
-			logger.Logger.Debug("watch", "cwd_symlink_resolved", true,
-				"original", cwd, "resolved", resolvedCwd)
+			logger.Logger.Debug("watch", "cwd_symlink_resolved", true, "original", cwd, "resolved", resolvedCwd)
 		}
 		cwd = resolvedCwd
 	}
 
-	// Process events with runCmd.Timeout
+	// Create file event handler
+	handler := &watch.FileEventHandler{
+		Jobs:    jobs,
+		Watches: watches,
+		CWD:     cwd,
+	}
+
 	for {
 		select {
 		case input := <-stdinChan:
-			logger.Logger.Debug("watch stdin", "input", input)
+			logger.Logger.Debug("received via stdin", "input", input)
 			switch input {
 			case "":
-				logger.Logger.Info("Running all tests (manual trigger)")
 				fmt.Println("Running all tests...")
 				cmd := job.BuildJobAllCmd(resolvedJob)
 				watch.RunCommand(cmd)
-				fmt.Print("\nplur> ")
+				fmt.Println()
+				showPrompt()
+			case "help":
+				printHelp()
+				showPrompt()
 			case "reload":
-				logger.Logger.Info("User requested process reload")
-				if err := reload(manager); err != nil {
-					logger.Logger.Error("Failed to reload", "error", err)
-					fmt.Println("Failed to reload:", err)
-					fmt.Print("plur> ")
-					continue
-				}
+				logger.Logger.Debug("User requested process reload")
+				triggerReload()
 			case "debug":
 				logger.ToggleDebug()
 				if logger.IsDebugEnabled() {
 					fmt.Println("Debug output enabled")
-					logger.Logger.Debug("Debug mode activated")
 				} else {
 					fmt.Println("Debug output disabled")
 				}
-				fmt.Print("plur> ")
+				showPrompt()
 			case "exit":
-				logger.Logger.Info("User requested exit")
 				fmt.Println("Exiting watch mode...")
 				return nil
 			default:
-				// Unknown command
 				fmt.Printf("Unknown command: '%s'\n", input)
-				fmt.Println("Commands: [Enter] to run all tests, 'reload' to reload config, 'debug' to toggle debug, 'exit' to quit")
-				fmt.Print("plur> ")
+				printHelp()
+				showPrompt()
 			}
 
 		case event := <-manager.Events():
-			if event.PathType == "watcher" { // log watcher lifecycle events and continue
+			// Early filtering - skip events we don't care about
+			if event.PathType == "watcher" {
 				logger.Logger.Debug("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
 				continue
 			}
@@ -281,109 +305,67 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				continue
 			}
 
-			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
+			if watch.IsIgnored(path, globalIgnorePatterns) {
+				continue
+			}
 
 			if event.EffectType != "modify" && event.EffectType != "create" {
 				continue
 			}
 
-			// Skip globally ignored paths (.git, node_modules, etc.)
-			if watch.IsIgnored(path, globalIgnorePatterns) {
-				// trace: logger.Logger.Debug("Skipping globally ignored path", "path", path)
-				continue
-			}
+			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
-			if len(watches) > 0 {
-				result, err := watch.FindTargetsForFile(path, jobs, watches)
-				if err != nil {
-					logger.Logger.Warn("Error processing file change", "path", path, "error", err)
-					continue
+			// Debounce and process
+			debouncer.Debounce([]string{path}, func(paths []string) {
+				result := handler.HandleBatch(paths)
+				if result.ShouldReload {
+					triggerReload()
 				}
-
-				if !result.HasExistingTargets() {
-					logger.Logger.Debug("No matching watch rules for file", "path", path)
-					continue
+				if len(result.ExecutedJobs) > 0 {
+					fmt.Println()
+					showPrompt()
 				}
-
-				// Log warnings for missing target files
-				if result.HasMissingTargets() {
-					for jobName, targets := range result.MissingTargets {
-						for _, target := range targets {
-							logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
-						}
-					}
-				}
-
-				// Execute jobs in the order they appear in MatchedRules
-				// (maps have non-deterministic iteration order)
-				seenJobs := make(map[string]bool)
-				for _, rule := range result.MatchedRules {
-					for _, jobName := range rule.Jobs {
-						if seenJobs[jobName] {
-							continue
-						}
-						seenJobs[jobName] = true
-
-						j, exists := jobs[jobName]
-						if !exists {
-							logger.Logger.Warn("Job not found", "job", jobName)
-							continue
-						}
-
-						targets := result.ExistingTargets[jobName]
-						if err := watch.ExecuteJob(j, targets, cwd); err != nil {
-							logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
-						}
-					}
-				}
-
-				// After executing all jobs, check if any matched rule wants reload
-				for _, rule := range result.MatchedRules {
-					if rule.Reload {
-						logger.Logger.Info("Watch rule triggered reload", "source", rule.Source)
-						if err := reload(manager); err != nil {
-							logger.Logger.Error("Failed to reload", "error", err)
-							fmt.Println("Failed to reload:", err)
-						}
-						break // Only reload once
-					}
-				}
-
-				fmt.Print("\nplur> ")
-			} else {
-				logger.Logger.Info("File changed (no watch mapping configured)", "path", path)
-				fmt.Print("plur> ")
-			}
+			})
 
 		case err := <-manager.Errors():
 			return fmt.Errorf("watcher error: %v", err)
 
 		case <-timeoutChan:
 			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", runCmd.Timeout)
-			fmt.Println("\nTimeout reached, exiting!")
+			fmt.Println("Timeout reached, exiting!")
 			return nil
 
 		case sig := <-sigChan:
 			switch sig {
 			case syscall.SIGINT:
-				fmt.Println("\nReceived SIGINT, shutting down gracefully...")
+				fmt.Println("Received SIGINT, shutting down gracefully...")
 				return nil
 			case syscall.SIGTERM:
-				fmt.Println("\nReceived SIGTERM, shutting down gracefully...")
+				fmt.Println("Received SIGTERM, shutting down gracefully...")
 				return nil
 			case syscall.SIGHUP:
-				fmt.Println("\nReceived SIGHUP, reloading plur...")
+				fmt.Println("Received SIGHUP, reloading plur...")
 				if err := reload(manager); err != nil {
 					logger.Logger.Error("Failed to reload", "error", err)
 					fmt.Println("Failed to reload:", err)
-					fmt.Print("plur> ")
+					showPrompt()
 					continue
 				}
 				// reload() calls syscall.Exec which replaces process, so we never reach here on success
 				return nil
 			default:
-				fmt.Printf("\nReceived signal %v, shutting down gracefully...\n", sig)
+				fmt.Printf("Received signal %v, shutting down gracefully...\n", sig)
 				return nil
+			}
+
+		case <-promptChan:
+			fmt.Print("[plur] > ")
+
+		case <-reloadChan:
+			if err := reload(manager); err != nil {
+				logger.Logger.Error("Failed to reload", "error", err)
+				fmt.Println("Failed to reload:", err)
+				showPrompt()
 			}
 		}
 	}
