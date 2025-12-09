@@ -69,7 +69,7 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 
 	// Deduplicate targets per job
 	for jobName := range results {
-		results[jobName] = deduplicate(results[jobName])
+		results[jobName] = Deduplicate(results[jobName])
 	}
 
 	return results, nil
@@ -111,8 +111,8 @@ func (ep *EventProcessor) isIgnored(path string, ignorePatterns []string) bool {
 	return false
 }
 
-// deduplicate removes duplicate strings from a slice while preserving order
-func deduplicate(items []string) []string {
+// Deduplicate removes duplicate strings from a slice while preserving order
+func Deduplicate(items []string) []string {
 	seen := make(map[string]bool)
 	result := make([]string, 0, len(items))
 
