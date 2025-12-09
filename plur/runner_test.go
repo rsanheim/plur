@@ -269,6 +269,7 @@ func TestRunner_DryRunReturnsNil(t *testing.T) {
 		DryRun:      true,
 		FirstIs1:    true,
 		ColorOutput: false,
+		RuntimeDir:  t.TempDir(),
 	}
 	// Use a custom job to avoid needing ConfigPaths for RSpec formatter
 	testJob := job.Job{
@@ -277,7 +278,8 @@ func TestRunner_DryRunReturnsNil(t *testing.T) {
 		TargetPattern: "**/*_test.rb",
 	}
 
-	runner := NewRunner(cfg, []string{"a_test.rb", "b_test.rb"}, testJob)
+	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb"}, testJob)
+	require.NoError(t, err)
 	results, wallTime, err := runner.Run()
 
 	assert.Nil(t, err, "dry-run should not error")
@@ -291,6 +293,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 			WorkerCount: 10, // Way more than files
 			DryRun:      true,
 			FirstIs1:    true,
+			RuntimeDir:  t.TempDir(),
 		}
 		testJob := job.Job{
 			Name:          "custom",
@@ -299,12 +302,13 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		}
 
 		files := []string{"a_test.rb", "b_test.rb"} // Only 2 files
-		runner := NewRunner(cfg, files, testJob)
+		runner, err := NewRunner(cfg, files, testJob)
+		require.NoError(t, err)
 		groups := runner.groupFiles()
 		assert.Equal(t, 2, len(groups), "should have 2 groups")
 
 		// Run should work without error
-		_, _, err := runner.Run()
+		_, _, err = runner.Run()
 		assert.NoError(t, err)
 	})
 
@@ -313,6 +317,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 			WorkerCount: 4,
 			DryRun:      true,
 			FirstIs1:    true,
+			RuntimeDir:  t.TempDir(),
 		}
 		testJob := job.Job{
 			Name:          "custom",
@@ -321,9 +326,10 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		}
 
 		files := []string{"only_test.rb"}
-		runner := NewRunner(cfg, files, testJob)
+		runner, err := NewRunner(cfg, files, testJob)
+		require.NoError(t, err)
 
-		_, _, err := runner.Run()
+		_, _, err = runner.Run()
 		assert.NoError(t, err)
 	})
 }
@@ -333,6 +339,7 @@ func TestRunner_EmptyFiles(t *testing.T) {
 		WorkerCount: 4,
 		DryRun:      true,
 		FirstIs1:    true,
+		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
 		Name:          "custom",
@@ -340,7 +347,8 @@ func TestRunner_EmptyFiles(t *testing.T) {
 		TargetPattern: "**/*_test.rb",
 	}
 
-	runner := NewRunner(cfg, []string{}, testJob)
+	runner, err := NewRunner(cfg, []string{}, testJob)
+	require.NoError(t, err)
 	results, wallTime, err := runner.Run()
 
 	// Empty files should still work (no workers spawned)
@@ -354,10 +362,12 @@ func TestRunner_TrackerInitialized(t *testing.T) {
 		WorkerCount: 2,
 		DryRun:      true,
 		FirstIs1:    true,
+		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{Name: "custom"}
 
-	runner := NewRunner(cfg, []string{"a_test.rb"}, testJob)
+	runner, err := NewRunner(cfg, []string{"a_test.rb"}, testJob)
+	require.NoError(t, err)
 
 	require.NotNil(t, runner.Tracker(), "tracker should be initialized")
 }
@@ -377,14 +387,16 @@ func TestRunner_SingleFileStillSetsTestEnvNumber(t *testing.T) {
 		WorkerCount: 4, // User requested 4 workers
 		DryRun:      true,
 		FirstIs1:    true,
+		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
 		Name: "custom",
 		Cmd:  []string{"echo"},
 	}
 
-	runner := NewRunner(cfg, []string{"single_test.rb"}, testJob)
-	_, _, err := runner.Run()
+	runner, err := NewRunner(cfg, []string{"single_test.rb"}, testJob)
+	require.NoError(t, err)
+	_, _, err = runner.Run()
 
 	assert.NoError(t, err)
 	// Output will show PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1
@@ -399,13 +411,15 @@ func TestRunner_SerialModeNoTestEnvNumber(t *testing.T) {
 		WorkerCount: 1, // Explicit serial mode
 		DryRun:      true,
 		FirstIs1:    true,
+		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
 		Name: "custom",
 		Cmd:  []string{"echo"},
 	}
 
-	runner := NewRunner(cfg, []string{"a_test.rb", "b_test.rb", "c_test.rb"}, testJob)
+	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb", "c_test.rb"}, testJob)
+	require.NoError(t, err)
 
 	// In serial mode, buildEnv should NOT include TEST_ENV_NUMBER
 	env := runner.buildEnv(0, 1)
@@ -419,6 +433,7 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 		WorkerCount: 10, // Requested 10
 		DryRun:      true,
 		FirstIs1:    true,
+		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
 		Name: "custom",
@@ -426,7 +441,8 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 	}
 
 	files := []string{"a.rb", "b.rb", "c.rb"} // Only 3 files
-	runner := NewRunner(cfg, files, testJob)
+	runner, err := NewRunner(cfg, files, testJob)
+	require.NoError(t, err)
 
 	// With 3 files and 10 workers requested, we should get 3 groups
 	// Each env should show PARALLEL_TEST_GROUPS=3

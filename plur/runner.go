@@ -49,13 +49,17 @@ type Runner struct {
 	tracker *RuntimeTracker
 }
 
-func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job) *Runner {
+func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job) (*Runner, error) {
+	tracker, err := NewRuntimeTracker(cfg.RuntimeDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create runtime tracker: %w", err)
+	}
 	return &Runner{
 		config:  cfg,
 		files:   files,
 		job:     j,
-		tracker: NewRuntimeTracker(),
-	}
+		tracker: tracker,
+	}, nil
 }
 
 // Group files, build the commands, then either print them for dry-run or execute them
@@ -79,11 +83,7 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 }
 
 func (r *Runner) groupFiles() []FileGroup {
-	runtimeData, err := LoadRuntimeData()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Could not load runtime data: %v\n", err)
-		runtimeData = make(map[string]float64)
-	}
+	runtimeData := r.tracker.LoadedData()
 
 	var groups []FileGroup
 	if len(runtimeData) > 0 {

@@ -82,7 +82,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg.Auto = r.Auto
 	cfg.RspecTrace = r.RspecTrace
 
-	runner := NewRunner(cfg, testFiles, currentJob)
+	runner, err := NewRunner(cfg, testFiles, currentJob)
+	if err != nil {
+		return err
+	}
 	results, wallTime, err := runner.Run()
 	if err != nil {
 		return err
@@ -105,9 +108,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		if err := runner.Tracker().SaveToFile(); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
-			if runtimePath, err := GetRuntimeFilePath(); err == nil {
-				logger.Logger.Debug("Runtime data saved", "runtime_path", runtimePath)
-			}
+			logger.Logger.Debug("Runtime data saved", "runtime_path", runner.Tracker().RuntimeFilePath())
 		}
 	}
 

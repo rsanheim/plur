@@ -7,21 +7,44 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/types"
 )
 
-// RuntimeTracker accumulates runtime data for spec files.
+// RuntimeTracker accumulates runtime data for spec files and manages persistence.
+// It loads existing data at construction and merges with new data on save.
 // Note: This is used single-threaded after all workers complete, so no mutex needed.
 type RuntimeTracker struct {
-	runtimes map[string]float64 // map[filepath]total_runtime_seconds
+	runtimes    map[string]float64 // collected this run
+	loadedData  map[string]float64 // loaded from file at construction
+	runtimeFile string             // computed once at creation
 }
 
-// NewRuntimeTracker creates a new runtime tracker
-func NewRuntimeTracker() *RuntimeTracker {
-	return &RuntimeTracker{
-		runtimes: make(map[string]float64),
+// NewRuntimeTracker creates a new runtime tracker with the given runtime directory.
+// It computes the project-specific file path and loads any existing runtime data.
+func NewRuntimeTracker(runtimeDir string) (*RuntimeTracker, error) {
+	runtimeFile, err := computeRuntimeFilePath(runtimeDir)
+	if err != nil {
+		return nil, err
 	}
+
+	loadedData := loadExistingData(runtimeFile)
+
+	return &RuntimeTracker{
+		runtimes:    make(map[string]float64),
+		loadedData:  loadedData,
+		runtimeFile: runtimeFile,
+	}, nil
+}
+
+// RuntimeFilePath returns the path where runtime data is stored
+func (rt *RuntimeTracker) RuntimeFilePath() string {
+	return rt.runtimeFile
+}
+
+// LoadedData returns the runtime data that was loaded from file at construction.
+// This is used for grouping files by runtime before tests run.
+func (rt *RuntimeTracker) LoadedData() map[string]float64 {
+	return rt.loadedData
 }
 
 // AddRuntime adds runtime for a spec file
@@ -36,16 +59,19 @@ func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotific
 	}
 }
 
-// SaveToFile writes the runtime data to a project-specific JSON file
+// SaveToFile writes the runtime data to the project-specific JSON file.
+// It merges existing data with new measurements (new data takes precedence).
 func (rt *RuntimeTracker) SaveToFile() error {
-	// Get the project-specific runtime file path
-	runtimeFile, err := getRuntimeFilePath()
-	if err != nil {
-		return err
+	// Merge: start with loaded data, overwrite with new measurements
+	merged := make(map[string]float64)
+	for k, v := range rt.loadedData {
+		merged[k] = v
+	}
+	for k, v := range rt.runtimes {
+		merged[k] = v
 	}
 
-	// Create the file
-	file, err := os.Create(runtimeFile)
+	file, err := os.Create(rt.runtimeFile)
 	if err != nil {
 		return err
 	}
@@ -53,12 +79,16 @@ func (rt *RuntimeTracker) SaveToFile() error {
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(rt.runtimes)
+	return encoder.Encode(merged)
 }
 
-// GetRuntimeFilePath returns the runtime file path (exported for messages)
-func GetRuntimeFilePath() (string, error) {
-	return getRuntimeFilePath()
+// computeRuntimeFilePath computes the project-specific runtime file path
+func computeRuntimeFilePath(runtimeDir string) (string, error) {
+	projectHash, err := getProjectHash()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(runtimeDir, projectHash+".json"), nil
 }
 
 // getProjectHash generates a hash of the current working directory
@@ -80,43 +110,23 @@ func getProjectHash() (string, error) {
 	return hex.EncodeToString(hash[:])[:8], nil
 }
 
-// getRuntimeFilePath returns the project-specific runtime file path
-func getRuntimeFilePath() (string, error) {
-	configPaths := config.InitConfigPaths()
-
-	// Get project hash for filename
-	projectHash, err := getProjectHash()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(configPaths.RuntimeDir, projectHash+".json"), nil
-}
-
-// LoadRuntimeData loads runtime data from the cache directory
-func LoadRuntimeData() (map[string]float64, error) {
-	runtimeFile, err := getRuntimeFilePath()
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if file exists
+// loadExistingData loads runtime data from file, returning empty map if not found
+func loadExistingData(runtimeFile string) map[string]float64 {
 	if _, err := os.Stat(runtimeFile); os.IsNotExist(err) {
-		// No runtime data yet, return empty map
-		return make(map[string]float64), nil
+		return make(map[string]float64)
 	}
 
 	file, err := os.Open(runtimeFile)
 	if err != nil {
-		return nil, err
+		return make(map[string]float64)
 	}
 	defer file.Close()
 
 	var runtimes map[string]float64
 	decoder := json.NewDecoder(file)
 	if err := decoder.Decode(&runtimes); err != nil {
-		return nil, err
+		return make(map[string]float64)
 	}
 
-	return runtimes, nil
+	return runtimes
 }
