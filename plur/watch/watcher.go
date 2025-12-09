@@ -314,8 +314,6 @@ func FilterDirectories(dirs []string) ([]string, error) {
 			// - result doesn't start with ".." (not escaping parent)
 			// - result isn't "." (same directory)
 			if err == nil && !strings.HasPrefix(rel, "..") && rel != "." {
-				logger.Logger.Debug("Filtering subdirectory of existing watch",
-					"subdir", v.path, "parent", parent)
 				isSubdir = true
 				break
 			}

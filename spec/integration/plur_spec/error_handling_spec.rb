@@ -3,135 +3,69 @@ require "tmpdir"
 require "open3"
 
 RSpec.describe "Plur error handling" do
-  describe "RSpec error behaviors" do
-    let(:fixture_dir) { project_fixture("rspec-errors") }
+  let(:fixture_dir) { project_fixture("rspec-errors") }
 
-    context "running RSpec directly (baseline behavior)" do
-      it "shows behavior for passing tests" do
-        chdir(fixture_dir) do
-          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/passing_spec.rb")
+  it "properly shows syntax error details" do
+    chdir(fixture_dir) do
+      result = run_plur_allowing_errors("spec/syntax_error_spec.rb")
 
-          expect(status.exitstatus).to eq(0)
-          expect(stdout).to include("2 examples, 0 failures")
-        end
-      end
+      expect(result.exit_status).to eq(1)
+      expect(result.out).to include("0 examples, 0 failures, 1 error occurred outside of examples")
+      expect(result.out).to include("SyntaxError")
+      expect(result.out.downcase).to include("syntax error")
 
-      it "shows behavior for test failures" do
-        chdir(fixture_dir) do
-          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/test_failure_spec.rb")
-
-          expect(status.exitstatus).to eq(1)
-          expect(stdout).to include("2 examples, 1 failure")
-        end
-      end
-
-      it "shows behavior for unhandled exceptions" do
-        chdir(fixture_dir) do
-          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/exception_spec.rb")
-
-          expect(status.exitstatus).to eq(1)
-          expect(stdout).to include("2 examples, 1 failure")
-        end
-      end
-
-      it "shows behavior for syntax errors in spec" do
-        chdir(fixture_dir) do
-          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/syntax_error_spec.rb")
-
-          expect(status.exitstatus).to eq(1)
-          expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
-          expect(stdout).to include("SyntaxError")
-        end
-      end
-
-      it "shows behavior for syntax errors in code under test" do
-        chdir(fixture_dir) do
-          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/calculator_spec.rb")
-
-          expect(status.exitstatus).to eq(1)
-          expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
-          expect(stdout).to include("SyntaxError")
-        end
-      end
-
-      it "shows behavior for LoadError" do
-        chdir(fixture_dir) do
-          stdout, _, status = Open3.capture3("bundle", "exec", "rspec", "spec/load_error_spec.rb")
-
-          expect(status.exitstatus).to eq(1)
-          expect(stdout).to include("0 examples, 0 failures, 1 error occurred outside of examples")
-          expect(stdout).to include("LoadError")
-        end
-      end
+      # Should NOT save runtime data when tests fail to start
+      expect(result.err).not_to include("Runtime data saved to:")
     end
+  end
 
-    context "running through plur" do
-      it "properly shows syntax error details" do
-        chdir(fixture_dir) do
-          result = run_plur_allowing_errors("spec/syntax_error_spec.rb")
+  it "verifies exit codes for different failure scenarios" do
+    chdir(fixture_dir) do
+      result1 = run_plur_allowing_errors("spec/test_failure_spec.rb")
+      result2 = run_plur_allowing_errors("spec/exception_spec.rb")
+      result3 = run_plur_allowing_errors("spec/syntax_error_spec.rb")
+      result4 = run_plur_allowing_errors("spec/calculator_spec.rb")
 
-          expect(result.exit_status).to eq(1)
-          expect(result.out).to include("0 examples, 0 failures, 1 error occurred outside of examples")
-          expect(result.out).to include("SyntaxError")
-          expect(result.out.downcase).to include("syntax error")
+      # All should exit with non-zero
+      expect(result1.exit_status).to eq(1)
+      expect(result2.exit_status).to eq(1)
+      expect(result3.exit_status).to eq(1)
+      expect(result4.exit_status).to eq(1)
 
-          # Should NOT save runtime data when tests fail to start
-          expect(result.err).not_to include("Runtime data saved to:")
-        end
-      end
+      # Test failures and exceptions show examples
+      expect(result1.out).to match(/2 examples, 1 failure/)
+      expect(result2.out).to match(/2 examples, 1 failure/)
 
-      it "verifies exit codes for different failure scenarios" do
-        chdir(fixture_dir) do
-          result1 = run_plur_allowing_errors("spec/test_failure_spec.rb")
-          result2 = run_plur_allowing_errors("spec/exception_spec.rb")
-          result3 = run_plur_allowing_errors("spec/syntax_error_spec.rb")
-          result4 = run_plur_allowing_errors("spec/calculator_spec.rb")
+      # Syntax errors show 0 examples with errors
+      expect(result3.out).to match(/0 examples, 0 failures, 1 error/)
+      expect(result4.out).to match(/0 examples, 0 failures, 1 error/)
+    end
+  end
 
-          # All should exit with non-zero
-          expect(result1.exit_status).to eq(1)
-          expect(result2.exit_status).to eq(1)
-          expect(result3.exit_status).to eq(1)
-          expect(result4.exit_status).to eq(1)
+  context "when JSON output is empty or malformed" do
+    it "provides helpful error message instead of raw JSON parsing error" do
+      fixture_dir = project_fixture("empty_json")
 
-          # Test failures and exceptions show examples
-          expect(result1.out).to match(/2 examples, 1 failure/)
-          expect(result2.out).to match(/2 examples, 1 failure/)
+      chdir(fixture_dir) do
+        env = {"PATH" => "#{fixture_dir}:$PATH"}
+        result = run_plur_allowing_errors("test_spec.rb", env: env)
+        expect(result.exit_status).not_to eq(0)
 
-          # Syntax errors show 0 examples with errors
-          expect(result3.out).to match(/0 examples, 0 failures, 1 error/)
-          expect(result4.out).to match(/0 examples, 0 failures, 1 error/)
-        end
+        # Most importantly, should NOT show raw JSON parsing error
+        expect(result.err).not_to include("failed to parse JSON: unexpected end of JSON input")
+        expect(result.out).not_to include("failed to parse JSON: unexpected end of JSON input")
       end
     end
   end
 
-  describe "Edge cases" do
-    context "when JSON output is empty or malformed" do
-      it "provides helpful error message instead of raw JSON parsing error" do
-        fixture_dir = project_fixture("empty_json")
+  context "when spec directory doesn't exist" do
+    it "handles missing spec directory gracefully" do
+      Dir.mktmpdir do |tmpdir|
+        chdir(tmpdir) do
+          result = run_plur_allowing_errors
 
-        # Run plur and capture output
-        chdir(fixture_dir) do
-          env = {"PATH" => "#{fixture_dir}:$PATH"}
-          result = run_plur_allowing_errors("test_spec.rb", env: env)
-          expect(result.exit_status).not_to eq(0)
-
-          # Most importantly, should NOT show raw JSON parsing error
-          expect(result.err).not_to include("failed to parse JSON: unexpected end of JSON input")
-          expect(result.out).not_to include("failed to parse JSON: unexpected end of JSON input")
-        end
-      end
-    end
-
-    context "when spec directory doesn't exist" do
-      it "handles missing spec directory gracefully" do
-        Dir.mktmpdir do |tmpdir|
-          chdir(tmpdir) do
-            result = run_plur_allowing_errors
-
-            # Should handle gracefully and show appropriate message
-            expect(result.out + result.err).to include("no spec files found").or include("ERROR")
-          end
+          # Should handle gracefully and show appropriate message
+          expect(result.out + result.err).to match(/ERROR.*No default spec\/test files found/)
         end
       end
     end

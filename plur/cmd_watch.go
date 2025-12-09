@@ -281,15 +281,14 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				continue
 			}
 
-			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
-
-			if event.EffectType != "modify" && event.EffectType != "create" {
+			if watch.IsIgnored(path, globalIgnorePatterns) {
+				// trace: logger.Logger.Debug("Skipping globally ignored path", "path", path)
 				continue
 			}
 
-			// Skip globally ignored paths (.git, node_modules, etc.)
-			if watch.IsIgnored(path, globalIgnorePatterns) {
-				// trace: logger.Logger.Debug("Skipping globally ignored path", "path", path)
+			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
+
+			if event.EffectType != "modify" && event.EffectType != "create" {
 				continue
 			}
 
@@ -315,7 +314,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				}
 
 				// Execute jobs in the order they appear in MatchedRules
-				// (maps have non-deterministic iteration order)
 				seenJobs := make(map[string]bool)
 				for _, rule := range result.MatchedRules {
 					for _, jobName := range rule.Jobs {
