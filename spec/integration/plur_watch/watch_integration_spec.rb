@@ -12,7 +12,7 @@ RSpec.describe "plur watch integration" do
     expect(result.err).to include("plur watch starting!")
     expect(result.err).to include("plur configuration info")
     expect(result.err).to include("directories=[lib spec]")
-    expect(result.err).to include("Debounce delay ms=100")
+    expect(result.err).to include("Debounce delay ms=30")
   end
 
   it "detects lib file changes" do
@@ -47,8 +47,8 @@ RSpec.describe "plur watch integration" do
     end
 
     expect_file_change_logged(result.err, "spec/spec_helper.rb")
-    # spec_helper.rb changes are detected but don't trigger jobs currently
-    expect(result.err).to include("No matching watch rules for file")
+    # spec_helper.rb changes are detected but don't trigger jobs (no matching targets)
+    expect(result.err).to include("No existing targets for file")
   end
 
   it "detects spec file changes", skip: ENV["CI"] do

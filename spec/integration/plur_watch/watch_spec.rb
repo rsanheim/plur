@@ -48,9 +48,9 @@ RSpec.describe "plur watch command", :skip_if_ci do
   end
 
   context "debouncing" do
-    it "uses default debounce of 100ms when not specified" do
+    it "uses default debounce of 30ms when not specified" do
       result = run_plur_watch(timeout: 1)
-      expect(result.err).to include("Debounce delay ms=100")
+      expect(result.err).to include("Debounce delay ms=30")
     end
 
     it "respects custom debounce delay" do
