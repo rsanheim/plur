@@ -115,4 +115,37 @@ RSpec.describe "Plur runtime tracking" do
       end
     end
   end
+
+  context "merge behavior" do
+    around_with_tmp_plur_home
+
+    it "preserves runtime data for unrun files when running a subset" do
+      Dir.chdir(default_ruby_dir) do
+        # Run all specs to generate initial runtime data
+        run_plur("-n", "2")
+
+        # Read the initial runtime data
+        runtime_files = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
+        expect(runtime_files.size).to eq(1)
+        runtime_file = runtime_files.first
+        initial_data = JSON.parse(File.read(runtime_file))
+
+        # Run only a subset of specs
+        run_plur("-n", "1", "spec/calculator_spec.rb")
+
+        # Read the updated runtime data
+        updated_data = JSON.parse(File.read(runtime_file))
+
+        # Should still have all files, not just calculator
+        expect(updated_data.keys).to include("spec/calculator_spec.rb")
+        expect(updated_data.keys.size).to eq(initial_data.keys.size)
+
+        # Other files should have their original timing preserved
+        initial_data.each do |file, time|
+          next if file == "spec/calculator_spec.rb" # This one may have changed
+          expect(updated_data[file]).to eq(time), "#{file} runtime should be preserved"
+        end
+      end
+    end
+  end
 end
