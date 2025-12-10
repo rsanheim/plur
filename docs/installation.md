@@ -2,26 +2,32 @@
 
 ## Prerequisites
 
-- Ruby 2.7+ with RSpec or Minitest
-- Go 1.21+ (only if building from source)
+- Ruby 3.0+ with RSpec or Minitest
+- Go 1.25+ (only if building from source)
 
 ## Installation Methods
 
-### Pre-built Binaries (Coming Soon)
+### Pre-built Binaries
 
-Binary releases will be available for:
-- macOS (Intel & Apple Silicon)
-- Linux (x86_64)
-- Windows (x86_64)
+Binary releases are available via GitHub Releases for:
+* macOS Apple Silicon (ARM64)
+* Linux x86_64
+* Linux ARM64
+
+Download from the [GitHub Releases page](https://github.com/rsanheim/plur/releases) for this repository.
+
+### Homebrew (macOS)
+
+_TODO_ -- homebrew tap not yet setup
 
 ### From Source
 
+(requires Go 1.25+) You can build the binary from source and install globally to your $GOPATH/bin.
+
 ```bash
-# Clone the repository
 git clone https://github.com/rsanheim/plur.git
 cd plur
 
-# Install using rake (recommended)
 bin/rake install
 
 # This builds and installs plur to your $GOPATH/bin

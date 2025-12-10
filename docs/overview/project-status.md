@@ -19,7 +19,6 @@
 plur                          # Run with auto-detected workers (cores-2)
 plur --workers 4              # Run with 4 workers
 plur --dry-run               # Show what would run without execution
-plur --auto                  # Auto-detect and show worker count
 ```
 
 ### Technical Architecture
@@ -52,12 +51,11 @@ plur --auto                  # Auto-detect and show worker count
 │   ├── bench              # Performance benchmarking vs turbo_tests
 │   └── get-repo           # Repository cloning for testing
 ├── docs/                  # Documentation
-│   └── project-status.md  # This file
-├── plur-ruby/              # Test Ruby project (9 spec files)
-├── example-project-*/         # External test project (24 spec files)
-├── references/
-│   ├── parallel_tests/    # Reference implementation (Ruby)
-│   └── turbo_tests/       # Reference implementation (Ruby)
+├── fixtures/              # Test projects
+│   └── projects/
+│       ├── default-ruby/  # Simple Ruby library for testing
+│       └── default-rails/ # Rails app for testing
+└── lib/                   # Ruby libraries and helpers
 ```
 
 ## Testing Infrastructure

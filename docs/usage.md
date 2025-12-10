@@ -14,9 +14,6 @@ plur --workers 8
 
 # Dry run - see what would be executed
 plur --dry-run
-
-# Show auto-detected worker count
-plur --auto
 ```
 
 ### Selecting Test Framework
@@ -72,16 +69,15 @@ plur doctor
 
 ### Global Options
 
-- `-n, --workers NUMBER` - Number of parallel workers (default: auto-detect)
-- `--dry-run` - Show what would run without executing
-- `--auto` - Show auto-detected worker count and exit
-- `-h, --help` - Show help
-- `-v, --version` - Show version
+* `-n, --workers NUMBER` - Number of parallel workers (default: auto-detect)
+* `--dry-run` - Show what would run without executing
+* `-h, --help` - Show help
+* `-v, --version` - Show version
 
 ### Environment Variables
 
-- `PARALLEL_TEST_PROCESSORS` - Override number of workers
-- `PLUR_DEBUG` - Enable debug logging
+* `PARALLEL_TEST_PROCESSORS` - Override number of workers
+* `PLUR_DEBUG` - Enable debug logging
 
 ## Parallelism
 

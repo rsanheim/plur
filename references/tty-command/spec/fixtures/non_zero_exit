@@ -1,5 +1,0 @@
-#!/usr/bin/env ruby
-# frozen_string_literal: true
-
-puts "nooo"
-exit 1

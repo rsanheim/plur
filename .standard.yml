@@ -2,5 +2,4 @@ fix: false
 parallel: true
 ignore:
   - "fixtures/**/*"
-  - "references/**/*"
   - "plur/**/*"

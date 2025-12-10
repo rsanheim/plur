@@ -7,7 +7,7 @@ This document tracks performance optimizations for Plur, combining completed wor
 
 ---
 
-## ✅ Completed Optimizations
+## Completed Optimizations
 
 These optimizations have been successfully implemented:
 
@@ -19,7 +19,7 @@ These optimizations have been successfully implemented:
 
 ---
 
-## 🎯 High-Priority Optimizations
+## High-Priority Optimizations
 
 These optimizations are validated, high-impact, and ready to implement.
 
@@ -159,7 +159,7 @@ result := make(map[string]float64, len(rt.runtimes))
 
 ---
 
-## 🔍 Low-Priority Improvements
+## Low-Priority Improvements
 
 These are minor optimizations or cleanup opportunities.
 
@@ -203,7 +203,7 @@ summary := fmt.Sprintf("\nFinished in %s.\n%s, %s, %s, %s, %s",
 
 ---
 
-## ❌ Not Worth Pursuing
+## Not Worth Pursuing
 
 These items were flagged but are either already correct or intentional design decisions.
 
@@ -214,7 +214,7 @@ These items were flagged but are either already correct or intentional design de
 
 ---
 
-## 🧪 Performance Testing
+## Performance Testing
 
 ### Recommended Benchmarks
 
@@ -255,7 +255,7 @@ go test -race ./...
 
 ---
 
-## 📊 Expected Impact Summary
+## Expected Impact Summary
 
 | Optimization | Impact | Effort | Priority |
 |-------------|--------|--------|----------|
@@ -273,7 +273,7 @@ go test -race ./...
 
 ---
 
-## 🎯 Implementation Roadmap
+## Implementation Roadmap
 
 ### Phase 1: Quick Wins (< 1 day)
 - [ ] Add slice capacity hints in grouper.go (4 locations)
@@ -291,7 +291,7 @@ go test -race ./...
 
 ---
 
-## 📝 Notes
+## Notes
 
 * Focus on high-impact, low-effort changes first
 * All optimizations maintain thread safety

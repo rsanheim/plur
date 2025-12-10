@@ -64,12 +64,14 @@ OptionParser.new do |opts|
           bench --checkpoint
 
           # Benchmark a specific project with 4 workers
-          bench -p ./references/example-project -n 4
+          bench -p ./tmp/example-project -n 4
 
           # Benchmark multiple projects
           bench -p ./project1 -p ./project2 -n 8
 
-          bench -p ./references/example-project
+      NOTE:
+          The example-project project can be cloned with:
+          git-cache clone rsanheim/example-project ./tmp/example-project
 
       ENVIRONMENT:
           BENCH_TIMESTAMP        Override the timestamp used for output files

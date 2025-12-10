@@ -36,7 +36,7 @@ RSpec.describe Plur::Benchmark do
       it "returns the default project paths" do
         expect(config.default_projects).to eq([
           Plur.config.default_ruby_dir.to_s,
-          Plur.config.root_dir.join("references", "example-project").to_s
+          Plur.config.root_dir.join("tmp", "example-project").to_s
         ])
       end
     end

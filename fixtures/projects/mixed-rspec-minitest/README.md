@@ -12,10 +12,10 @@ This fixture project contains both RSpec and Minitest test suites to test Plur's
 
 Tests framework selection scenarios:
 
-* **Auto-detection**: When both `spec/` and `test/` exist, Plur defaults to RSpec
-* **Explicit selection**: Use `-t rspec` or `-t minitest` to choose framework
-* **Config file**: Set `use = "minitest"` in `.plur.toml` to change default
-* **Override**: CLI flag overrides config file setting
+* Auto-detection: When both `spec/` and `test/` exist, Plur defaults to RSpec
+* Explicit selection: Use `--use=rspec` or `--use=minitest` to choose framework
+* Config file: Set `use = "minitest"` in `.plur.toml` to change default
+* Override: CLI flag overrides config file setting
 
 ## Usage
 
@@ -24,10 +24,10 @@ Tests framework selection scenarios:
 plur -C fixtures/projects/mixed-rspec-minitest
 
 # Explicit: run Minitest tests
-plur -C fixtures/projects/mixed-rspec-minitest spec -t minitest
+plur -C fixtures/projects/mixed-rspec-minitest --use=minitest
 
 # Explicit: run RSpec tests
-plur -C fixtures/projects/mixed-rspec-minitest spec -t rspec
+plur -C fixtures/projects/mixed-rspec-minitest --use=rspec
 ```
 
 ## Expected Output

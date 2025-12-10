@@ -56,9 +56,6 @@ plur/plur-race
 # Test artifacts
 test-pipes/
 
-# Downloaded test repositories
-/references/*-[0-9]*[0-9]/
-
 # MkDocs
 site/
 

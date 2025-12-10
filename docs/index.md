@@ -1,37 +1,38 @@
 Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
 
-## Documentation Structure
+## Getting Started
 
-### Root Level
+* [Installation](installation.md) - How to install plur
+* [Getting Started](getting-started.md) - Quick introduction
+* [Usage](usage.md) - Detailed command documentation
+* [Configuration](configuration.md) - Customization options
 
-- `project-status.md` - Overall project status, architecture overview, and performance results
-- `plur-optimization-plan.md` - Active optimization planning (needs update with file grouping results)
-- `plur-output-and-design.md` - Design philosophy and logging strategy
+## Features
 
-### `/architecture`
-Technical implementation details and system design:
-- `plur-watch-architecture.md` - Watch mode implementation details
+* [Parallel Execution](features/parallel-execution.md) - How parallel test execution works
+* [Watch Mode](features/watch-mode.md) - Auto-run tests on file changes
+* [Doctor Command](features/doctor-command.md) - Debug installation issues
 
-### `/development`
-Developer guides and setup:
-- `user-guide.md` - End-user documentation (installation, usage, troubleshooting)
-- `go-vendoring-and-ci.md` - CI/CD setup and binary vendoring strategies
+## Architecture
 
-### `/research`
-Research, analysis, and design explorations:
-- `backspin-filter-vs-match-research.md` - Comparison of transformation approaches
-- `file-mapping-config-formats.md` - Config format comparison for watch mappings
+Technical implementation details:
 
-### `/_archive`
-Completed spikes and historical planning documents (dated):
-- `2025-05-28-rspec-package.md` - Completed rspec package extraction
-- `2025-05-28-single-stream-full-migration.md` - Completed JSON formatter migration
-- `2025-06-03-spike-into-adding-watcher.md` - Initial watcher implementation spike
-- `2025-06-04-plur-watch-multiple-watchers-plan.md` - Multi-process watcher architecture
-- `2025-06-03-watcher-output-darwin.txt` - Raw watcher output samples
+* [Concurrency Model](architecture/concurrency-model.md) - Worker pool design
+* [Test Processing Flow](architecture/test-processing-flow.md) - How tests are distributed
+* [Watch Architecture](architecture/plur-watch-architecture.md) - Watch mode internals
 
-## Quick Links
+## Development
 
-- **Getting Started**: See `development/user-guide.md`
-- **Architecture Overview**: See `project-status.md`
-- **Watch Mode Details**: See `architecture/plur-watch-architecture.md`
+Guides for contributors:
+
+* [Contributing](development/contributing.md) - How to contribute
+* [Testing](development/testing.md) - Testing guidelines
+* [Release Process](development/release-process.md) - How releases work
+* [Kong CLI Patterns](development/kong-cli-patterns.md) - CLI implementation notes
+
+## Reference
+
+* [Overview](overview/index.md) - Project overview
+* [Project Status](overview/project-status.md) - Current status and performance
+* [Roadmap](overview/roadmap.md) - Future plans
+* [Benchmarks](benchmarks/oss-benchmarks.md) - Performance benchmarks
