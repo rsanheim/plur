@@ -28,9 +28,18 @@ The `plur watch` command provides automatic test execution when files change, us
 
 ### 4. Debouncer (`watch/debouncer.go`)
 
-- Prevents duplicate test runs when multiple files change rapidly
-- Configurable delay (default 100ms)
-- Batches related changes together
+* Prevents duplicate test runs when multiple files change rapidly
+* Configurable delay (default 30ms)
+* Batches and deduplicates file paths before processing
+* Timer resets on each new event within the delay window
+
+### 5. FileEventHandler (`watch/file_event_handler.go`)
+
+* Processes batched file events from the Debouncer
+* Aggregates targets across multiple source files
+* Deduplicates target files per job
+* Executes jobs in matched rule order
+* Returns `HandleResult` with executed jobs and reload flag
 
 ## Event Flow
 
@@ -47,15 +56,15 @@ WatcherManager.aggregateEvents() (goroutine per watcher)
     ↓
 WatcherManager.eventChan (unified stream)
     ↓
-Main Watch Loop (watch.go)
+Main Watch Loop (cmd_watch.go)
     ↓
-Event Filtering (file type, effect type, should watch)
+Event Filtering (path type, effect type, ignore patterns)
     ↓
-FileMapper.MapFileToSpecs() (relative path → spec files)
+Debouncer.Debounce() (batch changes, deduplicate files)
     ↓
-Debouncer.Debounce() (batch changes, prevent duplicates)
+FileEventHandler.HandleBatch() (map files → targets, execute jobs)
     ↓
-runSpecsOrDirectory() (execute tests)
+promptChan / reloadChan (coordinate output and process reload)
 ```
 
 ## Multi-Process Design
@@ -147,9 +156,9 @@ The downloaded binaries are stored in `plur/embedded/watcher/` and embedded into
 
 ### Debounce Delay
 
-- Default: 100ms
-- Configurable via `--debounce` flag
-- Example: `plur watch --debounce 250`
+* Default: 30ms
+* Configurable via `--debounce` flag
+* Example: `plur watch --debounce 250`
 
 ### Timeout
 
@@ -193,21 +202,35 @@ This is useful for development workflows where plur rebuilds itself.
 │                                                                             │
 │  ┌─────────────────┐                                                        │
 │  │ Main Goroutine  │  runWatchWithConfig() - main select loop               │
-│  │ (cmd_watch.go)  │  Owns: sigChan, timeoutChan                            │
+│  │ (cmd_watch.go)  │  Owns: sigChan, timeoutChan, promptChan, reloadChan    │
 │  └────────┬────────┘                                                        │
 │           │                                                                 │
 │           │ select {                                                        │
 │           │   case <-stdinChan:        // user commands                     │
-│           │   case <-manager.Events(): // file changes                      │
+│           │   case <-manager.Events(): // file changes → debouncer          │
 │           │   case <-manager.Errors(): // watcher errors                    │
 │           │   case <-sigChan:          // SIGINT/SIGTERM/SIGHUP             │
 │           │   case <-timeoutChan:      // timeout (if set)                  │
+│           │   case <-promptChan:       // display prompt                    │
+│           │   case <-reloadChan:       // trigger process reload            │
 │           │ }                                                               │
 │           │                                                                 │
 │  ┌────────▼────────┐                                                        │
 │  │ stdin Goroutine │  bufio.Scanner on os.Stdin                             │
-│  │ (line 176-186)  │  Sends to: stdinChan                                   │
+│  │                 │  Sends to: stdinChan                                   │
 │  └─────────────────┘                                                        │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                      Event Processing                               │    │
+│  │                                                                     │    │
+│  │  ┌─────────────────┐    ┌─────────────────────┐                    │    │
+│  │  │    Debouncer    │───▶│  FileEventHandler   │                    │    │
+│  │  │                 │    │                     │                    │    │
+│  │  │ * Batch files   │    │ * Map to targets    │                    │    │
+│  │  │ * Deduplicate   │    │ * Execute jobs      │                    │    │
+│  │  │ * 30ms delay    │    │ * Return results    │                    │    │
+│  │  └─────────────────┘    └─────────────────────┘                    │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
 │  │                      WatcherManager                                 │    │

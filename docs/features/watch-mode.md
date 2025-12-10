@@ -131,7 +131,7 @@ to prevent duplicate events):
 3. Watcher parses and forwards to WatcherManager
 4. Events filtered by file type and effect
 5. FileMapper determines which specs to run
-6. Debouncer batches changes (default 100ms window)
+6. Debouncer batches changes (default 30ms window)
 7. Test runner executes specs using existing plur infrastructure
 
 ### Platform Support
@@ -168,9 +168,9 @@ The watcher detects:
 
 ### Debouncing
 
-- Default 100ms delay to batch related changes
-- Prevents test runs from overlapping file saves
-- Configurable via `--debounce` flag
+* Default 30ms delay to batch related changes
+* Prevents test runs from overlapping file saves
+* Configurable via `--debounce` flag
 
 ## Known Issues and Limitations
 
