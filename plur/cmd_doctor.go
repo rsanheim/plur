@@ -24,6 +24,7 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
 	fmt.Printf("Build Date:      %s\n", date)
 	fmt.Printf("Git Commit:      %s\n", commit)
 	fmt.Printf("Built By:        %s\n", builtBy)
+	fmt.Printf("Race Detector:   %v\n", RaceEnabled)
 	fmt.Println()
 
 	// System info

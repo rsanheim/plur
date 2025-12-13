@@ -97,8 +97,7 @@ RSpec.describe "plur doctor command" do
       normalized_recorded == normalized_actual
     }
 
-    Backspin.run!("plur_doctor_golden",
-      matcher: {stdout: stdout_matcher}) do
+    Backspin.run!("plur_doctor_golden", matcher: {stdout: stdout_matcher}) do
       run_plur_doctor
     end
   end

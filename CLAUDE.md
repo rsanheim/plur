@@ -129,6 +129,20 @@ Run all specs via: `bin/rake test` or target specific: `bundle exec rspec spec/[
 - `assert` for non-critical assertions that can continue
 - Only add descriptive messages when the assertion itself isn't self-explanatory (e.g., complex conditions or domain-specific checks)
 
+### Race Detection
+
+Enable Go's race detector for debugging concurrent code issues:
+
+```bash
+PLUR_RACE=1 bin/rake test:go    # Run Go tests with race detection
+PLUR_RACE=1 bin/rake build      # Build race-enabled binary
+PLUR_RACE=1 bin/rake install    # Install race-enabled binary
+PLUR_RACE=1 bin/rake            # Run everything with race detection
+plur doctor                      # Shows "Race Detector: true/false"
+```
+
+Race-enabled binaries run 2-20x slower with 5-10x more memory. Use for debugging, not daily use.
+
 ### Benchmarking Across Versions
 
 Use `script/bench-git` to compare plur performance across git refs for a given Ruby project. See `script/bench-git --help` for details.

@@ -25,8 +25,8 @@ jobs:
       - run:
           name: Install Go
           command: |
-            wget https://go.dev/dl/go1.25.4.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.25.4.linux-amd64.tar.gz
+            wget https://go.dev/dl/go1.25.5.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.25.5.linux-amd64.tar.gz
             echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
             source $BASH_ENV
             go version
@@ -51,7 +51,7 @@ jobs:
 
   test-goreleaser:
     docker:
-      - image: cimg/go:1.25.2
+      - image: cimg/go:1.25.5
     resource_class: medium
     working_directory: ~/project
     steps:
@@ -73,6 +73,18 @@ jobs:
       - store_artifacts:
           path: plur/dist
           destination: goreleaser-artifacts
+
+  test-go-race:
+    docker:
+      - image: cimg/go:1.25.5
+    resource_class: medium
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Run Go tests with race detection
+          working_directory: plur
+          command: go test -mod=mod -race ./...
 
   test-ruby-integration:
     docker:
@@ -137,6 +149,7 @@ workflows:
     jobs:
       - build-and-test-go
       - test-goreleaser
+      - test-go-race
       - test-ruby-integration:
           requires:
             - build-and-test-go

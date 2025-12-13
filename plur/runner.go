@@ -265,7 +265,7 @@ func (r *Runner) Tracker() *RuntimeTracker {
 	return r.tracker
 }
 
-// GetWorkerCount determines the number of workers to use based on CLI, env, and defaults
+// GetWorkerCount determines number of workers to use; precedence is CLI > env > defaults
 func GetWorkerCount(cliWorkers int) int {
 	if cliWorkers > 0 {
 		return cliWorkers

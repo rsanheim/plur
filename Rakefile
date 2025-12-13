@@ -1,6 +1,22 @@
 require "bundler/setup"
 require "fileutils"
+require "shellwords"
 require_relative "lib/plur"
+
+# Race detection: when PLUR_RACE is set, configure Go to build with race detector
+if ENV["PLUR_RACE"] && ENV["PLUR_RACE"] != "0"
+  # Add -race to GOFLAGS (idempotent)
+  goflags = Shellwords.split(ENV["GOFLAGS"].to_s)
+  unless goflags.include?("-race")
+    goflags << "-race"
+    ENV["GOFLAGS"] = goflags.join(" ")
+  end
+
+  # Race detector requires CGO
+  ENV["CGO_ENABLED"] = "1"
+
+  puts "[race] Race detection enabled: GOFLAGS=#{ENV["GOFLAGS"]} CGO_ENABLED=1"
+end
 
 begin
   require "standard/rake" if Gem::Specification.find_all_by_name("standard").any?

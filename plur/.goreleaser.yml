@@ -52,8 +52,9 @@ builds:
       - -X main.builtBy=goreleaser
     
     # Environment variables for build
+    # Use inherited CGO_ENABLED if set (for race detection), otherwise default to 0 for static builds
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED={{ envOrDefault "CGO_ENABLED" "0" }}
 
 # Archive configuration
 archives:
