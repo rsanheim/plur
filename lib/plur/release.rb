@@ -39,20 +39,22 @@ module Plur
         end
 
         tag = last_release_tag
-        commit_range = tag ? "#{tag}..main" : "main"
 
-        prs = []
-        run("git log #{commit_range} --merges --oneline").each_line do |line|
-          if line =~ /Merge pull request #(\d+)/
-            prs << fetch_pr_info($1)
-          end
+        # Get tag date for filtering, or use epoch for first release
+        tag_date = tag ? run("git log -1 --format=%aI #{tag}").strip : "1970-01-01T00:00:00Z"
+        date_filter = tag_date[0..9] # Extract YYYY-MM-DD
+
+        # Query GitHub for merged PRs since tag date
+        # This catches all merge methods: merge commit, squash, and rebase
+        json = run(
+          "gh pr list --state merged --base main " \
+          "--search \"merged:>=#{date_filter}\" " \
+          "--json number,title,url,mergedAt --limit 100"
+        )
+
+        JSON.parse(json).map do |pr|
+          {number: pr["number"], title: pr["title"], url: pr["url"]}
         end
-        prs.compact
-      end
-
-      def fetch_pr_info(pr_number)
-        data = JSON.parse(run("gh pr view #{pr_number} --json number,title,url"))
-        {number: data["number"], title: data["title"], url: data["url"]}
       end
     end
 
