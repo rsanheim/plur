@@ -2,12 +2,17 @@
 
 ## Unreleased
 
+## v0.20.0 - 2025-12-13
+* changelog fix: Use gh pr list for better PR detection [#164](https://github.com/rsanheim/plur/pull/164)
+* Allow enabling race detection via PLUR_RACE [#163](https://github.com/rsanheim/plur/pull/163)
+
 ## v0.19.0 - 2025-12-09
 * Refactor watch mode with new `FileEventHandler` and `Debouncer` components [#158](https://github.com/rsanheim/plur/pull/158)
 * Fix watch mode target batching - multiple file changes now properly batched and deduplicated
 * Fix reload panic in watch mode via dedicated reload channel
 * Reduce default debounce from 100ms to 30ms for more responsive watch mode
 * Improve error message: "No default spec/test files found using default patterns"
+
 ## v0.18.1 - 2025-12-09
 * Benchmarking fix: use the same command as turbo_tests for our comparison [#156](https://github.com/rsanheim/plur/pull/156)
 * other misc internal cleanups
