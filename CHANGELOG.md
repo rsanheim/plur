@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.20.2 - 2025-12-14
+* Fix watch mode dropping first command after file events [#166](https://github.com/rsanheim/plur/pull/166)
+
 ## v0.20.1 - 2025-12-14
 * Fix data race in CurrentFile access between stdout/stderr goroutines [#165](https://github.com/rsanheim/plur/pull/165)
 
