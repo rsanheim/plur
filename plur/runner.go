@@ -321,11 +321,7 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 				os.Stdout.Write(plainStar)
 			}
 		case "stderr":
-			if traceOutput && msg.CurrentFile != "" {
-				fmt.Fprintf(os.Stderr, "\n[%s]: %s", msg.CurrentFile, msg.Content)
-			} else {
-				fmt.Fprintln(os.Stderr, msg.Content)
-			}
+			fmt.Fprintln(os.Stderr, msg.Content)
 		case "error":
 			// For JSON parse errors or other output
 			fmt.Fprintln(os.Stderr, msg.Content)

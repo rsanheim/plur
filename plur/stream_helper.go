@@ -118,10 +118,9 @@ func streamTestOutput(
 			stderrBuilder.WriteString(line + "\n")
 			if outputChan != nil {
 				outputChan <- OutputMessage{
-					WorkerID:    workerIndex,
-					Type:        "stderr",
-					Content:     line,
-					CurrentFile: parser.CurrentFile(),
+					WorkerID: workerIndex,
+					Type:     "stderr",
+					Content:  line,
 				}
 			}
 		}
