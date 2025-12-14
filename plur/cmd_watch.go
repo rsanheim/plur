@@ -208,16 +208,12 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	stdinChan := make(chan string)
+	stdinChan := make(chan string, 10)
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
-			select {
-			case stdinChan <- line:
-			default:
-				// Channel is full, skip this input
-			}
+			stdinChan <- line
 		}
 	}()
 
