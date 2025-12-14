@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.20.1 - 2025-12-14
+* Fix data race in CurrentFile access between stdout/stderr goroutines [#165](https://github.com/rsanheim/plur/pull/165)
+
 ## v0.20.0 - 2025-12-13
 * changelog fix: Use gh pr list for better PR detection [#164](https://github.com/rsanheim/plur/pull/164)
 * Allow enabling race detection via PLUR_RACE [#163](https://github.com/rsanheim/plur/pull/163)
