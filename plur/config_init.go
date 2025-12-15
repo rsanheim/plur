@@ -59,7 +59,7 @@ func (c *ConfigInitCmd) Run(parent *ConfigCmd, globals *PlurCLI) error {
 }
 
 const simpleConfigTemplate = `# Plur configuration file
-# See examples/plur.toml.example for all available options
+# See https://github.com/rsanheim/plur/blob/main/docs/configuration.md
 
 # Number of parallel workers
 workers = 4
@@ -75,7 +75,7 @@ debounce = 200
 `
 
 const railsConfigTemplate = `# Plur configuration for Rails applications
-# See examples/plur.toml.example for all available options
+# See https://github.com/rsanheim/plur/blob/main/docs/configuration.md
 
 # Use more workers for Rails apps
 workers = 8
@@ -94,7 +94,7 @@ debounce = 300
 `
 
 const minitestConfigTemplate = `# Plur configuration for Minitest projects
-# See examples/plur.toml.example for all available options
+# See https://github.com/rsanheim/plur/blob/main/docs/configuration.md
 
 # Standard worker configuration
 workers = 4
