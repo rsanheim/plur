@@ -70,15 +70,12 @@ Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (glo
 See [Configuration Documentation](docs/configuration.md#job-configuration) for full details on creating custom jobs.
 
 ### Common Fixes
-- **"cannot load such file -- backspin"** → `bundle install` at root
-- **"go: inconsistent vendoring"** → `cd plur && go mod vendor`
-- **"watcher binary not found"** → Binary is embedded and extracted to ~/.cache/plur/bin/
-- **Tests fail in rake but pass alone** → Use `bin/rake` not `rake`
+- **"watcher binary not found"** → Run `plur watch install` to install the binary
 - **Testing fixtures is cumbersome** → Use `plur -C fixtures/minitest-success` instead of `cd`
+- **Tests fail in rake but pass alone** → Use `bin/rake` not `rake`
 
 ### Temporary Files
 - **ALWAYS use plur project root `./tmp` directory** for temporary files, never `/tmp` or subproject tmp dirs
-- Use `./tmp` relative to `/Users/rsanheim/src/oss/plur`, not relative to fixtures or reference projects
 
 ### Framework Detection (Updated Behavior)
 When both `spec/` and `test/` directories exist:

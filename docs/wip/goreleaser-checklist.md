@@ -1,6 +1,6 @@
 # GoReleaser Implementation Checklist
 
-This checklist tracks the implementation of GoReleaser for plur, following the [GoReleaser PRD](../archive/2025-10-goreleaser-prd.md).
+This checklist tracks the implementation of GoReleaser for plur. The PRD lives in the internal docs repo.
 
 ## Current State Summary
 * **Release Process**: Two-step with GitHub Actions

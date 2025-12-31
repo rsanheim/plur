@@ -45,12 +45,16 @@ script/check-links
 
 ## Directory Structure
 * `architecture/` - Architecture decisions and designs
+* `benchmarks/` - Benchmarking notes and results
 * `development/` - Development guides and processes
 * `features/` - Feature documentation
-* `overview/` - Project overview and roadmap
-* `research/` - Research and analysis documents
+* `overview/` - Project overview and status
 * `wip/` - Work in progress documentation
-* `archive/` - Archived historical documents
+
+## Internal Docs
+
+Archival, research, and idea notes live in the internal repo at
+`/Users/rsanheim/src/oss/plur-internal/docs/`.
 
 ## Python Environment
 
