@@ -109,7 +109,9 @@ GEM
       net-smtp
     marcel (1.0.4)
     mini_mime (1.1.5)
-    minitest (5.25.5)
+    mini_portile2 (2.8.9)
+    minitest (6.0.1)
+      prism (~> 1.5)
     net-imap (0.5.8)
       date
       net-protocol
@@ -120,6 +122,9 @@ GEM
     net-smtp (0.5.1)
       net-protocol
     nio4r (2.7.4)
+    nokogiri (1.18.8)
+      mini_portile2 (~> 2.8.2)
+      racc (~> 1.4)
     nokogiri (1.18.8-aarch64-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.18.8-aarch64-linux-musl)
@@ -139,6 +144,7 @@ GEM
     pp (0.6.2)
       prettyprint
     prettyprint (0.2.0)
+    prism (1.7.0)
     psych (5.2.6)
       date
       stringio
@@ -206,6 +212,8 @@ GEM
       rspec-support (~> 3.13)
     rspec-support (3.13.3)
     securerandom (0.4.1)
+    sqlite3 (2.6.0)
+      mini_portile2 (~> 2.8.0)
     sqlite3 (2.6.0-aarch64-linux-gnu)
     sqlite3 (2.6.0-aarch64-linux-musl)
     sqlite3 (2.6.0-arm-linux-gnu)
@@ -247,4 +255,4 @@ DEPENDENCIES
   sqlite3 (>= 2.1)
 
 BUNDLED WITH
-   2.6.9
+   4.0.3

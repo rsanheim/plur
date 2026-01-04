@@ -125,7 +125,8 @@ jobs:
           name: Setup test_app
           working_directory: fixtures/projects/default-rails
           command: |
-            bundle install --path vendor/bundle
+            bundle config set --local path vendor/bundle
+            bundle install
             bundle exec rake db:create db:migrate
       - save_cache:
           key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
