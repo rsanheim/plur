@@ -43,6 +43,16 @@ task build: ["vendor:download:current"] do
   end
 end
 
+namespace :build do
+  desc "Build binaries for all supported platforms"
+  task all: ["vendor:download:all"] do
+    Dir.chdir(Plur.config.plur_dir) do
+      puts "[build:all] Building plur for all platforms..."
+      sh "goreleaser build --snapshot --clean"
+    end
+  end
+end
+
 desc "Install plur globally to $GOBIN"
 task :install do
   if ENV["CI"] && system("which plur")

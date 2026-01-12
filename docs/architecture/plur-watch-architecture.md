@@ -147,8 +147,7 @@ The watcher binary emits JSON events with the following structure:
 The watcher binaries are downloaded from the [e-dant/watcher](https://github.com/e-dant/watcher) releases and embedded into the plur binary:
 
 1. **Development builds** (`bin/rake build`): Downloads only the current platform's watcher binary via `vendor:download:current`
-2. **Cross-platform builds** (`bin/rake build:linux`, `bin/rake build:all`): Downloads all platform binaries via `vendor:download:all` before compilation
-3. **Docker installation**: Uses `build:linux` which ensures all Linux watcher variants are embedded
+2. **Cross-platform builds** (`bin/rake build:all`): Downloads all platform binaries via `vendor:download:all` before compilation
 
 The downloaded binaries are stored in `plur/embedded/watcher/` and embedded into the Go binary at compile time.
 

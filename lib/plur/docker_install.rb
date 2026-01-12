@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require "tty-command"
-require "fileutils"
 require "pathname"
+require "json"
 require_relative "../plur"
 
 module Plur
-  class Install
+  class DockerInstall
     ARCHITECTURES = {
       "x86_64" => "amd64",
       "aarch64" => "arm64",
@@ -56,25 +56,27 @@ module Plur
       raise "Failed to detect architecture: #{e.message}"
     end
 
-    def find_or_build_binary(arch)
-      dist_dir = Plur.config.root_dir.join("dist")
-      binary_path = dist_dir.join("plur-linux-#{arch}")
+    def find_binary(arch)
+      artifacts_file = Plur.config.plur_dir.join("dist", "artifacts.json")
 
-      unless dist_dir.exist? && binary_path.exist?
-        puts ">>> Building Linux binaries..."
-        require "rake"
-        Rake.application.init
-        Rake.application.load_rakefile
-        Rake::Task["build:linux"].invoke
-      end
-
-      unless binary_path.exist?
-        puts "Error: Binary not found at #{binary_path}"
-        puts "Run 'bin/rake build:linux' to build the binaries first."
+      unless artifacts_file.exist?
+        puts "Error: No binaries found. Run 'bin/rake build:all' first."
         exit 1
       end
 
-      binary_path
+      artifacts = JSON.parse(artifacts_file.read)
+
+      binary = artifacts.find do |a|
+        a["type"] == "Binary" && a["goos"] == "linux" && a["goarch"] == arch
+      end
+
+      if binary.nil?
+        puts "Error: No linux/#{arch} binary found in dist/"
+        puts "Run 'bin/rake build:all' to build binaries for all platforms."
+        exit 1
+      end
+
+      Plur.config.plur_dir.join(binary["path"])
     end
 
     def install(container_name, binary_path, install_path = nil)
@@ -84,7 +86,7 @@ module Plur
         puts ">>> Detecting container architecture..."
         arch = detect_architecture(container_name)
         puts "    Architecture: linux/#{arch}"
-        binary_path = find_or_build_binary(arch)
+        binary_path = find_binary(arch)
       else
         binary_path = Pathname.new(binary_path)
         unless binary_path.exist?
@@ -112,39 +114,14 @@ module Plur
         puts "    Replacing existing plur: #{existing_version}"
       end
 
-      # Create temp directory
-      puts ">>> Creating temp directory in container..."
-      result = @cmd.run("docker exec #{container_name} mktemp -d")
-      temp_dir = result.out.strip
-      puts "    Temp directory: #{temp_dir}"
-
-      # Copy binary
+      # Copy binary directly to install path
       puts ">>> Copying binary to container..."
-      @cmd.run("docker cp #{binary_path} #{container_name}:#{temp_dir}/plur")
-
-      # Install binary
-      puts ">>> Installing plur binary..."
-      install_script = <<~BASH
-        set -e
-        # Install plur binary
-        mv -f #{temp_dir}/plur #{plur_path}
-        chmod +x #{plur_path}
-        
-        # Create symlink in /usr/local/bin if installing elsewhere
-        if [ "#{install_path}" != "/usr/local/bin" ]; then
-          echo "Creating symlink in /usr/local/bin..."
-          mkdir -p /usr/local/bin
-          ln -sf #{plur_path} /usr/local/bin/plur
-        fi
-        
-        # Clean up temp directory
-        rmdir #{temp_dir}
-      BASH
-      @cmd.run("docker exec #{container_name} bash -c #{Shellwords.escape(install_script)}")
+      @cmd.run("docker cp #{binary_path} #{container_name}:#{plur_path}")
+      @cmd.run("docker exec #{container_name} chmod +x #{plur_path}")
 
       # Verify installation
       puts ">>> Verifying installation..."
-      version = get_plur_version(container_name)
+      version = get_plur_version_at_path(container_name, plur_path)
       if version.nil? || version.include?("not found")
         puts "✗ Installation failed!"
         puts "  Error: #{version}"
@@ -153,15 +130,12 @@ module Plur
         puts "✓ Installation successful!"
         puts "  Version: #{version}"
         puts "  Location: #{plur_path}"
-        if install_path != "/usr/local/bin"
-          puts "  Symlink: /usr/local/bin/plur -> #{plur_path}"
-        end
       end
 
       # Try to install watchr binary using plur watch install
       puts ">>> Installing watchr binary..."
       begin
-        @cmd.run("docker exec #{container_name} plur watch install")
+        @cmd.run("docker exec #{container_name} #{plur_path} watch install")
         puts "✓ Watchr binary installed successfully"
       rescue TTY::Command::ExitError => e
         puts "⚠ Could not install watchr binary: #{e.message.lines.first}"
@@ -173,14 +147,14 @@ module Plur
       puts ">>> Running plur doctor..."
       begin
         doctor_cmd = TTY::Command.new(printer: :quiet)
-        doctor_cmd.run("docker exec #{container_name} plur doctor")
+        doctor_cmd.run("docker exec #{container_name} #{plur_path} doctor")
       rescue TTY::Command::ExitError
         # Doctor might fail but installation was successful
       end
 
       puts
       puts "✓ plur has been successfully installed on #{container_name}"
-      puts "  You can now use: docker exec #{container_name} plur [arguments]"
+      puts "  You can now use: docker exec #{container_name} #{plur_path} [arguments]"
     end
 
     def show_status(container_name, install_path = nil)
@@ -207,12 +181,6 @@ module Plur
         # Check primary install location
         result = @cmd.run("docker exec #{container_name} bash -c 'test -f #{plur_path} && ls -lh #{plur_path} || echo \"Not found at #{plur_path}\"'", only_output_on_error: true)
         puts "  Primary: #{result.out.strip}"
-
-        # Check symlink if different from /usr/local/bin
-        if install_path != "/usr/local/bin"
-          result = @cmd.run("docker exec #{container_name} bash -c 'test -L /usr/local/bin/plur && ls -lh /usr/local/bin/plur || echo \"No symlink at /usr/local/bin/plur\"'", only_output_on_error: true)
-          puts "  Symlink: #{result.out.strip}"
-        end
 
         # Check which plur resolves to
         result = @cmd.run("docker exec #{container_name} bash -c 'which plur'", only_output_on_error: true)
