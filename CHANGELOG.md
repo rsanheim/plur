@@ -3,7 +3,8 @@
 ## Unreleased
 
 ## v0.21.0 - 2026-01-12
-* Ruby and bundler 4 updates [#169](https://github.com/rsanheim/plur/pull/169)
+* Simplify Docker install script [#170](https://github.com/rsanheim/plur/pull/170)
+* Ruby and bundler 4 [#169](https://github.com/rsanheim/plur/pull/169)
 
 ## v0.20.2 - 2025-12-14
 * Fix watch mode dropping first command after file events [#166](https://github.com/rsanheim/plur/pull/166)
