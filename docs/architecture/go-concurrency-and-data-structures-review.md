@@ -219,7 +219,7 @@ Recommended cleanup:
 ## Suggested Cleanup Sequence (No Back-Compat Assumed)
 
 - [x] Fix watch manager channel closure + Start error-path leaks (`plur/watch/watcher_manager.go`, `plur/watch/watcher.go`).
-- [ ] Replace scanner-based pipe reading to remove subprocess hang risk (`plur/stream_helper.go`).
+- [x] Replace scanner-based pipe reading to remove subprocess hang risk (`plur/stream_helper.go`).
 - [x] Fix minitest progress mapping vs output aggregator typing (`plur/minitest/output_parser.go`, `plur/runner.go`).
 - [ ] Make logging handler concurrency-safe (`plur/logger/logger.go`).
 - [ ] Collapse duplicated watch matching logic (`plur/watch/find.go`, `plur/watch/processor.go`) and simplify notification types (`plur/types/notifications.go`).
