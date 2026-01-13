@@ -218,16 +218,26 @@ Recommended cleanup:
 
 ## Suggested Cleanup Sequence (No Back-Compat Assumed)
 
-1. Fix watch manager channel closure + Start error-path leaks (`plur/watch/watcher_manager.go`, `plur/watch/watcher.go`).
-2. Replace scanner-based pipe reading to remove subprocess hang risk (`plur/stream_helper.go`).
-3. Fix minitest progress mapping vs output aggregator typing (`plur/minitest/output_parser.go`, `plur/runner.go`).
-4. Make logging handler concurrency-safe (`plur/logger/logger.go`).
-5. Collapse duplicated watch matching logic (`plur/watch/find.go`, `plur/watch/processor.go`) and simplify notification types (`plur/types/notifications.go`).
-6. Address structural cleanups (`FileGroup.TotalSize`, config templates, `insertBeforeFiles`) and update docs where they drifted.
+- [x] Fix watch manager channel closure + Start error-path leaks (`plur/watch/watcher_manager.go`, `plur/watch/watcher.go`).
+- [ ] Replace scanner-based pipe reading to remove subprocess hang risk (`plur/stream_helper.go`).
+- [x] Fix minitest progress mapping vs output aggregator typing (`plur/minitest/output_parser.go`, `plur/runner.go`).
+- [ ] Make logging handler concurrency-safe (`plur/logger/logger.go`).
+- [ ] Collapse duplicated watch matching logic (`plur/watch/find.go`, `plur/watch/processor.go`) and simplify notification types (`plur/types/notifications.go`).
+- [ ] Address structural cleanups (`FileGroup.TotalSize`, config templates, `insertBeforeFiles`) and update docs where they drifted.
 
 ## Validation Recommendations
 
-- Run Go tests under the race detector: `PLUR_RACE=1 bin/rake test:go`.
-- Add a focused unit test for `WatcherManager.aggregateEvents` to ensure it exits cleanly when a watcher channel closes (and does not emit zero-value events).
-- Add a small integration-ish test for minitest progress output to ensure `E/F/.` map correctly to on-screen glyphs.
+- [ ] Run Go tests under the race detector: `PLUR_RACE=1 bin/rake test:go`.
+- [x] Add a focused unit test for `WatcherManager.aggregateEvents` to ensure it exits cleanly when a watcher channel closes (and does not emit zero-value events).
+- [ ] Add a small integration-ish test for minitest progress output to ensure `E/F/.` map correctly to on-screen glyphs.
 
+## Follow-up Notes (Current Changes)
+
+- Minitest: progress `"E"` now maps to `"error_progress"` and is rendered as a progress glyph (instead of printing a blank stderr line).
+- Watcher/WatcherManager: channel closure + shutdown are now safe and idempotent:
+  - `Watcher.Stop()` is safe to call multiple times and safe before `Start()`.
+  - `readEvents()` owns closing both `eventChan` and `errorChan` (the sender closes), and `aggregateEvents()` exits cleanly when watcher channels close (no spinning).
+  - `WatcherManager.Start()` failure now calls `wm.Stop()` (instead of `cleanup()`), preventing goroutine leaks on partial startup.
+- Local validation note:
+  - `bin/rake test:go` requires Bundler 4+ (per `Gemfile.lock`) and may fail if your Ruby/Bundler is older.
+  - `go test ./...` can be run by setting `GOCACHE`, `GOMODCACHE`, and `GOPATH` to paths under `./tmp/` if the default Go cache directory is not writable in your environment.

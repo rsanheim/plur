@@ -300,3 +300,46 @@ func TestWatcherManager_StopIsIdempotent(t *testing.T) {
 	wm.Stop()
 	wm.Stop()
 }
+
+func TestWatcherManager_AggregateEventsReturnsOnClosedWatcherChannels(t *testing.T) {
+	wm := &WatcherManager{
+		eventChan: make(chan Event, 1),
+		errorChan: make(chan error, 1),
+		stopChan:  make(chan struct{}),
+	}
+	defer close(wm.stopChan)
+
+	w := &Watcher{
+		eventChan: make(chan Event),
+		errorChan: make(chan error),
+	}
+	close(w.eventChan)
+	close(w.errorChan)
+
+	wm.wg.Add(1)
+	go wm.aggregateEvents(w)
+
+	done := make(chan struct{})
+	go func() {
+		wm.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("aggregateEvents did not return after watcher channels closed")
+	}
+
+	select {
+	case event := <-wm.eventChan:
+		t.Fatalf("unexpected event forwarded from closed watcher channel: %+v", event)
+	default:
+	}
+
+	select {
+	case err := <-wm.errorChan:
+		t.Fatalf("unexpected error forwarded from closed watcher channel: %v", err)
+	default:
+	}
+}

@@ -6,12 +6,14 @@ Fix channel closure handling in WatcherManager to prevent spinning, goroutine le
 
 The watch subsystem has several channel safety issues that can cause problems during shutdown or error conditions:
 
-**Problem 1: `readErrors()` doesn't close its channel**
+**Problem 1: `errorChan` closure ownership is wrong/unclear**
 
-`plur/watch/watcher.go:155-162` - The `readErrors()` function lacks `defer close(w.errorChan)`, unlike `readEvents()` which properly closes its channel. This means:
-* `errorChan` never closes when stderr EOF occurs
-* Goroutines reading from `errorChan` may block forever
-* Potential goroutine leak if channel fills and no consumer drains it
+In `plur/watch/watcher.go`, `readEvents()` is the only goroutine that writes to `w.errorChan` (scanner/IO errors while reading JSON events). `readErrors()` only logs stderr lines to `os.Stderr`.
+
+That means:
+* `readErrors()` should not close `w.errorChan` (it is not a sender)
+* `w.errorChan` should be closed by the sender (`readEvents()`), alongside `eventChan`, to signal the watcher is fully done producing
+* Without closure (and without handling `ok` on receives), consumers can spin on closed channels or block indefinitely waiting for errors that will never arrive
 
 **Problem 2: `Start()` error path doesn't fully clean up**
 
@@ -33,7 +35,7 @@ Commit `cb0c32a` fixed a race condition where `reload()` was called from debounc
 
 ## Success Criteria
 
-* [ ] `readErrors()` closes `errorChan` on exit (matches `readEvents()` behavior)
+* [ ] `readEvents()` closes `errorChan` on exit (sender owns closure; matches `eventChan` handling)
 * [ ] `Start()` error path ensures no goroutine leaks
 * [ ] `Watcher.Stop()` is idempotent and safe to call without prior `Start()`
 * [ ] `PLUR_RACE=1 bin/rake test:go` passes with no race conditions
@@ -42,11 +44,11 @@ Commit `cb0c32a` fixed a race condition where `reload()` was called from debounc
 
 ## Task List
 
-### Phase 1: Fix readErrors channel closure
+### Phase 1: Fix watcher channel closure
 
-* [ ] Add `defer close(w.errorChan)` to `readErrors()` in `plur/watch/watcher.go:155`
-* [ ] Verify symmetry with `readEvents()` implementation
-* [ ] Add test case for `errorChan` closure when stderr EOF occurs
+* [ ] Ensure `w.eventChan` and `w.errorChan` are both closed by `readEvents()` (the sender)
+* [ ] Avoid closing `w.errorChan` from `readErrors()` unless it actually becomes a sender
+* [ ] Add a test that `WatcherManager.aggregateEvents()` does not spin on closed channels
 
 ### Phase 2: Make Watcher.Stop() idempotent
 

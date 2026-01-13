@@ -135,6 +135,7 @@ func (w *Watcher) Errors() <-chan error {
 func (w *Watcher) readEvents(stdout io.Reader) {
 	scanner := bufio.NewScanner(stdout)
 	defer close(w.eventChan)
+	defer close(w.errorChan)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -163,7 +164,6 @@ func (w *Watcher) readEvents(stdout io.Reader) {
 // readErrors reads error messages from stderr
 func (w *Watcher) readErrors(stderr io.Reader) {
 	scanner := bufio.NewScanner(stderr)
-	defer close(w.errorChan)
 
 	for scanner.Scan() {
 		line := scanner.Text()

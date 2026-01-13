@@ -106,6 +106,10 @@ func (wm *WatcherManager) aggregateEvents(w *Watcher) {
 	errorChan := w.Errors()
 
 	for {
+		if eventChan == nil && errorChan == nil {
+			return
+		}
+
 		select {
 		case event, ok := <-eventChan:
 			if !ok {
