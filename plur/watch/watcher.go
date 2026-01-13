@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -42,6 +43,8 @@ type Watcher struct {
 	errorChan  chan error
 	stopChan   chan struct{}
 	done       chan struct{} // Signals cleanup is complete
+	stopOnce   sync.Once
+	started    bool
 }
 
 // NewWatcher creates a new watcher instance
@@ -103,13 +106,19 @@ func (w *Watcher) Start() error {
 		close(w.done) // Signal cleanup complete
 	}()
 
+	w.started = true
 	return nil
 }
 
-// Stop stops the watcher and waits for cleanup to complete
+// Stop stops the watcher and waits for cleanup to complete.
+// Safe to call multiple times and safe to call without prior Start().
 func (w *Watcher) Stop() {
-	close(w.stopChan)
-	<-w.done // Wait for subprocess to be killed and reaped
+	w.stopOnce.Do(func() {
+		close(w.stopChan)
+		if w.started {
+			<-w.done // Wait for subprocess to be killed and reaped
+		}
+	})
 }
 
 // Events returns the event channel
@@ -154,6 +163,7 @@ func (w *Watcher) readEvents(stdout io.Reader) {
 // readErrors reads error messages from stderr
 func (w *Watcher) readErrors(stderr io.Reader) {
 	scanner := bufio.NewScanner(stderr)
+	defer close(w.errorChan)
 
 	for scanner.Scan() {
 		line := scanner.Text()

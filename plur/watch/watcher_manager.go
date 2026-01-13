@@ -51,8 +51,8 @@ func (wm *WatcherManager) Start() error {
 
 		watcher := NewWatcher(singleDirConfig, wm.binaryPath)
 		if err := watcher.Start(); err != nil {
-			// Clean up already started watchers
-			wm.cleanup()
+			// Clean up already started watchers and signal aggregator goroutines
+			wm.Stop()
 			return fmt.Errorf("failed to start watcher for %s: %w", dir, err)
 		}
 
@@ -96,19 +96,32 @@ func (wm *WatcherManager) Errors() <-chan error {
 	return wm.errorChan
 }
 
-// aggregateEvents collects events from a single watcher
+// aggregateEvents collects events from a single watcher.
+// Handles channel closure gracefully by setting closed channels to nil,
+// which disables those select cases (receiving from nil blocks forever).
 func (wm *WatcherManager) aggregateEvents(w *Watcher) {
 	defer wm.wg.Done()
 
+	eventChan := w.Events()
+	errorChan := w.Errors()
+
 	for {
 		select {
-		case event := <-w.Events():
+		case event, ok := <-eventChan:
+			if !ok {
+				eventChan = nil // Disable this case
+				continue
+			}
 			select {
 			case wm.eventChan <- event:
 			case <-wm.stopChan:
 				return
 			}
-		case err := <-w.Errors():
+		case err, ok := <-errorChan:
+			if !ok {
+				errorChan = nil // Disable this case
+				continue
+			}
 			select {
 			case wm.errorChan <- err:
 			case <-wm.stopChan:
