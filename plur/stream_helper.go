@@ -50,15 +50,31 @@ func streamTestOutput(
 	var wg sync.WaitGroup
 
 	// Stream stdout and parse using event-based architecture
+	// Uses bufio.Reader instead of Scanner to avoid hanging on lines > 256KB
+	// (Scanner has a hard token limit that causes ErrTooLong and stops draining)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		scanner := bufio.NewScanner(stdout)
-		// Increase buffer size to handle large output lines (default is 64KB)
-		scanner.Buffer(make([]byte, 0, ScannerBufferSize), ScannerBufferSize)
+		reader := bufio.NewReaderSize(stdout, ScannerBufferSize)
 
-		for scanner.Scan() {
-			line := scanner.Text()
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil && err != io.EOF {
+				logger.Logger.Error("error reading stdout", "error", err, "worker", workerIndex)
+				break
+			}
+
+			// Trim trailing newline/carriage return
+			line = strings.TrimSuffix(line, "\n")
+			line = strings.TrimSuffix(line, "\r")
+
+			// Handle EOF: process any remaining content, then exit
+			if err == io.EOF {
+				if line == "" {
+					break
+				}
+				// Process final line without newline, then exit after this iteration
+			}
 
 			notifications, consumed := parser.ParseLine(line)
 
@@ -101,22 +117,38 @@ func streamTestOutput(
 			if os.Getenv("PLUR_DEBUG") == "1" && len(notifications) > 0 {
 				dump(notifications)
 			}
-		}
 
-		if err := scanner.Err(); err != nil {
-			logger.Logger.Error("error reading stdout", "error", err, "worker", workerIndex)
+			if err == io.EOF {
+				break
+			}
 		}
 	}()
 
 	// Stream stderr in real-time
+	// Uses bufio.Reader instead of Scanner to avoid hanging on lines > 256KB
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		scanner := bufio.NewScanner(stderr)
-		// Increase buffer size to handle large output lines (default is 64KB)
-		scanner.Buffer(make([]byte, 0, ScannerBufferSize), ScannerBufferSize)
-		for scanner.Scan() {
-			line := scanner.Text()
+		reader := bufio.NewReaderSize(stderr, ScannerBufferSize)
+
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil && err != io.EOF {
+				logger.Logger.Error("error reading stderr", "error", err, "worker", workerIndex)
+				break
+			}
+
+			// Trim trailing newline/carriage return
+			line = strings.TrimSuffix(line, "\n")
+			line = strings.TrimSuffix(line, "\r")
+
+			// Handle EOF: process any remaining content, then exit
+			if err == io.EOF {
+				if line == "" {
+					break
+				}
+			}
+
 			stderrBuilder.WriteString(line + "\n")
 			if outputChan != nil {
 				outputChan <- OutputMessage{
@@ -125,9 +157,10 @@ func streamTestOutput(
 					Content:  line,
 				}
 			}
-		}
-		if err := scanner.Err(); err != nil {
-			logger.Logger.Error("error reading stderr", "error", err, "worker", workerIndex)
+
+			if err == io.EOF {
+				break
+			}
 		}
 	}()
 
