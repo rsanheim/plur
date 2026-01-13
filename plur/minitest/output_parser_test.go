@@ -262,3 +262,26 @@ func TestOutputParser_FullIntegration(t *testing.T) {
 	assert.Equal(4, suite.FailureCount)
 	assert.Equal(0, suite.PendingCount)
 }
+
+func TestNotificationToProgress(t *testing.T) {
+	parser := &outputParser{}
+
+	tests := []struct {
+		char     string
+		wantType string
+	}{
+		{".", "dot"},
+		{"F", "failure"},
+		{"E", "error_progress"},
+		{"S", "pending"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.char, func(t *testing.T) {
+			event := types.ProgressEvent{Event: types.Progress, Character: tt.char}
+			gotType, ok := parser.NotificationToProgress(event)
+			assert.True(t, ok)
+			assert.Equal(t, tt.wantType, gotType)
+		})
+	}
+}

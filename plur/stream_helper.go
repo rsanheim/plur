@@ -29,9 +29,11 @@ const (
 var (
 	greenDot   = []byte(colorGreen + "." + colorReset)
 	redF       = []byte(colorRed + "F" + colorReset)
+	redE       = []byte(colorRed + "E" + colorReset)
 	yellowStar = []byte(colorYellow + "*" + colorReset)
 	plainDot   = []byte(".")
 	plainF     = []byte("F")
+	plainE     = []byte("E")
 	plainStar  = []byte("*")
 )
 
