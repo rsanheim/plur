@@ -320,6 +320,12 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 			} else {
 				os.Stdout.Write(plainStar)
 			}
+		case "error_progress":
+			if colorOutput {
+				os.Stdout.Write(redE)
+			} else {
+				os.Stdout.Write(plainE)
+			}
 		case "stderr":
 			fmt.Fprintln(os.Stderr, msg.Content)
 		case "error":

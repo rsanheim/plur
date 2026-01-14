@@ -10,12 +10,17 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 )
+
+// WatcherBufferSize is the buffer size for reading watcher output.
+// Uses same size as stream_helper to prevent hangs on large output.
+const WatcherBufferSize = 256 * 1024
 
 // Event represents a file system event from the watcher
 type Event struct {
@@ -42,6 +47,8 @@ type Watcher struct {
 	errorChan  chan error
 	stopChan   chan struct{}
 	done       chan struct{} // Signals cleanup is complete
+	stopOnce   sync.Once
+	started    bool
 }
 
 // NewWatcher creates a new watcher instance
@@ -103,13 +110,19 @@ func (w *Watcher) Start() error {
 		close(w.done) // Signal cleanup complete
 	}()
 
+	w.started = true
 	return nil
 }
 
-// Stop stops the watcher and waits for cleanup to complete
+// Stop stops the watcher and waits for cleanup to complete.
+// Safe to call multiple times and safe to call without prior Start().
 func (w *Watcher) Stop() {
-	close(w.stopChan)
-	<-w.done // Wait for subprocess to be killed and reaped
+	w.stopOnce.Do(func() {
+		close(w.stopChan)
+		if w.started {
+			<-w.done // Wait for subprocess to be killed and reaped
+		}
+	})
 }
 
 // Events returns the event channel
@@ -123,12 +136,32 @@ func (w *Watcher) Errors() <-chan error {
 }
 
 // readEvents reads JSON events from stdout
+// Uses bufio.Reader instead of Scanner to avoid hanging on lines > 64KB
 func (w *Watcher) readEvents(stdout io.Reader) {
-	scanner := bufio.NewScanner(stdout)
+	reader := bufio.NewReaderSize(stdout, WatcherBufferSize)
 	defer close(w.eventChan)
+	defer close(w.errorChan)
 
-	for scanner.Scan() {
-		line := scanner.Text()
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			select {
+			case w.errorChan <- fmt.Errorf("error reading watcher output: %w", err):
+			case <-w.stopChan:
+			}
+			return
+		}
+
+		// Trim trailing newline
+		line = strings.TrimSuffix(line, "\n")
+		line = strings.TrimSuffix(line, "\r")
+
+		// Handle EOF: process any remaining content, then exit
+		if err == io.EOF {
+			if line == "" {
+				return
+			}
+		}
 
 		var event Event
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
@@ -141,23 +174,35 @@ func (w *Watcher) readEvents(stdout io.Reader) {
 		case <-w.stopChan:
 			return
 		}
-	}
 
-	if err := scanner.Err(); err != nil {
-		select {
-		case w.errorChan <- fmt.Errorf("error reading watcher output: %w", err):
-		case <-w.stopChan:
+		if err == io.EOF {
+			return
 		}
 	}
 }
 
 // readErrors reads error messages from stderr
+// Uses bufio.Reader instead of Scanner to avoid hanging on large output
 func (w *Watcher) readErrors(stderr io.Reader) {
-	scanner := bufio.NewScanner(stderr)
+	reader := bufio.NewReaderSize(stderr, WatcherBufferSize)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Fprintf(os.Stderr, "watcher stderr: %s\n", line)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return
+		}
+
+		// Trim trailing newline
+		line = strings.TrimSuffix(line, "\n")
+		line = strings.TrimSuffix(line, "\r")
+
+		if line != "" {
+			fmt.Fprintf(os.Stderr, "watcher stderr: %s\n", line)
+		}
+
+		if err == io.EOF {
+			return
+		}
 	}
 }
 

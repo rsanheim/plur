@@ -50,7 +50,7 @@ func (p *outputParser) NotificationToProgress(notification types.TestNotificatio
 	case "F":
 		return "failure", true
 	case "E":
-		return "error", true
+		return "error_progress", true
 	case "S":
 		return "pending", true
 	}

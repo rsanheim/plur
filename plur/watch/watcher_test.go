@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
@@ -247,4 +248,98 @@ func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {
 	content, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
 	assert.Equal(t, "executed\n", string(content))
+}
+
+// Channel safety tests
+
+func TestWatcher_StopIsIdempotent(t *testing.T) {
+	config := &WatcherConfig{
+		Directory: ".",
+	}
+	w := NewWatcher(config, "/nonexistent/binary")
+
+	// Stop without Start should not panic
+	w.Stop()
+
+	// Calling Stop again should also not panic
+	w.Stop()
+	w.Stop()
+}
+
+func TestWatcher_StopBeforeStart(t *testing.T) {
+	config := &WatcherConfig{
+		Directory: ".",
+	}
+	w := NewWatcher(config, "/nonexistent/binary")
+
+	// Stop before Start should complete immediately, not block
+	done := make(chan struct{})
+	go func() {
+		w.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Good - Stop returned
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Stop() blocked forever when called before Start()")
+	}
+}
+
+func TestWatcherManager_StopIsIdempotent(t *testing.T) {
+	config := &ManagerConfig{
+		Directories: []string{"."},
+	}
+	wm := NewWatcherManager(config, "/nonexistent/binary")
+
+	// Stop without Start should not panic
+	wm.Stop()
+
+	// Calling Stop again should also not panic
+	wm.Stop()
+	wm.Stop()
+}
+
+func TestWatcherManager_AggregateEventsReturnsOnClosedWatcherChannels(t *testing.T) {
+	wm := &WatcherManager{
+		eventChan: make(chan Event, 1),
+		errorChan: make(chan error, 1),
+		stopChan:  make(chan struct{}),
+	}
+	defer close(wm.stopChan)
+
+	w := &Watcher{
+		eventChan: make(chan Event),
+		errorChan: make(chan error),
+	}
+	close(w.eventChan)
+	close(w.errorChan)
+
+	wm.wg.Add(1)
+	go wm.aggregateEvents(w)
+
+	done := make(chan struct{})
+	go func() {
+		wm.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("aggregateEvents did not return after watcher channels closed")
+	}
+
+	select {
+	case event := <-wm.eventChan:
+		t.Fatalf("unexpected event forwarded from closed watcher channel: %+v", event)
+	default:
+	}
+
+	select {
+	case err := <-wm.errorChan:
+		t.Fatalf("unexpected error forwarded from closed watcher channel: %v", err)
+	default:
+	}
 }
