@@ -4,14 +4,20 @@ Scope: `plur/` (Go module `github.com/rsanheim/plur`), with emphasis on goroutin
 
 ## Executive Summary
 
-The concurrency surface area in the Go code is relatively small (a handful of goroutine spawning sites), which is good. However, there are a few correctness and “hang risk” issues that should be treated as high priority:
+The concurrency surface area in the Go code is relatively small (a handful of goroutine spawning sites), which is good.
+The original review identified a few hang/correctness risks; the highest priority items are now addressed on this branch.
 
-- `watch/WatcherManager.aggregateEvents()` does not handle closed watcher channels and can spin / emit zero-value events (and in some error paths, can deadlock).
-- `streamTestOutput()` uses `bufio.Scanner` for subprocess pipes; if a line exceeds the scanner limit, scanning stops and the pipes may no longer be drained, which can hang the worker process.
-- Minitest progress `"E"` is mapped to `"error"` but the runner output aggregator treats `"error"` as “print msg.Content to stderr” (blank lines), not a progress glyph.
-- `logger.CustomTextHandler` is not concurrency-safe as a `slog.Handler`, so logs from multiple goroutines can interleave.
+**Completed (high priority)**
 
-Separately, there are a number of duplication/abstraction issues (mostly in watch-mode plumbing and notification types) that are good cleanup targets and should also improve maintainability and performance predictability.
+- [x] Watch mode: `WatcherManager` channel closure handling + `Start()` failure cleanup + idempotent shutdown (`plur/watch/watcher_manager.go`, `plur/watch/watcher.go`).
+- [x] Subprocess output draining: replace `bufio.Scanner` with `bufio.Reader` to remove token-limit hang risk + add a long-line hang regression test (`plur/stream_helper.go`, `plur/stream_helper_test.go`).
+- [x] Minitest progress: map `E` to `error_progress` and render as a progress glyph (`plur/minitest/output_parser.go`, `plur/runner.go`).
+
+**Remaining (high priority)**
+
+- [ ] Make `logger.CustomTextHandler` concurrency-safe as a `slog.Handler` (`plur/logger/logger.go`).
+
+There are also a number of medium-priority cleanup opportunities (watch rule matching duplication, stringly-typed enums, config/doc drift) that should improve maintainability and reduce future correctness risk.
 
 ## Concurrency & Goroutine Lifecycle Audit
 
@@ -20,32 +26,26 @@ Separately, there are a number of duplication/abstraction issues (mostly in watc
 **Where goroutines are created**
 
 - `Runner.executeWorkers()` spawns:
-  - 1 goroutine for `outputAggregator(...)` (`plur/runner.go:166-171`)
-  - 1 goroutine per worker command (`plur/runner.go:173-181`)
+  - 1 goroutine for `outputAggregator(...)` (`plur/runner.go`)
+  - 1 goroutine per worker command (`plur/runner.go`)
 - Each worker goroutine calls `runCommand(...)`, which calls `streamTestOutput(...)` that spawns:
-  - 1 goroutine to scan stdout (`plur/stream_helper.go:51-107`)
-  - 1 goroutine to scan stderr (`plur/stream_helper.go:110-130`)
+  - 1 goroutine to read stdout (`plur/stream_helper.go`)
+  - 1 goroutine to read stderr (`plur/stream_helper.go`)
 
 **Good**
 
 - Uses `WaitGroup`s and closes `results` / `outputChan` in the right order (`plur/runner.go:183-188`).
 - Serializes progress output through a single aggregator goroutine (reduces lock contention on stdout).
 
-**High-risk issue: `bufio.Scanner` can cause hangs**
+**Resolved (high priority): subprocess pipe draining hang risk**
 
-- `bufio.Scanner` stops on token-too-long (`scanner.Err() == bufio.ErrTooLong`). When that happens, the goroutine exits and the corresponding pipe may no longer be drained.
-- If the child process continues to write to that pipe (stdout or stderr), it can block on a full OS pipe buffer and never exit → `cmd.Wait()` blocks forever.
-- This is a known failure mode for scanner-based subprocess capture.
+Previously, `streamTestOutput()` used `bufio.Scanner`, which can stop draining on `bufio.ErrTooLong` (token limit).
+If a child process keeps writing after that, it can block on a full pipe and hang `cmd.Wait()`.
 
-Code locations:
+Fix applied:
 
-- Stdout scan loop: `plur/stream_helper.go:54-106`
-- Stderr scan loop: `plur/stream_helper.go:113-129`
-
-Recommended fix:
-
-- Replace `bufio.Scanner` with a `bufio.Reader` and a bounded `ReadString('\n')`/`ReadBytes('\n')` loop (or a custom split function that keeps draining even on long lines).
-- If line-length bounds are important, enforce them without stopping the drain (e.g., truncate logged/collected content but continue reading and discarding remainder until newline).
+- `streamTestOutput()` now uses `bufio.Reader.ReadString('\n')` for both stdout and stderr and continues draining until EOF (`plur/stream_helper.go`).
+- Added a regression test that spawns a helper process emitting a >256KB single line and asserts no hang (`plur/stream_helper_test.go`).
 
 **Moderate issue: context is currently unused**
 
@@ -54,53 +54,26 @@ Recommended fix:
 
 ### 2) Output aggregation and progress typing
 
-**High-risk correctness issue: minitest `"E"` progress is misrouted**
+**Resolved (high priority): minitest `"E"` progress rendering**
 
-- Minitest parser maps `'E'` to `"error"` (`plur/minitest/output_parser.go:47-58`).
-- Runner output aggregator treats `"error"` as “print msg.Content to stderr” (`plur/runner.go:325-327`), which will print blank lines for progress events (because `Content` is empty for progress).
+Minitest progress now maps `E` to `error_progress`, and `outputAggregator` renders it as a progress glyph (instead of routing it through the `"error"` stderr path).
 
-Recommended fix:
-
-- Either:
-  - Add a distinct progress type (e.g., `"error_progress"`) and handle it in `outputAggregator` by printing `E`, or
-  - Map `'E'` to `"failure"` until a first-class error glyph is supported, or
-  - Teach `outputAggregator` to interpret `"error"` with empty content as a progress glyph (but that overload is brittle).
-
-Also consider replacing `OutputMessage.Type string` with a small typed enum to remove “magic strings” and avoid this class of mismatch.
+Note: `OutputMessage.Type` is still a `string` (i.e., “magic strings” remain). Converting it to a small typed enum would further reduce mismatch risk.
 
 ### 3) Watch mode (`Watcher`, `WatcherManager`, `Debouncer`)
 
-#### High-risk correctness issue: channel closure handling in `WatcherManager`
+#### Resolved (high priority): channel closure + lifecycle safety in watch mode
 
-`Watcher.readEvents()` closes `w.eventChan` (`plur/watch/watcher.go:126-129`).
+Fixes applied:
 
-`WatcherManager.aggregateEvents()` receives from `w.Events()` / `w.Errors()` without checking the `ok` value (`plur/watch/watcher_manager.go:99-121`):
-
-- Receiving from a closed channel returns immediately with the zero value.
-- That makes the select-case “always ready”, creating a tight loop.
-- The loop can emit zero-value `Event{}` into `wm.eventChan` and/or spin CPU.
-- In some cases (especially when no consumer is draining `wm.eventChan`), this can deadlock while attempting to send.
-
-This also interacts badly with the `Start()` error path:
-
-- `Start()` launches aggregate goroutines as it starts watchers (`plur/watch/watcher_manager.go:63-66`).
-- If a later watcher fails to start, `wm.cleanup()` is called but `wm.stopChan` is not closed and `wm.eventChan` is not closed (because `Stop()` wasn’t called).
-- Any aggregator goroutine attached to a watcher whose `eventChan` is now closed can spin and then block forever.
-
-Recommended fix:
-
-- In `aggregateEvents`, use `event, ok := <-w.Events()` / `err, ok := <-w.Errors()` and exit (or nil the channel) when `ok == false`.
-- Ensure `Watcher` closes both `eventChan` and `errorChan`, or make the manager robust to either being left open.
-- In `Start()` failure path, call `wm.Stop()` (or explicitly close `wm.stopChan` + wait for `wm.wg`) so goroutines cannot leak.
+- `WatcherManager.aggregateEvents()` now checks the `ok` value when receiving and nils closed channels to prevent spinning / zero-value events (`plur/watch/watcher_manager.go`).
+- `WatcherManager.Start()` calls `Stop()` on failure, ensuring partial startup can’t leak goroutines (`plur/watch/watcher_manager.go`).
+- `Watcher.Stop()` is idempotent and safe pre-Start, and `Watcher.readEvents()` owns channel closure (`plur/watch/watcher.go`).
+- `Watcher.readEvents()`/`readErrors()` now use `bufio.Reader` to avoid Scanner token-limit hangs on large watcher output (`plur/watch/watcher.go`).
 
 #### Watcher lifecycle edge cases
 
-- `Watcher.Stop()` closes `w.stopChan` without `sync.Once` (`plur/watch/watcher.go:110-113`), so double-stop panics.
-- `Watcher.Stop()` blocks on `<-w.done` even if `Start()` was never called (no goroutine will ever close `done`).
-
-Recommended fix:
-
-- Make `Stop()` idempotent (`sync.Once`) and safe pre-Start (either close `done` in constructor and re-open on Start, or guard Stop with a started flag and close `done` on Start failure).
+Status: resolved (covered by the changes above).
 
 #### Debouncer concurrency and output interleaving
 
@@ -218,26 +191,23 @@ Recommended cleanup:
 
 ## Suggested Cleanup Sequence (No Back-Compat Assumed)
 
-- [x] Fix watch manager channel closure + Start error-path leaks (`plur/watch/watcher_manager.go`, `plur/watch/watcher.go`).
-- [x] Replace scanner-based pipe reading to remove subprocess hang risk (`plur/stream_helper.go`).
-- [x] Fix minitest progress mapping vs output aggregator typing (`plur/minitest/output_parser.go`, `plur/runner.go`).
+**Completed**
+
+- [x] Watch mode: channel closure + Start cleanup + idempotent shutdown (`plur/watch/watcher_manager.go`, `plur/watch/watcher.go`).
+- [x] Subprocess output draining hang prevention (`plur/stream_helper.go`).
+- [x] Minitest progress mapping / output typing mismatch (`plur/minitest/output_parser.go`, `plur/runner.go`).
+
+**Next**
+
 - [ ] Make logging handler concurrency-safe (`plur/logger/logger.go`).
 - [ ] Collapse duplicated watch matching logic (`plur/watch/find.go`, `plur/watch/processor.go`) and simplify notification types (`plur/types/notifications.go`).
 - [ ] Address structural cleanups (`FileGroup.TotalSize`, config templates, `insertBeforeFiles`) and update docs where they drifted.
 
 ## Validation Recommendations
 
-- [ ] Run Go tests under the race detector: `PLUR_RACE=1 bin/rake test:go`.
+- [x] Run Go tests under the race detector: `PLUR_RACE=1 mise x ruby -- bin/rake test:go`.
 - [x] Add a focused unit test for `WatcherManager.aggregateEvents` to ensure it exits cleanly when a watcher channel closes (and does not emit zero-value events).
+- [x] Add a regression test for long-line subprocess output to ensure `streamTestOutput()` always drains pipes (`plur/stream_helper_test.go`).
 - [ ] Add a small integration-ish test for minitest progress output to ensure `E/F/.` map correctly to on-screen glyphs.
 
-## Follow-up Notes (Current Changes)
-
-- Minitest: progress `"E"` now maps to `"error_progress"` and is rendered as a progress glyph (instead of printing a blank stderr line).
-- Watcher/WatcherManager: channel closure + shutdown are now safe and idempotent:
-  - `Watcher.Stop()` is safe to call multiple times and safe before `Start()`.
-  - `readEvents()` owns closing both `eventChan` and `errorChan` (the sender closes), and `aggregateEvents()` exits cleanly when watcher channels close (no spinning).
-  - `WatcherManager.Start()` failure now calls `wm.Stop()` (instead of `cleanup()`), preventing goroutine leaks on partial startup.
-- Local validation note:
-  - `bin/rake test:go` requires Bundler 4+ (per `Gemfile.lock`) and may fail if your Ruby/Bundler is older.
-  - `go test ./...` can be run by setting `GOCACHE`, `GOMODCACHE`, and `GOPATH` to paths under `./tmp/` if the default Go cache directory is not writable in your environment.
+Local note: if your system Ruby/Bundler is older than the version in `Gemfile.lock`, prefer `mise x ruby -- bin/rake ...` to run the rake tasks with the correct Ruby/Bundler.
