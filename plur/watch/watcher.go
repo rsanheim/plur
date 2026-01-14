@@ -18,6 +18,10 @@ import (
 	"github.com/rsanheim/plur/logger"
 )
 
+// WatcherBufferSize is the buffer size for reading watcher output.
+// Uses same size as stream_helper to prevent hangs on large output.
+const WatcherBufferSize = 256 * 1024
+
 // Event represents a file system event from the watcher
 type Event struct {
 	PathType   string      `json:"path_type"`
@@ -132,17 +136,39 @@ func (w *Watcher) Errors() <-chan error {
 }
 
 // readEvents reads JSON events from stdout
+// Uses bufio.Reader instead of Scanner to avoid hanging on lines > 64KB
 func (w *Watcher) readEvents(stdout io.Reader) {
-	scanner := bufio.NewScanner(stdout)
+	reader := bufio.NewReaderSize(stdout, WatcherBufferSize)
 	defer close(w.eventChan)
 	defer close(w.errorChan)
 
-	for scanner.Scan() {
-		line := scanner.Text()
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			select {
+			case w.errorChan <- fmt.Errorf("error reading watcher output: %w", err):
+			case <-w.stopChan:
+			}
+			return
+		}
+
+		// Trim trailing newline
+		line = strings.TrimSuffix(line, "\n")
+		line = strings.TrimSuffix(line, "\r")
+
+		// Handle EOF: process any remaining content, then exit
+		if err == io.EOF {
+			if line == "" {
+				return
+			}
+		}
 
 		var event Event
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			// Skip non-JSON lines
+			if err == io.EOF {
+				return
+			}
 			continue
 		}
 
@@ -151,23 +177,35 @@ func (w *Watcher) readEvents(stdout io.Reader) {
 		case <-w.stopChan:
 			return
 		}
-	}
 
-	if err := scanner.Err(); err != nil {
-		select {
-		case w.errorChan <- fmt.Errorf("error reading watcher output: %w", err):
-		case <-w.stopChan:
+		if err == io.EOF {
+			return
 		}
 	}
 }
 
 // readErrors reads error messages from stderr
+// Uses bufio.Reader instead of Scanner to avoid hanging on large output
 func (w *Watcher) readErrors(stderr io.Reader) {
-	scanner := bufio.NewScanner(stderr)
+	reader := bufio.NewReaderSize(stderr, WatcherBufferSize)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Fprintf(os.Stderr, "watcher stderr: %s\n", line)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return
+		}
+
+		// Trim trailing newline
+		line = strings.TrimSuffix(line, "\n")
+		line = strings.TrimSuffix(line, "\r")
+
+		if line != "" {
+			fmt.Fprintf(os.Stderr, "watcher stderr: %s\n", line)
+		}
+
+		if err == io.EOF {
+			return
+		}
 	}
 }
 
