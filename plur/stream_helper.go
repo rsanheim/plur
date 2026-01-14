@@ -149,7 +149,8 @@ func streamTestOutput(
 				}
 			}
 
-			stderrBuilder.WriteString(line + "\n")
+			stderrBuilder.WriteString(line)
+			stderrBuilder.WriteString("\n")
 			if outputChan != nil {
 				outputChan <- OutputMessage{
 					WorkerID: workerIndex,

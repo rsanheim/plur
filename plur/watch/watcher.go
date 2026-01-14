@@ -166,9 +166,6 @@ func (w *Watcher) readEvents(stdout io.Reader) {
 		var event Event
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			// Skip non-JSON lines
-			if err == io.EOF {
-				return
-			}
 			continue
 		}
 

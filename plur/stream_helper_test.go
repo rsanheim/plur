@@ -3,7 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -43,19 +46,45 @@ func (m *mockParser) CurrentFile() string {
 	return ""
 }
 
+func TestStreamTestOutput_HelperProcess(t *testing.T) {
+	if os.Getenv("PLUR_TEST_STREAM_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	// Expect args: ... -test.run=TestStreamTestOutput_HelperProcess -- <size>
+	sizeStr := ""
+	for i := 0; i < len(os.Args); i++ {
+		if os.Args[i] == "--" && i+1 < len(os.Args) {
+			sizeStr = os.Args[i+1]
+			break
+		}
+	}
+	if sizeStr == "" {
+		fmt.Fprintln(os.Stderr, "missing size arg")
+		os.Exit(2)
+	}
+
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil || size < 0 {
+		fmt.Fprintln(os.Stderr, "invalid size arg:", sizeStr)
+		os.Exit(2)
+	}
+
+	fmt.Printf("%s\n", strings.Repeat("x", size))
+	os.Exit(0)
+}
+
 func TestStreamTestOutput_LongLineDoesNotHang(t *testing.T) {
 	// Generate a line larger than ScannerBufferSize (256KB)
 	// Using 300KB to be safely over the limit
 	longLineSize := 300 * 1024
-	longLine := strings.Repeat("x", longLineSize)
 
 	// Create a subprocess that outputs the long line
-	// Using printf to avoid shell argument length limits
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "sh", "-c", "printf '%s\\n' \"$LONG_LINE\"")
-	cmd.Env = append(cmd.Environ(), "LONG_LINE="+longLine)
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestStreamTestOutput_HelperProcess", "--", strconv.Itoa(longLineSize))
+	cmd.Env = append(os.Environ(), "PLUR_TEST_STREAM_HELPER_PROCESS=1")
 
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
