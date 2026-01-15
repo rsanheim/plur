@@ -344,6 +344,7 @@ jobs:
             node --version
             pnpm --version
             bundle install
+            pnpm install --frozen-lockfile
             # Create and migrate main + parallel databases
             bin/rake db:create
             bin/rake parallel:create
