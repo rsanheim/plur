@@ -37,7 +37,7 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 
 * [x] Tart VM boots and is accessible via SSH from host
 * [x] VM has mise, Ruby 4, Go 1.25, Python 3 installed and working
-* [ ] CircleCI machine runner runs inside VM and claims jobs
+* [x] CircleCI machine runner runs inside VM and claims jobs
 * [ ] Plur builds and tests pass when triggered from CircleCI
 * [ ] VM startup is automated (host launchd or manual script)
 * [x] Setup is documented and reproducible
@@ -174,7 +174,7 @@ ssh admin@$(tart ip plur-runner) "ruby --version && go version && python --versi
 * [x] Clear quarantine attribute
   * Now handled by `script/ci-host-setup`
 
-* [ ] Get token from host's 1Password and create config (run from host)
+* [x] Get token from host's 1Password and create config (run from host)
   ```bash
   # From HOST - get token and write config to VM
   TOKEN=$(op read 'op://Private/circle ci self hosted runner/credential')
@@ -191,14 +191,15 @@ ssh admin@$(tart ip plur-runner) "ruby --version && go version && python --versi
   EOF"
   ```
 
-* [ ] Test runner starts manually (inside VM)
+* [x] Test runner starts manually (inside VM)
   ```bash
   circleci-runner machine --config ~/Library/Preferences/com.circleci.runner/config.yaml
   # Should connect and show "waiting for task"
   # Ctrl-C to stop
   ```
 
-* [ ] Set up LaunchAgent for auto-start (inside VM)
+* [x] Set up LaunchAgent for auto-start (inside VM)
+  * Homebrew already installs the plist, just need to load it
   ```bash
   cat > ~/Library/LaunchAgents/com.circleci.runner.plist << 'EOF'
   <?xml version="1.0" encoding="UTF-8"?>
@@ -232,7 +233,7 @@ ssh admin@$(tart ip plur-runner) "ruby --version && go version && python --versi
   launchctl load ~/Library/LaunchAgents/com.circleci.runner.plist
   ```
 
-* [ ] Verify runner is running
+* [x] Verify runner is running
   ```bash
   launchctl list | grep circleci
   tail -f ~/Library/Logs/com.circleci.runner/runner.log
