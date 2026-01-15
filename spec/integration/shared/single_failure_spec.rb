@@ -16,7 +16,7 @@ RSpec.describe "single failure" do
 
   it "shows filtered backtrace same as rspec" do
     chdir fixture_path("failing_specs") do
-      rspec_out, _, rspec_status = run_rspec("spec/single_failure_spec.rb", "--tty", "--force-color")
+      rspec_out, _, rspec_status = run_rspec("spec/single_failure_spec.rb", "--force-color")
       expect(rspec_status.exitstatus).to eq(1)
 
       backtrace_line = rspec_out.split("\n").find { |line| line.include?("./spec/single_failure_spec.rb:6") } # remove color codes
@@ -38,7 +38,7 @@ RSpec.describe "single failure" do
 
   it "matches rspec colorized output" do
     chdir fixture_path("failing_specs") do
-      rspec_out, _, rspec_status = run_rspec("spec/single_failure_spec.rb", "--force-color", "--tty")
+      rspec_out, _, rspec_status = run_rspec("spec/single_failure_spec.rb", "--force-color")
       expect(rspec_status.exitstatus).to eq(1)
 
       result = run_plur_allowing_errors("spec/single_failure_spec.rb")

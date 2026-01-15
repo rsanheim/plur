@@ -34,7 +34,7 @@ RSpec.describe "pending specs output" do
       Backspin.run("pending_output_comparison",
         matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
         chdir fixture_path("failing_specs") do
-          run_rspec("spec/mixed_results_spec.rb", "--force-color", "--tty")
+          run_rspec("spec/mixed_results_spec.rb", "--force-color")
         end
       end
 
