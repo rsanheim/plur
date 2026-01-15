@@ -259,8 +259,7 @@ jobs:
             echo 'export PATH="$HOME/go/bin:$PATH"' >> $BASH_ENV
             # Enable reading .ruby-version files and set global fallbacks
             mise settings set idiomatic_version_file true
-            # Add node and pnpm for Discourse (node must be 20/22/24, not 25)
-            mise use --global ruby@3.4 go@1.25 node@lts pnpm@10
+            mise use --global ruby@3.4 go@1.25
             mise reshim
       - run:
           name: Install dependencies and build plur
@@ -275,15 +274,21 @@ jobs:
             plur --version
             plur doctor
       - run:
-          name: Setup PostgreSQL and Redis (for Discourse)
+          name: Setup Discourse dependencies
           command: |
+            # PostgreSQL and Redis via Homebrew (services)
             brew list postgresql@17 &>/dev/null || brew install postgresql@17
             brew list redis &>/dev/null || brew install redis
             brew services start postgresql@17
             brew services start redis
             sleep 5
+
+            # Node and pnpm via mise (versioned tools)
+            mise use --global node@22.12.0 pnpm@10
+            mise reshim
+
+            # PostgreSQL user for Discourse
             export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
-            # Create superuser only (db:create handles databases)
             psql -U $USER postgres -tc "SELECT 1 FROM pg_roles WHERE rolname='discourse'" | grep -q 1 || createuser -s discourse
       - run:
           name: Print PostgreSQL connection info
@@ -333,6 +338,33 @@ jobs:
             plur spec --dry-run
             plur spec
       - run:
+          name: Verify Discourse environment
+          working_directory: ~/reference-repos/discourse
+          command: |
+            echo ">>> PATH"
+            echo $PATH | tr ':' '\n'
+            echo ""
+            echo ">>> mise ls"
+            mise ls
+            echo ""
+            echo ">>> which node / pnpm"
+            which node
+            which pnpm
+            echo ""
+            echo ">>> node --version"
+            node --version
+            echo ""
+            echo ">>> pnpm --version"
+            pnpm --version
+            echo ""
+            echo ">>> ruby --version"
+            ruby --version
+            echo ""
+            echo ">>> PostgreSQL"
+            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+            pg_isready
+            psql --version
+      - run:
           name: Test plur on Discourse (unit tests only)
           working_directory: ~/reference-repos/discourse
           environment:
@@ -340,19 +372,13 @@ jobs:
             PARALLEL_TEST_PROCESSORS: "2"
           command: |
             export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
-            # Verify node/pnpm from mise
-            node --version
-            pnpm --version
             bundle install
             pnpm install --frozen-lockfile
-            # Create and migrate main + parallel databases
             bin/rake db:create
             bin/rake parallel:create
             bin/rake db:migrate
             bin/rake parallel:migrate
-            # Show what DBs were created
             psql -U discourse -c "\\l" | grep discourse
-            # Run with plur (TEST_ENV_NUMBER routes each worker to its own DB)
             plur -n 2 spec/models --dry-run
             plur -n 2 spec/models
       - run:
