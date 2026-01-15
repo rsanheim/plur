@@ -276,7 +276,8 @@ jobs:
       - run:
           name: Setup PostgreSQL and Redis (for Discourse)
           command: |
-            brew install postgresql@17 redis
+            brew list postgresql@17 &>/dev/null || brew install postgresql@17
+            brew list redis &>/dev/null || brew install redis
             brew services start postgresql@17
             brew services start redis
             sleep 5
@@ -308,19 +309,19 @@ jobs:
             plur spec --dry-run
             plur spec
       - run:
-          name: Test plur on rspec-core
-          working_directory: ~/reference-repos/rspec/rspec-core
-          command: |
-            bundle install
-            plur spec --dry-run
-            plur spec
-      - run:
           name: Test plur on Discourse (unit tests only)
           working_directory: ~/reference-repos/discourse
           command: |
             bundle install
             plur spec/models --dry-run
             plur spec/models spec/requests
+      - run:
+          name: Test plur on rspec-core
+          working_directory: ~/reference-repos/rspec/rspec-core
+          command: |
+            bundle install
+            plur spec --dry-run
+            plur spec
 
 workflows:
   test-all:
