@@ -245,6 +245,7 @@ jobs:
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
     steps:
+      - checkout
       - run:
           name: Setup mise environment
           command: |
@@ -253,6 +254,17 @@ jobs:
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
             echo 'eval "$(mise activate bash)"' >> $BASH_ENV
             echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
+      - run:
+          name: Install dependencies and build plur
+          command: |
+            bundle install
+            bin/rake install
+      - run:
+          name: Verify plur and Ruby
+          command: |
+            ruby --version
+            plur --version
+            plur doctor
       - run:
           name: Setup PostgreSQL and Redis (for Discourse)
           command: |
