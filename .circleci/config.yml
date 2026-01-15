@@ -367,11 +367,8 @@ jobs:
             export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
             bundle install
             pnpm install --frozen-lockfile
-            bin/rake db:create
-            bin/rake parallel:create
-            bin/rake db:migrate
-            bin/rake parallel:migrate
-            psql -U discourse postgres -c "\\l" | grep discourse
+            bin/rake db:prepare
+            bin/rake parallel:prepare
             plur spec/models --dry-run
             plur spec/models
       - run:
