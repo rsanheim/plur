@@ -199,38 +199,10 @@ ssh admin@$(tart ip plur-runner) "ruby --version && go version && python --versi
   ```
 
 * [x] Set up LaunchAgent for auto-start (inside VM)
-  * Homebrew already installs the plist, just need to load it
+  * Homebrew already installs the plist, just load it:
   ```bash
-  cat > ~/Library/LaunchAgents/com.circleci.runner.plist << 'EOF'
-  <?xml version="1.0" encoding="UTF-8"?>
-  <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-  <plist version="1.0">
-  <dict>
-      <key>Label</key>
-      <string>com.circleci.runner</string>
-      <key>Program</key>
-      <string>/opt/homebrew/bin/circleci-runner</string>
-      <key>ProgramArguments</key>
-      <array>
-          <string>/opt/homebrew/bin/circleci-runner</string>
-          <string>machine</string>
-          <string>--config</string>
-          <string>/Users/admin/Library/Preferences/com.circleci.runner/config.yaml</string>
-      </array>
-      <key>RunAtLoad</key>
-      <true/>
-      <key>KeepAlive</key>
-      <true/>
-      <key>StandardOutPath</key>
-      <string>/Users/admin/Library/Logs/com.circleci.runner/runner.log</string>
-      <key>StandardErrorPath</key>
-      <string>/Users/admin/Library/Logs/com.circleci.runner/runner.log</string>
-  </dict>
-  </plist>
-  EOF
-
-  mkdir -p ~/Library/Logs/com.circleci.runner
-  launchctl load ~/Library/LaunchAgents/com.circleci.runner.plist
+  PLIST=~/Library/LaunchAgents/com.circleci.runner.plist
+  launchctl load $PLIST || (launchctl unload $PLIST && launchctl load $PLIST)
   ```
 
 * [x] Verify runner is running
@@ -346,25 +318,23 @@ Create a LaunchAgent on the host that starts the VM at login.
 * [ ] Implement chosen approach
 * [ ] Test VM auto-starts after host reboot
 
-## Phase 6: Cleanup Host Runner (Optional)
+## Phase 6: Cleanup Host Runner (Complete)
 
 **Goal**: Remove or disable the unisolated runner on the host.
 
 ### Tasks
 
-* [ ] Stop host runner
+* [x] Stop host runner
   ```bash
   launchctl unload ~/Library/LaunchAgents/com.circleci.runner.plist
   ```
 
-* [ ] Optionally remove host runner config
+* [x] Remove host runner config
   ```bash
-  rm -rf ~/Library/Preferences/com.circleci.runner
+  rm ~/Library/Preferences/com.circleci.runner
   rm ~/Library/LaunchAgents/com.circleci.runner.plist
   rm ~/.local/bin/circleci-runner-wrapper
   ```
-
-* [ ] Or keep for fallback/testing
 
 ## Troubleshooting
 
