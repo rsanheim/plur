@@ -94,11 +94,13 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 
 * [x] Run `script/ci-host-setup` to install all dev tools
   ```bash
-  # SCP script and mise.toml, then run
-  scp -i ~/.ssh/ci-vm-key .mise.toml script/ci-host-setup admin@$(tart ip plur-runner):~/plur/
-  ssh -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner) "cd ~/plur && ./ci-host-setup"
+  # SCP script and mise.toml (maintain directory structure)
+  ssh -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner) "mkdir -p ~/plur/script"
+  scp -i ~/.ssh/ci-vm-key .mise.toml admin@$(tart ip plur-runner):~/plur/
+  scp -i ~/.ssh/ci-vm-key script/ci-host-setup admin@$(tart ip plur-runner):~/plur/script/
+  ssh -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner) "cd ~/plur && script/ci-host-setup"
   ```
-  * Verified: Ruby 4.0.1, Go 1.25.5, Python 3.14.2, Bundler 4.0.4
+  * Verified: Ruby 4.0.1, Go 1.25.5, Python 3.14.2, Bundler 4.0.4, circleci-runner
 
 ### Validation
 
@@ -166,18 +168,11 @@ ssh admin@$(tart ip plur-runner) "ruby --version && go version && python --versi
 
 ### Tasks
 
-* [ ] Install runner via Homebrew (inside VM)
-  ```bash
-  ssh admin@$(tart ip plur-runner)
-  # Then inside VM:
-  brew tap circleci-public/circleci
-  brew install circleci-runner
-  ```
+* [x] Install runner via Homebrew (inside VM)
+  * Now handled by `script/ci-host-setup`
 
-* [ ] Clear quarantine attribute
-  ```bash
-  sudo xattr -r -d com.apple.quarantine "$(brew --prefix)/bin/circleci-runner"
-  ```
+* [x] Clear quarantine attribute
+  * Now handled by `script/ci-host-setup`
 
 * [ ] Get token from host's 1Password and create config (run from host)
   ```bash
