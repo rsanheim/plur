@@ -115,6 +115,11 @@ else
 fi
 
 # 2. Homebrew
+# Always ensure Homebrew is in PATH (may not be in fresh SSH sessions)
+if [[ -f /opt/homebrew/bin/brew ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
+
 info "Checking Homebrew..."
 if command -v brew &>/dev/null; then
   success "Homebrew $(brew --version | head -1 | cut -d' ' -f2)"
@@ -174,7 +179,7 @@ cd "$PROJECT_ROOT"
 if [[ "$DRY_RUN" == true ]]; then
   mise install --dry-run
 else
-  mise trust --yes
+  mise trust "$PROJECT_ROOT"
   mise install --yes
   success "Tools installed"
 fi
@@ -187,8 +192,10 @@ else
   # Re-activate mise to pick up newly installed Ruby
   eval "$(mise activate bash)"
 
-  if command -v bundle &>/dev/null; then
-    success "bundler $(bundle --version | cut -d' ' -f3)"
+  # Check if bundler is installed for the mise-managed Ruby
+  BUNDLER_VERSION=$(gem list bundler --exact 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+  if [[ -n "$BUNDLER_VERSION" ]]; then
+    success "bundler $BUNDLER_VERSION"
   else
     info "Installing Bundler..."
     gem install bundler
