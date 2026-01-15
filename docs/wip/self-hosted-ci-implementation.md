@@ -35,12 +35,12 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 
 ## Success Criteria
 
-* [ ] Tart VM boots and is accessible via SSH from host
-* [ ] VM has mise, Ruby 4, Go 1.25, Python 3 installed and working
+* [x] Tart VM boots and is accessible via SSH from host
+* [x] VM has mise, Ruby 4, Go 1.25, Python 3 installed and working
 * [ ] CircleCI machine runner runs inside VM and claims jobs
 * [ ] Plur builds and tests pass when triggered from CircleCI
 * [ ] VM startup is automated (host launchd or manual script)
-* [ ] Setup is documented and reproducible
+* [x] Setup is documented and reproducible
 
 ## Decision Log
 
@@ -57,23 +57,23 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 
 ### Prerequisites (on Host)
 
-* [ ] Tart installed: `brew install cirruslabs/cli/tart`
-* [ ] Sufficient disk space (~25GB for VM image)
-* [ ] 1Password CLI installed and authenticated
+* [x] Tart installed: `brew install cirruslabs/cli/tart`
+* [x] Sufficient disk space (~25GB for VM image)
+* [x] 1Password CLI installed and authenticated
 
 ### Tasks
 
-* [ ] Clone base macOS image
+* [x] Clone base macOS image
   ```bash
   tart clone ghcr.io/cirruslabs/macos-sequoia-base:latest plur-runner
   ```
 
-* [ ] Configure VM resources
+* [x] Configure VM resources
   ```bash
   tart set plur-runner --cpu 4 --memory 8192
   ```
 
-* [ ] Start VM and complete initial setup
+* [x] Start VM and complete initial setup
   ```bash
   tart run plur-runner
   ```
@@ -81,31 +81,30 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
   * Enable Remote Login (SSH) in System Settings → General → Sharing
   * Optionally set up auto-login
 
-* [ ] Verify SSH access from host
+* [x] Verify SSH access from host
   ```bash
   ssh admin@$(tart ip plur-runner) "uname -a && sw_vers"
   ```
 
-* [ ] Add SSH key for passwordless access (optional but recommended)
+* [x] Add SSH key for passwordless access
+  * Generated dedicated `~/.ssh/ci-vm-key` for CI VM access
   ```bash
-  ssh-copy-id admin@$(tart ip plur-runner)
+  ssh -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner)
   ```
 
-* [ ] Install Homebrew in VM (if not already present)
+* [x] Run `script/ci-host-setup` to install all dev tools
   ```bash
-  ssh admin@$(tart ip plur-runner)
-  # Check if brew exists
-  which brew || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  # Add to PATH if needed
-  echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-  eval "$(/opt/homebrew/bin/brew shellenv)"
+  # SCP script and mise.toml, then run
+  scp -i ~/.ssh/ci-vm-key .mise.toml script/ci-host-setup admin@$(tart ip plur-runner):~/plur/
+  ssh -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner) "cd ~/plur && ./ci-host-setup"
   ```
+  * Verified: Ruby 4.0.1, Go 1.25.5, Python 3.14.2, Bundler 4.0.4
 
 ### Validation
 
 ```bash
-# From host - verify SSH and Homebrew
-ssh admin@$(tart ip plur-runner) "echo 'VM accessible!' && brew --version"
+# From host - verify all tools installed
+ssh -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner) "ruby --version && go version && python --version && bundler --version"
 ```
 
 ## Phase 2: VM Development Environment
