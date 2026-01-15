@@ -40,6 +40,7 @@ Installs:
   * Bundler
   * CircleCI Runner (binary only, config is manual)
   * GoReleaser (for building releases)
+  * Modern Bash (4+ for globstar support)
 EOF
 }
 
@@ -249,6 +250,20 @@ else
     info "Installing GoReleaser..."
     brew install goreleaser
     success "goreleaser installed"
+  fi
+fi
+
+# 8. Modern Bash (macOS ships with bash 3.2, we need 4+ for globstar)
+info "Checking Bash version..."
+if [[ -x /opt/homebrew/bin/bash ]]; then
+  success "bash $(/opt/homebrew/bin/bash --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
+else
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "    [dry-run] Would install modern bash"
+  else
+    info "Installing modern Bash..."
+    brew install bash
+    success "bash installed"
   fi
 fi
 

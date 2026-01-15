@@ -148,6 +148,9 @@ jobs:
   test-macos-arm64:
     machine: true
     resource_class: rsanheim/mac-studio
+    environment:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
     steps:
       - checkout
       - run:
@@ -157,6 +160,7 @@ jobs:
             eval "$(mise activate bash)"
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
             echo 'eval "$(mise activate bash)"' >> $BASH_ENV
+            echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
       - run:
           name: Environment info
           command: |
@@ -182,6 +186,9 @@ jobs:
   test-ruby-integration-macos:
     machine: true
     resource_class: rsanheim/mac-studio
+    environment:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
     steps:
       - checkout
       - run:
@@ -191,6 +198,7 @@ jobs:
             eval "$(mise activate bash)"
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
             echo 'eval "$(mise activate bash)"' >> $BASH_ENV
+            echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
       - run:
           name: Install dependencies
           command: bundle install
