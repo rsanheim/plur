@@ -257,14 +257,16 @@ jobs:
             echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
             # Add GOPATH/bin for plur binary
             echo 'export PATH="$HOME/go/bin:$PATH"' >> $BASH_ENV
-            # Enable reading .ruby-version files and set global Ruby fallback
+            # Enable reading .ruby-version files and set global fallbacks
             mise settings set idiomatic_version_file true
-            mise use --global ruby@3.4
+            mise use --global ruby@3.4 go@1.25
+            mise reshim
       - run:
           name: Install dependencies and build plur
           command: |
             bundle install
             bin/rake install
+            mise reshim
       - run:
           name: Verify plur and Ruby
           command: |
