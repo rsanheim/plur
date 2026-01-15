@@ -179,6 +179,46 @@ jobs:
           name: Run Go tests
           command: bin/rake test:go
 
+  test-ruby-integration-macos:
+    machine: true
+    resource_class: rsanheim/mac-studio
+    steps:
+      - checkout
+      - run:
+          name: Setup mise environment
+          command: |
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+            eval "$(mise activate bash)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
+            echo 'eval "$(mise activate bash)"' >> $BASH_ENV
+      - run:
+          name: Install dependencies
+          command: bundle install
+      - run:
+          name: Install plur globally
+          command: bin/rake install
+      - run:
+          name: Install plur watcher
+          command: plur watch install
+      - run:
+          name: Verify plur
+          command: |
+            which plur
+            plur --version
+            plur doctor
+      - run:
+          name: Run ruby linting
+          command: bin/rake lint:ruby
+      - run:
+          name: Run Ruby tests with plur
+          command: bin/rake test:default_ruby
+      - run:
+          name: Install turbo_tests
+          command: gem install turbo_tests
+      - run:
+          name: Run all Ruby specs
+          command: bin/rake test
+
 workflows:
   test-all:
     jobs:
@@ -192,3 +232,6 @@ workflows:
   selfhosted-test:
     jobs:
       - test-macos-arm64
+      - test-ruby-integration-macos:
+          requires:
+            - test-macos-arm64
