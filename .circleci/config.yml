@@ -279,6 +279,8 @@ jobs:
           command: |
             # Clear any SSH URL rewriting (base image has this set)
             git config --global --unset-all 'url.ssh://git@github.com.insteadof' 2>/dev/null || true
+            # Clean up from previous runs (VM is persistent)
+            rm -rf ~/reference-repos
             mkdir -p ~/reference-repos
             git clone --depth 1 https://github.com/rubocop/rubocop.git ~/reference-repos/rubocop
             git clone --depth 1 https://github.com/rspec/rspec.git ~/reference-repos/rspec
