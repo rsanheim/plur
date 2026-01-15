@@ -372,7 +372,7 @@ jobs:
             plur spec/models --dry-run
             # Allow up to 5 failures (known ImageMagick diffs + flaky tests)
             plur spec/models 2>&1 | tee /tmp/discourse-results.txt || true
-            failures=$(grep -oP '\d+ failures' /tmp/discourse-results.txt | grep -oP '\d+' || echo 0)
+            failures=$(grep -Eo '[0-9]+ failures' /tmp/discourse-results.txt | grep -Eo '[0-9]+' | head -1 || echo 0)
             echo "Discourse failures: $failures (max allowed: 5)"
             [ "$failures" -le 5 ]
       - run:
