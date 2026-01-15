@@ -282,8 +282,31 @@ jobs:
             brew services start redis
             sleep 5
             export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+            # Create superuser only (db:create handles databases)
             psql -U $USER postgres -tc "SELECT 1 FROM pg_roles WHERE rolname='discourse'" | grep -q 1 || createuser -s discourse
-            psql -U $USER postgres -tc "SELECT 1 FROM pg_database WHERE datname='discourse_test'" | grep -q 1 || createdb -U discourse discourse_test
+      - run:
+          name: Print PostgreSQL connection info
+          command: |
+            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+            echo ">>> PostgreSQL Status"
+            pg_isready
+            echo ""
+            echo ">>> PostgreSQL Version"
+            psql --version
+            echo ""
+            echo ">>> Connection Info"
+            echo "Host: localhost (Unix socket)"
+            echo "Port: 5432 (default)"
+            echo "User: discourse (superuser)"
+            echo ""
+            echo ">>> DATABASE_URL format for Rails:"
+            echo "DATABASE_URL=postgres://discourse@localhost/discourse_test"
+            echo ""
+            echo ">>> Existing databases:"
+            psql -U $USER -c "\\l" | grep -E "(Name|discourse)" || echo "(none yet)"
+            echo ""
+            echo ">>> Existing roles:"
+            psql -U $USER -c "\\du" | grep discourse || echo "(none yet)"
       - run:
           name: Clone reference repos
           command: |
@@ -311,10 +334,22 @@ jobs:
       - run:
           name: Test plur on Discourse (unit tests only)
           working_directory: ~/reference-repos/discourse
+          environment:
+            RAILS_ENV: test
+            PARALLEL_TEST_PROCESSORS: "2"
           command: |
+            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
             bundle install
-            plur spec/models --dry-run
-            plur spec/models spec/requests
+            # Create and migrate main + parallel databases
+            bin/rake db:create
+            bin/rake parallel:create
+            bin/rake db:migrate
+            bin/rake parallel:migrate
+            # Show what DBs were created
+            psql -U discourse -c "\\l" | grep discourse
+            # Run with plur (TEST_ENV_NUMBER routes each worker to its own DB)
+            plur -n 2 spec/models --dry-run
+            plur -n 2 spec/models
       - run:
           name: Test plur on rspec-core
           working_directory: ~/reference-repos/rspec/rspec-core
