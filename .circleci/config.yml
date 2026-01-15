@@ -135,8 +135,7 @@ jobs:
       - run:
           name: Run test_app specs with plur
           working_directory: fixtures/projects/default-rails
-          command: |
-            plur -n 2
+          command: plur
       - run:
           name: Install turbo_tests
           command: gem install turbo_tests
@@ -228,7 +227,7 @@ jobs:
       - run:
           name: Run Rails fixture specs with plur
           working_directory: fixtures/projects/default-rails
-          command: plur -n 2
+          command: plur
       - run:
           name: Install turbo_tests
           command: gem install turbo_tests
@@ -364,7 +363,6 @@ jobs:
           working_directory: ~/reference-repos/discourse
           environment:
             RAILS_ENV: test
-            PARALLEL_TEST_PROCESSORS: "2"
           command: |
             export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
             bundle install
@@ -374,8 +372,8 @@ jobs:
             bin/rake db:migrate
             bin/rake parallel:migrate
             psql -U discourse postgres -c "\\l" | grep discourse
-            plur -n 2 spec/models --dry-run
-            plur -n 2 spec/models
+            plur spec/models --dry-run
+            plur spec/models
       - run:
           name: Test plur on RuboCop
           working_directory: ~/reference-repos/rubocop
