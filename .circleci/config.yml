@@ -281,7 +281,7 @@ jobs:
             sleep 5
 
             # Node and pnpm via mise (versioned tools)
-            mise use --global node@22.12.0 pnpm@10
+            mise use --global node@22.13.0 pnpm@10
             mise reshim
 
             # PostgreSQL user for Discourse
