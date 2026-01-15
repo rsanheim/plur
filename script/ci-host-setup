@@ -137,6 +137,23 @@ else
   fi
 fi
 
+# Configure Homebrew in shell profiles
+BREW_SHELLENV='eval "$(/opt/homebrew/bin/brew shellenv)"'
+for profile in "$HOME/.zprofile" "$HOME/.bash_profile"; do
+  if [[ -f "$profile" ]] && grep -q 'brew shellenv' "$profile"; then
+    success "Homebrew configured in $(basename "$profile")"
+  else
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "    [dry-run] Would add Homebrew to $(basename "$profile")"
+    else
+      echo '' >> "$profile"
+      echo '# Homebrew' >> "$profile"
+      echo "$BREW_SHELLENV" >> "$profile"
+      success "Homebrew added to $(basename "$profile")"
+    fi
+  fi
+done
+
 # 3. mise
 info "Checking mise..."
 if command -v mise &>/dev/null; then
