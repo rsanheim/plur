@@ -207,16 +207,15 @@ info "Checking Bundler..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "    [dry-run] Would install bundler gem"
 else
-  # Re-activate mise to pick up newly installed Ruby
-  eval "$(mise activate bash)"
+  cd "$PROJECT_ROOT"
 
   # Check if bundler is installed for the mise-managed Ruby
-  BUNDLER_VERSION=$(gem list bundler --exact 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+  BUNDLER_VERSION=$(mise exec -- gem list bundler --exact 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
   if [[ -n "$BUNDLER_VERSION" ]]; then
     success "bundler $BUNDLER_VERSION"
   else
     info "Installing Bundler..."
-    gem install bundler
+    mise exec -- gem install bundler
     success "bundler installed"
   fi
 fi
@@ -243,11 +242,13 @@ echo ""
 info "Setup complete!"
 echo ""
 if [[ "$DRY_RUN" == false ]]; then
+  cd "$PROJECT_ROOT"
+
   echo "Installed versions:"
-  echo "  ruby    $(ruby --version 2>/dev/null | cut -d' ' -f2 || echo 'not found')"
-  echo "  go      $(go version 2>/dev/null | cut -d' ' -f3 | sed 's/go//' || echo 'not found')"
-  echo "  python  $(python --version 2>/dev/null | cut -d' ' -f2 || echo 'not found')"
-  echo "  bundler $(bundle --version 2>/dev/null | cut -d' ' -f3 || echo 'not found')"
+  echo "  ruby    $(mise exec -- ruby --version 2>/dev/null | cut -d' ' -f2 || echo 'not found')"
+  echo "  go      $(mise exec -- go version 2>/dev/null | cut -d' ' -f3 | sed 's/go//' || echo 'not found')"
+  echo "  python  $(mise exec -- python --version 2>/dev/null | cut -d' ' -f2 || echo 'not found')"
+  echo "  bundler $(mise exec -- bundle --version 2>/dev/null | cut -d' ' -f3 || echo 'not found')"
   echo ""
   echo "Run 'source ~/.zshrc' or start a new shell to use mise-managed tools."
 fi
