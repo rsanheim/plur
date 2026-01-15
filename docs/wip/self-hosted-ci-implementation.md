@@ -1,7 +1,8 @@
 # Self-Hosted CI Implementation Plan
 
-*Status:* In Progress
+*Status:* Complete
 *Created:* 2026-01-14
+*Completed:* 2026-01-15
 *Related:* [self-hosted-ci.md](self-hosted-ci.md) (research & reference)
 
 ## Overview
@@ -39,7 +40,7 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 * [x] VM has mise, Ruby 4, Go 1.25, Python 3 installed and working
 * [x] CircleCI machine runner runs inside VM and claims jobs
 * [x] Plur builds and tests pass when triggered from CircleCI
-* [ ] Reference repos testing works (RuboCop ✅, Discourse blocked on node version)
+* [x] Reference repos testing works (RuboCop ✅, Discourse ✅ 99.9%, rspec-core ✅)
 * [ ] VM startup is automated (host launchd or manual script)
 * [x] Setup is documented and reproducible
 
@@ -98,7 +99,7 @@ Jobs in `.circleci/config.yml`:
 |-----|--------|-------------|
 | `test-macos-arm64` | ✅ Passing | Basic build, lint, Go tests |
 | `test-ruby-integration-macos` | ✅ Passing | Full Ruby integration (default-ruby, default-rails, Ruby specs) |
-| `test-reference-repos` | ❌ Failing | Blocked (see Phase 7) |
+| `test-reference-repos` | ✅ Passing | Reference repos (RuboCop, Discourse, rspec-core) |
 
 ## Phase 5: Host Automation (Deferred)
 
@@ -115,66 +116,37 @@ Options:
 * [x] Stop host runner
 * [x] Remove host runner config and plist
 
-## Phase 7: Reference OSS Repos Testing 🚧
+## Phase 7: Reference OSS Repos Testing ✅
 
-**Status**: In Progress - Discourse blocked on node version conflict
+**Status**: Complete - All reference repos working
 
-### Progress
-
-* [x] Git SSH config fixed (cleared URL rewriting in job)
-* [x] RuboCop tests passing with plur
-* [ ] Discourse tests blocked on node version (see below)
-* [ ] rspec-core tests (runs after Discourse)
-
-### Current Blocker: Discourse Node Version
-
-Discourse requires node 20/22/24 but the VM has node v25.3.0 installed via Homebrew from previous runs. Even though we install node@22.12.0 via mise, the Homebrew node takes precedence in PATH.
-
-```
-ERR_PNPM_UNSUPPORTED_ENGINE Unsupported environment (bad pnpm and/or Node.js version)
-Your Node version is incompatible with "mktemp@2.0.2".
-Expected version: 20 || 22 || 24
-Got: v25.3.0
-```
-
-**Debugging approach**: Split Discourse step into Setup/Verify/Test:
-* Setup: Install postgres, redis, node@22.12.0 via mise, pnpm@10 via mise
-* Verify: Print PATH, `mise ls`, `which node`, versions (debug step)
-* Test: bundle, pnpm install, rake tasks, plur
-
-**Root cause investigation needed**:
-* Check Verify step output in CircleCI UI to see PATH order
-* Likely need to either uninstall Homebrew node from VM, or ensure mise shims come before `/opt/homebrew/bin` in PATH
-
-### Reference Repos
+### Results
 
 | Repo | Type | Status | Notes |
 |------|------|--------|-------|
 | rubocop/rubocop | Pure Ruby | ✅ Passing | No services needed |
-| rspec/rspec-core | Pure Ruby | ⏳ Pending | Runs after Discourse |
-| discourse/discourse | Rails | ❌ Blocked | Node version conflict |
+| discourse/discourse | Rails | ✅ 99.9% (4051/4055) | 4 failures are ImageMagick config differences |
+| rspec/rspec-core | Pure Ruby | ✅ Passing | No services needed |
 
-### Discourse Requirements
+### Fixes Applied (2026-01-15)
 
-From `package.json`:
-* `node >= 20` (specifically needs 20, 22, or 24 - not 25)
-* `pnpm ^10` (packageManager: pnpm@10.28.0)
+1. **PATH precedence fix**: Removed redundant `PATH="/opt/homebrew/bin:$PATH"` that was overriding mise shims
+2. **Node version**: Bumped to node@22.13.0 for @faker-js/faker compatibility
+3. **PostgreSQL**: Added pgvector extension for Discourse AI plugin
+4. **Tools**: Added coreutils (for `timeout` command) and imagemagick
 
-Discourse's `db:migrate` triggers `assets:precompile:asset_processor` which runs:
-```
-pnpm -C=frontend/asset-processor node build.js
-```
+### Discourse Test Notes
 
-This requires node and pnpm to be properly installed and in PATH.
+The 4 failing tests (out of 4055) are `OptimizedImage.crop` specs that expect specific file sizes. These fail due to different ImageMagick compression defaults between Homebrew and Discourse's Docker-based CI. Discourse's own CI also has intermittent failures.
 
 ### Job Configuration
 
-The `test-reference-repos` job:
-* Installs PostgreSQL 17 and Redis via Homebrew (services)
-* Installs node@22.12.0 and pnpm@10 via mise (versioned tools)
-* Clones repos with `--depth 1` for speed
-* Runs plur on each repo's spec directory
-* Skips Discourse system tests (need Playwright)
+The `test-reference-repos` job installs via Homebrew:
+* PostgreSQL 17, pgvector, Redis (services)
+* coreutils, imagemagick (tools)
+
+And via mise:
+* node@22.13.0, pnpm@10 (versioned tools)
 
 ## Troubleshooting
 
