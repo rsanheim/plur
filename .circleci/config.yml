@@ -279,12 +279,18 @@ jobs:
           command: |
             # Clear any SSH URL rewriting (base image has this set)
             git config --global --unset-all 'url.ssh://git@github.com.insteadof' 2>/dev/null || true
-            # Clean up from previous runs (VM is persistent)
-            rm -rf ~/reference-repos
             mkdir -p ~/reference-repos
-            git clone --depth 1 https://github.com/rubocop/rubocop.git ~/reference-repos/rubocop
-            git clone --depth 1 https://github.com/rspec/rspec.git ~/reference-repos/rspec
-            git clone --depth 1 https://github.com/discourse/discourse.git ~/reference-repos/discourse
+            clone_or_fetch() {
+              local url=$1 dir=$2
+              if [[ -d "$dir/.git" ]]; then
+                git -C "$dir" fetch --depth 1 origin && git -C "$dir" reset --hard origin/HEAD
+              else
+                git clone --depth 1 "$url" "$dir"
+              fi
+            }
+            clone_or_fetch https://github.com/rubocop/rubocop.git ~/reference-repos/rubocop
+            clone_or_fetch https://github.com/rspec/rspec.git ~/reference-repos/rspec
+            clone_or_fetch https://github.com/discourse/discourse.git ~/reference-repos/discourse
       - run:
           name: Test plur on RuboCop
           working_directory: ~/reference-repos/rubocop
