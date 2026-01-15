@@ -273,10 +273,13 @@ jobs:
       - run:
           name: Setup Discourse dependencies
           command: |
-            # PostgreSQL, pgvector, and Redis via Homebrew (services)
+            # PostgreSQL, pgvector, Redis, and coreutils (for timeout) via Homebrew
             brew list postgresql@17 &>/dev/null || brew install postgresql@17
             brew list pgvector &>/dev/null || brew install pgvector
             brew list redis &>/dev/null || brew install redis
+            brew list coreutils &>/dev/null || brew install coreutils
+            # Add GNU coreutils to PATH (provides 'timeout' without 'g' prefix)
+            echo 'export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"' >> $BASH_ENV
             brew services start postgresql@17
             brew services start redis
             sleep 5
