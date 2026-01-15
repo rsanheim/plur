@@ -274,10 +274,11 @@ jobs:
             plur --version
             plur doctor
       - run:
-          name: Setup PostgreSQL and Redis (for Discourse)
+          name: Setup PostgreSQL, Redis, and pnpm (for Discourse)
           command: |
             brew list postgresql@17 &>/dev/null || brew install postgresql@17
             brew list redis &>/dev/null || brew install redis
+            brew list pnpm &>/dev/null || brew install pnpm
             brew services start postgresql@17
             brew services start redis
             sleep 5
