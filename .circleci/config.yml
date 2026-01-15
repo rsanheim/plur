@@ -238,6 +238,59 @@ jobs:
           name: Run all Ruby specs
           command: bin/rake test
 
+  test-reference-repos:
+    machine: true
+    resource_class: rsanheim/mac-studio
+    environment:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+    steps:
+      - run:
+          name: Setup mise environment
+          command: |
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+            eval "$(mise activate bash)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
+            echo 'eval "$(mise activate bash)"' >> $BASH_ENV
+            echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
+      - run:
+          name: Setup PostgreSQL and Redis (for Discourse)
+          command: |
+            brew install postgresql@17 redis
+            brew services start postgresql@17
+            brew services start redis
+            sleep 5
+            createuser -s discourse || true
+            createdb -U discourse discourse_test || true
+      - run:
+          name: Clone reference repos
+          command: |
+            mkdir -p ~/reference-repos
+            git clone --depth 1 https://github.com/rubocop/rubocop.git ~/reference-repos/rubocop
+            git clone --depth 1 https://github.com/rspec/rspec.git ~/reference-repos/rspec
+            git clone --depth 1 https://github.com/discourse/discourse.git ~/reference-repos/discourse
+      - run:
+          name: Test plur on RuboCop
+          working_directory: ~/reference-repos/rubocop
+          command: |
+            bundle install
+            plur spec --dry-run
+            plur spec
+      - run:
+          name: Test plur on rspec-core
+          working_directory: ~/reference-repos/rspec/rspec-core
+          command: |
+            bundle install
+            plur spec --dry-run
+            plur spec
+      - run:
+          name: Test plur on Discourse (unit tests only)
+          working_directory: ~/reference-repos/discourse
+          command: |
+            bundle install
+            plur spec/models --dry-run
+            plur spec/models spec/requests
+
 workflows:
   test-all:
     jobs:
@@ -254,3 +307,4 @@ workflows:
       - test-ruby-integration-macos:
           requires:
             - test-macos-arm64
+      - test-reference-repos

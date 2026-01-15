@@ -336,6 +336,39 @@ Create a LaunchAgent on the host that starts the VM at login.
   rm ~/.local/bin/circleci-runner-wrapper
   ```
 
+## Phase 7: Reference OSS Repos Testing
+
+**Goal**: Run plur against real-world OSS Ruby projects as canary-style validation.
+
+### Reference Repos
+
+| Repo | Type | Tests | Notes |
+|------|------|-------|-------|
+| rubocop/rubocop | Pure Ruby | RSpec (500+ files) | No services needed |
+| rspec/rspec-core | Pure Ruby | RSpec + Cucumber | Tests the test framework |
+| discourse/discourse | Rails | RSpec (unit only) | Needs PostgreSQL + Redis |
+
+### Job Configuration
+
+New job `test-reference-repos` in `.circleci/config.yml`:
+* Installs PostgreSQL 17 and Redis via Homebrew (self-contained)
+* Clones repos with `--depth 1` for speed
+* Runs plur on each repo's spec directory
+* Skips Discourse system tests (need Playwright)
+
+### Adding New Reference Repos
+
+Good candidates:
+* Pure RSpec or Minitest
+* Minimal service dependencies
+* Active maintenance
+* Large enough test suite to benefit from parallelization
+
+Avoid:
+* Heavy Docker/container requirements
+* Complex database schemas requiring migrations
+* System/browser tests
+
 ## Troubleshooting
 
 ### VM Won't Start (Keychain Error)
