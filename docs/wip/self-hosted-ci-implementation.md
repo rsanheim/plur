@@ -25,7 +25,7 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 │  │  │ * Runs as LaunchAgent                           │  │  │
 │  │  └─────────────────────────────────────────────────┘  │  │
 │  │                                                       │  │
-│  │  Tools: mise → ruby 3.4, go 1.25                      │  │
+│  │  Tools: mise → ruby 4, go 1.25, python 3              │  │
 │  │  Plur: cloned from git, built with bin/rake install   │  │
 │  └───────────────────────────────────────────────────────┘  │
 │                                                             │
@@ -36,7 +36,7 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 ## Success Criteria
 
 * [ ] Tart VM boots and is accessible via SSH from host
-* [ ] VM has mise, Ruby 3.4, Go 1.25 installed and working
+* [ ] VM has mise, Ruby 4, Go 1.25, Python 3 installed and working
 * [ ] CircleCI machine runner runs inside VM and claims jobs
 * [ ] Plur builds and tests pass when triggered from CircleCI
 * [ ] VM startup is automated (host launchd or manual script)
@@ -110,44 +110,55 @@ ssh admin@$(tart ip plur-runner) "echo 'VM accessible!' && brew --version"
 
 ## Phase 2: VM Development Environment
 
-**Goal**: Install mise, Ruby, and Go inside the VM.
+**Goal**: Install mise, Ruby, Go, Python, and Bundler inside the VM.
 
-### Tasks
+### Automated Setup
 
-* [ ] SSH into VM
-  ```bash
-  ssh admin@$(tart ip plur-runner)
-  ```
+Use `script/ci-host-setup` to install all development tools:
 
-* [ ] Install mise via Homebrew
-  ```bash
-  brew install mise
-  echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
-  source ~/.zshrc
-  ```
+```bash
+# From host - clone plur repo and run setup script
+ssh admin@$(tart ip plur-runner) "git clone https://github.com/rsanheim/plur.git ~/plur"
+ssh admin@$(tart ip plur-runner) "cd ~/plur && script/ci-host-setup"
+```
 
-* [ ] Install Ruby and Go via mise
-  ```bash
-  mise use -g ruby@3.4
-  mise use -g go@1.25
-  ```
+The script handles:
+* Xcode Command Line Tools
+* Homebrew
+* mise (version manager)
+* Ruby 4, Go 1.25, Python 3 (via mise, from `.mise.toml`)
+* Bundler
 
-* [ ] Verify installations
-  ```bash
-  ruby --version   # Should show 3.4.x
-  go version       # Should show 1.25.x
-  ```
+### Manual Alternative
 
-* [ ] Install bundler
-  ```bash
-  gem install bundler
-  ```
+If you prefer manual setup or need to debug:
+
+```bash
+ssh admin@$(tart ip plur-runner)
+
+# Install Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# Install mise
+brew install mise
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
+source ~/.zshrc
+
+# Install tools from .mise.toml
+cd ~/plur
+mise trust && mise install
+
+# Install bundler
+gem install bundler
+```
 
 ### Validation
 
 ```bash
-# From host
-ssh admin@$(tart ip plur-runner) "ruby --version && go version && which bundler"
+# From host - verify all tools
+ssh admin@$(tart ip plur-runner) "ruby --version && go version && python --version && bundler --version"
+# Expected: ruby 4.x, go 1.25.x, python 3.x, bundler 4.x
 ```
 
 ## Phase 3: CircleCI Runner in VM
@@ -403,6 +414,8 @@ For stable access, consider:
 
 | Location | File | Purpose |
 |----------|------|---------|
+| Repo | `script/ci-host-setup` | Automated VM setup script |
+| Repo | `.mise.toml` | Tool versions (Ruby 4, Go 1.25, Python 3) |
 | Host | `~/bin/start-plur-runner-vm` | VM startup script (optional) |
 | VM | `~/Library/Preferences/com.circleci.runner/config.yaml` | Runner config (includes token) |
 | VM | `~/Library/LaunchAgents/com.circleci.runner.plist` | Runner auto-start |
