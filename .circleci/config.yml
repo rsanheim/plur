@@ -376,7 +376,7 @@ jobs:
             bin/rake parallel:create
             bin/rake db:migrate
             bin/rake parallel:migrate
-            psql -U discourse -c "\\l" | grep discourse
+            psql -U discourse postgres -c "\\l" | grep discourse
             plur -n 2 spec/models --dry-run
             plur -n 2 spec/models
       - run:
