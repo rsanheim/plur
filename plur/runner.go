@@ -396,7 +396,7 @@ func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalCon
 	if !globalConfig.ColorOutput {
 		args = insertBeforeFiles(args, files, "--no-color")
 	} else {
-		args = insertBeforeFiles(args, files, "--force-color", "--tty")
+		args = insertBeforeFiles(args, files, "--force-color")
 	}
 
 	return args
