@@ -221,6 +221,17 @@ jobs:
           name: Run Ruby tests with plur
           command: bin/rake test:default_ruby
       - run:
+          name: Setup Rails fixture app
+          working_directory: fixtures/projects/default-rails
+          command: |
+            bundle config set --local path vendor/bundle
+            bundle install
+            bundle exec rake db:create db:migrate
+      - run:
+          name: Run Rails fixture specs with plur
+          working_directory: fixtures/projects/default-rails
+          command: plur -n 2
+      - run:
           name: Install turbo_tests
           command: gem install turbo_tests
       - run:
