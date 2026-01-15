@@ -39,7 +39,7 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 * [x] VM has mise, Ruby 4, Go 1.25, Python 3 installed and working
 * [x] CircleCI machine runner runs inside VM and claims jobs
 * [x] Plur builds and tests pass when triggered from CircleCI
-* [ ] Reference repos testing works (blocked on git SSH config)
+* [ ] Reference repos testing works (RuboCop ✅, Discourse blocked on node version)
 * [ ] VM startup is automated (host launchd or manual script)
 * [x] Setup is documented and reproducible
 
@@ -117,41 +117,61 @@ Options:
 
 ## Phase 7: Reference OSS Repos Testing 🚧
 
-**Status**: In Progress - Blocked on git SSH config
+**Status**: In Progress - Discourse blocked on node version conflict
 
-### Current Blocker
+### Progress
 
-The `test-reference-repos` job fails because the VM's git config rewrites HTTPS URLs to SSH:
+* [x] Git SSH config fixed (cleared URL rewriting in job)
+* [x] RuboCop tests passing with plur
+* [ ] Discourse tests blocked on node version (see below)
+* [ ] rspec-core tests (runs after Discourse)
+
+### Current Blocker: Discourse Node Version
+
+Discourse requires node 20/22/24 but the VM has node v25.3.0 installed via Homebrew from previous runs. Even though we install node@22.12.0 via mise, the Homebrew node takes precedence in PATH.
 
 ```
-git@github.com: Permission denied (publickey).
-fatal: Could not read from remote repository.
+ERR_PNPM_UNSUPPORTED_ENGINE Unsupported environment (bad pnpm and/or Node.js version)
+Your Node version is incompatible with "mktemp@2.0.2".
+Expected version: 20 || 22 || 24
+Got: v25.3.0
 ```
 
-**Fix needed**: Remove or override git URL rewriting in the VM:
-```bash
-git config --global --unset url."git@github.com:".insteadOf
-```
+**Debugging approach**: Split Discourse step into Setup/Verify/Test:
+* Setup: Install postgres, redis, node@22.12.0 via mise, pnpm@10 via mise
+* Verify: Print PATH, `mise ls`, `which node`, versions (debug step)
+* Test: bundle, pnpm install, rake tasks, plur
 
-Or update the job to explicitly use HTTPS:
-```bash
-git clone --depth 1 https://github.com/rubocop/rubocop.git ...
-```
-
-The config already uses HTTPS URLs, so this is a VM-level git config issue.
+**Root cause investigation needed**:
+* Check Verify step output in CircleCI UI to see PATH order
+* Likely need to either uninstall Homebrew node from VM, or ensure mise shims come before `/opt/homebrew/bin` in PATH
 
 ### Reference Repos
 
-| Repo | Type | Tests | Notes |
-|------|------|-------|-------|
-| rubocop/rubocop | Pure Ruby | RSpec (500+ files) | No services needed |
-| rspec/rspec-core | Pure Ruby | RSpec + Cucumber | Tests the test framework |
-| discourse/discourse | Rails | RSpec (unit only) | Needs PostgreSQL + Redis |
+| Repo | Type | Status | Notes |
+|------|------|--------|-------|
+| rubocop/rubocop | Pure Ruby | ✅ Passing | No services needed |
+| rspec/rspec-core | Pure Ruby | ⏳ Pending | Runs after Discourse |
+| discourse/discourse | Rails | ❌ Blocked | Node version conflict |
+
+### Discourse Requirements
+
+From `package.json`:
+* `node >= 20` (specifically needs 20, 22, or 24 - not 25)
+* `pnpm ^10` (packageManager: pnpm@10.28.0)
+
+Discourse's `db:migrate` triggers `assets:precompile:asset_processor` which runs:
+```
+pnpm -C=frontend/asset-processor node build.js
+```
+
+This requires node and pnpm to be properly installed and in PATH.
 
 ### Job Configuration
 
 The `test-reference-repos` job:
-* Installs PostgreSQL 17 and Redis via Homebrew (self-contained)
+* Installs PostgreSQL 17 and Redis via Homebrew (services)
+* Installs node@22.12.0 and pnpm@10 via mise (versioned tools)
 * Clones repos with `--depth 1` for speed
 * Runs plur on each repo's spec directory
 * Skips Discourse system tests (need Playwright)
