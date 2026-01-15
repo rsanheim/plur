@@ -38,6 +38,7 @@ Installs:
   * mise (version manager)
   * Ruby, Go, Python (via mise, from .mise.toml)
   * Bundler
+  * CircleCI Runner (binary only, config is manual)
 EOF
 }
 
@@ -217,6 +218,23 @@ else
     info "Installing Bundler..."
     gem install bundler
     success "bundler installed"
+  fi
+fi
+
+# 6. CircleCI Runner (for CI VMs)
+info "Checking CircleCI Runner..."
+if command -v circleci-runner &>/dev/null; then
+  success "circleci-runner installed"
+else
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "    [dry-run] Would install circleci-runner"
+  else
+    info "Installing CircleCI Runner..."
+    brew tap circleci-public/circleci
+    brew install circleci-runner
+    # Clear macOS quarantine
+    sudo xattr -r -d com.apple.quarantine "$(brew --prefix)/bin/circleci-runner" 2>/dev/null || true
+    success "circleci-runner installed"
   fi
 fi
 
