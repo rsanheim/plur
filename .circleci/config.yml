@@ -259,8 +259,8 @@ jobs:
             echo 'export PATH="$HOME/go/bin:$PATH"' >> $BASH_ENV
             # Enable reading .ruby-version files and set global fallbacks
             mise settings set idiomatic_version_file true
-            # Add node and pnpm for Discourse
-            mise use --global ruby@3.4 go@1.25 node@22 pnpm@10
+            # Add node and pnpm for Discourse (node must be 20/22/24, not 25)
+            mise use --global ruby@3.4 go@1.25 node@lts pnpm@10
             mise reshim
       - run:
           name: Install dependencies and build plur
