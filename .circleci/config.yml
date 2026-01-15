@@ -145,6 +145,21 @@ jobs:
           command: |
             bin/rake test
 
+  hello-macos-arm64:
+    machine: true
+    resource_class: rsanheim/mac-studio
+    steps:
+      - checkout
+      - run:
+          name: Hello from Mac ARM64
+          command: |
+            echo "Hello from self-hosted runner!"
+            uname -a
+            sw_vers
+            which mise && mise --version || echo "mise not in PATH"
+            pwd
+            ls -la
+
 workflows:
   test-all:
     jobs:
@@ -154,3 +169,7 @@ workflows:
       - test-ruby-integration:
           requires:
             - build-and-test-go
+
+  selfhosted-test:
+    jobs:
+      - hello-macos-arm64
