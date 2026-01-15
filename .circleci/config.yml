@@ -160,7 +160,6 @@ jobs:
             eval "$(mise activate bash)"
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
             echo 'eval "$(mise activate bash)"' >> $BASH_ENV
-            echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
       - run:
           name: Environment info
           command: |
@@ -198,7 +197,6 @@ jobs:
             eval "$(mise activate bash)"
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
             echo 'eval "$(mise activate bash)"' >> $BASH_ENV
-            echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
       - run:
           name: Install dependencies
           command: bundle install
@@ -254,7 +252,6 @@ jobs:
             eval "$(mise activate bash --shims)"
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
             echo 'eval "$(mise activate bash --shims)"' >> $BASH_ENV
-            echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
             # Add GOPATH/bin for plur binary
             echo 'export PATH="$HOME/go/bin:$PATH"' >> $BASH_ENV
             # Enable reading .ruby-version files and set global fallbacks
