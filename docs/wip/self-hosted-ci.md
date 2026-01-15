@@ -32,6 +32,41 @@ CircleCI's Machine Runner 3.0 runs jobs **directly on the host machine** with no
 * Ephemeral VMs that can be cloned/destroyed per job
 * SSH access for running commands inside VMs
 
+### Security Model: True Hypervisor Isolation
+
+**Tart VMs are real virtual machines, not Docker-style containers.**
+
+Apple's Virtualization.framework is a Type 2 hypervisor providing hardware-level isolation:
+
+* **Separate kernel**: Each VM runs its own OS kernel (no kernel sharing like Docker)
+* **Memory isolation**: VMs cannot access each other's memory or host memory
+* **Filesystem isolation**: VM has no direct access to host filesystem
+* **Escape difficulty**: Breaking out requires exploiting the hypervisor itself (rare, serious vulnerability class)
+
+**Docker/Linux containers by contrast:**
+* Share the host kernel
+* Isolation via namespaces, cgroups, seccomp
+* Container escapes are a known attack class
+
+Apple recently validated this model with their [Containerization framework](https://edera.dev/stories/apple-just-validated-hypervisor-isolated-containers-heres-what-that-means) (WWDC 2025) - they run one lightweight VM per container specifically because "no shared kernel, no namespace-based isolation, no where to escape to."
+
+**Implication**: Running CircleCI machine runner directly inside a Tart VM (without another container layer) is secure enough. The hypervisor boundary is the security perimeter.
+
+### Network Isolation Caveat
+
+Default NAT networking doesn't fully isolate VMs from each other - [ARP spoofing between VMs is possible](https://medium.com/cirruslabs/isolating-network-between-tarts-macos-virtual-machines-9a4ae3dcf7be). Use **Softnet** mode for multi-tenant scenarios:
+
+```bash
+tart run --net-softnet vm-name
+```
+
+### Nested Virtualization Limitation
+
+* **macOS guests**: Not supported (even on M3/M4 with hardware capability)
+* **Linux guests**: Supported on M3+ chips with `tart run --nested`
+
+This means you cannot run Docker-in-Tart for macOS VMs. See [discussion #701](https://github.com/cirruslabs/tart/discussions/701).
+
 ### System Requirements
 
 * Apple Silicon Mac (M1/M2/M3/M4)
