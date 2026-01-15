@@ -254,6 +254,9 @@ jobs:
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
             echo 'eval "$(mise activate bash)"' >> $BASH_ENV
             echo 'export PATH="/opt/homebrew/bin:$PATH"' >> $BASH_ENV
+            # Enable reading .ruby-version files and set global Ruby fallback
+            mise settings set idiomatic_version_file true
+            mise use --global ruby@3.4
       - run:
           name: Install dependencies and build plur
           command: |
