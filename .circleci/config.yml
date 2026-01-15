@@ -145,20 +145,45 @@ jobs:
           command: |
             bin/rake test
 
-  hello-macos-arm64:
+  test-macos-arm64:
     machine: true
     resource_class: rsanheim/mac-studio
+    environment:
+      PLUR_RACE: "1"
     steps:
       - checkout
       - run:
-          name: Hello from Mac ARM64
+          name: Setup mise environment
           command: |
-            echo "Hello from self-hosted runner!"
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+            eval "$(mise activate bash)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
+            echo 'eval "$(mise activate bash)"' >> $BASH_ENV
+      - run:
+          name: Environment info
+          command: |
             uname -a
             sw_vers
-            which mise && mise --version || echo "mise not in PATH"
-            pwd
-            ls -la
+            ruby --version
+            go version
+            echo "Race detection: $PLUR_RACE"
+      - run:
+          name: Install dependencies
+          command: bundle install
+      - run:
+          name: Build plur (with race detection)
+          command: bin/rake build
+      - run:
+          name: Verify plur binary
+          command: |
+            ./plur/plur --version
+            ./plur/plur doctor
+      - run:
+          name: Run Go tests
+          command: bin/rake test:go
+      - run:
+          name: Run Ruby tests
+          command: bin/rake test
 
 workflows:
   test-all:
@@ -172,4 +197,4 @@ workflows:
 
   selfhosted-test:
     jobs:
-      - hello-macos-arm64
+      - test-macos-arm64
