@@ -39,6 +39,7 @@ Installs:
   * Ruby, Go, Python (via mise, from .mise.toml)
   * Bundler
   * CircleCI Runner (binary only, config is manual)
+  * GoReleaser (for building releases)
 EOF
 }
 
@@ -234,6 +235,20 @@ else
     # Clear macOS quarantine
     sudo xattr -r -d com.apple.quarantine "$(brew --prefix)/bin/circleci-runner" 2>/dev/null || true
     success "circleci-runner installed"
+  fi
+fi
+
+# 7. GoReleaser (for building releases)
+info "Checking GoReleaser..."
+if command -v goreleaser &>/dev/null; then
+  success "goreleaser $(goreleaser --version 2>/dev/null | head -1 | awk '{print $NF}')"
+else
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "    [dry-run] Would install goreleaser"
+  else
+    info "Installing GoReleaser..."
+    brew install goreleaser
+    success "goreleaser installed"
   fi
 fi
 
