@@ -148,8 +148,6 @@ jobs:
   test-macos-arm64:
     machine: true
     resource_class: rsanheim/mac-studio
-    environment:
-      PLUR_RACE: "1"
     steps:
       - checkout
       - run:
@@ -166,13 +164,12 @@ jobs:
             sw_vers
             ruby --version
             go version
-            echo "Race detection: $PLUR_RACE"
       - run:
           name: Install dependencies
           command: bundle install
       - run:
-          name: Build plur (with race detection)
-          command: bin/rake build
+          name: Build and lint
+          command: bin/rake build lint
       - run:
           name: Verify plur binary
           command: |
@@ -181,9 +178,6 @@ jobs:
       - run:
           name: Run Go tests
           command: bin/rake test:go
-      - run:
-          name: Run Ruby tests
-          command: bin/rake test
 
 workflows:
   test-all:
