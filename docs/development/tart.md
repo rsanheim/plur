@@ -16,7 +16,7 @@ Tart is a virtualization toolset for Apple Silicon that uses Apple's native Virt
 |----------|-------|
 | VM Name | `plur-runner` |
 | Base Image | macOS Sequoia (`ghcr.io/cirruslabs/macos-sequoia-base`) |
-| Resources | 4 CPU, 8GB RAM |
+| Resources | 6 CPU, 16GB RAM, 60GB disk |
 | User | `admin` |
 | SSH Key | `~/.ssh/ci-vm-key` |
 
@@ -40,11 +40,26 @@ tart stop plur-runner
 # Get current VM IP address
 tart ip plur-runner
 
-# Configure VM resources
-tart set plur-runner --cpu 4 --memory 8192
-
 # Clone a new VM from registry
 tart clone ghcr.io/cirruslabs/macos-sequoia-base:latest my-new-vm
+```
+
+### Resizing VMs
+
+VMs must be stopped before resizing. CPU and RAM changes take effect immediately on next boot.
+
+```bash
+# Stop the VM first
+tart stop plur-runner
+
+# Change CPU and RAM
+tart set plur-runner --cpu 6 --memory 16384
+
+# Increase disk size (can only grow, not shrink)
+tart set plur-runner --disk-size 60
+
+# Start VM - disk expansion happens automatically (APFS)
+tart run --no-graphics plur-runner &
 ```
 
 ### Installation
@@ -171,7 +186,7 @@ If you need to rebuild the VM from scratch:
 tart clone ghcr.io/cirruslabs/macos-sequoia-base:latest plur-runner
 
 # Configure resources
-tart set plur-runner --cpu 4 --memory 8192
+tart set plur-runner --cpu 6 --memory 16384 --disk-size 60
 
 # Start VM (opens GUI window, already logged in)
 tart run plur-runner
