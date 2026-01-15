@@ -329,13 +329,6 @@ jobs:
             clone_or_fetch https://github.com/rspec/rspec.git ~/reference-repos/rspec
             clone_or_fetch https://github.com/discourse/discourse.git ~/reference-repos/discourse
       - run:
-          name: Test plur on RuboCop
-          working_directory: ~/reference-repos/rubocop
-          command: |
-            bundle install
-            plur spec --dry-run
-            plur spec
-      - run:
           name: Verify Discourse environment
           working_directory: ~/reference-repos/discourse
           command: |
@@ -379,6 +372,13 @@ jobs:
             psql -U discourse postgres -c "\\l" | grep discourse
             plur -n 2 spec/models --dry-run
             plur -n 2 spec/models
+      - run:
+          name: Test plur on RuboCop
+          working_directory: ~/reference-repos/rubocop
+          command: |
+            bundle install
+            plur spec --dry-run
+            plur spec
       - run:
           name: Test plur on rspec-core
           working_directory: ~/reference-repos/rspec/rspec-core
