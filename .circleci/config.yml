@@ -408,4 +408,4 @@ workflows:
             - build-and-test-go-macos
       - test-reference-repos-macos:
           requires:
-            - build-and-test-go-macos
+            - test-ruby-integration-macos
