@@ -40,7 +40,7 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 * [x] VM has mise, Ruby 4, Go 1.25, Python 3 installed and working
 * [x] CircleCI machine runner runs inside VM and claims jobs
 * [x] Plur builds and tests pass when triggered from CircleCI
-* [x] Reference repos testing works (RuboCop ✅, Discourse ✅ 99.9%, rspec-core ✅)
+* [x] Reference repos testing works (RuboCop ✅, Discourse ✅ 99.9%, rspec-expectations ✅)
 * [ ] VM startup is automated (host launchd or manual script)
 * [x] Setup is documented and reproducible
 
@@ -99,7 +99,7 @@ Jobs in `.circleci/config.yml`:
 |-----|--------|-------------|
 | `build-and-test-go-macos` | ✅ Passing | Basic build, lint, Go tests |
 | `test-ruby-integration-macos` | ✅ Passing | Full Ruby integration (default-ruby, default-rails, Ruby specs) |
-| `test-reference-repos-macos` | ✅ Passing | Reference repos (RuboCop, Discourse, rspec-core) |
+| `test-reference-repos-macos` | ✅ Passing | Reference repos (RuboCop, Discourse, rspec-expectations) |
 
 ## Phase 5: Host Automation (Deferred)
 
@@ -126,7 +126,7 @@ Options:
 |------|------|--------|-------|
 | rubocop/rubocop | Pure Ruby | ✅ Passing | No services needed |
 | discourse/discourse | Rails | ✅ 99.9% (4051/4055) | 4 failures are ImageMagick config differences |
-| rspec/rspec-core | Pure Ruby | ✅ Passing | No services needed |
+| rspec/rspec-expectations | Pure Ruby | ✅ Passing | Coverage disabled for parallel runs |
 
 ### Fixes Applied (2026-01-15)
 
