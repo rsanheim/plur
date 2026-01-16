@@ -380,8 +380,8 @@ jobs:
             plur spec --dry-run
             plur spec
       - run:
-          name: Test plur on rspec-core
-          working_directory: ~/reference-repos/rspec/rspec-core
+          name: Test plur on rspec-expectations
+          working_directory: ~/reference-repos/rspec/rspec-expectations
           command: |
             bundle install
             plur spec --dry-run
