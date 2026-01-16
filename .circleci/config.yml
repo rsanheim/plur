@@ -390,7 +390,9 @@ workflows:
       - build-and-test-go
       - test-goreleaser
       - test-go-race
-      - test-ruby-integration
+      - test-ruby-integration:
+          requires:
+            - build-and-test-go
 
   selfhosted-test:
     jobs:
