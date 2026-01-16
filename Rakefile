@@ -60,7 +60,7 @@ task :install do
     final = File.join(gobin, "plur")
     temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
 
-    sh %(goreleaser build --snapshot --single-target --clean -o #{temp} > /dev/null 2>&1)
+    sh %(goreleaser build --snapshot --single-target --clean -o #{temp})
     File.chmod(0o755, temp)
     File.rename(temp, final)
   end
