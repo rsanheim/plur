@@ -97,9 +97,9 @@ Jobs in `.circleci/config.yml`:
 
 | Job | Status | Description |
 |-----|--------|-------------|
-| `test-macos-arm64` | ✅ Passing | Basic build, lint, Go tests |
+| `build-and-test-go-macos` | ✅ Passing | Basic build, lint, Go tests |
 | `test-ruby-integration-macos` | ✅ Passing | Full Ruby integration (default-ruby, default-rails, Ruby specs) |
-| `test-reference-repos` | ✅ Passing | Reference repos (RuboCop, Discourse, rspec-core) |
+| `test-reference-repos-macos` | ✅ Passing | Reference repos (RuboCop, Discourse, rspec-core) |
 
 ## Phase 5: Host Automation (Deferred)
 
@@ -155,11 +155,11 @@ And via mise:
 **Each CircleCI machine runner agent executes one job at a time.** This is architectural, not configurable.
 
 Our current workflow has three jobs targeting `rsanheim/mac-studio`:
-* `test-macos-arm64`
-* `test-ruby-integration-macos` (depends on test-macos-arm64)
-* `test-reference-repos`
+* `build-and-test-go-macos`
+* `test-ruby-integration-macos` (depends on build-and-test-go-macos)
+* `test-reference-repos-macos` (depends on build-and-test-go-macos)
 
-When a build triggers, `test-macos-arm64` and `test-reference-repos` both try to claim the runner. One runs, the other queues until the first completes.
+When a build triggers, `build-and-test-go-macos` runs first. Once it passes, both downstream jobs become eligible and one will queue while the other runs.
 
 This is expected behavior with a single runner agent. See [self-hosted-ci.md](self-hosted-ci.md#concurrency--job-queuing) for scaling options if this becomes a bottleneck.
 

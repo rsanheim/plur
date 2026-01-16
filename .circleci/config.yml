@@ -144,7 +144,7 @@ jobs:
           command: |
             bin/rake test
 
-  test-macos-arm64:
+  build-and-test-go-macos:
     machine: true
     resource_class: rsanheim/mac-studio
     environment:
@@ -235,7 +235,7 @@ jobs:
           name: Run all Ruby specs
           command: bin/rake test
 
-  test-reference-repos:
+  test-reference-repos-macos:
     machine: true
     resource_class: rsanheim/mac-studio
     environment:
@@ -402,8 +402,10 @@ workflows:
 
   selfhosted-test:
     jobs:
-      - test-macos-arm64
+      - build-and-test-go-macos
       - test-ruby-integration-macos:
           requires:
-            - test-macos-arm64
-      - test-reference-repos
+            - build-and-test-go-macos
+      - test-reference-repos-macos:
+          requires:
+            - build-and-test-go-macos
