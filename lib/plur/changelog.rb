@@ -18,14 +18,21 @@ class Plur::Changelog
     date = Time.now.strftime("%Y-%m-%d")
     entry_lines = ["## #{@new_version} - #{date}"]
 
-    if @prs_in_release.empty?
+    existing = existing_pr_numbers
+    new_prs = @prs_in_release.reject { |pr| existing.include?(pr[:number]) }
+
+    if new_prs.empty?
       entry_lines << "* Various improvements and bug fixes"
     else
-      @prs_in_release.each do |pr|
+      new_prs.each do |pr|
         entry_lines << "* #{pr[:title]} [##{pr[:number]}](#{pr[:url]})"
       end
     end
 
-    entry_lines.join("\n") + "\n"
+    entry_lines.join("\n") + "\n\n"
+  end
+
+  def existing_pr_numbers
+    @changelog.scan(/\[#(\d+)\]/).flatten.map(&:to_i).to_set
   end
 end

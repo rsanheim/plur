@@ -6,8 +6,7 @@
 * Remove undocumented --tty flag, use only --force-color [#175](https://github.com/rsanheim/plur/pull/175)
 
 ## v0.22.0 - 2026-01-14
-*  Concurrency fixes; Fix minitest 'E' progress indicator not displaying #171 [#171](https://github.com/rsanheim/plur/pull/171)
-* Simplify Docker install script [#170](https://github.com/rsanheim/plur/pull/170)
+* Concurrency fixes; Fix minitest 'E' progress indicator not displaying #171 [#171](https://github.com/rsanheim/plur/pull/171)
 
 ## v0.21.0 - 2026-01-12
 * Simplify Docker install script [#170](https://github.com/rsanheim/plur/pull/170)

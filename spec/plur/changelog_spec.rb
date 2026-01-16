@@ -52,13 +52,13 @@ RSpec.describe Plur::Changelog do
   end
 
   describe "#generate_entry" do
-    it "formats PRs correctly" do
+    it "formats PRs correctly with trailing blank line" do
       prs = [{number: 123, title: "New feature", url: "https://github.com/rsanheim/plur/pull/123"}]
       changelog = described_class.new("v0.18.0", prs, changelog_input: StringIO.new(""))
 
       entry = changelog.generate_entry
 
-      expect(entry).to eq("## v0.18.0 - 2025-12-06\n* New feature [#123](https://github.com/rsanheim/plur/pull/123)\n")
+      expect(entry).to eq("## v0.18.0 - 2025-12-06\n* New feature [#123](https://github.com/rsanheim/plur/pull/123)\n\n")
     end
 
     it "handles multiple PRs" do
@@ -80,6 +80,71 @@ RSpec.describe Plur::Changelog do
       entry = changelog.generate_entry
 
       expect(entry).to include("Various improvements and bug fixes")
+    end
+
+    it "excludes PRs already in the changelog" do
+      existing_changelog = <<~CHANGELOG
+        # plur CHANGELOG
+
+        ## Unreleased
+
+        ## v0.17.0 - 2025-12-01
+        * Previous feature [#100](https://github.com/rsanheim/plur/pull/100)
+      CHANGELOG
+
+      prs = [
+        {number: 100, title: "Previous feature", url: "https://github.com/rsanheim/plur/pull/100"},
+        {number: 123, title: "New feature", url: "https://github.com/rsanheim/plur/pull/123"}
+      ]
+      changelog = described_class.new("v0.18.0", prs, changelog_input: StringIO.new(existing_changelog))
+
+      entry = changelog.generate_entry
+
+      expect(entry).not_to include("#100")
+      expect(entry).to include("#123")
+    end
+
+    it "falls back to placeholder when all PRs are duplicates" do
+      existing_changelog = <<~CHANGELOG
+        # plur CHANGELOG
+
+        ## Unreleased
+
+        ## v0.17.0 - 2025-12-01
+        * Previous feature [#100](https://github.com/rsanheim/plur/pull/100)
+      CHANGELOG
+
+      prs = [{number: 100, title: "Previous feature", url: "https://github.com/rsanheim/plur/pull/100"}]
+      changelog = described_class.new("v0.18.0", prs, changelog_input: StringIO.new(existing_changelog))
+
+      entry = changelog.generate_entry
+
+      expect(entry).to include("Various improvements and bug fixes")
+    end
+  end
+
+  describe "#existing_pr_numbers" do
+    it "extracts PR numbers from changelog" do
+      existing_changelog = <<~CHANGELOG
+        ## v0.17.0 - 2025-12-01
+        * Feature one [#100](https://github.com/rsanheim/plur/pull/100)
+        * Feature two [#101](https://github.com/rsanheim/plur/pull/101)
+      CHANGELOG
+
+      changelog = described_class.new("v0.18.0", [], changelog_input: StringIO.new(existing_changelog))
+
+      expect(changelog.existing_pr_numbers).to eq(Set.new([100, 101]))
+    end
+
+    it "returns empty set when no PRs in changelog" do
+      existing_changelog = <<~CHANGELOG
+        ## v0.17.0 - 2025-12-01
+        * Various improvements and bug fixes
+      CHANGELOG
+
+      changelog = described_class.new("v0.18.0", [], changelog_input: StringIO.new(existing_changelog))
+
+      expect(changelog.existing_pr_numbers).to be_empty
     end
   end
 end
