@@ -55,19 +55,14 @@ end
 
 desc "Install plur globally to $GOBIN"
 task :install do
-  if ENV["CI"] && system("which plur")
-    puts "[install] Plur already installed"
-  else
-    Dir.chdir(Plur.config.plur_dir) do
-      gobin = ENV.fetch("GOBIN")
-      final = File.join(gobin, "plur")
-      temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
+  Dir.chdir(Plur.config.plur_dir) do
+    gobin = ENV.fetch("GOBIN")
+    final = File.join(gobin, "plur")
+    temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
 
-      # We build to a temp file and then rename it to the final name to handle this atomically
-      sh %(goreleaser build --snapshot --single-target --clean -o #{temp} > /dev/null 2>&1)
-      File.chmod(0o755, temp)
-      File.rename(temp, final)
-    end
+    sh %(goreleaser build --snapshot --single-target --clean -o #{temp} > /dev/null 2>&1)
+    File.chmod(0o755, temp)
+    File.rename(temp, final)
   end
   puts "[install] Installed plur with version: #{`plur --version`.strip}"
 end
