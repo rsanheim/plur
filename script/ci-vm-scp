@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# SCP files to/from the plur-runner Tart VM
+#
+# Usage:
+#   script/ci-vm-scp local-file.txt :~/remote-path/    # copy TO VM
+#   script/ci-vm-scp :~/remote-file.txt ./local-path/  # copy FROM VM
+#   script/ci-vm-scp -r local-dir :~/                  # recursive copy
+#
+# Paths starting with ":" are on the VM (the colon is replaced with user@host:)
+# All other arguments are passed directly to scp.
+
+set -euo pipefail
+
+VM_NAME="plur-runner"
+SSH_KEY="$HOME/.ssh/ci-vm-key"
+VM_USER="admin"
+
+if ! command -v tart &>/dev/null; then
+  echo "error: tart not found - install with: brew install cirruslabs/cli/tart" >&2
+  exit 1
+fi
+
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "error: SSH key not found at $SSH_KEY" >&2
+  echo "Generate one with: ssh-keygen -t ed25519 -f $SSH_KEY -N ''" >&2
+  exit 1
+fi
+
+VM_IP=$(tart ip "$VM_NAME" 2>/dev/null) || {
+  echo "error: could not get IP for VM '$VM_NAME' - is it running?" >&2
+  echo "Start with: tart run --no-graphics $VM_NAME &" >&2
+  exit 1
+}
+
+VM_HOST="$VM_USER@$VM_IP"
+
+# Transform arguments: replace leading ":" with "user@host:"
+args=()
+for arg in "$@"; do
+  if [[ "$arg" == :* ]]; then
+    # Strip the leading ":" and prepend the VM host
+    args+=("$VM_HOST${arg}")
+  else
+    args+=("$arg")
+  fi
+done
+
+exec scp -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "${args[@]}"

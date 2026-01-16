@@ -1,5 +1,7 @@
 [tools]
-python = "3.14.0"
+ruby = "4"
+go = "1.25"
+python = "3"
 
 [settings]
 python.uv_venv_auto = true

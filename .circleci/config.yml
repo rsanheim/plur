@@ -44,10 +44,6 @@ jobs:
       - run:
           name: Run Go tests
           command: bin/rake test:go
-      - persist_to_workspace:
-          root: .
-          paths:
-            - plur/plur
 
   test-goreleaser:
     docker:
@@ -93,24 +89,25 @@ jobs:
     working_directory: ~/project/
     steps:
       - checkout
-      - attach_workspace:
-          at: ~/workspace
+      - go/install:
+          version: "1.25.5"
+      - go/install-goreleaser
       - run:
-          name: Install plur from workspace (global and local)
-          command: |
-            sudo cp ~/workspace/plur/plur /usr/local/bin/
-            sudo chmod +x /usr/local/bin/plur
-            cp ~/workspace/plur/plur ./plur
+          name: Add GOPATH/bin to PATH
+          command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"
+      - ruby/install-deps:
+          include-branch-in-cache-key: false
       - run:
-          name: install plur watcher
+          name: Install plur globally
+          command: bin/rake install
+      - run:
+          name: Install plur watcher
           command: plur watch install
       - run:
           name: plur doctor
           command: |
             which plur
-            ./plur/plur doctor
-      - ruby/install-deps:
-          include-branch-in-cache-key: false
+            plur doctor
       - run:
           name: Run ruby linting
           command: |
@@ -135,8 +132,7 @@ jobs:
       - run:
           name: Run test_app specs with plur
           working_directory: fixtures/projects/default-rails
-          command: |
-            plur -n 2
+          command: plur
       - run:
           name: Install turbo_tests
           command: gem install turbo_tests
@@ -144,6 +140,254 @@ jobs:
           name: Run all Ruby specs
           command: |
             bin/rake test
+
+  build-and-test-go-macos:
+    machine: true
+    resource_class: rsanheim/mac-studio
+    environment:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+    steps:
+      - checkout
+      - run:
+          name: Setup mise environment
+          command: |
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+            eval "$(mise activate bash)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
+            echo 'eval "$(mise activate bash)"' >> $BASH_ENV
+      - run:
+          name: Environment info
+          command: |
+            uname -a
+            sw_vers
+            ruby --version
+            go version
+      - run:
+          name: Install dependencies
+          command: bundle install
+      - run:
+          name: Build and lint
+          command: bin/rake build lint
+      - run:
+          name: Verify plur binary
+          command: |
+            ./plur/plur --version
+            ./plur/plur doctor
+      - run:
+          name: Run Go tests
+          command: bin/rake test:go
+
+  test-ruby-integration-macos:
+    machine: true
+    resource_class: rsanheim/mac-studio
+    environment:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+    steps:
+      - checkout
+      - run:
+          name: Setup mise environment
+          command: |
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+            eval "$(mise activate bash)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
+            echo 'eval "$(mise activate bash)"' >> $BASH_ENV
+      - run:
+          name: Install dependencies
+          command: bundle install
+      - run:
+          name: Install plur globally
+          command: bin/rake install
+      - run:
+          name: Install plur watcher
+          command: plur watch install
+      - run:
+          name: Verify plur
+          command: |
+            which plur
+            plur --version
+            plur doctor
+      - run:
+          name: Run ruby linting
+          command: bin/rake lint:ruby
+      - run:
+          name: Run Ruby tests with plur
+          command: bin/rake test:default_ruby
+      - run:
+          name: Setup Rails fixture app
+          working_directory: fixtures/projects/default-rails
+          command: |
+            bundle config set --local path vendor/bundle
+            bundle install
+            bundle exec rake db:create db:migrate
+      - run:
+          name: Run Rails fixture specs with plur
+          working_directory: fixtures/projects/default-rails
+          command: plur
+      - run:
+          name: Install turbo_tests
+          command: gem install turbo_tests
+      - run:
+          name: Run all Ruby specs
+          command: bin/rake test
+
+  test-reference-repos-macos:
+    machine: true
+    resource_class: rsanheim/mac-studio
+    environment:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+    steps:
+      - checkout
+      - run:
+          name: Setup mise environment
+          command: |
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+            # Use shims mode for CI (works better with working_directory changes)
+            eval "$(mise activate bash --shims)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
+            echo 'eval "$(mise activate bash --shims)"' >> $BASH_ENV
+            # Add GOPATH/bin for plur binary
+            echo 'export PATH="$HOME/go/bin:$PATH"' >> $BASH_ENV
+            # Enable reading .ruby-version files and set global fallbacks
+            mise settings set idiomatic_version_file true
+            mise use --global ruby@3.4 go@1.25
+            mise reshim
+      - run:
+          name: Install dependencies and build plur
+          command: |
+            bundle install
+            bin/rake install
+            mise reshim
+      - run:
+          name: Verify plur and Ruby
+          command: |
+            ruby --version
+            plur --version
+            plur doctor
+      - run:
+          name: Setup Discourse dependencies
+          command: |
+            # PostgreSQL, pgvector, Redis, coreutils, and imagemagick via Homebrew
+            brew list postgresql@17 &>/dev/null || brew install postgresql@17
+            brew list pgvector &>/dev/null || brew install pgvector
+            brew list redis &>/dev/null || brew install redis
+            brew list coreutils &>/dev/null || brew install coreutils
+            brew list imagemagick &>/dev/null || brew install imagemagick
+            # Add GNU coreutils to PATH (provides 'timeout' without 'g' prefix)
+            echo 'export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"' >> $BASH_ENV
+            brew services start postgresql@17
+            brew services start redis
+            sleep 5
+
+            # Node and pnpm via mise (versioned tools)
+            mise use --global node@22.13.0 pnpm@10
+            mise reshim
+
+            # PostgreSQL user for Discourse
+            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+            psql -U $USER postgres -tc "SELECT 1 FROM pg_roles WHERE rolname='discourse'" | grep -q 1 || createuser -s discourse
+      - run:
+          name: Print PostgreSQL connection info
+          command: |
+            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+            echo ">>> PostgreSQL Status"
+            pg_isready
+            echo ""
+            echo ">>> PostgreSQL Version"
+            psql --version
+            echo ""
+            echo ">>> Connection Info"
+            echo "Host: localhost (Unix socket)"
+            echo "Port: 5432 (default)"
+            echo "User: discourse (superuser)"
+            echo ""
+            echo ">>> DATABASE_URL format for Rails:"
+            echo "DATABASE_URL=postgres://discourse@localhost/discourse_test"
+            echo ""
+            echo ">>> Existing databases:"
+            psql -U $USER -c "\\l" | grep -E "(Name|discourse)" || echo "(none yet)"
+            echo ""
+            echo ">>> Existing roles:"
+            psql -U $USER -c "\\du" | grep discourse || echo "(none yet)"
+      - run:
+          name: Clone reference repos
+          command: |
+            # Clear any SSH URL rewriting (base image has this set)
+            git config --global --unset-all 'url.ssh://git@github.com.insteadof' 2>/dev/null || true
+            mkdir -p ~/reference-repos
+            clone_or_fetch() {
+              local url=$1 dir=$2
+              if [[ -d "$dir/.git" ]]; then
+                git -C "$dir" fetch --depth 1 origin && git -C "$dir" reset --hard origin/HEAD
+              else
+                git clone --depth 1 "$url" "$dir"
+              fi
+            }
+            clone_or_fetch https://github.com/rubocop/rubocop.git ~/reference-repos/rubocop
+            clone_or_fetch https://github.com/rspec/rspec.git ~/reference-repos/rspec
+            clone_or_fetch https://github.com/discourse/discourse.git ~/reference-repos/discourse
+      - run:
+          name: Verify Discourse environment
+          working_directory: ~/reference-repos/discourse
+          command: |
+            echo ">>> PATH"
+            echo $PATH | tr ':' '\n'
+            echo ""
+            echo ">>> mise ls"
+            mise ls
+            echo ""
+            echo ">>> which node / pnpm"
+            which node
+            which pnpm
+            echo ""
+            echo ">>> node --version"
+            node --version
+            echo ""
+            echo ">>> pnpm --version"
+            pnpm --version
+            echo ""
+            echo ">>> ruby --version"
+            ruby --version
+            echo ""
+            echo ">>> PostgreSQL"
+            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+            pg_isready
+            psql --version
+      - run:
+          name: Test plur on Discourse (unit tests only)
+          working_directory: ~/reference-repos/discourse
+          environment:
+            RAILS_ENV: test
+          command: |
+            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+            bundle install
+            pnpm install --frozen-lockfile
+            bin/rake db:drop db:create db:migrate
+            bin/rake parallel:drop parallel:create parallel:migrate
+            plur spec/models --dry-run
+            # Allow up to 5 failures (known ImageMagick diffs + flaky tests)
+            plur spec/models 2>&1 | tee /tmp/discourse-results.txt || true
+            failures=$(grep -Eo '[0-9]+ failures' /tmp/discourse-results.txt | grep -Eo '[0-9]+' | head -1 || echo 0)
+            echo "Discourse failures: $failures (max allowed: 5)"
+            [ "$failures" -le 5 ]
+      - run:
+          name: Test plur on RuboCop
+          working_directory: ~/reference-repos/rubocop
+          command: |
+            bundle install
+            plur spec --dry-run
+            plur spec
+      - run:
+          name: Test plur on rspec-expectations
+          working_directory: ~/reference-repos/rspec/rspec-expectations
+          environment:
+            NO_COVERAGE: "true"
+          command: |
+            bundle install
+            plur spec --dry-run
+            plur spec
 
 workflows:
   test-all:
@@ -154,3 +398,13 @@ workflows:
       - test-ruby-integration:
           requires:
             - build-and-test-go
+
+  selfhosted-test:
+    jobs:
+      - build-and-test-go-macos
+      - test-ruby-integration-macos:
+          requires:
+            - build-and-test-go-macos
+      - test-reference-repos-macos:
+          requires:
+            - test-ruby-integration-macos
