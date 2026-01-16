@@ -56,7 +56,7 @@ end
 desc "Install plur globally to $GOBIN"
 task :install do
   Dir.chdir(Plur.config.plur_dir) do
-    gobin = ENV.fetch("GOBIN")
+    gobin = ENV.fetch("GOBIN") { File.join(`go env GOPATH`.strip, "bin") }
     final = File.join(gobin, "plur")
     temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
 
