@@ -17,7 +17,7 @@ Implement a secure, VM-isolated CircleCI self-hosted runner using Tart on Mac St
 │                                                             │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │ Tart VM: plur-runner                                  │  │
-│  │ (macOS Sequoia, 4 CPU, 8GB RAM)                       │  │
+│  │ (macOS Sequoia, 6 CPU, 16GB RAM)                      │  │
 │  │                                                       │  │
 │  │  ┌─────────────────────────────────────────────────┐  │  │
 │  │  │ CircleCI Machine Runner                         │  │  │
@@ -147,6 +147,25 @@ The `test-reference-repos` job installs via Homebrew:
 
 And via mise:
 * node@22.13.0, pnpm@10 (versioned tools)
+
+## Limitations & Constraints
+
+### One Job at a Time
+
+**Each CircleCI machine runner agent executes one job at a time.** This is architectural, not configurable.
+
+Our current workflow has three jobs targeting `rsanheim/mac-studio`:
+* `test-macos-arm64`
+* `test-ruby-integration-macos` (depends on test-macos-arm64)
+* `test-reference-repos`
+
+When a build triggers, `test-macos-arm64` and `test-reference-repos` both try to claim the runner. One runs, the other queues until the first completes.
+
+This is expected behavior with a single runner agent. See [self-hosted-ci.md](self-hosted-ci.md#concurrency--job-queuing) for scaling options if this becomes a bottleneck.
+
+### VM Resources
+
+The VM is configured with 6 CPU cores and 16GB RAM, shared across all CI workloads. Resource-intensive jobs (like Discourse tests) may benefit from having the runner to themselves rather than competing with other jobs.
 
 ## Troubleshooting
 

@@ -1,0 +1,73 @@
+#!/bin/bash
+#
+# Benchmark plur vs rspec on rspec sub-projects using hyperfine
+#
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+RESULTS_FILE="$REPO_DIR/tmp/rspec-benchmark-results.md"
+RSPEC_DIR="$HOME/src/oss/rspec"
+
+echo "Benchmarking plur vs rspec on rspec sub-projects..."
+echo ""
+
+# Create header for results file
+cat > "$RESULTS_FILE" << EOF
+# RSpec Sub-projects Benchmark: plur vs rspec
+
+Date: $(date)
+
+## Environment
+
+* plur version: $(plur version 2>&1 | grep version | head -1)
+* Ruby: $(ruby -v)
+* Benchmark: hyperfine --warmup 1 --runs 5
+
+## Results
+
+EOF
+
+for proj in rspec-core rspec-expectations rspec-mocks rspec-support; do
+  echo "=== $proj ==="
+  cd "$RSPEC_DIR/$proj"
+
+  # Ensure bundle is installed
+  bundle check > /dev/null 2>&1 || bundle install > /dev/null 2>&1
+
+  # Get example count
+  EXAMPLES=$(bundle exec rspec --dry-run 2>&1 | grep -oE '[0-9]+ examples' | head -1 || echo "? examples")
+  echo "($EXAMPLES)"
+
+  echo "" >> "$RESULTS_FILE"
+  echo "### $proj ($EXAMPLES)" >> "$RESULTS_FILE"
+  echo "" >> "$RESULTS_FILE"
+
+  # Run hyperfine - use shell explicitly to avoid issues
+  hyperfine \
+    --warmup 1 \
+    --runs 5 \
+    --ignore-failure \
+    --style basic \
+    --time-unit second \
+    --shell bash \
+    --export-markdown /tmp/bench-$proj.md \
+    -n "plur -n 8" "cd $RSPEC_DIR/$proj && plur -n 8" \
+    -n "rspec" "cd $RSPEC_DIR/$proj && bundle exec rspec --format progress --no-color"
+
+  # Append results (full table with headers for each project)
+  cat /tmp/bench-$proj.md >> "$RESULTS_FILE"
+  echo "" >> "$RESULTS_FILE"
+  echo ""
+done
+
+# Add notes
+cat >> "$RESULTS_FILE" << EOF
+## Notes
+
+* Times are mean ± σ from 5 runs after 1 warmup
+* plur uses 8 parallel workers
+* rspec runs single-threaded
+EOF
+
+echo "Results saved to: $RESULTS_FILE"

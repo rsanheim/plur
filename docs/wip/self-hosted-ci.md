@@ -158,26 +158,55 @@ The isolated setup would work like this:
 └─────────────────────────────────────────────┘
 ```
 
-### Setup Steps (Future Work)
+For implementation details, see [self-hosted-ci-implementation.md](self-hosted-ci-implementation.md).
 
-1. Create a base Tart VM with required tools (mise, ruby, go)
-2. Install CircleCI runner inside the VM
-3. Create a wrapper script on host that:
-   * Clones a fresh VM from the base image
-   * Starts the VM
-   * Runner inside VM claims and executes jobs
-   * VM is destroyed after job completes (ephemeral)
+## Concurrency & Job Queuing
 
-### Considerations
+**Each machine runner agent can only execute one job at a time.** This is fundamental to how CircleCI machine runners work—it's not a configuration option.
 
-* **Persistence**: Need to decide if VMs are truly ephemeral (clone per job) or long-running
-* **Image management**: Custom image with pre-installed tools vs. install at runtime
-* **Startup time**: VM clone + boot adds overhead (~10-30 seconds)
-* **Resource allocation**: CPU/memory limits per VM
+### How It Works
 
-## Current State (Machine Runner on Host)
+1. The runner agent polls CircleCI for available tasks
+2. When a task is available, the agent "claims" it
+3. The agent executes the job
+4. When complete, the agent polls for the next task
 
-We have a working (but unisolated) setup running directly on the Mac Studio:
+If multiple jobs target the same resource class (e.g., `rsanheim/mac-studio`) and only one runner agent is available, jobs queue and execute sequentially.
+
+### Single-Task vs Continuous Mode
+
+These modes control what happens *between* jobs, not concurrency:
+
+* **Continuous mode** (default): Agent finishes a job, then polls for the next one
+* **Single-task mode**: Agent finishes a job, then exits (useful for ephemeral/clean environments)
+
+Both modes execute one job at a time per agent.
+
+### Scaling Options
+
+If job queuing becomes a bottleneck:
+
+1. **Serialize the workflow**: Add job dependencies so jobs don't compete for the runner. Longer total time, but predictable.
+
+2. **Run multiple agents in the VM**: Use Docker Compose with replicas, each container running its own runner agent. Requires managing resource contention within the VM.
+
+3. **Multiple Tart VMs**: Run separate VMs, each with its own runner agent. More isolation, more resource overhead.
+
+4. **Accept queuing**: For many workflows, sequential execution is fine. One runner handles jobs in order.
+
+### References
+
+* [CircleCI Runner FAQs](https://circleci.com/docs/runner-faqs/)
+* [Single Task Runner - CircleCI Field Guide](https://fieldguide.circleci-fieldeng.com/runner/single-task/)
+* [Scalable Machine Runner](https://github.com/CircleCI-Labs/scalable-machine-runner)
+
+## Historical Reference: Host-Based Runner (Deprecated)
+
+This section documents our initial approach of running the CircleCI runner directly on the host Mac Studio. **This approach is no longer used** because it lacks isolation—any CI job could access the host filesystem, SSH keys, and credentials.
+
+We now run the runner inside a Tart VM. See [self-hosted-ci-implementation.md](self-hosted-ci-implementation.md) for the current setup.
+
+The information below is preserved for reference in case you need to understand the old approach or troubleshoot legacy configurations.
 
 ### Installation
 
