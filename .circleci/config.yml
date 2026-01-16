@@ -382,6 +382,8 @@ jobs:
       - run:
           name: Test plur on rspec-expectations
           working_directory: ~/reference-repos/rspec/rspec-expectations
+          environment:
+            COVERAGE: "false"
           command: |
             bundle install
             plur spec --dry-run
