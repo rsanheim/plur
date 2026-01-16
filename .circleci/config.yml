@@ -92,6 +92,9 @@ jobs:
       - go/install:
           version: "1.25.5"
       - go/install-goreleaser
+      - run:
+          name: Add GOPATH/bin to PATH
+          command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - run:
