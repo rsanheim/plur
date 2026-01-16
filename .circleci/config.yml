@@ -44,10 +44,6 @@ jobs:
       - run:
           name: Run Go tests
           command: bin/rake test:go
-      - persist_to_workspace:
-          root: .
-          paths:
-            - plur/plur
 
   test-goreleaser:
     docker:
@@ -93,24 +89,22 @@ jobs:
     working_directory: ~/project/
     steps:
       - checkout
-      - attach_workspace:
-          at: ~/workspace
+      - go/install:
+          version: "1.25.5"
+      - go/install-goreleaser
+      - ruby/install-deps:
+          include-branch-in-cache-key: false
       - run:
-          name: Install plur from workspace (global and local)
-          command: |
-            sudo cp ~/workspace/plur/plur /usr/local/bin/
-            sudo chmod +x /usr/local/bin/plur
-            cp ~/workspace/plur/plur ./plur
+          name: Install plur globally
+          command: bin/rake install
       - run:
-          name: install plur watcher
+          name: Install plur watcher
           command: plur watch install
       - run:
           name: plur doctor
           command: |
             which plur
-            ./plur/plur doctor
-      - ruby/install-deps:
-          include-branch-in-cache-key: false
+            plur doctor
       - run:
           name: Run ruby linting
           command: |
@@ -396,9 +390,7 @@ workflows:
       - build-and-test-go
       - test-goreleaser
       - test-go-race
-      - test-ruby-integration:
-          requires:
-            - build-and-test-go
+      - test-ruby-integration
 
   selfhosted-test:
     jobs:
