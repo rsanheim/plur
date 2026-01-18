@@ -190,14 +190,14 @@ jobs:
           name: Setup mise environment
           command: |
             eval "$(/opt/homebrew/bin/brew shellenv)"
-            # Install tools defined in .mise.toml before activating
-            mise install
             # Use shims mode for CI (works better with working_directory changes)
             eval "$(mise activate bash --shims)"
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
             echo 'eval "$(mise activate bash --shims)"' >> $BASH_ENV
             # Add GOPATH/bin for plur binary
             echo 'export PATH="$HOME/go/bin:$PATH"' >> $BASH_ENV
+            # Set global Ruby/Go versions (uses what's already installed)
+            mise use --global ruby@3.4 go@1.25
       - run:
           name: Install dependencies
           command: bundle install
