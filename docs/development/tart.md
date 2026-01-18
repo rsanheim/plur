@@ -22,13 +22,13 @@ Tart is a virtualization toolset for Apple Silicon that uses Apple's native Virt
 
 ## Managing the VM
 
-### Tart Commands
+Use native `tart` commands for VM lifecycle management:
 
 ```bash
 # List all VMs and their status
 tart list
 
-# Start VM (headless, backgrounded)
+# Start VM headless (for CI/background work)
 tart run --no-graphics plur-runner &
 
 # Start VM with GUI window (useful for debugging)
@@ -96,31 +96,31 @@ Run `script/ci-host-setup` inside the VM to install/update all tools.
 
 ## Debugging via SSH
 
-### Helper Scripts
-
-We have wrapper scripts that handle IP lookup and key management:
-
-**script/ci-vm-ssh** - SSH into the VM:
+Use the `tart-vm` command for SSH and SCP operations:
 
 ```bash
-script/ci-vm-ssh                    # Interactive shell
-script/ci-vm-ssh "uname -a"         # Run a command
-script/ci-vm-ssh -t "top"           # With TTY (for interactive commands)
+# Interactive shell
+tart-vm ssh plur-runner
+
+# Run a command
+tart-vm ssh plur-runner "uname -a"
+
+# With TTY (for interactive commands)
+tart-vm ssh plur-runner -t "top"
+
+# Copy files to VM (colon prefix = VM side)
+tart-vm scp plur-runner local-file.txt :~/remote-path/
+
+# Copy files from VM
+tart-vm scp plur-runner :~/remote-file.txt ./local-path/
+
+# Recursive copy
+tart-vm scp plur-runner -r local-dir :~/
 ```
-
-**script/ci-vm-scp** - Copy files to/from VM:
-
-```bash
-script/ci-vm-scp local-file.txt :~/remote-path/    # Copy TO VM
-script/ci-vm-scp :~/remote-file.txt ./local-path/  # Copy FROM VM
-script/ci-vm-scp -r local-dir :~/                  # Recursive copy
-```
-
-The `:` prefix indicates "on the VM" and gets expanded to `admin@<vm-ip>:`.
 
 ### Direct SSH
 
-If the helper scripts aren't available:
+If `tart-vm` isn't available:
 
 ```bash
 ssh -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner)
@@ -130,16 +130,16 @@ ssh -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner)
 
 ```bash
 # Check runner status
-script/ci-vm-ssh "launchctl list | grep circleci"
+tart-vm ssh plur-runner "launchctl list | grep circleci"
 
 # View runner logs
-script/ci-vm-ssh "tail -50 ~/Library/Logs/com.circleci.runner/runner.log"
+tart-vm ssh plur-runner "tail -50 ~/Library/Logs/com.circleci.runner/runner.log"
 
 # Check tool versions
-script/ci-vm-ssh "source ~/.zshrc && ruby --version && go version"
+tart-vm ssh plur-runner "source ~/.zshrc && ruby --version && go version"
 
 # Restart the runner
-script/ci-vm-ssh "launchctl unload ~/Library/LaunchAgents/com.circleci.runner.plist && launchctl load ~/Library/LaunchAgents/com.circleci.runner.plist"
+tart-vm ssh plur-runner "launchctl unload ~/Library/LaunchAgents/com.circleci.runner.plist && launchctl load ~/Library/LaunchAgents/com.circleci.runner.plist"
 ```
 
 ## Troubleshooting
@@ -161,18 +161,18 @@ System Settings → General → Sharing → Remote Login → On
 
 ### VM IP Changes
 
-The VM gets a dynamic IP via DHCP. Always use `tart ip plur-runner` to get the current address. The helper scripts handle this automatically.
+The VM gets a dynamic IP via DHCP. Always use `tart ip plur-runner` to get the current address. The `tart-vm ssh` and `tart-vm scp` commands handle IP lookup automatically.
 
 ### Runner Not Claiming Jobs
 
 1. Check the runner is running:
    ```bash
-   script/ci-vm-ssh "launchctl list | grep circleci"
+   tart-vm ssh plur-runner "launchctl list | grep circleci"
    ```
 
 2. Check logs for errors:
    ```bash
-   script/ci-vm-ssh "tail -100 ~/Library/Logs/com.circleci.runner/runner.log"
+   tart-vm ssh plur-runner "tail -100 ~/Library/Logs/com.circleci.runner/runner.log"
    ```
 
 3. Verify the auth token is valid (regenerate from 1Password if needed)
@@ -211,9 +211,13 @@ ssh-copy-id -i ~/.ssh/ci-vm-key admin@$(tart ip plur-runner)
 **Install development tools:**
 
 ```bash
-# SSH in and run setup
-script/ci-vm-ssh
-# Inside VM:
+# SSH in
+tart-vm ssh plur-runner
+
+# Inside VM - install base tooling first (if fresh VM)
+vm-bootstrap
+
+# Then install plur-specific tools
 cd /path/to/plur && script/ci-host-setup
 ```
 

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Bootstrap development tools on a fresh macOS machine for CI
+#
+# Plur CI host setup - project-specific tools for the CI VM
+#
+# Assumes base tooling (Xcode CLT, Homebrew, mise) is already installed.
+# Run 'vm-bootstrap' first if starting from a fresh VM.
+#
 # Usage: script/ci-host-setup [--dry-run] [--help]
 
 set -euo pipefail
@@ -24,7 +29,7 @@ DRY_RUN=false
 
 usage() {
   cat <<EOF
-Bootstrap development tools on a fresh macOS machine.
+Plur CI host setup - installs project-specific tools for CI.
 
 Usage: $(basename "$0") [OPTIONS]
 
@@ -32,15 +37,14 @@ Options:
   --dry-run    Show what would be installed without making changes
   --help       Show this help message
 
+Prerequisite:
+  Base tooling must be installed first. Run 'vm-bootstrap' if on a fresh VM.
+
 Installs:
-  * Xcode Command Line Tools
-  * Homebrew
-  * mise (version manager)
   * Ruby, Go, Python (via mise, from .mise.toml)
   * Bundler
-  * CircleCI Runner (binary only, config is manual)
-  * GoReleaser (for building releases)
-  * Modern Bash (4+ for globstar support)
+  * CircleCI Runner
+  * GoReleaser
 EOF
 }
 
@@ -90,109 +94,29 @@ if [[ "$(uname)" != "Darwin" ]]; then
   exit 1
 fi
 
-# 1. Xcode Command Line Tools
-info "Checking Xcode Command Line Tools..."
-if xcode-select -p &>/dev/null; then
-  success "Xcode CLT installed"
-else
-  if [[ "$DRY_RUN" == true ]]; then
-    echo "    [dry-run] Would install Xcode Command Line Tools"
-  else
-    info "Installing Xcode Command Line Tools..."
-    # Touch file triggers install without dialog popup
-    touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-    CLT_PACKAGE=$(softwareupdate -l 2>/dev/null | grep -B 1 "Command Line Tools" | grep "Label:" | sed 's/^[^:]*: //' | head -1)
-    if [[ -n "$CLT_PACKAGE" ]]; then
-      softwareupdate -i "$CLT_PACKAGE" --verbose
-    else
-      warn "Triggering interactive install (click Install when prompted)"
-      xcode-select --install
-      echo "    Waiting for Xcode CLT installation..."
-      until xcode-select -p &>/dev/null; do
-        sleep 5
-      done
-    fi
-    rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-    success "Xcode CLT installed"
-  fi
-fi
-
-# 2. Homebrew
-# Always ensure Homebrew is in PATH (may not be in fresh SSH sessions)
+# Ensure Homebrew is in PATH
 if [[ -f /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
-info "Checking Homebrew..."
-if command -v brew &>/dev/null; then
-  success "Homebrew $(brew --version | head -1 | cut -d' ' -f2)"
-else
-  if [[ "$DRY_RUN" == true ]]; then
-    echo "    [dry-run] Would install Homebrew"
-  else
-    info "Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    # Add to PATH for this session
-    if [[ -f /opt/homebrew/bin/brew ]]; then
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-    fi
-    success "Homebrew installed"
-  fi
+# Check prerequisites
+info "Checking prerequisites..."
+if ! command -v brew &>/dev/null; then
+  error "Homebrew not found. Run 'vm-bootstrap' first."
+  exit 1
 fi
+success "Homebrew available"
 
-# Configure Homebrew in shell profiles
-BREW_SHELLENV='eval "$(/opt/homebrew/bin/brew shellenv)"'
-for profile in "$HOME/.zprofile" "$HOME/.bash_profile"; do
-  if [[ -f "$profile" ]] && grep -q 'brew shellenv' "$profile"; then
-    success "Homebrew configured in $(basename "$profile")"
-  else
-    if [[ "$DRY_RUN" == true ]]; then
-      echo "    [dry-run] Would add Homebrew to $(basename "$profile")"
-    else
-      echo '' >> "$profile"
-      echo '# Homebrew' >> "$profile"
-      echo "$BREW_SHELLENV" >> "$profile"
-      success "Homebrew added to $(basename "$profile")"
-    fi
-  fi
-done
-
-# 3. mise
-info "Checking mise..."
-if command -v mise &>/dev/null; then
-  success "mise $(mise --version 2>/dev/null | head -1)"
-else
-  if [[ "$DRY_RUN" == true ]]; then
-    echo "    [dry-run] Would install mise via Homebrew"
-  else
-    info "Installing mise..."
-    brew install mise
-    success "mise installed"
-  fi
+if ! command -v mise &>/dev/null; then
+  error "mise not found. Run 'vm-bootstrap' first."
+  exit 1
 fi
-
-# Configure mise in shell if not already done
-ZSHRC="${HOME}/.zshrc"
-if [[ -f "$ZSHRC" ]] && grep -q 'mise activate' "$ZSHRC"; then
-  success "mise configured in ~/.zshrc"
-else
-  if [[ "$DRY_RUN" == true ]]; then
-    echo "    [dry-run] Would add mise activation to ~/.zshrc"
-  else
-    info "Configuring mise in ~/.zshrc..."
-    echo '' >> "$ZSHRC"
-    echo '# mise (version manager)' >> "$ZSHRC"
-    echo 'eval "$(mise activate zsh)"' >> "$ZSHRC"
-    success "mise configured in ~/.zshrc"
-  fi
-fi
+success "mise available"
 
 # Activate mise for this session
-if command -v mise &>/dev/null && [[ "$DRY_RUN" == false ]]; then
-  eval "$(mise activate bash)"
-fi
+eval "$(mise activate bash)"
 
-# 4. Install tools from .mise.toml
+# 1. Install tools from .mise.toml
 info "Installing tools from .mise.toml..."
 cd "$PROJECT_ROOT"
 
@@ -204,7 +128,7 @@ else
   success "Tools installed"
 fi
 
-# 5. Bundler
+# 2. Bundler
 info "Checking Bundler..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "    [dry-run] Would install bundler gem"
@@ -222,7 +146,7 @@ else
   fi
 fi
 
-# 6. CircleCI Runner (for CI VMs)
+# 3. CircleCI Runner
 info "Checking CircleCI Runner..."
 if command -v circleci-runner &>/dev/null; then
   success "circleci-runner installed"
@@ -239,7 +163,7 @@ else
   fi
 fi
 
-# 7. GoReleaser (for building releases)
+# 4. GoReleaser
 info "Checking GoReleaser..."
 if command -v goreleaser &>/dev/null; then
   success "goreleaser $(goreleaser --version 2>/dev/null | head -1 | awk '{print $NF}')"
@@ -253,32 +177,19 @@ else
   fi
 fi
 
-# 8. Modern Bash (macOS ships with bash 3.2, we need 4+ for globstar)
-info "Checking Bash version..."
-if [[ -x /opt/homebrew/bin/bash ]]; then
-  success "bash $(/opt/homebrew/bin/bash --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
-else
-  if [[ "$DRY_RUN" == true ]]; then
-    echo "    [dry-run] Would install modern bash"
-  else
-    info "Installing modern Bash..."
-    brew install bash
-    success "bash installed"
-  fi
-fi
-
 # Summary
 echo ""
-info "Setup complete!"
+info "Plur CI setup complete!"
 echo ""
 if [[ "$DRY_RUN" == false ]]; then
   cd "$PROJECT_ROOT"
 
   echo "Installed versions:"
-  echo "  ruby    $(mise exec -- ruby --version 2>/dev/null | cut -d' ' -f2 || echo 'not found')"
-  echo "  go      $(mise exec -- go version 2>/dev/null | cut -d' ' -f3 | sed 's/go//' || echo 'not found')"
-  echo "  python  $(mise exec -- python --version 2>/dev/null | cut -d' ' -f2 || echo 'not found')"
-  echo "  bundler $(mise exec -- bundle --version 2>/dev/null | cut -d' ' -f3 || echo 'not found')"
+  echo "  ruby         $(mise exec -- ruby --version 2>/dev/null | cut -d' ' -f2 || echo 'not found')"
+  echo "  go           $(mise exec -- go version 2>/dev/null | cut -d' ' -f3 | sed 's/go//' || echo 'not found')"
+  echo "  python       $(mise exec -- python --version 2>/dev/null | cut -d' ' -f2 || echo 'not found')"
+  echo "  bundler      $(mise exec -- bundle --version 2>/dev/null | cut -d' ' -f3 || echo 'not found')"
+  echo "  goreleaser   $(goreleaser --version 2>/dev/null | head -1 | awk '{print $NF}' || echo 'not found')"
   echo ""
   echo "Run 'source ~/.zshrc' or start a new shell to use mise-managed tools."
 fi
