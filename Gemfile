@@ -1,5 +1,6 @@
 source "https://rubygems.org"
 
+gem "appraisal2", require: false
 gem "backspin", require: false
 gem "benchmark"
 gem "guard-rspec", require: false
