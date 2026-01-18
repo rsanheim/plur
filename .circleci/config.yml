@@ -282,8 +282,9 @@ jobs:
             brew list imagemagick &>/dev/null || brew install imagemagick
             # Add GNU coreutils to PATH (provides 'timeout' without 'g' prefix)
             echo 'export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"' >> $BASH_ENV
-            brew services start postgresql@17
-            brew services start redis
+            # Use restart to handle both fresh start and already-running cases
+            brew services restart postgresql@17
+            brew services restart redis
             sleep 5
 
             # Node and pnpm via mise (versioned tools)
