@@ -282,17 +282,25 @@ jobs:
             brew list imagemagick &>/dev/null || brew install imagemagick
             # Add GNU coreutils to PATH (provides 'timeout' without 'g' prefix)
             echo 'export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"' >> $BASH_ENV
+            # Add PostgreSQL to PATH for this step and future steps
+            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+            echo 'export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"' >> $BASH_ENV
             # Use restart to handle both fresh start and already-running cases
             brew services restart postgresql@17
             brew services restart redis
-            sleep 5
+            # Wait for PostgreSQL to be ready (up to 30 seconds)
+            for i in {1..30}; do
+              pg_isready -q && break
+              echo "Waiting for PostgreSQL to start... ($i/30)"
+              sleep 1
+            done
+            pg_isready || { echo "PostgreSQL failed to start"; exit 1; }
 
             # Node and pnpm via mise (versioned tools)
             mise use --global node@22.13.0 pnpm@10
             mise reshim
 
             # PostgreSQL user for Discourse
-            export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
             psql -U $USER postgres -tc "SELECT 1 FROM pg_roles WHERE rolname='discourse'" | grep -q 1 || createuser -s discourse
       - run:
           name: Print PostgreSQL connection info
