@@ -72,7 +72,11 @@ jobs:
           name: Test Linux binary
           command: |
             arch="$(go env GOARCH)"
-            bin="plur/dist/plur_linux_${arch}_v1/plur"
+            if [ "$arch" = "arm64" ]; then
+              bin="plur/dist/plur_linux_arm64_v8.0/plur"
+            else
+              bin="plur/dist/plur_linux_${arch}_v1/plur"
+            fi
             if [ ! -x "$bin" ]; then
               echo "Expected binary not found: $bin"
               echo "Available plur binaries:"
