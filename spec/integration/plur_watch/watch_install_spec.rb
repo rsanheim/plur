@@ -7,7 +7,7 @@ RSpec.describe "plur watch install command" do
     case RUBY_PLATFORM
     when /aarch64-darwin/, /arm64-darwin/
       "watcher-aarch64-apple-darwin"
-    when /linux.*aarch64/, /linux.*arm64/
+    when /linux.*aarch64/, /linux.*arm64/, /aarch64.*linux/
       "watcher-aarch64-unknown-linux-gnu"
     when /linux/
       "watcher-x86_64-unknown-linux-gnu"
