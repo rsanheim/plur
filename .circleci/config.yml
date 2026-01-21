@@ -71,8 +71,16 @@ jobs:
       - run:
           name: Test Linux binary
           command: |
-            plur/dist/plur_linux_amd64_v1/plur --version
-            plur/dist/plur_linux_amd64_v1/plur doctor
+            arch="$(go env GOARCH)"
+            bin="plur/dist/plur_linux_${arch}_v1/plur"
+            if [ ! -x "$bin" ]; then
+              echo "Expected binary not found: $bin"
+              echo "Available plur binaries:"
+              find plur/dist -maxdepth 3 -type f -name plur -print
+              exit 1
+            fi
+            "$bin" --version
+            "$bin" doctor
       - store_artifacts:
           path: plur/dist
           destination: goreleaser-artifacts
