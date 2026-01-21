@@ -16,7 +16,7 @@ RSpec.describe "plur watch install command" do
     end
   end
 
-  it "installs the watcher binary in PLUR_HOME/bin/[platform-specific-binary]" do
+  it "installs the watcher binary for #{RUBY_PLATFORM} in PLUR_HOME/bin/[platform-specific-binary]" do
     expect(plur_home.join("bin", watcher_filename)).to_not exist
 
     result = run_plur("watch", "install")
