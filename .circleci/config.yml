@@ -1,7 +1,7 @@
 version: 2.1
 
 parameters:
-  self_hosted_resource_class:
+  alt_resource_class:
     type: string
     default: rsanheim/orbstack-arm64
 
@@ -105,7 +105,7 @@ jobs:
     parameters:
       runner_resource_class:
         type: string
-        default: large
+        default: medium
     docker:
       - image: cimg/ruby:3.4.7
     resource_class: << parameters.runner_resource_class >>
@@ -177,12 +177,12 @@ workflows:
   selfhosted-test:
     jobs:
       - build-and-test-go:
-          runner_resource_class: << pipeline.parameters.self_hosted_resource_class >>
+          runner_resource_class: << pipeline.parameters.alt_resource_class >>
       - test-goreleaser:
-          runner_resource_class: << pipeline.parameters.self_hosted_resource_class >>
+          runner_resource_class: << pipeline.parameters.alt_resource_class >>
       - test-go-race:
-          runner_resource_class: << pipeline.parameters.self_hosted_resource_class >>
+          runner_resource_class: << pipeline.parameters.alt_resource_class >>
       - test-ruby-integration:
-          runner_resource_class: << pipeline.parameters.self_hosted_resource_class >>
+          runner_resource_class: << pipeline.parameters.alt_resource_class >>
           requires:
             - build-and-test-go
