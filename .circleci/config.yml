@@ -174,18 +174,22 @@ workflows:
       - build-and-test-go:
           matrix:
             parameters:
-              resource_class: ["medium", pipeline.parameters.alt_resource_class]
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
       - test-goreleaser:
           matrix:
             parameters:
-              resource_class: ["medium", pipeline.parameters.alt_resource_class]
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
       - test-go-race:
           matrix:
             parameters:
-              resource_class: ["medium", pipeline.parameters.alt_resource_class]
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
       - test-ruby-integration:
           matrix:
             parameters:
-              resource_class: ["medium", pipeline.parameters.alt_resource_class]
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
           requires:
             - build-and-test-go-<< matrix.resource_class >>
