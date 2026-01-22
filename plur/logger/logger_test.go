@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -209,6 +210,44 @@ func TestDynamicLevel_TakesEffectImmediately(t *testing.T) {
 	// Debug message should NOT appear again
 	testLogger.Debug("debug 3")
 	assert.NotContains(t, buf.String(), "debug 3")
+}
+
+func TestCustomTextHandler_ConcurrentWrites(t *testing.T) {
+	var buf bytes.Buffer
+	handler := NewCustomTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	logger := slog.New(handler)
+
+	var wg sync.WaitGroup
+	goroutines := 10
+	iterations := 100
+
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				logger.Info("message", "worker", id, "iteration", j)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	output := buf.String()
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+
+	// Should have exactly goroutines * iterations lines
+	assert.Equal(t, goroutines*iterations, len(lines), "Expected %d log lines", goroutines*iterations)
+
+	// Each line should be complete (contains expected format)
+	for i, line := range lines {
+		assert.Contains(t, line, "INFO", "Line %d should contain INFO level", i)
+		assert.Contains(t, line, "message", "Line %d should contain message", i)
+		assert.Contains(t, line, "worker=", "Line %d should contain worker attribute", i)
+		assert.Contains(t, line, "iteration=", "Line %d should contain iteration attribute", i)
+	}
 }
 
 func TestIsVerboseEnabled(t *testing.T) {
