@@ -52,9 +52,7 @@ func streamTestOutput(
 	// Stream stdout and parse using event-based architecture
 	// Uses bufio.Reader instead of Scanner to avoid hanging on lines > 256KB
 	// (Scanner has a hard token limit that causes ErrTooLong and stops draining)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		reader := bufio.NewReaderSize(stdout, ScannerBufferSize)
 
 		for {
@@ -122,13 +120,11 @@ func streamTestOutput(
 				break
 			}
 		}
-	}()
+	})
 
 	// Stream stderr in real-time
 	// Uses bufio.Reader instead of Scanner to avoid hanging on lines > 256KB
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		reader := bufio.NewReaderSize(stderr, ScannerBufferSize)
 
 		for {
@@ -163,7 +159,7 @@ func streamTestOutput(
 				break
 			}
 		}
-	}()
+	})
 
 	// Wait for all output to be captured
 	wg.Wait()
