@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  alt_resource_class:
+    type: string
+    default: rsanheim/orbstack-arm64
+
 orbs:
   ruby: circleci/ruby@2.6.0
   go: circleci/go@3.0.3
@@ -7,10 +12,14 @@ orbs:
 
 jobs:
   build-and-test-go:
+    parameters:
+      resource_class:
+        type: string
+        default: medium
     docker:
-      - image: cimg/ruby:3.4.7
+      - image: cimg/ruby:4.0.1
     working_directory: ~/project
-    resource_class: medium
+    resource_class: << parameters.resource_class >>
     environment:
       - VERBOSE=true
     steps:
@@ -22,14 +31,8 @@ jobs:
             ls -la
             ls -la plur/
             ls -la plur/lib/plur/ || echo "plur/lib/plur not found"
-      - run:
-          name: Install Go
-          command: |
-            wget https://go.dev/dl/go1.25.5.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.25.5.linux-amd64.tar.gz
-            echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
-            source $BASH_ENV
-            go version
+      - go/install:
+          version: "1.25.5"
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - run:
@@ -46,9 +49,13 @@ jobs:
           command: bin/rake test:go
 
   test-goreleaser:
+    parameters:
+      resource_class:
+        type: string
+        default: medium
     docker:
       - image: cimg/go:1.25.5
-    resource_class: medium
+    resource_class: << parameters.resource_class >>
     working_directory: ~/project
     steps:
       - checkout
@@ -64,16 +71,32 @@ jobs:
       - run:
           name: Test Linux binary
           command: |
-            plur/dist/plur_linux_amd64_v1/plur --version
-            plur/dist/plur_linux_amd64_v1/plur doctor
+            arch="$(go env GOARCH)"
+            if [ "$arch" = "arm64" ]; then
+              bin="plur/dist/plur_linux_arm64_v8.0/plur"
+            else
+              bin="plur/dist/plur_linux_${arch}_v1/plur"
+            fi
+            if [ ! -x "$bin" ]; then
+              echo "Expected binary not found: $bin"
+              echo "Available plur binaries:"
+              find plur/dist -maxdepth 3 -type f -name plur -print
+              exit 1
+            fi
+            "$bin" --version
+            "$bin" doctor
       - store_artifacts:
           path: plur/dist
           destination: goreleaser-artifacts
 
   test-go-race:
+    parameters:
+      resource_class:
+        type: string
+        default: medium
     docker:
       - image: cimg/go:1.25.5
-    resource_class: medium
+    resource_class: << parameters.resource_class >>
     working_directory: ~/project
     steps:
       - checkout
@@ -83,9 +106,13 @@ jobs:
           command: go test -mod=mod -race ./...
 
   test-ruby-integration:
+    parameters:
+      resource_class:
+        type: string
+        default: medium
     docker:
-      - image: cimg/ruby:3.4.7
-    resource_class: large
+      - image: cimg/ruby:4.0.1
+    resource_class: << parameters.resource_class >>
     working_directory: ~/project/
     steps:
       - checkout
@@ -141,115 +168,28 @@ jobs:
           command: |
             bin/rake test
 
-  build-and-test-go-macos:
-    machine: true
-    resource_class: rsanheim/mac-studio
-    environment:
-      LANG: en_US.UTF-8
-      LC_ALL: en_US.UTF-8
-    steps:
-      - checkout
-      - run:
-          name: Setup mise environment
-          command: |
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-            eval "$(mise activate bash)"
-            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
-            echo 'eval "$(mise activate bash)"' >> $BASH_ENV
-      - run:
-          name: Environment info
-          command: |
-            uname -a
-            sw_vers
-            ruby --version
-            go version
-      - run:
-          name: Install dependencies
-          command: bundle install
-      - run:
-          name: Build and lint
-          command: bin/rake build lint
-      - run:
-          name: Verify plur binary
-          command: |
-            ./plur/plur --version
-            ./plur/plur doctor
-      - run:
-          name: Run Go tests
-          command: bin/rake test:go
-
-  test-ruby-integration-macos:
-    machine: true
-    resource_class: rsanheim/mac-studio
-    environment:
-      LANG: en_US.UTF-8
-      LC_ALL: en_US.UTF-8
-    steps:
-      - checkout
-      - run:
-          name: Setup mise environment
-          command: |
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-            # Use shims mode for CI (works better with working_directory changes)
-            eval "$(mise activate bash --shims)"
-            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $BASH_ENV
-            echo 'eval "$(mise activate bash --shims)"' >> $BASH_ENV
-            # Add GOPATH/bin for plur binary
-            echo 'export PATH="$HOME/go/bin:$PATH"' >> $BASH_ENV
-            # Set global Ruby/Go versions (uses what's already installed)
-            mise use --global ruby@3.4 go@1.25
-      - run:
-          name: Install dependencies
-          command: bundle install
-      - run:
-          name: Install plur globally
-          command: bin/rake install
-      - run:
-          name: Install plur watcher
-          command: plur watch install
-      - run:
-          name: Verify plur
-          command: |
-            which plur
-            plur --version
-            plur doctor
-      - run:
-          name: Run ruby linting
-          command: bin/rake lint:ruby
-      - run:
-          name: Run Ruby tests with plur
-          command: bin/rake test:default_ruby
-      - run:
-          name: Setup Rails fixture app
-          working_directory: fixtures/projects/default-rails
-          command: |
-            bundle config set --local path vendor/bundle
-            bundle install
-            bundle exec rake db:create db:migrate
-      - run:
-          name: Run Rails fixture specs with plur
-          working_directory: fixtures/projects/default-rails
-          command: plur
-      - run:
-          name: Install turbo_tests
-          command: gem install turbo_tests
-      - run:
-          name: Run all Ruby specs
-          command: bin/rake test
-
 workflows:
   test-all:
     jobs:
-      - build-and-test-go
-      - test-goreleaser
-      - test-go-race
+      - build-and-test-go:
+          matrix:
+            parameters:
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
+      - test-goreleaser:
+          matrix:
+            parameters:
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
+      - test-go-race:
+          matrix:
+            parameters:
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
       - test-ruby-integration:
+          matrix:
+            parameters:
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
           requires:
-            - build-and-test-go
-
-  selfhosted-test:
-    jobs:
-      - build-and-test-go-macos
-      - test-ruby-integration-macos:
-          requires:
-            - build-and-test-go-macos
+            - build-and-test-go-<< matrix.resource_class >>

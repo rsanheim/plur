@@ -4,7 +4,6 @@
 
 ## v0.23.1 - 2026-01-16
 * Fix release script changelog duplicate PRs and missing blank lines [#177](https://github.com/rsanheim/plur/pull/177)
-* Self-hosted CircleCI runner with Tart VM isolation [#173](https://github.com/rsanheim/plur/pull/173)
 
 ## v0.23.0 - 2026-01-15
 * Remove undocumented --tty flag, use only --force-color [#175](https://github.com/rsanheim/plur/pull/175)
