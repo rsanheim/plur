@@ -17,7 +17,7 @@ jobs:
         type: string
         default: medium
     docker:
-      - image: cimg/ruby:3.4.7
+      - image: cimg/ruby:4.0.1
     working_directory: ~/project
     resource_class: << parameters.resource_class >>
     environment:
@@ -111,7 +111,7 @@ jobs:
         type: string
         default: medium
     docker:
-      - image: cimg/ruby:3.4.7
+      - image: cimg/ruby:4.0.1
     resource_class: << parameters.resource_class >>
     working_directory: ~/project/
     steps:
