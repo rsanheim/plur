@@ -164,20 +164,16 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	os.Setenv(EnvParallelTestGroups, fmt.Sprintf("%d", len(commands)))
 
 	var outputWg sync.WaitGroup
-	outputWg.Add(1)
-	go func() {
-		defer outputWg.Done()
+	outputWg.Go(func() {
 		outputAggregator(outputChan, r.config.ColorOutput, r.config.RspecTrace)
-	}()
+	})
 
 	var wg sync.WaitGroup
 	for i, cmd := range commands {
-		wg.Add(1)
-		go func(workerIdx int, c *exec.Cmd) {
-			defer wg.Done()
-			result := r.runCommand(ctx, workerIdx, c, outputChan)
+		wg.Go(func() {
+			result := r.runCommand(ctx, i, cmd, outputChan)
 			results <- result
-		}(i, cmd)
+		})
 	}
 
 	wg.Wait()
