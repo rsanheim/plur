@@ -61,8 +61,9 @@ func (wm *WatcherManager) Start() error {
 		wm.mu.Unlock()
 
 		// Aggregate events from this watcher
-		wm.wg.Add(1)
-		go wm.aggregateEvents(watcher)
+		wm.wg.Go(func() {
+			wm.aggregateEvents(watcher)
+		})
 	}
 
 	return nil
@@ -100,8 +101,6 @@ func (wm *WatcherManager) Errors() <-chan error {
 // Handles channel closure gracefully by setting closed channels to nil,
 // which disables those select cases (receiving from nil blocks forever).
 func (wm *WatcherManager) aggregateEvents(w *Watcher) {
-	defer wm.wg.Done()
-
 	eventChan := w.Events()
 	errorChan := w.Errors()
 
