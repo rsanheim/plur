@@ -222,9 +222,10 @@ func TestCustomTextHandler_ConcurrentWrites(t *testing.T) {
 	iterations := 100
 
 	for i := 0; i < goroutines; i++ {
+		workerID := i
 		wg.Go(func() {
 			for j := 0; j < iterations; j++ {
-				logger.Info("message", "worker", i, "iteration", j)
+				logger.Info("message", "worker", workerID, "iteration", j)
 			}
 		})
 	}

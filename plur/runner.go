@@ -170,8 +170,10 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 
 	var wg sync.WaitGroup
 	for i, cmd := range commands {
+		workerIdx := i
+		workerCmd := cmd
 		wg.Go(func() {
-			result := r.runCommand(ctx, i, cmd, outputChan)
+			result := r.runCommand(ctx, workerIdx, workerCmd, outputChan)
 			results <- result
 		})
 	}
