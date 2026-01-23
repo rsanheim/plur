@@ -316,8 +316,9 @@ func TestWatcherManager_AggregateEventsReturnsOnClosedWatcherChannels(t *testing
 	close(w.eventChan)
 	close(w.errorChan)
 
-	wm.wg.Add(1)
-	go wm.aggregateEvents(w)
+	wm.wg.Go(func() {
+		wm.aggregateEvents(w)
+	})
 
 	done := make(chan struct{})
 	go func() {

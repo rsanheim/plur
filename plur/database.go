@@ -36,10 +36,7 @@ func RunDatabaseTask(task string, config *config.GlobalConfig) error {
 
 	for i := 0; i < config.WorkerCount; i++ {
 		workerIndex := i
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			cmd := exec.CommandContext(ctx, "bundle", "exec", "rake", task)
 
 			// Set environment variables
@@ -61,7 +58,7 @@ func RunDatabaseTask(task string, config *config.GlobalConfig) error {
 			} else {
 				results <- nil
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

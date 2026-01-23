@@ -137,14 +137,12 @@ func TestToggleDebug_ConcurrentAccess(t *testing.T) {
 	goroutines := 10
 
 	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for j := 0; j < iterations; j++ {
 				ToggleDebug()
 				IsDebugEnabled()
 			}
-		}()
+		})
 	}
 
 	// Should not panic or race
@@ -224,13 +222,12 @@ func TestCustomTextHandler_ConcurrentWrites(t *testing.T) {
 	iterations := 100
 
 	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
+		workerID := i
+		wg.Go(func() {
 			for j := 0; j < iterations; j++ {
-				logger.Info("message", "worker", id, "iteration", j)
+				logger.Info("message", "worker", workerID, "iteration", j)
 			}
-		}(i)
+		})
 	}
 
 	wg.Wait()
