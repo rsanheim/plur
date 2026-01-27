@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.24.0 - 2026-01-27
+* Adopt sync.WaitGroup.Go() from Go 1.25 [#182](https://github.com/rsanheim/plur/pull/182)
+* Add thread-safety to CustomTextHandler for concurrent logging [#181](https://github.com/rsanheim/plur/pull/181)
+* Add appraisal2 for multi-version RSpec testing [#179](https://github.com/rsanheim/plur/pull/179)
+
 ## v0.23.1 - 2026-01-16
 * Fix release script changelog duplicate PRs and missing blank lines [#177](https://github.com/rsanheim/plur/pull/177)
 
