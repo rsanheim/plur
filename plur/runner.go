@@ -28,7 +28,8 @@ func dryRunString(cmd *exec.Cmd) string {
 	var extras []string
 	for _, env := range cmd.Env {
 		if strings.HasPrefix(env, EnvTestEnvNumber+"=") ||
-			strings.HasPrefix(env, EnvParallelTestGroups+"=") {
+			strings.HasPrefix(env, EnvParallelTestGroups+"=") ||
+			strings.HasPrefix(env, "RAILS_ENV=") {
 			extras = append(extras, env)
 		}
 	}

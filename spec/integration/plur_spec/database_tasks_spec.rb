@@ -93,6 +93,20 @@ RSpec.describe "Plur database tasks" do
     end
   end
 
+  context "verbose mode" do
+    it "logs the full command when --verbose is used" do
+      Dir.chdir(default_rails_dir) do
+        # Use db:migrate which will execute (allow_error for missing db)
+        result = run_plur("--verbose", "db:migrate", "-n", "2", allow_error: true)
+
+        expect(result.err).to include("INFO")
+        expect(result.err).to include("running")
+        expect(result.err).to include("RAILS_ENV=test")
+        expect(result.err).to include("bundle exec rake db:migrate")
+      end
+    end
+  end
+
   describe "error handling" do
     # We re-use the same fixture project with different tasks specified via
     # the DB_TASK_FILE environment variable. This way we can test error handling

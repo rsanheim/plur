@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/logger"
 )
 
 // RunDatabaseTask executes a Rails database task in parallel across test databases
@@ -51,6 +52,8 @@ func RunDatabaseTask(task string, config *config.GlobalConfig) error {
 			}
 
 			cmd.Env = env
+
+			logger.Logger.Info("running", "cmd", dryRunString(cmd), "worker", workerIndex)
 
 			output, err := cmd.CombinedOutput()
 			if err != nil {

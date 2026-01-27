@@ -123,11 +123,11 @@ func TestDryRunString(t *testing.T) {
 
 		assert.Contains(t, result, "PARALLEL_TEST_GROUPS=4")
 		assert.Contains(t, result, "TEST_ENV_NUMBER=2")
+		assert.Contains(t, result, "RAILS_ENV=test")
 		assert.Contains(t, result, "bundle exec rspec spec/foo_spec.rb")
 		// Should NOT include other env vars
 		assert.NotContains(t, result, "PATH=")
 		assert.NotContains(t, result, "HOME=")
-		assert.NotContains(t, result, "RAILS_ENV=")
 	})
 
 	t.Run("serial mode only has PARALLEL_TEST_GROUPS", func(t *testing.T) {
