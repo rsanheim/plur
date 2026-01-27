@@ -2,20 +2,14 @@ require "spec_helper"
 require "benchmark"
 
 RSpec.describe "Plur performance" do
-  let(:expected_spec_files) { 12 }
-
   describe "parallelization efficiency" do
     it "shows wall time vs CPU time to demonstrate parallelization" do
       result = run_plur("-C", default_ruby_dir)
 
-      # Should show both wall time and CPU time
       expect(result.out).to match(/Finished in [\d.]+ seconds \(files took [\d.]+ seconds to load\)/)
-
-      # Extract times from output
       if result.out =~ /Finished in ([\d.]+) seconds/
         wall_time = $1.to_f
 
-        # Wall time should be reasonable
         expect(wall_time).to be < 5.0 # Assuming reasonable test suite
       end
     end
@@ -25,15 +19,13 @@ RSpec.describe "Plur performance" do
     it "has minimal overhead for small test suites" do
       simple_project = project_fixture("rspec-success-simple")
 
-      # Measure plur time
       plur_time = Benchmark.realtime do
-        system("plur", "-C", simple_project.to_s, "spec/simple_spec.rb")
+        run_plur("-C", simple_project.to_s, "spec/simple_spec.rb")
       end
 
-      # Measure direct rspec time
       rspec_time = Benchmark.realtime do
         Dir.chdir(simple_project) do
-          system("bundle exec rspec spec/simple_spec.rb")
+          run_rspec("spec/simple_spec.rb")
         end
       end
 

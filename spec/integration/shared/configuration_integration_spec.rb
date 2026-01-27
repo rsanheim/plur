@@ -174,7 +174,6 @@ RSpec.describe "Configuration integration" do
 
         expect(status).to be_success
         # Should use the custom job's run command
-        puts output
         expect(output).to include("echo CUSTOM TASK:")
       end
     end
