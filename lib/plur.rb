@@ -3,7 +3,6 @@
 # Plur - Project-Level Unified Resources
 # Shared constants and configuration for builds, integration specs, etc
 
-require "pathname"
 require "singleton"
 
 module Plur
