@@ -25,8 +25,12 @@ const (
 // dryRunString returns a shell-executable representation of the command,
 // including only the env vars that plur sets (not the full inherited env).
 func dryRunString(cmd *exec.Cmd) string {
+	var envs []string
+	if cmd.Env != nil {
+		envs = cmd.Environ()
+	}
 	var extras []string
-	for _, env := range cmd.Env {
+	for _, env := range envs {
 		if strings.HasPrefix(env, EnvTestEnvNumber+"=") ||
 			strings.HasPrefix(env, EnvParallelTestGroups+"=") ||
 			strings.HasPrefix(env, "RAILS_ENV=") {
@@ -74,7 +78,7 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 	// executing...
 	if r.config.DryRun {
 		for i, cmd := range commands {
-			toStdErr(true, "Worker %d: %s\n", i, dryRunString(cmd))
+			printDryRunWorker(r.config.DryRun, i, cmd)
 		}
 		return nil, 0, nil
 	}

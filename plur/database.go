@@ -14,16 +14,27 @@ import (
 	"github.com/rsanheim/plur/logger"
 )
 
+func buildDatabaseCmd(ctx context.Context, task string, workerIndex int, config *config.GlobalConfig) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "bundle", "exec", "rake", task)
+
+	env := os.Environ()
+	env = append(env, "RAILS_ENV=test")
+	env = append(env, "PARALLEL_TEST_GROUPS="+fmt.Sprintf("%d", config.WorkerCount))
+	if !config.IsSerial() {
+		testEnvNumber := GetTestEnvNumber(workerIndex, config)
+		env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
+	}
+
+	cmd.Env = env
+	return cmd
+}
+
 // RunDatabaseTask executes a Rails database task in parallel across test databases
 func RunDatabaseTask(task string, config *config.GlobalConfig) error {
 	if config.DryRun {
 		for i := 0; i < config.WorkerCount; i++ {
-			envStr := ""
-			if !config.IsSerial() {
-				testEnvNumber := GetTestEnvNumber(i, config)
-				envStr = fmt.Sprintf("TEST_ENV_NUMBER=%s ", testEnvNumber)
-			}
-			toStdErr(config.DryRun, "Worker %d: %sRAILS_ENV=test bundle exec rake %s\n", i, envStr, task)
+			cmd := buildDatabaseCmd(context.Background(), task, i, config)
+			printDryRunWorker(config.DryRun, i, cmd)
 		}
 		return nil
 	}
@@ -38,20 +49,7 @@ func RunDatabaseTask(task string, config *config.GlobalConfig) error {
 	for i := 0; i < config.WorkerCount; i++ {
 		workerIndex := i
 		wg.Go(func() {
-			cmd := exec.CommandContext(ctx, "bundle", "exec", "rake", task)
-
-			// Set environment variables
-			env := os.Environ()
-			env = append(env, "RAILS_ENV=test")
-			env = append(env, "PARALLEL_TEST_GROUPS="+fmt.Sprintf("%d", config.WorkerCount))
-
-			// Only set TEST_ENV_NUMBER if not in serial mode
-			if !config.IsSerial() {
-				testEnvNumber := GetTestEnvNumber(workerIndex, config)
-				env = append(env, "TEST_ENV_NUMBER="+testEnvNumber)
-			}
-
-			cmd.Env = env
+			cmd := buildDatabaseCmd(ctx, task, workerIndex, config)
 
 			logger.Logger.Info("running", "cmd", dryRunString(cmd), "worker", workerIndex)
 

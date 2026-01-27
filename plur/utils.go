@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 )
 
 // pluralize returns the singular or plural form of a word based on count
@@ -19,6 +20,20 @@ func toStdErr(dryRun bool, format string, args ...any) {
 		format = "[dry-run] " + format
 	}
 	fmt.Fprintf(os.Stderr, format, args...)
+}
+
+func printDryRunCommand(dryRun bool, cmd *exec.Cmd) {
+	if !dryRun {
+		return
+	}
+	toStdErr(true, "%s\n", dryRunString(cmd))
+}
+
+func printDryRunWorker(dryRun bool, workerIndex int, cmd *exec.Cmd) {
+	if !dryRun {
+		return
+	}
+	toStdErr(true, "Worker %d: %s\n", workerIndex, dryRunString(cmd))
 }
 
 func dump(data interface{}) {

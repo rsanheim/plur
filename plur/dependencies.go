@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 // DependencyManager handles dependency installation
@@ -22,7 +21,7 @@ func (dm *DependencyManager) InstallDependencies() error {
 	cmd := exec.Command("bundle", "install")
 
 	if dm.dryRun {
-		fmt.Fprintf(os.Stderr, "[dry-run] %s\n", strings.Join(cmd.Args, " "))
+		printDryRunCommand(dm.dryRun, cmd)
 		return nil
 	}
 
