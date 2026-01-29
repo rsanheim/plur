@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/watch"
@@ -154,9 +155,9 @@ func checkConfiguration(globalConfig *config.GlobalConfig) error {
 		fmt.Println("    Using defaults (no configuration files found)")
 	} else {
 		envFile := os.Getenv("PLUR_CONFIG_FILE")
-		for i, loaded := range globalConfig.LoadedConfigs {
-			// Check if this was from PLUR_CONFIG_FILE (first in list and env var is set)
-			if i == 0 && envFile != "" {
+		for _, loaded := range globalConfig.LoadedConfigs {
+			// Check if this was from PLUR_CONFIG_FILE
+			if envFile != "" && loaded == kong.ExpandPath(envFile) {
 				fmt.Printf("    - %s (via PLUR_CONFIG_FILE)\n", loaded)
 			} else {
 				fmt.Printf("    - %s\n", loaded)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -48,22 +49,28 @@ func dryRunString(cmd *exec.Cmd) string {
 // - Phase 1 (PLAN): Single-threaded - load runtime data, group files, build commands
 // - Phase 2 (EXECUTE): The dry-run seam - either print commands or spawn workers
 type Runner struct {
-	config  *config.GlobalConfig
-	files   []string
-	job     job.Job
-	tracker *RuntimeTracker
+	config    *config.GlobalConfig
+	files     []string
+	job       job.Job
+	framework framework.Spec
+	tracker   *RuntimeTracker
 }
 
 func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job) (*Runner, error) {
+	spec, err := framework.Get(j.Framework)
+	if err != nil {
+		return nil, err
+	}
 	tracker, err := NewRuntimeTracker(cfg.RuntimeDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runtime tracker: %w", err)
 	}
 	return &Runner{
-		config:  cfg,
-		files:   files,
-		job:     j,
-		tracker: tracker,
+		config:    cfg,
+		files:     files,
+		job:       j,
+		framework: spec,
+		tracker:   tracker,
 	}, nil
 }
 
@@ -71,7 +78,10 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job) (*Runner, er
 func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 	// planning...
 	groups := r.groupFiles()
-	commands := r.buildCommands(groups)
+	commands, err := r.buildCommands(groups)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	r.printSummary(len(commands))
 
@@ -101,18 +111,17 @@ func (r *Runner) groupFiles() []FileGroup {
 	return groups
 }
 
-func (r *Runner) buildCommands(groups []FileGroup) []*exec.Cmd {
+func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
-		var args []string
-		switch r.job.Name {
-		case "rspec":
-			args = buildRSpecCommand(r.job, group.Files, r.config)
-		case "minitest":
-			args = buildMinitestCommand(r.job, group.Files, r.config)
-		default:
-			args = job.BuildJobCmd(r.job, group.Files)
+		if r.job.UsesTargets() && logger.IsDebugEnabled() {
+			logger.Logger.Debug("ignoring {{target}} tokens in run mode", "job", r.job.Name)
+		}
+
+		args, err := framework.BuildRunArgs(r.job, group.Files, r.config)
+		if err != nil {
+			return nil, err
 		}
 
 		cmd := exec.Command(args[0], args[1:]...)
@@ -120,7 +129,7 @@ func (r *Runner) buildCommands(groups []FileGroup) []*exec.Cmd {
 		commands[i] = cmd
 	}
 
-	return commands
+	return commands, nil
 }
 
 func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
@@ -132,6 +141,8 @@ func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
 		env = append(env, EnvTestEnvNumber+"="+testEnvNumber)
 	}
 
+	env = append(env, r.job.Env...)
+
 	return env
 }
 
@@ -142,19 +153,15 @@ func (r *Runner) printSummary(workerCount int) {
 	}
 
 	label := r.testLabel()
-	toStdErr(r.config.DryRun, "Running %d %s in parallel using %d workers\n",
-		len(r.files), label, actualWorkers)
+	toStdErr(r.config.DryRun, "Running %d %s [%s] in parallel using %d workers\n",
+		len(r.files), label, r.framework.Name, actualWorkers)
 }
 
 func (r *Runner) testLabel() string {
-	switch r.job.Name {
-	case "rspec":
+	if r.framework.Name == "rspec" {
 		return pluralize(len(r.files), "spec", "specs")
-	case "minitest":
-		return pluralize(len(r.files), "test", "tests")
-	default:
-		return pluralize(len(r.files), "test", "tests")
 	}
+	return pluralize(len(r.files), "test", "tests")
 }
 
 func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
@@ -221,13 +228,10 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		return errorResult(fmt.Errorf("failed to start command: %v", err), start)
 	}
 
-	parser, err := r.job.CreateParser()
-	if err != nil {
-		return errorResult(err, start)
-	}
+	parser := r.framework.Parser()
 	collector := NewTestCollector()
 	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
-	streamStdout := !r.job.IsMinitestStyle()
+	streamStdout := !framework.IsMinitest(r.framework.Name)
 	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
@@ -357,72 +361,4 @@ func errorResult(err error, start time.Time) WorkerResult {
 		Error:    err,
 		Duration: time.Since(start),
 	}
-}
-
-// insertBeforeFiles inserts additional arguments before the file arguments in a command
-func insertBeforeFiles(args []string, files []string, newArgs ...string) []string {
-	filesStart := -1
-	for i, arg := range args {
-		for _, file := range files {
-			if arg == file {
-				filesStart = i
-				break
-			}
-		}
-		if filesStart != -1 {
-			break
-		}
-	}
-
-	if filesStart == -1 {
-		return append(args, newArgs...)
-	}
-
-	// Insert new args before files
-	result := make([]string, 0, len(args)+len(newArgs))
-	result = append(result, args[:filesStart]...)
-	result = append(result, newArgs...)
-	result = append(result, args[filesStart:]...)
-	return result
-}
-
-// buildRSpecCommand builds an RSpec command with framework-specific flags
-func buildRSpecCommand(j job.Job, files []string, globalConfig *config.GlobalConfig) []string {
-	args := job.BuildJobCmd(j, files)
-
-	// Add formatter if available
-	formatterPath := globalConfig.ConfigPaths.GetJSONRowsFormatterPath()
-	if formatterPath != "" {
-		args = insertBeforeFiles(args, files, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
-	}
-
-	if !globalConfig.ColorOutput {
-		args = insertBeforeFiles(args, files, "--no-color")
-	} else {
-		args = insertBeforeFiles(args, files, "--force-color")
-	}
-
-	return args
-}
-
-// buildMinitestCommand builds a Minitest command with framework-specific handling
-func buildMinitestCommand(j job.Job, files []string, _globalConfig *config.GlobalConfig) []string {
-	if len(files) > 1 {
-		cmd := []string{"bundle", "exec", "ruby", "-Itest"}
-		requires := make([]string, 0, len(files))
-		for _, file := range files {
-			// Strip the "test/" prefix if present since we're using -Itest, and strip the .rb extension
-			testFile := strings.TrimPrefix(file, "test/")
-			testFile = strings.TrimSuffix(testFile, ".rb")
-			requires = append(requires, testFile)
-		}
-
-		// Create the require pattern
-		requireList := `"` + strings.Join(requires, `", "`) + `"`
-		cmd = append(cmd, "-e", `[`+requireList+`].each { |f| require f }`)
-		return cmd
-	}
-
-	// For single file, use BuildJobCmd directly
-	return job.BuildJobCmd(j, files)
 }

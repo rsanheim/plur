@@ -42,10 +42,10 @@ func printHelp() {
 }
 
 // loadWatchConfiguration resolves job and watch mappings
-func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (job.Job, []watch.WatchMapping, error) {
+func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (*autodetect.ResolveJobResult, []watch.WatchMapping, error) {
 	result, err := autodetect.ResolveJob(explicitJobName, cli.Job, nil)
 	if err != nil {
-		return job.Job{}, nil, err
+		return nil, nil, err
 	}
 
 	// Use user's watches if provided, else from resolved result
@@ -54,7 +54,9 @@ func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (job.Job, []wa
 		watches = result.Watches
 	}
 
-	return result.Job, watches, nil
+	logInheritedFields(result.Name, result.Inherited)
+
+	return result, watches, nil
 }
 
 // resetTerminal restores terminal to a known good state.
@@ -115,18 +117,15 @@ func printWatchInfo(watchDirs []string) {
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
 
-	resolvedJob, watches, err := loadWatchConfiguration(cli, watchCmd.Use)
+	result, watches, err := loadWatchConfiguration(cli, cli.Use)
 	if err != nil {
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}
+	resolvedJob := result.Job
 
 	// Build jobs map for FindTargetsForFile - include all user-defined jobs
 	// plus the resolved job (for when auto-detection is used)
-	jobs := make(map[string]job.Job)
-	for name, j := range cli.Job {
-		jobs[name] = j
-	}
-	jobs[resolvedJob.Name] = resolvedJob
+	jobs := result.ResolvedJobs
 
 	if len(watches) > 0 {
 		logger.Logger.Info("Watch configuration loaded", "job", resolvedJob.Name, "watch_mappings", len(watches))
@@ -172,6 +171,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		"project", projectName,
 		"directories", watchDirs,
 		"job", resolvedJob.Name,
+		"reason", result.Reason,
 		"watch", fmt.Sprintf("%+v", watches),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,

@@ -78,3 +78,45 @@ func TestFindFilesFromJob(t *testing.T) {
 		assert.True(t, found, "Expected spec file not found: %s", specFile)
 	}
 }
+
+func TestExpandPatternsFromJobUsesFrameworkDetectPatterns(t *testing.T) {
+	originalDir, _ := os.Getwd()
+	defer os.Chdir(originalDir)
+
+	os.MkdirAll("tmp", 0755)
+	tempDir, err := os.MkdirTemp("tmp", "test-runner-specs-*")
+	require.NoError(t, err, "Failed to create temp dir")
+	defer os.RemoveAll(tempDir)
+
+	os.Chdir(tempDir)
+
+	os.MkdirAll("spec/models", 0755)
+	os.WriteFile("spec/models/user_spec.rb", []byte(""), 0o644)
+	os.WriteFile("spec/models/post_spec.rb", []byte(""), 0o644)
+	os.WriteFile("spec/models/readme.txt", []byte(""), 0o644)
+
+	rspecJob := job.Job{
+		Name:      "fast",
+		Framework: "rspec",
+	}
+
+	files, err := ExpandPatternsFromJob([]string{"spec/models"}, rspecJob)
+	require.NoError(t, err)
+
+	expected := map[string]bool{
+		"spec/models/user_spec.rb": false,
+		"spec/models/post_spec.rb": false,
+	}
+
+	for _, file := range files {
+		if _, ok := expected[file]; ok {
+			expected[file] = true
+		} else {
+			assert.Fail(t, "Unexpected file found: %s", file)
+		}
+	}
+
+	for file, found := range expected {
+		assert.True(t, found, "Expected spec file not found: %s", file)
+	}
+}

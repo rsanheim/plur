@@ -275,6 +275,7 @@ func TestRunner_DryRunReturnsNil(t *testing.T) {
 	testJob := job.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo", "test"},
+		Framework:     "passthrough",
 		TargetPattern: "**/*_test.rb",
 	}
 
@@ -298,6 +299,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		testJob := job.Job{
 			Name:          "custom",
 			Cmd:           []string{"echo"},
+			Framework:     "passthrough",
 			TargetPattern: "**/*_test.rb",
 		}
 
@@ -322,6 +324,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		testJob := job.Job{
 			Name:          "custom",
 			Cmd:           []string{"echo"},
+			Framework:     "passthrough",
 			TargetPattern: "**/*_test.rb",
 		}
 
@@ -344,6 +347,7 @@ func TestRunner_EmptyFiles(t *testing.T) {
 	testJob := job.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo"},
+		Framework:     "passthrough",
 		TargetPattern: "**/*_test.rb",
 	}
 
@@ -364,7 +368,7 @@ func TestRunner_TrackerInitialized(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{Name: "custom"}
+	testJob := job.Job{Name: "custom", Framework: "passthrough"}
 
 	runner, err := NewRunner(cfg, []string{"a_test.rb"}, testJob)
 	require.NoError(t, err)
@@ -390,8 +394,9 @@ func TestRunner_SingleFileStillSetsTestEnvNumber(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name: "custom",
-		Cmd:  []string{"echo"},
+		Name:      "custom",
+		Cmd:       []string{"echo"},
+		Framework: "passthrough",
 	}
 
 	runner, err := NewRunner(cfg, []string{"single_test.rb"}, testJob)
@@ -414,8 +419,9 @@ func TestRunner_SerialModeNoTestEnvNumber(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name: "custom",
-		Cmd:  []string{"echo"},
+		Name:      "custom",
+		Cmd:       []string{"echo"},
+		Framework: "passthrough",
 	}
 
 	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb", "c_test.rb"}, testJob)
@@ -436,8 +442,9 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name: "custom",
-		Cmd:  []string{"echo"},
+		Name:      "custom",
+		Cmd:       []string{"echo"},
+		Framework: "passthrough",
 	}
 
 	files := []string{"a.rb", "b.rb", "c.rb"} // Only 3 files

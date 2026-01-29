@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/types"
 )
@@ -137,12 +138,13 @@ func renumberSummaryOutput(output string) string {
 
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
-	parser, err := currentJob.CreateParser()
+	spec, err := framework.Get(currentJob.Framework)
 	if err != nil {
 		// Fallback to basic output
 		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
 		return
 	}
+	parser := spec.Parser()
 
 	// Print pending section first (RSpec outputs pending before failures)
 	if summary.FormattedPending != "" {
@@ -151,7 +153,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
-	if currentJob.IsMinitestStyle() && summary.HasFailures {
+	if framework.IsMinitest(spec.Name) && summary.HasFailures {
 		// Collect all output from failed workers
 		for _, result := range summary.AllResults {
 			if result.State == types.StateFailed && result.Output != "" {
@@ -182,7 +184,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 
 	// Print failed examples list only if we didn't get a formatted summary
 	// (RSpec's formatted summary already includes the failed examples list)
-	if !hasFormattedSummary && !currentJob.IsMinitestStyle() {
+	if !hasFormattedSummary && !framework.IsMinitest(spec.Name) {
 		// Skip for minitest since we already printed the raw output
 		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
 			fmt.Println("\nFailed examples:")

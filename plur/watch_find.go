@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -19,17 +18,13 @@ type WatchFindCmd struct {
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	// Load watch configuration using the same logic as watch mode
-	resolvedJob, watches, err := loadWatchConfiguration(globals, "")
+	resolved, watches, err := loadWatchConfiguration(globals, "")
 	if err != nil {
 		return fmt.Errorf("failed to load watch configuration: %w", err)
 	}
 
 	// Build jobs map for FindTargetsForFile - include all user-defined jobs
-	jobs := make(map[string]job.Job)
-	for name, j := range globals.Job {
-		jobs[name] = j
-	}
-	jobs[resolvedJob.Name] = resolvedJob
+	jobs := resolved.ResolvedJobs
 
 	if len(watches) == 0 {
 		fmt.Println("No watch mappings configured.")
@@ -57,19 +52,19 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	out.Info("checking watch", "file", filePath)
 
 	// Use shared find logic
-	result, err := watch.FindTargetsForFile(filePath, jobs, watches, cwd)
+	findResult, err := watch.FindTargetsForFile(filePath, jobs, watches, cwd)
 	if err != nil {
 		return fmt.Errorf("error processing file: %w", err)
 	}
 
 	// Show matched rules
-	if len(result.MatchedRules) == 0 {
+	if len(findResult.MatchedRules) == 0 {
 		out.Info("found rules", "count", 0)
 		return ExitCode{Code: 2}
 	}
 
 	// Print matched rules in concise format
-	for _, rule := range result.MatchedRules {
+	for _, rule := range findResult.MatchedRules {
 		name := rule.Name
 		if name == "" {
 			name = "(unnamed)"
@@ -86,17 +81,17 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	}
 
 	// Show found files
-	if result.HasExistingTargets() {
+	if findResult.HasExistingTargets() {
 		var allFiles []string
-		for _, targets := range result.ExistingTargets {
+		for _, targets := range findResult.ExistingTargets {
 			allFiles = append(allFiles, targets...)
 		}
 		out.Info("found files", "files", strings.Join(allFiles, ", "))
 	}
 
 	// Show missing files
-	if result.HasMissingTargets() {
-		for _, targets := range result.MissingTargets {
+	if findResult.HasMissingTargets() {
+		for _, targets := range findResult.MissingTargets {
 			for _, target := range targets {
 				out.Warn("not found", "file", target)
 			}
@@ -104,7 +99,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	}
 
 	// Exit code 2 if nothing would actually run
-	if !result.HasExistingTargets() {
+	if !findResult.HasExistingTargets() {
 		return ExitCode{Code: 2}
 	}
 
