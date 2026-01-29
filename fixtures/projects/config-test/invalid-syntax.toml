@@ -1,4 +1,2 @@
 # Invalid TOML syntax
-workers = 4
-color = "this should be boolean"
-command = missing quotes here
+workers =

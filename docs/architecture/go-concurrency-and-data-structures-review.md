@@ -167,13 +167,9 @@ Recommended cleanup:
 - Have `BuildJobCmd` also return the file-start index (or ensure file args are always appended at the end for frameworks where we control the command shape).
 - Or detect file-start by known structure (e.g., `{{target}}` placement) rather than nested scanning.
 
-### 7) Config template output appears out of sync with current config schema
+### 7) Config template output appears out of sync with current config schema (**resolved**)
 
-`plur config init` templates in `plur/config_init.go` use keys like `[spec] command = ...` and `[watch.run] command = ...`, which don’t match the “job + watch mappings” schema described elsewhere in the repo.
-
-Recommended cleanup:
-
-- Update `config_init.go` templates to generate `.plur.toml` that matches the current `job` and `watch` structures.
+`plur config init` templates now generate `job` + `watch` mappings that match the current config schema.
 
 ### 8) Docs/code drift in concurrency documentation
 

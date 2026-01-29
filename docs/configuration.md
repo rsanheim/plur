@@ -5,19 +5,18 @@ Plur aims for zero-configuration operation, but provides flexible configuration 
 Plur supports multiple configuration methods with the following precedence (highest to lowest):
 
 1. Command-line flags
-2. Environment variables (e.g., `PARALLEL_TEST_PROCESSORS`)
-3. `PLUR_CONFIG_FILE` environment variable (if set)
-4. `.plur.toml` (project-specific configuration)
-5. `~/.plur.toml` (user-specific configuration)
-6. Built-in defaults
+2. Configuration files (merged; later files override earlier values)
+3. Environment variables (e.g., `PARALLEL_TEST_PROCESSORS`, `PLUR_DEBUG`)
+4. Built-in defaults
 
 ## Configuration Files (TOML)
 
-Plur automatically loads configuration from TOML files using the following search order:
+Plur automatically loads configuration from TOML files using the following order
+(later files override earlier values):
 
-1. `PLUR_CONFIG_FILE` environment variable (if set, takes highest priority)
+1. `~/.plur.toml` in your home directory (user-specific)
 2. `.plur.toml` in the current directory (project-specific)
-3. `~/.plur.toml` in your home directory (user-specific)
+3. `PLUR_CONFIG_FILE` (if set)
 
 ### Basic Example
 
@@ -83,67 +82,68 @@ Jobs are selected in the following priority order:
 ### Job Configuration Fields
 
 | Field | Type | Description | Required | Default |
-|-------|------|-------------|----------|------|
-| `cmd` | string[] | Command array to execute | Yes | (built-in default) |
-| `target_pattern` | string | Glob pattern for test files | No | **Convention-based** (see below) |
+|-------|------|-------------|----------|---------|
+| `cmd` | string[] | Command array to execute | Yes | Built-in default for canonical jobs (`rspec`, `minitest`, `go-test`) |
+| `framework` | string | Framework identity (`rspec`, `minitest`, `go-test`, `passthrough`) | No | Built-in framework for canonical jobs, otherwise `passthrough` |
+| `target_pattern` | string | Glob pattern for test files | No | Built-in default for canonical jobs; for custom jobs with a framework uses framework detect patterns; passthrough jobs default to empty |
 | `env` | string[] | Environment variables (e.g., `["VAR=value"]`) | No | `[]` |
 
-**Note**: Targets are automatically appended to the end of the command. Use `{{target}}` in the `cmd` array only when you need targets in a specific position (e.g., before other flags).
+**Note**: In run mode (`plur` / `plur spec`), any `{{target}}` tokens in `cmd` are ignored and targets are always appended (or expanded into Minitest `-e` requires). In watch mode, `{{target}}` is honored.
 
-### Convention-Based File Patterns
+### Framework Default File Patterns
 
-Plur automatically applies test file patterns based on job names, making configuration simpler:
+When `target_pattern` is omitted:
 
-* Jobs with **"rspec"** in the name (case-insensitive) automatically get `spec/**/*_spec.rb`
-* Jobs with **"minitest"** in the name (case-insensitive) automatically get `test/**/*_test.rb`
+* **Canonical jobs** (`rspec`, `minitest`, `go-test`) inherit the built-in defaults:
+  * `rspec` → `spec/**/*_spec.rb`
+  * `minitest` → `test/**/*_test.rb`
+  * `go-test` → `**/*_test.go`
+* **Custom jobs** with an explicit framework use the framework's detect patterns:
+  * `rspec` → `**/*_spec.rb`
+  * `minitest` → `**/*_test.rb`
+  * `go-test` → `**/*_test.go`
+* **Passthrough** jobs have no default pattern; set `target_pattern` or pass explicit paths.
 
-This means you can create custom RSpec or Minitest jobs without specifying `target_pattern`:
+Example:
 
 ```toml
-# These all get automatic patterns:
-[job.rspec-integration]
-cmd = ["bin/rspec", "--tag=integration"]
-# Automatically uses: spec/**/*_spec.rb
-
-[job.rspec-fast]
+[job.fast]
+framework = "rspec"
 cmd = ["bin/rspec", "--fail-fast"]
-# Automatically uses: spec/**/*_spec.rb
-
-[job.minitest-unit]
-cmd = ["ruby", "-Itest"]
-# Automatically uses: test/**/*_test.rb
+# target_pattern omitted → uses **/*_spec.rb
 ```
 
-You can still override the convention by specifying an explicit `target_pattern`:
+You can still override with an explicit `target_pattern`:
 
 ```toml
 [job.rspec-api]
+framework = "rspec"
 cmd = ["bin/rspec"]
-target_pattern = "spec/api/**/*_spec.rb"  # Override convention to only run API specs
+target_pattern = "spec/api/**/*_spec.rb"
 ```
 
-> **Note**: Jobs that don't match naming conventions (like `rubocop` or `jest`) must have an explicit `target_pattern` to work with plur.
+> **Note**: Passthrough jobs (like `rubocop` or `jest`) should define `target_pattern` or be run with explicit paths.
 
 ### Built-in Jobs
 
 #### RSpec (default)
 ```toml
 [job.rspec]
-cmd = ["bundle", "exec", "rspec"]
+cmd = ["bundle", "exec", "rspec", "{{target}}"]
 target_pattern = "spec/**/*_spec.rb"
 ```
 
 #### Minitest
 ```toml
 [job.minitest]
-cmd = ["bundle", "exec", "ruby", "-Itest"]
+cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
 target_pattern = "test/**/*_test.rb"
 ```
 
 #### Go Tests
 ```toml
 [job.go-test]
-cmd = ["go", "test"]
+cmd = ["go", "test", "{{target}}"]
 target_pattern = "**/*_test.go"
 ```
 
@@ -152,6 +152,7 @@ target_pattern = "**/*_test.go"
 #### Custom RSpec with Spring
 ```toml
 [job.spring-rspec]
+framework = "rspec"
 cmd = ["bin/spring", "rspec"]
 target_pattern = "spec/**/*_spec.rb"
 ```
@@ -180,9 +181,11 @@ You can define multiple jobs and switch between them:
 cmd = ["bundle", "exec", "rspec"]
 
 [job.rspec-fast]
+framework = "rspec"
 cmd = ["bundle", "exec", "rspec", "--fail-fast"]
 
 [job.integration]
+framework = "rspec"
 cmd = ["bundle", "exec", "rspec"]
 target_pattern = "spec/integration/**/*_spec.rb"
 ```
@@ -206,6 +209,9 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 | `targets` | string[] | Target patterns with placeholders | No |
 | `jobs` | string[] | Jobs to trigger when source matches | Yes |
 | `ignore` | string[] | Patterns to ignore from watching | No |
+| `reload` | bool | Reload plur after jobs complete | No |
+
+**Note**: `ignore` is per-watch mapping. For global ignore patterns during a watch session, use the `plur watch --ignore` flag.
 
 ### Placeholder Variables
 

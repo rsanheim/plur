@@ -1,0 +1,11 @@
+# Runner jobs fixture for resolver/autodetect integration specs
+
+[job.rspec]
+cmd = ["custom-rspec"]
+
+[job.lint]
+cmd = ["echo", "LINT"]
+
+[job.fast]
+framework = "rspec"
+cmd = ["fast-rspec", "--fail-fast"]

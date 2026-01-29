@@ -6,6 +6,7 @@ use = "rspec"
 cmd = ["echo", "'SPEC:'"]
 target_pattern = "spec/**/*_spec.rb"
 
-[watch.run]
-command = "echo 'WATCH:'"
-debounce = 75
+[[watch]]
+name = "custom-watch"
+source = "spec/**/*_custom_spec.rb"
+jobs = ["rspec"]

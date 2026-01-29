@@ -4,11 +4,12 @@
 #
 # Configuration precedence (highest to lowest):
 # 1. Command-line flags
-# 2. Environment variables (PARALLEL_TEST_PROCESSORS)
-# 3. PLUR_CONFIG_FILE environment variable (if set)
-# 4. .plur.toml (project-specific)
-# 5. ~/.plur.toml (user-specific)
-# 6. Built-in defaults
+# 2. Config files (later files override earlier values):
+#    - ~/.plur.toml (user-specific)
+#    - .plur.toml (project-specific)
+#    - PLUR_CONFIG_FILE (if set)
+# 3. Environment variables (PARALLEL_TEST_PROCESSORS, PLUR_DEBUG)
+# 4. Built-in defaults
 
 # =============================================================================
 # GLOBAL SETTINGS
@@ -42,7 +43,7 @@ use = "rspec"
 cmd = ["bin/rspec"]
 
 # Pattern for finding test files
-# Default: "spec/**/*_spec.rb" (automatic for jobs with "rspec" in name)
+# Default: "spec/**/*_spec.rb" (built-in for job.rspec)
 target_pattern = "spec/**/*_spec.rb"
 
 # Minitest job configuration
@@ -52,6 +53,7 @@ target_pattern = "test/**/*_test.rb"
 
 # Custom job example - integration tests only
 [job.integration]
+framework = "rspec"
 cmd = ["bin/rspec", "--tag", "integration"]
 target_pattern = "spec/integration/**/*_spec.rb"
 
@@ -59,11 +61,6 @@ target_pattern = "spec/integration/**/*_spec.rb"
 # WATCH MODE CONFIGURATION
 # Settings for 'plur watch' - maps source files to tests
 # =============================================================================
-
-# Global ignore patterns for watch mode
-# These paths are ignored before any watch rules are evaluated
-# Default: [".git/**", "node_modules/**"]
-# watch_ignore = [".git/**", "node_modules/**", "vendor/**", ".bundle/**"]
 
 # Watch lib files and run corresponding specs
 [[watch]]

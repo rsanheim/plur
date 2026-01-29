@@ -3,7 +3,6 @@ color = true
 use = "doctor-test"
 
 [job.doctor-test]
-description = "Custom test job for doctor verification"
+framework = "passthrough"
 cmd = ["echo", "DOCTOR TEST TASK"]
-watch_dirs = ["spec", "lib"]
 target_pattern = "spec/**/*_spec.rb"
