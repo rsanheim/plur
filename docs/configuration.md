@@ -126,24 +126,26 @@ target_pattern = "spec/api/**/*_spec.rb"
 
 ### Built-in Jobs
 
+These examples show the built-in defaults. Targets are appended automatically in run mode.
+
 #### RSpec (default)
 ```toml
 [job.rspec]
-cmd = ["bundle", "exec", "rspec", "{{target}}"]
+cmd = ["bundle", "exec", "rspec"]
 target_pattern = "spec/**/*_spec.rb"
 ```
 
 #### Minitest
 ```toml
 [job.minitest]
-cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
+cmd = ["bundle", "exec", "ruby", "-Itest"]
 target_pattern = "test/**/*_test.rb"
 ```
 
 #### Go Tests
 ```toml
 [job.go-test]
-cmd = ["go", "test", "{{target}}"]
+cmd = ["go", "test"]
 target_pattern = "**/*_test.go"
 ```
 

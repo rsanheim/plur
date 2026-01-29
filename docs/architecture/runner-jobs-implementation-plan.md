@@ -80,6 +80,10 @@ Notes:
 
 ## Phase 5: Follow-up refactors enabled by framework/job work
 
+> **Note**: Phases 1-4 are complete. Phase 5 represents future follow-up work
+> that is not blocking. These items should be converted to GitHub issues when
+> prioritized.
+
 This phase is for investigating opportunities made possible by the new
 framework/job resolver and pattern logic. It should result in concrete
 proposals and scoped follow-up work.

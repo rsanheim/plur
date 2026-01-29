@@ -112,7 +112,7 @@ bundle _2.7.2_ exec rspec
 ```
 
 ### RSpec version compatibility
-Projects using RSpec < 3.6 will fail with `--force-color` error. This is a known plur bug.
+Projects using RSpec < 3.6 will fail because `--force-color` was added in RSpec 3.6. This is a known limitation.
 
 ### Missing specs
 Some meta-gems (like `rspec` itself) have no spec directory - skip these.
