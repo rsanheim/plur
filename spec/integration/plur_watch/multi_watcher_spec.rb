@@ -47,6 +47,7 @@ RSpec.describe "plur watch with multiple directories" do
       spec_dir = File.join(tmpdir, "spec")
       lib_dir = File.join(tmpdir, "lib")
       FileUtils.mkdir_p([spec_dir, lib_dir])
+      File.write(File.join(spec_dir, "example_spec.rb"), "RSpec.describe 'Example' do\n  it 'works' do\n    expect(1).to eq(1)\n  end\nend")
 
       result = run_plur_watch(dir: tmpdir, timeout: 1)
 
@@ -61,6 +62,7 @@ RSpec.describe "plur watch with multiple directories" do
       spec_dir = File.join(tmpdir, "spec")
       lib_dir = File.join(tmpdir, "lib")
       FileUtils.mkdir_p([spec_dir, lib_dir])
+      File.write(File.join(spec_dir, "example_spec.rb"), "RSpec.describe 'Example' do\n  it 'works' do\n    expect(1).to eq(1)\n  end\nend")
 
       result = run_plur_watch(dir: tmpdir, timeout: 1)
 

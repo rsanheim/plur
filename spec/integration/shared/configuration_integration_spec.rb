@@ -97,6 +97,44 @@ RSpec.describe "Configuration integration" do
       expect(error).to include("Worker 1:")
       expect(error).not_to include("Worker 2:")
     end
+
+    it "project config overrides home config" do
+      Dir.mktmpdir do |home_dir|
+        Dir.mktmpdir do |project_dir|
+          FileUtils.mkdir_p(File.join(project_dir, "spec"))
+          8.times do |i|
+            File.write(File.join(project_dir, "spec", "example_#{i}_spec.rb"), <<~RUBY)
+              RSpec.describe "Example#{i}" do
+                it "passes" do
+                  expect(1).to eq(1)
+                end
+              end
+            RUBY
+          end
+
+          File.write(File.join(home_dir, ".plur.toml"), <<~TOML)
+            workers = 6
+          TOML
+
+          File.write(File.join(project_dir, ".plur.toml"), <<~TOML)
+            workers = 3
+          TOML
+
+          result = run_plur(
+            "-C", project_dir,
+            "--dry-run",
+            env: {
+              "HOME" => home_dir,
+              "PLUR_HOME" => File.join(home_dir, ".plur")
+            }
+          )
+
+          expect(result).to be_success
+          expect(result.err).to include("using 3 workers")
+          expect(result.err).not_to include("using 6 workers")
+        end
+      end
+    end
   end
 
   describe "watch mode configuration" do
@@ -112,13 +150,13 @@ RSpec.describe "Configuration integration" do
       end
 
       expect(status).to be_success
-      # Check that watch mode uses the configured debounce
-      expect(error).to include("debounce=75")
+      # Check that watch mode loads the configured watch mappings
+      expect(error).to include("custom-watch")
     end
   end
 
   describe "minitest configuration" do
-    it "respects minitest type configuration" do
+    it "respects minitest job configuration" do
       # Use the existing minitest.toml from config-test fixtures
       minitest_config = config_fixture_dir.join("minitest.toml")
 

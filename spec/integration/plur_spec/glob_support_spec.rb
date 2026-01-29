@@ -10,7 +10,7 @@ RSpec.describe "plur glob pattern support" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run", "spec/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 10 specs")
+        expect(result.err).to include("[dry-run] Running 10 specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/calculator_spec.rb")
         expect(result.err).to include("spec/counter_spec.rb")
@@ -29,7 +29,7 @@ RSpec.describe "plur glob pattern support" do
         cmd = TTY::Command.new(uuid: false, printer: :null)
         result = cmd.run!("bash", "-c", "shopt -s globstar; plur --dry-run spec/**/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 12 specs")
+        expect(result.err).to include("[dry-run] Running 12 specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
@@ -41,7 +41,7 @@ RSpec.describe "plur glob pattern support" do
         # Using single quotes prevents shell expansion, so plur handles the glob
         result = run_plur("--dry-run", "spec/**/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 12 specs")
+        expect(result.err).to include("[dry-run] Running 12 specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
@@ -52,7 +52,7 @@ RSpec.describe "plur glob pattern support" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run", "spec/models/*_spec.rb", "spec/services/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 2 specs")
+        expect(result.err).to include("[dry-run] Running 2 specs [rspec]")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
       end
@@ -62,7 +62,7 @@ RSpec.describe "plur glob pattern support" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run", "spec/[cs]*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 3 specs")
+        expect(result.err).to include("[dry-run] Running 3 specs [rspec]")
         expect(result.err).to include("spec/calculator_spec.rb")
         expect(result.err).to include("spec/counter_spec.rb")
         expect(result.err).to include("spec/string_utils_spec.rb")
@@ -73,13 +73,13 @@ RSpec.describe "plur glob pattern support" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run", "spec/calculator_spec.rb", "spec/counter_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 2 specs")
+        expect(result.err).to include("[dry-run] Running 2 specs [rspec]")
         expect(result.err).to include("spec/calculator_spec.rb")
         expect(result.err).to include("spec/counter_spec.rb")
       end
     end
 
-    it "warns about non-spec files but still passes them to RSpec" do
+    it "passes non-spec files through to RSpec" do
       chdir(default_ruby_dir) do
         # Create a temporary non-spec file (doesn't end with _spec.rb)
         File.write("spec/helper.rb", "# helper file")
@@ -89,9 +89,8 @@ RSpec.describe "plur glob pattern support" do
 
           # Should succeed with dry-run (matching RSpec's behavior of accepting any file)
           expect(result.success?).to be true
-          expect(result.err).to include("Warning: spec/helper.rb does not end with _spec.rb")
           # Should still include the file in dry-run output
-          expect(result.err).to include("[dry-run] Running 1 spec")
+          expect(result.err).to include("[dry-run] Running 1 spec [rspec]")
           expect(result.err).to include("spec/helper.rb")
         ensure
           File.delete("spec/helper.rb") if File.exist?("spec/helper.rb")
@@ -123,7 +122,7 @@ RSpec.describe "plur glob pattern support" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run")
 
-        expect(result.err).to include("[dry-run] Running 12 specs")
+        expect(result.err).to include("[dry-run] Running 12 specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")

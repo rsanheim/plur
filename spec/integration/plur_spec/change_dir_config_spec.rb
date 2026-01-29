@@ -73,8 +73,12 @@ RSpec.describe "plur -C with config files", type: :integration do
     it "ignores config from current directory when using -C" do
       # Create different config in current directory
       File.write(File.join(temp_dir, ".plur.toml"), <<~TOML)
-        command = "bundle exec rspec --format progress"
+        use = "rspec"
         workers = 8
+
+        [job.rspec]
+        cmd = ["bundle", "exec", "rspec", "--format", "progress", "{{target}}"]
+        target_pattern = "spec/**/*_spec.rb"
       TOML
 
       Dir.chdir(temp_dir) do
