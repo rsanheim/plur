@@ -4,7 +4,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
   around_with_tmp_plur_home
 
   it "uses framework defaults for non-standard rspec jobs and surfaces framework in output" do
-    Dir.mktmpdir(nil, ROOT_PATH.join("tmp")) do |dir|
+    Dir.mktmpdir do |dir|
       spec_dir = File.join(dir, "spec")
       FileUtils.mkdir_p(spec_dir)
       File.write(File.join(spec_dir, "example_spec.rb"), <<~RUBY)
