@@ -63,15 +63,15 @@ const simpleConfigTemplate = `# Plur configuration file
 
 # Number of parallel workers
 workers = 4
+use = "rspec"
 
-# Test command configuration
-[spec]
-command = "bundle exec rspec"
+[job.rspec]
+cmd = ["bundle", "exec", "rspec"]
 
-# Watch mode configuration
-[watch.run]
-command = "bundle exec rspec --fail-fast"
-debounce = 200
+[[watch]]
+name = "spec-files"
+source = "spec/**/*_spec.rb"
+jobs = ["rspec"]
 `
 
 const railsConfigTemplate = `# Plur configuration for Rails applications
@@ -79,18 +79,16 @@ const railsConfigTemplate = `# Plur configuration for Rails applications
 
 # Use more workers for Rails apps
 workers = 8
-
-# Enable colored output
 color = true
+use = "rspec"
 
-# Rails-specific test command
-[spec]
-command = "bin/rspec"
+[job.rspec]
+cmd = ["bin/rspec"]
 
-# Watch mode with Spring for faster startup
-[watch.run]
-command = "bin/spring rspec --fail-fast --no-coverage"
-debounce = 300
+[[watch]]
+name = "spec-files"
+source = "spec/**/*_spec.rb"
+jobs = ["rspec"]
 `
 
 const minitestConfigTemplate = `# Plur configuration for Minitest projects
@@ -98,15 +96,13 @@ const minitestConfigTemplate = `# Plur configuration for Minitest projects
 
 # Standard worker configuration
 workers = 4
+use = "minitest"
 
-# Minitest-specific settings
-[spec]
-command = "bundle exec ruby -Itest"
-type = "minitest"
+[job.minitest]
+cmd = ["bundle", "exec", "ruby", "-Itest"]
 
-# Watch mode for minitest
-[watch.run]
-command = "bundle exec ruby -Itest"
-type = "minitest"
-debounce = 150
+[[watch]]
+name = "test-files"
+source = "test/**/*_test.rb"
+jobs = ["minitest"]
 `

@@ -47,12 +47,11 @@ module PlurWatchHelper
 
   # Captures watch output with streaming support for tests that need to
   # react to output in real-time
-  def capture_watch_output(plur_timeout: DEFAULT_PLUR_WATCH_TIMEOUT, debounce: nil, &block)
+  def capture_watch_output(plur_timeout: DEFAULT_PLUR_WATCH_TIMEOUT, debounce: nil, env: {}, &block)
     Dir.chdir(default_ruby_dir) do
       args = "plur --debug watch run --timeout #{plur_timeout}"
       args += " --debounce #{debounce}" if debounce
 
-      env = {}
       # TTY::Command timeout needs to be longer than plur watch timeout to avoid timeout errors
       full_timeout = plur_timeout + 2
       cmd = TTY::Command.new(timeout: full_timeout, uuid: false, pty: true, printer: :null)

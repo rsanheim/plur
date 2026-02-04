@@ -16,10 +16,6 @@ Binary releases are available via GitHub Releases for:
 
 Download from the [GitHub Releases page](https://github.com/rsanheim/plur/releases) for this repository.
 
-### Homebrew (macOS)
-
-_TODO_ -- homebrew tap not yet setup
-
 ### From Source
 
 (requires Go 1.25+) You can build the binary from source and install globally to your $GOPATH/bin.

@@ -28,6 +28,40 @@ func TestOutputParser_BasicFlow(t *testing.T) {
 	notifications, _ = parser.ParseLine("3 runs, 3 assertions, 0 failures, 0 errors, 0 skips")
 	assert.Len(notifications, 1) // Just suite finished (no failures)
 	assert.Equal(types.SuiteFinished, notifications[0].GetEvent())
+	suite := notifications[0].(types.SuiteNotification)
+	assert.Equal(3, suite.TestCount)
+	assert.Equal(3, suite.AssertionCount)
+	assert.Equal(0, suite.ErrorCount)
+}
+
+func TestOutputParser_SummaryIncludesErrors(t *testing.T) {
+	assert := assert.New(t)
+	parser := &outputParser{}
+
+	notifications, _ := parser.ParseLine("3 runs, 4 assertions, 1 failure, 2 errors, 0 skips")
+	assert.Len(notifications, 1)
+	suite := notifications[0].(types.SuiteNotification)
+	assert.Equal(types.SuiteFinished, suite.Event)
+	assert.Equal(3, suite.TestCount)
+	assert.Equal(4, suite.AssertionCount)
+	assert.Equal(1, suite.FailureCount)
+	assert.Equal(2, suite.ErrorCount)
+	assert.Equal(0, suite.PendingCount)
+}
+
+func TestOutputParser_SummaryWithErrorsOnly(t *testing.T) {
+	assert := assert.New(t)
+	parser := &outputParser{}
+
+	notifications, _ := parser.ParseLine("3 runs, 4 assertions, 0 failures, 2 errors, 0 skips")
+	assert.Len(notifications, 1)
+	suite := notifications[0].(types.SuiteNotification)
+	assert.Equal(types.SuiteFinished, suite.Event)
+	assert.Equal(3, suite.TestCount)
+	assert.Equal(4, suite.AssertionCount)
+	assert.Equal(0, suite.FailureCount)
+	assert.Equal(2, suite.ErrorCount)
+	assert.Equal(0, suite.PendingCount)
 }
 
 func TestOutputParser_ProgressParsing(t *testing.T) {
@@ -133,7 +167,9 @@ func TestOutputParser_BothSummaryFormats(t *testing.T) {
 		suite := notifications[0].(types.SuiteNotification)
 		assert.Equal(types.SuiteFinished, suite.Event)
 		assert.Equal(5, suite.TestCount)
+		assert.Equal(13, suite.AssertionCount)
 		assert.Equal(0, suite.FailureCount)
+		assert.Equal(0, suite.ErrorCount)
 		assert.Equal(0, suite.PendingCount)
 	})
 
@@ -147,7 +183,9 @@ func TestOutputParser_BothSummaryFormats(t *testing.T) {
 		suite := notifications[0].(types.SuiteNotification)
 		assert.Equal(types.SuiteFinished, suite.Event)
 		assert.Equal(2, suite.TestCount)
+		assert.Equal(2, suite.AssertionCount)
 		assert.Equal(0, suite.FailureCount)
+		assert.Equal(0, suite.ErrorCount)
 		assert.Equal(0, suite.PendingCount)
 	})
 
@@ -164,7 +202,9 @@ func TestOutputParser_BothSummaryFormats(t *testing.T) {
 		assert.Len(notifications, 1)
 		suite := notifications[0].(types.SuiteNotification)
 		assert.Equal(1, suite.TestCount)
+		assert.Equal(1, suite.AssertionCount)
 		assert.Equal(1, suite.FailureCount)
+		assert.Equal(0, suite.ErrorCount)
 	})
 }
 
@@ -259,7 +299,9 @@ func TestOutputParser_FullIntegration(t *testing.T) {
 		}
 	}
 	assert.Equal(7, suite.TestCount)
+	assert.Equal(11, suite.AssertionCount)
 	assert.Equal(4, suite.FailureCount)
+	assert.Equal(0, suite.ErrorCount)
 	assert.Equal(0, suite.PendingCount)
 }
 
@@ -284,4 +326,15 @@ func TestNotificationToProgress(t *testing.T) {
 			assert.Equal(t, tt.wantType, gotType)
 		})
 	}
+}
+
+func TestOutputParser_FormatSummaryUsesAssertionAndErrorCounts(t *testing.T) {
+	parser := &outputParser{}
+
+	suite := &types.SuiteNotification{
+		AssertionCount: 23,
+		ErrorCount:     2,
+	}
+	summary := parser.FormatSummary(suite, 8, 1, 0, 1.2345, 0)
+	assert.Contains(t, summary, "8 runs, 23 assertions, 1 failure, 2 errors, 0 skips")
 }

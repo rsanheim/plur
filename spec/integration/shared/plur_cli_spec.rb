@@ -7,7 +7,7 @@ RSpec.describe "Plur CLI behavior" do
     it "runs dry-run with no arguments" do
       result = run_plur("--dry-run")
 
-      expect(result.err).to match(%r{\[dry-run\] Running \d+ specs in parallel})
+      expect(result.err).to match(%r{\[dry-run\] Running \d+ specs \[rspec\] in parallel})
       expect(result.err).to include("rspec")
     end
 
@@ -43,7 +43,7 @@ RSpec.describe "Plur CLI behavior" do
         result = run_plur("--dry-run")
 
         expect(result.err).to include("[dry-run]")
-        expect(result.err).to match(/Running \d+ specs in parallel/)
+        expect(result.err).to match(/Running \d+ specs \[rspec\] in parallel/)
       end
     end
   end
@@ -53,7 +53,7 @@ RSpec.describe "Plur CLI behavior" do
       Dir.chdir(default_ruby_dir) do
         result = run_plur
 
-        expect(result.err).to match(/Running \d+ specs in parallel/)
+        expect(result.err).to match(/Running \d+ specs \[rspec\] in parallel/)
         expect(result.out).to include("66 examples, 0 failures")
       end
     end

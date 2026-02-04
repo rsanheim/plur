@@ -269,6 +269,7 @@ RSpec.describe Plur::JsonRowsFormatter do
         example_count: 10,
         failure_count: 0,
         pending_count: 0,
+        errors_outside_of_examples_count: 0,
         duration: 1.23,
         load_time: 0.1)
 
@@ -284,6 +285,7 @@ RSpec.describe Plur::JsonRowsFormatter do
         "example_count" => 10,
         "failure_count" => 0,
         "pending_count" => 0,
+        "errors_outside_of_examples_count" => 0,
         "duration" => 1.23,
         "load_time" => 0.1
       })

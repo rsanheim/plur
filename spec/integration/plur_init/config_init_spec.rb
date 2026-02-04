@@ -14,7 +14,7 @@ RSpec.describe "plur config init command" do
 
       config_content = File.read(File.join(test_dir, ".plur.toml"))
       expect(config_content).to include("workers = 4")
-      expect(config_content).to include("command = \"bundle exec rspec\"")
+      expect(config_content).to include("cmd = [\"bundle\", \"exec\", \"rspec\"]")
     end
 
     it "creates a Rails config with --template=rails" do
@@ -27,7 +27,7 @@ RSpec.describe "plur config init command" do
 
       config_content = File.read(File.join(test_dir, ".plur.toml"))
       expect(config_content).to include("workers = 8")
-      expect(config_content).to include("bin/spring rspec")
+      expect(config_content).to include("cmd = [\"bin/rspec\"]")
     end
 
     it "creates a Minitest config with --template=minitest" do
@@ -39,8 +39,7 @@ RSpec.describe "plur config init command" do
       expect(output).to include("Created .plur.toml with minitest template")
 
       config_content = File.read(File.join(test_dir, ".plur.toml"))
-      expect(config_content).to include("type = \"minitest\"")
-      expect(config_content).to include("bundle exec ruby -Itest")
+      expect(config_content).to include("cmd = [\"bundle\", \"exec\", \"ruby\", \"-Itest\"]")
     end
   end
 

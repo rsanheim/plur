@@ -62,31 +62,38 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 	// Minitest doesn't typically show load time in the summary
 	// Format: "X runs, Y assertions, Z failures, W errors, V skips"
 
-	// For now, we can't distinguish between failures and errors from the summary data
-	// In minitest, totalFailures includes both failures and errors
-	// We'll need to track these separately in the future
-
 	runText := "1 run"
 	if totalExamples != 1 {
 		runText = fmt.Sprintf("%d runs", totalExamples)
 	}
 
-	// TODO: Track assertions count properly
-	// For now, assume at least one assertion per test
+	assertionCount := totalExamples
+	if suite != nil && suite.AssertionCount > 0 {
+		assertionCount = suite.AssertionCount
+	}
 	assertionText := "1 assertion"
-	if totalExamples != 1 {
-		assertionText = fmt.Sprintf("%d assertions", totalExamples)
+	if assertionCount != 1 {
+		assertionText = fmt.Sprintf("%d assertions", assertionCount)
 	}
 
+	errorCount := 0
+	if suite != nil {
+		errorCount = suite.ErrorCount
+	}
+	failureCount := totalFailures
 	failureText := "0 failures"
-	if totalFailures == 1 {
+	if failureCount == 1 {
 		failureText = "1 failure"
-	} else if totalFailures > 1 {
-		failureText = fmt.Sprintf("%d failures", totalFailures)
+	} else if failureCount > 1 {
+		failureText = fmt.Sprintf("%d failures", failureCount)
 	}
 
-	// TODO: Track errors separately from failures
 	errorText := "0 errors"
+	if errorCount == 1 {
+		errorText = "1 error"
+	} else if errorCount > 1 {
+		errorText = fmt.Sprintf("%d errors", errorCount)
+	}
 
 	skipText := "0 skips"
 	if totalPending == 1 {
@@ -152,6 +159,7 @@ func (p *outputParser) parseSummaryLine(line string) []types.TestNotification {
 	// Check for summary line
 	if match := summaryRegex.FindStringSubmatch(line); match != nil {
 		runs, _ := strconv.Atoi(match[1])
+		assertions, _ := strconv.Atoi(match[2])
 		failures, _ := strconv.Atoi(match[3])
 		errors, _ := strconv.Atoi(match[4])
 		skips, _ := strconv.Atoi(match[5])
@@ -165,10 +173,12 @@ func (p *outputParser) parseSummaryLine(line string) []types.TestNotification {
 
 		// Create the suite finished notification
 		finishNotification := types.SuiteNotification{
-			Event:        types.SuiteFinished,
-			TestCount:    runs,
-			FailureCount: failures + errors,
-			PendingCount: skips,
+			Event:          types.SuiteFinished,
+			TestCount:      runs,
+			AssertionCount: assertions,
+			FailureCount:   failures,
+			ErrorCount:     errors,
+			PendingCount:   skips,
 		}
 		notifications = append(notifications, finishNotification)
 

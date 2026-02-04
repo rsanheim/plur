@@ -6,21 +6,24 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/types"
 )
 
 // WorkerResult represents the accumulated results from a worker executing one or more test files
 type WorkerResult struct {
-	State        types.TestState
-	Output       string
-	Error        error
-	Duration     time.Duration
-	FileLoadTime time.Duration
-	ExampleCount int
-	FailureCount int
-	PendingCount int
-	Tests        []types.TestCaseNotification // All test notifications
+	State          types.TestState
+	Output         string
+	Error          error
+	Duration       time.Duration
+	FileLoadTime   time.Duration
+	ExampleCount   int
+	AssertionCount int
+	FailureCount   int
+	ErrorCount     int
+	PendingCount   int
+	Tests          []types.TestCaseNotification // All test notifications
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -44,7 +47,9 @@ type OutputMessage struct {
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
 	TotalExamples     int
+	TotalAssertions   int
 	TotalFailures     int
+	TotalErrors       int
 	AllFailures       []types.TestCaseNotification
 	TotalCPUTime      time.Duration
 	WallTime          time.Duration
@@ -76,7 +81,9 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 	for _, result := range results {
 		summary.TotalCPUTime += result.Duration
 		summary.TotalExamples += result.ExampleCount
+		summary.TotalAssertions += result.AssertionCount
 		summary.TotalFailures += result.FailureCount
+		summary.TotalErrors += result.ErrorCount
 		summary.TotalPending += result.PendingCount
 
 		// Track the maximum file load time (since workers run in parallel)
@@ -137,12 +144,13 @@ func renumberSummaryOutput(output string) string {
 
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
-	parser, err := currentJob.CreateParser()
+	spec, err := framework.Get(currentJob.Framework)
 	if err != nil {
 		// Fallback to basic output
 		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
 		return
 	}
+	parser := spec.Parser()
 
 	// Print pending section first (RSpec outputs pending before failures)
 	if summary.FormattedPending != "" {
@@ -151,7 +159,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
-	if currentJob.IsMinitestStyle() && summary.HasFailures {
+	if framework.IsMinitest(spec.Name) && summary.HasFailures {
 		// Collect all output from failed workers
 		for _, result := range summary.AllResults {
 			if result.State == types.StateFailed && result.Output != "" {
@@ -168,7 +176,14 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	summaryText := summary.FormattedSummary
 	hasFormattedSummary := summaryText != ""
 	if !hasFormattedSummary {
-		summaryText = parser.FormatSummary(nil, summary.TotalExamples,
+		suite := &types.SuiteNotification{
+			TestCount:      summary.TotalExamples,
+			AssertionCount: summary.TotalAssertions,
+			FailureCount:   summary.TotalFailures,
+			ErrorCount:     summary.TotalErrors,
+			PendingCount:   summary.TotalPending,
+		}
+		summaryText = parser.FormatSummary(suite, summary.TotalExamples,
 			summary.TotalFailures, summary.TotalPending,
 			summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
 	}
@@ -182,7 +197,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 
 	// Print failed examples list only if we didn't get a formatted summary
 	// (RSpec's formatted summary already includes the failed examples list)
-	if !hasFormattedSummary && !currentJob.IsMinitestStyle() {
+	if !hasFormattedSummary && !framework.IsMinitest(spec.Name) {
 		// Skip for minitest since we already printed the raw output
 		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
 			fmt.Println("\nFailed examples:")

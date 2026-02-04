@@ -42,6 +42,16 @@ RSpec.describe "Plur error handling" do
     end
   end
 
+  it "includes errors outside of examples in multi-worker summaries" do
+    chdir(fixture_dir) do
+      result = run_plur_allowing_errors("-n", "2", "--no-color",
+        "spec/passing_spec.rb", "spec/load_error_spec.rb")
+
+      expect(result.exit_status).to eq(1)
+      expect(result.out).to match(/2 examples, 0 failures, 1 error occurred outside of examples/)
+    end
+  end
+
   context "when JSON output is empty or malformed" do
     it "provides helpful error message instead of raw JSON parsing error" do
       fixture_dir = project_fixture("empty_json")
@@ -65,7 +75,7 @@ RSpec.describe "Plur error handling" do
           result = run_plur_allowing_errors
 
           # Should handle gracefully and show appropriate message
-          expect(result.out + result.err).to match(/ERROR.*No default spec\/test files found/)
+          expect(result.out + result.err).to match(/ERROR.*no default spec\/test files found/)
         end
       end
     end

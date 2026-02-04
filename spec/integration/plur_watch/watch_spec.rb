@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.describe "plur watch command", :skip_if_ci do
+RSpec.describe "plur watch command", :skip_if_ci, :skip_if_no_tty do
   include PlurWatchHelper
 
   context "basic functionality" do

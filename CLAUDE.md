@@ -15,12 +15,13 @@ bin/rake                      # Run ALL tests & lints before committing
 bin/rake test:default_ruby    # Test plur on default-ruby fixture project (quick check)
 bin/rake test                 # Run full Ruby test suite
 bin/rake standard:fix         # Fix Ruby lint issues
-
-# Never do this:
-# rake anything         ❌ WRONG - breaks bundler context
-# go build             ❌ WRONG - missing version info
-# cd plur && go build   ❌ WRONG - use bin/rake install
 ```
+
+Notes:
+- `bin/rake install` works as-is; no PATH/GOPATH tweaking is required.
+- For a single spec file, use `bin/rspec spec/path/to/file_spec.rb`.
+- Install GoReleaser via Go (required by `bin/rake install`):
+  `go install github.com/goreleaser/goreleaser/v2@latest`
 
 ### bin/rake build vs bin/rake install
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,13 +20,14 @@ func TestBuiltinDefaultsLoad(t *testing.T) {
 
 func TestResolveJobExplicitUserJob(t *testing.T) {
 	userJobs := map[string]job.Job{
-		"custom": {Cmd: []string{"custom-runner"}},
+		"custom": {Cmd: []string{"custom-runner"}, Framework: "passthrough"},
 	}
 
 	result, err := ResolveJob("custom", userJobs, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "custom", result.Name)
 	assert.Equal(t, []string{"custom-runner"}, result.Job.Cmd)
+	assert.Equal(t, "passthrough", result.Job.Framework)
 }
 
 func TestResolveJobExplicitBuiltinJob(t *testing.T) {
@@ -33,6 +35,21 @@ func TestResolveJobExplicitBuiltinJob(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "rspec", result.Name)
 	assert.Contains(t, result.Job.Cmd, "rspec")
+	assert.Equal(t, "rspec", result.Job.Framework)
+}
+
+func TestResolveJobOverrideBuiltinFrameworkDefault(t *testing.T) {
+	userJobs := map[string]job.Job{
+		"rspec": {Cmd: []string{"custom-runner"}},
+	}
+
+	result, err := ResolveJob("rspec", userJobs, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "rspec", result.Job.Framework)
+	assert.Equal(t, []string{"custom-runner"}, result.Job.Cmd)
+	assert.Equal(t, "spec/**/*_spec.rb", result.Job.TargetPattern)
+	assert.True(t, result.Inherited.Framework)
+	assert.True(t, result.Inherited.TargetPattern)
 }
 
 func TestResolveJobExplicitNotFound(t *testing.T) {
@@ -55,7 +72,7 @@ func TestResolveJobInferFromPatterns(t *testing.T) {
 	result, err := ResolveJob("", nil, []string{"spec/user_spec.rb"})
 	require.NoError(t, err)
 	assert.Equal(t, "rspec", result.Name)
-	assert.True(t, result.WasInferred)
+	assert.Equal(t, ResolveReasonExplicitPatterns, result.Reason)
 }
 
 func TestResolveJobInferMinitest(t *testing.T) {
@@ -70,7 +87,69 @@ func TestResolveJobInferMinitest(t *testing.T) {
 	result, err := ResolveJob("", nil, []string{"test/user_test.rb"})
 	require.NoError(t, err)
 	assert.Equal(t, "minitest", result.Name)
-	assert.True(t, result.WasInferred)
+	assert.Equal(t, ResolveReasonExplicitPatterns, result.Reason)
+}
+
+func TestResolveJobInferFromDirectoryPattern(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	os.Chdir(tmpDir)
+
+	os.MkdirAll("spec/models", 0o755)
+	os.WriteFile("spec/models/user_spec.rb", []byte(""), 0o644)
+
+	result, err := ResolveJob("", nil, []string{"spec/models"})
+	require.NoError(t, err)
+	assert.Equal(t, "rspec", result.Name)
+	assert.Equal(t, ResolveReasonExplicitPatterns, result.Reason)
+}
+
+func TestResolveJobInferFromGlobPattern(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	os.Chdir(tmpDir)
+
+	os.MkdirAll("spec", 0o755)
+	os.WriteFile("spec/user_spec.rb", []byte(""), 0o644)
+
+	result, err := ResolveJob("", nil, []string{"spec/**/*_spec.rb"})
+	require.NoError(t, err)
+	assert.Equal(t, "rspec", result.Name)
+	assert.Equal(t, ResolveReasonExplicitPatterns, result.Reason)
+}
+
+func TestResolveJobPatternsFallbacksToAutodetect(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	os.Chdir(tmpDir)
+
+	os.MkdirAll("spec", 0o755)
+	os.WriteFile("spec/example_spec.rb", []byte(""), 0o644)
+	os.WriteFile("README.md", []byte("hello"), 0o644)
+
+	result, err := ResolveJob("", nil, []string{"README.md"})
+	require.NoError(t, err)
+	assert.Equal(t, "rspec", result.Name)
+	assert.Equal(t, ResolveReasonAutodetectAfterPatterns, result.Reason)
+}
+
+func TestResolveJobInferMixedFrameworksErrors(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	os.Chdir(tmpDir)
+
+	os.MkdirAll("spec", 0o755)
+	os.MkdirAll("test", 0o755)
+	os.WriteFile("spec/example_spec.rb", []byte(""), 0o644)
+	os.WriteFile("test/example_test.rb", []byte(""), 0o644)
+
+	_, err := ResolveJob("", nil, []string{"spec/example_spec.rb", "test/example_test.rb"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "multiple frameworks")
 }
 
 func TestResolveJobAutodetectRSpec(t *testing.T) {
@@ -86,6 +165,7 @@ func TestResolveJobAutodetectRSpec(t *testing.T) {
 	result, err := ResolveJob("", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "rspec", result.Name)
+	assert.Equal(t, ResolveReasonAutodetect, result.Reason)
 }
 
 func TestResolveJobAutodetectMinitest(t *testing.T) {
@@ -101,6 +181,7 @@ func TestResolveJobAutodetectMinitest(t *testing.T) {
 	result, err := ResolveJob("", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "minitest", result.Name)
+	assert.Equal(t, ResolveReasonAutodetect, result.Reason)
 }
 
 func TestResolveJobAutodetectGoTest(t *testing.T) {
@@ -116,6 +197,7 @@ func TestResolveJobAutodetectGoTest(t *testing.T) {
 	result, err := ResolveJob("", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "go-test", result.Name)
+	assert.Equal(t, ResolveReasonAutodetect, result.Reason)
 }
 
 func TestResolveJobAutodetectPriority(t *testing.T) {
@@ -133,6 +215,7 @@ func TestResolveJobAutodetectPriority(t *testing.T) {
 	result, err := ResolveJob("", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "rspec", result.Name) // rspec has priority
+	assert.Equal(t, ResolveReasonAutodetect, result.Reason)
 }
 
 func TestResolveJobAutodetectNoMatch(t *testing.T) {
@@ -144,7 +227,7 @@ func TestResolveJobAutodetectNoMatch(t *testing.T) {
 	// Empty directory - no test files
 	_, err := ResolveJob("", nil, nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "No default spec/test files found using default patterns")
+	assert.Contains(t, err.Error(), "no default spec/test files found using default patterns")
 }
 
 func TestResolveJobReturnsWatches(t *testing.T) {
@@ -162,6 +245,26 @@ func TestResolveJobReturnsWatches(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "expected lib-to-spec watch for rspec job")
+}
+
+func TestResolveJobCustomDefaultsToPassthrough(t *testing.T) {
+	userJobs := map[string]job.Job{
+		"custom": {Cmd: []string{"custom-runner"}},
+	}
+
+	result, err := ResolveJob("custom", userJobs, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "passthrough", result.Job.Framework)
+}
+
+func TestResolveJobCustomRspecDefaultsToBuiltinFramework(t *testing.T) {
+	userJobs := map[string]job.Job{
+		"rspec": {Cmd: []string{"bundle", "exec", "rspec", "--fail-fast"}},
+	}
+
+	result, err := ResolveJob("rspec", userJobs, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "rspec", result.Job.Framework)
 }
 
 func TestDefaultJobCommands(t *testing.T) {
@@ -205,4 +308,38 @@ func TestGetWatchesForJob(t *testing.T) {
 func TestGetWatchesForJobNoMatches(t *testing.T) {
 	watches := getWatchesForJob("nonexistent")
 	assert.Empty(t, watches)
+}
+
+func TestValidateConfigRejectsUnknownFramework(t *testing.T) {
+	userJobs := map[string]job.Job{
+		"weird": {Cmd: []string{"echo", "hi"}, Framework: "unknown"},
+	}
+
+	err := ValidateConfig(userJobs, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown framework")
+}
+
+func TestValidateConfigRejectsMissingCommand(t *testing.T) {
+	userJobs := map[string]job.Job{
+		"custom": {Framework: "rspec"},
+	}
+
+	err := ValidateConfig(userJobs, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must define a command")
+}
+
+func TestValidateConfigRejectsUnknownWatchJob(t *testing.T) {
+	watches := []watch.WatchMapping{
+		{
+			Name:   "bad-watch",
+			Source: "spec/**/*_spec.rb",
+			Jobs:   []string{"nope"},
+		},
+	}
+
+	err := ValidateConfig(nil, watches)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "references undefined job")
 }

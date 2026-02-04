@@ -1,2 +1,5 @@
-[spec]
-type = "minitest"
+use = "minitest"
+
+[job.minitest]
+cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
+target_pattern = "test/**/*_test.rb"

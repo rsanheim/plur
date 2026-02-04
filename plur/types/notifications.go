@@ -17,7 +17,6 @@ type TestEvent string
 const (
 	TestPassed    TestEvent = "test_passed"
 	TestFailed    TestEvent = "test_failed"
-	TestError     TestEvent = "test_error"
 	TestPending   TestEvent = "test_pending"
 	TestStarted   TestEvent = "test_started"
 	SuiteStarted  TestEvent = "suite_started"
@@ -63,12 +62,14 @@ type TestException struct {
 
 // SuiteNotification represents suite-level events
 type SuiteNotification struct {
-	Event        TestEvent
-	TestCount    int
-	FailureCount int
-	PendingCount int
-	LoadTime     time.Duration
-	Duration     time.Duration
+	Event          TestEvent
+	TestCount      int
+	AssertionCount int // Only populated for minitest
+	FailureCount   int
+	ErrorCount     int
+	PendingCount   int
+	LoadTime       time.Duration
+	Duration       time.Duration
 }
 
 func (n SuiteNotification) GetEvent() TestEvent { return n.Event }

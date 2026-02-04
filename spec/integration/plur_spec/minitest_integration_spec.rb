@@ -18,7 +18,7 @@ RSpec.describe "Minitest Integration" do
           result = run_plur("--use", "minitest", "-n", "1")
           expect(result).to be_success
           expect(result.err).to include("plur version")
-          expect(result.err).to include("Running 2 tests")
+          expect(result.err).to include("Running 2 tests [minitest]")
           # Minitest shows the final summary
           expect(result.out).to match(/\d+ runs?, \d+ assertions?, 0 failures?, 0 errors?/)
         end
@@ -75,6 +75,69 @@ RSpec.describe "Minitest Integration" do
           expect(result).to be_success
           # Should use minitest commands
           expect(result.err).to include("ruby -Itest")
+        end
+      end
+    end
+  end
+
+  context "with grouped minitest command output" do
+    let(:project_dir) { project_fixture!("minitest-success") }
+    let(:minitest_seed) { "8378" }
+
+    def normalize_minitest_output(output)
+      output
+        .gsub(/Run options: --seed \d+/, "Run options: --seed [SEED]")
+        .gsub(/Finished in [\d.]+s, [\d.]+ runs\/s, [\d.]+ assertions\/s\./,
+          "Finished in [DURATION]s, [RUNS_PER_SEC] runs/s, [ASSERTIONS_PER_SEC] assertions/s.")
+    end
+
+    def run_grouped_minitest(seed:)
+      # Use a single ruby command with a quoted -e script to require each file.
+      command = [
+        "bundle", "exec", "ruby",
+        "-Itest",
+        "-e", '["calculator_test", "string_helper_test"].each { |f| require f }',
+        "--", "--seed", seed
+      ]
+
+      Open3.capture3(*command)
+    end
+
+    def run_plur_minitest_serial
+      Open3.capture3("plur", "--use", "minitest", "-n", "1", "--no-color")
+    end
+
+    it "records grouped minitest output from a ruby -e require list" do
+      stdout_matcher = ->(record, actual) {
+        normalize_minitest_output(record) == normalize_minitest_output(actual)
+      }
+      stderr_matcher = ->(_record, _actual) { true }
+
+      Backspin.run!("minitest_grouped_ruby_command_output",
+        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
+        chdir(project_dir) do
+          Bundler.with_unbundled_env do
+            run_grouped_minitest(seed: minitest_seed)
+          end
+        end
+      end
+    end
+
+    it "compares plur -n1 output to grouped minitest output" do
+      pending("plur output does not match raw minitest output yet")
+
+      stdout_matcher = ->(record, actual) {
+        normalize_minitest_output(record) == normalize_minitest_output(actual)
+      }
+      stderr_matcher = ->(_record, _actual) { true }
+
+      Backspin.run!("minitest_grouped_ruby_command_output",
+        mode: :verify,
+        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
+        chdir(project_dir) do
+          Bundler.with_unbundled_env do
+            run_plur_minitest_serial
+          end
         end
       end
     end

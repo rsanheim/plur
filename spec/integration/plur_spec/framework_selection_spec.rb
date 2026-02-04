@@ -136,7 +136,7 @@ RSpec.describe "Framework Selection" do
       output = run_plur_in_dir(test_dir, "--dry-run", allow_failure: true)
 
       # The error message should indicate no framework was detected
-      expect(output).to include("No default spec/test files found")
+      expect(output).to include("no default spec/test files found")
     end
   end
 

@@ -19,7 +19,6 @@ import (
 
 type SpecCmd struct {
 	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Use        string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
 	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
 }
@@ -29,10 +28,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	fmt.Fprintf(os.Stderr, "plur version version=%s\n", GetVersionInfo())
 
 	// Determine explicit job name (CLI or config)
-	explicitName := r.Use
-	if explicitName == "" {
-		explicitName = parent.Use
-	}
+	explicitName := parent.Use
 
 	result, err := autodetect.ResolveJob(explicitName, parent.Job, r.Patterns)
 	if err != nil {
@@ -41,7 +37,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	currentJob := result.Job
 
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.GetTargetPattern())
+	logInheritedFields(currentJob.Name, result.Inherited)
+
+	targetPatterns, _ := targetPatternsForJob(currentJob)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", result.Reason)
 
 	// Discover test files
 	var testFiles []string
@@ -59,14 +58,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return err
 		}
 		if len(testFiles) == 0 {
-			suffix := currentJob.GetTargetSuffix()
-			// Determine directory from job's target pattern
-			pattern := currentJob.TargetPattern
-			dir := "spec"
-			if strings.HasPrefix(pattern, "test/") {
-				dir = "test"
+			patterns, err := targetPatternsForJob(currentJob)
+			if err != nil || len(patterns) == 0 {
+				return fmt.Errorf("no test files found")
 			}
-			return fmt.Errorf("no test files found (looking for *%s in %s/)", suffix, dir)
+			return fmt.Errorf("no test files found (looking for %s)", strings.Join(patterns, ", "))
 		}
 	}
 	msg := fmt.Sprintf("found %v test files", len(testFiles))
@@ -122,12 +118,23 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	return nil
 }
 
+func logInheritedFields(jobName string, inherited autodetect.InheritedFields) {
+	if !inherited.Cmd && !inherited.Env && !inherited.Framework && !inherited.TargetPattern {
+		return
+	}
+	logger.Logger.Info("job inherited defaults",
+		"job", jobName,
+		"cmd", inherited.Cmd,
+		"env", inherited.Env,
+		"framework", inherited.Framework,
+		"target_pattern", inherited.TargetPattern)
+}
+
 type WatchCmd struct {
 	Run     WatchRunCmd     `cmd:"" default:"withargs" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
 	Find    WatchFindCmd    `cmd:"" help:"Show what would be executed for a given file change"`
 
-	Use    string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Ignore []string `help:"Patterns to ignore from watch events (default: .git/**, node_modules/**)" name:"ignore"`
 }
 
@@ -205,7 +212,7 @@ type PlurCLI struct {
 	DryRun    bool   `help:"Print what would be executed without running" default:"false"`
 	FirstIs1  bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	JSON      string `help:"Save detailed test results as JSON to the specified file" default:""`
-	Use       string `help:"Job to use (overrides autodetection)" default:"" hidden:""`
+	Use       string `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Verbose   bool   `short:"v" help:"Enable verbose output for debugging" default:"false"`
 	Version   bool   `help:"Show version information"`
 	Workers   int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
@@ -258,6 +265,10 @@ func (cli *PlurCLI) AfterApply() error {
 		JSON:          cli.JSON,
 		FirstIs1:      cli.FirstIs1,
 		LoadedConfigs: loadedConfigs,
+	}
+
+	if err := autodetect.ValidateConfig(cli.Job, cli.WatchMappings); err != nil {
+		return err
 	}
 
 	return nil
@@ -324,7 +335,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var configFiles []string
+	configFiles := []string{"~/.plur.toml", ".plur.toml"}
 	if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
 		if _, err := os.Stat(configFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
@@ -332,8 +343,6 @@ func main() {
 		}
 		configFiles = append(configFiles, configFile)
 	}
-
-	configFiles = append(configFiles, ".plur.toml", "~/.plur.toml")
 
 	cli.configFiles = configFiles
 

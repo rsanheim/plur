@@ -65,6 +65,11 @@ targets = ["spec/{{match}}_spec.rb"]
 jobs = ["rspec"]
 ```
 
+Config files load in this order (later files override earlier values):
+1) `~/.plur.toml`
+2) `.plur.toml`
+3) `PLUR_CONFIG_FILE` (if set)
+
 See `examples/` directory for more configuration examples.
 
 ### Environment Variables

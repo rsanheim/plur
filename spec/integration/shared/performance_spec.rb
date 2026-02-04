@@ -45,13 +45,13 @@ RSpec.describe "Plur performance" do
       result = run_plur("-C", default_ruby_dir.to_s)
 
       # Should show worker count in stderr
-      expect(result.err).to match(/Running \d+ specs in parallel using \d+ workers/)
+      expect(result.err).to match(/Running \d+ specs \[rspec\] in parallel using \d+ workers/)
 
       available_cores = `nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null`.to_i
       expected_workers = [available_cores - 2, 1].max
 
       # Extract values
-      if result.err =~ /Running \d+ specs in parallel using (\d+) workers/
+      if result.err =~ /Running \d+ specs \[rspec\] in parallel using (\d+) workers/
         workers = $1.to_i
 
         # Default should be cores - 2 (but at least 1)

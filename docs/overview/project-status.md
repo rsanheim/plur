@@ -22,7 +22,7 @@ plur --dry-run               # Show what would run without execution
 ```
 
 ### Technical Architecture
-- **Language**: Go 1.21+ 
+- **Language**: Go 1.25+
 - **CLI Framework**: Kong (https://github.com/alecthomas/kong)
 - **Concurrency**: Worker pool pattern with sync.WaitGroup
 - **Process Management**: exec.CommandContext for timeout handling
@@ -124,14 +124,12 @@ The plur implementation is feature-complete and performing well:
 
 ## Future Enhancements (Optional)
 
-- **Test filtering**: Support for RSpec's `--tag` and file filtering
-- **JSON reporting**: Enhanced structured output for CI integration
-- **Configuration files**: Support for `.plur.yml` configuration
+- **Test filtering**: Support for RSpec's `--tag` filtering and line number targeting
 - **Failure isolation**: Re-run only failed tests
 - **Watch mode improvements**: Better output management, queue-based execution
 
 ## Dependencies
 
-- **Go 1.21+** for building plur
+- **Go 1.25+** for building plur
 - **hyperfine** for benchmarking (`brew install hyperfine`)
 - **Ruby/RSpec** projects for testing

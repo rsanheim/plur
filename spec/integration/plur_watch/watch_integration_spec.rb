@@ -3,7 +3,7 @@ require "tempfile"
 require "fileutils"
 require "timeout"
 
-RSpec.describe "plur watch integration" do
+RSpec.describe "plur watch integration", :skip_if_no_tty do
   include PlurWatchHelper
 
   it "starts watching the correct directories" do
@@ -13,6 +13,52 @@ RSpec.describe "plur watch integration" do
     expect(result.err).to include("plur configuration info")
     expect(result.err).to include("directories=[lib spec]")
     expect(result.err).to include("Debounce delay ms=30")
+  end
+
+  it "deduplicates overlapping watch directories to avoid duplicate runs" do
+    calculator_file = default_ruby_dir.join("lib/calculator.rb")
+    original_content = calculator_file.read
+
+    Dir.mktmpdir do |tmpdir|
+      config_path = File.join(tmpdir, ".plur.toml")
+      File.write(config_path, <<~TOML)
+        use = "rspec"
+
+        [[watch]]
+        source = "**/*_spec.rb"
+        jobs = ["rspec"]
+
+        [[watch]]
+        source = "lib/**/*.rb"
+        targets = ["spec/{{match}}_spec.rb"]
+        jobs = ["rspec"]
+      TOML
+
+      modified = false
+
+      plur_home = File.join(tmpdir, "plur-home")
+      result, _streamed_out, _streamed_err = capture_watch_output(
+        plur_timeout: 3,
+        env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_HOME" => plur_home}
+      ) do |_out, err|
+        if !modified && err && err.include?("s/self/live@")
+          calculator_file.write(original_content + "\n# Modified by test")
+          modified = true
+        end
+      end
+
+      directories_line = result.err.lines.find { |line| line.include?("directories=") }
+      expect(directories_line).not_to be_nil
+
+      raw_directories = directories_line[/directories=\[([^\]]*)\]/, 1].to_s
+      directories = raw_directories.split(" ").reject(&:empty?)
+      expect(directories.size).to eq(1), "Expected 1 watch directory, got #{directories.inspect}"
+
+      executions = result.err.scan('Executing job job="rspec"').count
+      expect(executions).to eq(1), "Expected 1 job execution, got #{executions}"
+    ensure
+      calculator_file.write(original_content)
+    end
   end
 
   it "detects lib file changes" do
@@ -34,9 +80,12 @@ RSpec.describe "plur watch integration" do
   end
 
   it "detects spec_helper.rb changes" do
+    spec_dir = default_ruby_dir.join("spec").to_s
     modified = false
     result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
       if !modified && err && err.include?("s/self/live@")
+        next unless err.include?(spec_dir)
+
         spec_helper = default_ruby_dir.join("spec/spec_helper.rb")
         original_content = spec_helper.read
         spec_helper.write(original_content + "\n# Modified by test")
@@ -56,12 +105,15 @@ RSpec.describe "plur watch integration" do
     $stderr.sync = true
 
     spec_path = default_ruby_dir.join("spec/calculator_spec.rb")
+    spec_dir = default_ruby_dir.join("spec").to_s
     contents = spec_path.read
 
     modified = false
     result, _, _ = capture_watch_output(plur_timeout: 5) do |out, err|
       # Wait for watcher to be ready (live message)
       if !modified && err && err.include?("s/self/live@")
+        next unless err.include?(spec_dir)
+
         File.write(spec_path, "# Modified\n" + contents)
         modified = true
       end

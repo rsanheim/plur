@@ -76,11 +76,11 @@ $ plur watch --timeout=60
 # But help doesn't show the timeout flag
 $ plur watch -h
 # Shows: watch <command> [flags]
-# Missing: --timeout, --debounce, --use flags from WatchRunCmd
+# Missing: --timeout, --debounce flags from WatchRunCmd
 
 # You have to explicitly check the subcommand help
 $ plur watch run -h
-# Shows: --timeout, --debounce, --use flags
+# Shows: --timeout, --debounce flags
 ```
 
 **Why This Happens:**

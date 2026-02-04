@@ -1,6 +1,6 @@
 require "spec_helper"
 
-RSpec.describe "plur watch --ignore flag" do
+RSpec.describe "plur watch --ignore flag", :skip_if_no_tty do
   include PlurWatchHelper
 
   describe "CLI flag" do
