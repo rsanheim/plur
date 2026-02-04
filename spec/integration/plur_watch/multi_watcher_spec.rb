@@ -2,7 +2,7 @@ require "spec_helper"
 require "tempfile"
 require "fileutils"
 
-RSpec.describe "plur watch with multiple directories" do
+RSpec.describe "plur watch with multiple directories", :skip_if_no_tty do
   include PlurWatchHelper
 
   it "watches multiple directories simultaneously" do

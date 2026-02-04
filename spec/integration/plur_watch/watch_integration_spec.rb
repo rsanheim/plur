@@ -3,7 +3,7 @@ require "tempfile"
 require "fileutils"
 require "timeout"
 
-RSpec.describe "plur watch integration" do
+RSpec.describe "plur watch integration", :skip_if_no_tty do
   include PlurWatchHelper
 
   it "starts watching the correct directories" do
