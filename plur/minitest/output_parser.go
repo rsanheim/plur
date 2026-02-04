@@ -62,9 +62,6 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 	// Minitest doesn't typically show load time in the summary
 	// Format: "X runs, Y assertions, Z failures, W errors, V skips"
 
-	// totalFailures includes both failures and errors for minitest.
-	// When suite data includes error counts, adjust failure counts accordingly.
-
 	runText := "1 run"
 	if totalExamples != 1 {
 		runText = fmt.Sprintf("%d runs", totalExamples)
@@ -84,9 +81,6 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 		errorCount = suite.ErrorCount
 	}
 	failureCount := totalFailures
-	if errorCount > 0 && totalFailures >= errorCount {
-		failureCount = totalFailures - errorCount
-	}
 	failureText := "0 failures"
 	if failureCount == 1 {
 		failureText = "1 failure"
@@ -182,7 +176,7 @@ func (p *outputParser) parseSummaryLine(line string) []types.TestNotification {
 			Event:          types.SuiteFinished,
 			TestCount:      runs,
 			AssertionCount: assertions,
-			FailureCount:   failures + errors,
+			FailureCount:   failures,
 			ErrorCount:     errors,
 			PendingCount:   skips,
 		}

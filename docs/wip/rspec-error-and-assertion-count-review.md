@@ -8,6 +8,7 @@
   - **Failure** = `Assertion` failures; `StatisticsReporter` counts these as `failures`.
   - **Error** = `UnexpectedError` (uncaught exception); `StatisticsReporter` counts these as `errors`, and `Reportable#error?` checks for `UnexpectedError`.
   - Result codes map to “F” vs “E” based on the failure type.
+  - `FailureCount` tracks failures only; `ErrorCount` tracks errors only (no combined count).
 
 ## Scope
 Review how RSpec parsing and error handling works today, and confirm how the new `AssertionCount` / `ErrorCount` fields interact with RSpec. Identify gaps and tests/docs that cover error handling.

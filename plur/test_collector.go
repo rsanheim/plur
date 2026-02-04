@@ -34,98 +34,97 @@ func NewTestCollector() *TestCollector {
 }
 
 // AddNotification adds a notification to the collector
-func (a *TestCollector) AddNotification(n types.TestNotification) {
+func (collector *TestCollector) AddNotification(n types.TestNotification) {
 	switch n.GetEvent() {
 	case types.TestPassed, types.TestFailed, types.TestPending:
 		if tc, ok := n.(types.TestCaseNotification); ok {
-			a.tests = append(a.tests, tc)
+			collector.tests = append(collector.tests, tc)
 			switch n.GetEvent() {
 			case types.TestFailed:
-				a.failures = append(a.failures, tc)
+				collector.failures = append(collector.failures, tc)
 			case types.TestPending:
-				a.pending = append(a.pending, tc)
+				collector.pending = append(collector.pending, tc)
 			}
 		}
 	case types.SuiteStarted:
 		if suite, ok := n.(types.SuiteNotification); ok {
 			// Store the suite info from SuiteStarted which contains the load time
-			if a.suiteInfo == nil {
-				a.suiteInfo = &suite
+			if collector.suiteInfo == nil {
+				collector.suiteInfo = &suite
 			} else {
 				// Preserve the load time from SuiteStarted
-				a.suiteInfo.LoadTime = suite.LoadTime
+				collector.suiteInfo.LoadTime = suite.LoadTime
 				if suite.TestCount > 0 {
-					a.suiteInfo.TestCount = suite.TestCount
+					collector.suiteInfo.TestCount = suite.TestCount
 				}
 			}
 		}
 	case types.SuiteFinished:
 		if suite, ok := n.(types.SuiteNotification); ok {
-			if a.suiteInfo == nil {
-				a.suiteInfo = &suite
+			if collector.suiteInfo == nil {
+				collector.suiteInfo = &suite
 			} else {
 				// Update suite info with finish data, but preserve LoadTime from SuiteStarted
-				loadTime := a.suiteInfo.LoadTime
-				a.suiteInfo = &suite
-				a.suiteInfo.LoadTime = loadTime
+				loadTime := collector.suiteInfo.LoadTime
+				collector.suiteInfo = &suite
+				collector.suiteInfo.LoadTime = loadTime
 			}
 		}
 	case types.RawOutput:
 		// Handle special formatted notifications
 		switch v := n.(type) {
 		case types.FormattedFailuresNotification:
-			a.formattedFailures = v.Content
+			collector.formattedFailures = v.Content
 		case types.FormattedPendingNotification:
-			a.formattedPending = v.Content
+			collector.formattedPending = v.Content
 		case types.FormattedSummaryNotification:
-			a.formattedSummary = v.Content
+			collector.formattedSummary = v.Content
 		case types.OutputNotification:
-			a.rawOutput.WriteString(v.Content + "\n")
+			collector.rawOutput.WriteString(v.Content + "\n")
 		}
 	}
 }
 
-func (a *TestCollector) BuildResult(duration time.Duration) WorkerResult {
+func (collector *TestCollector) BuildResult(duration time.Duration) WorkerResult {
 	result := WorkerResult{
-		Output:            a.rawOutput.String(),
+		Output:            collector.rawOutput.String(),
 		Duration:          duration,
-		ExampleCount:      len(a.tests),
+		ExampleCount:      len(collector.tests),
 		AssertionCount:    0,
-		FailureCount:      len(a.failures),
+		FailureCount:      len(collector.failures),
 		ErrorCount:        0,
-		PendingCount:      len(a.pending),
-		Tests:             a.tests,
+		PendingCount:      len(collector.pending),
+		Tests:             collector.tests,
 		State:             types.StateSuccess,
-		FormattedFailures: a.formattedFailures,
-		FormattedPending:  a.formattedPending,
-		FormattedSummary:  a.formattedSummary,
+		FormattedFailures: collector.formattedFailures,
+		FormattedPending:  collector.formattedPending,
+		FormattedSummary:  collector.formattedSummary,
 	}
 
 	// Set state based on failures
-	if len(a.failures) > 0 {
+	if len(collector.failures) > 0 {
 		result.State = types.StateFailed
 	}
 
 	// If we have suite info, use its values
-	if a.suiteInfo != nil {
-		result.FileLoadTime = a.suiteInfo.LoadTime
-		// For minitest, use the test count from the summary if available
-		if a.suiteInfo.TestCount > 0 {
-			result.ExampleCount = a.suiteInfo.TestCount
+	if collector.suiteInfo != nil {
+		result.FileLoadTime = collector.suiteInfo.LoadTime
+		if collector.suiteInfo.TestCount >= 0 {
+			result.ExampleCount = collector.suiteInfo.TestCount
 		}
-		if a.suiteInfo.AssertionCount > 0 {
-			result.AssertionCount = a.suiteInfo.AssertionCount
+		if collector.suiteInfo.AssertionCount >= 0 {
+			result.AssertionCount = collector.suiteInfo.AssertionCount
 		}
-		// Use suite's failure count if available (includes both failures and errors)
-		if a.suiteInfo.FailureCount >= 0 {
-			result.FailureCount = a.suiteInfo.FailureCount
+		// Use suite's failure count if available
+		if collector.suiteInfo.FailureCount >= 0 {
+			result.FailureCount = collector.suiteInfo.FailureCount
 		}
-		if a.suiteInfo.ErrorCount >= 0 {
-			result.ErrorCount = a.suiteInfo.ErrorCount
+		if collector.suiteInfo.ErrorCount >= 0 {
+			result.ErrorCount = collector.suiteInfo.ErrorCount
 		}
 		// Use suite's pending count if available
-		if a.suiteInfo.PendingCount >= 0 {
-			result.PendingCount = a.suiteInfo.PendingCount
+		if collector.suiteInfo.PendingCount >= 0 {
+			result.PendingCount = collector.suiteInfo.PendingCount
 		}
 	}
 

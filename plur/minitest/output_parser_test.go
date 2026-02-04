@@ -44,7 +44,22 @@ func TestOutputParser_SummaryIncludesErrors(t *testing.T) {
 	assert.Equal(types.SuiteFinished, suite.Event)
 	assert.Equal(3, suite.TestCount)
 	assert.Equal(4, suite.AssertionCount)
-	assert.Equal(3, suite.FailureCount)
+	assert.Equal(1, suite.FailureCount)
+	assert.Equal(2, suite.ErrorCount)
+	assert.Equal(0, suite.PendingCount)
+}
+
+func TestOutputParser_SummaryWithErrorsOnly(t *testing.T) {
+	assert := assert.New(t)
+	parser := &outputParser{}
+
+	notifications, _ := parser.ParseLine("3 runs, 4 assertions, 0 failures, 2 errors, 0 skips")
+	assert.Len(notifications, 1)
+	suite := notifications[0].(types.SuiteNotification)
+	assert.Equal(types.SuiteFinished, suite.Event)
+	assert.Equal(3, suite.TestCount)
+	assert.Equal(4, suite.AssertionCount)
+	assert.Equal(0, suite.FailureCount)
 	assert.Equal(2, suite.ErrorCount)
 	assert.Equal(0, suite.PendingCount)
 }
@@ -320,6 +335,6 @@ func TestOutputParser_FormatSummaryUsesAssertionAndErrorCounts(t *testing.T) {
 		AssertionCount: 23,
 		ErrorCount:     2,
 	}
-	summary := parser.FormatSummary(suite, 8, 3, 0, 1.2345, 0)
+	summary := parser.FormatSummary(suite, 8, 1, 0, 1.2345, 0)
 	assert.Contains(t, summary, "8 runs, 23 assertions, 1 failure, 2 errors, 0 skips")
 }
