@@ -64,7 +64,7 @@ type TestException struct {
 type SuiteNotification struct {
 	Event          TestEvent
 	TestCount      int
-	AssertionCount int
+	AssertionCount int // Only populated for minitest
 	FailureCount   int
 	ErrorCount     int
 	PendingCount   int
