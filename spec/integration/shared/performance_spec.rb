@@ -6,8 +6,8 @@ RSpec.describe "Plur performance" do
     it "shows wall time vs CPU time to demonstrate parallelization" do
       result = run_plur("-C", default_ruby_dir)
 
-      expect(result.out).to match(/Finished in [\d.]+ seconds \(files took [\d.]+ seconds to load\)/)
-      if result.out =~ /Finished in ([\d.]+) seconds/
+      expect(result.out).to match(/Finished in [\d.]+ seconds? \(files took [\d.]+ seconds? to load\)/)
+      if result.out =~ /Finished in ([\d.]+) seconds?/
         wall_time = $1.to_f
 
         expect(wall_time).to be < 5.0 # Assuming reasonable test suite
