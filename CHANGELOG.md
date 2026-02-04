@@ -2,16 +2,14 @@
 
 ## Unreleased
 
-### Breaking Changes
+## v0.30.0 - 2026-02-04
 
 * **Config file precedence changed**: Config files now load in order `~/.plur.toml` → `.plur.toml` → `PLUR_CONFIG_FILE`, with later files overriding earlier values. Previously, the order was reversed. This means project-local `.plur.toml` now correctly overrides global `~/.plur.toml` settings. [#186](https://github.com/rsanheim/plur/pull/186)
-
-### Changes
 
 * Add `plur/framework` package with framework-aware command building [#186](https://github.com/rsanheim/plur/pull/186)
 * Add `ResolveReason` enum to track why a job was selected (explicit, inferred, default)
 * Simplify runner by moving command-building logic into framework package
-* Add architecture RFC documenting job resolution rules
+* Add verbose flag support to database tasks; consolidate dry run output a bit [#183](https://github.com/rsanheim/plur/pull/183)
 
 ## v0.24.0 - 2026-01-27
 * Adopt sync.WaitGroup.Go() from Go 1.25 [#182](https://github.com/rsanheim/plur/pull/182)
