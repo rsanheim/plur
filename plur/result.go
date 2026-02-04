@@ -13,15 +13,17 @@ import (
 
 // WorkerResult represents the accumulated results from a worker executing one or more test files
 type WorkerResult struct {
-	State        types.TestState
-	Output       string
-	Error        error
-	Duration     time.Duration
-	FileLoadTime time.Duration
-	ExampleCount int
-	FailureCount int
-	PendingCount int
-	Tests        []types.TestCaseNotification // All test notifications
+	State          types.TestState
+	Output         string
+	Error          error
+	Duration       time.Duration
+	FileLoadTime   time.Duration
+	ExampleCount   int
+	AssertionCount int
+	FailureCount   int
+	ErrorCount     int
+	PendingCount   int
+	Tests          []types.TestCaseNotification // All test notifications
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -45,7 +47,9 @@ type OutputMessage struct {
 // TestSummary represents the aggregated summary of all test results
 type TestSummary struct {
 	TotalExamples     int
+	TotalAssertions   int
 	TotalFailures     int
+	TotalErrors       int
 	AllFailures       []types.TestCaseNotification
 	TotalCPUTime      time.Duration
 	WallTime          time.Duration
@@ -77,7 +81,9 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 	for _, result := range results {
 		summary.TotalCPUTime += result.Duration
 		summary.TotalExamples += result.ExampleCount
+		summary.TotalAssertions += result.AssertionCount
 		summary.TotalFailures += result.FailureCount
+		summary.TotalErrors += result.ErrorCount
 		summary.TotalPending += result.PendingCount
 
 		// Track the maximum file load time (since workers run in parallel)
@@ -170,7 +176,14 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	summaryText := summary.FormattedSummary
 	hasFormattedSummary := summaryText != ""
 	if !hasFormattedSummary {
-		summaryText = parser.FormatSummary(nil, summary.TotalExamples,
+		suite := &types.SuiteNotification{
+			TestCount:      summary.TotalExamples,
+			AssertionCount: summary.TotalAssertions,
+			FailureCount:   summary.TotalFailures,
+			ErrorCount:     summary.TotalErrors,
+			PendingCount:   summary.TotalPending,
+		}
+		summaryText = parser.FormatSummary(suite, summary.TotalExamples,
 			summary.TotalFailures, summary.TotalPending,
 			summary.WallTime.Seconds(), summary.TotalFileLoadTime.Seconds())
 	}

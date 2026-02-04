@@ -90,7 +90,9 @@ func (a *TestCollector) BuildResult(duration time.Duration) WorkerResult {
 		Output:            a.rawOutput.String(),
 		Duration:          duration,
 		ExampleCount:      len(a.tests),
+		AssertionCount:    0,
 		FailureCount:      len(a.failures),
+		ErrorCount:        0,
 		PendingCount:      len(a.pending),
 		Tests:             a.tests,
 		State:             types.StateSuccess,
@@ -111,9 +113,15 @@ func (a *TestCollector) BuildResult(duration time.Duration) WorkerResult {
 		if a.suiteInfo.TestCount > 0 {
 			result.ExampleCount = a.suiteInfo.TestCount
 		}
+		if a.suiteInfo.AssertionCount > 0 {
+			result.AssertionCount = a.suiteInfo.AssertionCount
+		}
 		// Use suite's failure count if available (includes both failures and errors)
 		if a.suiteInfo.FailureCount >= 0 {
 			result.FailureCount = a.suiteInfo.FailureCount
+		}
+		if a.suiteInfo.ErrorCount >= 0 {
+			result.ErrorCount = a.suiteInfo.ErrorCount
 		}
 		// Use suite's pending count if available
 		if a.suiteInfo.PendingCount >= 0 {
