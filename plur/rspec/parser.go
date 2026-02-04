@@ -31,8 +31,6 @@ func (p *outputParser) NotificationToProgress(notification types.TestNotificatio
 		return "dot", true
 	case types.TestFailed:
 		return "failure", true
-	case types.TestError:
-		return "error", true
 	case types.TestPending:
 		return "pending", true
 	}
@@ -68,6 +66,20 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 	}
 
 	summary += fmt.Sprintf("%s, %s%s", exampleText, failureText, pendingText)
+
+	errorText := ""
+	errorCount := 0
+	if suite != nil {
+		errorCount = suite.ErrorCount
+	}
+	if errorCount > 0 {
+		if errorCount == 1 {
+			errorText = ", 1 error occurred outside of examples"
+		} else {
+			errorText = fmt.Sprintf(", %d errors occurred outside of examples", errorCount)
+		}
+	}
+	summary += errorText
 	return summary
 }
 
@@ -131,6 +143,7 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 				Event:        types.SuiteFinished,
 				TestCount:    msg.ExampleCount,
 				FailureCount: msg.FailureCount,
+				ErrorCount:   msg.ErrorCount,
 				PendingCount: msg.PendingCount,
 				Duration:     time.Duration(msg.Duration * float64(time.Second)),
 			})

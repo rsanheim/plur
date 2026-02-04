@@ -1,16 +1,52 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type suiteCountParser struct{}
+
+func (p *suiteCountParser) CurrentFile() string { return "" }
+
+func (p *suiteCountParser) NotificationToProgress(_ types.TestNotification) (string, bool) {
+	return "", false
+}
+
+func (p *suiteCountParser) ParseLine(line string) ([]types.TestNotification, bool) {
+	if !strings.HasPrefix(line, "suite:") {
+		return nil, false
+	}
+	return []types.TestNotification{
+		types.SuiteNotification{
+			Event:          types.SuiteFinished,
+			TestCount:      5,
+			AssertionCount: 23,
+			FailureCount:   2,
+			ErrorCount:     1,
+			PendingCount:   3,
+		},
+	}, true
+}
+
+func (p *suiteCountParser) FormatSummary(_ *types.SuiteNotification, _ int, _ int, _ int, _ float64, _ float64) string {
+	return ""
+}
+
+func (p *suiteCountParser) FormatFailuresList(_ []types.TestCaseNotification) string { return "" }
+
+func (p *suiteCountParser) ColorizeSummary(summary string, _ bool) string { return summary }
 
 func TestGetWorkerCountEdgeCases(t *testing.T) {
 	originalEnv := os.Getenv("PARALLEL_TEST_PROCESSORS")
@@ -374,6 +410,26 @@ func TestRunner_TrackerInitialized(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, runner.Tracker(), "tracker should be initialized")
+}
+
+func TestRunner_RunCommandPreservesSuiteCounts(t *testing.T) {
+	runner := &Runner{
+		framework: framework.Spec{
+			Name: "fake",
+			Parser: func() types.TestOutputParser {
+				return &suiteCountParser{}
+			},
+		},
+	}
+
+	cmd := exec.Command("sh", "-c", "echo suite:counts")
+	result := runner.runCommand(context.Background(), 0, cmd, nil)
+
+	assert.Equal(t, 5, result.ExampleCount)
+	assert.Equal(t, 23, result.AssertionCount)
+	assert.Equal(t, 2, result.FailureCount)
+	assert.Equal(t, 1, result.ErrorCount)
+	assert.Equal(t, 3, result.PendingCount)
 }
 
 // === Design Edge Cases ===

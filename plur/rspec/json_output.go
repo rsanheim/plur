@@ -184,6 +184,7 @@ type StreamingMessage struct {
 	ExampleCount int     `json:"example_count,omitempty"`
 	FailureCount int     `json:"failure_count,omitempty"`
 	PendingCount int     `json:"pending_count,omitempty"`
+	ErrorCount   int     `json:"errors_outside_of_examples_count,omitempty"`
 	Duration     float64 `json:"duration,omitempty"`
 }
 

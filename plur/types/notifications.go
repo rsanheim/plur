@@ -17,7 +17,6 @@ type TestEvent string
 const (
 	TestPassed    TestEvent = "test_passed"
 	TestFailed    TestEvent = "test_failed"
-	TestError     TestEvent = "test_error"
 	TestPending   TestEvent = "test_pending"
 	TestStarted   TestEvent = "test_started"
 	SuiteStarted  TestEvent = "suite_started"

@@ -146,6 +146,7 @@ module Plur
         example_count: summary.example_count,
         failure_count: summary.failure_count,
         pending_count: summary.pending_count,
+        errors_outside_of_examples_count: summary.errors_outside_of_examples_count,
         duration: summary.duration,
         load_time: summary.load_time
       )
