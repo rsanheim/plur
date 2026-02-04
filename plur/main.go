@@ -26,6 +26,7 @@ type SpecCmd struct {
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg := parent.globalConfig
 	fmt.Fprintf(os.Stderr, "plur version version=%s\n", GetVersionInfo())
+	logger.Logger.Debug("running plur", "command", "spec", "args", os.Args[1:])
 
 	// Determine explicit job name (CLI or config)
 	explicitName := parent.Use
@@ -358,8 +359,6 @@ func main() {
 
 	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(err)
-
-	logger.Logger.Debug("running plur", "command", ctx.Command(), "args", os.Args[1:])
 
 	err = ctx.Run(ctx)
 	if err != nil {
