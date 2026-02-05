@@ -144,6 +144,9 @@ module Plur
       end
 
       def tag_and_push!
+        puts "→ Pushing main..."
+        system_or_dry_run("git push origin main", exception: true)
+
         puts "→ Creating tag #{@version}..."
         system_or_dry_run("git tag -a #{@version} -m 'Release #{@version}'", exception: true)
 
