@@ -53,6 +53,7 @@ These are the flags most likely to be requested and are safe to run before file 
 - Explicit `--tag` errors unless the resolved framework is `rspec`.
 - Passthrough args always pass through (framework-agnostic; no validation).
 - Formatter/output conflicts are tolerated: Plur injects its formatter first, and any user-specified formatters or output flags are appended. This may produce extra output but should still preserve JSON parsing.
+- Passthrough via `--` is supported for `plur spec` only (watch passthrough deferred).
 
 **Recommendation**
 Choose Option 3 (Hybrid) and start with explicit `--tag` plus a framework-agnostic `--` passthrough. This matches the desired UX for tags while giving a consistent escape hatch for RSpec, Minitest, and custom jobs. We should:
@@ -63,22 +64,22 @@ Choose Option 3 (Hybrid) and start with explicit `--tag` plus a framework-agnost
 
 **Plan**
 Phase 1: Specs (Add First)
-- [ ] Add integration spec: explicit `--tag` shows up before file args in dry-run output.
-- [ ] Add integration spec: passthrough via `--` shows up before file args in dry-run output.
-- [ ] Add integration spec: explicit `--tag` errors for non-`rspec` frameworks.
+- [x] Add integration spec: explicit `--tag` shows up before file args in dry-run output.
+- [x] Add integration spec: passthrough via `--` shows up before file args in dry-run output.
+- [x] Add integration spec: explicit `--tag` errors for non-`rspec` frameworks.
 
 Phase 1: Implementation (Spec Command)
-- [ ] Add explicit `--tag` flag to `SpecCmd` (repeatable).
-- [ ] Preserve `--` token via Kong passthrough on positional args.
-- [ ] Split patterns vs passthrough args at first `--`.
-- [ ] Error on explicit `--tag` when framework != `rspec`.
-- [ ] Thread passthrough args into `BuildRunArgs` for all frameworks (no dedupe).
+- [x] Add explicit `--tag` flag to `SpecCmd` (repeatable).
+- [x] Preserve `--` token by splitting argv before Kong.
+- [x] Split patterns vs passthrough args at first `--`.
+- [x] Error on explicit `--tag` when framework != `rspec`.
+- [x] Thread passthrough args into `BuildRunArgs` for all frameworks (no dedupe).
 
 Phase 1: Verification
-- [ ] Run the new integration spec(s).
-- [ ] Run full build (`bin/rake build`).
-- [ ] Manual dry-run checks (explicit `--tag`, passthrough `--seed`).
+- [x] Run the new integration spec(s).
+- [x] Run full build (`bin/rake build`).
+- [x] Manual dry-run checks (explicit `--tag`, passthrough `--seed`).
 
 Phase 2: Follow-ups
-- [ ] Decide policy for `--format`/`--out` conflicts and add tests if needed.
-- [ ] Evaluate passthrough support for `plur watch` and add tests if so.
+- [x] Decide policy for `--format`/`--out` conflicts and add tests if needed.
+- [x] Evaluate passthrough support for `plur watch` (deferred; spec-only for now).

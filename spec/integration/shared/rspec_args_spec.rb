@@ -28,6 +28,21 @@ RSpec.describe "RSpec CLI args" do
     end
   end
 
+  context "with passthrough format options" do
+    it "keeps plur formatter and includes user formatter/output args" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", "spec/calculator_spec.rb", "--", "--format", "documentation", "--out", "tmp/rspec.out")
+
+        worker_line = result.err.lines.find { |line| line.include?("[dry-run] Worker 0:") }
+        expect(worker_line).to include("--format Plur::JsonRowsFormatter")
+        expect(worker_line).to include("--format documentation")
+        expect(worker_line).to include("--out tmp/rspec.out")
+        expect(worker_line.index("--format Plur::JsonRowsFormatter")).to be < worker_line.index("spec/calculator_spec.rb")
+        expect(worker_line.index("--format documentation")).to be < worker_line.index("spec/calculator_spec.rb")
+      end
+    end
+  end
+
   context "with explicit --tag on non-rspec framework" do
     it "errors with a clear message" do
       Dir.chdir(project_fixture("minitest-success")) do
