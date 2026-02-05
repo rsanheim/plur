@@ -25,7 +25,7 @@ module PlurWatchHelper
   # @param until_output [String, nil] kill process when this string appears in output
   # @return [WatchResult]
   def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT,
-                     debounce: nil, env: {}, until_output: nil, &block)
+    debounce: nil, env: {}, until_output: nil, &block)
     Dir.chdir(dir) do
       cmd_args = ["plur", "--debug", "watch", "run", "--timeout", timeout.to_s]
       cmd_args += ["--debounce", debounce.to_s] if debounce
@@ -46,14 +46,12 @@ module PlurWatchHelper
           next unless ready
 
           ready[0].each do |io|
-            begin
-              data = io.read_nonblock(16384)
-              if io == stdout then out << data else err << data end
-            rescue IO::WaitReadable
-              next
-            rescue EOFError
-              streams.delete(io)
-            end
+            data = io.read_nonblock(16384)
+            (io == stdout) ? out << data : err << data
+          rescue IO::WaitReadable
+            next
+          rescue EOFError
+            streams.delete(io)
           end
 
           # After ready signal, fire the block once
@@ -65,7 +63,11 @@ module PlurWatchHelper
 
           # Early exit when acceptance criteria met
           if until_output && (err.include?(until_output) || out.include?(until_output))
-            Process.kill("TERM", pid) rescue Errno::ESRCH
+            begin
+              Process.kill("TERM", pid)
+            rescue Errno::ESRCH
+              # process already exited
+            end
             break
           end
         end
@@ -74,7 +76,11 @@ module PlurWatchHelper
         begin
           Timeout.timeout(3) { wait_thr.value }
         rescue Timeout::Error
-          Process.kill("KILL", pid) rescue Errno::ESRCH
+          begin
+            Process.kill("KILL", pid)
+          rescue Errno::ESRCH
+            # process already exited
+          end
           wait_thr.value
         end
 
@@ -83,8 +89,8 @@ module PlurWatchHelper
           next if io.closed?
           loop do
             data = io.read_nonblock(16384)
-            if io == stdout then out << data else err << data end
-          rescue EOFError, IO::WaitReadable, IOError
+            (io == stdout) ? out << data : err << data
+          rescue IOError, IO::WaitReadable
             break
           end
         end
