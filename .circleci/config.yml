@@ -114,8 +114,6 @@ jobs:
       - image: cimg/ruby:4.0.1
     resource_class: << parameters.resource_class >>
     working_directory: ~/project/
-    environment:
-      - PLUR_FORCE_TTY_SPECS=1
     steps:
       - checkout
       - go/install:

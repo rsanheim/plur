@@ -27,14 +27,6 @@ RSpec.configure do |config|
   config.filter_run_excluding :skip_if_ci if ENV["CI"]
   config.shared_context_metadata_behavior = :apply_to_host_groups
 
-  config.before(:each, :skip_if_no_tty) do
-    next if ENV["PLUR_FORCE_TTY_SPECS"] == "1"
-
-    unless $stdout.tty? && $stderr.tty?
-      skip "requires a TTY (set PLUR_FORCE_TTY_SPECS=1 to override)"
-    end
-  end
-
   def chdir(path)
     Dir.chdir(path) do
       yield
