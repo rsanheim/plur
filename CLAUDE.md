@@ -10,7 +10,7 @@ Production-ready Go implementation, ~13% faster than turbo_tests/parallel_tests.
 
 ```bash
 # Daily workflow commands (in order of frequency):
-bin/rake                      # Run full build
+bin/rake                      # Run full build -> lint, install, tests
 bin/rake install              # Build & install a global binary sys/contianer wide
 bin/rake test:default_ruby    # Test plur on default-ruby fixture project (quick check)
 bin/rake test                 # Run full Ruby test suite
