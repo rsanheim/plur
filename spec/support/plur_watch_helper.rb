@@ -1,71 +1,102 @@
-require "tty-command"
 require "open3"
+require "timeout"
 
 module PlurWatchHelper
   DEFAULT_PLUR_WATCH_TIMEOUT = ENV["CI"] ? 12 : 5
+  READY_SIGNAL = "s/self/live@"
 
-  # Runs plur watch with TTY::Command and returns a proper result object
-  # @param dir [String] directory to run in
-  # @param timeout [Integer] timeout in seconds
+  WatchResult = Struct.new(:out, :err, :exit_status, keyword_init: true) do
+    def success?
+      return exit_status.success? if exit_status.respond_to?(:success?)
+      exit_status == 0
+    end
+  end
+
+  # Runs plur watch via Open3 with process lifecycle control.
+  #
+  # When a block is given, it fires after the watcher emits its ready signal.
+  # When until_output is set, the process is killed as soon as that string
+  # appears in stdout or stderr (early exit for faster tests).
+  #
+  # @param dir [Pathname, String] directory to run in
+  # @param timeout [Integer] plur --timeout value in seconds
   # @param debounce [Integer] debounce delay in milliseconds
   # @param env [Hash] environment variables
-  # @param block [Proc] optional block to execute while watch is running
-  # @return [TTY::Command::Result] with stdout, stderr, and exit status
-  def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT, debounce: nil, env: {}, &block)
+  # @param until_output [String, nil] kill process when this string appears in output
+  # @return [WatchResult]
+  def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT,
+    debounce: nil, env: {}, until_output: nil, &block)
     Dir.chdir(dir) do
       cmd_args = ["plur", "--debug", "watch", "run", "--timeout", timeout.to_s]
       cmd_args += ["--debounce", debounce.to_s] if debounce
 
-      full_env = env
+      out = +""
+      err = +""
 
-      cmd = TTY::Command.new(uuid: false, printer: :null)
+      Open3.popen3(env, *cmd_args) do |stdin, stdout, stderr, wait_thr|
+        pid = wait_thr.pid
+        stdin.close
 
-      if block_given?
-        # Run command asynchronously with block
-        result = nil
-        thread = Thread.new do
-          result = cmd.run(cmd_args.join(" "), env: full_env)
+        deadline = Time.now + timeout + 5
+        block_fired = false
+        streams = [stdout, stderr]
+
+        while !streams.empty? && Time.now < deadline
+          ready = IO.select(streams, nil, nil, 0.1)
+          next unless ready
+
+          ready[0].each do |io|
+            data = io.read_nonblock(16384)
+            (io == stdout) ? out << data : err << data
+          rescue IO::WaitReadable
+            next
+          rescue EOFError
+            streams.delete(io)
+          end
+
+          # After ready signal, fire the block once
+          if block_given? && !block_fired && err.include?(READY_SIGNAL)
+            sleep 0.1 # let FS watcher event registration settle
+            yield
+            block_fired = true
+          end
+
+          # Early exit when acceptance criteria met
+          if until_output && (err.include?(until_output) || out.include?(until_output))
+            begin
+              Process.kill("TERM", pid)
+            rescue Errno::ESRCH
+              # process already exited
+            end
+            break
+          end
         end
 
-        # Give the watcher time to start
-        sleep 0.5
+        # Wait for graceful shutdown (plur handles SIGTERM cleanly)
+        begin
+          Timeout.timeout(3) { wait_thr.value }
+        rescue Timeout::Error
+          begin
+            Process.kill("KILL", pid)
+          rescue Errno::ESRCH
+            # process already exited
+          end
+          wait_thr.value
+        end
 
-        # Execute the block
-        yield
+        # Drain remaining buffered output after process exit
+        [stdout, stderr].each do |io|
+          next if io.closed?
+          loop do
+            data = io.read_nonblock(16384)
+            (io == stdout) ? out << data : err << data
+          rescue IOError, IO::WaitReadable
+            break
+          end
+        end
 
-        # Wait for the command to finish
-        thread.join
-
-        # Return the result
-        result
-      else
-        # Run command synchronously
-        cmd.run!(cmd_args.join(" "), env: full_env)
+        WatchResult.new(out: out, err: err, exit_status: wait_thr.value)
       end
-    end
-  end
-
-  # Captures watch output with streaming support for tests that need to
-  # react to output in real-time
-  def capture_watch_output(plur_timeout: DEFAULT_PLUR_WATCH_TIMEOUT, debounce: nil, env: {}, &block)
-    Dir.chdir(default_ruby_dir) do
-      args = "plur --debug watch run --timeout #{plur_timeout}"
-      args += " --debounce #{debounce}" if debounce
-
-      # TTY::Command timeout needs to be longer than plur watch timeout to avoid timeout errors
-      full_timeout = plur_timeout + 2
-      cmd = TTY::Command.new(timeout: full_timeout, uuid: false, pty: true, printer: :null)
-
-      streamed_out, streamed_err = [], []
-
-      result = cmd.run!(args, env: env) do |out, err|
-        streamed_out << out
-        streamed_err << err
-        block.call(out, err) if block_given?
-      end
-
-      # Return the result object plus the streamed arrays
-      [result, streamed_out, streamed_err]
     end
   end
 

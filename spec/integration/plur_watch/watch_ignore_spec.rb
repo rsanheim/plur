@@ -1,11 +1,11 @@
 require "spec_helper"
 
-RSpec.describe "plur watch --ignore flag", :skip_if_no_tty do
+RSpec.describe "plur watch --ignore flag" do
   include PlurWatchHelper
 
   describe "CLI flag" do
     it "accepts --ignore flag and logs patterns" do
-      result, _, _ = capture_watch_output(plur_timeout: 2)
+      result = run_plur_watch(timeout: 2)
 
       # Default patterns should be logged
       expect(result.err).to include("Global watch ignore patterns")

@@ -3,14 +3,14 @@ require "tempfile"
 require "fileutils"
 require "timeout"
 
-RSpec.describe "plur watch integration", :skip_if_no_tty do
+RSpec.describe "plur watch integration" do
   include PlurWatchHelper
 
   it "starts watching the correct directories" do
-    result, _streamed_out, _streamed_err = capture_watch_output
+    result = run_plur_watch(until_output: "directories=[lib spec]")
 
     expect(result.err).to include("plur watch starting!")
-    expect(result.err).to include("plur configuration info")
+    expect(result.err).to include("Watch configuration loaded")
     expect(result.err).to include("directories=[lib spec]")
     expect(result.err).to include("Debounce delay ms=30")
   end
@@ -34,17 +34,13 @@ RSpec.describe "plur watch integration", :skip_if_no_tty do
         jobs = ["rspec"]
       TOML
 
-      modified = false
-
       plur_home = File.join(tmpdir, "plur-home")
-      result, _streamed_out, _streamed_err = capture_watch_output(
-        plur_timeout: 3,
-        env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_HOME" => plur_home}
-      ) do |_out, err|
-        if !modified && err && err.include?("s/self/live@")
-          calculator_file.write(original_content + "\n# Modified by test")
-          modified = true
-        end
+      result = run_plur_watch(
+        timeout: 10,
+        env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_HOME" => plur_home},
+        until_output: "Executing job"
+      ) do
+        calculator_file.write(original_content + "\n# Modified by test")
       end
 
       directories_line = result.err.lines.find { |line| line.include?("directories=") }
@@ -62,68 +58,47 @@ RSpec.describe "plur watch integration", :skip_if_no_tty do
   end
 
   it "detects lib file changes" do
-    skip "flakey"
-    modified = false
-    result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
-      # Wait for the watcher to be ready
-      if !modified && err && err.include?("s/self/live@")
-        # Modify a lib file
-        calculator_file = default_ruby_dir.join("lib/calculator.rb")
-        calculator_file.write(calculator_file.read + "\n# test")
-        modified = true
-      end
+    calculator_file = default_ruby_dir.join("lib/calculator.rb")
+    original_content = calculator_file.read
+
+    result = run_plur_watch(timeout: 10, until_output: "Executing job") do
+      calculator_file.write(original_content + "\n# test")
     end
 
     expect(result.err).to include('event="modify" type="file"')
     expect(result.err).to include('path="lib/calculator.rb"')
     expect(result.err).to include('Executing job job="rspec"')
+  ensure
+    calculator_file.write(original_content) if original_content
   end
 
   it "detects spec_helper.rb changes" do
-    spec_dir = default_ruby_dir.join("spec").to_s
-    modified = false
-    result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
-      if !modified && err && err.include?("s/self/live@")
-        next unless err.include?(spec_dir)
+    spec_helper = default_ruby_dir.join("spec/spec_helper.rb")
+    original_content = spec_helper.read
 
-        spec_helper = default_ruby_dir.join("spec/spec_helper.rb")
-        original_content = spec_helper.read
-        spec_helper.write(original_content + "\n# Modified by test")
-        sleep 0.1
-        spec_helper.write(original_content)
-        modified = true
-      end
+    result = run_plur_watch(timeout: 10, until_output: "No existing targets") do
+      spec_helper.write(original_content + "\n# Modified by test")
     end
 
     expect_file_change_logged(result.err, "spec/spec_helper.rb")
     # spec_helper.rb changes are detected but don't trigger jobs (no matching targets)
     expect(result.err).to include("No existing targets for file")
+  ensure
+    spec_helper.write(original_content) if original_content
   end
 
-  it "detects spec file changes", skip: ENV["CI"] do
-    $stdout.sync = true
-    $stderr.sync = true
-
+  it "detects spec file changes" do
     spec_path = default_ruby_dir.join("spec/calculator_spec.rb")
-    spec_dir = default_ruby_dir.join("spec").to_s
     contents = spec_path.read
 
-    modified = false
-    result, _, _ = capture_watch_output(plur_timeout: 5) do |out, err|
-      # Wait for watcher to be ready (live message)
-      if !modified && err && err.include?("s/self/live@")
-        next unless err.include?(spec_dir)
-
-        File.write(spec_path, "# Modified\n" + contents)
-        modified = true
-      end
+    result = run_plur_watch(timeout: 10, until_output: "Executing job") do
+      File.write(spec_path, "# Modified\n" + contents)
     end
 
     expect_file_change_logged(result.err, "spec/calculator_spec.rb")
     # Watch now maps file changes to jobs and executes them
     expect(result.err).to include("Executing job")
   ensure
-    # Restore original content
     File.write(spec_path, contents) if contents
   end
 
@@ -131,14 +106,8 @@ RSpec.describe "plur watch integration", :skip_if_no_tty do
     readme_file = default_ruby_dir.join("README.md")
     original_content = readme_file.read
 
-    modified = false
-    result, _streamed_out, _streamed_err = capture_watch_output do |out, err|
-      # Wait for the watcher to be ready
-      if !modified && err && err.include?("s/self/live@")
-        # Modify README by appending content
-        readme_file.write(original_content + "\n<!-- test -->")
-        modified = true
-      end
+    result = run_plur_watch(timeout: 3) do
+      readme_file.write(original_content + "\n<!-- test -->")
     end
 
     output = result.out + result.err
@@ -150,7 +119,7 @@ RSpec.describe "plur watch integration", :skip_if_no_tty do
   end
 
   it "respects custom debounce delay" do
-    result, _streamed_out, _streamed_err = capture_watch_output(plur_timeout: 2, debounce: 250)
+    result = run_plur_watch(timeout: 10, debounce: 250, until_output: "Debounce delay ms=250")
 
     output = result.out + result.err
 
@@ -158,22 +127,15 @@ RSpec.describe "plur watch integration", :skip_if_no_tty do
   end
 
   it "detects multiple file changes with debouncing" do
-    modified = false
-    result, _streamed_out, _streamed_err = capture_watch_output(debounce: 200) do |out, err|
-      # Wait for the watcher to be ready
-      if !modified && err && err.include?("s/self/live@")
-        # Rapidly modify multiple files
-        calc_file = default_ruby_dir.join("lib/calculator.rb")
-        calc_file.write(calc_file.read + "\n# test")
+    result = run_plur_watch(timeout: 10, debounce: 200, until_output: "Executing job") do
+      calc_file = default_ruby_dir.join("lib/calculator.rb")
+      calc_file.write(calc_file.read + "\n# test")
 
-        str_file = default_ruby_dir.join("lib/string_utils.rb")
-        str_file.write(str_file.read + "\n# test")
+      str_file = default_ruby_dir.join("lib/string_utils.rb")
+      str_file.write(str_file.read + "\n# test")
 
-        val_file = default_ruby_dir.join("lib/validator.rb")
-        val_file.write(val_file.read + "\n# test")
-
-        modified = true
-      end
+      val_file = default_ruby_dir.join("lib/validator.rb")
+      val_file.write(val_file.read + "\n# test")
     end
 
     # Should see all changes in stderr
