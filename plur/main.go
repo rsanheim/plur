@@ -18,7 +18,8 @@ import (
 )
 
 type SpecCmd struct {
-	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
+	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)" passthrough:""`
+	Tags       []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
 	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
 	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
 }
@@ -31,7 +32,12 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	// Determine explicit job name (CLI or config)
 	explicitName := parent.Use
 
-	result, err := autodetect.ResolveJob(explicitName, parent.Job, r.Patterns)
+	patterns, passthroughArgs := splitPatternsAndArgs(r.Patterns)
+	if err := validatePassthroughArgs(patterns, passthroughArgs); err != nil {
+		return err
+	}
+
+	result, err := autodetect.ResolveJob(explicitName, parent.Job, patterns)
 	if err != nil {
 		return err
 	}
@@ -40,13 +46,17 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	logInheritedFields(currentJob.Name, result.Inherited)
 
+	if len(r.Tags) > 0 && currentJob.Framework != "rspec" {
+		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)
+	}
+
 	targetPatterns, _ := targetPatternsForJob(currentJob)
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", result.Reason)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", patterns, "target_patterns", targetPatterns, "reason", result.Reason)
 
 	// Discover test files
 	var testFiles []string
-	if len(r.Patterns) > 0 {
-		testFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob)
+	if len(patterns) > 0 {
+		testFiles, err = ExpandPatternsFromJob(patterns, currentJob)
 		if err != nil {
 			return err
 		}
@@ -79,7 +89,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg.Auto = r.Auto
 	cfg.RspecTrace = r.RspecTrace
 
-	runner, err := NewRunner(cfg, testFiles, currentJob)
+	extraArgs := buildTagArgs(r.Tags)
+	extraArgs = append(extraArgs, passthroughArgs...)
+
+	runner, err := NewRunner(cfg, testFiles, currentJob, extraArgs)
 	if err != nil {
 		return err
 	}
@@ -129,6 +142,38 @@ func logInheritedFields(jobName string, inherited autodetect.InheritedFields) {
 		"env", inherited.Env,
 		"framework", inherited.Framework,
 		"target_pattern", inherited.TargetPattern)
+}
+
+func splitPatternsAndArgs(args []string) ([]string, []string) {
+	for i, arg := range args {
+		if arg == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
+}
+
+func validatePassthroughArgs(patterns []string, passthroughArgs []string) error {
+	if len(passthroughArgs) > 0 {
+		return nil
+	}
+	for _, pattern := range patterns {
+		if strings.HasPrefix(pattern, "-") {
+			return fmt.Errorf("unknown flag %q (use -- to pass through to the test runner)", pattern)
+		}
+	}
+	return nil
+}
+
+func buildTagArgs(tags []string) []string {
+	if len(tags) == 0 {
+		return nil
+	}
+	args := make([]string, 0, len(tags)*2)
+	for _, tag := range tags {
+		args = append(args, "--tag", tag)
+	}
+	return args
 }
 
 type WatchCmd struct {

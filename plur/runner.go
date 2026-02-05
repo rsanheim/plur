@@ -54,9 +54,10 @@ type Runner struct {
 	job       job.Job
 	framework framework.Spec
 	tracker   *RuntimeTracker
+	extraArgs []string
 }
 
-func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job) (*Runner, error) {
+func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []string) (*Runner, error) {
 	spec, err := framework.Get(j.Framework)
 	if err != nil {
 		return nil, err
@@ -71,6 +72,7 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job) (*Runner, er
 		job:       j,
 		framework: spec,
 		tracker:   tracker,
+		extraArgs: extraArgs,
 	}, nil
 }
 
@@ -119,7 +121,7 @@ func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
 			logger.Logger.Debug("ignoring {{target}} tokens in run mode", "job", r.job.Name)
 		}
 
-		args, err := framework.BuildRunArgs(r.job, group.Files, r.config)
+		args, err := framework.BuildRunArgs(r.job, group.Files, r.config, r.extraArgs)
 		if err != nil {
 			return nil, err
 		}
