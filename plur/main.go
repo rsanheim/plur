@@ -18,7 +18,7 @@ import (
 )
 
 type SpecCmd struct {
-	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)" passthrough:""`
+	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
 	Tags       []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
 	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
 	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
@@ -32,12 +32,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	// Determine explicit job name (CLI or config)
 	explicitName := parent.Use
 
-	patterns, passthroughArgs := splitPatternsAndArgs(r.Patterns)
-	if err := validatePassthroughArgs(patterns, passthroughArgs); err != nil {
-		return err
-	}
-
-	result, err := autodetect.ResolveJob(explicitName, parent.Job, patterns)
+	result, err := autodetect.ResolveJob(explicitName, parent.Job, r.Patterns)
 	if err != nil {
 		return err
 	}
@@ -51,12 +46,12 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	targetPatterns, _ := targetPatternsForJob(currentJob)
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", patterns, "target_patterns", targetPatterns, "reason", result.Reason)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", result.Reason)
 
 	// Discover test files
 	var testFiles []string
-	if len(patterns) > 0 {
-		testFiles, err = ExpandPatternsFromJob(patterns, currentJob)
+	if len(r.Patterns) > 0 {
+		testFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob)
 		if err != nil {
 			return err
 		}
@@ -90,7 +85,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg.RspecTrace = r.RspecTrace
 
 	extraArgs := buildTagArgs(r.Tags)
-	extraArgs = append(extraArgs, passthroughArgs...)
+	extraArgs = append(extraArgs, parent.passthroughArgs...)
 
 	runner, err := NewRunner(cfg, testFiles, currentJob, extraArgs)
 	if err != nil {
@@ -142,27 +137,6 @@ func logInheritedFields(jobName string, inherited autodetect.InheritedFields) {
 		"env", inherited.Env,
 		"framework", inherited.Framework,
 		"target_pattern", inherited.TargetPattern)
-}
-
-func splitPatternsAndArgs(args []string) ([]string, []string) {
-	for i, arg := range args {
-		if arg == "--" {
-			return args[:i], args[i+1:]
-		}
-	}
-	return args, nil
-}
-
-func validatePassthroughArgs(patterns []string, passthroughArgs []string) error {
-	if len(passthroughArgs) > 0 {
-		return nil
-	}
-	for _, pattern := range patterns {
-		if strings.HasPrefix(pattern, "-") {
-			return fmt.Errorf("unknown flag %q (use -- to pass through to the test runner)", pattern)
-		}
-	}
-	return nil
 }
 
 func buildTagArgs(tags []string) []string {
@@ -272,6 +246,9 @@ type PlurCLI struct {
 
 	// Store config files that were attempted (for tracking)
 	configFiles []string `kong:"-"`
+
+	// RSpec passthrough args from -- delimiter
+	passthroughArgs []string `kong:"-"`
 }
 
 // Initialize logger with appropriate level
@@ -334,6 +311,15 @@ func handleHelpCommand(args []string) []string {
 	return args
 }
 
+func splitArgsAtDoubleDash(args []string) ([]string, []string) {
+	for i, arg := range args {
+		if arg == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
+}
+
 // handleEarlyChangeDir pre-parses command line arguments for the -C flag
 // and changes the working directory before Kong configuration loading.
 // This ensures config files are loaded from the target directory, not the current directory.
@@ -375,6 +361,7 @@ func main() {
 
 	// Handle "help" command by converting it to "-h" flag
 	args := handleHelpCommand(os.Args[1:])
+	args, cli.passthroughArgs = splitArgsAtDoubleDash(args)
 
 	if err := handleChangeDir(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -404,6 +391,11 @@ func main() {
 
 	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(err)
+
+	if len(cli.passthroughArgs) > 0 && !strings.HasPrefix(ctx.Command(), "spec") {
+		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec command")
+		os.Exit(1)
+	}
 
 	err = ctx.Run(ctx)
 	if err != nil {
