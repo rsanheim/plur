@@ -26,14 +26,16 @@ func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig, extraArgs
 		args = append(args, defaultArgs...)
 	}
 
-	if len(extraArgs) > 0 {
-		args = append(args, extraArgs...)
-	}
-
 	switch spec.TargetMode {
 	case TargetModeRubyRequire:
 		args = appendMinitestRequireArgs(args, files)
+		if len(extraArgs) > 0 {
+			args = append(args, extraArgs...)
+		}
 	default:
+		if len(extraArgs) > 0 {
+			args = append(args, extraArgs...)
+		}
 		args = append(args, files...)
 	}
 
