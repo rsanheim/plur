@@ -53,6 +53,9 @@ plur/plur-race
 # Logs
 *.pid
 
+# Local dev artifacts
+.DS_Store
+
 # Test artifacts
 test-pipes/
 

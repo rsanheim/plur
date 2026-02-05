@@ -19,6 +19,7 @@ import (
 
 type SpecCmd struct {
 	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
+	Tags       []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
 	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
 	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
 }
@@ -39,6 +40,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	currentJob := result.Job
 
 	logInheritedFields(currentJob.Name, result.Inherited)
+
+	if len(r.Tags) > 0 && currentJob.Framework != "rspec" {
+		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)
+	}
 
 	targetPatterns, _ := targetPatternsForJob(currentJob)
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", result.Reason)
@@ -79,7 +84,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg.Auto = r.Auto
 	cfg.RspecTrace = r.RspecTrace
 
-	runner, err := NewRunner(cfg, testFiles, currentJob)
+	extraArgs := buildTagArgs(r.Tags)
+	extraArgs = append(extraArgs, parent.passthroughArgs...)
+
+	runner, err := NewRunner(cfg, testFiles, currentJob, extraArgs)
 	if err != nil {
 		return err
 	}
@@ -129,6 +137,17 @@ func logInheritedFields(jobName string, inherited autodetect.InheritedFields) {
 		"env", inherited.Env,
 		"framework", inherited.Framework,
 		"target_pattern", inherited.TargetPattern)
+}
+
+func buildTagArgs(tags []string) []string {
+	if len(tags) == 0 {
+		return nil
+	}
+	args := make([]string, 0, len(tags)*2)
+	for _, tag := range tags {
+		args = append(args, "--tag", tag)
+	}
+	return args
 }
 
 type WatchCmd struct {
@@ -227,6 +246,9 @@ type PlurCLI struct {
 
 	// Store config files that were attempted (for tracking)
 	configFiles []string `kong:"-"`
+
+	// RSpec passthrough args from -- delimiter
+	passthroughArgs []string `kong:"-"`
 }
 
 // Initialize logger with appropriate level
@@ -289,6 +311,15 @@ func handleHelpCommand(args []string) []string {
 	return args
 }
 
+func splitArgsAtDoubleDash(args []string) ([]string, []string) {
+	for i, arg := range args {
+		if arg == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
+}
+
 // handleEarlyChangeDir pre-parses command line arguments for the -C flag
 // and changes the working directory before Kong configuration loading.
 // This ensures config files are loaded from the target directory, not the current directory.
@@ -330,6 +361,7 @@ func main() {
 
 	// Handle "help" command by converting it to "-h" flag
 	args := handleHelpCommand(os.Args[1:])
+	args, cli.passthroughArgs = splitArgsAtDoubleDash(args)
 
 	if err := handleChangeDir(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -359,6 +391,11 @@ func main() {
 
 	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(err)
+
+	if len(cli.passthroughArgs) > 0 && !strings.HasPrefix(ctx.Command(), "spec") {
+		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec command")
+		os.Exit(1)
+	}
 
 	err = ctx.Run(ctx)
 	if err != nil {

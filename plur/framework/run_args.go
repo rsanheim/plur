@@ -9,7 +9,8 @@ import (
 
 // BuildRunArgs builds command arguments for run mode (plur spec).
 // It ignores any {{target}} tokens in job.Cmd and appends targets at the end.
-func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig) ([]string, error) {
+// extraArgs are inserted after framework defaults and before target files.
+func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
 	spec, err := Get(j.Framework)
 	if err != nil {
 		return nil, err
@@ -28,7 +29,13 @@ func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig) ([]string
 	switch spec.TargetMode {
 	case TargetModeRubyRequire:
 		args = appendMinitestRequireArgs(args, files)
+		if len(extraArgs) > 0 {
+			args = append(args, extraArgs...)
+		}
 	default:
+		if len(extraArgs) > 0 {
+			args = append(args, extraArgs...)
+		}
 		args = append(args, files...)
 	}
 

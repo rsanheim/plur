@@ -315,7 +315,7 @@ func TestRunner_DryRunReturnsNil(t *testing.T) {
 		TargetPattern: "**/*_test.rb",
 	}
 
-	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb"}, testJob)
+	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb"}, testJob, nil)
 	require.NoError(t, err)
 	results, wallTime, err := runner.Run()
 
@@ -340,7 +340,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		}
 
 		files := []string{"a_test.rb", "b_test.rb"} // Only 2 files
-		runner, err := NewRunner(cfg, files, testJob)
+		runner, err := NewRunner(cfg, files, testJob, nil)
 		require.NoError(t, err)
 		groups := runner.groupFiles()
 		assert.Equal(t, 2, len(groups), "should have 2 groups")
@@ -365,7 +365,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		}
 
 		files := []string{"only_test.rb"}
-		runner, err := NewRunner(cfg, files, testJob)
+		runner, err := NewRunner(cfg, files, testJob, nil)
 		require.NoError(t, err)
 
 		_, _, err = runner.Run()
@@ -387,7 +387,7 @@ func TestRunner_EmptyFiles(t *testing.T) {
 		TargetPattern: "**/*_test.rb",
 	}
 
-	runner, err := NewRunner(cfg, []string{}, testJob)
+	runner, err := NewRunner(cfg, []string{}, testJob, nil)
 	require.NoError(t, err)
 	results, wallTime, err := runner.Run()
 
@@ -406,7 +406,7 @@ func TestRunner_TrackerInitialized(t *testing.T) {
 	}
 	testJob := job.Job{Name: "custom", Framework: "passthrough"}
 
-	runner, err := NewRunner(cfg, []string{"a_test.rb"}, testJob)
+	runner, err := NewRunner(cfg, []string{"a_test.rb"}, testJob, nil)
 	require.NoError(t, err)
 
 	require.NotNil(t, runner.Tracker(), "tracker should be initialized")
@@ -455,7 +455,7 @@ func TestRunner_SingleFileStillSetsTestEnvNumber(t *testing.T) {
 		Framework: "passthrough",
 	}
 
-	runner, err := NewRunner(cfg, []string{"single_test.rb"}, testJob)
+	runner, err := NewRunner(cfg, []string{"single_test.rb"}, testJob, nil)
 	require.NoError(t, err)
 	_, _, err = runner.Run()
 
@@ -480,7 +480,7 @@ func TestRunner_SerialModeNoTestEnvNumber(t *testing.T) {
 		Framework: "passthrough",
 	}
 
-	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb", "c_test.rb"}, testJob)
+	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb", "c_test.rb"}, testJob, nil)
 	require.NoError(t, err)
 
 	// In serial mode, buildEnv should NOT include TEST_ENV_NUMBER
@@ -504,7 +504,7 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 	}
 
 	files := []string{"a.rb", "b.rb", "c.rb"} // Only 3 files
-	runner, err := NewRunner(cfg, files, testJob)
+	runner, err := NewRunner(cfg, files, testJob, nil)
 	require.NoError(t, err)
 
 	// With 3 files and 10 workers requested, we should get 3 groups
