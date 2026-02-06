@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.31.0 - 2026-02-05
+* Add `--tag` flag for RSpec tag filtering: `plur --tag=slow --tag=integration` (repeatable, RSpec only) [#189](https://github.com/rsanheim/plur/pull/189)
+* Add `--` passthrough for forwarding arbitrary args to the test framework: `plur spec/ -- --seed 1234` [#189](https://github.com/rsanheim/plur/pull/189)
+* Fix minitest passthrough args placement when using ruby require mode [#189](https://github.com/rsanheim/plur/pull/189)
+* Fix debug log ordering so version prints first [#188](https://github.com/rsanheim/plur/pull/188)
+* Unify watch test harness with Open3, remove TTY requirement [#191](https://github.com/rsanheim/plur/pull/191)
+
 ## v0.30.0 - 2026-02-04
 
 * **Config file precedence changed**: Config files now load in order `~/.plur.toml` → `.plur.toml` → `PLUR_CONFIG_FILE`, with later files overriding earlier values. Previously, the order was reversed. This means project-local `.plur.toml` now correctly overrides global `~/.plur.toml` settings. [#186](https://github.com/rsanheim/plur/pull/186)

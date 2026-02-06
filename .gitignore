@@ -55,7 +55,6 @@ plur/plur-race
 
 # Local dev artifacts
 .DS_Store
-.claude/
 
 # Test artifacts
 test-pipes/
