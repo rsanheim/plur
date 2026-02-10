@@ -33,28 +33,38 @@ module Plur
         end
       end
 
+      def verify_synced_with_remote!
+        run("git fetch origin main --quiet")
+        local = run("git rev-parse HEAD")
+        remote = run("git rev-parse origin/main")
+        return if local == remote
+        abort "Error: Local main (#{local[0..6]}) differs from origin/main (#{remote[0..6]}). Run 'git pull' first."
+      end
+
       def find_prs_since_last_release(dry_run: false)
         if dry_run
           return [{number: 123, title: "Example PR", url: "https://github.com/example/pr/123"}]
         end
 
         tag = last_release_tag
+        return [] unless tag
 
-        # Get tag date for filtering, or use epoch for first release
-        tag_date = tag ? run("git log -1 --format=%aI #{tag}").strip : "1970-01-01T00:00:00Z"
-        date_filter = tag_date[0..9] # Extract YYYY-MM-DD
+        # Use git commit graph to find PRs -- no date ambiguity
+        # Handles merge commits ("Merge pull request #123") and squash merges ("thing (#123)")
+        messages = run("git log #{tag}..HEAD --format=%s")
+        pr_numbers = messages.scan(/#(\d+)/).flatten.map(&:to_i).uniq
 
-        # Query GitHub for merged PRs since tag date
-        # This catches all merge methods: merge commit, squash, and rebase
-        json = run(
-          "gh pr list --state merged --base main " \
-          "--search \"merged:>=#{date_filter}\" " \
-          "--json number,title,url,mergedAt --limit 100"
-        )
+        return [] if pr_numbers.empty?
 
-        JSON.parse(json).map do |pr|
-          {number: pr["number"], title: pr["title"], url: pr["url"]}
-        end
+        pr_numbers.filter_map { |num| fetch_pr(num) }
+      end
+
+      def fetch_pr(number)
+        json = run("gh pr view #{number} --json number,title,url 2>/dev/null")
+        pr = JSON.parse(json)
+        {number: pr["number"], title: pr["title"], url: pr["url"]}
+      rescue
+        nil
       end
     end
 
@@ -67,6 +77,7 @@ module Plur
       end
 
       def call
+        verify_synced_with_remote! unless @dry_run
         prs = find_prs_since_last_release(dry_run: @dry_run)
 
         if @dry_run
@@ -75,7 +86,7 @@ module Plur
         else
           changelog = Plur::Changelog.new(@version, prs, changelog_input: File.open("CHANGELOG.md"))
           File.write("CHANGELOG.md", changelog.generate_updated_content)
-          print_summary(prs)
+          print_summary(changelog.new_prs)
         end
       end
 
