@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.32.0 - 2026-02-09
+* fix: use %w instead of %v for error wrapping [#190](https://github.com/rsanheim/plur/pull/190)
+* fix: use git commit range for release PR discovery [#193](https://github.com/rsanheim/plur/pull/193)
+
 ## v0.31.0 - 2026-02-05
 * Add `--tag` flag for RSpec tag filtering: `plur --tag=slow --tag=integration` (repeatable, RSpec only) [#189](https://github.com/rsanheim/plur/pull/189)
 * Add `--` passthrough for forwarding arbitrary args to the test framework: `plur spec/ -- --seed 1234` [#189](https://github.com/rsanheim/plur/pull/189)

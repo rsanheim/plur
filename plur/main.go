@@ -347,7 +347,7 @@ func handleChangeDir(args []string) error {
 
 		if dir != "" {
 			if err := os.Chdir(dir); err != nil {
-				return fmt.Errorf("failed to change directory to %s: %v", dir, err)
+				return fmt.Errorf("failed to change directory to %s: %w", dir, err)
 			}
 			// Only process the first -C flag
 			return nil

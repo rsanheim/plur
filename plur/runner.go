@@ -220,14 +220,14 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(fmt.Errorf("failed to create stdout pipe: %v", err), start)
+		return errorResult(fmt.Errorf("failed to create stdout pipe: %w", err), start)
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(fmt.Errorf("failed to create stderr pipe: %v", err), start)
+		return errorResult(fmt.Errorf("failed to create stderr pipe: %w", err), start)
 	}
 	if err := cmd.Start(); err != nil {
-		return errorResult(fmt.Errorf("failed to start command: %v", err), start)
+		return errorResult(fmt.Errorf("failed to start command: %w", err), start)
 	}
 
 	parser := r.framework.Parser()

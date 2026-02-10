@@ -123,6 +123,36 @@ RSpec.describe Plur::Changelog do
     end
   end
 
+  describe "#new_prs" do
+    it "returns only non-duplicate PRs after generating content" do
+      existing_changelog = <<~CHANGELOG
+        # plur CHANGELOG
+
+        ## Unreleased
+
+        ## v0.17.0 - 2025-12-01
+        * Previous feature [#100](https://github.com/rsanheim/plur/pull/100)
+      CHANGELOG
+
+      prs = [
+        {number: 100, title: "Previous feature", url: "https://github.com/rsanheim/plur/pull/100"},
+        {number: 123, title: "New feature", url: "https://github.com/rsanheim/plur/pull/123"}
+      ]
+      changelog = described_class.new("v0.18.0", prs, changelog_input: StringIO.new(existing_changelog))
+
+      changelog.generate_updated_content
+
+      expect(changelog.new_prs).to eq([{number: 123, title: "New feature", url: "https://github.com/rsanheim/plur/pull/123"}])
+    end
+
+    it "is empty before generate is called" do
+      prs = [{number: 123, title: "New feature", url: "https://github.com/rsanheim/plur/pull/123"}]
+      changelog = described_class.new("v0.18.0", prs, changelog_input: StringIO.new(""))
+
+      expect(changelog.new_prs).to eq([])
+    end
+  end
+
   describe "#existing_pr_numbers" do
     it "extracts PR numbers from changelog" do
       existing_changelog = <<~CHANGELOG
