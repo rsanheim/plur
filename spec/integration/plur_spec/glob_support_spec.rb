@@ -29,7 +29,7 @@ RSpec.describe "plur glob pattern support" do
         cmd = TTY::Command.new(uuid: false, printer: :null)
         result = cmd.run!("bash", "-c", "shopt -s globstar; plur --dry-run spec/**/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 12 specs [rspec]")
+        expect(result.err).to include("[dry-run] Running 13 specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
@@ -41,7 +41,7 @@ RSpec.describe "plur glob pattern support" do
         # Using single quotes prevents shell expansion, so plur handles the glob
         result = run_plur("--dry-run", "spec/**/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 12 specs [rspec]")
+        expect(result.err).to include("[dry-run] Running 13 specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
@@ -52,8 +52,9 @@ RSpec.describe "plur glob pattern support" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run", "spec/models/*_spec.rb", "spec/services/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 2 specs [rspec]")
+        expect(result.err).to include("[dry-run] Running 3 specs [rspec]")
         expect(result.err).to include("spec/models/user_spec.rb")
+        expect(result.err).to include("spec/models/system_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
       end
     end
@@ -122,7 +123,7 @@ RSpec.describe "plur glob pattern support" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run")
 
-        expect(result.err).to include("[dry-run] Running 12 specs [rspec]")
+        expect(result.err).to include("[dry-run] Running 13 specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")

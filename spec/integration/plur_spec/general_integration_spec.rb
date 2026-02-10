@@ -4,7 +4,7 @@ require "fileutils"
 require "json"
 
 RSpec.describe "Plur general integration" do
-  let(:expected_spec_files) { 12 }
+  let(:expected_spec_files) { 13 }
 
   describe "basic functionality" do
     # Modified to test the hook

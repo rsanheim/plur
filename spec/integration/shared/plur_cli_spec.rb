@@ -54,7 +54,7 @@ RSpec.describe "Plur CLI behavior" do
         result = run_plur
 
         expect(result.err).to match(/Running \d+ specs \[rspec\] in parallel/)
-        expect(result.out).to include("66 examples, 0 failures")
+        expect(result.out).to include("68 examples, 0 failures")
       end
     end
 

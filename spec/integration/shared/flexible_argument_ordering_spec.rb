@@ -53,7 +53,7 @@ RSpec.describe "Flexible argument ordering" do
   end
 
   context "with directory arguments" do
-    let(:expected_spec_files) { 12 }
+    let(:expected_spec_files) { 13 }
 
     it "expands spec/ directory before flags" do
       Dir.chdir(project_fixture("default-ruby")) do
