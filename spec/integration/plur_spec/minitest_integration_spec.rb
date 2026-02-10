@@ -4,7 +4,8 @@ RSpec.describe "Minitest Integration" do
   before(:all) do
     chdir(project_fixture!("minitest-success")) do
       Bundler.with_unbundled_env do
-        system("bundle install", exception: true)
+        system("bundle check", out: File::NULL, err: File::NULL) ||
+          system("bundle install", out: File::NULL, err: File::NULL, exception: true)
       end
     end
   end

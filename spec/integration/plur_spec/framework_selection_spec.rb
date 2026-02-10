@@ -17,7 +17,7 @@ RSpec.describe "Framework Selection" do
       chdir(project_fixture!("mixed-rspec-minitest")) do
         Bundler.with_unbundled_env do
           system("bundle check", out: File::NULL, err: File::NULL) ||
-            system("bundle install", exception: true)
+            system("bundle install", out: File::NULL, err: File::NULL, exception: true)
         end
       end
     end
