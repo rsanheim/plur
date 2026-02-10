@@ -80,8 +80,11 @@ RSpec.describe "Plur database tasks" do
     it "creates and migrates databases for parallel testing" do
       Dir.chdir(default_rails_dir) do
         Bundler.with_unbundled_env do
-          _, stderr, status = Open3.capture3("bundle install")
-          expect(status.exitstatus).to eq(0), "bundle install failed: #{stderr}"
+          _, _, check_status = Open3.capture3("bundle check")
+          unless check_status.success?
+            _, stderr, status = Open3.capture3("bundle install")
+            expect(status.exitstatus).to eq(0), "bundle install failed: #{stderr}"
+          end
 
           result = run_plur("db:create", "-n", "3", allow_error: true)
           expect(result.status).to eq(0), "db:create failed: #{result.err}"
