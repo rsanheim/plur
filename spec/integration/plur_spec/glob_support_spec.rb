@@ -29,7 +29,7 @@ RSpec.describe "plur glob pattern support" do
         cmd = TTY::Command.new(uuid: false, printer: :null)
         result = cmd.run!("bash", "-c", "shopt -s globstar; plur --dry-run spec/**/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 13 specs [rspec]")
+        expect(result.err).to include("[dry-run] Running #{DEFAULT_RUBY_SPEC_FILE_COUNT} specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
@@ -41,7 +41,7 @@ RSpec.describe "plur glob pattern support" do
         # Using single quotes prevents shell expansion, so plur handles the glob
         result = run_plur("--dry-run", "spec/**/*_spec.rb")
 
-        expect(result.err).to include("[dry-run] Running 13 specs [rspec]")
+        expect(result.err).to include("[dry-run] Running #{DEFAULT_RUBY_SPEC_FILE_COUNT} specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
@@ -123,7 +123,7 @@ RSpec.describe "plur glob pattern support" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run")
 
-        expect(result.err).to include("[dry-run] Running 13 specs [rspec]")
+        expect(result.err).to include("[dry-run] Running #{DEFAULT_RUBY_SPEC_FILE_COUNT} specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/services/email_service_spec.rb")
