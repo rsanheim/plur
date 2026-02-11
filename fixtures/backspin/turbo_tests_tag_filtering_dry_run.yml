@@ -1,8 +1,8 @@
 ---
 format_version: '4.1'
-first_recorded_at: '2026-02-10T20:23:58-06:00'
-recorded_at: '2026-02-11T02:21:22-06:00'
-record_count: 2
+first_recorded_at: '2026-02-11T02:36:16-06:00'
+recorded_at: '2026-02-11T02:36:16-06:00'
+record_count: 1
 snapshot:
   command_type: Open3::Capture3
   args:
@@ -16,7 +16,7 @@ snapshot:
   stderr: |-
     plur version version=[VERSION]
     [dry-run] Running 2 specs [rspec] in parallel using 2 workers
-    [dry-run] Worker: PARALLEL_TEST_GROUPS=2 bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --tag ~type:system spec/models/system_spec.rb
-    [dry-run] Worker: PARALLEL_TEST_GROUPS=2 bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --tag ~type:system spec/models/user_spec.rb
+    [dry-run] Worker [N]: PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=[N] bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --tag ~type:system spec/models/system_spec.rb
+    [dry-run] Worker [N]: PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=[N] bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --tag ~type:system spec/models/user_spec.rb
   status: 0
-  recorded_at: '2026-02-11T02:21:22-06:00'
+  recorded_at: '2026-02-11T02:36:16-06:00'

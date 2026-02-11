@@ -1,8 +1,8 @@
 ---
 format_version: '4.1'
-first_recorded_at: '2026-02-10T20:23:57-06:00'
-recorded_at: '2026-02-11T02:21:22-06:00'
-record_count: 2
+first_recorded_at: '2026-02-11T02:37:25-06:00'
+recorded_at: '2026-02-11T02:37:25-06:00'
+record_count: 1
 snapshot:
   command_type: Open3::Capture3
   args:
@@ -14,4 +14,4 @@ snapshot:
     [dry-run] Running 1 spec [rspec] in parallel using 1 workers
     [dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 bundle exec rspec --fail-fast -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --no-color spec/example_spec.rb
   status: 0
-  recorded_at: '2026-02-11T02:21:22-06:00'
+  recorded_at: '2026-02-11T02:37:25-06:00'

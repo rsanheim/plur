@@ -9,12 +9,12 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
         line
           .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
           .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
-          .gsub(/\bTEST_ENV_NUMBER=\d+\s+/, "")
+          .gsub(/\bTEST_ENV_NUMBER=\d+/, "TEST_ENV_NUMBER=[N]")
       end
 
     # Sort worker lines because parallel worker ordering is nondeterministic
     worker_lines = lines.select { |line| line.start_with?("[dry-run] Worker ") }
-      .map { |line| line.sub(/^\[dry-run\] Worker \d+:\s+/, "[dry-run] Worker: ") }
+      .map { |line| line.sub(/^\[dry-run\] Worker \d+:/, "[dry-run] Worker [N]:") }
       .sort
 
     non_worker_lines = lines.reject { |line| line.start_with?("[dry-run] Worker ") }
