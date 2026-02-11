@@ -1,6 +1,8 @@
 ---
-format_version: '4.0'
-recorded_at: '2026-02-10T20:23:53-06:00'
+format_version: '4.1'
+first_recorded_at: '2026-02-10T20:23:53-06:00'
+recorded_at: '2026-02-11T02:21:11-06:00'
+record_count: 2
 snapshot:
   command_type: Open3::Capture3
   args:
@@ -10,64 +12,61 @@ snapshot:
     Plur Doctor
     ==========
 
-    Plur Version:    0.32.0-dev-911c3a9
-    Build Date:      2026-02-10T12:25:23Z
-    Git Commit:      911c3a9854f5df78cff037a22037e47bb39ff80d
-    Built By:        goreleaser
+    Plur Version:     [VERSION]
+    Build Date:      [BUILD_DATE]
+    Git Commit:      [COMMIT]
+    Built By:        [BUILT_BY]
     Race Detector:   false
 
-    Operating System: darwin
-    Architecture:     arm64
-    CPU Count:        20
-    Go Version:       go1.25.7
+    Operating System: [OS]
+    Architecture:     [ARCH]
+    CPU Count:        [CPU_COUNT]
+    Go Version:       [GO_VERSION]
 
-    Working Dir:      /Users/rsanheim/src/oss/plur
-    Plur Binary:     /Users/rsanheim/.local/share/mise/installs/go/1.25.7/bin/plur
+    Working Dir:      [WORKING_DIR]
+    Plur Binary:       [PLUR_BINARY]
 
     Ruby Environment:
-      Ruby Version:   ruby 4.0.1 (2026-01-13 revision e04267a14b) +PRISM [arm64-darwin24]
-      Bundler:        4.0.4
-      RSpec:          RSpec 3.13
-      - rspec-core 3.13.6
-      - rspec-expectations 3.13.5
-      - rspec-mocks 3.13.7
-      - rspec-support 3.13.7
+      Ruby Version:   [RUBY_VERSION]
+      Bundler:        [BUNDLER_VERSION]
+      RSpec:          [RSPEC_VERSION]
+      - rspec-[COMPONENT] [VERSION]
+      - rspec-[COMPONENT] [VERSION]
+      - rspec-[COMPONENT] [VERSION]
+      - rspec-[COMPONENT] [VERSION]
 
     File Watcher:
       Status:         Available
-      Binary Path:    /Users/rsanheim/.plur/bin/watcher-aarch64-apple-darwin
-      Version:        0.13.8
-      Platform:       darwin/arm64
+      Binary Path:    [WATCHER_PATH]
+      Version:        [WATCHER_VERSION]
+      Platform:       [WATCHER_PLATFORM]
 
-    Cache Directory:  /Users/rsanheim/.plur/cache
-    Runtime Data:     /Users/rsanheim/.plur/runtime/fb25e668.json
+    Cache Directory:  [CACHE_DIR]
+    Runtime Data:     [RUNTIME_PATH]
                       (file exists)
 
     Environment Variables:
-      PARALLEL_TEST_PROCESSORS: (not set)
-      FORCE_COLOR:              (not set)
-      NO_COLOR:                 1
-      HOME:                     /Users/rsanheim
-      GOPATH:                   (not set)
+      PARALLEL_TEST_PROCESSORS: [PARALLEL_TEST_PROCESSORS]
+      FORCE_COLOR:              [FORCE_COLOR]
+      NO_COLOR:                 [NO_COLOR]
+      HOME:                     [HOME_PATH]
+      GOPATH:                   [GOPATH]
 
     Configuration:
-      Active Configuration Files:
-        - /Users/rsanheim/src/oss/plur/.plur.toml
+      Active Configuration Files:    [CONFIG_FILE]
 
       Active Settings:
-        Workers:     18
-        Color:       true
+        Workers: [WORKER_COUNT]
+        Color: [COLOR_VALUE]
         Debug:       false
         Verbose:     false
 
       Job Resolution:
-        Active Job:      rspec
-        Command:         [bundle exec rspec {{target}}]
-        Target Pattern:  spec/**/*_spec.rb
+        Active Job: [JOB_NAME]
+        Command: [COMMAND]
+        Target Pattern: [TARGET_PATTERN]
 
-      Watch Directories:
-        lib/ (exists)
-        spec/ (exists)
+      Watch Directories:    [DIR]/ (exists)    [DIR]/ (exists)
   stderr: ''
   status: 0
-  recorded_at: '2026-02-10T20:23:53-06:00'
+  recorded_at: '2026-02-11T02:21:11-06:00'
