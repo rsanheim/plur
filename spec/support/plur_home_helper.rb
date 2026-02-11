@@ -22,6 +22,18 @@ module PlurHomeHelper
     @plur_home ||= Pathname.new(ENV["PLUR_HOME"])
   end
 
+  # Temporarily remove plur parallel env vars that leak from the outer
+  # test runner when the suite itself is run via plur.
+  def without_plur_parallel_env
+    saved = {}
+    %w[TEST_ENV_NUMBER PARALLEL_TEST_GROUPS].each do |key|
+      saved[key] = ENV.delete(key)
+    end
+    yield
+  ensure
+    saved.each { |key, value| ENV[key] = value if value }
+  end
+
   # Generic method to run plur with any subcommands
   # By default this will raise an error if the command fails - pass allow_error: true to allow it to fail
   #

@@ -28,6 +28,12 @@ RSpec.configure do |config|
   config.filter_run_excluding :skip_if_ci if ENV["CI"]
   config.shared_context_metadata_behavior = :apply_to_host_groups
 
+  # Scrub plur's parallel env vars before each spec so the outer test
+  # runner (which may itself be plur) doesn't leak into child processes.
+  config.around do |example|
+    without_plur_parallel_env { example.run }
+  end
+
   def chdir(path)
     Dir.chdir(path) do
       yield

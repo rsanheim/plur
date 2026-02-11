@@ -1,20 +1,14 @@
 ---
-format_version: '4.0'
-recorded_at: '2026-02-10T20:23:56-06:00'
+format_version: '4.1'
+first_recorded_at: '2026-02-11T02:23:21-06:00'
+recorded_at: '2026-02-11T02:23:21-06:00'
+record_count: 1
 snapshot:
   command_type: Open3::Capture3
   args:
-  - bundle
-  - exec
-  - ruby
-  - "-Itest"
-  - "-e"
-  - '["calculator_test", "string_helper_test"].each { |f| require f }'
-  - "--"
-  - "--seed"
-  - '8378'
+  - "[MINITEST_COMPARISON_COMMAND]"
   stdout: |
-    Run options: --seed 8378
+    Run options: --seed [SEED]
 
     # Running:
 
@@ -22,9 +16,9 @@ snapshot:
     ..in test_addition
     ....
 
-    Finished in 0.000692s, 11560.6912 runs/s, 33236.9872 assertions/s.
+    Finished in [DURATION]s, [RUNS_PER_SEC] runs/s, [ASSERTIONS_PER_SEC] assertions/s.
 
     8 runs, 23 assertions, 0 failures, 0 errors, 0 skips
   stderr: ''
   status: 0
-  recorded_at: '2026-02-10T20:23:56-06:00'
+  recorded_at: '2026-02-11T02:23:21-06:00'

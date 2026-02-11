@@ -34,7 +34,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
     output
       .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
       .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
-      .gsub(/\bTEST_ENV_NUMBER=\d+\s+/, "")
+      .gsub(/\bTEST_ENV_NUMBER=\d+/, "TEST_ENV_NUMBER=[N]")
   end
 
   def normalize_framework_snapshot(snapshot)

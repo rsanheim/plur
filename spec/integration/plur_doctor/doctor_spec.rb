@@ -60,9 +60,6 @@ RSpec.describe "plur doctor command" do
       .gsub(/\s+- .*\.plur\.toml.*/, "    [CONFIG_FILE]")
       .gsub(/\s+Using defaults.*/, "    [DEFAULT_CONFIG_MESSAGE]")
       .gsub(/Source:\s+.+/, "Source: [CONFIG_SOURCE]")
-      .gsub(/Command:\s+.+/, "Command: [COMMAND]")
-      .gsub(/Active Job:\s+.+/, "Active Job: [JOB_NAME]")
-      .gsub(/Target Pattern:\s+.+/, "Target Pattern: [TARGET_PATTERN]")
       .gsub(/Workers:\s+\d+/, "Workers: [WORKER_COUNT]")
       .gsub(/Color:\s+.+/, "Color: [COLOR_VALUE]")
       .gsub(/PARALLEL_TEST_PROCESSORS:\s+.+/, "PARALLEL_TEST_PROCESSORS: [PARALLEL_TEST_PROCESSORS]")
@@ -70,8 +67,6 @@ RSpec.describe "plur doctor command" do
       .gsub(/NO_COLOR:\s+.+/, "NO_COLOR:                 [NO_COLOR]")
       .gsub(/GOPATH:\s+.+/, "GOPATH:                   [GOPATH]")
       .gsub(/Debounce:\s+\d+ms/, "Debounce: [DEBOUNCE_MS]")
-      .gsub("Watch Directories:", "Watch Directories:")
-      .gsub(/\s+\w+\/\s+\(exists\)/, "    [DIR]/ (exists)")
   end
 
   def normalize_doctor_snapshot(snapshot)
