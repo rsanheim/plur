@@ -1,79 +1,113 @@
-# Backspin v0.9.0 Migration Notes
+# Backspin v0.10.0 Migration Notes
 
-## What Changed in Plur
+Updated on: 2026-02-11
 
-Plur now uses `backspin` `~> 0.9.0` in the RSpec suite.
+## Dependency Updates
 
-Updated all existing Backspin usage for the new API:
+- Updated `Gemfile` to `gem "backspin", "~> 0.10.0", require: false`.
+- Updated `Gemfile.lock` to `backspin (0.10.0)`.
+- Updated appraisal lockfiles:
+  - `gemfiles/rspec_3.13.1.gemfile.lock`
+  - `gemfiles/rspec_3.13.2.gemfile.lock`
 
-- Replaced `Backspin.run!` with `Backspin.run(command, name: ...)`
-- Removed `:playback` usage (no longer supported)
-- Switched result access from removed convenience accessors (`result.stdout`) to snapshot fields (`result.actual.stdout`)
-- Rewrote old block-returning-`Open3.capture3` usage into explicit command snapshots
-- Regenerated records to `format_version: 4.0` with single `snapshot` payloads
-- Kept single-call usage for same-command snapshots; retained two-call flows only where we intentionally compare different commands (RSpec baseline vs plur output)
+## Upstream Review (v0.9.0 -> v0.10.0)
 
-## Backspin Feedback / Snags
+Reviewed:
+- Changelog: https://github.com/rsanheim/backspin/blob/main/CHANGELOG.md
+- Compare: https://github.com/rsanheim/backspin/compare/v0.9.0...v0.10.0
 
-### Tricky parts encountered
+Key changes in `0.10.0`:
 
-1. API shape changed in a meaningful way:
-   - Old block style in plur tests returned `Open3.capture3` tuples.
-   - New block capture mode captures process stdout/stderr, not returned tuples.
-   - Fix required moving to explicit command arrays in `Backspin.run`.
+1. `filter_on` added to `Backspin.run`/`Backspin.capture`.
+   - Default is `:both`.
+   - Optional `:record` preserves old record-only filtering behavior.
+2. `filter` behavior changed:
+   - Filter now runs during verify comparisons/diffs by default (`filter_on: :both`).
+3. Matcher safety improvements:
+   - Matcher callbacks receive mutable copies, so in-place mutations do not mutate snapshots.
+4. Snapshot serialization is immutable:
+   - `Snapshot#to_h` now returns frozen data created at initialization.
 
-2. Record format migration is strict:
-   - v2/v3 records are rejected by v0.9.0.
-   - Existing `fixtures/backspin/*.yml` had to be regenerated.
+## Plur Usage Review and Simplification
 
-3. Removed playback mode required test redesign:
-   - Prior test demonstrating `mode: :playback` was replaced with explicit `:verify` + snapshot contract assertions.
+### What we changed
 
-4. Snapshot volatility in CLI tests:
-   - Dry-run output includes version/path data.
-   - Needed targeted normalizers in matcher lambdas to avoid noisy failures.
+We moved most normalization logic from `matcher:` lambdas into `filter:` snapshot canonicalization.
 
-### Feedback for backspin itself (for later)
+This removes duplicated `record`/`verify` normalization code and uses the new default behavior (`filter_on: :both`) to normalize both recorded and actual snapshots before matching/diffing.
 
-1. A migration helper for old record formats would reduce adoption friction (v2/v3 -> v4).
-2. A first-class "ignore fields" matcher helper (e.g. ignore timestamp/path patterns) would reduce custom matcher boilerplate.
-3. A replacement for removed playback mode (or an explicit rationale section in docs) would help users migrating test intent around speed-focused fixtures.
+### Simplification pattern now used
 
-## New Backspin Call Sites Added (5)
+1. Define a snapshot filter helper in each spec:
+   - normalize volatile stdout/stderr data
+   - optionally normalize `args` when comparing different commands with the same record name
+2. Call `Backspin.run(..., filter: ->(snapshot) { ... })`
+3. Keep explicit assertions on `result.actual` for behavior we still want to check directly.
 
-1. `spec/integration/shared/rspec_args_spec.rb`
-   - Snapshot dry-run passthrough formatter command construction.
-2. `spec/integration/plur_spec/framework_output_spec.rb`
-   - Snapshot dry-run output for non-standard RSpec job config.
-3. `spec/integration/plur_spec/change_dir_config_spec.rb`
-   - Snapshot `-C nonexistent` error output.
-4. `spec/integration/plur_spec/change_dir_config_spec.rb`
-   - Snapshot missing `-C` argument error output.
+### Updated call sites
+
+1. `spec/integration/plur_doctor/doctor_spec.rb`
+   - Replaced stdout normalization matcher with `filter`.
+2. `spec/integration/plur_spec/change_dir_config_spec.rb`
+   - Replaced stderr matcher with `filter` that normalizes tmp paths.
+3. `spec/integration/plur_spec/framework_output_spec.rb`
+   - Replaced dry-run stderr matcher with `filter`.
+4. `spec/integration/shared/rspec_args_spec.rb`
+   - Replaced dry-run stderr matcher with `filter`.
 5. `spec/integration/shared/turbo_tests_migration_spec.rb`
-   - Snapshot turbo_tests-style tag filtering dry-run output.
+   - Replaced dry-run stderr matcher with `filter`.
+6. `spec/integration/plur_spec/pending_output_spec.rb`
+   - Replaced dual matcher setup with `filter`.
+   - Normalized `args`/`stderr` so RSpec baseline vs plur comparison focuses on normalized stdout contract.
+7. `spec/integration/shared/single_failure_golden_spec.rb`
+   - Replaced matchers with `filter`.
+   - Normalized `args`/`stderr` for RSpec baseline vs plur comparison.
+8. `spec/integration/plur_spec/minitest_integration_spec.rb`
+   - Replaced matchers with `filter` in grouped minitest snapshot flows.
+   - Normalized `args` for cross-command comparison path.
 
-## Impact / Usefulness Analysis
+## Verification Run
 
-1. Better regression detection for CLI command assembly:
-   - Worker command shape, flag ordering, and formatter wiring are now checked as full contracts, not just fragments.
+Executed after migration:
 
-2. Better error UX coverage:
-   - `-C` failure messaging is now golden-tested, making accidental wording or structure regressions easier to catch.
+- `bin/rspec spec/integration/plur_doctor/doctor_spec.rb spec/integration/plur_spec/change_dir_config_spec.rb spec/integration/plur_spec/framework_output_spec.rb spec/integration/plur_spec/minitest_integration_spec.rb spec/integration/plur_spec/pending_output_spec.rb spec/integration/shared/rspec_args_spec.rb spec/integration/shared/single_failure_golden_spec.rb spec/integration/shared/turbo_tests_migration_spec.rb`
+- `bin/rake test`
+- `bin/rake`
 
-3. Better migration confidence from turbo_tests semantics:
-   - Tag + directory expansion behavior is now captured in one snapshot contract.
+Result: passing (with existing expected pending examples only).
 
-4. Tradeoff:
-   - Snapshot tests can be brittle with dynamic metadata.
-   - Mitigation added: custom normalizers for version and formatter-path churn in relevant specs.
+## Notes
 
-## Follow-up Issues (Backspin)
+- We intentionally kept cross-command golden comparisons where they provide value (RSpec baseline vs plur behavior checks).
+- No snapshot format migration was required for this update (still `format_version: 4.0`).
+- If record-only filtering is needed in future, pass `filter_on: :record` explicitly.
 
-- `#27` Proposal: extend filter to support verification-time canonicalization
-  - https://github.com/rsanheim/backspin/issues/27
-- `#28` Preserve `first_recorded_at` metadata for auto re-record workflows
-  - https://github.com/rsanheim/backspin/issues/28
-- `#29` Support `BACKSPIN_MODE` / `RECORD_MODE` environment overrides for run mode
-  - https://github.com/rsanheim/backspin/issues/29
-- `#30` Improve verification diff UX (field summary, changed-fields-only, truncation/full mode)
-  - https://github.com/rsanheim/backspin/issues/30
+## Suggested Backspin Improvements
+
+These are upstream improvements that would simplify real-world CLI snapshot suites further:
+
+1. Built-in field-level filter helpers
+   - Example: `Backspin::Filters.gsub("stdout", /regex/, "[TOKEN]")`
+   - Value: less custom filter boilerplate in test suites.
+2. Filter chaining/composition helpers
+   - Example: `filter: Backspin.filter_chain(normalize_paths, normalize_timing, strip_banner)`
+   - Value: cleaner reuse across many specs without ad-hoc helper methods.
+3. Verify-scope comparison configuration
+   - Example: `compare_fields: %w[stdout status]` or `ignore_fields: %w[args stderr]`
+   - Value: avoids mutating/normalizing unrelated fields just to compare cross-command behavior.
+4. Better diff ergonomics for large stdout snapshots
+   - Show context windows and a summarized field change table before full diff.
+   - Value: easier debugging for long CLI outputs.
+5. Migration guidance docs for matcher -> filter
+   - Dedicated section with before/after examples for `filter_on: :both`.
+   - Value: smoother adoption of `0.10.x` defaults.
+
+## Recommended Team Conventions (Plur)
+
+To keep Backspin usage consistent in this repo:
+
+1. Prefer `filter:` for canonicalization.
+2. Use `matcher:` only for truly semantic comparisons that cannot be represented as normalization.
+3. Keep one small `normalize_*_snapshot` helper per spec file.
+4. In cross-command comparisons, normalize `args` explicitly so contracts focus on output semantics.
+5. Keep direct assertions on `result.actual` for critical user-visible guarantees.

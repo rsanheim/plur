@@ -8,6 +8,10 @@ RSpec.describe "plur -C with config files", type: :integration do
     output.gsub(temp_dir, "[TMP_DIR]")
   end
 
+  def normalize_change_dir_snapshot(snapshot)
+    snapshot.merge("stderr" => normalize_change_dir_error(snapshot.fetch("stderr", "")))
+  end
+
   before do
     # Create a test project structure
     FileUtils.mkdir_p(File.join(project_dir, "spec"))
@@ -161,16 +165,12 @@ RSpec.describe "plur -C with config files", type: :integration do
     end
 
     it "captures nonexistent -C directory errors with Backspin" do
-      stderr_matcher = ->(recorded, actual) {
-        normalize_change_dir_error(recorded) == normalize_change_dir_error(actual)
-      }
-
       Dir.chdir(temp_dir) do
         command = ["plur", "-C", "nonexistent", "--dry-run"]
         result = Backspin.run(
           command,
           name: "change_dir_nonexistent_error",
-          matcher: {stderr: stderr_matcher}
+          filter: ->(snapshot) { normalize_change_dir_snapshot(snapshot) }
         )
 
         expect(result.actual.status).not_to eq(0)
@@ -179,16 +179,12 @@ RSpec.describe "plur -C with config files", type: :integration do
     end
 
     it "captures missing -C argument errors with Backspin" do
-      stderr_matcher = ->(recorded, actual) {
-        normalize_change_dir_error(recorded) == normalize_change_dir_error(actual)
-      }
-
       Dir.chdir(temp_dir) do
         command = ["plur", "-C"]
         result = Backspin.run(
           command,
           name: "change_dir_missing_argument_error",
-          matcher: {stderr: stderr_matcher}
+          filter: ->(snapshot) { normalize_change_dir_snapshot(snapshot) }
         )
 
         expect(result.actual.status).not_to eq(0)
