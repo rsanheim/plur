@@ -92,20 +92,18 @@ RSpec.describe "Minitest Integration" do
           "Finished in [DURATION]s, [RUNS_PER_SEC] runs/s, [ASSERTIONS_PER_SEC] assertions/s.")
     end
 
-    def run_grouped_minitest(seed:)
+    def grouped_minitest_command(seed:)
       # Use a single ruby command with a quoted -e script to require each file.
-      command = [
+      [
         "bundle", "exec", "ruby",
         "-Itest",
         "-e", '["calculator_test", "string_helper_test"].each { |f| require f }',
         "--", "--seed", seed
       ]
-
-      Open3.capture3(*command)
     end
 
-    def run_plur_minitest_serial
-      Open3.capture3("plur", "--use", "minitest", "-n", "1", "--no-color")
+    def plur_minitest_serial_command
+      ["plur", "--use", "minitest", "-n", "1", "--no-color"]
     end
 
     it "records grouped minitest output from a ruby -e require list" do
@@ -114,12 +112,13 @@ RSpec.describe "Minitest Integration" do
       }
       stderr_matcher = ->(_record, _actual) { true }
 
-      Backspin.run!("minitest_grouped_ruby_command_output",
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-        chdir(project_dir) do
-          Bundler.with_unbundled_env do
-            run_grouped_minitest(seed: minitest_seed)
-          end
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          Backspin.run(
+            grouped_minitest_command(seed: minitest_seed),
+            name: "minitest_grouped_ruby_command_output",
+            matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+          )
         end
       end
     end
@@ -132,13 +131,14 @@ RSpec.describe "Minitest Integration" do
       }
       stderr_matcher = ->(_record, _actual) { true }
 
-      Backspin.run!("minitest_grouped_ruby_command_output",
-        mode: :verify,
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-        chdir(project_dir) do
-          Bundler.with_unbundled_env do
-            run_plur_minitest_serial
-          end
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          Backspin.run(
+            plur_minitest_serial_command,
+            name: "minitest_grouped_ruby_command_output",
+            mode: :verify,
+            matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+          )
         end
       end
     end

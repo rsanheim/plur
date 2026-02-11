@@ -1,8 +1,8 @@
 ---
-first_recorded_at: '2026-01-15T06:05:11-06:00'
-format_version: '2.0'
-commands:
-- command_type: Open3::Capture3
+format_version: '4.0'
+recorded_at: '2026-02-10T20:23:54-06:00'
+snapshot:
+  command_type: Open3::Capture3
   args:
   - bundle
   - exec
@@ -29,11 +29,11 @@ commands:
     fail has an error\n     \e[31mFailure/Error: \e[0mraise \e[31m\e[1;31m\"\e[0m\e[31mUnexpected
     error\e[1;31m\"\e[0m\e[31m\e[0m\e[0m\n     \e[31m\e[0m\n     \e[31mRuntimeError:\e[0m\n
     \    \e[31m  Unexpected error\e[0m\n     \e[36m# ./spec/mixed_results_spec.rb:16:in
-    'block (3 levels) in <top (required)>'\e[0m\n\nFinished in 0.00779 seconds (files
-    took 0.04083 seconds to load)\n\e[31m8 examples, 2 failures, 3 pending\e[0m\n\nFailed
+    'block (3 levels) in <top (required)>'\e[0m\n\nFinished in 0.00791 seconds (files
+    took 0.0496 seconds to load)\n\e[31m8 examples, 2 failures, 3 pending\e[0m\n\nFailed
     examples:\n\n\e[31mrspec ./spec/mixed_results_spec.rb:7\e[0m \e[36m# MixedResults
     some pass, some fail fails this test\e[0m\n\e[31mrspec ./spec/mixed_results_spec.rb:15\e[0m
     \e[36m# MixedResults some pass, some fail has an error\e[0m\n\n"
   stderr: ''
   status: 1
-  recorded_at: '2026-01-15T06:05:11-06:00'
+  recorded_at: '2026-02-10T20:23:54-06:00'

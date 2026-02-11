@@ -4,6 +4,10 @@ RSpec.describe "plur -C with config files", type: :integration do
   let(:temp_dir) { Dir.mktmpdir }
   let(:project_dir) { File.join(temp_dir, "test_project") }
 
+  def normalize_change_dir_error(output)
+    output.gsub(temp_dir, "[TMP_DIR]")
+  end
+
   before do
     # Create a test project structure
     FileUtils.mkdir_p(File.join(project_dir, "spec"))
@@ -153,6 +157,42 @@ RSpec.describe "plur -C with config files", type: :integration do
         result = run_plur_allowing_errors("-C")
         expect(result.err).to include("requires a directory argument")
         expect(result.exit_status).not_to eq(0)
+      end
+    end
+
+    it "captures nonexistent -C directory errors with Backspin" do
+      stderr_matcher = ->(recorded, actual) {
+        normalize_change_dir_error(recorded) == normalize_change_dir_error(actual)
+      }
+
+      Dir.chdir(temp_dir) do
+        command = ["plur", "-C", "nonexistent", "--dry-run"]
+        result = Backspin.run(
+          command,
+          name: "change_dir_nonexistent_error",
+          matcher: {stderr: stderr_matcher}
+        )
+
+        expect(result.actual.status).not_to eq(0)
+        expect(result.actual.stderr).to include("failed to change directory")
+      end
+    end
+
+    it "captures missing -C argument errors with Backspin" do
+      stderr_matcher = ->(recorded, actual) {
+        normalize_change_dir_error(recorded) == normalize_change_dir_error(actual)
+      }
+
+      Dir.chdir(temp_dir) do
+        command = ["plur", "-C"]
+        result = Backspin.run(
+          command,
+          name: "change_dir_missing_argument_error",
+          matcher: {stderr: stderr_matcher}
+        )
+
+        expect(result.actual.status).not_to eq(0)
+        expect(result.actual.stderr).to include("requires a directory argument")
       end
     end
   end

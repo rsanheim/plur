@@ -1,8 +1,8 @@
 ---
-first_recorded_at: '2025-12-13T01:50:38-05:00'
-format_version: '2.0'
-commands:
-- command_type: Open3::Capture3
+format_version: '4.0'
+recorded_at: '2026-02-10T20:23:53-06:00'
+snapshot:
+  command_type: Open3::Capture3
   args:
   - plur
   - doctor
@@ -10,52 +10,52 @@ commands:
     Plur Doctor
     ==========
 
-    Plur Version:    0.19.0-dev-33e1a5b
-    Build Date:      2025-12-13T06:46:33Z
-    Git Commit:      33e1a5bf44b0a0128560abe50caf7a1b0ec4557e
+    Plur Version:    0.32.0-dev-911c3a9
+    Build Date:      2026-02-10T12:25:23Z
+    Git Commit:      911c3a9854f5df78cff037a22037e47bb39ff80d
     Built By:        goreleaser
     Race Detector:   false
 
     Operating System: darwin
     Architecture:     arm64
-    CPU Count:        14
-    Go Version:       go1.25.4
+    CPU Count:        20
+    Go Version:       go1.25.7
 
-    Working Dir:      /Users/rsanheim/src/rsanheim/plur
-    Plur Binary:     /Users/rsanheim/.local/share/mise/installs/go/1.25.4/bin/plur
+    Working Dir:      /Users/rsanheim/src/oss/plur
+    Plur Binary:     /Users/rsanheim/.local/share/mise/installs/go/1.25.7/bin/plur
 
     Ruby Environment:
-      Ruby Version:   ruby 3.4.7 (2025-10-08 revision 7a5688e2a2) +PRISM [arm64-darwin24]
-      Bundler:        Bundler version 2.7.2
+      Ruby Version:   ruby 4.0.1 (2026-01-13 revision e04267a14b) +PRISM [arm64-darwin24]
+      Bundler:        4.0.4
       RSpec:          RSpec 3.13
       - rspec-core 3.13.6
       - rspec-expectations 3.13.5
       - rspec-mocks 3.13.7
-      - rspec-support 3.13.6
+      - rspec-support 3.13.7
 
     File Watcher:
       Status:         Available
       Binary Path:    /Users/rsanheim/.plur/bin/watcher-aarch64-apple-darwin
-      Version:        error: exit status 1
+      Version:        0.13.8
       Platform:       darwin/arm64
 
     Cache Directory:  /Users/rsanheim/.plur/cache
-    Runtime Data:     /Users/rsanheim/.plur/runtime/2053983d.json
+    Runtime Data:     /Users/rsanheim/.plur/runtime/fb25e668.json
                       (file exists)
 
     Environment Variables:
       PARALLEL_TEST_PROCESSORS: (not set)
       FORCE_COLOR:              (not set)
-      NO_COLOR:                 (not set)
+      NO_COLOR:                 1
       HOME:                     /Users/rsanheim
       GOPATH:                   (not set)
 
     Configuration:
       Active Configuration Files:
-        - /Users/rsanheim/src/rsanheim/plur/.plur.toml
+        - /Users/rsanheim/src/oss/plur/.plur.toml
 
       Active Settings:
-        Workers:     12
+        Workers:     18
         Color:       true
         Debug:       false
         Verbose:     false
@@ -70,4 +70,4 @@ commands:
         spec/ (exists)
   stderr: ''
   status: 0
-  recorded_at: '2025-12-13T01:50:38-05:00'
+  recorded_at: '2026-02-10T20:23:53-06:00'
