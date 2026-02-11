@@ -1,8 +1,8 @@
 ---
-first_recorded_at: '2026-01-15T06:05:10-06:00'
-format_version: '2.0'
-commands:
-- command_type: Open3::Capture3
+format_version: '4.0'
+recorded_at: '2026-02-10T20:23:56-06:00'
+snapshot:
+  command_type: Open3::Capture3
   args:
   - bundle
   - exec
@@ -15,9 +15,9 @@ commands:
     boy\"\e[0m\n     \e[31m       got: \"All work and no play makes something something
     something\"\e[0m\n     \e[31m\e[0m\n     \e[31m  (compared using ==)\e[0m\n     \e[36m#
     ./spec/single_failure_spec.rb:6:in 'block (2 levels) in <top (required)>'\e[0m\n\nFinished
-    in 0.00543 seconds (files took 0.04509 seconds to load)\n\e[31m1 example, 1 failure\e[0m\n\nFailed
+    in 0.00538 seconds (files took 0.04788 seconds to load)\n\e[31m1 example, 1 failure\e[0m\n\nFailed
     examples:\n\n\e[31mrspec ./spec/single_failure_spec.rb:2\e[0m \e[36m# Single Failure
     fails due to strings not matching\e[0m\n\n"
   stderr: ''
   status: 1
-  recorded_at: '2026-01-15T06:05:10-06:00'
+  recorded_at: '2026-02-10T20:23:56-06:00'

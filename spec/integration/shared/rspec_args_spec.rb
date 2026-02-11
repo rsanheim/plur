@@ -1,6 +1,12 @@
 require "spec_helper"
 
 RSpec.describe "RSpec CLI args" do
+  def normalize_dry_run_output(output)
+    output
+      .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
+      .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
+  end
+
   context "with explicit --tag" do
     it "places tag args before file arguments" do
       Dir.chdir(default_ruby_dir) do
@@ -51,6 +57,30 @@ RSpec.describe "RSpec CLI args" do
         expect(result.exit_status).not_to eq(0)
         expect(result.err).to include("--tag is only supported for rspec")
         expect(result.err).to include("minitest")
+      end
+    end
+  end
+
+  context "snapshot coverage" do
+    it "captures dry-run passthrough formatter output with Backspin" do
+      stderr_matcher = ->(recorded, actual) {
+        normalize_dry_run_output(recorded) == normalize_dry_run_output(actual)
+      }
+
+      command = [
+        "plur", "--dry-run", "spec/calculator_spec.rb",
+        "--", "--format", "documentation", "--out", "tmp/rspec.out"
+      ]
+
+      Dir.chdir(default_ruby_dir) do
+        result = Backspin.run(
+          command,
+          name: "rspec_args_passthrough_formatter_dry_run",
+          matcher: {stderr: stderr_matcher}
+        )
+
+        expect(result.actual.stderr).to include("--format documentation")
+        expect(result.actual.stderr).to include("--out tmp/rspec.out")
       end
     end
   end

@@ -31,30 +31,32 @@ RSpec.describe "pending specs output" do
       stderr_matcher = ->(_stderr_1, _stderr_2) { true }
 
       # Record rspec output as baseline
-      Backspin.run("pending_output_comparison",
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-        chdir fixture_path("failing_specs") do
-          run_rspec("spec/mixed_results_spec.rb", "--force-color")
-        end
+      chdir fixture_path("failing_specs") do
+        Backspin.run(
+          ["bundle", "exec", "rspec", "spec/mixed_results_spec.rb", "--force-color"],
+          name: "pending_output_comparison",
+          matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+        )
       end
 
       # Verify plur output matches
-      result = Backspin.run!("pending_output_comparison",
-        mode: :auto,
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-        chdir fixture_path("failing_specs") do
-          run_plur("spec/mixed_results_spec.rb")
-        end
+      result = chdir fixture_path("failing_specs") do
+        Backspin.run(
+          ["plur", "spec/mixed_results_spec.rb"],
+          name: "pending_output_comparison",
+          mode: :verify,
+          matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+        )
       end
 
       # Verify output structure
-      expect(result.stdout).to include("Pending:")
-      expect(result.stdout).to include("Failures listed here are expected")
-      expect(result.stdout).to include("Failures:")
+      expect(result.actual.stdout).to include("Pending:")
+      expect(result.actual.stdout).to include("Failures listed here are expected")
+      expect(result.actual.stdout).to include("Failures:")
 
       # Verify pending appears before failures
-      pending_pos = result.stdout.index("Pending:")
-      failures_pos = result.stdout.index("Failures:")
+      pending_pos = result.actual.stdout.index("Pending:")
+      failures_pos = result.actual.stdout.index("Failures:")
       expect(pending_pos).to be < failures_pos
     end
 

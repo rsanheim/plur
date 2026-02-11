@@ -1,8 +1,8 @@
 ---
-first_recorded_at: '2026-02-04T00:00:00-06:00'
-format_version: '2.0'
-commands:
-- command_type: Open3::Capture3
+format_version: '4.0'
+recorded_at: '2026-02-10T20:23:56-06:00'
+snapshot:
+  command_type: Open3::Capture3
   args:
   - bundle
   - exec
@@ -12,8 +12,19 @@ commands:
   - '["calculator_test", "string_helper_test"].each { |f| require f }'
   - "--"
   - "--seed"
-  - "8378"
-  stdout: "Run options: --seed 8378\n\n# Running:\n\n..in test_titleize\n..in test_addition\n....\n\nFinished in 0.001333s, 6001.4956 runs/s, 17254.2997 assertions/s.\n\n8 runs, 23 assertions, 0 failures, 0 errors, 0 skips\n"
+  - '8378'
+  stdout: |
+    Run options: --seed 8378
+
+    # Running:
+
+    ..in test_titleize
+    ..in test_addition
+    ....
+
+    Finished in 0.000692s, 11560.6912 runs/s, 33236.9872 assertions/s.
+
+    8 runs, 23 assertions, 0 failures, 0 errors, 0 skips
   stderr: ''
   status: 0
-  recorded_at: '2026-02-04T00:00:00-06:00'
+  recorded_at: '2026-02-10T20:23:56-06:00'

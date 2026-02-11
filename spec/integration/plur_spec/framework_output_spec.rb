@@ -3,7 +3,7 @@ require "spec_helper"
 RSpec.describe "Framework output (dry-run + verbose)" do
   around_with_tmp_plur_home
 
-  it "uses framework defaults for non-standard rspec jobs and surfaces framework in output" do
+  def with_fast_rspec_project
     Dir.mktmpdir do |dir|
       spec_dir = File.join(dir, "spec")
       FileUtils.mkdir_p(spec_dir)
@@ -26,6 +26,19 @@ RSpec.describe "Framework output (dry-run + verbose)" do
         target_pattern = "spec/**/*_spec.rb"
       TOML
 
+      yield dir
+    end
+  end
+
+  def normalize_framework_dry_run(output)
+    output
+      .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
+      .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
+      .gsub(/\bTEST_ENV_NUMBER=\d+\s+/, "")
+  end
+
+  it "uses framework defaults for non-standard rspec jobs and surfaces framework in output" do
+    with_fast_rspec_project do |dir|
       chdir(dir) do
         result = run_plur("--dry-run", "--debug")
 
@@ -39,6 +52,26 @@ RSpec.describe "Framework output (dry-run + verbose)" do
         expected_cmd = "bundle exec rspec --fail-fast -r #{plur_home.join("formatter", "json_rows_formatter.rb")} " \
                        "--format Plur::JsonRowsFormatter --no-color spec/example_spec.rb"
         expect(worker_line).to include(expected_cmd)
+      end
+    end
+  end
+
+  it "captures dry-run output contract for non-standard rspec jobs with Backspin" do
+    stderr_matcher = ->(recorded, actual) {
+      normalize_framework_dry_run(recorded) == normalize_framework_dry_run(actual)
+    }
+
+    with_fast_rspec_project do |dir|
+      chdir(dir) do
+        command = ["plur", "--dry-run"]
+        result = Backspin.run(
+          command,
+          name: "framework_output_fast_job_dry_run",
+          matcher: {stderr: stderr_matcher}
+        )
+
+        expect(result.actual.stderr).to include("--fail-fast")
+        expect(result.actual.stderr).to include("[dry-run] Running 1 spec [rspec] in parallel using 1 workers")
       end
     end
   end
