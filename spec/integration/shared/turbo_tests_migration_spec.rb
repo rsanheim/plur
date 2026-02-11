@@ -12,6 +12,7 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
           .gsub(/\bTEST_ENV_NUMBER=\d+\s+/, "")
       end
 
+    # Sort worker lines because parallel worker ordering is nondeterministic
     worker_lines = lines.select { |line| line.start_with?("[dry-run] Worker ") }
       .map { |line| line.sub(/^\[dry-run\] Worker \d+:\s+/, "[dry-run] Worker: ") }
       .sort
