@@ -2,9 +2,23 @@ require "spec_helper"
 
 RSpec.describe "turbo_tests migration: tag filtering with directory args" do
   def normalize_turbo_dry_run_output(output)
-    output
-      .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
-      .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
+    lines = output
+      .lines
+      .map(&:chomp)
+      .map do |line|
+        line
+          .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
+          .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
+          .gsub(/\bTEST_ENV_NUMBER=\d+\s+/, "")
+      end
+
+    worker_lines = lines.select { |line| line.start_with?("[dry-run] Worker ") }
+      .map { |line| line.sub(/^\[dry-run\] Worker \d+:\s+/, "[dry-run] Worker: ") }
+      .sort
+
+    non_worker_lines = lines.reject { |line| line.start_with?("[dry-run] Worker ") }
+
+    (non_worker_lines + worker_lines).join("\n")
   end
 
   context "dry-run command construction" do

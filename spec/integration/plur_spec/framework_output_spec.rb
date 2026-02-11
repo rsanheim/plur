@@ -34,6 +34,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
     output
       .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
       .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
+      .gsub(/\bTEST_ENV_NUMBER=\d+\s+/, "")
   end
 
   it "uses framework defaults for non-standard rspec jobs and surfaces framework in output" do
