@@ -19,21 +19,21 @@ RSpec.describe "single failure golden test" do
       "Finished in [fake-time] seconds (files took [fake-time] seconds to load)")
   end
 
+  def normalize_single_failure_snapshot(snapshot)
+    snapshot.merge(
+      "args" => ["[SINGLE_FAILURE_COMMAND]"],
+      "stdout" => make_summary_line_consistent(snapshot.fetch("stdout", "")).strip,
+      "stderr" => ""
+    )
+  end
+
   it "shows filtered backtrace same as rspec using Backspin" do
-    stdout_matcher = ->(stdout_1, stdout_2) {
-      normalized_1 = make_summary_line_consistent(stdout_1)
-      normalized_2 = make_summary_line_consistent(stdout_2)
-      normalized_1.strip == normalized_2.strip
-    }
-
-    stderr_matcher = ->(stderr_1, stderr_2) { true }
-
     # Record rspec output
     chdir fixture_path("failing_specs") do
       Backspin.run(
         rspec_single_failure_command,
         name: "rspec_vs_plur_backtrace_comparison",
-        matcher: {stdout: stdout_matcher}
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
       )
     end
 
@@ -42,8 +42,7 @@ RSpec.describe "single failure golden test" do
       Backspin.run(
         plur_single_failure_command,
         name: "rspec_vs_plur_backtrace_comparison",
-        mode: :verify,
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
       )
     end
 
@@ -56,22 +55,12 @@ RSpec.describe "single failure golden test" do
   end
 
   it "matches rspec colorized output using Backspin verification" do
-    stdout_matcher = ->(stdout_1, stdout_2) {
-      normalized_1 = make_summary_line_consistent(stdout_1)
-      normalized_2 = make_summary_line_consistent(stdout_2)
-
-      # Skip preamble if present
-      normalized_1.strip == normalized_2.strip
-    }
-
-    stderr_matcher = ->(stderr_1, stderr_2) { true }
-
     # Record rspec output
     chdir fixture_path("failing_specs") do
       Backspin.run(
         rspec_single_failure_command,
         name: "rspec_vs_plur_colorized_comparison",
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
       )
     end
 
@@ -80,8 +69,7 @@ RSpec.describe "single failure golden test" do
       Backspin.run(
         plur_single_failure_command,
         name: "rspec_vs_plur_colorized_comparison",
-        mode: :verify,
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
       )
     end
 
@@ -92,15 +80,11 @@ RSpec.describe "single failure golden test" do
   end
 
   it "uses Backspin snapshot result fields in verify mode" do
-    stdout_matcher = ->(stdout_1, stdout_2) {
-      make_summary_line_consistent(stdout_1) == make_summary_line_consistent(stdout_2)
-    }
-
     chdir fixture_path("failing_specs") do
       Backspin.run(
         rspec_single_failure_command,
         name: "rspec_verify_mode_demo",
-        matcher: {stdout: stdout_matcher}
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
       )
     end
 
@@ -108,8 +92,7 @@ RSpec.describe "single failure golden test" do
       Backspin.run(
         plur_single_failure_command,
         name: "rspec_verify_mode_demo",
-        mode: :verify,
-        matcher: {stdout: stdout_matcher}
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
       )
     end
 

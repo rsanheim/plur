@@ -74,6 +74,10 @@ RSpec.describe "plur doctor command" do
       .gsub(/\s+\w+\/\s+\(exists\)/, "    [DIR]/ (exists)")
   end
 
+  def normalize_doctor_snapshot(snapshot)
+    snapshot.merge("stdout" => normalize_doctor_output(snapshot.fetch("stdout", "")))
+  end
+
   it "displays diagnostic information" do
     stdout, stderr, status = run_plur_doctor
 
@@ -97,14 +101,11 @@ RSpec.describe "plur doctor command" do
   end
 
   it "produces consistent output using Backspin golden testing", :skip_if_ci do
-    stdout_matcher = ->(record, actual) {
-      normalized_recorded = normalize_doctor_output(record)
-      normalized_actual = normalize_doctor_output(actual)
-
-      normalized_recorded == normalized_actual
-    }
-
-    Backspin.run(["plur", "doctor"], name: "plur_doctor_golden", matcher: {stdout: stdout_matcher})
+    Backspin.run(
+      ["plur", "doctor"],
+      name: "plur_doctor_golden",
+      filter: ->(snapshot) { normalize_doctor_snapshot(snapshot) }
+    )
   end
 
   it "includes all expected sections in output" do

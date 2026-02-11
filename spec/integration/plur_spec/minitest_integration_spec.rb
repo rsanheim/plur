@@ -92,6 +92,14 @@ RSpec.describe "Minitest Integration" do
           "Finished in [DURATION]s, [RUNS_PER_SEC] runs/s, [ASSERTIONS_PER_SEC] assertions/s.")
     end
 
+    def normalize_grouped_minitest_snapshot(snapshot)
+      snapshot.merge(
+        "args" => ["[MINITEST_COMPARISON_COMMAND]"],
+        "stdout" => normalize_minitest_output(snapshot.fetch("stdout", "")),
+        "stderr" => ""
+      )
+    end
+
     def grouped_minitest_command(seed:)
       # Use a single ruby command with a quoted -e script to require each file.
       [
@@ -107,17 +115,12 @@ RSpec.describe "Minitest Integration" do
     end
 
     it "records grouped minitest output from a ruby -e require list" do
-      stdout_matcher = ->(record, actual) {
-        normalize_minitest_output(record) == normalize_minitest_output(actual)
-      }
-      stderr_matcher = ->(_record, _actual) { true }
-
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           Backspin.run(
             grouped_minitest_command(seed: minitest_seed),
             name: "minitest_grouped_ruby_command_output",
-            matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+            filter: ->(snapshot) { normalize_grouped_minitest_snapshot(snapshot) }
           )
         end
       end
@@ -126,18 +129,12 @@ RSpec.describe "Minitest Integration" do
     it "compares plur -n1 output to grouped minitest output" do
       pending("plur output does not match raw minitest output yet")
 
-      stdout_matcher = ->(record, actual) {
-        normalize_minitest_output(record) == normalize_minitest_output(actual)
-      }
-      stderr_matcher = ->(_record, _actual) { true }
-
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           Backspin.run(
             plur_minitest_serial_command,
             name: "minitest_grouped_ruby_command_output",
-            mode: :verify,
-            matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+            filter: ->(snapshot) { normalize_grouped_minitest_snapshot(snapshot) }
           )
         end
       end

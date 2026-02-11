@@ -7,6 +7,10 @@ RSpec.describe "RSpec CLI args" do
       .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
   end
 
+  def normalize_dry_run_snapshot(snapshot)
+    snapshot.merge("stderr" => normalize_dry_run_output(snapshot.fetch("stderr", "")))
+  end
+
   context "with explicit --tag" do
     it "places tag args before file arguments" do
       Dir.chdir(default_ruby_dir) do
@@ -63,10 +67,6 @@ RSpec.describe "RSpec CLI args" do
 
   context "snapshot coverage" do
     it "captures dry-run passthrough formatter output with Backspin" do
-      stderr_matcher = ->(recorded, actual) {
-        normalize_dry_run_output(recorded) == normalize_dry_run_output(actual)
-      }
-
       command = [
         "plur", "--dry-run", "spec/calculator_spec.rb",
         "--", "--format", "documentation", "--out", "tmp/rspec.out"
@@ -76,7 +76,7 @@ RSpec.describe "RSpec CLI args" do
         result = Backspin.run(
           command,
           name: "rspec_args_passthrough_formatter_dry_run",
-          matcher: {stderr: stderr_matcher}
+          filter: ->(snapshot) { normalize_dry_run_snapshot(snapshot) }
         )
 
         expect(result.actual.stderr).to include("--format documentation")

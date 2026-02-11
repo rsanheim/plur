@@ -20,22 +20,22 @@ RSpec.describe "pending specs output" do
       .gsub(/Running \d+ specs? \[rspec\] in parallel using \d+ workers?\n/, "")
   end
 
+  def normalize_pending_output_snapshot(snapshot)
+    snapshot.merge(
+      "args" => ["[OUTPUT_COMPARISON_COMMAND]"],
+      "stdout" => normalize_timing(snapshot.fetch("stdout", "")).strip,
+      "stderr" => ""
+    )
+  end
+
   describe "pending section output" do
     it "shows pending section before failures like RSpec" do
-      stdout_matcher = ->(stdout_1, stdout_2) {
-        normalized_1 = normalize_timing(stdout_1)
-        normalized_2 = normalize_timing(stdout_2)
-        normalized_1.strip == normalized_2.strip
-      }
-
-      stderr_matcher = ->(_stderr_1, _stderr_2) { true }
-
       # Record rspec output as baseline
       chdir fixture_path("failing_specs") do
         Backspin.run(
           ["bundle", "exec", "rspec", "spec/mixed_results_spec.rb", "--force-color"],
           name: "pending_output_comparison",
-          matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+          filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
         )
       end
 
@@ -44,8 +44,7 @@ RSpec.describe "pending specs output" do
         Backspin.run(
           ["plur", "spec/mixed_results_spec.rb"],
           name: "pending_output_comparison",
-          mode: :verify,
-          matcher: {stdout: stdout_matcher, stderr: stderr_matcher}
+          filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
         )
       end
 

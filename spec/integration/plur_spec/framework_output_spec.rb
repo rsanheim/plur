@@ -37,6 +37,10 @@ RSpec.describe "Framework output (dry-run + verbose)" do
       .gsub(/\bTEST_ENV_NUMBER=\d+\s+/, "")
   end
 
+  def normalize_framework_snapshot(snapshot)
+    snapshot.merge("stderr" => normalize_framework_dry_run(snapshot.fetch("stderr", "")))
+  end
+
   it "uses framework defaults for non-standard rspec jobs and surfaces framework in output" do
     with_fast_rspec_project do |dir|
       chdir(dir) do
@@ -57,17 +61,13 @@ RSpec.describe "Framework output (dry-run + verbose)" do
   end
 
   it "captures dry-run output contract for non-standard rspec jobs with Backspin" do
-    stderr_matcher = ->(recorded, actual) {
-      normalize_framework_dry_run(recorded) == normalize_framework_dry_run(actual)
-    }
-
     with_fast_rspec_project do |dir|
       chdir(dir) do
         command = ["plur", "--dry-run"]
         result = Backspin.run(
           command,
           name: "framework_output_fast_job_dry_run",
-          matcher: {stderr: stderr_matcher}
+          filter: ->(snapshot) { normalize_framework_snapshot(snapshot) }
         )
 
         expect(result.actual.stderr).to include("--fail-fast")

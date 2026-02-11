@@ -12,6 +12,7 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
           .gsub(/\bTEST_ENV_NUMBER=\d+\s+/, "")
       end
 
+    # Sort worker lines because parallel worker ordering is nondeterministic
     worker_lines = lines.select { |line| line.start_with?("[dry-run] Worker ") }
       .map { |line| line.sub(/^\[dry-run\] Worker \d+:\s+/, "[dry-run] Worker: ") }
       .sort
@@ -19,6 +20,10 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
     non_worker_lines = lines.reject { |line| line.start_with?("[dry-run] Worker ") }
 
     (non_worker_lines + worker_lines).join("\n")
+  end
+
+  def normalize_turbo_dry_run_snapshot(snapshot)
+    snapshot.merge("stderr" => normalize_turbo_dry_run_output(snapshot.fetch("stderr", "")))
   end
 
   context "dry-run command construction" do
@@ -65,16 +70,12 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
 
   context "snapshot coverage" do
     it "captures dry-run command output for turbo_tests-style tag filtering" do
-      stderr_matcher = ->(recorded, actual) {
-        normalize_turbo_dry_run_output(recorded) == normalize_turbo_dry_run_output(actual)
-      }
-
       Dir.chdir(default_ruby_dir) do
         command = ["plur", "--dry-run", "-n", "8", "--tag=~type:system", "spec/models"]
         result = Backspin.run(
           command,
           name: "turbo_tests_tag_filtering_dry_run",
-          matcher: {stderr: stderr_matcher}
+          filter: ->(snapshot) { normalize_turbo_dry_run_snapshot(snapshot) }
         )
 
         expect(result.actual.stderr).to include("--tag ~type:system")
