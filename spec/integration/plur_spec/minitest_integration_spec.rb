@@ -39,6 +39,19 @@ RSpec.describe "Minitest Integration" do
       end
     end
 
+    it "displays correct progress dot count with puts interleaving" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "1", "--no-color")
+          expect(result).to be_success
+          # All 8 progress dots should appear on the first line,
+          # even though some are on lines interleaved with puts output
+          progress_line = result.out.split("\n").first
+          expect(progress_line).to eq("." * 8)
+        end
+      end
+    end
+
     it "discovers minitest test files" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
@@ -76,6 +89,30 @@ RSpec.describe "Minitest Integration" do
           expect(result).to be_success
           # Should use minitest commands
           expect(result.err).to include("ruby -Itest")
+        end
+      end
+    end
+  end
+
+  context "with parallel workers and stdout interleaving" do
+    let(:project_dir) { project_fixture!("minitest-success") }
+
+    it "displays correct progress and summary with multiple workers" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "2", "--no-color")
+          expect(result).to be_success
+
+          # With 2 workers (1 file each), both producing mixed progress lines,
+          # all 8 progress dots should appear on the first stdout line
+          progress_line = result.out.split("\n").first
+          expect(progress_line).to eq("." * 8)
+
+          # Summary should aggregate correctly across workers
+          expect(result.out).to include("8 runs")
+          expect(result.out).to include("23 assertions")
+          expect(result.out).to include("0 failures")
+          expect(result.out).to include("0 errors")
         end
       end
     end

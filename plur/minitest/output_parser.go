@@ -24,6 +24,7 @@ type outputParser struct {
 	failures           []types.TestCaseNotification // Extracted failures for runtime tracking
 	progressCount      int                          // Track progress index
 	startTime          time.Time                    // When the parser was created (for load time calculation)
+	inRunningPhase     bool                         // true between "# Running:" and summary/failure sections
 }
 
 // NewOutputParser creates a new minitest output parser with proper initialization
@@ -114,6 +115,7 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 
 	// Emit suite started on "# Running:" with load time
 	if strings.HasPrefix(line, "# Running:") {
+		p.inRunningPhase = true
 		loadTime := time.Duration(0)
 		if !p.startTime.IsZero() {
 			loadTime = time.Since(p.startTime)
@@ -129,8 +131,23 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 		return p.parseProgressLine(line), false
 	}
 
+	// "Finished in" timing line ends the progress section
+	if p.inRunningPhase && strings.HasPrefix(line, "Finished in ") {
+		p.inRunningPhase = false
+	}
+
+	// Extract leading progress chars from mixed lines (e.g. "..in test_foo")
+	// Only during the running phase to avoid false positives in failure details
+	// or the "Finished in" timing line (which starts with 'F')
+	if p.inRunningPhase {
+		if count := countLeadingProgressChars(line); count > 0 {
+			return p.parseProgressLine(line[:count]), false
+		}
+	}
+
 	// Start collecting failures on first failure header
 	if !p.collectingFailures && isFailureHeaderLine(line) {
+		p.inRunningPhase = false
 		p.collectingFailures = true
 		p.failureBuffer.WriteString(line + "\n")
 		return nil, false // Preserve the line in output
@@ -149,6 +166,7 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 
 	// Check for summary without failures
 	if isSummaryLine(line) {
+		p.inRunningPhase = false
 		return p.parseSummaryLine(line), false
 	}
 
@@ -229,6 +247,22 @@ func containsProgressChars(line string) bool {
 		}
 	}
 	return true
+}
+
+// countLeadingProgressChars returns the number of consecutive progress characters
+// (., F, E, S) at the start of a line. Returns 0 if the line doesn't start with
+// a progress character. Does not trim whitespace since minitest never indents
+// progress output.
+func countLeadingProgressChars(line string) int {
+	for i, char := range line {
+		switch char {
+		case '.', 'F', 'E', 'S':
+			continue
+		default:
+			return i
+		}
+	}
+	return len(line)
 }
 
 func isFailureHeaderLine(line string) bool {
