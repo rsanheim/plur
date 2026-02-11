@@ -63,17 +63,15 @@ RSpec.describe "Framework output (dry-run + verbose)" do
   it "captures dry-run output contract for non-standard rspec jobs with Backspin" do
     with_fast_rspec_project do |dir|
       chdir(dir) do
-        without_plur_parallel_env do
-          command = ["plur", "--dry-run"]
-          result = Backspin.run(
-            command,
-            name: "framework_output_fast_job_dry_run",
-            filter: ->(snapshot) { normalize_framework_snapshot(snapshot) }
-          )
+        command = ["plur", "--dry-run"]
+        result = Backspin.run(
+          command,
+          name: "framework_output_fast_job_dry_run",
+          filter: ->(snapshot) { normalize_framework_snapshot(snapshot) }
+        )
 
-          expect(result.actual.stderr).to include("--fail-fast")
-          expect(result.actual.stderr).to include("[dry-run] Running 1 spec [rspec] in parallel using 1 workers")
-        end
+        expect(result.actual.stderr).to include("--fail-fast")
+        expect(result.actual.stderr).to include("[dry-run] Running 1 spec [rspec] in parallel using 1 workers")
       end
     end
   end
