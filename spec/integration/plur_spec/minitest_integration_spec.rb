@@ -55,10 +55,7 @@ RSpec.describe "Minitest Integration" do
     it "discovers minitest test files" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "--dry-run")
-          puts ["out", result.out]
-          puts ["err", result.err]
-          puts ["status", result.status]
+          result = run_plur("--use", "minitest", "--dry-run", "-n", "2")
           expect(result).to be_success
           expect(result.err).to include("test/calculator_test.rb")
           expect(result.err).to include("test/string_helper_test.rb")
