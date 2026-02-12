@@ -1,59 +1,69 @@
+cache:
+  paths:
+    - ".cache/go-mod"
+    - "vendor/bundle"
+    - "fixtures/projects/default-rails/vendor/bundle"
+  size: "20g"
+
 steps:
-  - label: ":go: go tests (in docker)"
+  - label: ":go: Build & Test"
     key: "go-tests"
     plugins:
       - docker#v5.13.0:
-          image: "cimg/go:1.25.5"
+          image: "ruby:4.0.1"
           workdir: /work
           mount-checkout: true
-    command: |
-      bash -lc '
-        set -euo pipefail
-        go version
-        cd plur
-        go test ./...
-      '
+          volumes:
+            - "/cache:/cache"
+          environment:
+            - "GOMODCACHE=/work/.cache/go-mod"
+            - "VERBOSE=true"
+            - "CI=true"
+    command: ".buildkite/scripts/build-and-test-go.sh"
+    timeout_in_minutes: 10
 
-  - label: ":ruby: integration (in docker)"
+  - label: ":go: Race Detection"
+    key: "go-race"
+    plugins:
+      - docker#v5.13.0:
+          image: "golang:1.25.5"
+          workdir: /work
+          mount-checkout: true
+          volumes:
+            - "/cache:/cache"
+          environment:
+            - "GOMODCACHE=/work/.cache/go-mod"
+    command: "cd plur && go test -mod=mod -race ./..."
+    timeout_in_minutes: 10
+
+  - label: ":go: GoReleaser Snapshot"
+    key: "goreleaser"
+    plugins:
+      - docker#v5.13.0:
+          image: "golang:1.25.5"
+          workdir: /work
+          mount-checkout: true
+          volumes:
+            - "/cache:/cache"
+          environment:
+            - "GOMODCACHE=/work/.cache/go-mod"
+    command: ".buildkite/scripts/goreleaser.sh"
+    artifact_paths: "plur/dist/**/*"
+    timeout_in_minutes: 10
+
+  - label: ":ruby: Integration Tests"
+    key: "ruby-integration"
     depends_on: "go-tests"
     plugins:
       - docker#v5.13.0:
-          image: "cimg/ruby:4.0.1"
+          image: "ruby:4.0.1"
           workdir: /work
           mount-checkout: true
-    command: |
-      bash -lc '
-        set -euo pipefail
-        ruby -v
-        bundle -v
-
-        # Install Go without sudo
-        arch="$(uname -m)"
-        if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
-          go_arch="arm64"
-        else
-          go_arch="amd64"
-        fi
-        curl -fsSL "https://go.dev/dl/go1.25.5.linux-${go_arch}.tar.gz" | tar -C /tmp -xz
-        export PATH="/tmp/go/bin:$PATH:$HOME/go/bin"
-        go version
-
-        bundle install --path vendor/bundle
-
-        bin/rake install
-        plur watch install
-        plur doctor
-
-        bin/rake lint:ruby
-        bin/rake test:default_ruby
-
-        cd fixtures/projects/default-rails
-        bundle config set --local path vendor/bundle
-        bundle install
-        bundle exec rake db:create db:migrate
-        plur
-
-        cd /work
-        gem install turbo_tests
-        bin/rake test
-      '
+          volumes:
+            - "/cache:/cache"
+          environment:
+            - "GOMODCACHE=/work/.cache/go-mod"
+            - "VERBOSE=true"
+            - "CI=true"
+    command: ".buildkite/scripts/integration.sh"
+    timeout_in_minutes: 20
