@@ -1,6 +1,5 @@
-# .buildkite/pipeline.yml
 steps:
-  - label: ":go: go tests"
+  - label: ":go: go tests (in docker)"
     key: "go-tests"
     plugins:
       - docker#v5.13.0:
@@ -9,56 +8,48 @@ steps:
           mount-checkout: true
     command: |
       set -euo pipefail
-      echo "--- go test"
+      go version
       cd plur
       go test ./...
 
-  - label: ":ruby: integration"
+  - label: ":ruby: integration (in docker)"
     depends_on: "go-tests"
     plugins:
       - docker#v5.13.0:
           image: "cimg/ruby:4.0.1"
           workdir: /work
           mount-checkout: true
-    env:
-      VERBOSE: "true"
     command: |
       set -euo pipefail
+      ruby -v
+      bundle -v
 
-      echo "--- install go (for this step)"
+      # install Go for this step (since we’re in ruby image)
       arch="$(uname -m)"
       if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
         go_arch="arm64"
       else
         go_arch="amd64"
       fi
-      curl -fsSL "https://go.dev/dl/go1.25.5.linux-${go_arch}.tar.gz" | sudo tar -C /usr/local -xz
-      export PATH="/usr/local/go/bin:$PATH:$HOME/go/bin"
+      curl -fsSL "https://go.dev/dl/go1.25.5.linux-${go_arch}.tar.gz" | tar -C /tmp -xz
+      export PATH="/tmp/go/bin:$PATH:$HOME/go/bin"
       go version
 
-      echo "--- bundle install"
       bundle install --path vendor/bundle
 
-      echo "--- install plur + watcher"
       bin/rake install
       plur watch install
-
-      echo "--- sanity"
-      which plur || true
       plur doctor
 
-      echo "--- ruby lint + tests (integration)"
       bin/rake lint:ruby
       bin/rake test:default_ruby
 
-      echo "--- fixture app setup + run"
       cd fixtures/projects/default-rails
       bundle config set --local path vendor/bundle
       bundle install
       bundle exec rake db:create db:migrate
       plur
 
-      echo "--- full ruby suite"
       cd /work
       gem install turbo_tests
       bin/rake test
