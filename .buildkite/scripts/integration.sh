@@ -19,7 +19,8 @@ echo "--- :go: Installing GoReleaser"
 go install github.com/goreleaser/goreleaser/v2@latest
 
 echo "--- :ruby: Installing gems"
-bundle install --path vendor/bundle
+bundle config set path vendor/bundle
+bundle install
 
 echo "--- :hammer: Installing plur"
 bin/rake install

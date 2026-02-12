@@ -16,7 +16,8 @@ export PATH="${PATH}:$(go env GOPATH)/bin"
 go version
 
 echo "--- :ruby: Installing gems"
-bundle install --path vendor/bundle
+bundle config set path vendor/bundle
+bundle install
 
 echo "--- :go: Build + Lint"
 bin/rake build lint
