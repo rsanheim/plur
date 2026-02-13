@@ -158,6 +158,13 @@ script/bench-git --refs v0.15.0 v0.14.0 main -p ~/src/oss/rspec-core
 circle-auth && circle-status
 ```
 
+### Check Buildkite status
+```bash
+bk build list --pipeline plur          # List recent builds
+bk build watch <number> --pipeline plur # Watch a build in real-time
+bk job log <job-id> -p plur -b <number> --no-timestamps # Get job logs
+```
+
 ### GitHub CLI
 Prefer the `gh` CLI for searching GitHub or getting info about related repos, issues, etc:
 ```bash
