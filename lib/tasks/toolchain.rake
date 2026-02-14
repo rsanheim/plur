@@ -18,10 +18,6 @@ namespace :toolchain do
       abort("[toolchain:check] Go version mismatch: .mise.toml=#{mise_go}, plur/go.mod=#{gomod_go}")
     end
 
-    if File.exist?(".ruby-version")
-      abort("[toolchain:check] .ruby-version should not exist; Ruby version is sourced from .mise.toml")
-    end
-
     puts "[toolchain:check] Toolchain configuration looks consistent"
   end
 end
