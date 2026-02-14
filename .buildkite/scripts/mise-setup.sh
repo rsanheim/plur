@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "--- :gear: Installing system dependencies"
 apt-get update -qq
-apt-get install -y -qq curl git build-essential libssl-dev libreadline-dev zlib1g-dev libyaml-dev libffi-dev > /dev/null
+DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl git build-essential libssl-dev libreadline-dev zlib1g-dev libyaml-dev libffi-dev tzdata > /dev/null
 
 echo "--- :gear: Installing mise"
 curl -fsSL https://mise.run | sh
