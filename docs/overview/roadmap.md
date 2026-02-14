@@ -1,44 +1,29 @@
 # Roadmap
 
-Future plans and optimization strategies for Plur.
+Future plans and potential improvements for Plur.
 
-## Performance Optimizations
+## Performance
 
 ### File Grouping Strategy
-- Group small test files together to reduce process overhead
-- Target: 15-20% performance improvement
-- Implementation: Smart bucketing algorithm
 
-### Runtime-Based Distribution
-- Track historical test runtimes
-- Distribute tests based on execution time, not file count
-- Ensure balanced worker loads
+* Group small test files together to reduce per-process overhead
+* Smart bucketing algorithm that combines short-running files into single worker invocations
+* Target: 15-20% improvement on projects with many small spec files
 
-## Feature Additions
+## Features
 
-### Enhanced Watch Mode
-- Multiple file watcher support
-- Custom file mapping configurations
-- Improved change detection
+### Failure Isolation
 
-### Better Error Handling
-- Graceful degradation on partial failures
-- Detailed error reporting
-- Recovery strategies
+* Re-run only failed tests on the next invocation
+* Track failure state across runs to enable fast feedback loops
 
-### Integration Features
-- CI/CD specific optimizations
-- IDE integrations
-- Custom formatter support
+### Watch Mode Improvements
 
-## Technical Debt
+* Cancel-and-rerun: interrupt an in-progress test run when new changes arrive
+* Process group cleanup: ensure child processes are terminated on Ctrl+C
+* Concurrent run guard: prevent overlapping test runs from the debouncer
 
-### Code Organization
-- Extract packages for better modularity
-- Improve test coverage
-- Performance benchmarking suite
+### CI/CD Optimizations
 
-### Documentation
-- API documentation
-- Plugin development guide
-- Performance tuning guide
+* Buildkite and GitHub Actions integration for parallel step splitting
+* Test timing export for CI-aware load balancing
