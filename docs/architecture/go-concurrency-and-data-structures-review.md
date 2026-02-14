@@ -80,7 +80,7 @@ Status: resolved (covered by the changes above).
 `Debouncer` uses `time.AfterFunc`, which runs the callback in its own goroutine (`plur/watch/debouncer.go:40-58`). This means:
 
 - Multiple runs can overlap if prior runs take longer than the debounce delay.
-- Output from concurrent jobs can interleave (documented in `docs/architecture/watch-concurrent-output.md`).
+- Output from concurrent jobs can interleave (tracked in [#207](https://github.com/rsanheim/plur/issues/207)).
 - `Timer.Stop()` is called but the code does not handle the “already fired / callback running” case; overlapping callback execution is possible.
 
 Recommended fix:
@@ -173,11 +173,7 @@ Recommended cleanup:
 
 ### 8) Docs/code drift in concurrency documentation
 
-`docs/architecture/concurrency-model.md` describes a worker pool with “job channel” and “unbuffered result channel”, but current implementation pre-groups files and spawns one goroutine per group; there is no job channel in the hot path.
-
-Recommended cleanup:
-
-- Update the doc to reflect the current implementation to prevent future refactors from being guided by stale assumptions.
+The former `docs/architecture/concurrency-model.md` described a worker pool with "job channel" and "unbuffered result channel" that no longer matched the implementation. That doc has been removed. The current implementation pre-groups files and spawns one goroutine per group; there is no job channel in the hot path. This review document is the canonical concurrency reference.
 
 ## Go 1.25-Specific Notes / Opportunities
 
