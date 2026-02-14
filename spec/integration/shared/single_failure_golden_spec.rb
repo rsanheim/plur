@@ -10,7 +10,7 @@ RSpec.describe "single failure golden test" do
   end
 
   def plur_single_failure_command
-    ["plur", "spec/single_failure_spec.rb"]
+    [plur_binary, "spec/single_failure_spec.rb"]
   end
 
   # Replace timing information to make output deterministic

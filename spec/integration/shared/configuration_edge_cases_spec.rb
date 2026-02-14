@@ -20,7 +20,7 @@ RSpec.describe "Configuration edge cases" do
         _, error, status = Dir.chdir(tmpdir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => config_fixture_dir.join("valid.toml").to_s},
-            "plur", "--dry-run"
+            plur_binary, "--dry-run"
           )
         end
 
@@ -39,7 +39,7 @@ RSpec.describe "Configuration edge cases" do
         _, error, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "empty.toml"},
-            "plur", "--dry-run"
+            plur_binary, "--dry-run"
           )
         end
 
@@ -53,7 +53,7 @@ RSpec.describe "Configuration edge cases" do
         _, _, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "comments-only.toml"},
-            "plur", "--dry-run"
+            plur_binary, "--dry-run"
           )
         end
 
@@ -70,7 +70,7 @@ RSpec.describe "Configuration edge cases" do
             "PLUR_CONFIG_FILE" => "valid.toml", # has workers = 2
             "PARALLEL_TEST_PROCESSORS" => "16"
           },
-          "plur", "--dry-run"
+          plur_binary, "--dry-run"
         )
       end
 
@@ -88,7 +88,7 @@ RSpec.describe "Configuration edge cases" do
             "PLUR_CONFIG_FILE" => "valid.toml", # has workers = 2
             "PARALLEL_TEST_PROCESSORS" => "16"
           },
-          "plur", "--workers=1", "--dry-run"
+          plur_binary, "--workers=1", "--dry-run"
         )
       end
 
@@ -105,7 +105,7 @@ RSpec.describe "Configuration edge cases" do
         _, error, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "invalid-syntax.toml"},
-            "plur", "doctor"
+            plur_binary, "doctor"
           )
         end
 
@@ -119,7 +119,7 @@ RSpec.describe "Configuration edge cases" do
         _, error, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "type-mismatch.toml"},
-            "plur", "doctor"
+            plur_binary, "doctor"
           )
         end
 

@@ -36,7 +36,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "uses spec-specific command for spec runs" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "spec", "--dry-run")
+        Open3.capture3(plur_binary, "spec", "--dry-run")
       end
 
       expect(status).to be_success
@@ -47,7 +47,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "loads watch mappings from config for watch runs" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "watch", "run", "--timeout=1", "--debug", stdin_data: "")
+        Open3.capture3(plur_binary, "watch", "run", "--timeout=1", "--debug", stdin_data: "")
       end
 
       expect(status).to be_success
@@ -70,7 +70,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "uses global command setting when no command-specific setting exists" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "spec", "--dry-run")
+        Open3.capture3(plur_binary, "spec", "--dry-run")
       end
 
       expect(status).to be_success

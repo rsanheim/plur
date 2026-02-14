@@ -63,7 +63,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
   it "captures dry-run output contract for non-standard rspec jobs with Backspin" do
     with_fast_rspec_project do |dir|
       chdir(dir) do
-        command = ["plur", "--dry-run"]
+        command = [plur_binary, "--dry-run"]
         result = Backspin.run(
           command,
           name: "framework_output_fast_job_dry_run",
