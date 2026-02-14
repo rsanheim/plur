@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Fix minitest progress dots lost when `puts` output is interleaved on the same line [#200](https://github.com/rsanheim/plur/pull/200)
+
 ## v0.32.0 - 2026-02-09
 * fix: use %w instead of %v for error wrapping [#190](https://github.com/rsanheim/plur/pull/190)
 * fix: use git commit range for release PR discovery [#193](https://github.com/rsanheim/plur/pull/193)
