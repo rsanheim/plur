@@ -1,8 +1,12 @@
 namespace :toolchain do
   desc "Validate toolchain version consistency (.mise.toml, plur/go.mod)"
   task :check do
-    sh "mise doctor"
-    sh "mise current"
+    if system("which mise > /dev/null 2>&1")
+      sh "mise doctor"
+      sh "mise current"
+    else
+      puts "[toolchain:check] mise not found, skipping mise doctor/current"
+    end
 
     mise_go = File.read(".mise.toml")[/^\s*go\s*=\s*"(\d+\.\d+)/, 1]
     gomod_go = File.read("plur/go.mod")[/^go\s+(\d+\.\d+)/, 1]
