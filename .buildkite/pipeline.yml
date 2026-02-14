@@ -75,5 +75,6 @@ steps:
             - "MISE_DATA_DIR=/work/.cache/mise"
             - "VERBOSE=true"
             - "CI=true"
+            - "BUILDKITE=true"
     command: ".buildkite/scripts/integration.sh"
     timeout_in_minutes: 20
