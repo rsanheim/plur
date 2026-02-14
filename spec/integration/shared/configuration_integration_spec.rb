@@ -170,7 +170,7 @@ RSpec.describe "Configuration integration" do
       expect(status).to be_success
       expect(error).to include("bundle exec ruby -Itest")
       # Should find test files, not spec files
-      expect(error).to match(/test.*\.rb/)
+      expect(error).to match(/calculator_test/)
     end
   end
 
