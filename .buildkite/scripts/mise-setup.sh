@@ -17,6 +17,7 @@ export PATH="$HOME/.local/bin:$PATH"
 mise --version
 
 echo "--- :gear: Installing toolchain from .mise.toml"
+mise trust
 mise install --yes
 
 eval "$(mise activate bash)"
