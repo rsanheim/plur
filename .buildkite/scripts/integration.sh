@@ -1,22 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install Go into the Ruby container
-arch="$(uname -m)"
-if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
-  go_arch="arm64"
-else
-  go_arch="amd64"
-fi
-
-echo "--- :go: Installing Go 1.25.5 (${go_arch})"
-curl -fsSL "https://go.dev/dl/go1.25.5.linux-${go_arch}.tar.gz" | tar -C /usr/local -xz
-export PATH="/usr/local/go/bin:${PATH}"
-export PATH="${PATH}:$(go env GOPATH)/bin"
-go version
-
-echo "--- :go: Installing GoReleaser"
-go install github.com/goreleaser/goreleaser/v2@latest
+# shellcheck source=mise-setup.sh
+source .buildkite/scripts/mise-setup.sh
 
 echo "--- :ruby: Installing gems"
 bundle config set path vendor/bundle

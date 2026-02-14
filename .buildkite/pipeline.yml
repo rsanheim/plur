@@ -1,22 +1,27 @@
 cache:
   paths:
     - ".cache/go-mod"
+    - ".cache/mise"
     - "vendor/bundle"
     - "fixtures/projects/default-rails/vendor/bundle"
   size: "20g"
+
+env:
+  MISE_DATA_DIR: /work/.cache/mise
 
 steps:
   - label: ":go: Build & Test"
     key: "go-tests"
     plugins:
       - docker#v5.13.0:
-          image: "ruby:4.0.1"
+          image: "ubuntu:24.04"
           workdir: /work
           mount-checkout: true
           volumes:
             - "/cache:/cache"
           environment:
             - "GOMODCACHE=/work/.cache/go-mod"
+            - "MISE_DATA_DIR=/work/.cache/mise"
             - "VERBOSE=true"
             - "CI=true"
     command: ".buildkite/scripts/build-and-test-go.sh"
@@ -26,27 +31,31 @@ steps:
     key: "go-race"
     plugins:
       - docker#v5.13.0:
-          image: "golang:1.25.5"
+          image: "ubuntu:24.04"
           workdir: /work
           mount-checkout: true
           volumes:
             - "/cache:/cache"
           environment:
             - "GOMODCACHE=/work/.cache/go-mod"
-    command: "cd plur && go test -mod=mod -race ./..."
+            - "MISE_DATA_DIR=/work/.cache/mise"
+            - "CI=true"
+    command: ".buildkite/scripts/race.sh"
     timeout_in_minutes: 10
 
   - label: ":go: GoReleaser Snapshot"
     key: "goreleaser"
     plugins:
       - docker#v5.13.0:
-          image: "golang:1.25.5"
+          image: "ubuntu:24.04"
           workdir: /work
           mount-checkout: true
           volumes:
             - "/cache:/cache"
           environment:
             - "GOMODCACHE=/work/.cache/go-mod"
+            - "MISE_DATA_DIR=/work/.cache/mise"
+            - "CI=true"
     command: ".buildkite/scripts/goreleaser.sh"
     artifact_paths: "plur/dist/**/*"
     timeout_in_minutes: 10
@@ -56,13 +65,14 @@ steps:
     depends_on: "go-tests"
     plugins:
       - docker#v5.13.0:
-          image: "ruby:4.0.1"
+          image: "ubuntu:24.04"
           workdir: /work
           mount-checkout: true
           volumes:
             - "/cache:/cache"
           environment:
             - "GOMODCACHE=/work/.cache/go-mod"
+            - "MISE_DATA_DIR=/work/.cache/mise"
             - "VERBOSE=true"
             - "CI=true"
     command: ".buildkite/scripts/integration.sh"

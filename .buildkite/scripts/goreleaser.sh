@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "--- :go: Installing GoReleaser"
-export PATH="${PATH}:$(go env GOPATH)/bin"
-go install github.com/goreleaser/goreleaser/v2@latest
+# shellcheck source=mise-setup.sh
+source .buildkite/scripts/mise-setup.sh
+
 goreleaser --version
 
 echo "--- :go: GoReleaser snapshot build"
