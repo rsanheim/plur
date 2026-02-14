@@ -114,7 +114,7 @@ end
 
 namespace :lint do
   desc "Run all linting (Go and Ruby)"
-  task all: %i[go ruby]
+  task all: %i[go ruby toolchain:check]
 
   desc "Lint Go code"
   task :go do

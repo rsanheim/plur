@@ -20,8 +20,7 @@ bin/rake standard:fix         # Fix Ruby lint issues
 Notes:
 - `bin/rake install` works as-is; no PATH/GOPATH tweaking is required.
 - For a single spec file, use `bin/rspec spec/path/to/file_spec.rb`.
-- Install GoReleaser via Go (required by `bin/rake install`):
-  `go install github.com/goreleaser/goreleaser/v2@latest`
+- Install tools from top-level `.mise.toml`: `mise install --yes`
 
 ### bin/rake build vs bin/rake install
 

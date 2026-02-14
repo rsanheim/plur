@@ -1,6 +1,12 @@
 version: 2.1
 
 parameters:
+  go_version:
+    type: string
+    default: "1.25.7"
+  ruby_version:
+    type: string
+    default: "4.0.1"
   alt_resource_class:
     type: string
     default: rsanheim/orbstack-arm64
@@ -17,7 +23,7 @@ jobs:
         type: string
         default: medium
     docker:
-      - image: cimg/ruby:4.0.1
+      - image: cimg/ruby:<< pipeline.parameters.ruby_version >>
     working_directory: ~/project
     resource_class: << parameters.resource_class >>
     environment:
@@ -32,7 +38,7 @@ jobs:
             ls -la plur/
             ls -la plur/lib/plur/ || echo "plur/lib/plur not found"
       - go/install:
-          version: "1.25.5"
+          version: << pipeline.parameters.go_version >>
       - ruby/install-deps:
           include-branch-in-cache-key: false
       - run:
@@ -54,7 +60,7 @@ jobs:
         type: string
         default: medium
     docker:
-      - image: cimg/go:1.25.5
+      - image: cimg/go:<< pipeline.parameters.go_version >>
     resource_class: << parameters.resource_class >>
     working_directory: ~/project
     steps:
@@ -95,7 +101,7 @@ jobs:
         type: string
         default: medium
     docker:
-      - image: cimg/go:1.25.5
+      - image: cimg/go:<< pipeline.parameters.go_version >>
     resource_class: << parameters.resource_class >>
     working_directory: ~/project
     steps:
@@ -111,13 +117,13 @@ jobs:
         type: string
         default: medium
     docker:
-      - image: cimg/ruby:4.0.1
+      - image: cimg/ruby:<< pipeline.parameters.ruby_version >>
     resource_class: << parameters.resource_class >>
     working_directory: ~/project/
     steps:
       - checkout
       - go/install:
-          version: "1.25.5"
+          version: << pipeline.parameters.go_version >>
       - go/install-goreleaser
       - run:
           name: Add GOPATH/bin to PATH
