@@ -27,7 +27,7 @@ module PlurWatchHelper
   def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT,
     debounce: nil, env: {}, until_output: nil, &block)
     Dir.chdir(dir) do
-      cmd_args = ["plur", "--debug", "watch", "run", "--timeout", timeout.to_s]
+      cmd_args = [plur_binary, "--debug", "watch", "run", "--timeout", timeout.to_s]
       cmd_args += ["--debounce", debounce.to_s] if debounce
 
       out = +""

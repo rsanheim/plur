@@ -69,7 +69,7 @@ RSpec.describe "RSpec CLI args" do
     it "captures dry-run passthrough formatter output with Backspin" do
       skip("Backspin snapshot needs re-recording for Buildkite environment") if ENV["BUILDKITE"]
       command = [
-        "plur", "--dry-run", "spec/calculator_spec.rb",
+        plur_binary, "--dry-run", "spec/calculator_spec.rb",
         "--", "--format", "documentation", "--out", "tmp/rspec.out"
       ]
 

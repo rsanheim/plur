@@ -144,7 +144,7 @@ RSpec.describe "Framework Selection" do
 
   def run_plur_in_dir(dir, args = "", allow_failure: false)
     Dir.chdir(dir) do
-      output = `plur #{args} 2>&1`
+      output = `#{plur_binary} #{args} 2>&1`
       unless $?.success?
         # For dry-run, it's ok if plur exits with non-zero when no tests found
         if allow_failure || (args.include?("--dry-run") && output.include?("no test files found"))

@@ -3,7 +3,7 @@ require "spec_helper"
 RSpec.describe "plur doctor command" do
   def run_plur_doctor(*args)
     # Use Open3 directly to match Backspin's expected format
-    cmd_array = ["plur", "doctor"]
+    cmd_array = [plur_binary, "doctor"]
     cmd_array += args if args.any?
 
     Open3.capture3(*cmd_array)
@@ -97,7 +97,7 @@ RSpec.describe "plur doctor command" do
 
   it "produces consistent output using Backspin golden testing", :skip_if_ci do
     Backspin.run(
-      ["plur", "doctor"],
+      [plur_binary, "doctor"],
       name: "plur_doctor_golden",
       filter: ->(snapshot) { normalize_doctor_snapshot(snapshot) }
     )

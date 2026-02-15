@@ -166,7 +166,7 @@ RSpec.describe "plur -C with config files", type: :integration do
 
     it "captures nonexistent -C directory errors with Backspin" do
       Dir.chdir(temp_dir) do
-        command = ["plur", "-C", "nonexistent", "--dry-run"]
+        command = [plur_binary, "-C", "nonexistent", "--dry-run"]
         result = Backspin.run(
           command,
           name: "change_dir_nonexistent_error",
@@ -180,7 +180,7 @@ RSpec.describe "plur -C with config files", type: :integration do
 
     it "captures missing -C argument errors with Backspin" do
       Dir.chdir(temp_dir) do
-        command = ["plur", "-C"]
+        command = [plur_binary, "-C"]
         result = Backspin.run(
           command,
           name: "change_dir_missing_argument_error",
