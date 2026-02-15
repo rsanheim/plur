@@ -1,11 +1,14 @@
+require "open3"
+
 namespace :toolchain do
   desc "Validate toolchain version consistency (.mise.toml, plur/go.mod)"
   task :check do
     if system("which mise > /dev/null 2>&1")
-      sh "mise doctor"
-      sh "mise current"
-    else
-      puts "[toolchain:check] mise not found, skipping mise doctor/current"
+      output, status = Open3.capture2e("mise", "doctor")
+      unless status.success?
+        warn output
+        abort("[toolchain:check] mise doctor reported problems (exit #{status.exitstatus})")
+      end
     end
 
     mise_go = File.read(".mise.toml")[/^\s*go\s*=\s*"(\d+\.\d+)/, 1]
@@ -21,7 +24,5 @@ namespace :toolchain do
     if mise_go != gomod_go
       abort("[toolchain:check] Go version mismatch: .mise.toml=#{mise_go}, plur/go.mod=#{gomod_go}")
     end
-
-    puts "[toolchain:check] Toolchain configuration looks consistent"
   end
 end
