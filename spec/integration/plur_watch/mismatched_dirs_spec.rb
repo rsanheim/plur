@@ -9,7 +9,7 @@ RSpec.describe "plur watch find with mismatched directory structure" do
     # Run watch find - exits with code 2 (no executable targets)
     result = nil
     begin
-      result = cmd.run!("plur watch find lib/example/runner.rb", chdir: fixture_dir)
+      result = cmd.run!("#{plur_binary} watch find lib/example/runner.rb", chdir: fixture_dir)
     rescue TTY::Command::ExitError => e
       result = e.result
     end
@@ -37,7 +37,7 @@ RSpec.describe "plur watch find with mismatched directory structure" do
 
   it "shows executable targets for files with correct structure" do
     cmd = TTY::Command.new(uuid: false, printer: :null)
-    result = cmd.run!("plur watch find lib/example.rb", chdir: fixture_dir)
+    result = cmd.run!("#{plur_binary} watch find lib/example.rb", chdir: fixture_dir)
 
     # Should show checking message in slog format
     expect(result.out).to include('msg="checking watch" file=lib/example.rb')
@@ -54,7 +54,7 @@ RSpec.describe "plur watch find with mismatched directory structure" do
 
   it "shows executable targets for the resolved job only" do
     cmd = TTY::Command.new(uuid: false, printer: :null)
-    result = cmd.run!("plur watch find lib/example.rb", chdir: fixture_dir)
+    result = cmd.run!("#{plur_binary} watch find lib/example.rb", chdir: fixture_dir)
 
     # Should show found files for rspec (the resolved job)
     expect(result.out).to include('msg="found files" files=spec/example_spec.rb')

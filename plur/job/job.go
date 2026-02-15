@@ -1,13 +1,6 @@
 package job
 
-import (
-	"strings"
-
-	"github.com/rsanheim/plur/minitest"
-	"github.com/rsanheim/plur/passthrough"
-	"github.com/rsanheim/plur/rspec"
-	"github.com/rsanheim/plur/types"
-)
+import "strings"
 
 // Job represents a command to run with optional environment variables
 // Used by both parallel execution (plur spec) and watch mode (plur watch)
@@ -15,6 +8,7 @@ type Job struct {
 	Name          string   `toml:"-" json:"name"`
 	Cmd           []string `toml:"cmd" json:"cmd"`
 	Env           []string `toml:"env,omitempty" json:"env,omitempty"`
+	Framework     string   `toml:"framework,omitempty" json:"framework,omitempty"`
 	TargetPattern string   `toml:"target_pattern,omitempty" json:"target_pattern,omitempty"` // Glob pattern for file discovery (e.g., "spec/**/*_spec.rb")
 }
 
@@ -74,77 +68,9 @@ func BuildJobAllCmd(job Job) []string {
 	return result
 }
 
-// GetConventionBasedTargetPattern returns a target pattern based on job name conventions
-// Jobs containing "rspec" get "spec/**/*_spec.rb", jobs containing "minitest" get "test/**/*_test.rb"
-// Returns empty string if no convention matches
-func (j Job) GetConventionBasedTargetPattern() string {
-	// Apply conventions based on job name (case-insensitive)
-	nameLower := strings.ToLower(j.Name)
-	if strings.Contains(nameLower, "rspec") {
-		return "spec/**/*_spec.rb"
-	}
-	if strings.Contains(nameLower, "minitest") {
-		return "test/**/*_test.rb"
-	}
-
-	return ""
-}
-
 // GetTargetPattern returns the glob pattern for file discovery
-// Falls back to convention-based pattern if not explicitly set
 func (j Job) GetTargetPattern() string {
-	if j.TargetPattern != "" {
-		return j.TargetPattern
-	}
-	return j.GetConventionBasedTargetPattern()
-}
-
-// GetTargetSuffix extracts the file suffix from the target pattern
-// Used by ExpandGlobPatterns when user passes a directory: "spec/models" → "spec/models/**/*_spec.rb"
-//
-// Examples:
-//
-//	"spec/**/*_spec.rb" → "_spec.rb"
-//	"test/**/*_test.rb" → "_test.rb"
-func (j Job) GetTargetSuffix() string {
-	pattern := j.GetTargetPattern()
-	if pattern == "" {
-		return ""
-	}
-
-	// Find the last * in the pattern
-	lastStar := strings.LastIndex(pattern, "*")
-	if lastStar == -1 {
-		return ""
-	}
-
-	// Get everything after the last *
-	suffix := pattern[lastStar+1:]
-
-	// Validate it looks like a test suffix (contains _ and .)
-	if strings.Contains(suffix, "_") && strings.Contains(suffix, ".") {
-		return suffix
-	}
-
-	return ""
-}
-
-// CreateParser creates the appropriate test output parser for this job
-// Returns passthrough parser for custom jobs (non-rspec/minitest)
-func (j Job) CreateParser() (types.TestOutputParser, error) {
-	switch j.Name {
-	case "rspec":
-		return rspec.NewOutputParser(), nil
-	case "minitest":
-		return minitest.NewOutputParser(), nil
-	default:
-		return passthrough.NewOutputParser(), nil
-	}
-}
-
-// IsMinitestStyle returns true if this job is minitest-style (for formatting decisions)
-func (j Job) IsMinitestStyle() bool {
-	return j.Name == "minitest"
+	return j.TargetPattern
 }
 
 // UsesTargets returns true if the job command expects target files

@@ -5,7 +5,7 @@ RSpec.describe "plur watch --ignore flag" do
 
   describe "CLI flag" do
     it "accepts --ignore flag and logs patterns" do
-      result, _, _ = capture_watch_output(plur_timeout: 2)
+      result = run_plur_watch(timeout: 2)
 
       # Default patterns should be logged
       expect(result.err).to include("Global watch ignore patterns")
@@ -15,7 +15,7 @@ RSpec.describe "plur watch --ignore flag" do
 
     it "accepts custom --ignore patterns" do
       Dir.chdir(default_ruby_dir) do
-        args = "plur --debug watch --ignore='vendor/**' --ignore='tmp/**' --timeout 2"
+        args = "#{plur_binary} --debug watch --ignore='vendor/**' --ignore='tmp/**' --timeout 2"
         cmd = TTY::Command.new(timeout: 5, uuid: false, printer: :null)
         result = cmd.run!(args)
 
@@ -27,7 +27,7 @@ RSpec.describe "plur watch --ignore flag" do
 
     it "works with plur watch run --ignore" do
       Dir.chdir(default_ruby_dir) do
-        args = "plur --debug watch run --ignore='custom/**' --timeout 2"
+        args = "#{plur_binary} --debug watch run --ignore='custom/**' --timeout 2"
         cmd = TTY::Command.new(timeout: 5, uuid: false, printer: :null)
         result = cmd.run!(args)
 
@@ -39,7 +39,7 @@ RSpec.describe "plur watch --ignore flag" do
   describe "help output" do
     it "shows --ignore in plur watch --help" do
       cmd = TTY::Command.new(uuid: false, printer: :null)
-      result = cmd.run!("plur watch --help")
+      result = cmd.run!("#{plur_binary} watch --help")
 
       expect(result.out).to include("--ignore")
       expect(result.out).to include("Patterns to ignore from watch events")
@@ -47,7 +47,7 @@ RSpec.describe "plur watch --ignore flag" do
 
     it "shows --ignore in plur watch run --help" do
       cmd = TTY::Command.new(uuid: false, printer: :null)
-      result = cmd.run!("plur watch run --help")
+      result = cmd.run!("#{plur_binary} watch run --help")
 
       expect(result.out).to include("--ignore")
       expect(result.out).to include("Patterns to ignore from watch events")

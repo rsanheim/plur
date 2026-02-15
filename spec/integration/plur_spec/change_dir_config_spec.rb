@@ -4,6 +4,14 @@ RSpec.describe "plur -C with config files", type: :integration do
   let(:temp_dir) { Dir.mktmpdir }
   let(:project_dir) { File.join(temp_dir, "test_project") }
 
+  def normalize_change_dir_error(output)
+    output.gsub(temp_dir, "[TMP_DIR]")
+  end
+
+  def normalize_change_dir_snapshot(snapshot)
+    snapshot.merge("stderr" => normalize_change_dir_error(snapshot.fetch("stderr", "")))
+  end
+
   before do
     # Create a test project structure
     FileUtils.mkdir_p(File.join(project_dir, "spec"))
@@ -73,8 +81,12 @@ RSpec.describe "plur -C with config files", type: :integration do
     it "ignores config from current directory when using -C" do
       # Create different config in current directory
       File.write(File.join(temp_dir, ".plur.toml"), <<~TOML)
-        command = "bundle exec rspec --format progress"
+        use = "rspec"
         workers = 8
+
+        [job.rspec]
+        cmd = ["bundle", "exec", "rspec", "--format", "progress", "{{target}}"]
+        target_pattern = "spec/**/*_spec.rb"
       TOML
 
       Dir.chdir(temp_dir) do
@@ -149,6 +161,34 @@ RSpec.describe "plur -C with config files", type: :integration do
         result = run_plur_allowing_errors("-C")
         expect(result.err).to include("requires a directory argument")
         expect(result.exit_status).not_to eq(0)
+      end
+    end
+
+    it "captures nonexistent -C directory errors with Backspin" do
+      Dir.chdir(temp_dir) do
+        command = [plur_binary, "-C", "nonexistent", "--dry-run"]
+        result = Backspin.run(
+          command,
+          name: "change_dir_nonexistent_error",
+          filter: ->(snapshot) { normalize_change_dir_snapshot(snapshot) }
+        )
+
+        expect(result.actual.status).not_to eq(0)
+        expect(result.actual.stderr).to include("failed to change directory")
+      end
+    end
+
+    it "captures missing -C argument errors with Backspin" do
+      Dir.chdir(temp_dir) do
+        command = [plur_binary, "-C"]
+        result = Backspin.run(
+          command,
+          name: "change_dir_missing_argument_error",
+          filter: ->(snapshot) { normalize_change_dir_snapshot(snapshot) }
+        )
+
+        expect(result.actual.status).not_to eq(0)
+        expect(result.actual.stderr).to include("requires a directory argument")
       end
     end
   end

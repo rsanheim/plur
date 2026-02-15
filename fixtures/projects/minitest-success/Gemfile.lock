@@ -11,4 +11,4 @@ DEPENDENCIES
   minitest (~> 5.25)
 
 BUNDLED WITH
-   4.0.3
+  4.0.4

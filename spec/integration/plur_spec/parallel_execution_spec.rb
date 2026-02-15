@@ -114,6 +114,21 @@ RSpec.describe "Plur parallel execution" do
       end
     end
 
+    it "does not duplicate pending or failure headers with multiple workers" do
+      chdir(failing_specs_path) do
+        result = run_plur_allowing_errors("--no-color", "-n", "3",
+          "spec/expectation_failures_spec.rb",
+          "spec/mixed_results_spec.rb",
+          "spec/single_failure_spec.rb")
+
+        pending_headers = result.out.scan(/^Pending:/).count
+        failure_headers = result.out.scan(/^Failures:/).count
+
+        expect(pending_headers).to eq(1), "Expected 1 Pending header, got #{pending_headers}"
+        expect(failure_headers).to eq(1), "Expected 1 Failure header, got #{failure_headers}"
+      end
+    end
+
     it "shows combined progress from all workers" do
       chdir(project_fixture("failing_specs")) do
         result = run_plur_allowing_errors("-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")

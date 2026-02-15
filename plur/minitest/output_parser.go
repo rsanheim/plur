@@ -24,6 +24,7 @@ type outputParser struct {
 	failures           []types.TestCaseNotification // Extracted failures for runtime tracking
 	progressCount      int                          // Track progress index
 	startTime          time.Time                    // When the parser was created (for load time calculation)
+	inRunningPhase     bool                         // true between "# Running:" and summary/failure sections
 }
 
 // NewOutputParser creates a new minitest output parser with proper initialization
@@ -62,31 +63,38 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 	// Minitest doesn't typically show load time in the summary
 	// Format: "X runs, Y assertions, Z failures, W errors, V skips"
 
-	// For now, we can't distinguish between failures and errors from the summary data
-	// In minitest, totalFailures includes both failures and errors
-	// We'll need to track these separately in the future
-
 	runText := "1 run"
 	if totalExamples != 1 {
 		runText = fmt.Sprintf("%d runs", totalExamples)
 	}
 
-	// TODO: Track assertions count properly
-	// For now, assume at least one assertion per test
+	assertionCount := totalExamples
+	if suite != nil && suite.AssertionCount > 0 {
+		assertionCount = suite.AssertionCount
+	}
 	assertionText := "1 assertion"
-	if totalExamples != 1 {
-		assertionText = fmt.Sprintf("%d assertions", totalExamples)
+	if assertionCount != 1 {
+		assertionText = fmt.Sprintf("%d assertions", assertionCount)
 	}
 
+	errorCount := 0
+	if suite != nil {
+		errorCount = suite.ErrorCount
+	}
+	failureCount := totalFailures
 	failureText := "0 failures"
-	if totalFailures == 1 {
+	if failureCount == 1 {
 		failureText = "1 failure"
-	} else if totalFailures > 1 {
-		failureText = fmt.Sprintf("%d failures", totalFailures)
+	} else if failureCount > 1 {
+		failureText = fmt.Sprintf("%d failures", failureCount)
 	}
 
-	// TODO: Track errors separately from failures
 	errorText := "0 errors"
+	if errorCount == 1 {
+		errorText = "1 error"
+	} else if errorCount > 1 {
+		errorText = fmt.Sprintf("%d errors", errorCount)
+	}
 
 	skipText := "0 skips"
 	if totalPending == 1 {
@@ -107,6 +115,7 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 
 	// Emit suite started on "# Running:" with load time
 	if strings.HasPrefix(line, "# Running:") {
+		p.inRunningPhase = true
 		loadTime := time.Duration(0)
 		if !p.startTime.IsZero() {
 			loadTime = time.Since(p.startTime)
@@ -122,8 +131,23 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 		return p.parseProgressLine(line), false
 	}
 
+	// "Finished in" timing line ends the progress section
+	if p.inRunningPhase && strings.HasPrefix(line, "Finished in ") {
+		p.inRunningPhase = false
+	}
+
+	// Extract leading progress chars from mixed lines (e.g. "..in test_foo")
+	// Only during the running phase to avoid false positives in failure details
+	// or the "Finished in" timing line (which starts with 'F')
+	if p.inRunningPhase {
+		if count := countLeadingProgressChars(line); count > 0 {
+			return p.parseProgressLine(line[:count]), false
+		}
+	}
+
 	// Start collecting failures on first failure header
 	if !p.collectingFailures && isFailureHeaderLine(line) {
+		p.inRunningPhase = false
 		p.collectingFailures = true
 		p.failureBuffer.WriteString(line + "\n")
 		return nil, false // Preserve the line in output
@@ -142,6 +166,7 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 
 	// Check for summary without failures
 	if isSummaryLine(line) {
+		p.inRunningPhase = false
 		return p.parseSummaryLine(line), false
 	}
 
@@ -152,6 +177,7 @@ func (p *outputParser) parseSummaryLine(line string) []types.TestNotification {
 	// Check for summary line
 	if match := summaryRegex.FindStringSubmatch(line); match != nil {
 		runs, _ := strconv.Atoi(match[1])
+		assertions, _ := strconv.Atoi(match[2])
 		failures, _ := strconv.Atoi(match[3])
 		errors, _ := strconv.Atoi(match[4])
 		skips, _ := strconv.Atoi(match[5])
@@ -165,10 +191,12 @@ func (p *outputParser) parseSummaryLine(line string) []types.TestNotification {
 
 		// Create the suite finished notification
 		finishNotification := types.SuiteNotification{
-			Event:        types.SuiteFinished,
-			TestCount:    runs,
-			FailureCount: failures + errors,
-			PendingCount: skips,
+			Event:          types.SuiteFinished,
+			TestCount:      runs,
+			AssertionCount: assertions,
+			FailureCount:   failures,
+			ErrorCount:     errors,
+			PendingCount:   skips,
 		}
 		notifications = append(notifications, finishNotification)
 
@@ -219,6 +247,22 @@ func containsProgressChars(line string) bool {
 		}
 	}
 	return true
+}
+
+// countLeadingProgressChars returns the number of consecutive progress characters
+// (., F, E, S) at the start of a line. Returns 0 if the line doesn't start with
+// a progress character. Does not trim whitespace since minitest never indents
+// progress output.
+func countLeadingProgressChars(line string) int {
+	for i, char := range line {
+		switch char {
+		case '.', 'F', 'E', 'S':
+			continue
+		default:
+			return i
+		}
+	}
+	return len(line)
 }
 
 func isFailureHeaderLine(line string) bool {

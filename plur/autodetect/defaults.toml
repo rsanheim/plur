@@ -4,14 +4,17 @@
 # Structure: defaults.job.<name> for direct --use=<name> lookup
 
 [defaults.job.rspec]
+framework = "rspec"
 cmd = ["bundle", "exec", "rspec", "{{target}}"]
 target_pattern = "spec/**/*_spec.rb"
 
 [defaults.job.minitest]
+framework = "minitest"
 cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
 target_pattern = "test/**/*_test.rb"
 
 [defaults.job.go-test]
+framework = "go-test"
 cmd = ["go", "test", "{{target}}"]
 target_pattern = "**/*_test.go"
 

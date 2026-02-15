@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 )
 
 var (
@@ -39,6 +40,7 @@ func Init(level slog.Level) {
 type CustomTextHandler struct {
 	opts   slog.HandlerOptions
 	writer io.Writer
+	mu     sync.Mutex // protects writer
 }
 
 func NewCustomTextHandler(w io.Writer, opts *slog.HandlerOptions) *CustomTextHandler {
@@ -82,7 +84,9 @@ func (h *CustomTextHandler) Handle(_ context.Context, r slog.Record) error {
 
 	sb.WriteString("\n")
 
+	h.mu.Lock()
 	_, err := io.WriteString(h.writer, sb.String())
+	h.mu.Unlock()
 	return err
 }
 

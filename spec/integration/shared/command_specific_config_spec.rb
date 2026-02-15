@@ -27,15 +27,16 @@ RSpec.describe "Command-specific configuration" do
         cmd = ["echo", "'SPEC:'"]
         target_pattern = "spec/**/*_spec.rb"
 
-        [watch.run]
-        command = "echo 'WATCH:'"
-        debounce = 75
+        [[watch]]
+        name = "custom-watch"
+        source = "spec/**/*_custom_spec.rb"
+        jobs = ["rspec"]
       TOML
     end
 
     it "uses spec-specific command for spec runs" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "spec", "--dry-run")
+        Open3.capture3(plur_binary, "spec", "--dry-run")
       end
 
       expect(status).to be_success
@@ -44,32 +45,14 @@ RSpec.describe "Command-specific configuration" do
       expect(error).not_to include("echo 'WATCH:'")
     end
 
-    it "uses watch-specific debounce for watch runs" do
+    it "loads watch mappings from config for watch runs" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "watch", "run", "--timeout=1", "--debug", stdin_data: "")
+        Open3.capture3(plur_binary, "watch", "run", "--timeout=1", "--debug", stdin_data: "")
       end
 
       expect(status).to be_success
-      # Debug output should show the configured debounce
-      expect(error).to include("debounce=75")
-    end
-
-    it "respects watch-specific debounce setting" do
-      _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "watch", "run", "--timeout=1", "--debug", stdin_data: "")
-      end
-
-      expect(status).to be_success
-      expect(error).to include("debounce=75")
-    end
-  end
-
-  context "with CLI flag override" do
-    before do
-      File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
-        [spec]
-        command = "echo 'FROM CONFIG:'"
-      TOML
+      # Debug output should include the custom watch mapping
+      expect(error).to include("custom-watch")
     end
   end
 
@@ -87,7 +70,7 @@ RSpec.describe "Command-specific configuration" do
 
     it "uses global command setting when no command-specific setting exists" do
       _, error, status = Dir.chdir(test_dir) do
-        Open3.capture3("plur", "spec", "--dry-run")
+        Open3.capture3(plur_binary, "spec", "--dry-run")
       end
 
       expect(status).to be_success

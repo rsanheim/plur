@@ -5,10 +5,12 @@ RSpec.describe "single failure golden test" do
     project_fixture(name)
   end
 
-  def run_plur(file_or_glob, *args)
-    cmd_array = %W[plur #{file_or_glob}]
-    cmd_array += args if args.any?
-    Open3.capture3(*cmd_array)
+  def rspec_single_failure_command
+    ["bundle", "exec", "rspec", "spec/single_failure_spec.rb", "--force-color"]
+  end
+
+  def plur_single_failure_command
+    [plur_binary, "spec/single_failure_spec.rb"]
   end
 
   # Replace timing information to make output deterministic
@@ -17,96 +19,85 @@ RSpec.describe "single failure golden test" do
       "Finished in [fake-time] seconds (files took [fake-time] seconds to load)")
   end
 
+  def normalize_single_failure_snapshot(snapshot)
+    snapshot.merge(
+      "args" => ["[SINGLE_FAILURE_COMMAND]"],
+      "stdout" => make_summary_line_consistent(snapshot.fetch("stdout", "")).strip,
+      "stderr" => ""
+    )
+  end
+
   it "shows filtered backtrace same as rspec using Backspin" do
-    stdout_matcher = ->(stdout_1, stdout_2) {
-      normalized_1 = make_summary_line_consistent(stdout_1)
-      normalized_2 = make_summary_line_consistent(stdout_2)
-      normalized_1.strip == normalized_2.strip
-    }
-
-    stderr_matcher = ->(stderr_1, stderr_2) { true }
-
     # Record rspec output
-    Backspin.run("rspec_vs_plur_backtrace_comparison",
-      matcher: {stdout: stdout_matcher}) do
-      chdir fixture_path("failing_specs") do
-        run_rspec("spec/single_failure_spec.rb", "--force-color")
-      end
+    chdir fixture_path("failing_specs") do
+      Backspin.run(
+        rspec_single_failure_command,
+        name: "rspec_vs_plur_backtrace_comparison",
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
+      )
     end
 
     # Verify output matches
-    result = Backspin.run!("rspec_vs_plur_backtrace_comparison",
-      mode: :auto,
-      matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-      chdir fixture_path("failing_specs") do
-        run_plur("spec/single_failure_spec.rb")
-      end
+    result = chdir fixture_path("failing_specs") do
+      Backspin.run(
+        plur_single_failure_command,
+        name: "rspec_vs_plur_backtrace_comparison",
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
+      )
     end
 
     # Verify outputs contain expected elements (with color codes)
-    expect(result.stdout).to include("\e[31m") # Red color for failures
-    expect(result.stdout).to include("\e[32m") # Green color for syntax highlighting
-    expect(result.stdout).to include("\e[36m") # Cyan color for file paths
-    expect(result.stdout).to include("./spec/single_failure_spec.rb:6")
-    expect(result.stdout).to include("Single Failure fails due to strings not matching")
+    expect(result.actual.stdout).to include("\e[31m") # Red color for failures
+    expect(result.actual.stdout).to include("\e[32m") # Green color for syntax highlighting
+    expect(result.actual.stdout).to include("\e[36m") # Cyan color for file paths
+    expect(result.actual.stdout).to include("./spec/single_failure_spec.rb:6")
+    expect(result.actual.stdout).to include("Single Failure fails due to strings not matching")
   end
 
   it "matches rspec colorized output using Backspin verification" do
-    stdout_matcher = ->(stdout_1, stdout_2) {
-      normalized_1 = make_summary_line_consistent(stdout_1)
-      normalized_2 = make_summary_line_consistent(stdout_2)
-
-      # Skip preamble if present
-      normalized_1.strip == normalized_2.strip
-    }
-
-    stderr_matcher = ->(stderr_1, stderr_2) { true }
-
     # Record rspec output
-    Backspin.run("rspec_vs_plur_colorized_comparison",
-      matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-      chdir fixture_path("failing_specs") do
-        run_rspec("spec/single_failure_spec.rb", "--force-color")
-      end
+    chdir fixture_path("failing_specs") do
+      Backspin.run(
+        rspec_single_failure_command,
+        name: "rspec_vs_plur_colorized_comparison",
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
+      )
     end
 
     # Verify output matches
-    result = Backspin.run!("rspec_vs_plur_colorized_comparison",
-      mode: :verify,
-      matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-      chdir fixture_path("failing_specs") do
-        run_plur("spec/single_failure_spec.rb")
-      end
+    result = chdir fixture_path("failing_specs") do
+      Backspin.run(
+        plur_single_failure_command,
+        name: "rspec_vs_plur_colorized_comparison",
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
+      )
     end
 
     # Verify color codes are preserved
-    expect(result.stdout).to include("\e[31m") # Red
-    expect(result.stdout).to include("\e[32m") # Green
-    expect(result.stdout).to include("\e[36m") # Cyan
+    expect(result.actual.stdout).to include("\e[31m") # Red
+    expect(result.actual.stdout).to include("\e[32m") # Green
+    expect(result.actual.stdout).to include("\e[36m") # Cyan
   end
 
-  it "demonstrates Backspin playback mode for fast tests" do
-    stdout_matcher = ->(stdout_1, stdout_2) {
-      make_summary_line_consistent(stdout_1) == make_summary_line_consistent(stdout_2)
-    }
-
-    # Ensure recording exists
-    Backspin.run("rspec_playback_demo",
-      matcher: {stdout: stdout_matcher}) do
-      chdir fixture_path("failing_specs") do
-        run_rspec("spec/single_failure_spec.rb", "--force-color")
-      end
+  it "uses Backspin snapshot result fields in verify mode" do
+    chdir fixture_path("failing_specs") do
+      Backspin.run(
+        rspec_single_failure_command,
+        name: "rspec_verify_mode_demo",
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
+      )
     end
 
-    # Playback is instant - no actual command execution
-    start_time = Time.now
-    result = Backspin.run("rspec_playback_demo", mode: :playback) do
-      chdir fixture_path("failing_specs") do
-        run_rspec("spec/single_failure_spec.rb", "--force-color")
-      end
+    result = chdir fixture_path("failing_specs") do
+      Backspin.run(
+        plur_single_failure_command,
+        name: "rspec_verify_mode_demo",
+        filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
+      )
     end
 
-    expect(Time.now - start_time).to be < 0.1
-    expect(result.stdout).to include("Single Failure")
+    expect(result.verified?).to be(true)
+    expect(result.actual.stdout).to include("Single Failure")
+    expect(result.expected.stdout).to include("Single Failure")
   end
 end

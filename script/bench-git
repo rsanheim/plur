@@ -3,7 +3,6 @@
 
 require "optimist"
 require "fileutils"
-require "pathname"
 require "time"
 
 PLUR_ROOT = Pathname.new(__dir__).parent.expand_path

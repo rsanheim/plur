@@ -19,7 +19,7 @@ import (
 
 type SpecCmd struct {
 	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Use        string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Tags       []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
 	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
 	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
 }
@@ -27,12 +27,10 @@ type SpecCmd struct {
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg := parent.globalConfig
 	fmt.Fprintf(os.Stderr, "plur version version=%s\n", GetVersionInfo())
+	logger.Logger.Debug("running plur", "command", "spec", "args", os.Args[1:])
 
 	// Determine explicit job name (CLI or config)
-	explicitName := r.Use
-	if explicitName == "" {
-		explicitName = parent.Use
-	}
+	explicitName := parent.Use
 
 	result, err := autodetect.ResolveJob(explicitName, parent.Job, r.Patterns)
 	if err != nil {
@@ -41,7 +39,14 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	currentJob := result.Job
 
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "patterns", r.Patterns, "target_pattern", currentJob.GetTargetPattern())
+	logInheritedFields(currentJob.Name, result.Inherited)
+
+	if len(r.Tags) > 0 && currentJob.Framework != "rspec" {
+		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)
+	}
+
+	targetPatterns, _ := targetPatternsForJob(currentJob)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", result.Reason)
 
 	// Discover test files
 	var testFiles []string
@@ -59,14 +64,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return err
 		}
 		if len(testFiles) == 0 {
-			suffix := currentJob.GetTargetSuffix()
-			// Determine directory from job's target pattern
-			pattern := currentJob.TargetPattern
-			dir := "spec"
-			if strings.HasPrefix(pattern, "test/") {
-				dir = "test"
+			patterns, err := targetPatternsForJob(currentJob)
+			if err != nil || len(patterns) == 0 {
+				return fmt.Errorf("no test files found")
 			}
-			return fmt.Errorf("no test files found (looking for *%s in %s/)", suffix, dir)
+			return fmt.Errorf("no test files found (looking for %s)", strings.Join(patterns, ", "))
 		}
 	}
 	msg := fmt.Sprintf("found %v test files", len(testFiles))
@@ -82,7 +84,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg.Auto = r.Auto
 	cfg.RspecTrace = r.RspecTrace
 
-	runner, err := NewRunner(cfg, testFiles, currentJob)
+	extraArgs := buildTagArgs(r.Tags)
+	extraArgs = append(extraArgs, parent.passthroughArgs...)
+
+	runner, err := NewRunner(cfg, testFiles, currentJob, extraArgs)
 	if err != nil {
 		return err
 	}
@@ -122,12 +127,34 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	return nil
 }
 
+func logInheritedFields(jobName string, inherited autodetect.InheritedFields) {
+	if !inherited.Cmd && !inherited.Env && !inherited.Framework && !inherited.TargetPattern {
+		return
+	}
+	logger.Logger.Info("job inherited defaults",
+		"job", jobName,
+		"cmd", inherited.Cmd,
+		"env", inherited.Env,
+		"framework", inherited.Framework,
+		"target_pattern", inherited.TargetPattern)
+}
+
+func buildTagArgs(tags []string) []string {
+	if len(tags) == 0 {
+		return nil
+	}
+	args := make([]string, 0, len(tags)*2)
+	for _, tag := range tags {
+		args = append(args, "--tag", tag)
+	}
+	return args
+}
+
 type WatchCmd struct {
 	Run     WatchRunCmd     `cmd:"" default:"withargs" help:"Run watch mode"`
 	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
 	Find    WatchFindCmd    `cmd:"" help:"Show what would be executed for a given file change"`
 
-	Use    string   `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Ignore []string `help:"Patterns to ignore from watch events (default: .git/**, node_modules/**)" name:"ignore"`
 }
 
@@ -205,7 +232,7 @@ type PlurCLI struct {
 	DryRun    bool   `help:"Print what would be executed without running" default:"false"`
 	FirstIs1  bool   `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
 	JSON      string `help:"Save detailed test results as JSON to the specified file" default:""`
-	Use       string `help:"Job to use (overrides autodetection)" default:"" hidden:""`
+	Use       string `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Verbose   bool   `short:"v" help:"Enable verbose output for debugging" default:"false"`
 	Version   bool   `help:"Show version information"`
 	Workers   int    `short:"n" help:"Number of parallel workers (default: auto-detect CPUs)" env:"PARALLEL_TEST_PROCESSORS" default:"0"`
@@ -219,6 +246,9 @@ type PlurCLI struct {
 
 	// Store config files that were attempted (for tracking)
 	configFiles []string `kong:"-"`
+
+	// RSpec passthrough args from -- delimiter
+	passthroughArgs []string `kong:"-"`
 }
 
 // Initialize logger with appropriate level
@@ -260,6 +290,10 @@ func (cli *PlurCLI) AfterApply() error {
 		LoadedConfigs: loadedConfigs,
 	}
 
+	if err := autodetect.ValidateConfig(cli.Job, cli.WatchMappings); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -275,6 +309,15 @@ func handleHelpCommand(args []string) []string {
 		return newArgs
 	}
 	return args
+}
+
+func splitArgsAtDoubleDash(args []string) ([]string, []string) {
+	for i, arg := range args {
+		if arg == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
 }
 
 // handleEarlyChangeDir pre-parses command line arguments for the -C flag
@@ -304,7 +347,7 @@ func handleChangeDir(args []string) error {
 
 		if dir != "" {
 			if err := os.Chdir(dir); err != nil {
-				return fmt.Errorf("failed to change directory to %s: %v", dir, err)
+				return fmt.Errorf("failed to change directory to %s: %w", dir, err)
 			}
 			// Only process the first -C flag
 			return nil
@@ -318,13 +361,14 @@ func main() {
 
 	// Handle "help" command by converting it to "-h" flag
 	args := handleHelpCommand(os.Args[1:])
+	args, cli.passthroughArgs = splitArgsAtDoubleDash(args)
 
 	if err := handleChangeDir(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	var configFiles []string
+	configFiles := []string{"~/.plur.toml", ".plur.toml"}
 	if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
 		if _, err := os.Stat(configFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
@@ -332,8 +376,6 @@ func main() {
 		}
 		configFiles = append(configFiles, configFile)
 	}
-
-	configFiles = append(configFiles, ".plur.toml", "~/.plur.toml")
 
 	cli.configFiles = configFiles
 
@@ -350,7 +392,10 @@ func main() {
 	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(err)
 
-	logger.Logger.Debug("running plur", "command", ctx.Command(), "args", os.Args[1:])
+	if len(cli.passthroughArgs) > 0 && !strings.HasPrefix(ctx.Command(), "spec") {
+		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec command")
+		os.Exit(1)
+	}
 
 	err = ctx.Run(ctx)
 	if err != nil {

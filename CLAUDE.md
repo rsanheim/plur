@@ -10,17 +10,17 @@ Production-ready Go implementation, ~13% faster than turbo_tests/parallel_tests.
 
 ```bash
 # Daily workflow commands (in order of frequency):
-bin/rake install              # Build & install to $GOPATH/bin - USE CONSTANTLY
-bin/rake                      # Run ALL tests & lints before committing
+bin/rake                      # Run full build -> lint, install, tests
+bin/rake install              # Build & install a global binary sys/contianer wide
 bin/rake test:default_ruby    # Test plur on default-ruby fixture project (quick check)
 bin/rake test                 # Run full Ruby test suite
 bin/rake standard:fix         # Fix Ruby lint issues
-
-# Never do this:
-# rake anything         ❌ WRONG - breaks bundler context
-# go build             ❌ WRONG - missing version info
-# cd plur && go build   ❌ WRONG - use bin/rake install
 ```
+
+Notes:
+- `bin/rake install` works as-is; no PATH/GOPATH tweaking is required.
+- For a single spec file, use `bin/rspec spec/path/to/file_spec.rb`.
+- Install tools from top-level `.mise.toml`: `mise install --yes`
 
 ### bin/rake build vs bin/rake install
 

@@ -1,6 +1,7 @@
 source "https://rubygems.org"
 
-gem "backspin", require: false
+gem "appraisal2", require: false
+gem "backspin", "~> 0.12.0", require: false
 gem "benchmark"
 gem "guard-rspec", require: false
 gem "minitest", require: false

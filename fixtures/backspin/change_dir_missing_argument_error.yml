@@ -1,0 +1,16 @@
+---
+format_version: '4.1'
+first_recorded_at: '2026-02-10T20:23:57-06:00'
+recorded_at: '2026-02-11T02:21:20-06:00'
+record_count: 2
+snapshot:
+  command_type: Open3::Capture3
+  args:
+  - plur
+  - "-C"
+  stdout: ''
+  stderr: 'Error: -C flag requires a directory argument
+
+    '
+  status: 1
+  recorded_at: '2026-02-11T02:21:20-06:00'

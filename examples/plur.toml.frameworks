@@ -55,6 +55,7 @@
 # =============================================================================
 
 # [job.backend]
+# framework = "rspec"
 # cmd = ["bundle", "exec", "rspec"]
 # target_pattern = "backend/spec/**/*_spec.rb"
 #
@@ -85,11 +86,13 @@
 
 # # Integration tests only
 # [job.integration]
+# framework = "rspec"
 # cmd = ["rspec", "--tag", "integration"]
 # target_pattern = "spec/integration/**/*_spec.rb"
 #
 # # Fast unit tests only
 # [job.unit]
+# framework = "rspec"
 # cmd = ["rspec", "--tag", "~integration", "--fail-fast"]
 # target_pattern = "spec/unit/**/*_spec.rb"
 #

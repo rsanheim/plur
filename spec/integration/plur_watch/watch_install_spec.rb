@@ -7,7 +7,7 @@ RSpec.describe "plur watch install command" do
     case RUBY_PLATFORM
     when /aarch64-darwin/, /arm64-darwin/
       "watcher-aarch64-apple-darwin"
-    when /linux.*aarch64/, /linux.*arm64/
+    when /linux.*aarch64/, /linux.*arm64/, /aarch64.*linux/
       "watcher-aarch64-unknown-linux-gnu"
     when /linux/
       "watcher-x86_64-unknown-linux-gnu"
@@ -16,7 +16,7 @@ RSpec.describe "plur watch install command" do
     end
   end
 
-  it "installs the watcher binary in PLUR_HOME/bin/[platform-specific-binary]" do
+  it "installs the watcher binary for #{RUBY_PLATFORM} in PLUR_HOME/bin/[platform-specific-binary]" do
     expect(plur_home.join("bin", watcher_filename)).to_not exist
 
     result = run_plur("watch", "install")

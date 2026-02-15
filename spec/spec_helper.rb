@@ -2,7 +2,6 @@ require "fileutils"
 require "json"
 require "open3"
 require "ostruct"
-require "pathname"
 require "stringio"
 require "timecop"
 require "tmpdir"
@@ -10,6 +9,7 @@ require "tty-command"
 
 ROOT_PATH = Pathname.new(__dir__).parent
 DEFAULT_RUBY_DIR = ROOT_PATH.join("fixtures", "projects", "default-ruby")
+DEFAULT_RUBY_SPEC_FILE_COUNT = 13
 
 require "backspin"
 
@@ -27,6 +27,12 @@ RSpec.configure do |config|
   config.disable_monkey_patching!
   config.filter_run_excluding :skip_if_ci if ENV["CI"]
   config.shared_context_metadata_behavior = :apply_to_host_groups
+
+  # Scrub plur's parallel env vars before each spec so the outer test
+  # runner (which may itself be plur) doesn't leak into child processes.
+  config.around do |example|
+    without_plur_parallel_env { example.run }
+  end
 
   def chdir(path)
     Dir.chdir(path) do

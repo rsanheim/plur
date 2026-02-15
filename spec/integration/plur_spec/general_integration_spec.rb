@@ -4,14 +4,14 @@ require "fileutils"
 require "json"
 
 RSpec.describe "Plur general integration" do
-  let(:expected_spec_files) { 12 }
+  let(:expected_spec_files) { DEFAULT_RUBY_SPEC_FILE_COUNT }
 
   describe "basic functionality" do
     # Modified to test the hook
     it "runs all specs when no arguments are provided" do
       result = run_plur("-C", default_ruby_dir)
 
-      expect(result.err).to include("Running #{expected_spec_files} specs in parallel")
+      expect(result.err).to include("Running #{expected_spec_files} specs [rspec] in parallel")
       expect(result.out).to include("examples")
       expect(result.out).to include("failures")
       expect(result.out).to include("Finished in")
@@ -20,7 +20,7 @@ RSpec.describe "Plur general integration" do
     it "runs specific spec files when provided as arguments" do
       result = run_plur("-C", default_ruby_dir, "spec/calculator_spec.rb", "spec/string_utils_spec.rb")
 
-      expect(result.err).to include("Running 2 specs in parallel")
+      expect(result.err).to include("Running 2 specs [rspec] in parallel")
       expect(result.out).to include("Finished in")
     end
 
@@ -58,7 +58,7 @@ RSpec.describe "Plur general integration" do
     it "limits workers to number of spec files when fewer files than workers" do
       result = run_plur("-C", default_ruby_dir, "-n", "20", "spec/calculator_spec.rb", "spec/string_utils_spec.rb")
 
-      expect(result.err).to include("Running 2 specs in parallel using 2 workers")
+      expect(result.err).to include("Running 2 specs [rspec] in parallel using 2 workers")
     end
   end
 
@@ -66,7 +66,7 @@ RSpec.describe "Plur general integration" do
     it "shows what would be executed without running tests" do
       result = run_plur("-C", default_ruby_dir, "--dry-run")
 
-      expect(result.err).to include("[dry-run] Running #{expected_spec_files} specs")
+      expect(result.err).to include("[dry-run] Running #{expected_spec_files} specs [rspec]")
       expect(result.err).to include("[dry-run] Worker")
       expect(result.err).to include("rspec")
       expect(result.out).not_to include("Finished in")
@@ -77,7 +77,7 @@ RSpec.describe "Plur general integration" do
       result = run_plur("-C", default_ruby_dir, "--dry-run", "--auto")
 
       expect(result.err).to include("[dry-run] bundle install")
-      expect(result.err).to include("[dry-run] Running #{expected_spec_files} specs")
+      expect(result.err).to include("[dry-run] Running #{expected_spec_files} specs [rspec]")
     end
   end
 
@@ -150,7 +150,7 @@ RSpec.describe "Plur general integration" do
           result = run_plur("--auto", "test_spec.rb")
 
           expect(result.out).to include("Installing dependencies...")
-          expect(result.err).to include("Running 1 spec")
+          expect(result.err).to include("Running 1 spec [rspec]")
         end
       end
     end

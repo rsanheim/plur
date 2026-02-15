@@ -6,7 +6,7 @@ RSpec.describe "pending specs output" do
   end
 
   def run_plur(file_or_glob, *args)
-    cmd_array = %W[plur #{file_or_glob}]
+    cmd_array = [plur_binary, file_or_glob]
     cmd_array += args if args.any?
     Open3.capture3(*cmd_array)
   end
@@ -17,44 +17,45 @@ RSpec.describe "pending specs output" do
       .gsub(/Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
         "Finished in [TIME] seconds (files took [TIME] seconds to load)")
       .gsub(/plur version version=[\w.-]+\n/, "")
-      .gsub(/Running \d+ specs? in parallel using \d+ workers?\n/, "")
+      .gsub(/Running \d+ specs? \[rspec\] in parallel using \d+ workers?\n/, "")
+  end
+
+  def normalize_pending_output_snapshot(snapshot)
+    snapshot.merge(
+      "args" => ["[OUTPUT_COMPARISON_COMMAND]"],
+      "stdout" => normalize_timing(snapshot.fetch("stdout", "")).strip,
+      "stderr" => ""
+    )
   end
 
   describe "pending section output" do
     it "shows pending section before failures like RSpec" do
-      stdout_matcher = ->(stdout_1, stdout_2) {
-        normalized_1 = normalize_timing(stdout_1)
-        normalized_2 = normalize_timing(stdout_2)
-        normalized_1.strip == normalized_2.strip
-      }
-
-      stderr_matcher = ->(_stderr_1, _stderr_2) { true }
-
       # Record rspec output as baseline
-      Backspin.run("pending_output_comparison",
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-        chdir fixture_path("failing_specs") do
-          run_rspec("spec/mixed_results_spec.rb", "--force-color")
-        end
+      chdir fixture_path("failing_specs") do
+        Backspin.run(
+          ["bundle", "exec", "rspec", "spec/mixed_results_spec.rb", "--force-color"],
+          name: "pending_output_comparison",
+          filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
+        )
       end
 
       # Verify plur output matches
-      result = Backspin.run!("pending_output_comparison",
-        mode: :auto,
-        matcher: {stdout: stdout_matcher, stderr: stderr_matcher}) do
-        chdir fixture_path("failing_specs") do
-          run_plur("spec/mixed_results_spec.rb")
-        end
+      result = chdir fixture_path("failing_specs") do
+        Backspin.run(
+          [plur_binary, "spec/mixed_results_spec.rb"],
+          name: "pending_output_comparison",
+          filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
+        )
       end
 
       # Verify output structure
-      expect(result.stdout).to include("Pending:")
-      expect(result.stdout).to include("Failures listed here are expected")
-      expect(result.stdout).to include("Failures:")
+      expect(result.actual.stdout).to include("Pending:")
+      expect(result.actual.stdout).to include("Failures listed here are expected")
+      expect(result.actual.stdout).to include("Failures:")
 
       # Verify pending appears before failures
-      pending_pos = result.stdout.index("Pending:")
-      failures_pos = result.stdout.index("Failures:")
+      pending_pos = result.actual.stdout.index("Pending:")
+      failures_pos = result.actual.stdout.index("Failures:")
       expect(pending_pos).to be < failures_pos
     end
 

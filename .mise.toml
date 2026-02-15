@@ -1,7 +1,8 @@
 [tools]
-ruby = "4"
-go = "1.25"
-python = "3"
+ruby = "4.0.1"
+go = "1.25.7"
+python = "3.14.0"
+goreleaser = "2"
 
 [settings]
 python.uv_venv_auto = true

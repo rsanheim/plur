@@ -97,11 +97,24 @@ namespace :test do
     puts "[test:default_rails] Running default-rails specs with plur..."
     sh "plur", "-C", Plur.config.default_rails_dir.to_s, "-n", PLUR_CORES.to_s, err: "/dev/null"
   end
+
+  desc "Run Ruby specs against all RSpec appraisals"
+  task appraisals: :install do
+    puts "[test:appraisals] Running specs against all RSpec appraisals..."
+    sh "bundle exec appraisal rake test"
+  end
+
+  desc "Run Ruby specs against a specific appraisal (e.g., bin/rake test:appraisal[rspec-3.13.1])"
+  task :appraisal, [:name] => :install do |_t, args|
+    name = args[:name] || abort("Usage: bin/rake test:appraisal[rspec-3.13.1]")
+    puts "[test:appraisal] Running specs with #{name}..."
+    sh "bundle exec appraisal #{name} rake test"
+  end
 end
 
 namespace :lint do
   desc "Run all linting (Go and Ruby)"
-  task all: %i[go ruby]
+  task all: %i[go ruby toolchain:check]
 
   desc "Lint Go code"
   task :go do

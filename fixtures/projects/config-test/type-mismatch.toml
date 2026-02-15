@@ -1,6 +1,3 @@
 # Type mismatches
 workers = "should be number"
 color = "yes" # should be boolean
-
-[spec]
-command = 123 # should be string

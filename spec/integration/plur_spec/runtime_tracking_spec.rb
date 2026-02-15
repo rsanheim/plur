@@ -4,7 +4,7 @@ RSpec.describe "Plur runtime tracking" do
   context "explicit runtime dir" do
     around_with_tmp_plur_home
 
-    it "uses RUX_HOME environment variable if provided" do
+    it "uses PLUR_HOME environment variable if provided" do
       temp_runtime_dir = File.join(tmp_plur_home, "runtime")
 
       Dir.chdir(default_ruby_dir) do

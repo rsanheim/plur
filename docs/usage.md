@@ -8,12 +8,18 @@
 # Run all specs with auto-detected parallelism
 plur
 
+# Explicit "spec" command (same as default)
+plur spec
+
 # Specify number of workers
 plur -n 4
 plur --workers 8
 
 # Dry run - see what would be executed
 plur --dry-run
+
+# Run from another directory (like git -C)
+plur -C path/to/project
 ```
 
 ### Selecting Test Framework
@@ -54,8 +60,11 @@ use = "minitest"  # Override default to use Minitest
 # Watch for changes and re-run tests
 plur watch
 
-# Watch with specific number of workers
-plur watch -n 4
+# Install the watcher binary if needed
+plur watch install
+
+# Customize debounce/timeout and ignore patterns
+plur watch run --debounce 250 --timeout 60 --ignore "vendor/**" --ignore "tmp/**"
 ```
 
 ### Doctor Command
@@ -72,12 +81,15 @@ plur doctor
 * `-n, --workers NUMBER` - Number of parallel workers (default: auto-detect)
 * `--dry-run` - Show what would run without executing
 * `-h, --help` - Show help
-* `-v, --version` - Show version
+* `-v, --verbose` - Enable verbose logging
+* `--version` - Show version
 
 ### Environment Variables
 
 * `PARALLEL_TEST_PROCESSORS` - Override number of workers
 * `PLUR_DEBUG` - Enable debug logging
+* `PLUR_CONFIG_FILE` - Load a specific config file
+* `PLUR_HOME` - Override Plur's home directory (`~/.plur`)
 
 ## Parallelism
 
@@ -123,16 +135,16 @@ Plur uses dual formatters internally:
 
 ### Basic Timing
 
-Plur shows execution time after each run:
+RSpec output includes timing details, for example:
 ```
-Finished in 12.34s (CPU: 45.67s)
+Finished in 0.35 seconds (files took 0.12 seconds to load)
 ```
 
 ### Debugging Test Failures
 
 ```bash
 # Run with debug output
-PLUR_DEBUG=1 plur
+plur --debug
 
 # Check which files would run
 plur --dry-run | grep "file_spec.rb"
@@ -146,9 +158,9 @@ plur doctor
 1. **Start with auto-detection**: Let Plur choose worker count
 2. **Measure and adjust**: Experiment with different worker counts
 3. **Consider test characteristics**:
-   - Many small tests: More workers
-   - Few large tests: Fewer workers
-   - I/O heavy tests: More workers than CPU cores
+- Many small tests: More workers
+- Few large tests: Fewer workers
+- I/O heavy tests: More workers than CPU cores
 
 ## Next Steps
 

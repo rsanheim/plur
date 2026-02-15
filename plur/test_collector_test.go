@@ -107,11 +107,13 @@ func TestTestCollector_BuildResult(t *testing.T) {
 
 	// Add suite info
 	collector.AddNotification(types.SuiteNotification{
-		Event:        types.SuiteFinished,
-		LoadTime:     100 * time.Millisecond,
-		TestCount:    2,
-		FailureCount: 1,
-		PendingCount: 0,
+		Event:          types.SuiteFinished,
+		LoadTime:       100 * time.Millisecond,
+		TestCount:      2,
+		AssertionCount: 5,
+		FailureCount:   1,
+		ErrorCount:     0,
+		PendingCount:   0,
 	})
 
 	// Add some output
@@ -131,7 +133,9 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	// Verify result
 	assert.Equal(t, duration, result.Duration)
 	assert.Equal(t, 2, result.ExampleCount)
+	assert.Equal(t, 5, result.AssertionCount)
 	assert.Equal(t, 1, result.FailureCount)
+	assert.Equal(t, 0, result.ErrorCount)
 	assert.Equal(t, types.StateFailed, result.State)
 	assert.Equal(t, 100*time.Millisecond, result.FileLoadTime)
 	assert.Equal(t, "Test output line 1\nTest output line 2\n", result.Output)

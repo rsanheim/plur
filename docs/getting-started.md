@@ -5,7 +5,7 @@ Quick start guide for using Plur.
 ## Prerequisites
 
 - Ruby project with RSpec or Minitest tests
-- Go 1.21+ (for building from source)
+- Go 1.25+ (for building from source)
 
 ## Quick Install
 
@@ -13,6 +13,7 @@ Quick start guide for using Plur.
 # From source
 git clone https://github.com/rsanheim/plur.git
 cd plur
+go install github.com/goreleaser/goreleaser/v2@latest
 bin/rake install
 
 # Verify installation

@@ -17,7 +17,7 @@ RSpec.describe "Framework Selection" do
       chdir(project_fixture!("mixed-rspec-minitest")) do
         Bundler.with_unbundled_env do
           system("bundle check", out: File::NULL, err: File::NULL) ||
-            system("bundle install", exception: true)
+            system("bundle install", out: File::NULL, err: File::NULL, exception: true)
         end
       end
     end
@@ -136,7 +136,7 @@ RSpec.describe "Framework Selection" do
       output = run_plur_in_dir(test_dir, "--dry-run", allow_failure: true)
 
       # The error message should indicate no framework was detected
-      expect(output).to include("No default spec/test files found")
+      expect(output).to include("no default spec/test files found")
     end
   end
 
@@ -144,7 +144,7 @@ RSpec.describe "Framework Selection" do
 
   def run_plur_in_dir(dir, args = "", allow_failure: false)
     Dir.chdir(dir) do
-      output = `plur #{args} 2>&1`
+      output = `#{plur_binary} #{args} 2>&1`
       unless $?.success?
         # For dry-run, it's ok if plur exits with non-zero when no tests found
         if allow_failure || (args.include?("--dry-run") && output.include?("no test files found"))

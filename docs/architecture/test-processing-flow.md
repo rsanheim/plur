@@ -124,6 +124,7 @@ Framework-specific output parsing:
 ### 4. **TestCollector** (test_collector.go)
 Accumulates notifications from parser:
 * Tracks tests, failures, pending counts
+* Carries suite-level counts (assertions/errors/pending) from `SuiteNotification` into `WorkerResult`
 * Stores raw output in `rawOutput` string builder
 * `BuildResult()` creates final `WorkerResult`
 
@@ -137,7 +138,7 @@ Single goroutine that serializes all output:
 ### 6. **PrintResults** (result.go)
 Displays final summary:
 * `BuildTestSummary()` aggregates all WorkerResults
-* Framework-aware formatting via `parser.FormatSummary()`
+* Framework-aware formatting via `parser.FormatSummary()` (uses suite counts when present)
 * Shows failures, then summary line
 
 ## Architecture Highlights
