@@ -2,134 +2,87 @@
 
 ## Overview
 
-`plur` is a Go-based CLI test runner for Ruby/RSpec projects that provides parallel test execution with clean interleaved output. It's designed as a fast alternative to turbo_tests and parallel_tests.
+Plur is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) that distributes test files across worker processes for faster execution. It's a fast alternative to turbo_tests and parallel_tests, typically ~13% faster on real-world projects.
 
-## Current Implementation
+## Core Features
 
-### Core Features
-- **Parallel test execution** using Go goroutines and worker pools
-- **Clean progress output** using RSpec's progress formatter (dots only)
-- **Intelligent worker limiting** (cores-2 default, configurable via CLI or env)
-- **Recursive spec file discovery** using `filepath.WalkDir`
-- **Performance timing** showing wall time vs CPU time
-- **Environment compatibility** with `PARALLEL_TEST_PROCESSORS`
+* **Parallel test execution** using Go goroutines and a worker pool
+* **Multi-framework support**: RSpec, Minitest, and Go test out of the box
+* **Runtime-based distribution**: tracks historical test runtimes and balances worker loads accordingly, falling back to file-size estimation for new files
+* **Tag filtering**: `--tag` flag passes RSpec tags through to workers
+* **Argument passthrough**: `--` forwards arbitrary flags to the underlying test command
+* **TOML configuration**: local `.plur.toml` and global `~/.plur.toml` for persistent settings
+* **Custom jobs**: define your own jobs in config with arbitrary commands, frameworks, and target patterns
+* **Watch mode**: automatically runs tests on file changes with configurable source-to-test mappings
+* **Intelligent worker count**: defaults to cores-2, configurable via `-n` flag or `PARALLEL_TEST_PROCESSORS` env var
+* **Glob-based file discovery** using doublestar for recursive `**` patterns
+* **Streaming JSON output** via a custom `JsonRowsFormatter` embedded in the binary
+* **Diagnostic command**: `plur doctor` for debugging installation and environment issues
+* **Cross-version benchmarking**: `script/bench-git` compares performance across git refs
 
-### CLI Interface
+## CLI Interface
+
 ```bash
 plur                          # Run with auto-detected workers (cores-2)
-plur --workers 4              # Run with 4 workers
-plur --dry-run               # Show what would run without execution
+plur -n 4                     # Run with 4 workers
+plur --dry-run                # Show what would run without execution
+plur --tag focus              # Filter RSpec tests by tag
+plur --use minitest           # Override framework autodetection
+plur spec/models              # Run a subset of specs
+plur -- --seed 12345          # Pass flags through to the test command
+plur watch                    # Watch for file changes and re-run tests
+plur doctor                   # Diagnose installation issues
+plur config init              # Generate a starter .plur.toml
 ```
 
-### Technical Architecture
-- **Language**: Go 1.25+
-- **CLI Framework**: Kong (https://github.com/alecthomas/kong)
-- **Concurrency**: Worker pool pattern with sync.WaitGroup
-- **Process Management**: exec.CommandContext for timeout handling
-- **Output Strategy**: RSpec dual formatters (`--format progress --format json`)
+## Technical Architecture
+
+* *Language*: Go 1.25+
+* *CLI Framework*: Kong with kong-toml for config file loading
+* *Concurrency*: Worker pool pattern with channel-based output aggregation
+* *File Discovery*: doublestar glob matching (`**/*_spec.rb`, `**/*_test.rb`, etc.)
+* *Output*: Custom `Plur::JsonRowsFormatter` (Ruby, embedded in the binary via `go:embed`) streams JSON Lines to stdout with a `PLUR_JSON:` prefix, parsed in real-time by Go
+* *Framework Detection*: Autodetect checks for matching files in priority order (rspec > minitest > go-test)
+* *Runtime Tracking*: Per-project JSON files stored in `~/.plur/runtime/` keyed by a hash of the working directory
 
 ## Performance Results
 
 ### Benchmark: example-project (24 spec files)
+
 | Command | Time | Relative Performance |
 |---------|------|---------------------|
-| `plur --workers 4` | **9.04s** | Fastest (baseline) |
+| `plur -n 4` | **9.04s** | Fastest (baseline) |
 | `plur` (default) | 10.15s | +12% slower |
 | `bundle exec turbo_tests` | 10.18s | +13% slower |
-
-**Key finding**: `plur --workers 4` is **13% faster** than turbo_tests
 
 ## Project Structure
 
 ```
-/Users/rsanheim/src/oss/plur/
-├── plur/                    # Main Go implementation
-│   ├── main.go            # Core plur CLI and parallel execution
-│   ├── go.mod/go.sum      # Go dependencies
-│   └── plur                # Compiled binary
-├── script/                # Utility scripts
-│   ├── bench              # Performance benchmarking vs turbo_tests
-│   └── get-repo           # Repository cloning for testing
-├── docs/                  # Documentation
-├── fixtures/              # Test projects
-│   └── projects/
-│       ├── default-ruby/  # Simple Ruby library for testing
-│       └── default-rails/ # Rails app for testing
-└── lib/                   # Ruby libraries and helpers
+plur/                        # Go source (main binary)
+  autodetect/                # Framework detection and built-in defaults
+  config/                    # Configuration loading and paths
+  framework/                 # Framework definitions (rspec, minitest, go-test)
+  job/                       # Job resolution and command building
+  rspec/                     # JsonRowsFormatter (embedded Ruby) and JSON parser
+  watch/                     # File watcher, event handler, debouncer
+script/                      # Utility scripts (bench, bench-git, get-repo)
+spec/                        # Ruby integration test suite
+fixtures/projects/           # Test fixture projects
+  default-ruby/              # Simple Ruby library for testing
+  default-rails/             # Rails app for testing
+docs/                        # Documentation (mkdocs-material)
 ```
 
 ## Testing Infrastructure
 
-### Test Projects
-- **plur-ruby/**: Custom test project with 9 spec files across nested directories
-- **example-project-*/**: Real-world project with 24 spec files for benchmarking
-
-### Scripts
-- **script/bench**: Automated performance comparison using hyperfine
-  - Sets up turbo_tests if missing
-  - Runs fair benchmarks with pre-installed dependencies
-  - Exports results to markdown and JSON
-- **script/get-repo**: Clone any GitHub repository for testing
-  - Converts HTTPS to SSH automatically
-  - Removes .git for clean testing environments
-
-## Key Implementation Details
-
-### Worker Pool Pattern
-```go
-func getWorkerCount(cliWorkers int) int {
-    if cliWorkers > 0 {
-        return cliWorkers
-    }
-    if envVar := os.Getenv("PARALLEL_TEST_PROCESSORS"); envVar != "" {
-        if count, err := strconv.Atoi(envVar); err == nil && count > 0 {
-            return count
-        }
-    }
-    workers := runtime.NumCPU() - 2
-    if workers < 1 {
-        workers = 1
-    }
-    return workers
-}
-```
-
-### Clean Output Strategy
-- Uses RSpec's `--format progress` for clean dot output
-- Avoids verbose completion messages from individual processes
-- Optional JSON output to files for debugging
-
-### File Discovery
-- Recursive search using `filepath.WalkDir`
-- Finds all `*_spec.rb` files in nested directories
-- Handles complex project structures
-
-## Current Status: Production Ready
-
-The plur implementation is feature-complete and performing well:
-
-1. **Functionality**: All core features implemented and tested
-2. **Performance**: 13% faster than turbo_tests on real projects
-3. **Reliability**: Robust error handling and worker management
-4. **Usability**: Clean CLI interface with sensible defaults
-5. **Testing**: Comprehensive benchmarking infrastructure
-
-## Recent Additions
-
-### Watch Mode (Experimental)
-- **File watching**: Automatically runs tests when files change
-- **Interactive commands**: Press Enter to run all tests, type 'exit' to quit
-- **Intelligent mapping**: Maps source files to their corresponding spec files
-- **Known issue**: Concurrent test runs can produce interleaved output (see [architecture docs](../architecture/watch-concurrent-output.md))
-
-## Future Enhancements (Optional)
-
-- **Test filtering**: Support for RSpec's `--tag` filtering and line number targeting
-- **Failure isolation**: Re-run only failed tests
-- **Watch mode improvements**: Better output management, queue-based execution
+* **Ruby integration specs** (`spec/`): end-to-end tests exercising the built binary against fixture projects
+* **Go unit tests** (`plur/**/*_test.go`): unit and integration tests for Go packages
+* **Fixture projects**: `default-ruby` and `default-rails` provide controlled test environments
+* **Benchmarking**: `script/bench-git` runs hyperfine comparisons across git refs for any Ruby project
 
 ## Dependencies
 
-- **Go 1.25+** for building plur
-- **hyperfine** for benchmarking (`brew install hyperfine`)
-- **Ruby/RSpec** projects for testing
+* **Go 1.25+** for building plur
+* **Ruby/Bundler** for test fixture projects and the integration test suite
+* **mise** for tool version management (see `.mise.toml`)
+* **hyperfine** for benchmarking (optional, `brew install hyperfine`)

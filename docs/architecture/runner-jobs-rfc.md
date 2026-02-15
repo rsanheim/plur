@@ -316,4 +316,3 @@ This ensures a single, consistent validation pass for the entire config.
 
 ## References
 - docs/architecture/runner-jobs-framework.md
-- docs/architecture/runner-jobs-refactor.md

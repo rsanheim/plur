@@ -2,8 +2,7 @@
 
 This document defines how framework-aware commands are built for run mode
 (plur spec) versus watch mode (plur watch). It is the concrete implementation
-spec for the broader refactor notes in:
-- docs/architecture/runner-jobs-refactor.md
+spec derived from the runner-jobs RFC:
 
 ## Goals
 - Remove {{target}} dependence from run mode.
@@ -107,7 +106,6 @@ Notes:
 
 ## Cross references
 - docs/architecture/runner-jobs-rfc.md
-- docs/architecture/runner-jobs-refactor.md (overall plan + findings)
 - spec/integration/plur_spec/framework_output_spec.rb (guardrail test for framework output + defaults)
 
 ## Guardrail spec summary (current failing expectations)
