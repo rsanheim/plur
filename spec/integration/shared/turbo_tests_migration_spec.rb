@@ -71,7 +71,7 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
   context "snapshot coverage" do
     it "captures dry-run command output for turbo_tests-style tag filtering" do
       Dir.chdir(default_ruby_dir) do
-        command = ["plur", "--dry-run", "-n", "8", "--tag=~type:system", "spec/models"]
+        command = [plur_binary, "--dry-run", "-n", "8", "--tag=~type:system", "spec/models"]
         result = Backspin.run(
           command,
           name: "turbo_tests_tag_filtering_dry_run",

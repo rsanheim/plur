@@ -9,7 +9,7 @@ RSpec.describe "Configuration integration" do
         _, error, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "valid.toml"},
-            "plur", "--dry-run"
+            plur_binary, "--dry-run"
           )
         end
 
@@ -28,7 +28,7 @@ RSpec.describe "Configuration integration" do
         _, error, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "invalid-syntax.toml"},
-            "plur", "doctor"
+            plur_binary, "doctor"
           )
         end
 
@@ -42,7 +42,7 @@ RSpec.describe "Configuration integration" do
         _, error, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "command-specific.toml"},
-            "plur", "spec", "--dry-run"
+            plur_binary, "spec", "--dry-run"
           )
         end
 
@@ -54,7 +54,7 @@ RSpec.describe "Configuration integration" do
         _, error, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "job-without-use.toml"},
-            "plur", "spec", "--use=rspec", "--dry-run"
+            plur_binary, "spec", "--use=rspec", "--dry-run"
           )
         end
 
@@ -69,7 +69,7 @@ RSpec.describe "Configuration integration" do
       _, error, status = Dir.chdir(config_fixture_dir) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => "valid.toml"},
-          "plur", "--workers=1", "--color", "--dry-run"
+          plur_binary, "--workers=1", "--color", "--dry-run"
         )
       end
 
@@ -87,7 +87,7 @@ RSpec.describe "Configuration integration" do
             "PLUR_CONFIG_FILE" => "valid.toml",
             "PARALLEL_TEST_PROCESSORS" => "16"
           },
-          "plur", "--dry-run"
+          plur_binary, "--dry-run"
         )
       end
 
@@ -145,7 +145,7 @@ RSpec.describe "Configuration integration" do
       _, error, status = Dir.chdir(config_fixture_dir) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => "command-specific.toml"},
-          "plur", "watch", "run", "--timeout=1", "--debug", stdin_data: ""
+          plur_binary, "watch", "run", "--timeout=1", "--debug", stdin_data: ""
         )
       end
 
@@ -163,7 +163,7 @@ RSpec.describe "Configuration integration" do
       _, error, status = Dir.chdir(project_fixture("minitest-success")) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => minitest_config.to_s},
-          "plur", "spec", "--dry-run"
+          plur_binary, "spec", "--dry-run"
         )
       end
 
@@ -179,7 +179,7 @@ RSpec.describe "Configuration integration" do
       output, _, status = Dir.chdir(config_fixture_dir) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => "doctor-test.toml"},
-          "plur", "doctor"
+          plur_binary, "doctor"
         )
       end
 
@@ -206,7 +206,7 @@ RSpec.describe "Configuration integration" do
         _, output, status = Dir.chdir(config_fixture_dir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
-            "plur", "spec", "--dry-run", "--use=custom"
+            plur_binary, "spec", "--dry-run", "--use=custom"
           )
         end
 
@@ -220,7 +220,7 @@ RSpec.describe "Configuration integration" do
       it "fails with a clear error message for spec command" do
         _, error, status = Open3.capture3(
           {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
-          "plur", "-C", config_fixture_dir.to_s, "spec", "--use=nonexistent"
+          plur_binary, "-C", config_fixture_dir.to_s, "spec", "--use=nonexistent"
         )
 
         expect(status).not_to be_success
@@ -236,7 +236,7 @@ RSpec.describe "Configuration integration" do
 
         _, error, status = Open3.capture3(
           {"PLUR_CONFIG_FILE" => "with-tasks.toml"},
-          "plur", "-C", config_fixture_dir.to_s, "watch", "run", "-u", "nonexistent", "--timeout=1"
+          plur_binary, "-C", config_fixture_dir.to_s, "watch", "run", "-u", "nonexistent", "--timeout=1"
         )
 
         expect(status).not_to be_success

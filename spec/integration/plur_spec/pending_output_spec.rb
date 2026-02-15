@@ -6,7 +6,7 @@ RSpec.describe "pending specs output" do
   end
 
   def run_plur(file_or_glob, *args)
-    cmd_array = %W[plur #{file_or_glob}]
+    cmd_array = [plur_binary, file_or_glob]
     cmd_array += args if args.any?
     Open3.capture3(*cmd_array)
   end
@@ -42,7 +42,7 @@ RSpec.describe "pending specs output" do
       # Verify plur output matches
       result = chdir fixture_path("failing_specs") do
         Backspin.run(
-          ["plur", "spec/mixed_results_spec.rb"],
+          [plur_binary, "spec/mixed_results_spec.rb"],
           name: "pending_output_comparison",
           filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
         )

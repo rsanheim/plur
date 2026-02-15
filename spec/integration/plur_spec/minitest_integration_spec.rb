@@ -148,7 +148,7 @@ RSpec.describe "Minitest Integration" do
     end
 
     def plur_minitest_serial_command
-      ["plur", "--use", "minitest", "-n", "1", "--no-color"]
+      [plur_binary, "--use", "minitest", "-n", "1", "--no-color"]
     end
 
     it "records grouped minitest output from a ruby -e require list" do

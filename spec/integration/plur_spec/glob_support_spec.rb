@@ -27,7 +27,7 @@ RSpec.describe "plur glob pattern support" do
         # The shell must have globstar enabled (bash: shopt -s globstar, zsh: default on)
         # For consistent testing, we'll use bash with globstar
         cmd = TTY::Command.new(uuid: false, printer: :null)
-        result = cmd.run!("bash", "-c", "shopt -s globstar; plur --dry-run spec/**/*_spec.rb")
+        result = cmd.run!("bash", "-c", "shopt -s globstar; #{plur_binary} --dry-run spec/**/*_spec.rb")
 
         expect(result.err).to include("[dry-run] Running #{DEFAULT_RUBY_SPEC_FILE_COUNT} specs [rspec]")
         expect(result.err).to include("spec/array_helpers_spec.rb")
