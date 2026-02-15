@@ -43,26 +43,8 @@ steps:
     command: ".buildkite/scripts/race.sh"
     timeout_in_minutes: 10
 
-  - label: ":go: GoReleaser Snapshot"
-    key: "goreleaser"
-    plugins:
-      - docker#v5.13.0:
-          image: "ubuntu:24.04"
-          workdir: /work
-          mount-checkout: true
-          volumes:
-            - "/cache:/cache"
-          environment:
-            - "GOMODCACHE=/work/.cache/go-mod"
-            - "MISE_DATA_DIR=/work/.cache/mise"
-            - "CI=true"
-    command: ".buildkite/scripts/goreleaser.sh"
-    artifact_paths: "plur/dist/**/*"
-    timeout_in_minutes: 10
-
   - label: ":ruby: Integration Tests"
     key: "ruby-integration"
-    depends_on: "go-tests"
     plugins:
       - docker#v5.13.0:
           image: "ubuntu:24.04"
