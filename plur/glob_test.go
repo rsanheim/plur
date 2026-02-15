@@ -10,17 +10,14 @@ import (
 )
 
 func TestFindFilesFromJob(t *testing.T) {
-	// Test the job-based file discovery
-	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
+	// Save/restore original working directory
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(originalDir) }()
 
-	// Create temp directory in plur/tmp/
-	os.MkdirAll("tmp", 0755)
-	tempDir, err := os.MkdirTemp("tmp", "test-runner-specs-*")
-	require.NoError(t, err, "Failed to create temp dir")
-	defer os.RemoveAll(tempDir)
-
-	os.Chdir(tempDir)
+	// Use a writable temp dir (avoids CI checkout permission issues)
+	tempDir := t.TempDir()
+	require.NoError(t, os.Chdir(tempDir))
 
 	// Test empty directory
 	rspecJob := job.Job{
@@ -32,9 +29,9 @@ func TestFindFilesFromJob(t *testing.T) {
 	assert.Empty(t, files, "FindFilesFromJob() should return empty slice for empty directory")
 
 	// Create complex directory structure
-	os.MkdirAll("spec/models", 0755)
-	os.MkdirAll("spec/controllers", 0755)
-	os.MkdirAll("spec/lib/utils", 0755)
+	require.NoError(t, os.MkdirAll("spec/models", 0o755))
+	require.NoError(t, os.MkdirAll("spec/controllers", 0o755))
+	require.NoError(t, os.MkdirAll("spec/lib/utils", 0o755))
 
 	specFiles := []string{
 		"spec/user_spec.rb",
@@ -47,8 +44,10 @@ func TestFindFilesFromJob(t *testing.T) {
 	}
 
 	for _, file := range specFiles {
-		f, _ := os.Create(file)
-		f.Close()
+		require.NoError(t, os.MkdirAll(dirOf(file), 0o755))
+		f, err := os.Create(file)
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
 	}
 
 	files, err = FindFilesFromJob(rspecJob)
@@ -80,20 +79,17 @@ func TestFindFilesFromJob(t *testing.T) {
 }
 
 func TestExpandPatternsFromJobUsesFrameworkDetectPatterns(t *testing.T) {
-	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(originalDir) }()
 
-	os.MkdirAll("tmp", 0755)
-	tempDir, err := os.MkdirTemp("tmp", "test-runner-specs-*")
-	require.NoError(t, err, "Failed to create temp dir")
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
+	require.NoError(t, os.Chdir(tempDir))
 
-	os.Chdir(tempDir)
-
-	os.MkdirAll("spec/models", 0755)
-	os.WriteFile("spec/models/user_spec.rb", []byte(""), 0o644)
-	os.WriteFile("spec/models/post_spec.rb", []byte(""), 0o644)
-	os.WriteFile("spec/models/readme.txt", []byte(""), 0o644)
+	require.NoError(t, os.MkdirAll("spec/models", 0o755))
+	require.NoError(t, os.WriteFile("spec/models/user_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("spec/models/post_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("spec/models/readme.txt", []byte(""), 0o644))
 
 	rspecJob := job.Job{
 		Name:      "fast",
@@ -119,4 +115,20 @@ func TestExpandPatternsFromJobUsesFrameworkDetectPatterns(t *testing.T) {
 	for file, found := range expected {
 		assert.True(t, found, "Expected spec file not found: %s", file)
 	}
+}
+
+// dirOf returns the directory portion of a relative path, or "." if none.
+func dirOf(path string) string {
+	// We avoid importing filepath just for this tiny helper.
+	// Paths in these tests are always forward-slashed.
+	lastSlash := -1
+	for i := 0; i < len(path); i++ {
+		if path[i] == '/' {
+			lastSlash = i
+		}
+	}
+	if lastSlash <= 0 {
+		return "."
+	}
+	return path[:lastSlash]
 }

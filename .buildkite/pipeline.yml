@@ -1,0 +1,62 @@
+cache:
+  paths:
+    - ".cache/go-mod"
+    - ".cache/mise"
+    - "vendor/bundle"
+    - "fixtures/projects/default-rails/vendor/bundle"
+  size: "20g"
+
+env:
+  MISE_DATA_DIR: /work/.cache/mise
+
+steps:
+  - label: ":go: Build & Test"
+    key: "go-tests"
+    plugins:
+      - docker#v5.13.0:
+          image: "ubuntu:24.04"
+          workdir: /work
+          mount-checkout: true
+          volumes:
+            - "/cache:/cache"
+          environment:
+            - "GOMODCACHE=/work/.cache/go-mod"
+            - "MISE_DATA_DIR=/work/.cache/mise"
+            - "VERBOSE=true"
+            - "CI=true"
+    command: ".buildkite/scripts/build-and-test-go.sh"
+    timeout_in_minutes: 10
+
+  - label: ":go: Race Detection"
+    key: "go-race"
+    plugins:
+      - docker#v5.13.0:
+          image: "ubuntu:24.04"
+          workdir: /work
+          mount-checkout: true
+          volumes:
+            - "/cache:/cache"
+          environment:
+            - "GOMODCACHE=/work/.cache/go-mod"
+            - "MISE_DATA_DIR=/work/.cache/mise"
+            - "CI=true"
+    command: ".buildkite/scripts/race.sh"
+    timeout_in_minutes: 10
+
+  - label: ":ruby: Integration Tests"
+    key: "ruby-integration"
+    plugins:
+      - docker#v5.13.0:
+          image: "ubuntu:24.04"
+          workdir: /work
+          mount-checkout: true
+          volumes:
+            - "/cache:/cache"
+          environment:
+            - "GOMODCACHE=/work/.cache/go-mod"
+            - "MISE_DATA_DIR=/work/.cache/mise"
+            - "VERBOSE=true"
+            - "CI=true"
+            - "BUILDKITE=true"
+    command: ".buildkite/scripts/integration.sh"
+    timeout_in_minutes: 20
