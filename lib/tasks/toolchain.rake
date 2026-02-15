@@ -6,7 +6,7 @@ namespace :toolchain do
     if system("which mise > /dev/null 2>&1")
       output, status = Open3.capture2e("mise", "doctor")
       unless status.success?
-        $stderr.puts output
+        warn output
         abort("[toolchain:check] mise doctor reported problems (exit #{status.exitstatus})")
       end
     end
