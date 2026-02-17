@@ -152,7 +152,7 @@ func autodetectJob(resolvedJobs map[string]job.Job, inherited map[string]Inherit
 		if !exists {
 			continue
 		}
-		patterns, err := discoveryPatternsForJob(j)
+		patterns, err := framework.TargetPatternsForJob(j)
 		if err != nil || len(patterns) == 0 {
 			continue
 		}
@@ -186,17 +186,6 @@ func getWatchesForJob(jobName string) []watch.WatchMapping {
 		}
 	}
 	return result
-}
-
-func discoveryPatternsForJob(j job.Job) ([]string, error) {
-	if j.TargetPattern != "" {
-		return []string{j.TargetPattern}, nil
-	}
-	spec, err := framework.Get(j.Framework)
-	if err != nil {
-		return nil, err
-	}
-	return spec.DetectPatterns, nil
 }
 
 func anyPatternMatches(patterns []string) (bool, error) {

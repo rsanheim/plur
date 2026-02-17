@@ -11,6 +11,7 @@ import (
 	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -45,7 +46,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)
 	}
 
-	targetPatterns, _ := targetPatternsForJob(currentJob)
+	targetPatterns, _ := framework.TargetPatternsForJob(currentJob)
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", result.Reason)
 
 	// Discover test files
@@ -64,7 +65,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return err
 		}
 		if len(testFiles) == 0 {
-			patterns, err := targetPatternsForJob(currentJob)
+			patterns, err := framework.TargetPatternsForJob(currentJob)
 			if err != nil || len(patterns) == 0 {
 				return fmt.Errorf("no test files found")
 			}
