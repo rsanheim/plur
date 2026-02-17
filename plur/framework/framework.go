@@ -83,11 +83,12 @@ func IsMinitest(name string) bool {
 // If the job has an explicit TargetPattern, that is returned. Otherwise, the framework's
 // DetectPatterns are used.
 func TargetPatternsForJob(j job.Job) ([]string, error) {
-	if j.TargetPattern != "" {
-		return []string{j.TargetPattern}, nil
-	}
 	spec, err := Get(j.Framework)
 	if err != nil {
+		// If we have an explicit pattern, we don't strictly need a known framework
+		if j.TargetPattern != "" {
+			return []string{j.TargetPattern}, nil
+		}
 		return nil, err
 	}
 	return TargetPatternsForJobWithSpec(j, spec)
