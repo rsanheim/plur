@@ -68,11 +68,6 @@ func BuildJobAllCmd(job Job) []string {
 	return result
 }
 
-// GetTargetPattern returns the glob pattern for file discovery
-func (j Job) GetTargetPattern() string {
-	return j.TargetPattern
-}
-
 // UsesTargets returns true if the job command expects target files
 // (i.e., contains {{target}} placeholder)
 func (j Job) UsesTargets() bool {

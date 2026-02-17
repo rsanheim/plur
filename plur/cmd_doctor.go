@@ -12,6 +12,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -183,7 +184,8 @@ func checkConfiguration(globalConfig *config.GlobalConfig) error {
 	} else {
 		fmt.Printf("    Active Job:      %s\n", result.Name)
 		fmt.Printf("    Command:         %v\n", result.Job.Cmd)
-		fmt.Printf("    Target Pattern:  %s\n", result.Job.GetTargetPattern())
+		patterns, _ := framework.TargetPatternsForJob(result.Job)
+		fmt.Printf("    Target Patterns: %s\n", strings.Join(patterns, ", "))
 	}
 
 	// Check for watch directories

@@ -64,7 +64,7 @@ snapshot:
       Job Resolution:
         Active Job:      rspec
         Command:         [bundle exec rspec {{target}}]
-        Target Pattern:  spec/**/*_spec.rb
+        Target Patterns: spec/**/*_spec.rb
 
       Watch Directories:
         lib/ (exists)

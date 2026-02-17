@@ -13,7 +13,7 @@ import (
 
 // FindFilesFromJob discovers all files based on the job's target pattern
 func FindFilesFromJob(j job.Job) ([]string, error) {
-	patterns, err := targetPatternsForJob(j)
+	patterns, err := framework.TargetPatternsForJob(j)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func ExpandPatternsFromJob(patternsInput []string, j job.Job) ([]string, error) 
 			}
 
 			if fileInfo.IsDir() {
-				targetPatterns, err := targetPatternsForJobWithSpec(j, spec)
+				targetPatterns, err := framework.TargetPatternsForJobWithSpec(j, spec)
 				if err != nil {
 					return nil, err
 				}
@@ -81,24 +81,6 @@ func ExpandPatternsFromJob(patternsInput []string, j job.Job) ([]string, error) 
 	}
 
 	return allFiles, nil
-}
-
-func targetPatternsForJob(j job.Job) ([]string, error) {
-	if j.TargetPattern != "" {
-		return []string{j.TargetPattern}, nil
-	}
-	spec, err := framework.Get(j.Framework)
-	if err != nil {
-		return nil, err
-	}
-	return targetPatternsForJobWithSpec(j, spec)
-}
-
-func targetPatternsForJobWithSpec(j job.Job, spec framework.Spec) ([]string, error) {
-	if len(spec.DetectPatterns) == 0 {
-		return nil, fmt.Errorf("job %q has no target_pattern and framework %q has no detect patterns", j.Name, spec.Name)
-	}
-	return spec.DetectPatterns, nil
 }
 
 func expandGlobPatterns(patterns []string) ([]string, error) {
