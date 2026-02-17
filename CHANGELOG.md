@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.33.0 - 2026-02-17
+* Consolidate target pattern resolution into framework package [#211](https://github.com/rsanheim/plur/pull/211)
+* Add more integration specs to help migration [#192](https://github.com/rsanheim/plur/pull/192)
 * Fix minitest progress dots lost when `puts` output is interleaved on the same line [#200](https://github.com/rsanheim/plur/pull/200)
 
 ## v0.32.0 - 2026-02-09
