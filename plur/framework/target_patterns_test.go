@@ -65,7 +65,33 @@ func TestTargetPatternsForJob_UnknownFramework(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown framework")
 }
 
-func TestTargetPatternsForJobWithSpec_ReturnsDetectPatterns(t *testing.T) {
+func TestTargetPatternsForJob_PassthroughWithExplicitPattern(t *testing.T) {
+	j := job.Job{
+		Name:          "lint",
+		Framework:     "passthrough",
+		TargetPattern: "app/**/*.rb",
+	}
+
+	patterns, err := TargetPatternsForJob(j)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"app/**/*.rb"}, patterns)
+}
+
+func TestNormalize_CaseInsensitive(t *testing.T) {
+	assert.Equal(t, "rspec", Normalize("RSpec"))
+	assert.Equal(t, "minitest", Normalize("  Minitest  "))
+	assert.Equal(t, "", Normalize("   "))
+}
+
+func TestIsKnown(t *testing.T) {
+	assert.True(t, IsKnown("rspec"))
+	assert.True(t, IsKnown("RSpec"))
+	assert.True(t, IsKnown("minitest"))
+	assert.True(t, IsKnown("go-test"))
+	assert.False(t, IsKnown("unknown"))
+}
+
+func TestTargetPatternsForJobWithSpec_MultipleDetectPatterns(t *testing.T) {
 	j := job.Job{Name: "test-job"}
 	spec := Spec{
 		Name:           "custom",

@@ -117,6 +117,44 @@ func TestExpandPatternsFromJobUsesFrameworkDetectPatterns(t *testing.T) {
 	}
 }
 
+func TestExpandPatternsFromJobMultiplePatterns(t *testing.T) {
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(originalDir) }()
+
+	tempDir := t.TempDir()
+	require.NoError(t, os.Chdir(tempDir))
+
+	require.NoError(t, os.MkdirAll("app/spec", 0o755))
+	require.NoError(t, os.WriteFile("app/spec/user_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("app/spec/user_test.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("app/spec/readme.txt", []byte(""), 0o644))
+
+	// Job with custom multiple target patterns via a mock framework spec
+	j := job.Job{
+		Name:          "multi",
+		Framework:     "rspec",
+		TargetPattern: "app/spec/**/*.{rb,go}",
+	}
+
+	files, err := ExpandPatternsFromJob([]string{"app/spec"}, j)
+	require.NoError(t, err)
+
+	expected := map[string]bool{
+		"app/spec/user_spec.rb": false,
+		"app/spec/user_test.rb": false,
+	}
+
+	assert.Len(t, files, 2)
+	for _, file := range files {
+		if _, ok := expected[file]; ok {
+			expected[file] = true
+		} else {
+			assert.Fail(t, "Unexpected file found: %s", file)
+		}
+	}
+}
+
 // dirOf returns the directory portion of a relative path, or "." if none.
 func dirOf(path string) string {
 	// We avoid importing filepath just for this tiny helper.
