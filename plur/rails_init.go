@@ -8,6 +8,7 @@ import (
 
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/fsutil"
+	"gopkg.in/yaml.v3"
 )
 
 // initResult tracks what the rails:init command found and did
@@ -80,6 +81,10 @@ func setupDatabaseYml(cfg *config.GlobalConfig, result *initResult) error {
 		result.warnings = append(result.warnings,
 			path+": could not find test database name to modify (you may need to configure this manually)")
 		return nil
+	}
+
+	if err := validateYAMLWithERB(modified); err != nil {
+		return fmt.Errorf("refusing to update %s: transformed content failed validation: %w", path, err)
 	}
 
 	showFileDiff(cfg.DryRun, path, original, modified)
@@ -189,6 +194,7 @@ func isDatabaseLine(trimmed string) bool {
 }
 
 var sqliteRe = regexp.MustCompile(`\.sqlite3`)
+var dbLineRe = regexp.MustCompile(`^(\s*database:\s*)(.+)$`)
 
 // transformDatabaseLine adds TEST_ENV_NUMBER to a database: line.
 // Skips sqlite3 databases. Skips lines that already have TEST_ENV_NUMBER.
@@ -197,22 +203,24 @@ func transformDatabaseLine(line string) string {
 		return line
 	}
 
-	// Extract the key and value parts
-	dbLineRe := regexp.MustCompile(`^(\s*database:\s*)(.+)$`)
 	match := dbLineRe.FindStringSubmatch(line)
 	if match == nil {
 		return line
 	}
 
 	prefix := match[1]
-	value := strings.TrimSpace(match[2])
+	value, comment := splitYAMLValueAndComment(match[2])
 
 	// Skip sqlite3 databases
 	if sqliteRe.MatchString(value) {
 		return line
 	}
 
-	return prefix + insertTestEnvNumber(value)
+	transformed := insertTestEnvNumber(value)
+	if comment != "" {
+		return prefix + transformed + " " + comment
+	}
+	return prefix + transformed
 }
 
 // insertTestEnvNumber appends the TEST_ENV_NUMBER ERB tag to a database name.
@@ -221,7 +229,67 @@ func insertTestEnvNumber(dbValue string) string {
 	if strings.Contains(dbValue, "TEST_ENV_NUMBER") {
 		return dbValue
 	}
+
+	if len(dbValue) >= 2 {
+		first := dbValue[0]
+		last := dbValue[len(dbValue)-1]
+		if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
+			return dbValue[:len(dbValue)-1] + `<%= ENV['TEST_ENV_NUMBER'] %>` + dbValue[len(dbValue)-1:]
+		}
+	}
+
 	return dbValue + `<%= ENV['TEST_ENV_NUMBER'] %>`
+}
+
+// splitYAMLValueAndComment splits a YAML scalar value from an inline comment.
+// The returned comment does not include leading whitespace.
+func splitYAMLValueAndComment(valueWithComment string) (string, string) {
+	inSingleQuotes := false
+	inDoubleQuotes := false
+	escaped := false
+
+	for i := 0; i < len(valueWithComment); i++ {
+		ch := valueWithComment[i]
+
+		if inDoubleQuotes {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inDoubleQuotes = false
+			}
+			continue
+		}
+
+		if inSingleQuotes {
+			if ch == '\'' {
+				inSingleQuotes = false
+			}
+			continue
+		}
+
+		if ch == '"' {
+			inDoubleQuotes = true
+			continue
+		}
+		if ch == '\'' {
+			inSingleQuotes = true
+			continue
+		}
+
+		if ch == '#' && (i == 0 || valueWithComment[i-1] == ' ' || valueWithComment[i-1] == '\t') {
+			value := strings.TrimSpace(valueWithComment[:i])
+			comment := strings.TrimLeft(valueWithComment[i:], " \t")
+			return value, comment
+		}
+	}
+
+	return strings.TrimSpace(valueWithComment), ""
 }
 
 // setupCableYml checks config/cable.yml for redis URLs in the test section
@@ -249,6 +317,10 @@ func setupCableYml(cfg *config.GlobalConfig, result *initResult) error {
 
 	if modified == original {
 		return nil
+	}
+
+	if err := validateYAMLWithERB(modified); err != nil {
+		return fmt.Errorf("refusing to update %s: transformed content failed validation: %w", path, err)
 	}
 
 	showFileDiff(cfg.DryRun, path, original, modified)
@@ -402,6 +474,23 @@ func containsServiceURLs(content string) bool {
 		}
 	}
 	return false
+}
+
+var erbTagRe = regexp.MustCompile(`(?s)<%=?[\s\S]*?%>`)
+
+// validateYAMLWithERB validates YAML content that may include ERB tags by
+// replacing ERB segments with placeholders before parsing.
+func validateYAMLWithERB(content string) error {
+	sanitized := erbTagRe.ReplaceAllStringFunc(content, func(match string) string {
+		newlineCount := strings.Count(match, "\n")
+		if newlineCount == 0 {
+			return "0"
+		}
+		return "0" + strings.Repeat("\n", newlineCount)
+	})
+
+	var parsed any
+	return yaml.Unmarshal([]byte(sanitized), &parsed)
 }
 
 // showFileDiff displays a simple diff of changed lines between two file versions.

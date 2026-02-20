@@ -131,6 +131,24 @@ production:
 		assert.Contains(t, result, `database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>`)
 	})
 
+	t.Run("inserts TEST_ENV_NUMBER inside quoted database values", func(t *testing.T) {
+		input := `test:
+  database: "myapp_test"`
+
+		result, skipped := transformDatabaseYml(input)
+		assert.False(t, skipped)
+		assert.Contains(t, result, `database: "myapp_test<%= ENV['TEST_ENV_NUMBER'] %>"`)
+	})
+
+	t.Run("preserves inline comments when transforming database values", func(t *testing.T) {
+		input := `test:
+  database: myapp_test # default db`
+
+		result, skipped := transformDatabaseYml(input)
+		assert.False(t, skipped)
+		assert.Contains(t, result, `database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %> # default db`)
+	})
+
 	t.Run("no test section returns content unchanged", func(t *testing.T) {
 		input := `development:
   database: myapp_dev
@@ -199,6 +217,21 @@ func TestTransformDatabaseLine(t *testing.T) {
 	t.Run("preserves indentation", func(t *testing.T) {
 		result := transformDatabaseLine("      database: myapp_test")
 		assert.Equal(t, "      database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>", result)
+	})
+
+	t.Run("inserts TEST_ENV_NUMBER inside double quotes", func(t *testing.T) {
+		result := transformDatabaseLine(`    database: "myapp_test"`)
+		assert.Equal(t, `    database: "myapp_test<%= ENV['TEST_ENV_NUMBER'] %>"`, result)
+	})
+
+	t.Run("inserts TEST_ENV_NUMBER inside single quotes", func(t *testing.T) {
+		result := transformDatabaseLine("    database: 'myapp_test'")
+		assert.Equal(t, "    database: 'myapp_test<%= ENV['TEST_ENV_NUMBER'] %>'", result)
+	})
+
+	t.Run("preserves inline comments", func(t *testing.T) {
+		result := transformDatabaseLine("    database: myapp_test # default db")
+		assert.Equal(t, "    database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %> # default db", result)
 	})
 
 	t.Run("skips sqlite3", func(t *testing.T) {
@@ -272,6 +305,24 @@ func TestTransformRedisURLLine(t *testing.T) {
 		line := "  url: redis://localhost:6379/<%= ENV.fetch('TEST_ENV_NUMBER', '0').to_i %>"
 		result := transformRedisURLLine(line)
 		assert.Equal(t, line, result)
+	})
+}
+
+func TestValidateYAMLWithERB(t *testing.T) {
+	t.Run("accepts valid yaml with erb", func(t *testing.T) {
+		content := `test:
+  database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>`
+
+		err := validateYAMLWithERB(content)
+		require.NoError(t, err)
+	})
+
+	t.Run("rejects invalid yaml when erb is placed outside quotes", func(t *testing.T) {
+		content := `test:
+  database: "myapp_test"<%= ENV['TEST_ENV_NUMBER'] %>`
+
+		err := validateYAMLWithERB(content)
+		require.Error(t, err)
 	})
 }
 

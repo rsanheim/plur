@@ -61,6 +61,47 @@ RSpec.describe "plur rails:init command" do
     end
   end
 
+  context "with quoted database names" do
+    it "inserts TEST_ENV_NUMBER inside quotes" do
+      Dir.mktmpdir do |dir|
+        create_rails_project(dir, database_yml: <<~YAML)
+          default: &default
+            adapter: postgresql
+            pool: 5
+
+          test:
+            <<: *default
+            database: "myapp_test"
+        YAML
+
+        Dir.chdir(dir) do
+          result = run_plur("rails:init")
+          expect(result.out).to include("Updated config/database.yml")
+
+          content = File.read("config/database.yml")
+          expect(content).to include(%(database: "myapp_test<%= ENV['TEST_ENV_NUMBER'] %>"))
+        end
+      end
+    end
+  end
+
+  context "with inline comments on database lines" do
+    it "keeps comments and places TEST_ENV_NUMBER before them" do
+      Dir.mktmpdir do |dir|
+        create_rails_project(dir, database_yml: <<~YAML)
+          test:
+            database: myapp_test # default db
+        YAML
+
+        Dir.chdir(dir) do
+          run_plur("rails:init")
+          content = File.read("config/database.yml")
+          expect(content).to include("database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %> # default db")
+        end
+      end
+    end
+  end
+
   context "idempotency" do
     it "detects already-configured projects and makes no changes" do
       Dir.mktmpdir do |dir|
@@ -166,6 +207,27 @@ RSpec.describe "plur rails:init command" do
           result = run_plur("rails:init")
           expect(result.out).to include(".env.test")
           expect(result.out).to include("service URLs")
+        end
+      end
+    end
+  end
+
+  context "validation guardrails" do
+    it "fails without writing when transformed yaml would be invalid" do
+      Dir.mktmpdir do |dir|
+        db_yml = <<~YAML
+          test:
+            database: [myapp_test]
+        YAML
+        create_rails_project(dir, database_yml: db_yml)
+
+        Dir.chdir(dir) do
+          result = run_plur("rails:init", allow_error: true)
+          expect(result.exit_status).not_to eq(0)
+          expect(result.err).to include("failed validation")
+
+          current_content = File.read("config/database.yml")
+          expect(current_content).to eq(db_yml)
         end
       end
     end
