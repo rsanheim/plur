@@ -308,6 +308,76 @@ func TestTransformRedisURLLine(t *testing.T) {
 	})
 }
 
+func TestIsSQLiteOnlyTestDatabaseConfig(t *testing.T) {
+	t.Run("returns true for sqlite-only test databases", func(t *testing.T) {
+		content := `test:
+  database: storage/test.sqlite3`
+
+		assert.True(t, isSQLiteOnlyTestDatabaseConfig(content))
+	})
+
+	t.Run("returns false for postgres test databases", func(t *testing.T) {
+		content := `test:
+  database: myapp_test`
+
+		assert.False(t, isSQLiteOnlyTestDatabaseConfig(content))
+	})
+
+	t.Run("returns false when no test database lines are present", func(t *testing.T) {
+		content := `test:
+  adapter: postgresql`
+
+		assert.False(t, isSQLiteOnlyTestDatabaseConfig(content))
+	})
+
+	t.Run("returns false for mixed sqlite and non-sqlite database lines", func(t *testing.T) {
+		content := `test:
+  primary:
+    database: storage/test.sqlite3
+  cache:
+    database: myapp_test_cache`
+
+		assert.False(t, isSQLiteOnlyTestDatabaseConfig(content))
+	})
+}
+
+func TestHasUnindexedRedisURLInTestSection(t *testing.T) {
+	t.Run("returns true when test redis URL has no database index", func(t *testing.T) {
+		content := `test:
+  adapter: redis
+  url: redis://localhost:6379`
+
+		assert.True(t, hasUnindexedRedisURLInTestSection(content))
+	})
+
+	t.Run("returns false when test redis URL has database index", func(t *testing.T) {
+		content := `test:
+  adapter: redis
+  url: redis://localhost:6379/0`
+
+		assert.False(t, hasUnindexedRedisURLInTestSection(content))
+	})
+
+	t.Run("returns false when test redis URL already uses TEST_ENV_NUMBER", func(t *testing.T) {
+		content := `test:
+  adapter: redis
+  url: redis://localhost:6379/<%= ENV.fetch('TEST_ENV_NUMBER', '0').to_i %>`
+
+		assert.False(t, hasUnindexedRedisURLInTestSection(content))
+	})
+
+	t.Run("returns false when only non-test sections have unindexed redis URLs", func(t *testing.T) {
+		content := `development:
+  adapter: redis
+  url: redis://localhost:6379
+
+test:
+  adapter: test`
+
+		assert.False(t, hasUnindexedRedisURLInTestSection(content))
+	})
+}
+
 func TestValidateYAMLWithERB(t *testing.T) {
 	t.Run("accepts valid yaml with erb", func(t *testing.T) {
 		content := `test:

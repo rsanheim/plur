@@ -210,6 +210,43 @@ RSpec.describe "plur rails:init command" do
         end
       end
     end
+
+    it "warns clearly when sqlite3 test database is detected" do
+      Dir.mktmpdir do |dir|
+        create_rails_project(dir, database_yml: <<~YAML)
+          test:
+            adapter: sqlite3
+            database: storage/test.sqlite3
+        YAML
+
+        Dir.chdir(dir) do
+          result = run_plur("rails:init")
+          expect(result.out).to include("sqlite3")
+          expect(result.out).to include("not currently supported")
+        end
+      end
+    end
+
+    it "warns when cable test redis URL has no /N database index" do
+      Dir.mktmpdir do |dir|
+        create_rails_project(dir, database_yml: <<~YAML)
+          test:
+            database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>
+        YAML
+
+        File.write(File.join(dir, "config/cable.yml"), <<~YAML)
+          test:
+            adapter: redis
+            url: redis://localhost:6379
+        YAML
+
+        Dir.chdir(dir) do
+          result = run_plur("rails:init")
+          expect(result.out).to include("config/cable.yml")
+          expect(result.out).to include("without a /N database index")
+        end
+      end
+    end
   end
 
   context "validation guardrails" do

@@ -78,8 +78,13 @@ func setupDatabaseYml(cfg *config.GlobalConfig, result *initResult) error {
 	}
 
 	if modified == original {
-		result.warnings = append(result.warnings,
-			path+": could not find test database name to modify (you may need to configure this manually)")
+		if isSQLiteOnlyTestDatabaseConfig(original) {
+			result.warnings = append(result.warnings,
+				path+": sqlite3 test database detected; parallel database transformation is not currently supported for sqlite3")
+		} else {
+			result.warnings = append(result.warnings,
+				path+": could not find test database name to modify (you may need to configure this manually)")
+		}
 		return nil
 	}
 
@@ -315,6 +320,11 @@ func setupCableYml(cfg *config.GlobalConfig, result *initResult) error {
 		return nil
 	}
 
+	if hasUnindexedRedisURLInTestSection(modified) {
+		result.warnings = append(result.warnings,
+			path+": found redis URL in test section without a /N database index; configure TEST_ENV_NUMBER isolation manually")
+	}
+
 	if modified == original {
 		return nil
 	}
@@ -473,6 +483,94 @@ func containsServiceURLs(content string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+func isSQLiteOnlyTestDatabaseConfig(content string) bool {
+	values := testSectionDatabaseValues(content)
+	if len(values) == 0 {
+		return false
+	}
+
+	for _, value := range values {
+		if !sqliteRe.MatchString(value) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func testSectionDatabaseValues(content string) []string {
+	lines := strings.Split(content, "\n")
+	inTestSection := false
+	testSectionIndent := 0
+	values := make([]string, 0)
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		currentIndent := len(line) - len(strings.TrimLeft(line, " "))
+
+		if isTopLevelKey(trimmed, currentIndent, testSectionIndent) && inTestSection {
+			break
+		}
+
+		if isTestSectionStart(trimmed, currentIndent) {
+			inTestSection = true
+			testSectionIndent = currentIndent
+			continue
+		}
+
+		if inTestSection && isDatabaseLine(trimmed) {
+			match := dbLineRe.FindStringSubmatch(line)
+			if match == nil {
+				continue
+			}
+			value, _ := splitYAMLValueAndComment(match[2])
+			values = append(values, value)
+		}
+	}
+
+	return values
+}
+
+func hasUnindexedRedisURLInTestSection(content string) bool {
+	lines := strings.Split(content, "\n")
+	inTestSection := false
+	testSectionIndent := 0
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		currentIndent := len(line) - len(strings.TrimLeft(line, " "))
+
+		if isTopLevelKey(trimmed, currentIndent, testSectionIndent) && inTestSection {
+			break
+		}
+
+		if isTestSectionStart(trimmed, currentIndent) {
+			inTestSection = true
+			testSectionIndent = currentIndent
+			continue
+		}
+
+		if inTestSection && isRedisURLLine(trimmed) {
+			if strings.Contains(line, "TEST_ENV_NUMBER") {
+				continue
+			}
+			if !redisDBRe.MatchString(line) {
+				return true
+			}
+		}
+	}
+
 	return false
 }
 
