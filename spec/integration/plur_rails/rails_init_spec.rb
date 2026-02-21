@@ -249,6 +249,93 @@ RSpec.describe "plur rails:init command" do
     end
   end
 
+  context "with a mysql Rails project" do
+    it "adds TEST_ENV_NUMBER to the test database name" do
+      Dir.mktmpdir do |dir|
+        create_rails_project(dir, database_yml: <<~YAML)
+          default: &default
+            adapter: mysql2
+            pool: 5
+
+          test:
+            <<: *default
+            database: myapp_test
+        YAML
+
+        Dir.chdir(dir) do
+          result = run_plur("rails:init")
+          expect(result.out).to include("Updated config/database.yml")
+
+          content = File.read("config/database.yml")
+          expect(content).to include("myapp_test<%= ENV['TEST_ENV_NUMBER'] %>")
+        end
+      end
+    end
+  end
+
+  context "cable.yml idempotency" do
+    it "detects already-configured cable.yml and makes no changes" do
+      Dir.mktmpdir do |dir|
+        create_rails_project(dir, database_yml: <<~YAML)
+          test:
+            database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>
+        YAML
+
+        cable_yml = <<~YAML
+          test:
+            adapter: redis
+            url: redis://localhost:6379/<%= ENV.fetch('TEST_ENV_NUMBER', '0').to_i %>
+        YAML
+        File.write(File.join(dir, "config/cable.yml"), cable_yml)
+
+        Dir.chdir(dir) do
+          result = run_plur("rails:init")
+          expect(result.out).to include("config/cable.yml: already configured")
+
+          expect(File.read("config/cable.yml")).to eq(cable_yml)
+        end
+      end
+    end
+  end
+
+  context "warnings for known service config files" do
+    it "warns when sidekiq config is present" do
+      Dir.mktmpdir do |dir|
+        create_rails_project(dir, database_yml: <<~YAML)
+          test:
+            database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>
+        YAML
+
+        FileUtils.mkdir_p(File.join(dir, "config"))
+        File.write(File.join(dir, "config/sidekiq.yml"), "queues:\n  - default\n")
+
+        Dir.chdir(dir) do
+          result = run_plur("rails:init")
+          expect(result.out).to include("config/sidekiq.yml")
+          expect(result.out).to include("Sidekiq")
+        end
+      end
+    end
+
+    it "warns when elasticsearch initializer is present" do
+      Dir.mktmpdir do |dir|
+        create_rails_project(dir, database_yml: <<~YAML)
+          test:
+            database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>
+        YAML
+
+        FileUtils.mkdir_p(File.join(dir, "config/initializers"))
+        File.write(File.join(dir, "config/initializers/elasticsearch.rb"), "# elasticsearch config\n")
+
+        Dir.chdir(dir) do
+          result = run_plur("rails:init")
+          expect(result.out).to include("config/initializers/elasticsearch.rb")
+          expect(result.out).to include("Elasticsearch")
+        end
+      end
+    end
+  end
+
   context "validation guardrails" do
     it "fails without writing when transformed yaml would be invalid" do
       Dir.mktmpdir do |dir|

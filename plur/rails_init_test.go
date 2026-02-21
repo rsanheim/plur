@@ -170,6 +170,20 @@ production:
 		assert.False(t, skipped)
 		assert.Equal(t, input, result)
 	})
+
+	t.Run("does not treat test_foo top-level key as test section", func(t *testing.T) {
+		input := `test_environment:
+  database: myapp_test_env
+
+test:
+  database: myapp_test`
+
+		result, skipped := transformDatabaseYml(input)
+		assert.False(t, skipped)
+		assert.Contains(t, result, `database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>`)
+		assert.Contains(t, result, "database: myapp_test_env")
+		assert.NotContains(t, result, `database: myapp_test_env<%= ENV['TEST_ENV_NUMBER'] %>`)
+	})
 }
 
 func TestInsertTestEnvNumber(t *testing.T) {

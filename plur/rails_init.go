@@ -111,44 +111,36 @@ func transformDatabaseYml(content string) (string, bool) {
 	lines := strings.Split(content, "\n")
 
 	// Check if any database line in the test section already has TEST_ENV_NUMBER
-	inTestSection := false
-	testSectionIndent := 0
 	allConfigured := true
 	hasDbLine := false
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-
-		currentIndent := len(line) - len(strings.TrimLeft(line, " "))
-
-		if isTopLevelKey(trimmed, currentIndent, testSectionIndent) && inTestSection {
-			break
-		}
-
-		if isTestSectionStart(trimmed, currentIndent) {
-			inTestSection = true
-			testSectionIndent = currentIndent
-			continue
-		}
-
-		if inTestSection && isDatabaseLine(trimmed) {
+	iterateTestSection(lines, func(_ int, line, trimmed string) {
+		if isDatabaseLine(trimmed) {
 			hasDbLine = true
 			if !strings.Contains(line, "TEST_ENV_NUMBER") {
 				allConfigured = false
 			}
 		}
-	}
+	})
 
 	if hasDbLine && allConfigured {
 		return content, true
 	}
 
 	// Now do the actual transformation
-	inTestSection = false
-	testSectionIndent = 0
+	iterateTestSection(lines, func(i int, line, trimmed string) {
+		if isDatabaseLine(trimmed) {
+			lines[i] = transformDatabaseLine(line)
+		}
+	})
+
+	return strings.Join(lines, "\n"), false
+}
+
+// iterateTestSection calls fn for each non-blank, non-comment line in the test: section.
+// The index i is the original line index, usable for in-place modification of lines.
+func iterateTestSection(lines []string, fn func(i int, line, trimmed string)) {
+	inTestSection := false
+	testSectionIndent := 0
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -168,17 +160,20 @@ func transformDatabaseYml(content string) (string, bool) {
 			continue
 		}
 
-		if inTestSection && isDatabaseLine(trimmed) {
-			lines[i] = transformDatabaseLine(line)
+		if inTestSection {
+			fn(i, line, trimmed)
 		}
 	}
+}
 
-	return strings.Join(lines, "\n"), false
+// isTestKey returns true if trimmed is the YAML key named "test" (not test_foo, testing, etc.).
+func isTestKey(trimmed string) bool {
+	return trimmed == "test:" || strings.HasPrefix(trimmed, "test: ") || strings.HasPrefix(trimmed, "test:\t")
 }
 
 // isTestSectionStart returns true if the line starts the test: section.
 func isTestSectionStart(trimmed string, indent int) bool {
-	return indent == 0 && (trimmed == "test:" || strings.HasPrefix(trimmed, "test:"))
+	return indent == 0 && isTestKey(trimmed)
 }
 
 // isTopLevelKey returns true if the line is a top-level YAML key (not test:).
@@ -190,7 +185,7 @@ func isTopLevelKey(trimmed string, currentIndent, testSectionIndent int) bool {
 		return false
 	}
 	// A top-level key that isn't the test section
-	return currentIndent == 0 && strings.Contains(trimmed, ":") && !strings.HasPrefix(trimmed, "test:")
+	return currentIndent == 0 && strings.Contains(trimmed, ":") && !isTestKey(trimmed)
 }
 
 // isDatabaseLine returns true if the trimmed line is a database: key.
@@ -198,7 +193,10 @@ func isDatabaseLine(trimmed string) bool {
 	return strings.HasPrefix(trimmed, "database:")
 }
 
+// sqliteRe matches sqlite3 database file paths.
 var sqliteRe = regexp.MustCompile(`\.sqlite3`)
+
+// dbLineRe captures the prefix and value of a database: YAML line.
 var dbLineRe = regexp.MustCompile(`^(\s*database:\s*)(.+)$`)
 
 // transformDatabaseLine adds TEST_ENV_NUMBER to a database: line.
@@ -350,36 +348,16 @@ func setupCableYml(cfg *config.GlobalConfig, result *initResult) error {
 func transformCableYml(content string) (string, bool) {
 	lines := strings.Split(content, "\n")
 
-	inTestSection := false
-	testSectionIndent := 0
 	hasRedisURL := false
 	allConfigured := true
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-
-		currentIndent := len(line) - len(strings.TrimLeft(line, " "))
-
-		if isTopLevelKey(trimmed, currentIndent, testSectionIndent) && inTestSection {
-			break
-		}
-
-		if isTestSectionStart(trimmed, currentIndent) {
-			inTestSection = true
-			testSectionIndent = currentIndent
-			continue
-		}
-
-		if inTestSection && isRedisURLLine(trimmed) {
+	iterateTestSection(lines, func(_ int, line, trimmed string) {
+		if isRedisURLLine(trimmed) {
 			hasRedisURL = true
 			if !strings.Contains(line, "TEST_ENV_NUMBER") {
 				allConfigured = false
 			}
 		}
-	}
+	})
 
 	if hasRedisURL && allConfigured {
 		return content, true
@@ -390,31 +368,11 @@ func transformCableYml(content string) (string, bool) {
 	}
 
 	// Transform redis URLs
-	inTestSection = false
-	testSectionIndent = 0
-
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-
-		currentIndent := len(line) - len(strings.TrimLeft(line, " "))
-
-		if isTopLevelKey(trimmed, currentIndent, testSectionIndent) && inTestSection {
-			break
-		}
-
-		if isTestSectionStart(trimmed, currentIndent) {
-			inTestSection = true
-			testSectionIndent = currentIndent
-			continue
-		}
-
-		if inTestSection && isRedisURLLine(trimmed) {
+	iterateTestSection(lines, func(i int, line, trimmed string) {
+		if isRedisURLLine(trimmed) {
 			lines[i] = transformRedisURLLine(line)
 		}
-	}
+	})
 
 	return strings.Join(lines, "\n"), false
 }
@@ -424,6 +382,7 @@ func isRedisURLLine(trimmed string) bool {
 	return strings.Contains(trimmed, "redis://")
 }
 
+// redisDBRe matches a redis URL with a numeric database index (e.g. redis://host:6379/0).
 var redisDBRe = regexp.MustCompile(`(redis://[^/]+/)(\d+)`)
 
 // transformRedisURLLine replaces the redis database number with a
@@ -436,6 +395,19 @@ func transformRedisURLLine(line string) string {
 	// Replace redis://host:port/N with redis://host:port/<%= ENV.fetch('TEST_ENV_NUMBER', N) %>
 	return redisDBRe.ReplaceAllString(line,
 		`${1}<%= ENV.fetch('TEST_ENV_NUMBER', '${2}').to_i %>`)
+}
+
+// warningFilesOrder lists config files that may need manual parallel isolation,
+// in the order they are checked and reported.
+var warningFilesOrder = []struct {
+	path string
+	msg  string
+}{
+	{"config/initializers/sidekiq.rb", "Sidekiq may need Redis URL isolation for parallel testing"},
+	{"config/sidekiq.yml", "Sidekiq may need Redis URL isolation for parallel testing"},
+	{"config/initializers/elasticsearch.rb", "Elasticsearch may need index prefix isolation for parallel testing"},
+	{"config/initializers/searchkick.rb", "Searchkick may need index prefix isolation for parallel testing"},
+	{"config/initializers/opensearch.rb", "OpenSearch may need index prefix isolation for parallel testing"},
 }
 
 // scanForWarnings checks for files that may need manual configuration
@@ -456,17 +428,9 @@ func scanForWarnings(result *initResult) {
 		}
 	}
 
-	warningFiles := map[string]string{
-		"config/initializers/sidekiq.rb":       "Sidekiq may need Redis URL isolation for parallel testing",
-		"config/sidekiq.yml":                   "Sidekiq may need Redis URL isolation for parallel testing",
-		"config/initializers/elasticsearch.rb": "Elasticsearch may need index prefix isolation for parallel testing",
-		"config/initializers/searchkick.rb":    "Searchkick may need index prefix isolation for parallel testing",
-		"config/initializers/opensearch.rb":    "OpenSearch may need index prefix isolation for parallel testing",
-	}
-
-	for path, msg := range warningFiles {
-		if fsutil.FileExists(path) {
-			result.warnings = append(result.warnings, path+": "+msg)
+	for _, wf := range warningFilesOrder {
+		if fsutil.FileExists(wf.path) {
+			result.warnings = append(result.warnings, wf.path+": "+wf.msg)
 		}
 	}
 }
@@ -503,77 +467,40 @@ func isSQLiteOnlyTestDatabaseConfig(content string) bool {
 
 func testSectionDatabaseValues(content string) []string {
 	lines := strings.Split(content, "\n")
-	inTestSection := false
-	testSectionIndent := 0
 	values := make([]string, 0)
 
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
+	iterateTestSection(lines, func(_ int, line, trimmed string) {
+		if !isDatabaseLine(trimmed) {
+			return
 		}
-
-		currentIndent := len(line) - len(strings.TrimLeft(line, " "))
-
-		if isTopLevelKey(trimmed, currentIndent, testSectionIndent) && inTestSection {
-			break
+		match := dbLineRe.FindStringSubmatch(line)
+		if match == nil {
+			return
 		}
-
-		if isTestSectionStart(trimmed, currentIndent) {
-			inTestSection = true
-			testSectionIndent = currentIndent
-			continue
-		}
-
-		if inTestSection && isDatabaseLine(trimmed) {
-			match := dbLineRe.FindStringSubmatch(line)
-			if match == nil {
-				continue
-			}
-			value, _ := splitYAMLValueAndComment(match[2])
-			values = append(values, value)
-		}
-	}
+		value, _ := splitYAMLValueAndComment(match[2])
+		values = append(values, value)
+	})
 
 	return values
 }
 
 func hasUnindexedRedisURLInTestSection(content string) bool {
 	lines := strings.Split(content, "\n")
-	inTestSection := false
-	testSectionIndent := 0
+	found := false
 
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
+	iterateTestSection(lines, func(_ int, line, trimmed string) {
+		if found || !isRedisURLLine(trimmed) {
+			return
 		}
-
-		currentIndent := len(line) - len(strings.TrimLeft(line, " "))
-
-		if isTopLevelKey(trimmed, currentIndent, testSectionIndent) && inTestSection {
-			break
+		if !strings.Contains(line, "TEST_ENV_NUMBER") && !redisDBRe.MatchString(line) {
+			found = true
 		}
+	})
 
-		if isTestSectionStart(trimmed, currentIndent) {
-			inTestSection = true
-			testSectionIndent = currentIndent
-			continue
-		}
-
-		if inTestSection && isRedisURLLine(trimmed) {
-			if strings.Contains(line, "TEST_ENV_NUMBER") {
-				continue
-			}
-			if !redisDBRe.MatchString(line) {
-				return true
-			}
-		}
-	}
-
-	return false
+	return found
 }
 
+// erbTagRe matches ERB tags (both <%= %> and <% %>).
 var erbTagRe = regexp.MustCompile(`(?s)<%=?[\s\S]*?%>`)
 
 // validateYAMLWithERB validates YAML content that may include ERB tags by
