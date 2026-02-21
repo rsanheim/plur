@@ -220,6 +220,7 @@ type PlurCLI struct {
 	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
 	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Plur installation and environment"`
 	Config    ConfigCmd    `cmd:"" help:"Configuration commands"`
+	RailsInit RailsInitCmd `cmd:"" name:"rails:init" help:"Configure a Rails project for parallel testing"`
 	DBSetup   DBSetupCmd   `cmd:"" name:"db:setup" help:"Setup test databases"`
 	DBCreate  DBCreateCmd  `cmd:"" name:"db:create" help:"Create test databases"`
 	DBMigrate DBMigrateCmd `cmd:"" name:"db:migrate" help:"Migrate test databases"`
