@@ -1,5 +1,7 @@
 # plur
 
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/rsanheim/plur/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/rsanheim/plur/tree/main)
+
 `plur` is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) designed to outperform existing solutions like turbo_tests and parallel_tests.
 
 Plur is quite mature at this point: I started it as a fun (private) side project in May 2025. Now that I've been using it across all my ruby/rails projects, I realized I should open source it. 
