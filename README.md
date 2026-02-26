@@ -2,15 +2,17 @@
 
 `plur` is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) designed to outperform existing solutions like turbo_tests and parallel_tests.
 
+Plur is quite mature at this point: I started it as a fun (private) side project in May 2025. Now that I've been using it across all my ruby/rails projects, I realized I should open source it. 
+
 ## Quick Start
 
-_TODO_ this needs to be rewritten from a user's perspective, not a dev's
+🚧 homebrew tap / proper binary releases 🔜 🚧
 
 ## What's Included
 
 * Go-based CLI for parallel RSpec execution
 * Database commands (db:create, db:migrate, db:setup, db:test:prepare)
-* Performance optimized - 13% faster than turbo_tests (TODO: update this)
+* Zero gem dependencies for any ruby project - install once, use everywhere
 
 ## Supported Platforms
 
@@ -19,7 +21,7 @@ _TODO_ this needs to be rewritten from a user's perspective, not a dev's
 * Linux ARM64
 * _Experimental_ Windows x86_64
 
-Watch mode (`plur watch`) requires platform-specific binaries. All platforms support standard test execution.
+Watch mode (`plur watch`) will install platform-specific binaries on first use. 
 
 ## Key Features
 
@@ -77,35 +79,4 @@ See `examples/` directory for more configuration examples.
 * `PARALLEL_TEST_GROUPS`: Total number of workers
 * `PARALLEL_TEST_PROCESSORS`: Compatible with parallel_tests
 
-## Performance Results
-
-TODO
-
-## Testing
-
-### Run All Tests
-```bash
-rake                         # Run ALL tests & lints before committing
-rake test                    # Run full Ruby test suite
-rake test:go                 # Run Go tests only
-```
-
-### Test with Default Projects
-```bash
-# Simple Ruby library
-cd fixtures/projects/default-ruby
-plur                        # Run all specs
-
-# Rails application
-cd fixtures/projects/default-rails
-plur db:create -n 3        # Set up databases
-plur db:migrate -n 3       # Run migrations
-plur -n 3                  # Run RSpec tests in parallel
-```
-
-### Benchmarking
-```bash
-./script/bench              # Benchmark default projects
-./script/bench -p fixtures/projects/default-rails    # Benchmark Rails app
-./script/bench -p fixtures/projects/default-ruby     # Benchmark Ruby library
-```
+More information in the [Documentation](docs/index.md).
