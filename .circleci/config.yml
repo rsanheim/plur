@@ -140,6 +140,15 @@ jobs:
             which plur
             plur doctor
       - run:
+          name: verify ruby/bundler setup
+          command: |
+            which ruby
+            which bundle
+            bundle --version
+            ruby --version
+            bundle check
+            bundle exec rspec --version
+      - run:
           name: Run ruby linting
           command: |
             bin/rake lint:ruby
