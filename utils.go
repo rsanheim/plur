@@ -57,4 +57,3 @@ func printDryRunWorker(dryRun bool, workerIndex int, cmd *exec.Cmd) {
 	}
 	toStdErr(true, "Worker %d: %s\n", workerIndex, dryRunString(cmd))
 }
-

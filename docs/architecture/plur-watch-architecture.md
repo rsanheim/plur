@@ -136,7 +136,7 @@ The watcher binary emits JSON events with the following structure:
 
 - Uses pre-compiled watcher binaries for each platform
 - Binaries are embedded in the plur executable and extracted on first use
-- Stored in `~/.cache/plur/bin/`
+- Stored in `~/.plur/bin/`
 - Currently supports:
   - macOS arm64 (`watcher-aarch64-apple-darwin`)
   - Linux arm64 (`watcher-aarch64-unknown-linux-gnu`)

@@ -188,11 +188,11 @@ module Plur
         puts "  Unable to get binary info"
       end
 
-      # Check watchr binary (plur watch install puts it in ~/.cache/plur/bin)
+      # Check watchr binary (plur watch install puts it in ~/.plur/bin)
       puts
       puts ">>> Watchr binary:"
       begin
-        result = @cmd.run("docker exec #{container_name} bash -c 'which watchr || ls -lh ~/.cache/plur/bin/watchr 2>/dev/null || echo \"Not found\"'", only_output_on_error: true)
+        result = @cmd.run("docker exec #{container_name} bash -c 'which watchr || ls -lh ~/.plur/bin/watchr 2>/dev/null || echo \"Not found\"'", only_output_on_error: true)
         puts "  #{result.out.strip}"
       rescue TTY::Command::ExitError
         puts "  Unable to check watchr binary"

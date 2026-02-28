@@ -86,7 +86,7 @@ When both `spec/` and `test/` directories exist:
 
 ### Project Structure
 - Go source files (`*.go`, `go.mod`) live at the repo root alongside Ruby files
-- Go packages: `autodetect/`, `config/`, `framework/`, `internal/`, `job/`, `logger/`, `minitest/`, `passthrough/`, `rspec/`, `traces/`, `types/`, `watch/`
+- Go packages: `autodetect/`, `config/`, `framework/`, `internal/`, `job/`, `logger/`, `minitest/`, `passthrough/`, `rspec/`, `types/`, `watch/`
 - `embedded/watcher/` - Pre-compiled watcher binaries
 - `spec/` - Full Ruby test suite for plur itself
 - `fixtures/projects/default-ruby/` - Ruby fixture project for testing plur
