@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"io"
-	"os"
 	"strings"
 	"sync"
 
@@ -109,11 +108,6 @@ func streamTestOutput(
 						CurrentFile: parser.CurrentFile(),
 					}
 				}
-			}
-
-			// Debug output if enabled
-			if os.Getenv("PLUR_DEBUG") == "1" && len(notifications) > 0 {
-				dump(notifications)
 			}
 
 			if err == io.EOF {

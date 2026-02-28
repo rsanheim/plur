@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -59,7 +58,3 @@ func printDryRunWorker(dryRun bool, workerIndex int, cmd *exec.Cmd) {
 	toStdErr(true, "Worker %d: %s\n", workerIndex, dryRunString(cmd))
 }
 
-func dump(data interface{}) {
-	b, _ := json.MarshalIndent(data, "", "  ")
-	fmt.Print(string(b))
-}
