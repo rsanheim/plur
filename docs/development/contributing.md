@@ -9,7 +9,7 @@ cd plur
 
 # Install dependencies
 bundle install
-cd plur && go mod vendor
+go mod vendor
 
 # Build and install
 bin/rake install

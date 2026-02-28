@@ -71,9 +71,9 @@ jobs:
         with:
           name: linux-packages
           path: |
-            plur/dist/*.deb
-            plur/dist/*.rpm
-            plur/dist/*.apk
+            dist/*.deb
+            dist/*.rpm
+            dist/*.apk
 
   # Optional: Test Homebrew installation
   test-homebrew:

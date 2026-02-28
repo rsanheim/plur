@@ -98,7 +98,7 @@ git push origin main --tags
 
 # GitHub Actions will handle the rest
 # Or run GoReleaser locally:
-cd plur && goreleaser release --clean
+goreleaser release --clean
 ```
 
 ## Version Format

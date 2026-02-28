@@ -1,8 +1,8 @@
 ---
 format_version: '4.1'
 first_recorded_at: '2026-02-11T02:36:15-06:00'
-recorded_at: '2026-02-11T02:36:15-06:00'
-record_count: 1
+recorded_at: '2026-02-28T04:46:31-06:00'
+record_count: 2
 snapshot:
   command_type: Open3::Capture3
   args:
@@ -71,4 +71,4 @@ snapshot:
         spec/ (exists)
   stderr: ''
   status: 0
-  recorded_at: '2026-02-11T02:36:15-06:00'
+  recorded_at: '2026-02-28T04:46:31-06:00'

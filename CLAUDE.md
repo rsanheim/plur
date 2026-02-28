@@ -24,7 +24,7 @@ Notes:
 
 ### bin/rake build vs bin/rake install
 
-* **bin/rake build** - Fast local build using `go build` (creates `plur/plur`)
+* **bin/rake build** - Fast local build using `go build` (creates `./plur`)
   * Version detection may be incorrect (uses runtime git describe in CWD)
   * Used by CI for speed
   * Fine for testing, not for distribution
@@ -85,7 +85,9 @@ When both `spec/` and `test/` directories exist:
 - **Override**: Use `plur --use=minitest` or set `use = "minitest"` in `.plur.toml`
 
 ### Project Structure
-- `plur/` - Go source (main binary)
+- Go source files (`*.go`, `go.mod`) live at the repo root alongside Ruby files
+- Go packages: `autodetect/`, `config/`, `framework/`, `internal/`, `job/`, `logger/`, `minitest/`, `passthrough/`, `rspec/`, `traces/`, `types/`, `watch/`
+- `embedded/watcher/` - Pre-compiled watcher binaries
 - `spec/` - Full Ruby test suite for plur itself
 - `fixtures/projects/default-ruby/` - Ruby fixture project for testing plur
 - `fixtures/projects/default-rails/` - Rails fixture project for testing plur

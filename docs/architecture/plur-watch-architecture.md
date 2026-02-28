@@ -149,7 +149,7 @@ The watcher binaries are downloaded from the [e-dant/watcher](https://github.com
 1. **Development builds** (`bin/rake build`): Downloads only the current platform's watcher binary via `vendor:download:current`
 2. **Cross-platform builds** (`bin/rake build:all`): Downloads all platform binaries via `vendor:download:all` before compilation
 
-The downloaded binaries are stored in `plur/embedded/watcher/` and embedded into the Go binary at compile time.
+The downloaded binaries are stored in `embedded/watcher/` and embedded into the Go binary at compile time.
 
 ## Configuration
 
@@ -185,7 +185,7 @@ Watch mappings can specify `reload = true` to trigger a process reload after job
 
 ```toml
 [[watch]]
-source = "plur/**/*.go"
+source = "**/*.go"
 jobs = ["build"]
 reload = true  # Reload plur after build completes
 ```

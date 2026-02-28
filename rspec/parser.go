@@ -87,7 +87,7 @@ const jsonPrefix string = "PLUR_JSON:"
 const jsonPrefixLen int = len(jsonPrefix)
 
 // ParseLine parses a single line of RSpec output from our Ruby based Plur::JsonRowsFormatter
-// See plur/rspec/formatter.rb for the formatter implementation.
+// See rspec/formatter.rb for the formatter implementation.
 func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	notifications := []types.TestNotification{}
 

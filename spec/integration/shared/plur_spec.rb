@@ -26,26 +26,9 @@ RSpec.describe Plur::Config do
       expect(config.root_dir).to be_directory
     end
 
-    it "defines plur_dir as an existing Pathname" do
-      expect(config.plur_dir).to be_a(Pathname)
-      expect(config.plur_dir).to exist
-      expect(config.plur_dir).to be_directory
-      expect(config.plur_dir.basename.to_s).to eq("plur")
-    end
-
     it "defines watcher_dir as a Pathname (may not exist yet)" do
       expect(config.watcher_dir).to be_a(Pathname)
       expect(config.watcher_dir.to_s).to include("embedded/watcher")
-    end
-  end
-
-  describe "path relationships" do
-    it "has plur_dir as a child of root_dir" do
-      expect(config.plur_dir.to_s).to start_with(config.root_dir.to_s)
-    end
-
-    it "has watcher_dir as a child of plur_dir" do
-      expect(config.watcher_dir.to_s).to start_with(config.plur_dir.to_s)
     end
   end
 end

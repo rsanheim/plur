@@ -9,7 +9,7 @@ cmd = ["bin/rspec"]
 
 # Go source files -> rebuild plur and reload
 [[watch]]
-source = "plur/**/*.go"
+source = "**/*.go"
 jobs = ["build"]
 reload = true
 ignore = [".git/**", "**/*_test.go", "**/vendor/**"]

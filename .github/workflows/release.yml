@@ -42,6 +42,5 @@ jobs:
           distribution: goreleaser
           version: "~> v2"
           args: release --clean --release-notes=/tmp/notes.md
-          workdir: plur
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

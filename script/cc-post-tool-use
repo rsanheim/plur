@@ -78,10 +78,6 @@ def find_test_for(file_path)
       # app/models/foo.rb -> spec/models/foo_spec.rb
       spec_file = file_path.sub(/^app\//, "spec/").sub(/\.rb$/, "_spec.rb")
       File.exist?(spec_file) ? [spec_file] : []
-    elsif file_path.start_with?("plur/")
-      # plur/foo.go -> plur/foo_test.go
-      test_file = file_path.sub(/\.rb$/, "_spec.rb")
-      File.exist?(test_file) ? [test_file] : []
     else
       []
     end

@@ -2,4 +2,4 @@ fix: false
 parallel: true
 ignore:
   - "fixtures/**/*"
-  - "plur/**/*"
+  - "rspec/formatter.rb"

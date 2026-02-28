@@ -7,7 +7,6 @@ source .buildkite/scripts/mise-setup.sh
 goreleaser --version
 
 echo "--- :go: GoReleaser snapshot build"
-cd plur
 goreleaser build --snapshot --single-target --clean
 
 echo "--- :go: Verify binary"

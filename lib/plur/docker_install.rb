@@ -56,7 +56,7 @@ module Plur
     end
 
     def find_binary(arch)
-      artifacts_file = Plur.config.plur_dir.join("dist", "artifacts.json")
+      artifacts_file = Plur.config.root_dir.join("dist", "artifacts.json")
 
       unless artifacts_file.exist?
         puts "Error: No binaries found. Run 'bin/rake build:all' first."
@@ -75,7 +75,7 @@ module Plur
         exit 1
       end
 
-      Plur.config.plur_dir.join(binary["path"])
+      Plur.config.root_dir.join(binary["path"])
     end
 
     def install(container_name, binary_path, install_path = nil)

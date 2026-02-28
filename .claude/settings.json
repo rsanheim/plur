@@ -4,7 +4,6 @@
       "Bash(./plur --help)",
       "Bash(./plur db:setup:*)",
       "Bash(./plur:*)",
-      "Bash(./plur/plur db:setup:*)",
       "Bash(bin/rake:*)",
       "Bash(bundle exec rails generate:*)",
       "Bash(bundle exec rails:*)",

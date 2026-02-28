@@ -58,13 +58,14 @@ plur config init              # Generate a starter .plur.toml
 ## Project Structure
 
 ```
-plur/                        # Go source (main binary)
-  autodetect/                # Framework detection and built-in defaults
-  config/                    # Configuration loading and paths
-  framework/                 # Framework definitions (rspec, minitest, go-test)
-  job/                       # Job resolution and command building
-  rspec/                     # JsonRowsFormatter (embedded Ruby) and JSON parser
-  watch/                     # File watcher, event handler, debouncer
+*.go, go.mod, go.sum         # Go source (main binary) at repo root
+autodetect/                  # Framework detection and built-in defaults
+config/                      # Configuration loading and paths
+framework/                   # Framework definitions (rspec, minitest, go-test)
+job/                         # Job resolution and command building
+rspec/                       # JsonRowsFormatter (embedded Ruby) and JSON parser
+watch/                       # File watcher, event handler, debouncer
+embedded/watcher/            # Pre-compiled watcher binaries
 script/                      # Utility scripts (bench, bench-git, get-repo)
 spec/                        # Ruby integration test suite
 fixtures/projects/           # Test fixture projects
@@ -76,7 +77,7 @@ docs/                        # Documentation (mkdocs-material)
 ## Testing Infrastructure
 
 * **Ruby integration specs** (`spec/`): end-to-end tests exercising the built binary against fixture projects
-* **Go unit tests** (`plur/**/*_test.go`): unit and integration tests for Go packages
+* **Go unit tests** (`**/*_test.go`): unit and integration tests for Go packages
 * **Fixture projects**: `default-ruby` and `default-rails` provide controlled test environments
 * **Benchmarking**: `script/bench-git` runs hyperfine comparisons across git refs for any Ruby project
 

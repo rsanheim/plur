@@ -239,7 +239,7 @@ unless intentionally diverging.
 
 ## Built-in defaults (documented)
 These are the canonical defaults that job resolution should preserve unless
-explicitly overridden. Keep this in sync with `plur/autodetect/defaults.toml`.
+explicitly overridden. Keep this in sync with `autodetect/defaults.toml`.
 
 - `rspec`
   - framework: `rspec`

@@ -99,8 +99,6 @@ echo "Running memory benchmarks for plur..."
 echo "=================================="
 echo ""
 
-cd plur
-
 # Build benchmark command
 BENCH_CMD="go test -benchmem -benchtime=10s"
 
@@ -126,7 +124,7 @@ echo ""
 
 # Execute benchmarks
 if [ -n "$SAVE_NAME" ]; then
-    OUTPUT_FILE="../$RESULTS_DIR/${SAVE_NAME}.txt"
+    OUTPUT_FILE="$RESULTS_DIR/${SAVE_NAME}.txt"
     eval "$BENCH_CMD" | tee "$OUTPUT_FILE"
     echo ""
     echo "Results saved to: $OUTPUT_FILE"
