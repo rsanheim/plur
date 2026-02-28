@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -22,28 +21,6 @@ const (
 	EnvTestEnvNumber      = "TEST_ENV_NUMBER"
 	EnvParallelTestGroups = "PARALLEL_TEST_GROUPS"
 )
-
-// dryRunString returns a shell-executable representation of the command,
-// including only the env vars that plur sets (not the full inherited env).
-func dryRunString(cmd *exec.Cmd) string {
-	var envs []string
-	if cmd.Env != nil {
-		envs = cmd.Environ()
-	}
-	var extras []string
-	for _, env := range envs {
-		if strings.HasPrefix(env, EnvTestEnvNumber+"=") ||
-			strings.HasPrefix(env, EnvParallelTestGroups+"=") ||
-			strings.HasPrefix(env, "RAILS_ENV=") {
-			extras = append(extras, env)
-		}
-	}
-	cmdStr := strings.Join(cmd.Args, " ")
-	if len(extras) > 0 {
-		return strings.Join(extras, " ") + " " + cmdStr
-	}
-	return cmdStr
-}
 
 // Handles grouping files into worker assignments and building the commands to run.
 // - Phase 1 (PLAN): Single-threaded - load runtime data, group files, build commands
