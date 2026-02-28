@@ -125,9 +125,9 @@ jobs:
       - run:
           name: Add GOPATH/bin to PATH
           command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"
-      - ruby/install-deps:
-          key: "plur-v2"
-          include-branch-in-cache-key: false
+      - run:
+          name: Bundle install
+          command: bundle install
       - run:
           name: Install plur globally
           command: bin/rake install
