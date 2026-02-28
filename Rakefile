@@ -36,7 +36,7 @@ task default: ["lint:all", "build", "test:all"]
 desc "Build the plur Go binary"
 task build: ["vendor:download:current"] do
   puts "[build] Building plur"
-  sh %(go build .)
+  sh %(go build -mod=mod .)
   version = `./plur --version`.strip
   puts "[build] Binary created at ./plur with version: #{version}"
 end
