@@ -6,12 +6,11 @@ require "stringio"
 require "timecop"
 require "tmpdir"
 require "tty-command"
+require "backspin"
 
 ROOT_PATH = Pathname.new(__dir__).parent
 DEFAULT_RUBY_DIR = ROOT_PATH.join("fixtures", "projects", "default-ruby")
 DEFAULT_RUBY_SPEC_FILE_COUNT = 13
-
-require "backspin"
 
 Backspin.configure do |config|
   config.backspin_dir = ROOT_PATH.join("fixtures", "backspin")
@@ -74,7 +73,7 @@ RSpec.configure do |config|
     mocks.verify_partial_doubles = true
   end
 
-  # Restore default-ruby state after the entire test suite
+  # Restore default-ruby state after the entire test suite - kinda hacky but its fine
   config.after(:suite) do
     Dir.chdir(DEFAULT_RUBY_DIR) do
       # Reset any file changes made during tests
