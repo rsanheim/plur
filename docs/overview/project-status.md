@@ -66,7 +66,7 @@ job/                         # Job resolution and command building
 rspec/                       # JsonRowsFormatter (embedded Ruby) and JSON parser
 watch/                       # File watcher, event handler, debouncer
 embedded/watcher/            # Pre-compiled watcher binaries
-script/                      # Utility scripts (bench, bench-git, get-repo)
+script/                      # Utility scripts (bench, bench-git)
 spec/                        # Ruby integration test suite
 fixtures/projects/           # Test fixture projects
   default-ruby/              # Simple Ruby library for testing

@@ -1,9 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./plur --help)",
-      "Bash(./plur db:setup:*)",
-      "Bash(./plur:*)",
       "Bash(bin/rake:*)",
       "Bash(bundle exec rails generate:*)",
       "Bash(bundle exec rails:*)",
@@ -20,8 +17,6 @@
       "Bash(circleci:*)",
       "Bash(claude mcp list)",
       "Bash(cp:*)",
-      "Bash(curl:*)",
-      "Bash(docker:*)",
       "Bash(echo:*)",
       "Bash(find:*)",
       "Bash(gem install:*)",
@@ -76,17 +71,13 @@
       "Bash(touch:*)",
       "Bash(tree:*)",
       "Bash(true)",
-      "Bash(turbo_tests:*)",
-      "Bash(VERBOSE=1 rake test:go)",
       "Go(*)",
       "WebFetch(domain:circleci.com)",
-      "WebFetch(domain:cli.urfave.org)",
       "WebFetch(domain:docs.anthropic.com)",
       "WebFetch(domain:dystroy.org)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pkg.go.dev)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:squidfunk.github.io)"
     ],
     "deny": []
   },
