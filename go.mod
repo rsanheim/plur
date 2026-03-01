@@ -1,6 +1,6 @@
 module github.com/rsanheim/plur
 
-go 1.25.2
+go 1.25
 
 require (
 	github.com/alecthomas/kong v1.12.1
