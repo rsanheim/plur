@@ -35,36 +35,30 @@ task default: ["lint:all", "build", "test:all"]
 
 desc "Build the plur Go binary"
 task build: ["vendor:download:current"] do
-  Dir.chdir(Plur.config.plur_dir) do
-    puts "[build] Building plur"
-    sh %(go build .)
-    version = `./plur --version`.strip
-    puts "[build] Binary created at plur/plur with version: #{version}"
-  end
+  puts "[build] Building plur"
+  sh %(go build -mod=mod .)
+  version = `./plur --version`.strip
+  puts "[build] Binary created at ./plur with version: #{version}"
 end
 
 namespace :build do
   desc "Build binaries for all supported platforms"
   task all: ["vendor:download:all"] do
-    Dir.chdir(Plur.config.plur_dir) do
-      puts "[build:all] Building plur for all platforms..."
-      sh "goreleaser build --snapshot --clean"
-    end
+    puts "[build:all] Building plur for all platforms..."
+    sh "goreleaser build --snapshot --clean"
   end
 end
 
 desc "Install plur globally to $GOBIN"
 task :install do
-  Dir.chdir(Plur.config.plur_dir) do
-    gobin = ENV.fetch("GOBIN") { File.join(`go env GOPATH`.strip, "bin") }
-    FileUtils.mkdir_p(gobin)
-    final = File.join(gobin, "plur")
-    temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
+  gobin = ENV.fetch("GOBIN") { File.join(`go env GOPATH`.strip, "bin") }
+  FileUtils.mkdir_p(gobin)
+  final = File.join(gobin, "plur")
+  temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
 
-    sh %(goreleaser build --snapshot --single-target --clean -o #{temp} > /dev/null 2>&1)
-    File.chmod(0o755, temp)
-    File.rename(temp, final)
-  end
+  sh %(goreleaser build --snapshot --single-target --clean -o #{temp} > /dev/null 2>&1)
+  File.chmod(0o755, temp)
+  File.rename(temp, final)
   puts "[install] Installed plur with version: #{`plur --version`.strip}"
 end
 
@@ -74,15 +68,13 @@ namespace :test do
 
   desc "Run Go tests"
   task go: ["build"] do
-    Dir.chdir(Plur.config.plur_dir) do
-      puts "[test:go] Running go tests..."
-      # Use -short in CI to skip slow complexity tests that are sensitive to system noise
-      short_flag = ENV["CI"] ? "-short" : ""
-      if ENV["VERBOSE"]
-        sh "go test -mod=mod -v #{short_flag} ./...".squeeze(" ")
-      else
-        sh "go test -mod=mod #{short_flag} ./...".squeeze(" ")
-      end
+    puts "[test:go] Running go tests..."
+    # Use -short in CI to skip slow complexity tests that are sensitive to system noise
+    short_flag = ENV["CI"] ? "-short" : ""
+    if ENV["VERBOSE"]
+      sh "go test -mod=mod -v #{short_flag} ./...".squeeze(" ")
+    else
+      sh "go test -mod=mod #{short_flag} ./...".squeeze(" ")
     end
   end
 
@@ -118,11 +110,9 @@ namespace :lint do
 
   desc "Lint Go code"
   task :go do
-    Dir.chdir(Plur.config.plur_dir) do
-      puts "[lint:go] Running go fmt and go vet"
-      sh "go", "fmt", "-mod=mod", "./..."
-      sh "go vet -mod=mod ./..."
-    end
+    puts "[lint:go] Running go fmt and go vet"
+    sh "go", "fmt", "-mod=mod", "./..."
+    sh "go vet -mod=mod ./..."
   end
 
   desc "Lint Ruby code with Standard"

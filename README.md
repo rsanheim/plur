@@ -74,7 +74,7 @@ Config files load in this order (later files override earlier values):
 2) `.plur.toml`
 3) `PLUR_CONFIG_FILE` (if set)
 
-See `examples/` directory for more configuration examples.
+See `docs/examples/` directory for more configuration examples.
 
 ### Environment Variables
 * `TEST_ENV_NUMBER`: Worker 0 gets `""`, worker N gets `"N+1"`

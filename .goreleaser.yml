@@ -11,10 +11,6 @@ before:
   hooks:
     - go mod tidy
     - go mod vendor
-    # Copy documentation files to plur directory for archiving
-    - cp ../README.md .
-    - cp ../LICENSE .
-    - cp ../CHANGELOG.md .
 
 # Build configuration
 builds:

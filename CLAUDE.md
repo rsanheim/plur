@@ -24,7 +24,7 @@ Notes:
 
 ### bin/rake build vs bin/rake install
 
-* **bin/rake build** - Fast local build using `go build` (creates `plur/plur`)
+* **bin/rake build** - Fast local build using `go build` (creates `./plur`)
   * Version detection may be incorrect (uses runtime git describe in CWD)
   * Used by CI for speed
   * Fine for testing, not for distribution
@@ -83,13 +83,6 @@ When both `spec/` and `test/` directories exist:
 - **Previous behavior**: Plur defaulted to Minitest
 - **Rationale**: RSpec is typically the primary framework in projects with both directories
 - **Override**: Use `plur --use=minitest` or set `use = "minitest"` in `.plur.toml`
-
-### Project Structure
-- `plur/` - Go source (main binary)
-- `spec/` - Full Ruby test suite for plur itself
-- `fixtures/projects/default-ruby/` - Ruby fixture project for testing plur
-- `fixtures/projects/default-rails/` - Rails fixture project for testing plur
-- `vendor/backspin/` - Vendored golden testing gem
 
 ### Architecture Notes
 - Worker pool with goroutines

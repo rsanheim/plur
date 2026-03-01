@@ -1,4 +1,4 @@
-package main
+package railsinit
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ type initResult struct {
 	alreadyDone    []string
 }
 
-func runRailsInit(cfg *config.GlobalConfig) error {
+func Run(cfg *config.GlobalConfig) error {
 	if err := verifyRailsProject(); err != nil {
 		return err
 	}

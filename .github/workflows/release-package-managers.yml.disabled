@@ -44,9 +44,7 @@ jobs:
           install-only: true
 
       - name: Validate GoReleaser config
-        run: |
-          cd plur
-          goreleaser check
+        run: goreleaser check
 
       - name: Extract release notes
         run: |
@@ -62,18 +60,16 @@ jobs:
           SCOOP_GITHUB_TOKEN: ${{ secrets.SCOOP_GITHUB_TOKEN }}
           # AUR key for Arch Linux (optional)
           AUR_KEY: ${{ secrets.AUR_KEY }}
-        run: |
-          cd plur
-          goreleaser release --release-notes=../.goreleaser-notes.md --clean
+        run: goreleaser release --release-notes=.goreleaser-notes.md --clean
 
       - name: Upload Linux packages
         uses: actions/upload-artifact@v3
         with:
           name: linux-packages
           path: |
-            plur/dist/*.deb
-            plur/dist/*.rpm
-            plur/dist/*.apk
+            dist/*.deb
+            dist/*.rpm
+            dist/*.apk
 
   # Optional: Test Homebrew installation
   test-homebrew:

@@ -196,7 +196,7 @@ See [Watch Configuration](../configuration.md#watch-configuration) for custom fi
 
 **"watcher binary not found"**
 
-- Binary should auto-extract to `~/.cache/plur/bin/`
+- Binary should auto-extract to `~/.plur/bin/`
 - Check permissions on cache directory
 - Run `plur doctor` for diagnostics
 

@@ -33,9 +33,8 @@ end
 # Inject version via ldflags since detached worktrees don't have VCS info
 # We also download the watcher binaries if they are missing.
 def build_plur(worktree, ref)
-  plur_dir = worktree.join("plur")
   puts "  Building plur at #{ref}..."
-  if worktree.join("plur").glob("embedded/watcher/watcher*").empty?
+  if worktree.glob("embedded/watcher/watcher*").empty?
     puts "  watcher binaries missing; download them..."
     Dir.chdir(worktree) do
       system("bundle check || bundle install")
@@ -43,12 +42,12 @@ def build_plur(worktree, ref)
     end
   end
 
-  Dir.chdir(plur_dir) do
+  Dir.chdir(worktree) do
     ldflags = %(-ldflags "-X main.version=#{ref}")
     system("go build #{ldflags} .", exception: true)
   end
 
-  plur_dir.join("plur")
+  worktree.join("plur")
 end
 
 def create_worktree(ref)
@@ -150,7 +149,7 @@ hyperfine_cmd = [
 
 hyperfine_cmd << "--ignore-failure" if ignore_failure
 hyperfine_cmd += ["--command-name", "plur-{ref}-#{project_name}"]
-hyperfine_cmd << "#{WORKTREE_BASE}/bench-{ref}/plur/plur -C #{project} -n #{workers}"
+hyperfine_cmd << "#{WORKTREE_BASE}/bench-{ref}/plur -C #{project} -n #{workers}"
 
 if dry_run
   puts "\n=== DRY RUN ==="

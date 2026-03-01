@@ -11,10 +11,9 @@ go.work.sum
 
 # Go build artifacts
 main
-./plur/plur
-/plur/tmp
+/plur
 /dist
-plur/plur-race
+vendor/
 
 # GoReleaser
 .goreleaser-notes.md

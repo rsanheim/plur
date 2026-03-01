@@ -35,11 +35,10 @@ jobs:
           command: |
             pwd
             ls -la
-            ls -la plur/
-            ls -la plur/lib/plur/ || echo "plur/lib/plur not found"
       - go/install:
           version: << pipeline.parameters.go_version >>
       - ruby/install-deps:
+          key: "plur-v2"
           include-branch-in-cache-key: false
       - run:
           name: Build plur
@@ -47,9 +46,9 @@ jobs:
       - run:
           name: Verify plur binary
           command: |
-            ./plur/plur --version
-            ./plur/plur --help
-            ./plur/plur doctor
+            ./plur --version
+            ./plur --help
+            ./plur doctor
       - run:
           name: Run Go tests
           command: bin/rake test:go
@@ -71,7 +70,6 @@ jobs:
           command: goreleaser --version
       - run:
           name: Test GoReleaser snapshot build
-          working_directory: plur
           command: |
             goreleaser build --snapshot --single-target --clean
       - run:
@@ -79,20 +77,20 @@ jobs:
           command: |
             arch="$(go env GOARCH)"
             if [ "$arch" = "arm64" ]; then
-              bin="plur/dist/plur_linux_arm64_v8.0/plur"
+              bin="dist/plur_linux_arm64_v8.0/plur"
             else
-              bin="plur/dist/plur_linux_${arch}_v1/plur"
+              bin="dist/plur_linux_${arch}_v1/plur"
             fi
             if [ ! -x "$bin" ]; then
               echo "Expected binary not found: $bin"
               echo "Available plur binaries:"
-              find plur/dist -maxdepth 3 -type f -name plur -print
+              find dist -maxdepth 3 -type f -name plur -print
               exit 1
             fi
             "$bin" --version
             "$bin" doctor
       - store_artifacts:
-          path: plur/dist
+          path: dist
           destination: goreleaser-artifacts
 
   test-go-race:
@@ -108,7 +106,6 @@ jobs:
       - checkout
       - run:
           name: Run Go tests with race detection
-          working_directory: plur
           command: go test -mod=mod -race ./...
 
   test-ruby-integration:
@@ -128,8 +125,9 @@ jobs:
       - run:
           name: Add GOPATH/bin to PATH
           command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"
-      - ruby/install-deps:
-          include-branch-in-cache-key: false
+      - run:
+          name: Bundle install
+          command: bundle install
       - run:
           name: Install plur globally
           command: bin/rake install

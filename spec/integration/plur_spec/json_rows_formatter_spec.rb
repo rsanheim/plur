@@ -1,6 +1,6 @@
 require "rspec"
 require "json"
-require_relative "../../../plur/rspec/formatter"
+require_relative "../../../rspec/formatter"
 
 RSpec.describe Plur::JsonRowsFormatter do
   let(:output) { StringIO.new }

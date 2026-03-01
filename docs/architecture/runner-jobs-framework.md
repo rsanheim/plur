@@ -120,7 +120,7 @@ Previous behavior (before refactor):
 - RSpec defaults (formatter + color flags) are not injected for non-`rspec` job names.
 
 ## Implementation status (current)
-- Framework registry implemented in `plur/framework` with TargetMode, DefaultArgs, Parser, and StreamStdout.
+- Framework registry implemented in `framework` package with TargetMode, DefaultArgs, Parser, and StreamStdout.
 - Run mode uses `BuildRunArgs`: strips `{{target}}`, appends framework defaults, then adds targets.
 - Minitest uses ruby `-e` require list for multi-file runs (single file appends directly).
 - Jobs default framework by name (built-ins) or `passthrough` for custom jobs when omitted.

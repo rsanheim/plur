@@ -12,9 +12,9 @@ echo "--- :go: Build + Lint"
 bin/rake build lint
 
 echo "--- :go: Verify binary"
-./plur/plur --version
-./plur/plur --help
-./plur/plur doctor
+./plur --version
+./plur --help
+./plur doctor
 
 echo "--- :go: Go tests"
 bin/rake test:go

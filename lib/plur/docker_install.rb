@@ -56,7 +56,7 @@ module Plur
     end
 
     def find_binary(arch)
-      artifacts_file = Plur.config.plur_dir.join("dist", "artifacts.json")
+      artifacts_file = Plur.config.root_dir.join("dist", "artifacts.json")
 
       unless artifacts_file.exist?
         puts "Error: No binaries found. Run 'bin/rake build:all' first."
@@ -75,7 +75,7 @@ module Plur
         exit 1
       end
 
-      Plur.config.plur_dir.join(binary["path"])
+      Plur.config.root_dir.join(binary["path"])
     end
 
     def install(container_name, binary_path, install_path = nil)
@@ -188,11 +188,11 @@ module Plur
         puts "  Unable to get binary info"
       end
 
-      # Check watchr binary (plur watch install puts it in ~/.cache/plur/bin)
+      # Check watchr binary (plur watch install puts it in ~/.plur/bin)
       puts
       puts ">>> Watchr binary:"
       begin
-        result = @cmd.run("docker exec #{container_name} bash -c 'which watchr || ls -lh ~/.cache/plur/bin/watchr 2>/dev/null || echo \"Not found\"'", only_output_on_error: true)
+        result = @cmd.run("docker exec #{container_name} bash -c 'which watchr || ls -lh ~/.plur/bin/watchr 2>/dev/null || echo \"Not found\"'", only_output_on_error: true)
         puts "  #{result.out.strip}"
       rescue TTY::Command::ExitError
         puts "  Unable to check watchr binary"

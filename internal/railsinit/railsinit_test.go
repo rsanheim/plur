@@ -1,4 +1,4 @@
-package main
+package railsinit
 
 import (
 	"os"
@@ -470,30 +470,18 @@ func TestVerifyRailsProject(t *testing.T) {
 // helpers for cable.yml tests
 
 func splitLines(s string) []string {
-	return append([]string(nil), splitNonEmpty(s)...)
-}
-
-func splitNonEmpty(s string) []string {
 	var result []string
-	for _, line := range append([]string(nil), splitAll(s)...) {
-		result = append(result, line)
-	}
-	return result
-}
-
-func splitAll(s string) []string {
-	lines := make([]string, 0)
 	start := 0
 	for i := 0; i < len(s); i++ {
 		if s[i] == '\n' {
-			lines = append(lines, s[start:i])
+			result = append(result, s[start:i])
 			start = i + 1
 		}
 	}
 	if start < len(s) {
-		lines = append(lines, s[start:])
+		result = append(result, s[start:])
 	}
-	return lines
+	return result
 }
 
 func findLineContaining(lines []string, sectionHint, key string) string {

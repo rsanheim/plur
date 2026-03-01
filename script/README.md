@@ -1,44 +1,5 @@
 # Setup Scripts
 
-## get-repo
-
-Quickly grab any GitHub repository for clean testing without git history.
-
-### Usage
-
-```bash
-# Clone any GitHub repo (auto-converts to SSH)
-./script/get-repo https://github.com/example-org/example-project
-
-# Clone with custom directory name
-./script/get-repo https://github.com/example-org/example-project my-test-dir
-
-# Works with SSH URLs too
-./script/get-repo git@github.com:example-org/example-project.git
-```
-
-### What it does
-
-1. **Converts HTTPS to SSH** automatically for faster access
-2. **Shallow clone** (--depth 1) for fast download
-3. **Removes .git directory** for clean testing environment
-4. **Auto-generates directory names** with timestamps
-
-### Requirements
-
-- SSH access to GitHub configured
-- `plur` binary installed in PATH (for Ruby testing)
-
-### Quick Testing
-
-```bash
-./script/get-repo https://github.com/example-org/example-project
-cd example-project-*/
-plur                    # Run all specs with default workers
-plur --workers 4        # Run with 4 workers (or -n for short)
-PARALLEL_TEST_PROCESSORS=2 plur  # Run with env var override
-```
-
 ## bench
 
 Benchmarks plur against turbo_tests using hyperfine for performance comparison.

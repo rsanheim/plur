@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/rsanheim/plur/rspec"
 )
 
 // GlobalConfig holds settings that are truly global across all commands
@@ -32,12 +30,11 @@ func (c *GlobalConfig) IsSerial() bool {
 }
 
 type ConfigPaths struct {
-	PlurHome          string // ~/.plur or $PLUR_HOME
-	BinDir            string
-	CacheDir          string
-	RuntimeDir        string
-	FormatterDir      string
-	JSONRowsFormatter string
+	PlurHome     string // ~/.plur or $PLUR_HOME
+	BinDir       string
+	CacheDir     string
+	RuntimeDir   string
+	FormatterDir string
 }
 
 // InitConfigPaths initializes PLUR_HOME if necessary, as well as subdirs inside it.
@@ -73,31 +70,12 @@ func InitConfigPaths() *ConfigPaths {
 	}
 
 	configPaths := ConfigPaths{
-		PlurHome:          plurHome,
-		BinDir:            binDir,
-		CacheDir:          cacheDir,
-		RuntimeDir:        runtimeDir,
-		FormatterDir:      formatterDir,
-		JSONRowsFormatter: "", // Will be initialized lazily when needed
+		PlurHome:     plurHome,
+		BinDir:       binDir,
+		CacheDir:     cacheDir,
+		RuntimeDir:   runtimeDir,
+		FormatterDir: formatterDir,
 	}
 
 	return &configPaths
-}
-
-// GetJSONRowsFormatterPath returns the path to the JSON rows formatter,
-// We initialize it if needed - this is called lazily only when running RSpec tests.
-// This function will exit the program if the formatter cannot be initialized.
-func (c *ConfigPaths) GetJSONRowsFormatterPath() string {
-	if c.JSONRowsFormatter != "" {
-		return c.JSONRowsFormatter
-	}
-
-	formatter, err := rspec.GetFormatterPath(c.FormatterDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Fatal error: failed to initialize RSpec formatter: %v\n", err)
-		os.Exit(1)
-	}
-
-	c.JSONRowsFormatter = formatter
-	return c.JSONRowsFormatter
 }

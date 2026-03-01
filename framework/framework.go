@@ -112,7 +112,10 @@ func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
 	}
 
 	args := []string{}
-	formatterPath := cfg.ConfigPaths.GetJSONRowsFormatterPath()
+	formatterPath, err := rspec.GetFormatterPath(cfg.ConfigPaths.FormatterDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize RSpec formatter: %w", err)
+	}
 	if formatterPath != "" {
 		args = append(args, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
 	}

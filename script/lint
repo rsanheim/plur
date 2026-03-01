@@ -38,10 +38,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "Running Go linters"
-pushd plur || exit 1
 go fmt ./...
 go vet ./...
-popd || exit 1
 
 echo "Running StandardRB with $FIX_OPT"
 bundle exec standardrb $FIX_OPT

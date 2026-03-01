@@ -93,7 +93,6 @@ git push origin v0.1.0-test
 
 2. Run GoReleaser locally (dry run):
 ```bash
-cd plur
 goreleaser release --snapshot --clean --skip=publish
 ```
 
