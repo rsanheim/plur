@@ -2,9 +2,10 @@
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/rsanheim/plur/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/rsanheim/plur/tree/main)
 
-`plur` is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) designed to outperform existing solutions like turbo_tests and parallel_tests.
+`plur` is a fast, parallel, drop-in test runner and watcher primarily targeting Ruby and Rails using RSpec or Minitest. Its written in Go, so just install the binary once and use it in every project.
 
-Plur is quite mature at this point: I started it as a fun (private) side project in May 2025. Now that I've been using it across all my ruby/rails projects, I realized I should open source it. 
+I got tired of wiring up turbo-tests/parallel-rspe and Guard across every Ruby/Rails project I worked in, whether for work or for side projects. So Plur was born almost a year ago, and I hacked on it for and eventually got to something 
+pretty solid, fast, and reliable.
 
 ## Quick Start
 

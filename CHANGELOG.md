@@ -2,26 +2,17 @@
 
 ## Unreleased
 
-## v0.33.0 - 2026-02-17
-* Consolidate target pattern resolution into framework package [#211](https://github.com/rsanheim/plur/pull/211)
-* Add more integration specs to help migration [#192](https://github.com/rsanheim/plur/pull/192)
-* Fix minitest progress dots lost when `puts` output is interleaved on the same line [#200](https://github.com/rsanheim/plur/pull/200)
-
-## v0.32.0 - 2026-02-09
-* fix: use %w instead of %v for error wrapping [#190](https://github.com/rsanheim/plur/pull/190)
-* fix: use git commit range for release PR discovery [#193](https://github.com/rsanheim/plur/pull/193)
-
-## v0.31.0 - 2026-02-05
-* Add `--tag` flag for RSpec tag filtering: `plur --tag=slow --tag=integration` (repeatable, RSpec only) [#189](https://github.com/rsanheim/plur/pull/189)
-* Add `--` passthrough for forwarding arbitrary args to the test framework: `plur spec/ -- --seed 1234` [#189](https://github.com/rsanheim/plur/pull/189)
-* Fix minitest passthrough args placement when using ruby require mode [#189](https://github.com/rsanheim/plur/pull/189)
-* Fix debug log ordering so version prints first [#188](https://github.com/rsanheim/plur/pull/188)
-* Unify watch test harness with Open3, remove TTY requirement [#191](https://github.com/rsanheim/plur/pull/191)
+## v0.40.0 - 2026-02-28
+* Get things in order for a proper OSS release: move all plur to top level; clean up docs and cruft
+* Consolidate target pattern resolution into framework package
+* Fix minitest progress dots lost when `puts` output is interleaved on the same line
+* fix: use %w instead of %v for error wrapping
+* Support `--tag` flag for RSpec tag filtering: `plur --tag=slow --tag=integration` (repeatable, RSpec only)
+* Add `--` passthrough for forwarding arbitrary args to the test framework: `plur spec/ -- --seed 1234`
 
 ## v0.30.0 - 2026-02-04
 
 * **Config file precedence changed**: Config files now load in order `~/.plur.toml` → `.plur.toml` → `PLUR_CONFIG_FILE`, with later files overriding earlier values. Previously, the order was reversed. This means project-local `.plur.toml` now correctly overrides global `~/.plur.toml` settings. [#186](https://github.com/rsanheim/plur/pull/186)
-
 * Add `plur/framework` package with framework-aware command building [#186](https://github.com/rsanheim/plur/pull/186)
 * Add `ResolveReason` enum to track why a job was selected (explicit, inferred, default)
 * Simplify runner by moving command-building logic into framework package
