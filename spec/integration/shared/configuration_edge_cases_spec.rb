@@ -128,5 +128,101 @@ RSpec.describe "Configuration edge cases" do
         expect(error).to match(/expected a valid 64 bit int|invalid value/)
       end
     end
+
+    context "with duplicate keys in TOML" do
+      it "exits with a configuration parse error" do
+        Dir.mktmpdir do |tmpdir|
+          config_path = File.join(tmpdir, "duplicate-keys.toml")
+          File.write(config_path, <<~TOML)
+            workers = 2
+            workers = 3
+          TOML
+
+          _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+            Open3.capture3(
+              {"PLUR_CONFIG_FILE" => config_path},
+              plur_binary, "doctor"
+            )
+          end
+
+          expect(status).not_to be_success
+          expect(error).to include("Configuration error:")
+          expect(error).to match(/already been defined|defined twice/)
+        end
+      end
+    end
+
+    context "with duplicate tables in TOML" do
+      it "exits with a configuration parse error" do
+        Dir.mktmpdir do |tmpdir|
+          config_path = File.join(tmpdir, "duplicate-tables.toml")
+          File.write(config_path, <<~TOML)
+            [job.rspec]
+            cmd = ["echo", "first"]
+
+            [job.rspec]
+            cmd = ["echo", "second"]
+          TOML
+
+          _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+            Open3.capture3(
+              {"PLUR_CONFIG_FILE" => config_path},
+              plur_binary, "doctor"
+            )
+          end
+
+          expect(status).not_to be_success
+          expect(error).to include("Configuration error:")
+          expect(error).to match(/already been defined|duplicated tables|defined twice/)
+        end
+      end
+    end
+  end
+
+  describe "TOML 1.1 compatibility" do
+    it "supports multiline inline tables for nested job config" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "toml11-multiline-inline.toml")
+        File.write(config_path, <<~TOML)
+          use = "rspec"
+          job = {
+            rspec = {
+              cmd = ["echo", "MULTILINE", "{{target}}"],
+              framework = "rspec"
+            }
+          }
+        TOML
+
+        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "spec", "--dry-run"
+          )
+        end
+
+        expect(status).to be_success
+        expect(error).to include("echo MULTILINE")
+      end
+    end
+
+    it "supports trailing commas in inline tables" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "toml11-inline-trailing-comma.toml")
+        File.write(config_path, <<~TOML)
+          use = "rspec"
+          job = { rspec = { cmd = ["echo", "TRAILING", "{{target}}"], framework = "rspec", }, }
+        TOML
+
+        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "spec", "--dry-run"
+          )
+        end
+
+        expect(status).to be_success
+        expect(error).to include("echo TRAILING")
+      end
+    end
   end
 end

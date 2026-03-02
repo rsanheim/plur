@@ -50,11 +50,18 @@ func TestLoaderNoFilenameForPlainReader(t *testing.T) {
 // Helper to build a minimal kong.Path and kong.Flag for testing Resolve.
 // The flag name and parent path are the only fields the resolver uses.
 func makeParentAndFlag(parentPath, flagName string) (*kong.Path, *kong.Flag) {
-	node := &kong.Node{Name: parentPath}
-	path := &kong.Path{Parent: node}
+	var path *kong.Path
 	if parentPath == "" {
 		// For root-level flags, use an Application path so Node() returns a node with empty Path()
 		path = &kong.Path{App: &kong.Application{Node: &kong.Node{}}}
+	} else {
+		parts := strings.Fields(parentPath)
+		var parent *kong.Node
+		for _, part := range parts {
+			node := &kong.Node{Name: part, Type: kong.CommandNode, Parent: parent}
+			parent = node
+		}
+		path = &kong.Path{Command: parent}
 	}
 	flag := &kong.Flag{Value: &kong.Value{Name: flagName}}
 	return path, flag
@@ -151,6 +158,31 @@ jobs = ["rspec"]
 	first, ok := arr[0].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "**/*.go", first["source"])
+}
+
+func TestResolveCommandPathWithSpaces(t *testing.T) {
+	input := `
+[watch.run]
+debounce = 250
+`
+	resolver, err := Loader(strings.NewReader(input))
+	require.NoError(t, err)
+
+	parent, flag := makeParentAndFlag("watch run", "debounce")
+	val, err := resolver.Resolve(nil, parent, flag)
+	require.NoError(t, err)
+	assert.Equal(t, int64(250), val)
+}
+
+func TestResolveHyphenatedFlattenedKey(t *testing.T) {
+	input := `watch-run-timeout = 5`
+	resolver, err := Loader(strings.NewReader(input))
+	require.NoError(t, err)
+
+	parent, flag := makeParentAndFlag("watch run", "timeout")
+	val, err := resolver.Resolve(nil, parent, flag)
+	require.NoError(t, err)
+	assert.Equal(t, int64(5), val)
 }
 
 func TestValidateReturnsNil(t *testing.T) {
