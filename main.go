@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	kongtoml "github.com/alecthomas/kong-toml"
+	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/framework"
