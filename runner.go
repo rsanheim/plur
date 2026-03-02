@@ -43,6 +43,7 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runtime tracker: %w", err)
 	}
+	tracker.SetFramework(j.Framework)
 	return &Runner{
 		config:    cfg,
 		files:     files,
