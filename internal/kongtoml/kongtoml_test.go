@@ -125,6 +125,34 @@ func TestResolveBoolValue(t *testing.T) {
 	assert.Equal(t, true, val)
 }
 
+func TestResolveArrayOfTables(t *testing.T) {
+	input := `
+[[watch]]
+source = "**/*.go"
+jobs = ["build"]
+
+[[watch]]
+source = "**/*_spec.rb"
+jobs = ["rspec"]
+`
+	resolver, err := Loader(strings.NewReader(input))
+	require.NoError(t, err)
+
+	parent, flag := makeParentAndFlag("", "watch")
+	val, err := resolver.Resolve(nil, parent, flag)
+	require.NoError(t, err)
+
+	// BurntSushi/toml returns []map[string]any for array-of-tables, but Kong
+	// needs []any for JSON unmarshaling. normalizeTree handles this conversion.
+	arr, ok := val.([]any)
+	require.True(t, ok, "expected []any, got %T", val)
+	assert.Len(t, arr, 2)
+
+	first, ok := arr[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "**/*.go", first["source"])
+}
+
 func TestValidateReturnsNil(t *testing.T) {
 	input := `workers = 4`
 	resolver, err := Loader(strings.NewReader(input))

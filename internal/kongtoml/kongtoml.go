@@ -24,7 +24,35 @@ func Loader(r io.Reader) (kong.Resolver, error) {
 	if named, ok := r.(interface{ Name() string }); ok {
 		filename = named.Name()
 	}
-	return &Resolver{filename: filename, tree: tree, meta: md}, nil
+	return &Resolver{filename: filename, tree: normalizeTree(tree), meta: md}, nil
+}
+
+// normalizeTree converts []map[string]any values (produced by BurntSushi/toml
+// for array-of-tables) to []any so Kong's JSON-based unmarshaling works correctly.
+func normalizeTree(m map[string]any) map[string]any {
+	for k, v := range m {
+		m[k] = normalizeValue(v)
+	}
+	return m
+}
+
+func normalizeValue(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		return normalizeTree(val)
+	case []map[string]any:
+		result := make([]any, len(val))
+		for i, item := range val {
+			result[i] = normalizeTree(item)
+		}
+		return result
+	case []any:
+		for i, item := range val {
+			val[i] = normalizeValue(item)
+		}
+		return val
+	}
+	return v
 }
 
 var _ kong.Resolver = (*Resolver)(nil)
