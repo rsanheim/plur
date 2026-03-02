@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bmatcuk/doublestar/v4"
 	"github.com/BurntSushi/toml"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/fsutil"
 	"github.com/rsanheim/plur/job"

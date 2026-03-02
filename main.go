@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/framework"
+	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
