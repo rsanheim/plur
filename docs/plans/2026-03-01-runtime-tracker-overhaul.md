@@ -12,7 +12,7 @@
 
 ## Key Design Decisions
 
-**File naming:** `{sanitized-path}.json` where the path is the absolute project root with `/` replaced by `_` and leading `_` stripped. Example: `/Users/rob/src/myapp` → `Users_rob_src_myapp.json`. This is human-readable and unique per absolute path. We keep the `project_hash` (8-char SHA-256) inside the JSON as metadata, but it's no longer the filename.
+**File naming:** `{dir-basename}-{8-char-hash}.json` where the basename is the last directory component of the absolute project path and the hash is the first 8 chars of SHA-256 of the full absolute path. Example: `/Users/rob/src/myapp` → `myapp-a1b2c3d4.json`. This is human-readable and unique per absolute path. We keep the `project_hash` inside the JSON as metadata as well.
 
 **Schema version:** Integer field `schema_version`. Current version is `2` (we skip `1` since the old flat format was effectively v1). On load, if `schema_version` is missing or not `2`, we treat the file as empty (overwrite on next save).
 

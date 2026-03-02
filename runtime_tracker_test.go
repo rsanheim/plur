@@ -137,16 +137,19 @@ func TestRuntimeTracker(t *testing.T) {
 	})
 }
 
-func TestSanitizeProjectPath(t *testing.T) {
+func TestRuntimeFileName(t *testing.T) {
 	tests := []struct {
-		input    string
-		expected string
+		absPath     string
+		projectHash string
+		expected    string
 	}{
-		{"/Users/rob/src/myapp", "Users_rob_src_myapp"},
-		{"/home/user/project", "home_user_project"},
-		{"/tmp/a", "tmp_a"},
+		{"/Users/rob/src/myapp", "a1b2c3d4", "myapp-a1b2c3d4"},
+		{"/home/user/project", "deadbeef", "project-deadbeef"},
+		{"/tmp/a", "12345678", "a-12345678"},
 	}
 	for _, tc := range tests {
-		assert.Equal(t, tc.expected, sanitizeProjectPath(tc.input))
+		t.Run(tc.absPath, func(t *testing.T) {
+			assert.Equal(t, tc.expected, runtimeFileName(tc.absPath, tc.projectHash))
+		})
 	}
 }

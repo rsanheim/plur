@@ -43,7 +43,7 @@ snapshot:
 
     Cache Directory:  [CACHE_DIR]
     Runtime Data:     [RUNTIME_PATH]
-                      (file exists)
+                      (file [EXISTS_OR_NOT])
 
     Environment Variables:
       PARALLEL_TEST_PROCESSORS: [PARALLEL_TEST_PROCESSORS]

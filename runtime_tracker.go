@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/rsanheim/plur/types"
@@ -121,19 +120,28 @@ func (rt *RuntimeTracker) SaveToFile() error {
 		Files:         merged,
 	}
 
-	file, err := os.Create(rt.runtimeFile)
+	tmpFile, err := os.CreateTemp(filepath.Dir(rt.runtimeFile), ".plur-runtime-*.json")
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	tmpPath := tmpFile.Name()
 
-	encoder := json.NewEncoder(file)
+	encoder := json.NewEncoder(tmpFile)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(data)
+	if err := encoder.Encode(data); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return os.Rename(tmpPath, rt.runtimeFile)
 }
 
-// computeRuntimeFilePath computes the project-specific runtime file path
-// using a human-readable sanitized version of the absolute project path.
+// computeRuntimeFilePath computes the project-specific runtime file path.
+// Filename format: {dir-basename}-{8-char-hash}.json, e.g. "myapp-a1b2c3d4.json"
 func computeRuntimeFilePath(runtimeDir string) (filePath, projectRoot, projectHash string, err error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -147,17 +155,16 @@ func computeRuntimeFilePath(runtimeDir string) (filePath, projectRoot, projectHa
 
 	hash := sha256.Sum256([]byte(absPath))
 	projectHash = hex.EncodeToString(hash[:])[:8]
-	sanitized := sanitizeProjectPath(absPath)
-	filePath = filepath.Join(runtimeDir, sanitized+".json")
+	fileName := runtimeFileName(absPath, projectHash)
+	filePath = filepath.Join(runtimeDir, fileName+".json")
 	return filePath, absPath, projectHash, nil
 }
 
-// sanitizeProjectPath converts an absolute path to a human-readable filename component.
-// "/Users/rob/src/myapp" → "Users_rob_src_myapp"
-func sanitizeProjectPath(absPath string) string {
-	sanitized := strings.ReplaceAll(absPath, string(filepath.Separator), "_")
-	sanitized = strings.TrimLeft(sanitized, "_")
-	return sanitized
+// runtimeFileName builds a human-readable, unique filename from an absolute project path.
+// "/Users/rob/src/myapp" → "myapp-a1b2c3d4" (basename + 8-char hash of full path)
+func runtimeFileName(absPath string, projectHash string) string {
+	base := filepath.Base(absPath)
+	return base + "-" + projectHash
 }
 
 // loadExistingData loads runtime data from file, returning empty map if not found

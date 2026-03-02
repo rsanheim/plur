@@ -1,9 +1,12 @@
 require "spec_helper"
+require "digest"
 
 RSpec.describe "Plur runtime tracking" do
   def expected_runtime_filename
-    sanitized = File.expand_path(".").tr("/", "_").sub(/\A_/, "")
-    "#{sanitized}.json"
+    abs_path = File.expand_path(".")
+    dir_name = File.basename(abs_path)
+    project_hash = Digest::SHA256.hexdigest(abs_path)[0..7]
+    "#{dir_name}-#{project_hash}.json"
   end
 
   context "explicit runtime dir" do
@@ -77,7 +80,6 @@ RSpec.describe "Plur runtime tracking" do
 
     it "distributes files based on their runtime" do
       Dir.chdir(default_ruby_dir) do
-        require "digest"
         project_hash = Digest::SHA256.hexdigest(File.expand_path("."))[0..7]
         now = Time.now.utc.iso8601
 
