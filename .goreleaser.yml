@@ -58,12 +58,8 @@ archives:
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
-      {{- if eq .Os "darwin" }}Darwin
-      {{- else if eq .Os "linux" }}Linux
-      {{- else if eq .Os "windows" }}Windows
-      {{- else }}{{ .Os }}{{ end }}_
+      {{- .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "arm64" }}arm64
       {{- else }}{{ .Arch }}{{ end }}
     
     # Use tar.gz for Unix, zip for Windows
