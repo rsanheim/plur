@@ -1,12 +1,12 @@
 // Package kongtoml provides a Kong configuration resolver for TOML files.
 //
 // It parses TOML configuration files and resolves their values as Kong CLI flags.
-// This package is designed to be self-contained with no application-specific
-// dependencies, making it suitable for extraction as a standalone module.
 package kongtoml
 
 import (
 	"io"
+	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -24,6 +24,11 @@ func Loader(r io.Reader) (kong.Resolver, error) {
 	if named, ok := r.(interface{ Name() string }); ok {
 		filename = named.Name()
 	}
+	slog.Debug("loaded config",
+		"file", configName(filename),
+		"key_count", len(md.Keys()),
+		"top_level_keys", topLevelKeys(md),
+	)
 	return &Resolver{filename: filename, tree: normalizeTree(tree), meta: md}, nil
 }
 
@@ -73,7 +78,85 @@ func (r *Resolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Fla
 }
 
 func (r *Resolver) Validate(app *kong.Application) error {
+	unknown := unknownLeafKeys(r.meta, app)
+	if len(unknown) > 0 {
+		slog.Debug("unknown config keys",
+			"file", configName(r.filename),
+			"keys", unknown,
+		)
+	}
 	return nil
+}
+
+func configName(filename string) string {
+	if filename != "" {
+		return filename
+	}
+	return "<unknown>"
+}
+
+func topLevelKeys(md toml.MetaData) []string {
+	set := make(map[string]struct{})
+	for _, key := range md.Keys() {
+		if len(key) == 0 {
+			continue
+		}
+		set[key[0]] = struct{}{}
+	}
+	out := make([]string, 0, len(set))
+	for key := range set {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func unknownLeafKeys(md toml.MetaData, app *kong.Application) []string {
+	allowed := allowedConfigKeys(app)
+	set := make(map[string]struct{})
+	for _, key := range md.Keys() {
+		keyStr := key.String()
+		if keyStr == "" {
+			continue
+		}
+		if strings.HasPrefix(keyStr, "job.") || strings.HasPrefix(keyStr, "watch.") {
+			continue
+		}
+		if _, ok := allowed[keyStr]; ok {
+			continue
+		}
+		set[keyStr] = struct{}{}
+	}
+	out := make([]string, 0, len(set))
+	for key := range set {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func allowedConfigKeys(app *kong.Application) map[string]struct{} {
+	allowed := make(map[string]struct{})
+	if app == nil || app.Node == nil {
+		return allowed
+	}
+
+	var walk func(node *kong.Node)
+	walk = func(node *kong.Node) {
+		path := strings.ReplaceAll(node.Path(), " ", "-")
+		for _, flag := range node.Flags {
+			allowed[flag.Name] = struct{}{}
+			if path != "" {
+				allowed[path+"-"+flag.Name] = struct{}{}
+			}
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+
+	walk(app.Node)
+	return allowed
 }
 
 func (r *Resolver) findValue(parent *kong.Path, flag *kong.Flag) (any, bool) {

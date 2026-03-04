@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -322,6 +323,31 @@ func splitArgsAtDoubleDash(args []string) ([]string, []string) {
 	return args, nil
 }
 
+func bootstrapLogLevel(args []string) slog.Level {
+	level := slog.LevelWarn
+
+	if raw := strings.TrimSpace(os.Getenv("PLUR_DEBUG")); raw != "" {
+		if enabled, err := strconv.ParseBool(raw); err == nil {
+			if enabled {
+				return slog.LevelDebug
+			}
+		} else {
+			return slog.LevelDebug
+		}
+	}
+
+	for _, arg := range args {
+		switch arg {
+		case "-d", "--debug":
+			return slog.LevelDebug
+		case "-v", "--verbose":
+			level = slog.LevelInfo
+		}
+	}
+
+	return level
+}
+
 // handleEarlyChangeDir pre-parses command line arguments for the -C flag
 // and changes the working directory before Kong configuration loading.
 // This ensures config files are loaded from the target directory, not the current directory.
@@ -364,6 +390,7 @@ func main() {
 	// Handle "help" command by converting it to "-h" flag
 	args := handleHelpCommand(os.Args[1:])
 	args, cli.passthroughArgs = splitArgsAtDoubleDash(args)
+	logger.Init(bootstrapLogLevel(args))
 
 	if err := handleChangeDir(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
