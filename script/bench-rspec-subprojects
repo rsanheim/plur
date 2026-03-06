@@ -13,7 +13,7 @@ RUNS="${RUNS:-5}"
 WARMUP="${WARMUP:-1}"
 
 show_help() {
-    cat <<HELP
+    cat <<'HELP'
 bench-rspec-subprojects - Benchmark plur vs rspec on rspec sub-projects
 
 Usage:
