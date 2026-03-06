@@ -2,20 +2,18 @@
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/rsanheim/plur/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/rsanheim/plur/tree/main)
 
-`plur` is a fast, parallel, drop-in test runner and watcher primarily targeting Ruby and Rails using RSpec or Minitest. Its written in Go, so just install the binary once and use it in every project.
-
-I got tired of wiring up turbo-tests/parallel-rspe and Guard across every Ruby/Rails project I worked in, whether for work or for side projects. So Plur was born almost a year ago, and I hacked on it for and eventually got to something 
-pretty solid, fast, and reliable.
+`plur` is a fast, parallel, drop-in test runner and watcher primarily targeting Ruby and Rails using RSpec or Minitest. Its written in Go, so just install once and use across all your projects.
 
 ## Quick Start
 
-🚧 homebrew tap / proper binary releases 🔜 🚧
-
-## What's Included
-
-* Go-based CLI for parallel RSpec execution
-* Database commands (db:create, db:migrate, db:setup, db:test:prepare)
-* Zero gem dependencies for any ruby project - install once, use everywhere
+```
+brew install rsanheim/tap/plur
+cd my-rails-project
+plur -n 4 --dry-run # preview what would run (no actual test execution)
+plur -n 4           # run tests across four cores
+plur                # run tests with auto-detected workers (cores - 2)
+plur watch          # watch for changes and run tests automatically
+```
 
 ## Supported Platforms
 
