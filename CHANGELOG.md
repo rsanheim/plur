@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.41.1 - 2026-03-06
+* even more housekeeping
+
 ## v0.41.0 - 2026-03-04
 * release housekeeping
 
