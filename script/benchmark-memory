@@ -2,19 +2,6 @@
 set -euo pipefail
 
 # script/benchmark-memory - Memory-focused Go benchmarks
-#
-# Usage:
-#   script/benchmark-memory               # Run all benchmarks
-#   script/benchmark-memory Collector     # Run only Collector benchmarks
-#   script/benchmark-memory -v            # Verbose output
-#   script/benchmark-memory --count 5     # Run 5 iterations (for benchstat)
-#   script/benchmark-memory --save NAME   # Save results with custom name
-#   script/benchmark-memory --compare     # Compare two most recent results
-#
-# Examples:
-#   script/benchmark-memory --count 5 --save baseline
-#   script/benchmark-memory --count 5 --save after-optimization
-#   script/benchmark-memory --compare
 
 RESULTS_DIR="results/benchmarks"
 FILTER=""
@@ -22,6 +9,33 @@ VERBOSE=false
 COUNT=1
 SAVE_NAME=""
 COMPARE_MODE=false
+
+show_help() {
+    cat <<'HELP'
+benchmark-memory - Run Go memory benchmarks for plur
+
+Usage:
+  script/benchmark-memory [FILTER] [OPTIONS]
+
+Options:
+  --count N      Run N iterations (default: 1, use 5-10 for benchstat)
+  --save NAME    Save results with custom name
+  --compare      Compare two most recent results
+  -v             Verbose output
+  -h, --help     Show this help
+
+Examples:
+  script/benchmark-memory                    # Run all benchmarks
+  script/benchmark-memory Collector          # Filter to Collector benchmarks
+  script/benchmark-memory --count 5          # 5 iterations for benchstat
+  script/benchmark-memory --save baseline    # Save as baseline
+  script/benchmark-memory --compare          # Compare two most recent results
+
+Requirements:
+  * Go toolchain
+  * Optional: benchstat (auto-installed if missing)
+HELP
+}
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -43,19 +57,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -h|--help)
-            echo "Usage: script/benchmark-memory [FILTER] [OPTIONS]"
-            echo ""
-            echo "Options:"
-            echo "  --count N      Run N iterations (default: 1, use 5-10 for benchstat)"
-            echo "  --save NAME    Save results with custom name"
-            echo "  --compare      Compare two most recent results"
-            echo "  -v             Verbose output"
-            echo "  -h, --help     Show this help"
-            echo ""
-            echo "Examples:"
-            echo "  script/benchmark-memory Collector          # Filter to Collector benchmarks"
-            echo "  script/benchmark-memory --count 5          # 5 iterations for benchstat"
-            echo "  script/benchmark-memory --save baseline    # Save as baseline"
+            show_help
             exit 0
             ;;
         -*)
