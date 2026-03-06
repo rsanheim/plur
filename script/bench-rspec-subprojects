@@ -7,7 +7,60 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 RESULTS_FILE="$REPO_DIR/tmp/rspec-benchmark-results.md"
-RSPEC_DIR="$HOME/src/oss/rspec"
+RSPEC_DIR="${RSPEC_DIR:-$HOME/src/oss/rspec}"
+WORKERS="${WORKERS:-8}"
+RUNS="${RUNS:-5}"
+WARMUP="${WARMUP:-1}"
+
+show_help() {
+    cat <<'HELP'
+bench-rspec-subprojects - Benchmark plur vs rspec on rspec sub-projects
+
+Usage:
+  script/bench-rspec-subprojects [OPTIONS]
+
+Options:
+  -h, --help     Show this help
+
+Examples:
+  script/bench-rspec-subprojects
+  RSPEC_DIR=~/my/rspec script/bench-rspec-subprojects
+  WORKERS=4 RUNS=10 script/bench-rspec-subprojects
+
+Environment:
+  RSPEC_DIR    Path to rspec monorepo (default: ~/src/oss/rspec)
+  WORKERS      Number of plur workers (default: 8)
+  RUNS         Number of hyperfine runs (default: 5)
+  WARMUP       Number of warmup runs (default: 1)
+
+Requirements:
+  * hyperfine (brew install hyperfine)
+  * plur binary in PATH (bin/rake install)
+  * rspec monorepo with rspec-core, rspec-expectations, rspec-mocks, rspec-support
+
+Results are saved to: tmp/rspec-benchmark-results.md
+HELP
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [ ! -d "$RSPEC_DIR" ]; then
+    echo "Error: rspec directory not found at $RSPEC_DIR"
+    echo "Set RSPEC_DIR to the path of your rspec monorepo clone"
+    exit 1
+fi
 
 echo "Benchmarking plur vs rspec on rspec sub-projects..."
 echo ""
@@ -22,7 +75,7 @@ Date: $(date)
 
 * plur version: $(plur version 2>&1 | grep version | head -1)
 * Ruby: $(ruby -v)
-* Benchmark: hyperfine --warmup 1 --runs 5
+* Benchmark: hyperfine --warmup $WARMUP --runs $RUNS
 
 ## Results
 
@@ -45,14 +98,14 @@ for proj in rspec-core rspec-expectations rspec-mocks rspec-support; do
 
   # Run hyperfine - use shell explicitly to avoid issues
   hyperfine \
-    --warmup 1 \
-    --runs 5 \
+    --warmup "$WARMUP" \
+    --runs "$RUNS" \
     --ignore-failure \
     --style basic \
     --time-unit second \
     --shell bash \
     --export-markdown /tmp/bench-$proj.md \
-    -n "plur -n 8" "cd $RSPEC_DIR/$proj && plur -n 8" \
+    -n "plur -n $WORKERS" "cd $RSPEC_DIR/$proj && plur -n $WORKERS" \
     -n "rspec" "cd $RSPEC_DIR/$proj && bundle exec rspec --format progress --no-color"
 
   # Append results (full table with headers for each project)
@@ -65,8 +118,8 @@ done
 cat >> "$RESULTS_FILE" << EOF
 ## Notes
 
-* Times are mean ± σ from 5 runs after 1 warmup
-* plur uses 8 parallel workers
+* Times are mean +/- from $RUNS runs after $WARMUP warmup
+* plur uses $WORKERS parallel workers
 * rspec runs single-threaded
 EOF
 

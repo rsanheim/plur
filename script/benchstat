@@ -2,25 +2,43 @@
 set -euo pipefail
 
 # script/benchstat - Run Go benchmarks with benchstat comparison
-#
-# Usage:
-#   script/benchstat                        # Run all, save timestamped results
-#   script/benchstat --compare old.txt      # Compare against baseline
-#   script/benchstat --filter Grouper       # Only Grouper benchmarks
-#   script/benchstat --count 10             # 10 iterations for statistical significance
-#   script/benchstat --list                 # List available benchmarks
-#
-# Examples:
-#   script/benchstat --count 5 --filter RSpec
-#   script/benchstat --compare results/benchmarks/baseline.txt
-#
-# Results are saved to: results/benchmarks/<timestamp>-bench.txt
 
 RESULTS_DIR="results/benchmarks"
 COUNT="${BENCHSTAT_COUNT:-5}"
 FILTER=""
 COMPARE_FILE=""
 LIST_ONLY=false
+
+show_help() {
+    cat <<'HELP'
+benchstat - Run Go benchmarks with benchstat comparison
+
+Usage:
+  script/benchstat [OPTIONS]
+
+Options:
+  --count N        Run N iterations (default: 5)
+  --filter REGEX   Only run benchmarks matching REGEX
+  --compare FILE   Compare new results against FILE
+  --list           List available benchmarks
+  -h, --help       Show this help
+
+Examples:
+  script/benchstat                                    # Run all, save timestamped results
+  script/benchstat --list                             # List available benchmarks
+  script/benchstat --count 5 --filter RSpec           # 5 iterations, RSpec only
+  script/benchstat --compare results/benchmarks/baseline.txt  # Compare against baseline
+
+Environment:
+  BENCHSTAT_COUNT  Default iteration count (default: 5)
+
+Requirements:
+  * Go toolchain
+  * benchstat (auto-installed if missing)
+
+Results are saved to: results/benchmarks/<timestamp>-bench.txt
+HELP
+}
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -42,19 +60,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -h|--help)
-            echo "Usage: script/benchstat [OPTIONS]"
-            echo ""
-            echo "Options:"
-            echo "  --count N        Run N iterations (default: 5)"
-            echo "  --filter REGEX   Only run benchmarks matching REGEX"
-            echo "  --compare FILE   Compare new results against FILE"
-            echo "  --list           List available benchmarks"
-            echo "  -h, --help       Show this help"
-            echo ""
-            echo "Environment:"
-            echo "  BENCHSTAT_COUNT  Default iteration count (default: 5)"
-            echo ""
-            echo "Results are saved to: results/benchmarks/<timestamp>-bench.txt"
+            show_help
             exit 0
             ;;
         *)
