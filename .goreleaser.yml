@@ -99,16 +99,17 @@ release:
 # Auto-generation disabled via --release-notes CLI flag (passing our custom notes file)
 # Note: Do NOT use changelog: disable: true as it ignores the --release-notes flag entirely
 
-# Homebrew tap configuration (commented out for now)
-# brews:
-#   - repository:
-#       owner: rsanheim
-#       name: homebrew-tap
-#     folder: Formula
-#     homepage: https://github.com/rsanheim/plur
-#     description: Fast parallel test runner for Ruby/RSpec
-#     license: MIT
-#     test: |
-#       system "#{bin}/plur", "--version"
-#     install: |
-#       bin.install "plur"
+# Homebrew tap — auto-updates Formula/plur.rb in rsanheim/homebrew-tap on each release
+brews:
+  - repository:
+      owner: rsanheim
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/rsanheim/plur
+    description: Fast parallel test runner for Ruby/RSpec
+    license: MIT
+    install: |
+      bin.install "plur"
+    test: |
+      assert_match version.to_s, shell_output("#{bin}/plur --version")
