@@ -41,6 +41,9 @@ jobs:
           key: "plur-v2"
           include-branch-in-cache-key: false
       - run:
+          name: Install shellcheck
+          command: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+      - run:
           name: Build plur
           command: bin/rake build lint
       - run:
