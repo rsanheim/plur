@@ -81,14 +81,14 @@ opts = Optimist.options do
     Results:   results/<timestamp>-<project_name>-bench-git.md
 
     Usage:
-      script/bench-git-ref [OPTIONS]
+      script/bench-git [OPTIONS]
 
     Examples:
-      script/bench-git-ref                              # Compare last 3 tags on rubocop
-      script/bench-git-ref --refs v0.15.0 v0.14.0 main  # Compare specific refs
-      script/bench-git-ref -p ~/src/oss/rspec-core      # Different target project
-      script/bench-git-ref --runs 5 --warmup 2          # More runs for accuracy
-      script/bench-git-ref --cleanup                    # Remove worktrees after
+      script/bench-git                              # Compare last 3 tags on rubocop
+      script/bench-git --refs v0.15.0 v0.14.0 main  # Compare specific refs
+      script/bench-git -p ~/src/oss/rspec-core      # Different target project
+      script/bench-git --runs 5 --warmup 2          # More runs for accuracy
+      script/bench-git --cleanup                    # Remove worktrees after
 
     Options:
   BANNER

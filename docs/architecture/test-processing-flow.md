@@ -140,10 +140,3 @@ Displays final summary:
 * `BuildTestSummary()` aggregates all WorkerResults
 * Framework-aware formatting via `parser.FormatSummary()` (uses suite counts when present)
 * Shows failures, then summary line
-
-## Architecture Highlights
-
-* **Framework-agnostic flow**: Same Runner/streaming for RSpec and Minitest
-* **Channel-based output**: No lock contention, single aggregator serializes output
-* **Event-based parsing**: Parsers emit typed notifications, not raw strings
-* **Unified WorkerResult**: Each worker returns one result covering multiple test files
