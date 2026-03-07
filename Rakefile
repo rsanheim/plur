@@ -105,8 +105,8 @@ namespace :test do
 end
 
 namespace :lint do
-  desc "Run all linting (Go and Ruby)"
-  task all: %i[go ruby toolchain:check]
+  desc "Run all linting (Go, Ruby, and Shell)"
+  task all: %i[go ruby shell toolchain:check]
 
   desc "Lint Go code"
   task :go do
@@ -124,6 +124,13 @@ namespace :lint do
   desc "Fix Ruby linting issues automatically"
   task :ruby_fix do
     Rake::Task["standard:fix"].invoke
+  end
+
+  desc "Lint shell scripts with shellcheck"
+  task :shell do
+    puts "[lint:shell] Running shellcheck"
+    scripts = Dir["install.sh", "script/*"].select { |f| File.file?(f) && File.read(f, 64).start_with?("#!/") && File.read(f, 64).include?("sh") }
+    sh "shellcheck", "--severity=warning", *scripts
   end
 end
 
