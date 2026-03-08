@@ -17,36 +17,35 @@ builds:
   - id: plur
     main: .
     binary: plur
-    
+
     # Build for multiple platforms
     goos:
       - darwin
       - linux
       - windows
-    
+
     goarch:
       - amd64
       - arm64
-    
+
     # Skip unsupported combinations
     ignore:
       - goos: darwin
-        goarch: amd64  # No Intel Mac support
+        goarch: amd64 # No Intel Mac support
       - goos: windows
-        goarch: arm64  # Not supporting Windows ARM64
-    
+        goarch: arm64 # Not supporting Windows ARM64
+
     # Set module mode
     flags:
       - -mod=vendor
-    
+
     # Embed version information via ldflags
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
-      - -X main.builtBy=goreleaser
-    
+
     # Environment variables for build
     # Use inherited CGO_ENABLED if set (for race detection), otherwise default to 0 for static builds
     env:
@@ -61,7 +60,7 @@ archives:
       {{- .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}
-    
+
     # Use tar.gz for Unix, zip for Windows
     formats:
       - tar.gz
@@ -69,7 +68,7 @@ archives:
       - goos: windows
         formats: ["zip"]
     wrap_in_directory: true
-    
+
     # Include these files in the archive
     files:
       - README.md
@@ -87,7 +86,7 @@ snapshot:
 
 # Release configuration
 release:
-  mode: replace  # Overwrite any existing release body (GitHub may create empty releases on tag push)
+  mode: replace # Overwrite any existing release body (GitHub may create empty releases on tag push)
   github:
     owner: rsanheim
     name: plur
