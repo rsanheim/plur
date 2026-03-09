@@ -53,7 +53,7 @@ detect_arch() {
   ARCH=$(uname -m)
   case $ARCH in
     x86_64)
-      echo "x86_64"
+      echo "amd64"
       ;;
     aarch64|arm64)
       echo "arm64"
@@ -69,10 +69,10 @@ detect_os() {
   OS=$(uname -s | tr '[:upper:]' '[:lower:]')
   case $OS in
     linux)
-      echo "Linux"
+      echo "linux"
       ;;
     darwin)
-      echo "Darwin"
+      echo "darwin"
       ;;
     *)
       error "Unsupported OS: $OS"
