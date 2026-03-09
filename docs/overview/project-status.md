@@ -34,17 +34,3 @@ plur watch                    # Watch for file changes and re-run tests
 plur doctor                   # Diagnose installation issues
 plur config init              # Generate a starter .plur.toml
 ```
-
-## Testing Infrastructure
-
-* **Ruby integration specs** (`spec/`): end-to-end tests exercising the built binary against fixture projects
-* **Go unit tests** (`**/*_test.go`): unit and integration tests for Go packages
-* **Fixture projects**: `default-ruby` and `default-rails` provide controlled test environments
-* **Benchmarking**: `script/bench-git` runs hyperfine comparisons across git refs for any Ruby project
-
-## Dependencies
-
-* **Go 1.25+** for building plur
-* **Ruby/Bundler** for test fixture projects and the integration test suite
-* **mise** for tool version management (see `.mise.toml`)
-* **hyperfine** for benchmarking (optional, `brew install hyperfine`)
