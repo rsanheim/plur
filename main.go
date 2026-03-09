@@ -11,6 +11,7 @@ import (
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/buildinfo"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
@@ -27,7 +28,7 @@ type SpecCmd struct {
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
 	cfg := parent.globalConfig
-	fmt.Fprintf(os.Stderr, "plur version version=%s\n", GetVersionInfo())
+	fmt.Fprintf(os.Stderr, "plur version version=%s\n", buildinfo.GetVersionInfo())
 	logger.Logger.Debug("running plur", "command", "spec", "args", os.Args[1:])
 
 	// Determine explicit job name (CLI or config)
@@ -265,7 +266,7 @@ func (cli *PlurCLI) AfterApply() error {
 	logger.Init(level)
 
 	if cli.Version {
-		fmt.Println(GetVersionInfo())
+		fmt.Println(buildinfo.GetVersionInfo())
 		os.Exit(0)
 	}
 
