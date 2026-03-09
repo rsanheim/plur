@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	kongtoml "github.com/alecthomas/kong-toml"
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/framework"
+	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -364,6 +364,7 @@ func main() {
 	// Handle "help" command by converting it to "-h" flag
 	args := handleHelpCommand(os.Args[1:])
 	args, cli.passthroughArgs = splitArgsAtDoubleDash(args)
+	logger.InitFromArgs(args)
 
 	if err := handleChangeDir(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

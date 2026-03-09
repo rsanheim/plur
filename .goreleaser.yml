@@ -54,12 +54,7 @@ builds:
 # Archive configuration
 archives:
   - id: plur-archive
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- .Version }}_
-      {{- .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else }}{{ .Arch }}{{ end }}
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
     # Use tar.gz for Unix, zip for Windows
     formats:

@@ -38,7 +38,7 @@ plur config init              # Generate a starter .plur.toml
 ## Technical Architecture
 
 * *Language*: Go 1.25+
-* *CLI Framework*: Kong with kong-toml for config file loading
+* *CLI Framework*: Kong with an internal TOML resolver backed by BurntSushi/toml
 * *Concurrency*: Worker pool pattern with channel-based output aggregation
 * *File Discovery*: doublestar glob matching (`**/*_spec.rb`, `**/*_test.rb`, etc.)
 * *Output*: Custom `Plur::JsonRowsFormatter` (Ruby, embedded in the binary via `go:embed`) streams JSON Lines to stdout with a `PLUR_JSON:` prefix, parsed in real-time by Go

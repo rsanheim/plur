@@ -6,6 +6,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -34,6 +36,30 @@ func init() {
 // Init sets the log level (called from main to override default)
 func Init(level slog.Level) {
 	logLevel.Set(level)
+}
+
+// InitFromArgs determines the log level from CLI args and env vars
+// before Kong has parsed anything. CLI flags take precedence over env vars,
+// and PLUR_DEBUG can escalate verbose to debug.
+func InitFromArgs(args []string) {
+	level := slog.LevelWarn
+
+	switch {
+	case slices.Contains(args, "-d"), slices.Contains(args, "--debug"):
+		Init(slog.LevelDebug)
+		return
+	case slices.Contains(args, "-v"), slices.Contains(args, "--verbose"):
+		level = slog.LevelInfo
+	}
+
+	if raw := strings.TrimSpace(os.Getenv("PLUR_DEBUG")); raw != "" {
+		if enabled, err := strconv.ParseBool(raw); err == nil && enabled {
+			Init(slog.LevelDebug)
+			return
+		}
+	}
+
+	Init(level)
 }
 
 // CustomTextHandler formats logs in our preferred format: HH:MM:SS - LEVEL - message key=value
