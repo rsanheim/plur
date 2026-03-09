@@ -15,6 +15,7 @@ import (
 
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -110,12 +111,12 @@ func printWatchInfo(watchDirs []string) {
 	for i, dir := range watchDirs {
 		absoluteWatchDirs[i], _ = filepath.Abs(dir)
 	}
-	fmt.Printf("plur %s ready and watching %v\n", GetVersionInfo(), strings.Join(absoluteWatchDirs, ", "))
+	fmt.Printf("plur %s ready and watching %v\n", buildinfo.GetVersionInfo(), strings.Join(absoluteWatchDirs, ", "))
 	fmt.Println()
 }
 
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
-	logger.Logger.Info("plur watch starting!", "version", GetVersionInfo())
+	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
 	result, watches, err := loadWatchConfiguration(cli, cli.Use)
 	if err != nil {

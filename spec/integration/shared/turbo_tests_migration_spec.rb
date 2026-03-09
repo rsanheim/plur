@@ -7,7 +7,7 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
       .map(&:chomp)
       .map do |line|
         line
-          .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
+          .gsub(/^plur version=.*$/, "plur version=[VERSION]")
           .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
           .gsub(/\bTEST_ENV_NUMBER=\d+/, "TEST_ENV_NUMBER=[N]")
       end

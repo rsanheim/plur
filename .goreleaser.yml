@@ -42,9 +42,10 @@ builds:
     # Embed version information via ldflags
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.Commit}}
-      - -X main.date={{.Date}}
+      - -X github.com/rsanheim/plur/internal/buildinfo.Version={{.Version}}
+      - -X github.com/rsanheim/plur/internal/buildinfo.Commit={{.Commit}}
+      - -X github.com/rsanheim/plur/internal/buildinfo.Date={{.Date}}
+      - -X github.com/rsanheim/plur/internal/buildinfo.BuiltBy=goreleaser
 
     # Environment variables for build
     # Use inherited CGO_ENABLED if set (for race detection), otherwise default to 0 for static builds

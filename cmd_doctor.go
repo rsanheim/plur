@@ -13,6 +13,7 @@ import (
 	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -22,11 +23,11 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
 	fmt.Println()
 
 	// Plur version info
-	fmt.Printf("Plur Version:    %s\n", GetVersionInfo())
-	fmt.Printf("Build Date:      %s\n", date)
-	fmt.Printf("Git Commit:      %s\n", commit)
-	fmt.Printf("Built By:        %s\n", builtBy)
-	fmt.Printf("Race Detector:   %v\n", RaceEnabled)
+	fmt.Printf("Plur Version:    %s\n", buildinfo.GetVersionInfo())
+	fmt.Printf("Build Date:      %s\n", buildinfo.Date)
+	fmt.Printf("Git Commit:      %s\n", buildinfo.Commit)
+	fmt.Printf("Built By:        %s\n", buildinfo.BuiltBy)
+	fmt.Printf("Race Detector:   %v\n", buildinfo.RaceEnabled)
 	fmt.Println()
 
 	// System info

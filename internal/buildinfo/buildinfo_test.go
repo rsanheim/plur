@@ -1,15 +1,16 @@
-package main
+package buildinfo_test
 
 import (
 	"regexp"
 	"testing"
 
+	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetVersionInfo_ReturnsValidFormat(t *testing.T) {
-	version := GetVersionInfo()
+	version := buildinfo.GetVersionInfo()
 
 	// Version should never be empty
 	require.NotEmpty(t, version)
@@ -37,29 +38,27 @@ func TestGetVersionInfo_ReturnsValidFormat(t *testing.T) {
 }
 
 func TestGetVersionInfo_IsConsistent(t *testing.T) {
-	// Multiple calls should return the same value
-	v1 := GetVersionInfo()
-	v2 := GetVersionInfo()
-	v3 := GetVersionInfo()
+	v1 := buildinfo.GetVersionInfo()
+	v2 := buildinfo.GetVersionInfo()
+	v3 := buildinfo.GetVersionInfo()
 
 	assert.Equal(t, v1, v2)
 	assert.Equal(t, v2, v3)
 }
 
 func TestGetVersionInfo_NeverEmpty(t *testing.T) {
-	version := GetVersionInfo()
+	version := buildinfo.GetVersionInfo()
 	require.NotEmpty(t, version)
 }
 
 func TestGetVersionInfo_CommitHashFormat(t *testing.T) {
-	version := GetVersionInfo()
+	version := buildinfo.GetVersionInfo()
 
 	// If version includes a commit hash (dev-{hash} format), verify it's valid
 	devCommitPattern := regexp.MustCompile(`^dev-([0-9a-f]{7})(-dirty)?$`)
 	if matches := devCommitPattern.FindStringSubmatch(version); matches != nil {
 		commit := matches[1]
 		assert.Len(t, commit, 7, "commit hash should be exactly 7 characters")
-		// Verify all characters are valid hex
 		assert.Regexp(t, `^[0-9a-f]+$`, commit, "commit should contain only hex characters")
 	}
 }

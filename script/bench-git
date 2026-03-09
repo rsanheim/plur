@@ -43,7 +43,7 @@ def build_plur(worktree, ref)
   end
 
   Dir.chdir(worktree) do
-    ldflags = %(-ldflags "-X main.version=#{ref}")
+    ldflags = %(-ldflags "-X github.com/rsanheim/plur/internal/buildinfo.Version=#{ref}")
     system("go build #{ldflags} .", exception: true)
   end
 

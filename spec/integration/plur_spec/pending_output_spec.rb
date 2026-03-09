@@ -16,7 +16,7 @@ RSpec.describe "pending specs output" do
     str
       .gsub(/Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
         "Finished in [TIME] seconds (files took [TIME] seconds to load)")
-      .gsub(/plur version version=[\w.-]+\n/, "")
+      .gsub(/plur version=[\w.-]+\n/, "")
       .gsub(/Running \d+ specs? \[rspec\] in parallel using \d+ workers?\n/, "")
   end
 
