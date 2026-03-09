@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/alecthomas/kong"
+	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -220,13 +222,41 @@ cmd = ["bin/rspec"]
 	var cli struct {
 		Workers int
 		Use     string
-		Job     map[string]any
-		Watch   []map[string]any
+		Job     map[string]job.Job
+		Watch   []watch.WatchMapping `name:"watch" toml:"watch"`
 	}
 	parser, err := kong.New(&cli)
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"wokers"}, unknownLeafKeys(r.meta, parser.Model))
+}
+
+func TestUnknownLeafKeysIncludesNestedJobAndWatchTypos(t *testing.T) {
+	input := `
+use = "rspec"
+
+[job.rspec]
+cmd = ["bin/rspec"]
+cmdd = ["echo", "typo"]
+
+[[watch]]
+source = "spec/**/*_spec.rb"
+soruce = "spec/**/*_spec.rb"
+jobs = ["rspec"]
+`
+	resolver, err := Loader(strings.NewReader(input))
+	require.NoError(t, err)
+	r := resolver.(*Resolver)
+
+	var cli struct {
+		Use   string
+		Job   map[string]job.Job
+		Watch []watch.WatchMapping `name:"watch" toml:"watch"`
+	}
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"job.rspec.cmdd", "watch.soruce"}, unknownLeafKeys(r.meta, parser.Model))
 }
 
 func TestValidateReturnsNil(t *testing.T) {
@@ -265,14 +295,10 @@ func TestKeyResolutionEdgeCases(t *testing.T) {
 			wantValue: true,
 		},
 		{
-			// findValueParts finds tree["dry"] (a scalar), then tries to descend
-			// into it for "run" — but it's not a map, so resolution fails entirely.
-			// The flat key "dry-run" is never tried because the else-if branch
-			// only runs when tree[prefix] does NOT exist.
-			name:      "scalar key shadows same-prefix hyphenated key",
+			name:      "flat key still resolves when scalar prefix exists",
 			toml:      "dry = \"something\"\ndry-run = true",
 			flagName:  "dry-run",
-			wantValue: nil,
+			wantValue: true,
 		},
 		{
 			name:       "command-scoped takes precedence over global",

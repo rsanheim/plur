@@ -6,6 +6,7 @@ package kongtoml
 import (
 	"io"
 	"log/slog"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -119,10 +120,7 @@ func unknownLeafKeys(md toml.MetaData, app *kong.Application) []string {
 		if keyStr == "" {
 			continue
 		}
-		if strings.HasPrefix(keyStr, "job.") || strings.HasPrefix(keyStr, "watch.") {
-			continue
-		}
-		if _, ok := allowed[keyStr]; ok {
+		if allowed.matches(keyStr) {
 			continue
 		}
 		set[keyStr] = struct{}{}
@@ -135,8 +133,55 @@ func unknownLeafKeys(md toml.MetaData, app *kong.Application) []string {
 	return out
 }
 
-func allowedConfigKeys(app *kong.Application) map[string]struct{} {
-	allowed := make(map[string]struct{})
+type configKeySet struct {
+	flat   map[string]struct{}
+	nested map[string]nestedKeySpec
+}
+
+type nestedKeySpec struct {
+	dynamicName bool
+	allowed     map[string]struct{}
+}
+
+func (c configKeySet) matches(key string) bool {
+	if _, ok := c.flat[key]; ok {
+		return true
+	}
+
+	parts := strings.Split(key, ".")
+	if len(parts) == 0 {
+		return false
+	}
+
+	spec, ok := c.nested[parts[0]]
+	if !ok {
+		return false
+	}
+	return spec.matches(parts[1:])
+}
+
+func (s nestedKeySpec) matches(parts []string) bool {
+	if len(parts) == 0 {
+		return true
+	}
+	if s.dynamicName {
+		if len(parts) == 1 {
+			return true
+		}
+		parts = parts[1:]
+	}
+	if len(parts) == 0 {
+		return true
+	}
+	_, ok := s.allowed[strings.Join(parts, ".")]
+	return ok
+}
+
+func allowedConfigKeys(app *kong.Application) configKeySet {
+	allowed := configKeySet{
+		flat:   make(map[string]struct{}),
+		nested: make(map[string]nestedKeySpec),
+	}
 	if app == nil || app.Node == nil {
 		return allowed
 	}
@@ -145,9 +190,12 @@ func allowedConfigKeys(app *kong.Application) map[string]struct{} {
 	walk = func(node *kong.Node) {
 		path := strings.ReplaceAll(node.Path(), " ", "-")
 		for _, flag := range node.Flags {
-			allowed[flag.Name] = struct{}{}
+			allowed.flat[flag.Name] = struct{}{}
 			if path != "" {
-				allowed[path+"-"+flag.Name] = struct{}{}
+				allowed.flat[path+"-"+flag.Name] = struct{}{}
+			}
+			if spec, ok := nestedConfigSpecForFlag(flag); ok {
+				allowed.nested[flag.Name] = spec
 			}
 		}
 		for _, child := range node.Children {
@@ -157,6 +205,70 @@ func allowedConfigKeys(app *kong.Application) map[string]struct{} {
 
 	walk(app.Node)
 	return allowed
+}
+
+func nestedConfigSpecForFlag(flag *kong.Flag) (nestedKeySpec, bool) {
+	if flag == nil || flag.Target.Kind() == reflect.Invalid {
+		return nestedKeySpec{}, false
+	}
+
+	typ := flag.Target.Type()
+	switch typ.Kind() {
+	case reflect.Map:
+		if typ.Key().Kind() != reflect.String {
+			return nestedKeySpec{}, false
+		}
+		allowed := structFieldKeys(typ.Elem())
+		if len(allowed) == 0 {
+			return nestedKeySpec{}, false
+		}
+		return nestedKeySpec{dynamicName: true, allowed: allowed}, true
+	case reflect.Slice:
+		allowed := structFieldKeys(typ.Elem())
+		if len(allowed) == 0 {
+			return nestedKeySpec{}, false
+		}
+		return nestedKeySpec{allowed: allowed}, true
+	default:
+		return nestedKeySpec{}, false
+	}
+}
+
+func structFieldKeys(typ reflect.Type) map[string]struct{} {
+	for typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	if typ.Kind() != reflect.Struct {
+		return nil
+	}
+
+	allowed := make(map[string]struct{})
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		if field.PkgPath != "" && !field.Anonymous {
+			continue
+		}
+		name := tomlFieldName(field)
+		if name == "" {
+			continue
+		}
+		allowed[name] = struct{}{}
+	}
+	return allowed
+}
+
+func tomlFieldName(field reflect.StructField) string {
+	tag := field.Tag.Get("toml")
+	if tag == "-" {
+		return ""
+	}
+	if tag != "" {
+		name := strings.Split(tag, ",")[0]
+		if name != "" {
+			return name
+		}
+	}
+	return field.Name
 }
 
 func (r *Resolver) findValue(parent *kong.Path, flag *kong.Flag) (any, bool) {
@@ -179,9 +291,12 @@ func (r *Resolver) findValueParts(prefix string, suffix []string, tree map[strin
 			return value, true
 		}
 		if branch, ok := value.(map[string]any); ok {
-			return r.findValueParts(suffix[0], suffix[1:], branch)
+			if nested, ok := r.findValueParts(suffix[0], suffix[1:], branch); ok {
+				return nested, true
+			}
 		}
-	} else if len(suffix) > 0 {
+	}
+	if len(suffix) > 0 {
 		return r.findValueParts(prefix+"-"+suffix[0], suffix[1:], tree)
 	}
 	return nil, false
