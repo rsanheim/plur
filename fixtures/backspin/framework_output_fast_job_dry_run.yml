@@ -10,7 +10,7 @@ snapshot:
   - "--dry-run"
   stdout: ''
   stderr: |
-    plur version version=[VERSION]
+    plur version=[VERSION]
     [dry-run] Running 1 spec [rspec] in parallel using 1 workers
     [dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 bundle exec rspec --fail-fast -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --no-color spec/example_spec.rb
   status: 0

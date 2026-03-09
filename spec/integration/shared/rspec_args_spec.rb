@@ -3,7 +3,7 @@ require "spec_helper"
 RSpec.describe "RSpec CLI args" do
   def normalize_dry_run_output(output)
     output
-      .gsub(/^plur version version=.*$/, "plur version version=[VERSION]")
+      .gsub(/^plur version=.*$/, "plur version=[VERSION]")
       .gsub(%r{-r\s+\S+/formatter/json_rows_formatter\.rb}, "-r [FORMATTER_PATH]")
   end
 
