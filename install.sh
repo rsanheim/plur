@@ -5,7 +5,7 @@
 #   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- v1.0.0
 #
 # Environment variables:
-#   PLUR_INSTALL_PATH - Installation directory (default: /usr/local/bin)
+#   PLUR_INSTALL_PATH - Installation directory (default: ~/.local/bin)
 #   PLUR_VERSION - Version to install (default: latest)
 
 set -e
@@ -13,7 +13,7 @@ set -e
 # Configuration
 REPO_OWNER="rsanheim"
 REPO_NAME="plur"
-INSTALL_PATH="${PLUR_INSTALL_PATH:-/usr/local/bin}"
+INSTALL_PATH="${PLUR_INSTALL_PATH:-$HOME/.local/bin}"
 VERSION="${PLUR_VERSION:-}"
 
 # Colors for output (if terminal supports it)
@@ -129,7 +129,7 @@ install_plur() {
 
   # Create temp directory
   TMP_DIR=$(mktemp -d)
-  trap "rm -rf $TMP_DIR" EXIT
+  trap 'rm -rf "$TMP_DIR"' EXIT
 
   # Download the archive
   if command -v curl >/dev/null 2>&1; then
@@ -149,33 +149,18 @@ install_plur() {
     error "plur binary not found in archive"
   fi
 
-  # Check if we need sudo for installation
-  if [ -w "$INSTALL_PATH" ]; then
-    SUDO=""
-  else
-    if command -v sudo >/dev/null 2>&1; then
-      info "Requesting sudo access for installation to $INSTALL_PATH"
-      SUDO="sudo"
-    else
-      error "Cannot write to $INSTALL_PATH and sudo is not available"
-    fi
-  fi
-
   # Create install directory if it doesn't exist
-  if [ ! -d "$INSTALL_PATH" ]; then
-    info "Creating installation directory: $INSTALL_PATH"
-    $SUDO mkdir -p "$INSTALL_PATH"
-  fi
+  mkdir -p "$INSTALL_PATH"
 
   # Install the binary
   info "Installing plur to $INSTALL_PATH"
-  $SUDO mv "$BINARY_PATH" "$INSTALL_PATH/plur"
-  $SUDO chmod +x "$INSTALL_PATH/plur"
+  mv "$BINARY_PATH" "$INSTALL_PATH/plur"
+  chmod +x "$INSTALL_PATH/plur"
 
   # Verify installation
   if [ -x "$INSTALL_PATH/plur" ]; then
     INSTALLED_VERSION=$("$INSTALL_PATH/plur" --version 2>/dev/null || echo "unknown")
-    printf "${GREEN}✓${NC} Successfully installed plur\n"
+    printf '%s✓%s Successfully installed plur\n' "$GREEN" "$NC"
     printf "  Version: %s\n" "$INSTALLED_VERSION"
     printf "  Location: %s/plur\n" "$INSTALL_PATH"
 
