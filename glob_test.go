@@ -24,7 +24,7 @@ func TestFindFilesFromJob(t *testing.T) {
 		Name:          "rspec",
 		TargetPattern: "spec/**/*_spec.rb",
 	}
-	files, err := FindFilesFromJob(rspecJob)
+	files, _, err := FindFilesFromJob(rspecJob, nil)
 	assert.NoError(t, err, "FindFilesFromJob() should not return error")
 	assert.Empty(t, files, "FindFilesFromJob() should return empty slice for empty directory")
 
@@ -50,7 +50,7 @@ func TestFindFilesFromJob(t *testing.T) {
 		require.NoError(t, f.Close())
 	}
 
-	files, err = FindFilesFromJob(rspecJob)
+	files, _, err = FindFilesFromJob(rspecJob, nil)
 	assert.NoError(t, err, "FindFilesFromJob() should not return error")
 
 	expectedFiles := 5 // Only *_spec.rb files
@@ -96,7 +96,7 @@ func TestExpandPatternsFromJobUsesFrameworkDetectPatterns(t *testing.T) {
 		Framework: "rspec",
 	}
 
-	files, err := ExpandPatternsFromJob([]string{"spec/models"}, rspecJob)
+	files, _, err := ExpandPatternsFromJob([]string{"spec/models"}, rspecJob, nil)
 	require.NoError(t, err)
 
 	expected := map[string]bool{
@@ -137,7 +137,7 @@ func TestExpandPatternsFromJobMultiplePatterns(t *testing.T) {
 		TargetPattern: "app/spec/**/*.{rb,go}",
 	}
 
-	files, err := ExpandPatternsFromJob([]string{"app/spec"}, j)
+	files, _, err := ExpandPatternsFromJob([]string{"app/spec"}, j, nil)
 	require.NoError(t, err)
 
 	expected := map[string]bool{
@@ -153,6 +153,84 @@ func TestExpandPatternsFromJobMultiplePatterns(t *testing.T) {
 			assert.Fail(t, "Unexpected file found: %s", file)
 		}
 	}
+}
+
+func TestFindFilesFromJobAppliesExcludePatterns(t *testing.T) {
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(originalDir) }()
+
+	tempDir := t.TempDir()
+	require.NoError(t, os.Chdir(tempDir))
+
+	require.NoError(t, os.MkdirAll("spec/models", 0o755))
+	require.NoError(t, os.MkdirAll("spec/system", 0o755))
+	require.NoError(t, os.WriteFile("spec/models/user_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("spec/models/post_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("spec/system/login_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("spec/system/signup_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("spec/calculator_spec.rb", []byte(""), 0o644))
+
+	rspecJob := job.Job{Name: "rspec", TargetPattern: "spec/**/*_spec.rb"}
+
+	files, excluded, err := FindFilesFromJob(rspecJob, []string{"spec/system/**/*_spec.rb"})
+
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{
+		"spec/models/user_spec.rb",
+		"spec/models/post_spec.rb",
+		"spec/calculator_spec.rb",
+	}, files)
+	assert.ElementsMatch(t, []string{
+		"spec/system/login_spec.rb",
+		"spec/system/signup_spec.rb",
+	}, excluded)
+}
+
+func TestExpandPatternsFromJobAppliesExcludePatterns(t *testing.T) {
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(originalDir) }()
+
+	tempDir := t.TempDir()
+	require.NoError(t, os.Chdir(tempDir))
+
+	require.NoError(t, os.MkdirAll("spec/models", 0o755))
+	require.NoError(t, os.WriteFile("spec/models/user_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("spec/models/system_spec.rb", []byte(""), 0o644))
+	require.NoError(t, os.WriteFile("spec/models/post_spec.rb", []byte(""), 0o644))
+
+	rspecJob := job.Job{Name: "fast", Framework: "rspec"}
+
+	files, excluded, err := ExpandPatternsFromJob(
+		[]string{"spec"},
+		rspecJob,
+		[]string{"spec/models/system_spec.rb"},
+	)
+
+	require.NoError(t, err)
+	assert.NotContains(t, files, "spec/models/system_spec.rb")
+	assert.Contains(t, files, "spec/models/user_spec.rb")
+	assert.Contains(t, files, "spec/models/post_spec.rb")
+	assert.Equal(t, []string{"spec/models/system_spec.rb"}, excluded)
+}
+
+func TestFindFilesFromJobBadExcludePattern(t *testing.T) {
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(originalDir) }()
+
+	tempDir := t.TempDir()
+	require.NoError(t, os.Chdir(tempDir))
+
+	require.NoError(t, os.MkdirAll("spec", 0o755))
+	require.NoError(t, os.WriteFile("spec/foo_spec.rb", []byte(""), 0o644))
+
+	rspecJob := job.Job{Name: "rspec", TargetPattern: "spec/**/*_spec.rb"}
+
+	_, _, err = FindFilesFromJob(rspecJob, []string{"["})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exclude")
 }
 
 // dirOf returns the directory portion of a relative path, or "." if none.
