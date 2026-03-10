@@ -55,6 +55,7 @@ vendor/
 
 # Local dev artifacts
 .DS_Store
+.worktrees/
 
 # Test artifacts
 test-pipes/

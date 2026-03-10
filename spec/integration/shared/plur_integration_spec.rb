@@ -10,6 +10,12 @@ RSpec.describe "Plur integration tests" do
       expect(result.out).to include("db:setup")
       expect(result.out).to include("db:migrate")
     end
+
+    it "shows exclude-pattern in spec subcommand help" do
+      result = run_plur("spec", "--help")
+
+      expect(result.out).to include("--exclude-pattern")
+    end
   end
 
   describe "parallel test execution" do
