@@ -14,7 +14,7 @@ snapshot:
   - spec/models
   stdout: ''
   stderr: |-
-    plur version version=[VERSION]
+    plur version=[VERSION]
     [dry-run] Running 2 specs [rspec] in parallel using 2 workers
     [dry-run] Worker [N]: PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=[N] bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --tag ~type:system spec/models/system_spec.rb
     [dry-run] Worker [N]: PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=[N] bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --tag ~type:system spec/models/user_spec.rb

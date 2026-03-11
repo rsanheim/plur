@@ -178,10 +178,10 @@ module Plur
       }
     end
 
-    # Use RSpec's built-in backtrace filtering for filtering, though we have a rescue 
+    # Use RSpec's built-in backtrace filtering for filtering, though we have a rescue
     # here to handle the case where RSpec's backtrace formatter fails.
     # This can happen if the test suite is changing the cwd in around hook for parallel runs.
-    # This is done in Rspec suite's for example: 
+    # This is done in Rspec suite's for example:
     # https://github.com/rspec/rspec/blob/0c37a88d4ff511debd563d68e10c1c7672318c3c/rspec-support/lib/rspec/support/spec/with_isolated_directory.rb#L5-L15
     #
     # Returns the backtrace as an array of strings

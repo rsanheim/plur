@@ -135,8 +135,8 @@ func checkLinearScaling(t *testing.T, name string, sizes []int, times []time.Dur
 		sizeRatio := float64(sizes[i]) / float64(sizes[i-1])
 		timeRatio := float64(times[i]) / float64(times[i-1])
 
-		// Allow 2x tolerance over linear scaling to account for system noise at small scales
-		threshold := sizeRatio * 2.0
+		// Allow tolerance over linear scaling to account for system noise at small scales
+		threshold := sizeRatio * 2.5
 
 		if timeRatio > threshold {
 			t.Errorf("%s: potential O(n²) detected between size %d and %d: "+

@@ -281,3 +281,54 @@ func captureStderr(f func()) string {
 	buf.ReadFrom(r)
 	return buf.String()
 }
+
+func TestInitFromArgs_DefaultWarn(t *testing.T) {
+	t.Setenv("PLUR_DEBUG", "")
+	InitFromArgs([]string{"spec"})
+	assert.False(t, IsDebugEnabled())
+	assert.False(t, IsVerboseEnabled())
+}
+
+func TestInitFromArgs_VerboseFlag(t *testing.T) {
+	t.Setenv("PLUR_DEBUG", "")
+	InitFromArgs([]string{"--verbose"})
+	assert.True(t, IsVerboseEnabled())
+	assert.False(t, IsDebugEnabled())
+
+	InitFromArgs([]string{"-v"})
+	assert.True(t, IsVerboseEnabled())
+	assert.False(t, IsDebugEnabled())
+}
+
+func TestInitFromArgs_DebugFlag(t *testing.T) {
+	t.Setenv("PLUR_DEBUG", "")
+	InitFromArgs([]string{"--debug"})
+	assert.True(t, IsDebugEnabled())
+
+	InitFromArgs([]string{"-d"})
+	assert.True(t, IsDebugEnabled())
+}
+
+func TestInitFromArgs_EnvDebug(t *testing.T) {
+	t.Setenv("PLUR_DEBUG", "1")
+	InitFromArgs([]string{"spec"})
+	assert.True(t, IsDebugEnabled())
+}
+
+func TestInitFromArgs_DebugWinsOverVerbose(t *testing.T) {
+	t.Setenv("PLUR_DEBUG", "")
+	InitFromArgs([]string{"--verbose", "--debug"})
+	assert.True(t, IsDebugEnabled())
+}
+
+func TestInitFromArgs_CLIFlagWinsOverEnv(t *testing.T) {
+	t.Setenv("PLUR_DEBUG", "0")
+	InitFromArgs([]string{"-d"})
+	assert.True(t, IsDebugEnabled())
+}
+
+func TestInitFromArgs_EnvDebugEscalatesVerbose(t *testing.T) {
+	t.Setenv("PLUR_DEBUG", "1")
+	InitFromArgs([]string{"-v"})
+	assert.True(t, IsDebugEnabled())
+}

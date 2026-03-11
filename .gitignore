@@ -31,7 +31,8 @@ vendor/
 /spec/examples.txt
 /storage
 /test/tmp/
-/tmp/
+/tmp/*
+!/tmp/.keep
 /log/*
 !/log/.keep
 

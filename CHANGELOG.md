@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.45.0 - 2026-03-08
+* switch to our own kongtoml wrapper around BurntSushi/toml for toml 1.1; better error handling
+
+## v0.41.1 - 2026-03-06
+* even more housekeeping
+
 ## v0.40.0 - 2026-02-28
 * Get things in order for a proper OSS release: move all plur to top level; clean up docs and cruft
 * Consolidate target pattern resolution into framework package

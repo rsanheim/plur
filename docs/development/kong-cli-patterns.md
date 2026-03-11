@@ -1,12 +1,16 @@
 # Kong CLI Patterns and Gotchas
 
-## Commands vs Subcommands in Kong
+[Kong CLI](https://github.com/alecthomas/kong) has some quirks around default subcommands and how it structures things.
+This is a little doc on lessons learned, and may be out of date depending on how much Kong has been updated 
+since last review.
 
-**Critical:** In Kong, commands with subcommands are **namespaces only** - they cannot be directly executable!
+## Commands vs Subcommands in Kong (i.e. default:"withargs")
+
+In Kong, commands with subcommands are **namespaces only** - they cannot be directly executable!
 
 ### The Problem
 
-Unlike urfave/cli, Kong has a strict separation:
+Kong has a strict separation:
 - **Commands with subcommands** = namespaces (cannot have Run methods)
 - **Leaf commands** = executable (have Run methods)
 
@@ -90,7 +94,6 @@ $ plur watch run -h
 
 **Workaround:**
 * Document this behavior in user-facing docs
-* Tell users that `plur watch` accepts all the same flags as `plur watch run`
 * Consider adding a note in your command help text mentioning the default subcommand
 
 **Related Kong Issues:**
@@ -98,11 +101,3 @@ $ plur watch run -h
 * [#217](https://github.com/alecthomas/kong/issues/217) - Flags not passed to default command (led to `withargs` implementation)
 * [#188](https://github.com/alecthomas/kong/pull/188) - PR that added `default:"withargs"` support
 * [#561](https://github.com/alecthomas/kong/issues/561) - Recent request for root commands with subcommands
-
-## Key Learnings
-
-1. **Kong is opinionated**: Commands are either namespaces OR executable, not both
-2. **Use `default:"withargs"` tag**: This allows a namespace to have default behavior even with flags
-3. **Flags go on leaf commands**: Place flags on the actual executable commands, not the namespace
-4. **No context checking needed**: With proper structure, Kong handles routing automatically
-5. **Help text limitation**: Parent help won't show default subcommand flags (see above)

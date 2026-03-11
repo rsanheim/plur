@@ -1,4 +1,4 @@
-package main
+package buildinfo
 
 import (
 	"fmt"
@@ -7,17 +7,17 @@ import (
 
 // Build variables set by ldflags
 var (
-	version = "dev"
-	commit  = "unknown"
-	date    = "unknown"
-	builtBy = "unknown"
+	Version = "dev"
+	Commit  = "unknown"
+	Date    = "unknown"
+	BuiltBy = "unknown"
 )
 
 // GetVersionInfo returns the full version information
 func GetVersionInfo() string {
 	// If version was set by ldflags (GoReleaser), use it
-	if version != "dev" {
-		return version
+	if Version != "dev" {
+		return Version
 	}
 
 	// Try to get version info from runtime
@@ -28,45 +28,37 @@ func GetVersionInfo() string {
 		}
 
 		// For dev builds, extract VCS information from BuildSettings
-		var vcsRevision, vcsTime string
+		var vcsRevision string
 		var vcsModified bool
 
 		for _, setting := range info.Settings {
 			switch setting.Key {
 			case "vcs.revision":
 				vcsRevision = setting.Value
-				if len(vcsRevision) > 7 {
-					commit = vcsRevision[:7] // Store short commit for compatibility
-				}
 			case "vcs.time":
-				vcsTime = setting.Value
-				if vcsTime != "" {
-					date = vcsTime // Store for compatibility
+				if setting.Value != "" {
+					Date = setting.Value
 				}
 			case "vcs.modified":
 				vcsModified = (setting.Value == "true")
 			}
 		}
 
-		// Build version string from VCS info
 		if vcsRevision != "" {
 			shortCommit := vcsRevision
 			if len(shortCommit) > 7 {
 				shortCommit = shortCommit[:7]
 			}
+			Commit = shortCommit
 
-			// Use simple dev version format with commit hash
 			versionStr := fmt.Sprintf("dev-%s", shortCommit)
-
-			// Add dirty flag if working tree has modifications
 			if vcsModified {
 				versionStr += "-dirty"
 			}
-
 			return versionStr
 		}
 	}
 
 	// Fallback to simple "dev"
-	return version
+	return Version
 }

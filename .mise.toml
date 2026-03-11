@@ -1,8 +1,9 @@
 [tools]
 ruby = "4.0.1"
-go = "1.25.7"
+go = "1.25.8"
 python = "3.14.0"
 goreleaser = "2"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 
 [settings]
 python.uv_venv_auto = true

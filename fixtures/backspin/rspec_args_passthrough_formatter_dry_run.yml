@@ -16,7 +16,7 @@ snapshot:
   - tmp/rspec.out
   stdout: ''
   stderr: |
-    plur version version=[VERSION]
+    plur version=[VERSION]
     [dry-run] Running 1 spec [rspec] in parallel using 1 workers
     [dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --format documentation --out tmp/rspec.out spec/calculator_spec.rb
   status: 0

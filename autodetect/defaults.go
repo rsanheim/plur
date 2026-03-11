@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/pelletier/go-toml"
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/fsutil"
 	"github.com/rsanheim/plur/job"
@@ -29,7 +29,7 @@ type DefaultsConfig struct {
 var builtinDefaults DefaultsConfig
 
 func init() {
-	if err := toml.Unmarshal(defaultsFile, &builtinDefaults); err != nil {
+	if _, err := toml.Decode(string(defaultsFile), &builtinDefaults); err != nil {
 		panic(fmt.Errorf("failed to load embedded defaults: %w", err))
 	}
 }
