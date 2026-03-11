@@ -24,8 +24,7 @@ module PlurWatchHelper
   # @param env [Hash] environment variables
   # @param until_output [String, nil] kill process when this string appears in output
   # @return [WatchResult]
-  def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT,
-    debounce: nil, env: {}, until_output: nil, &block)
+  def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT, debounce: nil, env: {}, until_output: nil, &block)
     Dir.chdir(dir) do
       cmd_args = [plur_binary, "--debug", "watch", "run", "--timeout", timeout.to_s]
       cmd_args += ["--debounce", debounce.to_s] if debounce
@@ -54,7 +53,7 @@ module PlurWatchHelper
             streams.delete(io)
           end
 
-          # After ready signal, fire the block once
+          # After ready signal, we fire the block once so callers can write/edit files to trigger events
           if block_given? && !block_fired && err.include?(READY_SIGNAL)
             sleep 0.1 # let FS watcher event registration settle
             yield

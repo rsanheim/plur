@@ -30,7 +30,6 @@ func NewEventProcessor(jobs map[string]job.Job, watches []WatchMapping) *EventPr
 // If a watch mapping has no targets configured, the source file itself is used
 func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) {
 	results := make(map[string][]string)
-
 	normalizedPath := filepath.ToSlash(path)
 
 	for _, watch := range ep.watches {
@@ -58,16 +57,13 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 
 		// Add targets to each job specified in this watch
 		for _, jobName := range watch.Jobs {
-			// Validate job exists
 			if _, exists := ep.jobs[jobName]; !exists {
 				return nil, fmt.Errorf("watch %q references undefined job %q", watch.Name, jobName)
 			}
-
 			results[jobName] = append(results[jobName], targets...)
 		}
 	}
 
-	// Deduplicate targets per job
 	for jobName := range results {
 		results[jobName] = Deduplicate(results[jobName])
 	}
