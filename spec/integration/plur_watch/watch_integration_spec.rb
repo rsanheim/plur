@@ -15,6 +15,46 @@ RSpec.describe "plur watch integration" do
     expect(result.err).to include("Debounce delay ms=30")
   end
 
+  fit "user configured watches are additive to the default watches, and do not replace them" do
+    Pathname.mktmpdir do |tmpdir|
+      config_path = tmpdir.join(".plur.toml")
+      File.write(config_path, <<~TOML)
+        [[watch]]
+        source = "config/initializers/**/*.rb"
+        targets = ["spec/initializers/{{match}}_spec.rb"]
+        jobs = ["rspec"]
+      TOML
+
+      FileUtils.cp_r(default_rails_dir, tmpdir)
+
+      app_dir = tmpdir.join("default-rails")
+      user_model = app_dir.join("app/models/user.rb")
+      initializer = app_dir.join("config/initializers/whatever.rb")
+      initializer_spec = app_dir.join("spec/initializers/whatever_spec.rb")
+
+      initializer_spec_msg = %|[plur]z bundle exec rspec spec/initializers/whatever_spec.rb|
+      user_spec_msg = %|[plur] bundle exec rspec spec/models/user_spec.rb|
+
+      system("bundle install", chdir: app_dir, exception: true)
+
+      env = {"PLUR_CONFIG_FILE" => config_path.to_s}
+      result = run_plur_watch(dir: app_dir, timeout: 10, env: env, until_output: initializer_spec_msg) do
+        user_model.write(user_model.read + "\n# Modified by test")
+
+        initializer.write("class Whatever\nend")
+        sleep 0.5
+        puts initializer.read
+        initializer_spec.parent.mkpath
+        initializer_spec.write("require 'whatever'\nRSpec.describe Whatever do\n  it 'works' do\n    expect(Whatever.new).to be_truthy\n  end\nend")
+      end
+      pp result.err
+      pp result.out
+      expect(result.out).to include(initializer_spec_msg)
+      expect(result.out).to include(user_spec_msg)
+  end
+
+  end
+
   it "deduplicates overlapping watch directories to avoid duplicate runs" do
     calculator_file = default_ruby_dir.join("lib/calculator.rb")
     original_content = calculator_file.read
