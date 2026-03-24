@@ -32,8 +32,8 @@ RSpec.describe "plur watch integration" do
       initializer = app_dir.join("config/initializers/whatever.rb")
       initializer_spec = app_dir.join("spec/initializers/whatever_spec.rb")
 
-      initializer_spec_msg = %|[plur]z bundle exec rspec spec/initializers/whatever_spec.rb|
-      user_spec_msg = %|[plur] bundle exec rspec spec/models/user_spec.rb|
+      initializer_spec_msg = %([plur]z bundle exec rspec spec/initializers/whatever_spec.rb)
+      user_spec_msg = %([plur] bundle exec rspec spec/models/user_spec.rb)
 
       system("bundle install", chdir: app_dir, exception: true)
 
@@ -51,8 +51,7 @@ RSpec.describe "plur watch integration" do
       pp result.out
       expect(result.out).to include(initializer_spec_msg)
       expect(result.out).to include(user_spec_msg)
-  end
-
+    end
   end
 
   it "deduplicates overlapping watch directories to avoid duplicate runs" do
