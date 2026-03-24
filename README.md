@@ -4,10 +4,38 @@
 
 `plur` is a fast, parallel, drop-in test runner and watcher primarily targeting Ruby and Rails using RSpec or Minitest. Its written in Go, so just install once and use across all your projects.
 
+## Installation
+
+### Homebrew (macOS)
+
+```bash
+brew install rsanheim/tap/plur
+```
+
+### Shell script (macOS / Linux)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
+```
+
+Installs to `~/.local/bin` by default. Set `PLUR_INSTALL_PATH` to customize.
+
+Pin a version or set an install path:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- v0.5.0
+curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "$HOME/.local/bin" v0.5.0
+```
+
+### Manual binary download
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/rsanheim/plur/releases), extract, and put the `plur` binary somewhere on your PATH.
+
+See [Getting Started](docs/getting-started.md) for first-run details.
+
 ## Quick Start
 
-```
-brew install rsanheim/tap/plur
+```bash
 cd my-rails-project
 plur -n 4 --dry-run # preview what would run (no actual test execution)
 plur -n 4           # run tests across four cores

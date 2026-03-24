@@ -2,8 +2,7 @@ Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
 
 ## Getting Started
 
-* [Installation](installation.md) - How to install plur
-* [Getting Started](getting-started.md) - Quick introduction
+* [Getting Started](getting-started.md) - Installation and quick introduction
 * [Usage](usage.md) - Detailed command documentation
 * [Configuration](configuration.md) - Customization options
 
