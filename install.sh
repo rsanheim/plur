@@ -17,7 +17,6 @@ INSTALL_PATH="${PLUR_INSTALL_PATH:-$HOME/.local/bin}"
 VERSION=""
 DOWNLOAD_RETRIES=3
 DOWNLOAD_CONNECT_TIMEOUT=10
-DOWNLOAD_MAX_TIME=300
 
 # Helper functions
 info() {
@@ -119,7 +118,6 @@ download_to_file() {
       --retry "$DOWNLOAD_RETRIES" \
       --retry-delay 1 \
       --connect-timeout "$DOWNLOAD_CONNECT_TIMEOUT" \
-      --max-time "$DOWNLOAD_MAX_TIME" \
       -sS \
       "$URL" \
       -o "$OUTPUT_PATH" || error "Failed to download: $URL"
@@ -139,7 +137,6 @@ download_to_stdout() {
       --retry "$DOWNLOAD_RETRIES" \
       --retry-delay 1 \
       --connect-timeout "$DOWNLOAD_CONNECT_TIMEOUT" \
-      --max-time "$DOWNLOAD_MAX_TIME" \
       -sS \
       "$URL" || error "Failed to fetch: $URL"
   elif command -v wget >/dev/null 2>&1; then
