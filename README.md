@@ -23,8 +23,8 @@ Installs to `~/.local/bin` by default. Set `PLUR_INSTALL_PATH` to customize.
 Pin a version or set an install path:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- v0.5.0
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "$HOME/.local/bin" v0.5.0
+curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --version v0.5.0
+curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "$HOME/.local/bin" --version v0.5.0
 ```
 
 ### Manual binary download

@@ -2,8 +2,8 @@
 # Universal installation script for plur
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
-#   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- v1.0.0
-#   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path ~/.local/bin v1.0.0
+#   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --version v1.0.0
+#   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path ~/.local/bin --version v1.0.0
 #
 # Environment variables:
 #   PLUR_INSTALL_PATH - Installation directory (default: ~/.local/bin)
@@ -37,16 +37,14 @@ show_help() {
 plur installer
 
 Usage:
-  sh install.sh [options] [version]
+  sh install.sh [options]
   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
-  curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- [options] [version]
-
-Arguments:
-  version                Version tag to install (for example: v0.5.0)
+  curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- [options]
 
 Options:
   -h, --help             Show this help text
   --install-path PATH    Installation directory (default: \$PLUR_INSTALL_PATH or ~/.local/bin)
+  --version VERSION      Version tag to install (for example: v0.5.0)
 EOF
 }
 
@@ -66,25 +64,25 @@ parse_args() {
         INSTALL_PATH="${1#*=}"
         shift
         ;;
-      --)
+      --version)
+        [ $# -ge 2 ] || error "--version requires a value"
+        VERSION="$2"
+        shift 2
+        ;;
+      --version=*)
+        VERSION="${1#*=}"
         shift
-        break
+        ;;
+      --)
+        error "Unexpected '--' (run with --help)"
         ;;
       -*)
         error "Unknown option: $1 (run with --help)"
         ;;
       *)
-        [ -z "$VERSION" ] || error "Unexpected extra argument: $1"
-        VERSION="$1"
-        shift
+        error "Unexpected argument: $1 (use --version)"
         ;;
     esac
-  done
-
-  while [ $# -gt 0 ]; do
-    [ -z "$VERSION" ] || error "Unexpected extra argument: $1"
-    VERSION="$1"
-    shift
   done
 }
 
