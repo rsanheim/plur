@@ -1,6 +1,6 @@
 # Getting Started
 
-Everything you need to install plur and run your first parallel test suite.
+Get up and running with plur for running parallel tests or watch mode.
 
 ## Installation
 
@@ -8,6 +8,11 @@ Everything you need to install plur and run your first parallel test suite.
 
 ```bash
 brew install rsanheim/tap/plur
+cd [my-project]
+plur --dry-run # preview what would run (no actual test execution)
+plur -n 4     # run tests across four cores
+plur          # run tests with auto-detected workers
+plur watch    # watch for changes and run tests automatically
 ```
 
 ### Shell script (macOS / Linux)
@@ -33,7 +38,7 @@ curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -
 Override install path and pin version:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "$HOME/.local/bin" v0.5.0
+curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "/usr/local/bin" v0.5.0
 ```
 
 ### Manual binary download
