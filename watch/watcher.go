@@ -234,7 +234,7 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 	// Jobs without {{target}} placeholder run once without targets
 	if !j.UsesTargets() {
 		cmd := j.Cmd
-		fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
+		fmt.Printf("%s\n", strings.Join(cmd, " "))
 
 		execCmd := exec.Command(cmd[0], cmd[1:]...)
 		execCmd.Dir = cwd
@@ -254,7 +254,7 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 	}
 
 	cmd := job.BuildJobCmd(j, targetFiles)
-	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
+	fmt.Printf("%s\n", strings.Join(cmd, " "))
 
 	execCmd := exec.Command(cmd[0], cmd[1:]...)
 	execCmd.Dir = cwd

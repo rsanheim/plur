@@ -308,6 +308,9 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				continue
 			}
 
+			if logger.IsDebugEnabled() {
+				fmt.Println()
+			}
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
 			// Debounce and process
