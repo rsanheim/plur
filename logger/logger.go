@@ -22,15 +22,19 @@ var (
 func init() {
 	logLevel.Set(slog.LevelWarn)
 
-	Logger = slog.New(NewCustomTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: &logLevel,
-	}))
+	Logger = newStderrLogger(os.Stderr)
 
 	StdoutLogger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 
 	slog.SetDefault(Logger)
+}
+
+func newStderrLogger(w io.Writer) *slog.Logger {
+	return slog.New(NewCustomTextHandler(w, &slog.HandlerOptions{
+		Level: &logLevel,
+	}))
 }
 
 // Init sets the log level (called from main to override default)
@@ -76,6 +80,21 @@ func NewCustomTextHandler(w io.Writer, opts *slog.HandlerOptions) *CustomTextHan
 	return &CustomTextHandler{
 		opts:   *opts,
 		writer: w,
+	}
+}
+
+// SetWriter redirects the main structured logger to a different writer and returns
+// a restore closure.
+func SetWriter(w io.Writer) func() {
+	previousLogger := Logger
+	previousDefault := slog.Default()
+
+	Logger = newStderrLogger(w)
+	slog.SetDefault(Logger)
+
+	return func() {
+		Logger = previousLogger
+		slog.SetDefault(previousDefault)
 	}
 }
 

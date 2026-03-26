@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"embed"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -31,15 +32,15 @@ func runWatchInstall(force bool) error {
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
-func printHelp() {
+func printHelp(w io.Writer) {
 	cmdWidth := 20
-	fmt.Println("Available commands")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "[Enter]", "Run all tests")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "debug", "Toggle debug mode")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "help", "Show this help")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "reload", "Reload plur")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "exit (Ctrl-C)", "Exit watch mode")
-	fmt.Println()
+	fmt.Fprintln(w, "Available commands")
+	fmt.Fprintf(w, "  %-*s %s\n", cmdWidth, "[Enter]", "Run all tests")
+	fmt.Fprintf(w, "  %-*s %s\n", cmdWidth, "debug", "Toggle debug mode")
+	fmt.Fprintf(w, "  %-*s %s\n", cmdWidth, "help", "Show this help")
+	fmt.Fprintf(w, "  %-*s %s\n", cmdWidth, "reload", "Reload plur")
+	fmt.Fprintf(w, "  %-*s %s\n", cmdWidth, "exit (Ctrl-C)", "Exit watch mode")
+	fmt.Fprintln(w)
 }
 
 // loadWatchConfiguration resolves job and watch mappings
@@ -70,9 +71,14 @@ func resetTerminal() {
 
 // reload performs an atomic process replacement (Unix/Linux/macOS only)
 // and also maintains same args & env, including the debug state from previous process
-func reload(manager *watch.WatcherManager) error {
-	fmt.Println("Reloading plur...")
-	fmt.Println()
+func reload(manager *watch.WatcherManager, terminal *watch.Terminal) error {
+	if terminal != nil {
+		terminal.PrintLine("Reloading plur...")
+		terminal.PrintLine("")
+	} else {
+		fmt.Println("Reloading plur...")
+		fmt.Println()
+	}
 
 	execPath, err := os.Executable()
 	if err != nil {
@@ -103,16 +109,20 @@ func reload(manager *watch.WatcherManager) error {
 	return nil
 }
 
-func printWatchInfo(watchDirs []string) {
+func printWatchInfo(w io.Writer, watchDirs []string) {
 	absoluteWatchDirs := make([]string, len(watchDirs))
 	for i, dir := range watchDirs {
 		absoluteWatchDirs[i], _ = filepath.Abs(dir)
 	}
-	fmt.Printf("plur %s ready and watching %v\n", buildinfo.GetVersionInfo(), strings.Join(absoluteWatchDirs, ", "))
-	fmt.Println()
+	fmt.Fprintf(w, "plur %s ready and watching %v\n", buildinfo.GetVersionInfo(), strings.Join(absoluteWatchDirs, ", "))
+	fmt.Fprintln(w)
 }
 
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
+	terminal := watch.NewTerminal(os.Stdout, os.Stderr, "[plur] > ")
+	restoreLogger := logger.SetWriter(terminal.Stderr())
+	defer restoreLogger()
+
 	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
 	result, watches, err := loadWatchConfiguration(cli, cli.Use)
@@ -188,6 +198,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		Directories:    watchDirs,
 		DebounceDelay:  debounceDelay,
 		TimeoutSeconds: runCmd.Timeout,
+		StderrWriter:   terminal.Stderr(),
 	}
 
 	// Create and start the watcher manager
@@ -233,8 +244,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		}
 	}
 
-	printWatchInfo(watchDirs)
-	printHelp()
+	printWatchInfo(terminal.Stdout(), watchDirs)
+	printHelp(terminal.Stdout())
 	showPrompt()
 
 	cwd, _ := os.Getwd()
@@ -247,9 +258,10 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 
 	// Create file event handler
 	handler := &watch.FileEventHandler{
-		Jobs:    jobs,
-		Watches: watches,
-		CWD:     cwd,
+		Jobs:     jobs,
+		Watches:  watches,
+		CWD:      cwd,
+		Terminal: terminal,
 	}
 
 	for {
@@ -258,13 +270,13 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			logger.Logger.Debug("received via stdin", "input", input)
 			switch input {
 			case "":
-				fmt.Println("Running all tests...")
+				terminal.PrintLine("Running all tests...")
 				cmd := job.BuildJobAllCmd(resolvedJob)
-				watch.RunCommand(cmd)
-				fmt.Println()
+				watch.RunCommand(cmd, terminal)
+				terminal.PrintLine("")
 				showPrompt()
 			case "help":
-				printHelp()
+				printHelp(terminal.Stdout())
 				showPrompt()
 			case "reload":
 				logger.Logger.Debug("User requested process reload")
@@ -272,17 +284,17 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			case "debug":
 				logger.ToggleDebug()
 				if logger.IsDebugEnabled() {
-					fmt.Println("Debug output enabled")
+					terminal.PrintLine("Debug output enabled")
 				} else {
-					fmt.Println("Debug output disabled")
+					terminal.PrintLine("Debug output disabled")
 				}
 				showPrompt()
 			case "exit":
-				fmt.Println("Exiting watch mode...")
+				terminal.PrintLine("Exiting watch mode...")
 				return nil
 			default:
-				fmt.Printf("Unknown command: '%s'\n", input)
-				printHelp()
+				terminal.PrintLine(fmt.Sprintf("Unknown command: '%s'", input))
+				printHelp(terminal.Stdout())
 				showPrompt()
 			}
 
@@ -307,9 +319,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				continue
 			}
 
-			if logger.IsDebugEnabled() {
-				fmt.Println()
-			}
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
 			// Debounce and process
@@ -319,7 +328,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 					triggerReload()
 				}
 				if len(result.ExecutedJobs) > 0 {
-					fmt.Println()
+					terminal.PrintLine("")
 					showPrompt()
 				}
 			})
@@ -329,39 +338,39 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 
 		case <-timeoutChan:
 			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", runCmd.Timeout)
-			fmt.Println("Timeout reached, exiting!")
+			terminal.PrintLine("Timeout reached, exiting!")
 			return nil
 
 		case sig := <-sigChan:
 			switch sig {
 			case syscall.SIGINT:
-				fmt.Println("Received SIGINT, shutting down gracefully...")
+				terminal.PrintLine("Received SIGINT, shutting down gracefully...")
 				return nil
 			case syscall.SIGTERM:
-				fmt.Println("Received SIGTERM, shutting down gracefully...")
+				terminal.PrintLine("Received SIGTERM, shutting down gracefully...")
 				return nil
 			case syscall.SIGHUP:
-				fmt.Println("Received SIGHUP, reloading plur...")
-				if err := reload(manager); err != nil {
+				terminal.PrintLine("Received SIGHUP, reloading plur...")
+				if err := reload(manager, terminal); err != nil {
 					logger.Logger.Error("Failed to reload", "error", err)
-					fmt.Println("Failed to reload:", err)
+					terminal.PrintLine(fmt.Sprintf("Failed to reload: %v", err))
 					showPrompt()
 					continue
 				}
 				// reload() calls syscall.Exec which replaces process, so we never reach here on success
 				return nil
 			default:
-				fmt.Printf("Received signal %v, shutting down gracefully...\n", sig)
+				terminal.PrintLine(fmt.Sprintf("Received signal %v, shutting down gracefully...", sig))
 				return nil
 			}
 
 		case <-promptChan:
-			fmt.Print("[plur] > ")
+			terminal.ShowPrompt()
 
 		case <-reloadChan:
-			if err := reload(manager); err != nil {
+			if err := reload(manager, terminal); err != nil {
 				logger.Logger.Error("Failed to reload", "error", err)
-				fmt.Println("Failed to reload:", err)
+				terminal.PrintLine(fmt.Sprintf("Failed to reload: %v", err))
 				showPrompt()
 			}
 		}

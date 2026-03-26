@@ -1,9 +1,11 @@
 package watch
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -185,7 +187,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
 	}
 
-	err := ExecuteJob(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir)
+	err := ExecuteJob(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir, nil)
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)
@@ -207,7 +209,7 @@ func TestExecuteJob_SingleTarget(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
 	}
 
-	err := ExecuteJob(j, []string{"only_file.rb"}, tmpDir)
+	err := ExecuteJob(j, []string{"only_file.rb"}, tmpDir, nil)
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)
@@ -224,7 +226,7 @@ func TestExecuteJob_NoTargets(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo ran > " + outputFile, "--", "{{target}}"},
 	}
 
-	err := ExecuteJob(j, []string{}, tmpDir)
+	err := ExecuteJob(j, []string{}, tmpDir, nil)
 	require.NoError(t, err)
 
 	// Command should not run at all with empty targets
@@ -242,7 +244,7 @@ func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo executed > " + outputFile},
 	}
 
-	err := ExecuteJob(j, []string{"ignored1.rb", "ignored2.rb"}, tmpDir)
+	err := ExecuteJob(j, []string{"ignored1.rb", "ignored2.rb"}, tmpDir, nil)
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)
@@ -348,10 +350,52 @@ func TestWatcherManager_AggregateEventsReturnsOnClosedWatcherChannels(t *testing
 func TestExecuteJobReturnsErrorWithoutLogging(t *testing.T) {
 	j := job.Job{
 		Name: "failing-job",
-		Cmd:  []string{"false"},
+		Cmd:  []string{os.Args[0], "-test.run=TestExecuteJobHelperProcess"},
+		Env:  []string{"PLUR_TEST_HELPER_PROCESS=1"},
 	}
 
-	err := ExecuteJob(j, nil, t.TempDir())
+	err := ExecuteJob(j, nil, t.TempDir(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exit status 1")
+}
+
+func TestExecuteJobHelperProcess(t *testing.T) {
+	if os.Getenv("PLUR_TEST_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	os.Exit(1)
+}
+
+func TestExecuteJob_PrintsCommandViaTerminal(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "ran.txt")
+
+	j := job.Job{
+		Name: "test-no-placeholder",
+		Cmd:  []string{"sh", "-c", "echo executed > " + outputFile},
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	terminal := NewTerminal(&stdout, &stderr, "[plur] > ")
+	terminal.ShowPrompt()
+
+	err := ExecuteJob(j, []string{"ignored.rb"}, tmpDir, terminal)
+	require.NoError(t, err)
+	assert.Contains(t, stdout.String(), "[plur] > \nsh -c echo executed > ")
+}
+
+func TestWatcherReadErrors_UsesConfiguredWriter(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	terminal := NewTerminal(&stdout, &stderr, "[plur] > ")
+	terminal.ShowPrompt()
+
+	w := &Watcher{stderrWriter: terminal.Stderr()}
+	w.readErrors(strings.NewReader("boom\n"))
+
+	assert.Equal(t, "[plur] > \n", stdout.String())
+	assert.Equal(t, "watcher stderr: boom\n", stderr.String())
 }

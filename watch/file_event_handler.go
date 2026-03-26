@@ -5,14 +5,15 @@ import (
 	"github.com/rsanheim/plur/logger"
 )
 
-// JobExecutor is a function that executes a job with target files
-type JobExecutor func(j job.Job, targets []string, cwd string) error
+// JobExecutor is a function that executes a job with target files.
+type JobExecutor func(j job.Job, targets []string, cwd string, terminal *Terminal) error
 
 // FileEventHandler processes file change events and executes jobs
 type FileEventHandler struct {
-	Jobs    map[string]job.Job
-	Watches []WatchMapping
-	CWD     string
+	Jobs     map[string]job.Job
+	Watches  []WatchMapping
+	CWD      string
+	Terminal *Terminal
 
 	// Executor runs jobs. Defaults to ExecuteJob if nil.
 	Executor JobExecutor
@@ -105,7 +106,7 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 			}
 
 			targets := allExistingTargets[jobName]
-			if err := h.executor()(j, targets, h.CWD); err != nil {
+			if err := h.executor()(j, targets, h.CWD, h.Terminal); err != nil {
 				logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
 			}
 			executedJobs = append(executedJobs, jobName)
