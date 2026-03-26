@@ -289,10 +289,8 @@ func ValidateConfig(userJobs map[string]job.Job, userWatches []watch.WatchMappin
 		return err
 	}
 
-	watches := userWatches
-	if len(watches) == 0 {
-		watches = builtinDefaults.Defaults.Watches
-	}
+	watches := builtinDefaults.Defaults.Watches
+	watches = append(watches, userWatches...)
 	return watch.ValidateConfig(resolvedJobs, watches)
 }
 

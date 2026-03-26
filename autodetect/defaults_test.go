@@ -344,6 +344,19 @@ func TestValidateConfigRejectsUnknownWatchJob(t *testing.T) {
 	assert.Contains(t, err.Error(), "references undefined job")
 }
 
+func TestValidateConfigAcceptsUserWatchesAlongsideDefaults(t *testing.T) {
+	userWatches := []watch.WatchMapping{
+		{
+			Name:   "custom-watch",
+			Source: "config/**/*.yml",
+			Jobs:   []string{"rspec"},
+		},
+	}
+
+	err := ValidateConfig(nil, userWatches)
+	require.NoError(t, err)
+}
+
 func TestAnyPatternMatches(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldDir, _ := os.Getwd()
