@@ -344,3 +344,14 @@ func TestWatcherManager_AggregateEventsReturnsOnClosedWatcherChannels(t *testing
 	default:
 	}
 }
+
+func TestExecuteJobReturnsErrorWithoutLogging(t *testing.T) {
+	j := job.Job{
+		Name: "failing-job",
+		Cmd:  []string{"false"},
+	}
+
+	err := ExecuteJob(j, nil, t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exit status 1")
+}
