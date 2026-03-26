@@ -50,8 +50,7 @@ func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (*autodetect.R
 	}
 
 	// Merge built-in watches for the resolved job with any user-defined watches
-	watches := result.Watches
-	watches = append(watches, cli.WatchMappings...)
+	watches := slices.Concat(result.Watches, cli.WatchMappings)
 
 	logInheritedFields(result.Name, result.Inherited)
 
