@@ -226,11 +226,11 @@ func RunCommand(args []string, terminal *Terminal) {
 	printCommand(args, terminal, true)
 
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = terminalStdout(terminal)
-	cmd.Stderr = terminalStderr(terminal)
+	cmd.Stdout = terminalRawStdout(terminal)
+	cmd.Stderr = terminalRawStderr(terminal)
 
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(terminalStderr(terminal), "Failed to run: %v\n", err)
+		fmt.Fprintf(terminalRawStderr(terminal), "Failed to run: %v\n", err)
 	}
 }
 
@@ -246,8 +246,8 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string, terminal *Terminal)
 
 		execCmd := exec.Command(cmd[0], cmd[1:]...)
 		execCmd.Dir = cwd
-		execCmd.Stdout = terminalStdout(terminal)
-		execCmd.Stderr = terminalStderr(terminal)
+		execCmd.Stdout = terminalRawStdout(terminal)
+		execCmd.Stderr = terminalRawStderr(terminal)
 		execCmd.Env = append(os.Environ(), j.Env...)
 
 		if err := execCmd.Run(); err != nil {
@@ -266,8 +266,8 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string, terminal *Terminal)
 
 	execCmd := exec.Command(cmd[0], cmd[1:]...)
 	execCmd.Dir = cwd
-	execCmd.Stdout = terminalStdout(terminal)
-	execCmd.Stderr = terminalStderr(terminal)
+	execCmd.Stdout = terminalRawStdout(terminal)
+	execCmd.Stderr = terminalRawStderr(terminal)
 	execCmd.Env = append(os.Environ(), j.Env...)
 
 	if err := execCmd.Run(); err != nil {
@@ -295,16 +295,19 @@ func printCommand(cmd []string, terminal *Terminal, includePrefix bool) {
 	fmt.Printf("%s\n", strings.Join(cmd, " "))
 }
 
-func terminalStdout(terminal *Terminal) io.Writer {
+// terminalRawStdout returns the raw stdout writer for subprocess use.
+// This preserves TTY file descriptors so subprocesses can detect color support.
+func terminalRawStdout(terminal *Terminal) io.Writer {
 	if terminal != nil {
-		return terminal.Stdout()
+		return terminal.RawStdout()
 	}
 	return os.Stdout
 }
 
-func terminalStderr(terminal *Terminal) io.Writer {
+// terminalRawStderr returns the raw stderr writer for subprocess use.
+func terminalRawStderr(terminal *Terminal) io.Writer {
 	if terminal != nil {
-		return terminal.Stderr()
+		return terminal.RawStderr()
 	}
 	return os.Stderr
 }

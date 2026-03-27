@@ -386,6 +386,37 @@ func TestExecuteJob_PrintsCommandViaTerminal(t *testing.T) {
 	assert.Contains(t, stdout.String(), "[plur] > \nsh -c echo executed > ")
 }
 
+func TestExecuteJob_SubprocessOutputGoesToRawWriter(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Job that writes to stdout (not a file) so we can verify it reaches the underlying writer
+	j := job.Job{
+		Name: "test-stdout-output",
+		Cmd:  []string{"sh", "-c", "echo hello-from-subprocess"},
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	terminal := NewTerminal(&stdout, &stderr, "[plur] > ")
+	terminal.ShowPrompt()
+
+	err := ExecuteJob(j, nil, tmpDir, terminal)
+	require.NoError(t, err)
+
+	// Subprocess stdout should appear in the underlying writer
+	assert.Contains(t, stdout.String(), "hello-from-subprocess")
+}
+
+func TestTerminalRawStdout_NilTerminalReturnsOsStdout(t *testing.T) {
+	w := terminalRawStdout(nil)
+	assert.Equal(t, os.Stdout, w)
+}
+
+func TestTerminalRawStderr_NilTerminalReturnsOsStderr(t *testing.T) {
+	w := terminalRawStderr(nil)
+	assert.Equal(t, os.Stderr, w)
+}
+
 func TestWatcherReadErrors_UsesConfiguredWriter(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

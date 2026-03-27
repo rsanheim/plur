@@ -46,3 +46,29 @@ func TestTerminal_StderrWriterSuspendsPromptBeforeWrite(t *testing.T) {
 	assert.Equal(t, "[plur] > \n", stdout.String())
 	assert.Equal(t, "04:33:19 - DEBUG - watch type=\"watcher\"\n", stderr.String())
 }
+
+func TestTerminal_RawStdoutReturnsUnderlyingWriterAndSuspendsPrompt(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	terminal := NewTerminal(&stdout, &stderr, "[plur] > ")
+	terminal.ShowPrompt()
+
+	raw := terminal.RawStdout()
+
+	assert.Equal(t, "[plur] > \n", stdout.String(), "prompt should be suspended")
+	assert.Same(t, &stdout, raw, "should return the underlying writer, not a wrapper")
+}
+
+func TestTerminal_RawStderrReturnsUnderlyingWriterAndSuspendsPrompt(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	terminal := NewTerminal(&stdout, &stderr, "[plur] > ")
+	terminal.ShowPrompt()
+
+	raw := terminal.RawStderr()
+
+	assert.Equal(t, "[plur] > \n", stdout.String(), "prompt should be suspended")
+	assert.Same(t, &stderr, raw, "should return the underlying writer, not a wrapper")
+}

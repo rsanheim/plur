@@ -69,6 +69,26 @@ func (t *Terminal) Stderr() io.Writer {
 	return terminalWriter{terminal: t, target: terminalWriterStderr}
 }
 
+// RawStdout suspends the prompt and returns the underlying stdout writer.
+// Use this for subprocess Stdout so the process sees the real TTY fd for
+// color detection. The caller is responsible for calling ShowPrompt when done.
+func (t *Terminal) RawStdout() io.Writer {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.suspendPromptLocked()
+	return t.stdout
+}
+
+// RawStderr suspends the prompt and returns the underlying stderr writer.
+func (t *Terminal) RawStderr() io.Writer {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.suspendPromptLocked()
+	return t.stderr
+}
+
 func (t *Terminal) suspendPromptLocked() {
 	if !t.promptVisible {
 		return
