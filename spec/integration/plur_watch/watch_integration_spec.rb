@@ -1,7 +1,4 @@
 require "spec_helper"
-require "tempfile"
-require "fileutils"
-require "timeout"
 
 RSpec.describe "plur watch integration" do
   include PlurWatchHelper
@@ -13,6 +10,31 @@ RSpec.describe "plur watch integration" do
     expect(result.err).to include("Watch configuration loaded")
     expect(result.err).to include("directories=[lib spec]")
     expect(result.err).to include("Debounce delay ms=30")
+  end
+
+  it "keeps default watches when user config adds a custom watch mapping" do
+    Dir.mktmpdir do |tmpdir|
+      config_path = File.join(tmpdir, ".plur.toml")
+      File.write(config_path, <<~TOML)
+        [[watch]]
+        name = "custom-config-watch"
+        source = "config/**/*.yml"
+        targets = ["spec/config_spec.rb"]
+        jobs = ["rspec"]
+      TOML
+
+      stdout, stderr, status = Open3.capture3(
+        {"PLUR_CONFIG_FILE" => config_path},
+        plur_binary, "watch", "find", "lib/calculator.rb",
+        chdir: default_ruby_dir.to_s
+      )
+
+      expect(stderr).to eq("")
+      expect(stdout).to include('msg="checking watch" file=lib/calculator.rb')
+      expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb')
+      expect(stdout).to include('msg="found files" files=spec/calculator_spec.rb')
+      expect(status.exitstatus).to eq(0)
+    end
   end
 
   it "deduplicates overlapping watch directories to avoid duplicate runs" do

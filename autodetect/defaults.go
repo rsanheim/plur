@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -289,10 +290,7 @@ func ValidateConfig(userJobs map[string]job.Job, userWatches []watch.WatchMappin
 		return err
 	}
 
-	watches := userWatches
-	if len(watches) == 0 {
-		watches = builtinDefaults.Defaults.Watches
-	}
+	watches := slices.Concat(builtinDefaults.Defaults.Watches, userWatches)
 	return watch.ValidateConfig(resolvedJobs, watches)
 }
 
