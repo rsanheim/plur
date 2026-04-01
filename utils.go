@@ -5,6 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/logger"
 )
 
 // pluralize returns the singular or plural form of a word based on count
@@ -13,6 +16,13 @@ func pluralize(count int, singular, plural string) string {
 		return singular
 	}
 	return plural
+}
+
+func logDiscoverySummary(cfg *config.GlobalConfig, msg string, attrs ...any) {
+	if cfg.DryRun {
+		msg = "[dry-run] " + msg
+	}
+	logger.Logger.Debug(msg, attrs...)
 }
 
 func toStdErr(dryRun bool, format string, args ...any) {

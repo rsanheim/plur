@@ -10,6 +10,7 @@ Plur is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) t
 * **Multi-framework support**: RSpec, Minitest, and Go test out of the box
 * **Runtime-based distribution**: tracks historical test runtimes and balances worker loads accordingly, falling back to file-size estimation for new files
 * **Tag filtering**: `--tag` flag passes RSpec tags through to workers
+* **Exclude patterns**: `--exclude-pattern` removes matching test files before worker grouping
 * **Argument passthrough**: `--` forwards arbitrary flags to the underlying test command
 * **TOML configuration**: local `.plur.toml` and global `~/.plur.toml` for persistent settings
 * **Custom jobs**: define your own jobs in config with arbitrary commands, frameworks, and target patterns
@@ -27,6 +28,7 @@ plur                          # Run with auto-detected workers (cores-2)
 plur -n 4                     # Run with 4 workers
 plur --dry-run                # Show what would run without execution
 plur --tag focus              # Filter RSpec tests by tag
+plur --exclude-pattern 'spec/system/**/*_spec.rb'  # Exclude matching files
 plur --use minitest           # Override framework autodetection
 plur spec/models              # Run a subset of specs
 plur -- --seed 12345          # Pass flags through to the test command

@@ -20,10 +20,11 @@ import (
 )
 
 type SpecCmd struct {
-	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Tags       []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
-	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
-	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
+	Patterns        []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
+	ExcludePatterns []string `help:"Exclude test files matching pattern (repeatable)" name:"exclude-pattern" aliases:"exclude"`
+	Tags            []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
+	Auto            bool     `help:"Automatically run bundle install before tests" default:"false"`
+	RspecTrace      bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
 }
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
@@ -52,20 +53,27 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	// Discover test files
 	var testFiles []string
+	var excludedFiles []string
 	if len(r.Patterns) > 0 {
-		testFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob)
+		testFiles, excludedFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob, r.ExcludePatterns)
 		if err != nil {
 			return err
 		}
 		if len(testFiles) == 0 {
+			if len(r.ExcludePatterns) > 0 {
+				return fmt.Errorf("no test files remain after applying exclude patterns")
+			}
 			return fmt.Errorf("no test files found matching provided patterns")
 		}
 	} else {
-		testFiles, err = FindFilesFromJob(currentJob)
+		testFiles, excludedFiles, err = FindFilesFromJob(currentJob, r.ExcludePatterns)
 		if err != nil {
 			return err
 		}
 		if len(testFiles) == 0 {
+			if len(r.ExcludePatterns) > 0 {
+				return fmt.Errorf("no test files remain after applying exclude patterns")
+			}
 			patterns, err := framework.TargetPatternsForJob(currentJob)
 			if err != nil || len(patterns) == 0 {
 				return fmt.Errorf("no test files found")
@@ -73,8 +81,22 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return fmt.Errorf("no test files found (looking for %s)", strings.Join(patterns, ", "))
 		}
 	}
-	msg := fmt.Sprintf("found %v test files", len(testFiles))
-	logger.Logger.Debug(msg, "testFiles", testFiles)
+
+	discoveredCount := len(testFiles) + len(excludedFiles)
+	logDiscoverySummary(cfg, "test file discovery",
+		"job", currentJob.Name,
+		"framework", currentJob.Framework,
+		"patterns", r.Patterns,
+		"exclude_patterns", r.ExcludePatterns,
+		"discovered", discoveredCount,
+		"excluded", len(excludedFiles),
+		"remaining", len(testFiles),
+	)
+	if len(excludedFiles) > 0 {
+		logDiscoverySummary(cfg, "excluded files", "files", excludedFiles)
+	}
+
+	logger.Logger.Debug(fmt.Sprintf("found %v test files", len(testFiles)), "testFiles", testFiles)
 
 	if r.Auto {
 		depManager := NewDependencyManager(cfg.DryRun)

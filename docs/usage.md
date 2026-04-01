@@ -22,6 +22,24 @@ plur --dry-run
 plur -C path/to/project
 ```
 
+### Excluding Test Files
+
+Use `--exclude-pattern` (or `--exclude` for short) to remove test files from the run set before worker grouping. The flag is repeatable and uses doublestar glob syntax:
+
+```bash
+# Exclude system specs from the run
+plur --exclude-pattern 'spec/system/**/*_spec.rb'
+
+# Exclude multiple patterns
+plur --exclude-pattern 'spec/system/**/*_spec.rb' --exclude-pattern 'spec/features/**/*_spec.rb'
+
+# Combine with explicit directory input
+plur spec/models --exclude-pattern 'spec/models/system_spec.rb'
+
+# Works with minitest too
+plur --use=minitest --exclude-pattern 'test/integration/**/*_test.rb'
+```
+
 ### Selecting Test Framework
 
 Plur auto-detects your test framework (RSpec or Minitest) based on directory structure, but you can override this:
