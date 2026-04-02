@@ -8,14 +8,11 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/types"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -24,132 +21,6 @@ type SpecCmd struct {
 	Tags       []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
 	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
 	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
-}
-
-func (r *SpecCmd) Run(parent *PlurCLI) error {
-	cfg := parent.globalConfig
-	fmt.Fprintf(os.Stderr, "plur version=%s\n", buildinfo.GetVersionInfo())
-	logger.Logger.Debug("running plur", "command", "spec", "args", os.Args[1:])
-
-	// Determine explicit job name (CLI or config)
-	explicitName := parent.Use
-
-	result, err := autodetect.ResolveJob(explicitName, parent.Job, r.Patterns)
-	if err != nil {
-		return err
-	}
-
-	currentJob := result.Job
-
-	logInheritedFields(currentJob.Name, result.Inherited)
-
-	if len(r.Tags) > 0 && currentJob.Framework != "rspec" {
-		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)
-	}
-
-	targetPatterns, _ := framework.TargetPatternsForJob(currentJob)
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", result.Reason)
-
-	// Discover test files
-	var testFiles []string
-	if len(r.Patterns) > 0 {
-		testFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob)
-		if err != nil {
-			return err
-		}
-		if len(testFiles) == 0 {
-			return fmt.Errorf("no test files found matching provided patterns")
-		}
-	} else {
-		testFiles, err = FindFilesFromJob(currentJob)
-		if err != nil {
-			return err
-		}
-		if len(testFiles) == 0 {
-			patterns, err := framework.TargetPatternsForJob(currentJob)
-			if err != nil || len(patterns) == 0 {
-				return fmt.Errorf("no test files found")
-			}
-			return fmt.Errorf("no test files found (looking for %s)", strings.Join(patterns, ", "))
-		}
-	}
-	msg := fmt.Sprintf("found %v test files", len(testFiles))
-	logger.Logger.Debug(msg, "testFiles", testFiles)
-
-	if r.Auto {
-		depManager := NewDependencyManager(cfg.DryRun)
-		if err := depManager.InstallDependencies(); err != nil {
-			return err
-		}
-	}
-
-	cfg.Auto = r.Auto
-	cfg.RspecTrace = r.RspecTrace
-
-	extraArgs := buildTagArgs(r.Tags)
-	extraArgs = append(extraArgs, parent.passthroughArgs...)
-
-	runner, err := NewRunner(cfg, testFiles, currentJob, extraArgs)
-	if err != nil {
-		return err
-	}
-	results, wallTime, err := runner.Run()
-	if err != nil {
-		return err
-	}
-
-	if cfg.DryRun {
-		return nil
-	}
-
-	// Save runtime data if tests actually ran
-	hasValidRuntimeData := false
-	for _, result := range results {
-		if result.State != types.StateError && result.ExampleCount > 0 {
-			hasValidRuntimeData = true
-			break
-		}
-	}
-
-	if hasValidRuntimeData {
-		if err := runner.Tracker().SaveToFile(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
-		} else {
-			logger.Logger.Debug("Runtime data saved", "runtime_path", runner.Tracker().RuntimeFilePath())
-		}
-	}
-
-	summary := BuildTestSummary(results, wallTime, currentJob)
-	PrintResults(summary, cfg.ColorOutput, currentJob)
-
-	if !summary.Success {
-		os.Exit(1)
-	}
-
-	return nil
-}
-
-func logInheritedFields(jobName string, inherited autodetect.InheritedFields) {
-	if !inherited.Cmd && !inherited.Env && !inherited.Framework && !inherited.TargetPattern {
-		return
-	}
-	logger.Logger.Info("job inherited defaults",
-		"job", jobName,
-		"cmd", inherited.Cmd,
-		"env", inherited.Env,
-		"framework", inherited.Framework,
-		"target_pattern", inherited.TargetPattern)
-}
-
-func buildTagArgs(tags []string) []string {
-	if len(tags) == 0 {
-		return nil
-	}
-	args := make([]string, 0, len(tags)*2)
-	for _, tag := range tags {
-		args = append(args, "--tag", tag)
-	}
-	return args
 }
 
 type WatchCmd struct {

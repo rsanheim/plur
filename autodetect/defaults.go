@@ -142,6 +142,36 @@ func resolveFromPatterns(patterns []string, resolvedJobs map[string]job.Job, inh
 	return nil, nil
 }
 
+// InferFrameworkFromPatterns examines file patterns to determine a framework name.
+// Returns the framework name (e.g., "rspec", "minitest") or "" if unable to determine.
+func InferFrameworkFromPatterns(patterns []string) (string, error) {
+	return inferFrameworkFromPatterns(patterns)
+}
+
+// AutodetectJobName runs autodetection against the given resolved jobs and returns the
+// name of the best-matching job based on file system presence.
+func AutodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
+	result, err := autodetectJob(resolvedJobs, nil)
+	if err != nil {
+		return "", err
+	}
+	return result.Name, nil
+}
+
+// BuiltinWatchesForJob returns the built-in watch mappings that reference the given job name.
+func BuiltinWatchesForJob(jobName string) []watch.WatchMapping {
+	var result []watch.WatchMapping
+	for _, w := range builtinDefaults.Defaults.Watches {
+		for _, j := range w.Jobs {
+			if j == jobName {
+				result = append(result, w)
+				break
+			}
+		}
+	}
+	return result
+}
+
 func autodetectJob(resolvedJobs map[string]job.Job, inherited map[string]InheritedFields) (*ResolveJobResult, error) {
 	// Explicit priority order: rspec > minitest > go-test
 	priority := []string{"rspec", "minitest", "go-test"}

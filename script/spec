@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Install plur globally then run integration specs.
+# Usage:
+#   script/spec                              # run all integration specs
+#   script/spec spec/integration/plur_spec/  # run specific specs
+
+bin/rake install
+
+if [[ $# -eq 0 ]]; then
+  bin/rspec
+else
+  bin/rspec "$@"
+fi

@@ -24,21 +24,21 @@ func buildRuntimeConfig(cli *PlurCLI) (*RuntimeConfig, error) {
 		return nil, err
 	}
 
-	watches := cli.WatchMappings
-	if len(watches) == 0 {
-		result, err := autodetect.ResolveJob(cli.Use, cli.Job, nil)
-		if err != nil {
-			return nil, err
-		}
-		watches = result.Watches
-	}
-
 	rc := &RuntimeConfig{
 		Use:       cli.Use,
 		Jobs:      jobs,
-		Watches:   watches,
 		Inherited: inherited,
 		Sources:   runtimeConfigSources(cli.configFiles),
+	}
+
+	if len(cli.WatchMappings) > 0 {
+		rc.Watches = cli.WatchMappings
+	} else {
+		selected, err := selectJobFromRuntimeConfig(rc, nil)
+		if err != nil {
+			return nil, err
+		}
+		rc.Watches = autodetect.BuiltinWatchesForJob(selected.Name)
 	}
 
 	if err := validateRuntimeConfig(rc); err != nil {
