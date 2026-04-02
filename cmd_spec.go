@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/logger"
@@ -110,18 +109,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	return nil
-}
-
-func logInheritedFields(jobName string, inherited autodetect.InheritedFields) {
-	if !inherited.Cmd && !inherited.Env && !inherited.Framework && !inherited.TargetPattern {
-		return
-	}
-	logger.Logger.Info("job inherited defaults",
-		"job", jobName,
-		"cmd", inherited.Cmd,
-		"env", inherited.Env,
-		"framework", inherited.Framework,
-		"target_pattern", inherited.TargetPattern)
 }
 
 func buildTagArgs(tags []string) []string {
