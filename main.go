@@ -116,8 +116,8 @@ type PlurCLI struct {
 	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
 	// Store the built global config
-	globalConfig   *config.GlobalConfig `kong:"-"`
-	runtimeConfig  *RuntimeConfig       `kong:"-"`
+	globalConfig  *config.GlobalConfig `kong:"-"`
+	runtimeConfig *RuntimeConfig       `kong:"-"`
 
 	// Store config files that were attempted (for tracking)
 	configFiles []string `kong:"-"`

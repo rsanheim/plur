@@ -33,11 +33,7 @@ func buildRuntimeConfig(cli *PlurCLI) (*RuntimeConfig, error) {
 
 	if len(cli.WatchMappings) > 0 {
 		rc.Watches = cli.WatchMappings
-	} else {
-		selected, err := selectJobFromRuntimeConfig(rc, nil)
-		if err != nil {
-			return nil, err
-		}
+	} else if selected, err := selectJobFromRuntimeConfig(rc, nil); err == nil {
 		rc.Watches = autodetect.BuiltinWatchesForJob(selected.Name)
 	}
 

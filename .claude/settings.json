@@ -45,6 +45,7 @@
       "Bash(rg:*)",
       "Bash(rspec:*)",
       "Bash(ruby:*)",
+      "Bash(script/spec:*)",
       "Bash(sed:*)",
       "Bash(tar:*)",
       "Bash(time:*)",
