@@ -201,8 +201,12 @@ func anyPatternMatches(patterns []string) (bool, error) {
 	return false, nil
 }
 
-// buildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
+// BuildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
 // It applies framework and target pattern defaulting and normalizes frameworks.
+func BuildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[string]InheritedFields, error) {
+	return buildResolvedJobs(userJobs)
+}
+
 func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[string]InheritedFields, error) {
 	resolved := make(map[string]job.Job)
 	inherited := make(map[string]InheritedFields)

@@ -245,7 +245,8 @@ type PlurCLI struct {
 	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
 	// Store the built global config
-	globalConfig *config.GlobalConfig `kong:"-"`
+	globalConfig   *config.GlobalConfig `kong:"-"`
+	runtimeConfig  *RuntimeConfig       `kong:"-"`
 
 	// Store config files that were attempted (for tracking)
 	configFiles []string `kong:"-"`
@@ -293,9 +294,11 @@ func (cli *PlurCLI) AfterApply() error {
 		LoadedConfigs: loadedConfigs,
 	}
 
-	if err := autodetect.ValidateConfig(cli.Job, cli.WatchMappings); err != nil {
+	runtimeConfig, err := buildRuntimeConfig(cli)
+	if err != nil {
 		return err
 	}
+	cli.runtimeConfig = runtimeConfig
 
 	return nil
 }

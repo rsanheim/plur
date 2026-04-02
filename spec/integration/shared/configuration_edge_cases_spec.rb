@@ -235,6 +235,36 @@ RSpec.describe "Configuration edge cases" do
     end
   end
 
+  context "with invalid watch config" do
+    it "fails early for spec and doctor through the same config path" do
+      Dir.mktmpdir do |tmpdir|
+        File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
+          use = "rspec"
+
+          [job.rspec]
+          cmd = ["bin/rspec"]
+          target_pattern = "spec/**/*_spec.rb"
+
+          [[watch]]
+          name = "bad-watch"
+          source = "spec/**/*_spec.rb"
+          jobs = ["missing"]
+        TOML
+
+        FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+        File.write(File.join(tmpdir, "spec", "example_spec.rb"), "RSpec.describe('x'){ it('works'){ expect(true).to be(true) } }")
+
+        _, spec_err, spec_status = Dir.chdir(tmpdir) { Open3.capture3(plur_binary, "spec", "--dry-run") }
+        _, doctor_err, doctor_status = Dir.chdir(tmpdir) { Open3.capture3(plur_binary, "doctor") }
+
+        expect(spec_status).not_to be_success
+        expect(doctor_status).not_to be_success
+        expect(spec_err).to include("bad-watch")
+        expect(doctor_err).to include("bad-watch")
+      end
+    end
+  end
+
   describe "TOML 1.1 compatibility" do
     it "supports multiline inline tables for nested job config" do
       Dir.mktmpdir do |tmpdir|
