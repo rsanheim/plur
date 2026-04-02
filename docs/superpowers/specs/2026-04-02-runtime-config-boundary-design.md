@@ -57,6 +57,7 @@ Start with one broad shared object:
 
 ```go
 type RuntimeConfig struct {
+	Use     string
 	Jobs    map[string]job.Job
 	Watches []watch.WatchMapping
 	Sources []string
@@ -65,9 +66,10 @@ type RuntimeConfig struct {
 
 Field contract:
 
-1. `Jobs` are already merged with defaults and normalized.
-2. `Watches` are already merged with defaults into the same runtime watch list this invocation will execute against.
-3. `Sources` contains useful config-source metadata for user-facing errors.
+1. `Use` carries the invocation's configured explicit job name, if any, so downstream code does not need to read raw `PlurCLI.Use`.
+2. `Jobs` are already merged with defaults and normalized.
+3. `Watches` are already merged with defaults into the same runtime watch list this invocation will execute against.
+4. `Sources` contains useful config-source metadata for user-facing errors.
 
 This object is intentionally broad. Commands can grab the pieces they need without introducing command-specific config layers yet.
 
@@ -103,7 +105,8 @@ Downstream production code may:
 1. read `cli.runtimeConfig`
 2. select from `runtimeConfig.Jobs`
 3. read `runtimeConfig.Watches`
-4. derive command-local execution state from `runtimeConfig`
+4. read `runtimeConfig.Use`
+5. derive command-local execution state from `runtimeConfig`
 
 ## Required Downstream Simplifications
 
@@ -138,6 +141,41 @@ For example:
 
 But those decisions must operate only on `RuntimeConfig`, never on raw config fields.
 
+## Invocation-Wide Config vs Command-Local Derived State
+
+`RuntimeConfig` should contain invocation-wide config state only. It should not try to hold every piece of derived execution state.
+
+The following should remain command-local derived state:
+
+1. selected job/result for the current command
+2. selection reason for the current command
+3. inherited-default logging metadata for the selected job
+4. target patterns derived from the selected job
+5. discovered `testFiles`
+6. watch directories derived from `RuntimeConfig.Watches`
+7. runner arguments and other execution-local values
+
+That means the `spec` command flow becomes:
+
+1. select the active job from `runtimeConfig.Jobs` using `runtimeConfig.Use` and `SpecCmd.Patterns`
+2. log selection details for that chosen job
+3. derive target patterns from the selected job
+4. derive `testFiles` from the selected job plus `SpecCmd.Patterns`
+5. execute the runner
+
+This preserves the current functionality without pushing filesystem-derived or command-specific state into `RuntimeConfig`.
+
+The current `SpecCmd.Run()` mixes:
+
+1. config resolution
+2. job selection
+3. execution-local file discovery
+4. runner execution
+
+This design moves only step 1 into `AfterApply()`. Steps 2 through 4 remain in command code, but must operate only on `RuntimeConfig`.
+
+If preserving inherited-default logging requires extra metadata, that metadata should travel as part of command-local selection results rather than by reintroducing raw-config access downstream.
+
 ## Validation Model
 
 Validation happens once, after the runtime config is built.
@@ -169,6 +207,21 @@ Command code should not:
 2. merge config
 3. validate config
 4. fall back from user config to default config
+
+## Watch Reload Compatibility
+
+Watch reload is a full process replacement today. That is compatible with this design and should remain true.
+
+Requirements:
+
+1. reload must re-enter `main()`
+2. reload must rerun `AfterApply()`
+3. reload must rebuild and revalidate `RuntimeConfig` through the same shared path as initial startup
+4. reload must not have a special config-loading or validation path
+
+One specific edge case must be verified during implementation:
+
+1. relative `-C` behavior on reload, since reload preserves original args and startup re-applies early directory handling
 
 ## Audit Script Guardrail
 
@@ -209,6 +262,7 @@ The work is complete only when all of the following are true:
 5. Downstream runtime code no longer reads `Use`, `Job`, or `WatchMappings` from `PlurCLI`.
 6. The audit script reports zero matches in downstream production files.
 7. The resulting command flow is clearly: parse -> build runtime config -> validate -> execute.
+8. Watch reload re-enters the same parse -> build runtime config -> validate -> execute path.
 
 ## Implementation Notes
 
