@@ -55,7 +55,7 @@ func (w *WatchInstallCmd) Run(parent *PlurCLI) error {
 type DoctorCmd struct{}
 
 func (d *DoctorCmd) Run(parent *PlurCLI) error {
-	return runDoctorWithConfig(parent.globalConfig)
+	return runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
 }
 
 type DBSetupCmd struct{}

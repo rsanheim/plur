@@ -10,14 +10,13 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/watch"
 )
 
-func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
+func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *RuntimeConfig) error {
 	fmt.Println("Plur Doctor")
 	fmt.Println("==========")
 	fmt.Println()
@@ -127,7 +126,7 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig) error {
 
 	// Configuration
 	fmt.Println("Configuration:")
-	if err := checkConfiguration(globalConfig); err != nil {
+	if err := checkConfiguration(globalConfig, runtimeConfig); err != nil {
 		fmt.Printf("  Error checking configuration: %v\n", err)
 	}
 
@@ -150,7 +149,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func checkConfiguration(globalConfig *config.GlobalConfig) error {
+func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *RuntimeConfig) error {
 	// Show which config files are actually in use
 	fmt.Println("  Active Configuration Files:")
 	if len(globalConfig.LoadedConfigs) == 0 {
@@ -174,44 +173,39 @@ func checkConfiguration(globalConfig *config.GlobalConfig) error {
 	fmt.Printf("    Debug:       %v\n", globalConfig.Debug)
 	fmt.Printf("    Verbose:     %v\n", globalConfig.Verbose)
 
-	// Show active task if set
-	// Note: We'd need to pass the active task name from PlurCLI if we want to show it here
-
-	// Job resolution
+	// Job resolution - use runtimeConfig
 	fmt.Println("\n  Job Resolution:")
-	result, err := autodetect.ResolveJob("", nil, nil)
+	selected, err := selectJobFromRuntimeConfig(runtimeConfig, nil)
 	if err != nil {
 		fmt.Printf("    %v\n", err)
 	} else {
-		fmt.Printf("    Active Job:      %s\n", result.Name)
-		fmt.Printf("    Command:         %v\n", result.Job.Cmd)
-		patterns, _ := framework.TargetPatternsForJob(result.Job)
+		fmt.Printf("    Active Job:      %s\n", selected.Name)
+		fmt.Printf("    Command:         %v\n", selected.Job.Cmd)
+		patterns, _ := framework.TargetPatternsForJob(selected.Job)
 		fmt.Printf("    Target Patterns: %s\n", strings.Join(patterns, ", "))
 	}
 
-	// Check for watch directories
+	// Watch directories - use runtimeConfig.Watches
 	fmt.Println("\n  Watch Directories:")
-	if result != nil && len(result.Watches) > 0 {
-		// Extract watch directories from watch mappings
-		var watchDirs []string
-		for _, mapping := range result.Watches {
-			dir := mapping.SourceDir()
-			if _, err := os.Stat(dir); err == nil {
-				watchDirs = append(watchDirs, dir)
-			}
-		}
-		sort.Strings(watchDirs)
-		watchDirs = slices.Compact(watchDirs) // Remove duplicates from sorted slice
-		if len(watchDirs) == 0 {
-			fmt.Println("    Warning: No watch directories found in watch mappings")
-		} else {
-			for _, dir := range watchDirs {
-				fmt.Printf("    %s/ (exists)\n", dir)
-			}
-		}
-	} else {
+	if len(runtimeConfig.Watches) == 0 {
 		fmt.Println("    Warning: No watch mappings available")
+		return nil
 	}
-
+	var watchDirs []string
+	for _, mapping := range runtimeConfig.Watches {
+		dir := mapping.SourceDir()
+		if _, err := os.Stat(dir); err == nil {
+			watchDirs = append(watchDirs, dir)
+		}
+	}
+	sort.Strings(watchDirs)
+	watchDirs = slices.Compact(watchDirs)
+	if len(watchDirs) == 0 {
+		fmt.Println("    Warning: No watch directories found in watch mappings")
+		return nil
+	}
+	for _, dir := range watchDirs {
+		fmt.Printf("    %s/ (exists)\n", dir)
+	}
 	return nil
 }
