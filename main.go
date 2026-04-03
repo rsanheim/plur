@@ -11,6 +11,7 @@ import (
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
+	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -116,8 +117,8 @@ type PlurCLI struct {
 	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
 	// Store the built global config
-	globalConfig  *config.GlobalConfig `kong:"-"`
-	runtimeConfig *RuntimeConfig       `kong:"-"`
+	globalConfig  *config.GlobalConfig   `kong:"-"`
+	runtimeConfig *runtime.RuntimeConfig `kong:"-"`
 
 	// Store config files that were attempted (for tracking)
 	configFiles []string `kong:"-"`
@@ -165,7 +166,13 @@ func (cli *PlurCLI) AfterApply() error {
 		LoadedConfigs: loadedConfigs,
 	}
 
-	runtimeConfig, err := buildRuntimeConfig(cli)
+	cliInput := &runtime.CLIInput{
+		Use:           cli.Use,
+		Jobs:          cli.Job,
+		WatchMappings: cli.WatchMappings,
+		ConfigFiles:   cli.configFiles,
+	}
+	runtimeConfig, err := runtime.BuildRuntimeConfig(cliInput)
 	if err != nil {
 		return err
 	}

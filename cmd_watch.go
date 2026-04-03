@@ -15,6 +15,7 @@ import (
 
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -99,7 +100,7 @@ func printWatchInfo(watchDirs []string) {
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
-	selected, err := selectJobFromRuntimeConfig(cli.runtimeConfig, nil)
+	selected, err := runtime.SelectJobFromRuntimeConfig(cli.runtimeConfig, nil)
 	if err != nil {
 		return fmt.Errorf("failed to select watch job: %w", err)
 	}
@@ -107,7 +108,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	jobs := cli.runtimeConfig.Jobs
 	watches := cli.runtimeConfig.Watches
 
-	logInheritedFields(selected.Name, selected.Inherited)
+	runtime.LogInheritedFields(selected.Name, selected.Inherited)
 
 	if len(watches) > 0 {
 		logger.Logger.Info("Watch configuration loaded", "job", resolvedJob.Name, "watch_mappings", len(watches))

@@ -7,6 +7,7 @@ import (
 
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -16,14 +17,14 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	fmt.Fprintf(os.Stderr, "plur version=%s\n", buildinfo.GetVersionInfo())
 	logger.Logger.Debug("running plur", "command", "spec", "args", os.Args[1:])
 
-	selected, err := selectJobFromRuntimeConfig(parent.runtimeConfig, r.Patterns)
+	selected, err := runtime.SelectJobFromRuntimeConfig(parent.runtimeConfig, r.Patterns)
 	if err != nil {
 		return err
 	}
 
 	currentJob := selected.Job
 
-	logInheritedFields(currentJob.Name, selected.Inherited)
+	runtime.LogInheritedFields(currentJob.Name, selected.Inherited)
 
 	if len(r.Tags) > 0 && currentJob.Framework != "rspec" {
 		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)

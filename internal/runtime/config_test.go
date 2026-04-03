@@ -1,4 +1,4 @@
-package main
+package runtime
 
 import (
 	"os"
@@ -12,18 +12,16 @@ import (
 )
 
 func TestBuildRuntimeConfig_PreservesUseJobsAndUserWatches(t *testing.T) {
-	cli := &PlurCLI{
+	cli := &CLIInput{
 		Use: "rspec",
-		Job: map[string]job.Job{
+		Jobs: map[string]job.Job{
 			"rspec": {Cmd: []string{"custom-rspec"}, Framework: "rspec"},
 		},
-		WatchMappings: []watch.WatchMapping{
-			{Name: "custom-watch", Source: "spec/**/*_spec.rb", Jobs: []string{"rspec"}},
-		},
-		configFiles: []string{"~/.plur.toml", ".plur.toml"},
+		WatchMappings: []watch.WatchMapping{{Name: "custom-watch", Source: "spec/**/*_spec.rb", Jobs: []string{"rspec"}}},
+		ConfigFiles:   []string{"~/.plur.toml", ".plur.toml"},
 	}
 
-	rc, err := buildRuntimeConfig(cli)
+	rc, err := BuildRuntimeConfig(cli)
 	require.NoError(t, err)
 	assert.Equal(t, "rspec", rc.Use)
 	assert.Contains(t, rc.Jobs, "rspec")
@@ -32,12 +30,12 @@ func TestBuildRuntimeConfig_PreservesUseJobsAndUserWatches(t *testing.T) {
 }
 
 func TestBuildRuntimeConfig_FallsBackToSelectedBuiltinWatches(t *testing.T) {
-	cli := &PlurCLI{
+	cli := &CLIInput{
 		Use:         "rspec",
-		configFiles: []string{"~/.plur.toml", ".plur.toml"},
+		ConfigFiles: []string{"~/.plur.toml", ".plur.toml"},
 	}
 
-	rc, err := buildRuntimeConfig(cli)
+	rc, err := BuildRuntimeConfig(cli)
 	require.NoError(t, err)
 	require.NotEmpty(t, rc.Watches)
 	for _, watch := range rc.Watches {
@@ -85,7 +83,7 @@ func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {
 		Inherited: map[string]autodetect.InheritedFields{},
 	}
 
-	selected, err := selectJobFromRuntimeConfig(rc, nil)
+	selected, err := SelectJobFromRuntimeConfig(rc, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "custom", selected.Name)
 	assert.Equal(t, ResolveReasonExplicitName, selected.Reason)
@@ -107,7 +105,7 @@ func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 		Inherited: map[string]autodetect.InheritedFields{},
 	}
 
-	selected, err := selectJobFromRuntimeConfig(rc, []string{"spec/example_spec.rb"})
+	selected, err := SelectJobFromRuntimeConfig(rc, []string{"spec/example_spec.rb"})
 	require.NoError(t, err)
 	assert.Equal(t, "rspec", selected.Name)
 	assert.Equal(t, ResolveReasonExplicitPatterns, selected.Reason)
@@ -131,7 +129,7 @@ func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
 		},
 	}
 
-	selected, err := selectJobFromRuntimeConfig(rc, nil)
+	selected, err := SelectJobFromRuntimeConfig(rc, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "rspec", selected.Name)
 	assert.Equal(t, ResolveReasonAutodetect, selected.Reason)

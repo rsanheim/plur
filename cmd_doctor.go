@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
+	stdruntime "runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -13,10 +13,11 @@ import (
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/watch"
 )
 
-func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *RuntimeConfig) error {
+func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) error {
 	fmt.Println("Plur Doctor")
 	fmt.Println("==========")
 	fmt.Println()
@@ -30,10 +31,10 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *Runti
 	fmt.Println()
 
 	// System info
-	fmt.Printf("Operating System: %s\n", runtime.GOOS)
-	fmt.Printf("Architecture:     %s\n", runtime.GOARCH)
-	fmt.Printf("CPU Count:        %d\n", runtime.NumCPU())
-	fmt.Printf("Go Version:       %s\n", runtime.Version())
+	fmt.Printf("Operating System: %s\n", stdruntime.GOOS)
+	fmt.Printf("Architecture:     %s\n", stdruntime.GOARCH)
+	fmt.Printf("CPU Count:        %d\n", stdruntime.NumCPU())
+	fmt.Printf("Go Version:       %s\n", stdruntime.Version())
 	fmt.Println()
 
 	// Working directory
@@ -77,7 +78,7 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *Runti
 	watcherPath, err := watch.GetWatcherBinaryPath(globalConfig.ConfigPaths.BinDir)
 	if err != nil {
 		fmt.Printf("  Status:         Not available (%v)\n", err)
-		fmt.Printf("  Platform:       %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("  Platform:       %s/%s\n", stdruntime.GOOS, stdruntime.GOARCH)
 	} else {
 		fmt.Printf("  Status:         Available\n")
 		fmt.Printf("  Binary Path:    %s\n", watcherPath)
@@ -89,7 +90,7 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *Runti
 		} else {
 			fmt.Printf("  Version:        %s\n", strings.TrimSpace(edantWatcherVersion))
 		}
-		fmt.Printf("  Platform:       %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("  Platform:       %s/%s\n", stdruntime.GOOS, stdruntime.GOARCH)
 	}
 	fmt.Println()
 
@@ -149,7 +150,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *RuntimeConfig) error {
+func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) error {
 	// Show which config files are actually in use
 	fmt.Println("  Active Configuration Files:")
 	if len(globalConfig.LoadedConfigs) == 0 {
@@ -175,7 +176,7 @@ func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *Runtim
 
 	// Job resolution - use runtimeConfig
 	fmt.Println("\n  Job Resolution:")
-	selected, err := selectJobFromRuntimeConfig(runtimeConfig, nil)
+	selected, err := runtime.SelectJobFromRuntimeConfig(runtimeConfig, nil)
 	if err != nil {
 		fmt.Printf("    %v\n", err)
 	} else {

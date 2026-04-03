@@ -1,4 +1,4 @@
-package main
+package runtime
 
 import (
 	"fmt"
@@ -13,16 +13,24 @@ import (
 	"github.com/rsanheim/plur/watch"
 )
 
-type RuntimeConfig struct {
-	Use       string
-	Jobs      map[string]job.Job
-	Watches   []watch.WatchMapping
-	Inherited map[string]autodetect.InheritedFields
-	Sources   []string
+type CLIInput struct {
+	Use           string
+	Jobs          map[string]job.Job
+	WatchMappings []watch.WatchMapping
+	ConfigFiles   []string
 }
 
-func buildRuntimeConfig(cli *PlurCLI) (*RuntimeConfig, error) {
-	jobs, inherited, err := autodetect.BuildResolvedJobs(cli.Job)
+type RuntimeConfig struct {
+	Use         string
+	Jobs        map[string]job.Job
+	Watches     []watch.WatchMapping
+	Inherited   map[string]autodetect.InheritedFields
+	Sources     []string
+	SelectedJob *SelectedJob
+}
+
+func BuildRuntimeConfig(cli *CLIInput) (*RuntimeConfig, error) {
+	jobs, inherited, err := autodetect.BuildResolvedJobs(cli.Jobs)
 	if err != nil {
 		return nil, err
 	}
@@ -31,13 +39,14 @@ func buildRuntimeConfig(cli *PlurCLI) (*RuntimeConfig, error) {
 		Use:       cli.Use,
 		Jobs:      jobs,
 		Inherited: inherited,
-		Sources:   runtimeConfigSources(cli.configFiles),
+		Sources:   runtimeConfigSources(cli.ConfigFiles),
 	}
 
 	if len(cli.WatchMappings) > 0 {
 		rc.Watches = cli.WatchMappings
-	} else if selected, err := selectJobFromRuntimeConfig(rc, nil); err == nil {
+	} else if selected, err := SelectJobFromRuntimeConfig(rc, nil); err == nil {
 		rc.Watches = autodetect.BuiltinWatchesForJob(selected.Name)
+		rc.SelectedJob = selected
 	}
 
 	if err := validateRuntimeConfig(rc); err != nil {
@@ -98,7 +107,7 @@ type SelectedJob struct {
 	Inherited autodetect.InheritedFields
 }
 
-func selectJobFromRuntimeConfig(rc *RuntimeConfig, patterns []string) (*SelectedJob, error) {
+func SelectJobFromRuntimeConfig(rc *RuntimeConfig, patterns []string) (*SelectedJob, error) {
 	if rc.Use != "" {
 		return buildSelectedJob(rc, rc.Use, ResolveReasonExplicitName)
 	}
@@ -145,7 +154,7 @@ func buildJobNotFoundError(name string, jobs map[string]job.Job) error {
 	return fmt.Errorf("job '%s' not found. Available jobs: %s", name, strings.Join(available, ", "))
 }
 
-func logInheritedFields(jobName string, inherited autodetect.InheritedFields) {
+func LogInheritedFields(jobName string, inherited autodetect.InheritedFields) {
 	if !inherited.Cmd && !inherited.Env && !inherited.Framework && !inherited.TargetPattern {
 		return
 	}
