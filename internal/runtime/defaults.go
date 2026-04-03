@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"fmt"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 
@@ -55,38 +54,17 @@ func autodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
 		if err != nil || len(patterns) == 0 {
 			continue
 		}
-		matches, err := anyPatternMatches(patterns)
-		if err != nil {
-			return "", err
-		}
-		if matches {
-			return name, nil
+		for _, pattern := range patterns {
+			matches, err := doublestar.FilepathGlob(pattern)
+			if err != nil {
+				return "", fmt.Errorf("error finding files with pattern %q: %w", pattern, err)
+			}
+			if len(matches) > 0 {
+				return name, nil
+			}
 		}
 	}
 	return "", fmt.Errorf("no default spec/test files found using default patterns")
-}
-
-func builtinWatchesForJob(jobName string) []watch.WatchMapping {
-	var result []watch.WatchMapping
-	for _, w := range builtinDefaults.Defaults.Watches {
-		if slices.Contains(w.Jobs, jobName) {
-			result = append(result, w)
-		}
-	}
-	return result
-}
-
-func anyPatternMatches(patterns []string) (bool, error) {
-	for _, pattern := range patterns {
-		matches, err := doublestar.FilepathGlob(pattern)
-		if err != nil {
-			return false, fmt.Errorf("error finding files with pattern %q: %w", pattern, err)
-		}
-		if len(matches) > 0 {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // buildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
@@ -235,7 +213,7 @@ func frameworksMatchingPattern(pattern string, candidates []string) (map[string]
 }
 
 func patternMatchesFramework(pattern string, detectPatterns []string) (bool, error) {
-	if containsGlobChars(pattern) {
+	if strings.ContainsAny(pattern, "*?[") {
 		return globMatchesFramework(pattern, detectPatterns)
 	}
 	if fsutil.DirExists(pattern) {
@@ -293,6 +271,3 @@ func dirMatchesFramework(dir string, detectPatterns []string) (bool, error) {
 	return false, nil
 }
 
-func containsGlobChars(s string) bool {
-	return strings.Contains(s, "*") || strings.Contains(s, "?") || strings.Contains(s, "[")
-}

@@ -3,6 +3,7 @@ package runtime
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -33,11 +34,19 @@ func BuildRuntimeConfig(cli *CLIInput) (*RuntimeConfig, error) {
 		return nil, err
 	}
 
+	var sources []string
+	for _, configFile := range cli.ConfigFiles {
+		expanded := kong.ExpandPath(configFile)
+		if _, err := os.Stat(expanded); err == nil {
+			sources = append(sources, expanded)
+		}
+	}
+
 	rc := &RuntimeConfig{
 		Use:       cli.Use,
 		Jobs:      jobs,
 		Inherited: inherited,
-		Sources:   runtimeConfigSources(cli.ConfigFiles),
+		Sources:   sources,
 	}
 
 	if len(cli.WatchMappings) > 0 {
@@ -48,7 +57,11 @@ func BuildRuntimeConfig(cli *CLIInput) (*RuntimeConfig, error) {
 			jobName, _ = autodetectJobName(rc.Jobs)
 		}
 		if jobName != "" {
-			rc.Watches = builtinWatchesForJob(jobName)
+			for _, w := range builtinDefaults.Defaults.Watches {
+				if slices.Contains(w.Jobs, jobName) {
+					rc.Watches = append(rc.Watches, w)
+				}
+			}
 		}
 	}
 
@@ -79,17 +92,6 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 	}
 
 	return nil
-}
-
-func runtimeConfigSources(configFiles []string) []string {
-	var out []string
-	for _, configFile := range configFiles {
-		expanded := kong.ExpandPath(configFile)
-		if _, err := os.Stat(expanded); err == nil {
-			out = append(out, expanded)
-		}
-	}
-	return out
 }
 
 // Job selection from RuntimeConfig
@@ -138,7 +140,12 @@ func SelectJobFromRuntimeConfig(rc *RuntimeConfig, patterns []string) (*Selected
 func buildSelectedJob(rc *RuntimeConfig, name string, reason ResolveReason) (*SelectedJob, error) {
 	j, ok := rc.Jobs[name]
 	if !ok {
-		return nil, buildJobNotFoundError(name, rc.Jobs)
+		available := make([]string, 0, len(rc.Jobs))
+		for jobName := range rc.Jobs {
+			available = append(available, jobName)
+		}
+		sort.Strings(available)
+		return nil, fmt.Errorf("job '%s' not found. Available jobs: %s", name, strings.Join(available, ", "))
 	}
 	return &SelectedJob{
 		Name:      name,
@@ -146,15 +153,6 @@ func buildSelectedJob(rc *RuntimeConfig, name string, reason ResolveReason) (*Se
 		Reason:    reason,
 		Inherited: rc.Inherited[name],
 	}, nil
-}
-
-func buildJobNotFoundError(name string, jobs map[string]job.Job) error {
-	available := make([]string, 0, len(jobs))
-	for jobName := range jobs {
-		available = append(available, jobName)
-	}
-	sort.Strings(available)
-	return fmt.Errorf("job '%s' not found. Available jobs: %s", name, strings.Join(available, ", "))
 }
 
 func LogInheritedFields(jobName string, inherited InheritedFields) {
