@@ -480,6 +480,6 @@ Given source `lib/**/*.rb` matching file `lib/models/user.rb`:
 
 ### Unexpected behaviors
 
-1. **Case 2.3 — Passthrough job without target_pattern exits 0 despite error.** A custom passthrough job with `cmd` but no `target_pattern` logs an ERROR but returns exit code 0. The error occurs during file discovery in `SpecCmd.Run` but isn't propagated as a nonzero exit. Should either exit nonzero or require `target_pattern` for passthrough jobs at validation time.
+1. **Case 2.3 — Passthrough job without target_pattern fails.** Now exits nonzero with a clear error (fixed by runtime config refactoring). However, the deeper issue is that jobs *shouldn't require* `target_pattern` at all — a command like `cmd = ["rubocop"]` should just run. See [#34](https://github.com/rsanheim/plur/issues/34).
 
-2. **Case 3.2 — `watch find` with no framework errors instead of showing empty watches.** When there's no detectable framework and no user watches, `buildRuntimeConfig` correctly produces empty watches, but `watch_find.go` then calls `selectJobFromRuntimeConfig` before checking for empty watches. This causes an unnecessary error. The fix would be to check `len(watches) == 0` before selecting a job.
+2. **Case 3.2 — `watch find` with no framework errors instead of showing empty watches.** When there's no detectable framework and no user watches, `buildRuntimeConfig` correctly produces empty watches, but `watch_find.go` then calls `SelectJobFromRuntimeConfig` before checking for empty watches. This causes an unnecessary error. The fix would be to check `len(watches) == 0` before selecting a job.
