@@ -270,4 +270,3 @@ func dirMatchesFramework(dir string, detectPatterns []string) (bool, error) {
 	}
 	return false, nil
 }
-
