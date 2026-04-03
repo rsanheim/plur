@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/watch"
 	"github.com/stretchr/testify/assert"
@@ -80,7 +79,7 @@ func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {
 		Jobs: map[string]job.Job{
 			"custom": {Name: "custom", Cmd: []string{"custom-runner"}, Framework: "passthrough"},
 		},
-		Inherited: map[string]autodetect.InheritedFields{},
+		Inherited: map[string]InheritedFields{},
 	}
 
 	selected, err := SelectJobFromRuntimeConfig(rc, nil)
@@ -102,7 +101,7 @@ func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 		Jobs: map[string]job.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, Framework: "rspec", TargetPattern: "spec/**/*_spec.rb"},
 		},
-		Inherited: map[string]autodetect.InheritedFields{},
+		Inherited: map[string]InheritedFields{},
 	}
 
 	selected, err := SelectJobFromRuntimeConfig(rc, []string{"spec/example_spec.rb"})
@@ -124,7 +123,7 @@ func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
 		Jobs: map[string]job.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, Framework: "rspec", TargetPattern: "spec/**/*_spec.rb"},
 		},
-		Inherited: map[string]autodetect.InheritedFields{
+		Inherited: map[string]InheritedFields{
 			"rspec": {Framework: true, TargetPattern: true},
 		},
 	}

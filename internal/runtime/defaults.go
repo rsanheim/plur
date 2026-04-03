@@ -1,9 +1,10 @@
-package autodetect
+package runtime
 
 import (
 	_ "embed"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -76,11 +77,8 @@ func AutodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
 func BuiltinWatchesForJob(jobName string) []watch.WatchMapping {
 	var result []watch.WatchMapping
 	for _, w := range builtinDefaults.Defaults.Watches {
-		for _, j := range w.Jobs {
-			if j == jobName {
-				result = append(result, w)
-				break
-			}
+		if slices.Contains(w.Jobs, jobName) {
+			result = append(result, w)
 		}
 	}
 	return result
@@ -102,10 +100,6 @@ func anyPatternMatches(patterns []string) (bool, error) {
 // BuildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
 // It applies framework and target pattern defaulting and normalizes frameworks.
 func BuildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[string]InheritedFields, error) {
-	return buildResolvedJobs(userJobs)
-}
-
-func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[string]InheritedFields, error) {
 	resolved := make(map[string]job.Job)
 	inherited := make(map[string]InheritedFields)
 
@@ -180,8 +174,6 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 	return resolved, inherited, nil
 }
 
-// inferFrameworkFromPatterns examines file patterns to infer the framework
-// Returns "rspec", "minitest", or "" if unable to determine
 func inferFrameworkFromPatterns(patterns []string) (string, error) {
 	if len(patterns) == 0 {
 		return "", nil
@@ -309,7 +301,6 @@ func dirMatchesFramework(dir string, detectPatterns []string) (bool, error) {
 	return false, nil
 }
 
-// containsGlobChars checks if a string contains glob characters
 func containsGlobChars(s string) bool {
 	return strings.Contains(s, "*") || strings.Contains(s, "?") || strings.Contains(s, "[")
 }

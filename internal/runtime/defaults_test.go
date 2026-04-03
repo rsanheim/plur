@@ -1,4 +1,4 @@
-package autodetect
+package runtime
 
 import (
 	"os"
