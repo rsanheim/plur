@@ -264,14 +264,19 @@ The work is complete only when all of the following are true:
 7. The resulting command flow is clearly: parse -> build runtime config -> validate -> execute.
 8. Watch reload re-enters the same parse -> build runtime config -> validate -> execute path.
 
-## Implementation Notes
+## Status: Complete
 
-This design intentionally favors a broad shared runtime object over perfect abstraction.
+All success criteria met as of the `stricter-watch-config` branch.
 
-That is the right tradeoff for this change because:
+Key implementation details that evolved from the original design:
 
-1. it keeps the callsite rewrite simple
-2. it makes the runtime boundary easy to audit
-3. it gives future refactors a stable shared state to narrow later
+* `RuntimeConfig` lives in `internal/runtime` package (not root `main` package as originally planned). A `CLIInput` boundary struct decouples it from `PlurCLI`.
+* The `autodetect` package was folded into `internal/runtime` since it had a single consumer and was doing the same job.
+* The audit script (`script/audit-runtime-config-boundary`) was removed after confirming zero matches — the patterns it guarded against no longer exist in the codebase.
+* `Inherited` field tracking for builtin defaults is part of `RuntimeConfig`, not command-local state.
 
-The primary goal is not elegance. The primary goal is eliminating config-processing divergence.
+### Follow-on work
+
+* [#34](https://github.com/rsanheim/plur/issues/34) — Jobs should run without requiring `target_pattern`. The broader question of whether `target_pattern` should be a user-facing config concept at all.
+* Watch config name-based override (`MergeWatches`) — see `docs/plans/2026-04-01-watch-config-merge-override.md`.
+* `watch find` with no detectable framework errors instead of showing empty watches (reorder empty-watches check before job selection in `watch_find.go`).
