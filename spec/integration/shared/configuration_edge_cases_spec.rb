@@ -235,6 +235,119 @@ RSpec.describe "Configuration edge cases" do
     end
   end
 
+  describe "PLUR_CONFIG_FILE pointing to nonexistent file" do
+    it "exits immediately with a clear error" do
+      _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+        Open3.capture3(
+          {"PLUR_CONFIG_FILE" => "/no/such/file.toml"},
+          plur_binary, "doctor"
+        )
+      end
+
+      expect(status).not_to be_success
+      expect(error).to include("does not exist or is not readable")
+    end
+  end
+
+  describe "job validation" do
+    it "rejects a job without a command" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "no-cmd.toml")
+        File.write(config_path, <<~TOML)
+          use = "rspec"
+
+          [job.rspec]
+          cmd = ["bin/rspec"]
+
+          [job.broken]
+          framework = "rspec"
+        TOML
+
+        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "doctor"
+          )
+        end
+
+        expect(status).not_to be_success
+        expect(error).to include('job "broken" must define a command')
+      end
+    end
+
+    it "rejects a job with an unknown framework" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "bad-framework.toml")
+        File.write(config_path, <<~TOML)
+          [job.bad]
+          cmd = ["echo"]
+          framework = "unknown"
+        TOML
+
+        _, error, status = Dir.chdir(tmpdir) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "doctor"
+          )
+        end
+
+        expect(status).not_to be_success
+        expect(error).to include('unknown framework "unknown"')
+      end
+    end
+
+    it "validates all jobs, not just the selected one" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "all-validated.toml")
+        File.write(config_path, <<~TOML)
+          use = "rspec"
+
+          [job.rspec]
+          cmd = ["bin/rspec"]
+
+          [job.broken]
+          framework = "rspec"
+        TOML
+
+        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "spec", "--dry-run"
+          )
+        end
+
+        expect(status).not_to be_success
+        expect(error).to include('job "broken" must define a command')
+      end
+    end
+  end
+
+  describe "inherited fields in debug output" do
+    it "shows which fields were inherited from builtin defaults" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "cmd-only.toml")
+        File.write(config_path, <<~TOML)
+          use = "rspec"
+
+          [job.rspec]
+          cmd = ["bin/rspec"]
+        TOML
+
+        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "spec", "--debug", "--dry-run"
+          )
+        end
+
+        expect(status).to be_success
+        expect(error).to include("job inherited defaults")
+        expect(error).to include("framework=true")
+        expect(error).to include("target_pattern=true")
+      end
+    end
+  end
+
   context "with invalid watch config" do
     it "fails early for spec and doctor through the same config path" do
       Dir.mktmpdir do |tmpdir|
@@ -261,6 +374,59 @@ RSpec.describe "Configuration edge cases" do
         expect(doctor_status).not_to be_success
         expect(spec_err).to include("bad-watch")
         expect(doctor_err).to include("bad-watch")
+      end
+    end
+  end
+
+  context "with invalid watch target template" do
+    it "rejects an unknown template token" do
+      Dir.mktmpdir do |tmpdir|
+        File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
+          use = "rspec"
+
+          [job.rspec]
+          cmd = ["bin/rspec"]
+
+          [[watch]]
+          name = "bad-template"
+          source = "lib/**/*.rb"
+          targets = ["spec/{{unknown}}_spec.rb"]
+          jobs = ["rspec"]
+        TOML
+
+        FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+        File.write(File.join(tmpdir, "spec", "example_spec.rb"), "RSpec.describe('x'){ it('works'){} }")
+
+        _, error, status = Dir.chdir(tmpdir) { Open3.capture3(plur_binary, "doctor") }
+
+        expect(status).not_to be_success
+        expect(error).to include("bad-template")
+        expect(error).to include("invalid target template")
+      end
+    end
+
+    it "rejects unclosed template braces" do
+      Dir.mktmpdir do |tmpdir|
+        File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
+          use = "rspec"
+
+          [job.rspec]
+          cmd = ["bin/rspec"]
+
+          [[watch]]
+          name = "unclosed"
+          source = "lib/**/*.rb"
+          targets = ["spec/{{match"]
+          jobs = ["rspec"]
+        TOML
+
+        FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+        File.write(File.join(tmpdir, "spec", "example_spec.rb"), "RSpec.describe('x'){ it('works'){} }")
+
+        _, error, status = Dir.chdir(tmpdir) { Open3.capture3(plur_binary, "doctor") }
+
+        expect(status).not_to be_success
+        expect(error).to include("unclosed")
       end
     end
   end
