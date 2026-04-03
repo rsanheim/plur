@@ -19,15 +19,14 @@ import (
 //go:embed defaults.toml
 var defaultsFile []byte
 
-// DefaultsConfig holds embedded default jobs and watches (flat structure)
-type DefaultsConfig struct {
+type defaultsConfig struct {
 	Defaults struct {
 		Jobs    map[string]job.Job   `toml:"job"`
 		Watches []watch.WatchMapping `toml:"watch"`
 	} `toml:"defaults"`
 }
 
-var builtinDefaults DefaultsConfig
+var builtinDefaults defaultsConfig
 
 func init() {
 	if _, err := toml.Decode(string(defaultsFile), &builtinDefaults); err != nil {
@@ -43,15 +42,9 @@ type InheritedFields struct {
 	TargetPattern bool
 }
 
-// InferFrameworkFromPatterns examines file patterns to determine a framework name.
-// Returns the framework name (e.g., "rspec", "minitest") or "" if unable to determine.
-func InferFrameworkFromPatterns(patterns []string) (string, error) {
-	return inferFrameworkFromPatterns(patterns)
-}
-
-// AutodetectJobName runs autodetection against the given resolved jobs and returns the
+// autodetectJobName runs autodetection against the given resolved jobs and returns the
 // name of the best-matching job based on file system presence.
-func AutodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
+func autodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
 	priority := []string{"rspec", "minitest", "go-test"}
 	for _, name := range priority {
 		j, exists := resolvedJobs[name]
@@ -73,8 +66,7 @@ func AutodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
 	return "", fmt.Errorf("no default spec/test files found using default patterns")
 }
 
-// BuiltinWatchesForJob returns the built-in watch mappings that reference the given job name.
-func BuiltinWatchesForJob(jobName string) []watch.WatchMapping {
+func builtinWatchesForJob(jobName string) []watch.WatchMapping {
 	var result []watch.WatchMapping
 	for _, w := range builtinDefaults.Defaults.Watches {
 		if slices.Contains(w.Jobs, jobName) {
@@ -97,9 +89,9 @@ func anyPatternMatches(patterns []string) (bool, error) {
 	return false, nil
 }
 
-// BuildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
+// buildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
 // It applies framework and target pattern defaulting and normalizes frameworks.
-func BuildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[string]InheritedFields, error) {
+func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[string]InheritedFields, error) {
 	resolved := make(map[string]job.Job)
 	inherited := make(map[string]InheritedFields)
 
