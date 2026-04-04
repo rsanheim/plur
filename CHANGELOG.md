@@ -4,14 +4,9 @@
 
 ## v0.46.0 - 2026-04-04
 
-* Extract runtime config into `internal/runtime` package with single build/validate path through `AfterApply()` [#32](https://github.com/rsanheim/plur/pull/32)
-* Consolidate `autodetect` package into `internal/runtime` — defaults, job resolution, and watch fallback all in one place [#32](https://github.com/rsanheim/plur/pull/32)
-* Add config validation: jobs without commands, unknown frameworks, undefined watch jobs, and invalid watch templates all fail fast at startup [#32](https://github.com/rsanheim/plur/pull/32)
-* Reorganize integration specs: flatten `shared/` into subcommand dirs, drop `plur_` prefix [#32](https://github.com/rsanheim/plur/pull/32)
-* Move version info to `internal/buildinfo` package [#16](https://github.com/rsanheim/plur/pull/16)
-* Add govulncheck and bump Go to 1.25.8 for stdlib vulnerability fixes [#18](https://github.com/rsanheim/plur/pull/18)
-* Update installation docs [#27](https://github.com/rsanheim/plur/pull/27)
-* Bump Rails fixture project dependencies [#28](https://github.com/rsanheim/plur/pull/28)
+* Config validation now fails fast at startup for jobs without commands, unknown frameworks, undefined watch jobs, and invalid watch templates [#32](https://github.com/rsanheim/plur/pull/32)
+* Bump Go to 1.25.8 for stdlib vulnerability fixes [#18](https://github.com/rsanheim/plur/pull/18)
+* Internal: consolidate config resolution into `internal/runtime` package [#32](https://github.com/rsanheim/plur/pull/32)
 
 ## v0.45.0 - 2026-03-08
 * switch to our own kongtoml wrapper around BurntSushi/toml for toml 1.1; better error handling
