@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rsanheim/plur/autodetect"
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -40,24 +40,6 @@ func printHelp() {
 	fmt.Printf("  %-*s %s\n", cmdWidth, "reload", "Reload plur")
 	fmt.Printf("  %-*s %s\n", cmdWidth, "exit (Ctrl-C)", "Exit watch mode")
 	fmt.Println()
-}
-
-// loadWatchConfiguration resolves job and watch mappings
-func loadWatchConfiguration(cli *PlurCLI, explicitJobName string) (*autodetect.ResolveJobResult, []watch.WatchMapping, error) {
-	result, err := autodetect.ResolveJob(explicitJobName, cli.Job, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Use user's watches if provided, else from resolved result
-	watches := cli.WatchMappings
-	if len(watches) == 0 {
-		watches = result.Watches
-	}
-
-	logInheritedFields(result.Name, result.Inherited)
-
-	return result, watches, nil
 }
 
 // resetTerminal restores terminal to a known good state.
@@ -118,15 +100,15 @@ func printWatchInfo(watchDirs []string) {
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
-	result, watches, err := loadWatchConfiguration(cli, cli.Use)
+	selected, err := runtime.SelectJobFromRuntimeConfig(cli.runtimeConfig, nil)
 	if err != nil {
-		return fmt.Errorf("failed to load watch configuration: %w", err)
+		return fmt.Errorf("failed to select watch job: %w", err)
 	}
-	resolvedJob := result.Job
+	resolvedJob := selected.Job
+	jobs := cli.runtimeConfig.Jobs
+	watches := cli.runtimeConfig.Watches
 
-	// Build jobs map for FindTargetsForFile - include all user-defined jobs
-	// plus the resolved job (for when auto-detection is used)
-	jobs := result.ResolvedJobs
+	runtime.LogInheritedFields(selected.Name, selected.Inherited)
 
 	if len(watches) > 0 {
 		logger.Logger.Info("Watch configuration loaded", "job", resolvedJob.Name, "watch_mappings", len(watches))
@@ -172,7 +154,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		"project", projectName,
 		"directories", watchDirs,
 		"job", resolvedJob.Name,
-		"reason", result.Reason,
+		"reason", selected.Reason,
 		"watch", fmt.Sprintf("%+v", watches),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,

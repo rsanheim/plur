@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.46.0 - 2026-04-04
+
+* Config validation now fails fast at startup for jobs without commands, unknown frameworks, undefined watch jobs, and invalid watch templates [#32](https://github.com/rsanheim/plur/pull/32)
+* Bump Go to 1.25.8 for stdlib vulnerability fixes [#18](https://github.com/rsanheim/plur/pull/18)
+* Internal: consolidate config resolution into `internal/runtime` package [#32](https://github.com/rsanheim/plur/pull/32)
+
 ## v0.45.0 - 2026-03-08
 * switch to our own kongtoml wrapper around BurntSushi/toml for toml 1.1; better error handling
 

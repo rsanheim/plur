@@ -125,32 +125,3 @@ func Deduplicate(items []string) []string {
 
 	return result
 }
-
-// ValidateConfig validates the configuration before creating the processor
-// It checks that all jobs referenced in watches exist
-func ValidateConfig(jobs map[string]job.Job, watches []WatchMapping) error {
-	for _, watch := range watches {
-		for _, jobName := range watch.Jobs {
-			if _, exists := jobs[jobName]; !exists {
-				name := watch.Name
-				if name == "" {
-					name = fmt.Sprintf("watch with source %q", watch.Source)
-				}
-				return fmt.Errorf("%s references undefined job %q", name, jobName)
-			}
-		}
-
-		// Validate target templates
-		for _, target := range watch.Targets {
-			if err := ValidateTemplate(target); err != nil {
-				name := watch.Name
-				if name == "" {
-					name = fmt.Sprintf("watch with source %q", watch.Source)
-				}
-				return fmt.Errorf("%s has invalid target template %q: %w", name, target, err)
-			}
-		}
-	}
-
-	return nil
-}

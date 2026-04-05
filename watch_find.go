@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -17,14 +18,14 @@ type WatchFindCmd struct {
 }
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
-	// Load watch configuration using the same logic as watch mode
-	resolved, watches, err := loadWatchConfiguration(globals, "")
+	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
 	if err != nil {
-		return fmt.Errorf("failed to load watch configuration: %w", err)
+		return fmt.Errorf("failed to select watch job: %w", err)
 	}
 
-	// Build jobs map for FindTargetsForFile - include all user-defined jobs
-	jobs := resolved.ResolvedJobs
+	jobs := globals.runtimeConfig.Jobs
+	watches := globals.runtimeConfig.Watches
+	runtime.LogInheritedFields(selected.Name, selected.Inherited)
 
 	if len(watches) == 0 {
 		fmt.Println("No watch mappings configured.")

@@ -127,6 +127,112 @@ RSpec.describe "Plur general integration" do
     end
   end
 
+  describe "help output" do
+    it "shows help information" do
+      result = run_plur("--help")
+
+      expect(result.out).to include("A fast Go-based test runner for Ruby/RSpec")
+      expect(result.out).to include("db:create")
+      expect(result.out).to include("db:setup")
+      expect(result.out).to include("db:migrate")
+    end
+  end
+
+  describe "parallel test execution with databases" do
+    it "runs tests in parallel", skip: "Database setup needs investigation" do
+      Bundler.with_unbundled_env do
+        Dir.chdir(default_rails_dir) do
+          run_plur("db:create", "-n", "3", printer: :quiet, allow_error: true)
+          system(plur_binary, "db", "migrate", "-n", "3", out: File::NULL, err: File::NULL)
+
+          result = run_plur("-n", "3")
+
+          expect(result.out).to include("spec files in parallel using")
+          expect(result.out).to include("examples, 0 failures")
+        end
+      end
+    end
+
+    it "assigns different TEST_ENV_NUMBER to workers", skip: "Database setup needs investigation" do
+      chdir(default_rails_dir) do
+        system(plur_binary, "db:create", "-n", "2", out: File::NULL, err: File::NULL)
+        system(plur_binary, "db:migrate", "-n", "2", out: File::NULL, err: File::NULL)
+
+        result = run_plur("-n", "2")
+
+        expect(result.success?).to be true
+      end
+    end
+
+    it "shows dry-run output for test execution" do
+      Dir.chdir(default_rails_dir) do
+        result = run_plur("--dry-run", "-n", "2")
+
+        expect(result.err).to include("[dry-run] Running")
+        expect(result.err).to include("specs")
+        expect(result.err).to include("bundle exec rspec")
+      end
+    end
+  end
+
+  describe "CLI dry-run" do
+    it "runs dry-run with specific spec file" do
+      chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", "spec/calculator_spec.rb")
+
+        expect(result.err).to include("[dry-run]")
+        expect(result.err).to include("calculator_spec.rb")
+      end
+    end
+
+    it "runs dry-run with multiple spec files" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", "spec/calculator_spec.rb", "spec/plur_ruby_spec.rb")
+
+        expect(result.err).to include("[dry-run]")
+        expect(result.err).to include("calculator_spec.rb")
+        expect(result.err).to include("plur_ruby_spec.rb")
+      end
+    end
+
+    it "runs dry-run with --auto flag" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", "--auto", "spec/calculator_spec.rb")
+
+        expect(result.err).to include("[dry-run]")
+      end
+    end
+  end
+
+  describe "test execution" do
+    it "runs all specs in parallel with auto-discovery" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur
+
+        expect(result.err).to match(/Running \d+ specs \[rspec\] in parallel/)
+        expect(result.out).to include("68 examples, 0 failures")
+      end
+    end
+
+    it "runs specific spec file" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("spec/calculator_spec.rb")
+
+        expect(result.out).to include("5 examples, 0 failures")
+      end
+    end
+
+    it "uses debug mode for -d" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("spec", "-d", "spec/calculator_spec.rb")
+
+        expect(result.err).to include("DEBUG")
+        expect(result.err).to include("rspec")
+        expect(result.out).to include("5 examples, 0 failures")
+      end
+    end
+  end
+
   describe "auto bundle install" do
     it "runs bundle install before tests with --auto flag" do
       Dir.mktmpdir do |tmpdir|
