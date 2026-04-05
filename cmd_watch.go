@@ -100,21 +100,20 @@ func printWatchInfo(watchDirs []string) {
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
+	watches := cli.runtimeConfig.Watches
+	if len(watches) == 0 && cli.runtimeConfig.Use == "" {
+		return fmt.Errorf("no watch mappings configured — add [[watch]] to .plur.toml or ensure your project matches a supported framework")
+	}
+
 	selected, err := runtime.SelectJobFromRuntimeConfig(cli.runtimeConfig, nil)
 	if err != nil {
 		return fmt.Errorf("failed to select watch job: %w", err)
 	}
 	resolvedJob := selected.Job
 	jobs := cli.runtimeConfig.Jobs
-	watches := cli.runtimeConfig.Watches
 
 	runtime.LogInheritedFields(selected.Name, selected.Inherited)
-
-	if len(watches) > 0 {
-		logger.Logger.Info("Watch configuration loaded", "job", resolvedJob.Name, "watch_mappings", len(watches))
-	} else {
-		logger.Logger.Info("No watch mappings configured, file changes will not trigger tests")
-	}
+	logger.Logger.Info("Watch configuration loaded", "job", resolvedJob.Name, "watch_mappings", len(watches))
 
 	debounceDelay := time.Duration(runCmd.Debounce) * time.Millisecond
 	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)

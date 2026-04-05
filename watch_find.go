@@ -18,21 +18,21 @@ type WatchFindCmd struct {
 }
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
+	watches := globals.runtimeConfig.Watches
+	if len(watches) == 0 && globals.runtimeConfig.Use == "" {
+		fmt.Println("No watch mappings configured.")
+		fmt.Println("Either add job/watch configuration to .plur.toml or ensure your project structure")
+		fmt.Println("matches a supported framework (Ruby with Gemfile, Go with go.mod).")
+		return nil
+	}
+
 	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
 	if err != nil {
 		return fmt.Errorf("failed to select watch job: %w", err)
 	}
 
 	jobs := globals.runtimeConfig.Jobs
-	watches := globals.runtimeConfig.Watches
 	runtime.LogInheritedFields(selected.Name, selected.Inherited)
-
-	if len(watches) == 0 {
-		fmt.Println("No watch mappings configured.")
-		fmt.Println("Either add job/watch configuration to .plur.toml or ensure your project structure")
-		fmt.Println("matches a supported framework (Ruby with Gemfile, Go with go.mod).")
-		return nil
-	}
 
 	// Get the current working directory
 	cwd, err := os.Getwd()
