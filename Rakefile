@@ -59,7 +59,13 @@ task :install do
   sh %(goreleaser build --snapshot --single-target --clean -o #{temp} > /dev/null 2>&1)
   File.chmod(0o755, temp)
   File.rename(temp, final)
-  puts "[install] Installed plur with version: #{`plur --version`.strip}"
+  puts "[install] Installed plur with version: #{`#{final} --version`.strip}"
+
+  path_plur = `command -v plur`.strip
+  if !path_plur.empty? && path_plur != final
+    warn "[install] >>> WARNING: 'plur' on PATH resolves to #{path_plur}, not #{final}"
+    warn "[install] >>> Your shell will use a different binary than what was just installed."
+  end
 end
 
 namespace :test do
