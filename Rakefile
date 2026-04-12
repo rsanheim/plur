@@ -62,7 +62,7 @@ task :install do
   File.rename(temp, final)
   puts "[install] Installed plur with version: #{`#{final} --version`.strip}"
 
-  path_plur, status = Open3.capture2("command -v plur")
+  path_plur, status = Open3.capture2("which", "plur")
   path_plur = path_plur.strip
   if status.success? && path_plur != final
     warn "[install] >>> WARNING: 'plur' on PATH resolves to #{path_plur}, not #{final}"
