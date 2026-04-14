@@ -49,26 +49,30 @@ func BuildRuntimeConfig(cli *CLIInput) (*RuntimeConfig, error) {
 		Sources:   sources,
 	}
 
-	if len(cli.WatchMappings) > 0 {
-		rc.Watches = cli.WatchMappings
-	} else {
-		jobName := rc.Use
-		if jobName == "" {
-			jobName, _ = autodetectJobName(rc.Jobs)
-		}
-		if jobName != "" {
-			for _, w := range builtinDefaults.Defaults.Watches {
-				if slices.Contains(w.Jobs, jobName) {
-					rc.Watches = append(rc.Watches, w)
-				}
-			}
-		}
+	jobName := rc.Use
+	if jobName == "" {
+		jobName, _ = autodetectJobName(rc.Jobs)
 	}
+	rc.Watches = watch.MergeWatches(builtinWatchesForJob(jobName), cli.WatchMappings)
 
 	if err := validateRuntimeConfig(rc); err != nil {
 		return nil, err
 	}
 	return rc, nil
+}
+
+func builtinWatchesForJob(jobName string) []watch.WatchMapping {
+	if jobName == "" {
+		return nil
+	}
+
+	watches := make([]watch.WatchMapping, 0)
+	for _, w := range builtinDefaults.Defaults.Watches {
+		if slices.Contains(w.Jobs, jobName) {
+			watches = append(watches, w)
+		}
+	}
+	return watches
 }
 
 func validateRuntimeConfig(rc *RuntimeConfig) error {
