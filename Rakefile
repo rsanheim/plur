@@ -95,7 +95,11 @@ namespace :test do
   desc "Run default-rails specs using plur"
   task default_rails: :install do
     puts "[test:default_rails] Running default-rails specs with plur..."
-    sh "plur", "-C", Plur.config.default_rails_dir.to_s, "-n", PLUR_CORES.to_s, err: "/dev/null"
+    rails_dir = Plur.config.default_rails_dir.to_s
+    Bundler.with_unbundled_env do
+      Dir.chdir(rails_dir) { sh "bundle", "install", "--quiet" }
+      sh "plur", "-C", rails_dir, "-n", PLUR_CORES.to_s, err: "/dev/null"
+    end
   end
 
   desc "Run Ruby specs against all RSpec appraisals"
