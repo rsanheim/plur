@@ -1,4 +1,4 @@
-base_path = File.expand_path("../../lib", __dir__)
+base_path = File.expand_path("../lib", __dir__)
 $LOAD_PATH.unshift(base_path)
 
 require "plur_ruby"
