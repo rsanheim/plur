@@ -206,7 +206,7 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
-| `name` | string | Optional identifier for the rule | No |
+| `name` | string | Optional identifier for the rule. If set, it must be unique across user-defined `[[watch]]` entries. A named user watch can override a built-in watch with the same name. | No |
 | `source` | string | Glob pattern for files to watch | Yes |
 | `targets` | string[] | Target patterns with placeholders | No |
 | `jobs` | string[] | Jobs to trigger when source matches | Yes |
@@ -214,6 +214,8 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 | `reload` | bool | Reload plur after jobs complete | No |
 
 **Note**: `ignore` is per-watch mapping. For global ignore patterns during a watch session, use the `plur watch --ignore` flag.
+
+**Note**: Named `[[watch]]` entries must be unique within user configuration. Plur rejects duplicate names during config loading.
 
 ### Placeholder Variables
 
