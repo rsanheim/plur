@@ -34,32 +34,22 @@ func (w WatchMapping) mergeKey() string {
 }
 
 // MergeWatches combines built-in and user watch mappings.
-// Named user watches override built-ins with the same name.
+// Named user watches override built-ins with the same name, preserving position.
+// Callers are expected to reject duplicate named user watches before merging.
 // Unnamed watches remain additive unless they are exact duplicates.
 func MergeWatches(builtins, user []WatchMapping) []WatchMapping {
-	merged := make(map[string]WatchMapping, len(builtins)+len(user))
-	order := make([]string, 0, len(builtins)+len(user))
-
-	for _, watch := range builtins {
-		key := watch.mergeKey()
-		if _, exists := merged[key]; !exists {
-			order = append(order, key)
+	result := make([]WatchMapping, 0, len(builtins)+len(user))
+	indexByKey := make(map[string]int)
+	for _, list := range [][]WatchMapping{builtins, user} {
+		for _, w := range list {
+			key := w.mergeKey()
+			if i, ok := indexByKey[key]; ok {
+				result[i] = w
+			} else {
+				indexByKey[key] = len(result)
+				result = append(result, w)
+			}
 		}
-		merged[key] = watch
 	}
-
-	for _, watch := range user {
-		key := watch.mergeKey()
-		if _, exists := merged[key]; !exists {
-			order = append(order, key)
-		}
-		merged[key] = watch
-	}
-
-	result := make([]WatchMapping, 0, len(order))
-	for _, key := range order {
-		result = append(result, merged[key])
-	}
-
 	return result
 }

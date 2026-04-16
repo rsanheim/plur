@@ -166,6 +166,10 @@ func (cli *PlurCLI) AfterApply() error {
 		LoadedConfigs: loadedConfigs,
 	}
 
+	if err := validateUniqueWatchNames(cli.WatchMappings, loadedConfigs); err != nil {
+		return err
+	}
+
 	cliInput := &runtime.CLIInput{
 		Use:           cli.Use,
 		Jobs:          cli.Job,
@@ -178,6 +182,20 @@ func (cli *PlurCLI) AfterApply() error {
 	}
 	cli.runtimeConfig = runtimeConfig
 
+	return nil
+}
+
+func validateUniqueWatchNames(watches []watch.WatchMapping, sources []string) error {
+	seenNames := make(map[string]struct{})
+	for _, w := range watches {
+		if w.Name == "" {
+			continue
+		}
+		if _, exists := seenNames[w.Name]; exists {
+			return fmt.Errorf("configuration error in %v: duplicate watch name %q; named [[watch]] entries must be unique", sources, w.Name)
+		}
+		seenNames[w.Name] = struct{}{}
+	}
 	return nil
 }
 

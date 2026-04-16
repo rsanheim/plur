@@ -152,4 +152,31 @@ RSpec.describe "plur watch config edge cases" do
       expect(status.exitstatus).to eq(0)
     end
   end
+
+  it "rejects duplicate named watch mappings before merge" do
+    with_temp_watch_config(<<~TOML) do |config_path, _tmpdir|
+      use = "rspec"
+
+      [[watch]]
+      name = "lint"
+      source = "config/**/*.yml"
+      jobs = ["rspec"]
+
+      [[watch]]
+      name = "lint"
+      source = "README.md"
+      jobs = ["rspec"]
+    TOML
+
+      _stdout, stderr, status = Open3.capture3(
+        {"PLUR_CONFIG_FILE" => config_path},
+        plur_binary, "doctor",
+        chdir: default_ruby_dir.to_s
+      )
+
+      expect(status).not_to be_success
+      expect(stderr).to include("duplicate watch name")
+      expect(stderr).to include('"lint"')
+    end
+  end
 end
