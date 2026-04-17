@@ -268,47 +268,78 @@ Expected: `nothing to commit, working tree clean`.
 
 This phase runs *after* Phase 1 (Tasks 1–9) is committed. It can stay on the same branch as a follow-up commit, or be a separate PR — both are fine.
 
-**Inconsistency identified:** across the three adapters, the main streaming parser file is named differently:
+**Inconsistencies identified — two file-naming issues in minitest:**
 
-| Adapter | Current file | Symbol it exports |
-|---------|--------------|-------------------|
-| `framework/minitest/` | `output_parser.go` | `NewOutputParser() types.TestOutputParser` |
-| `framework/rspec/` | `parser.go` | `NewOutputParser() types.TestOutputParser` |
-| `framework/passthrough/` | `parser.go` | `NewOutputParser() types.TestOutputParser` |
+1. **Main streaming parser is named differently across adapters:**
 
-Two out of three already use `parser.go`; minitest is the odd one out. Renaming brings the layout in line.
+   | Adapter | Current main parser file | Exports |
+   |---------|--------------------------|---------|
+   | `framework/minitest/` | `output_parser.go` | `NewOutputParser() types.TestOutputParser` |
+   | `framework/rspec/` | `parser.go` | `NewOutputParser() types.TestOutputParser` |
+   | `framework/passthrough/` | `parser.go` | `NewOutputParser() types.TestOutputParser` |
 
-**Scope of Phase 2:** only the minitest parser file rename. Other file-name differences reflect genuine per-adapter responsibilities and are kept as-is:
+   Two of three already use `parser.go`; minitest is the outlier.
 
-* `framework/minitest/failures.go` — standalone `ExtractFailures()` for minitest's end-of-run summary block; no rspec/passthrough equivalent.
+2. **Minitest's secondary parser is named for what it extracts, not what it is.** `failures.go` parses minitest's end-of-run summary block (lines like `1) Failure:` / `2) Error:`) into structured notifications. Its filename sounds like a domain type; its actual role is a post-run summary parser. Rename to `summary_parser.go` to match the `_parser.go` convention and make its responsibility explicit.
+
+   After the rename, minitest has two parsers side-by-side with clear roles:
+
+   | File | Role |
+   |------|------|
+   | `parser.go` | streaming, line-at-a-time; implements `types.TestOutputParser` |
+   | `summary_parser.go` | bulk, post-run; exports `ExtractFailures()` |
+
+   rspec and passthrough don't need a second parser — rspec's JSON stream carries structured failures inline, and passthrough doesn't parse at all.
+
+**Scope of Phase 2:** four file renames in `framework/minitest/`. Other per-adapter file differences reflect real responsibilities and stay as-is:
+
 * `framework/rspec/json_output.go` — RSpec-specific JSON type definitions (`JSONOutput`, `Example`, `Exception`).
-* `framework/rspec/formatter.go` — wraps the embedded `formatter.rb` Ruby script via `//go:embed`.
+* `framework/rspec/formatter.go` — wraps the embedded `formatter.rb` Ruby script via `//go:embed`; a setup-time concern, not a parsing concern.
 
 ### Task 10: Rename minitest parser files
 
 **Files:**
 - Rename: `framework/minitest/output_parser.go` → `framework/minitest/parser.go`
 - Rename: `framework/minitest/output_parser_test.go` → `framework/minitest/parser_test.go`
+- Rename: `framework/minitest/failures.go` → `framework/minitest/summary_parser.go`
+- Rename: `framework/minitest/failures_test.go` → `framework/minitest/summary_parser_test.go`
 
-- [ ] **Step 1: Rename the implementation file**
+- [ ] **Step 1: Rename the streaming parser files**
 
-Run: `git mv framework/minitest/output_parser.go framework/minitest/parser.go`
-Expected: silent success.
+Run:
 
-- [ ] **Step 2: Rename the test file**
+```bash
+git mv framework/minitest/output_parser.go framework/minitest/parser.go
+git mv framework/minitest/output_parser_test.go framework/minitest/parser_test.go
+```
 
-Run: `git mv framework/minitest/output_parser_test.go framework/minitest/parser_test.go`
-Expected: silent success.
+Expected: silent success for both.
 
-- [ ] **Step 3: Confirm git sees renames (not delete+add)**
+- [ ] **Step 2: Rename the summary parser files**
+
+Run:
+
+```bash
+git mv framework/minitest/failures.go framework/minitest/summary_parser.go
+git mv framework/minitest/failures_test.go framework/minitest/summary_parser_test.go
+```
+
+Expected: silent success for both.
+
+- [ ] **Step 3: Confirm git sees all four as renames (not delete+add)**
 
 Run: `git status`
-Expected: `renamed:` lines for both files. If either shows as `deleted:` + `new file:`, stop and investigate.
+Expected: four `renamed:` lines. If any show as `deleted:` + `new file:`, stop and investigate — that means git lost rename detection.
 
-- [ ] **Step 4: Confirm no code-level references to the old filename**
+- [ ] **Step 4: Confirm no code-level references to the old filenames**
 
-Run: `grep -rn 'output_parser' --include='*.go' --include='*.md' --include='Rakefile' . | grep -v '/tmp/' | grep -v '/vendor/' | grep -v 'docs/plans/'`
-Expected: NO output. (Comments in the moved files use the type name `outputParser`, not the filename — unaffected by rename.)
+Run:
+
+```bash
+grep -rnE 'output_parser|failures\.go|failures_test\.go' --include='*.go' --include='*.md' --include='Rakefile' . | grep -v '/tmp/' | grep -v '/vendor/' | grep -v 'docs/plans/'
+```
+
+Expected: NO output. Go symbol names inside the files (`outputParser` type, `ExtractFailures` function) are unchanged — only filenames moved. The grep uses lowercase `failures` specifically so it won't match the `ExtractFailures` function name (capital F).
 
 ### Task 11: Verify build and tests
 
@@ -331,12 +362,12 @@ Expected: PASS.
 
 ### Task 12: Commit
 
-**Files:** Two renames staged.
+**Files:** Four renames staged.
 
 - [ ] **Step 1: Review diff**
 
 Run: `git status && git diff --stat`
-Expected: two renames, zero content changes.
+Expected: four renames, zero content changes.
 
 - [ ] **Step 2: Commit**
 
@@ -344,11 +375,19 @@ Run:
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
-refactor: rename minitest output_parser.go to parser.go
+refactor: give minitest parser files role-expressive names
 
-rspec and passthrough already use parser.go for their main streaming
-parser. Align minitest so the three adapter directories have directly
-comparable layouts.
+Two renames in framework/minitest/:
+
+  output_parser.go      -> parser.go           (matches rspec/passthrough;
+                                                main streaming parser)
+  failures.go           -> summary_parser.go   (post-run summary-block
+                                                parser; paired with parser.go)
+
+minitest has two parsers because minitest emits failures in an end-of-run
+summary block rather than inline. Keeping them as separate files reflects
+that real distinction; renaming surfaces the parser/parser relationship
+rather than hiding summary_parser behind a domain-type-sounding name.
 
 Pure git mv; no code changes.
 EOF
