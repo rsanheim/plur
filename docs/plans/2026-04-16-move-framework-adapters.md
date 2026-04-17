@@ -38,22 +38,22 @@
 
 **Files:** None (verification only)
 
-- [ ] **Step 1: Confirm working tree clean and note current branch**
+- [x] **Step 1: Confirm working tree clean and note current branch**
 
 Run: `git status && git rev-parse --abbrev-ref HEAD`
 Expected: clean tree. If already on `refactor/framework-adapters-subpackages`, continue in place. If on `main`, create the refactor branch in Task 2. If on some other branch, stop and decide whether to continue there or create the planned refactor branch.
 
-- [ ] **Step 2: Run full build + test baseline**
+- [x] **Step 2: Run full build + test baseline**
 
 Run: `bin/rake`
 Expected: PASS. If this fails, STOP — resolve pre-existing failures before refactoring.
 
-- [ ] **Step 3: Record baseline output for later comparison**
+- [x] **Step 3: Record baseline output for later comparison**
 
 Run: `bin/rake test:go 2>&1 | tail -20`
 Save the PASS/FAIL summary mentally (or scroll-back). You'll compare post-move.
 
-- [ ] **Step 4: Run a repo-wide scan for repo-local adapter path references**
+- [x] **Step 4: Run a repo-wide scan for repo-local adapter path references**
 
 Run:
 
@@ -85,13 +85,13 @@ Anything else needs to be reviewed before starting the move. The goal is to catc
 
 **Files:** None (git only)
 
-- [ ] **Step 1: Create and switch to branch if needed**
+- [x] **Step 1: Create and switch to branch if needed**
 
 Run: `git checkout -b refactor/framework-adapters-subpackages`
 Expected: `Switched to a new branch 'refactor/framework-adapters-subpackages'` if starting from `main`.
 If Task 1 already confirmed you are on `refactor/framework-adapters-subpackages`, skip this step.
 
-- [ ] **Step 2: Confirm branch**
+- [x] **Step 2: Confirm branch**
 
 Run: `git rev-parse --abbrev-ref HEAD`
 Expected: `refactor/framework-adapters-subpackages`
@@ -105,27 +105,27 @@ Expected: `refactor/framework-adapters-subpackages`
 - Move: `rspec/` → `framework/rspec/`
 - Move: `passthrough/` → `framework/passthrough/`
 
-- [ ] **Step 1: Move minitest**
+- [x] **Step 1: Move minitest**
 
 Run: `git mv minitest framework/minitest`
 Expected: silent success. Verify with `ls framework/minitest` — should contain `failures.go`, `failures_test.go`, `output_parser.go`, `output_parser_test.go`.
 
-- [ ] **Step 2: Move rspec**
+- [x] **Step 2: Move rspec**
 
 Run: `git mv rspec framework/rspec`
 Expected: silent success. Verify with `ls framework/rspec` — should contain `failure_list.go`, `formatter.go`, `formatter.rb`, `json_output.go`, `parser.go`, `parser_test.go`.
 
-- [ ] **Step 3: Move passthrough**
+- [x] **Step 3: Move passthrough**
 
 Run: `git mv passthrough framework/passthrough`
 Expected: silent success. Verify with `ls framework/passthrough` — should contain `parser.go`.
 
-- [ ] **Step 4: Verify git sees three renames (not delete+add)**
+- [x] **Step 4: Verify git sees three renames (not delete+add)**
 
 Run: `git status`
 Expected: renames shown as `renamed: minitest/... -> framework/minitest/...` etc. If any show as `deleted` + `new file`, stop and investigate — that means git lost rename detection.
 
-- [ ] **Step 5: Confirm build breaks (baseline for import fix)**
+- [x] **Step 5: Confirm build breaks (baseline for import fix)**
 
 Run: `go build ./...`
 Expected: FAIL with errors like `framework/framework.go:9:2: package github.com/rsanheim/plur/minitest is not in std`. This confirms the moves happened and imports need updating.
@@ -137,7 +137,7 @@ Expected: FAIL with errors like `framework/framework.go:9:2: package github.com/
 **Files:**
 - Modify: `framework/framework.go:9-11`
 
-- [ ] **Step 1: Update the three imports**
+- [x] **Step 1: Update the three imports**
 
 Edit `framework/framework.go`, replace the three import lines:
 
@@ -157,7 +157,7 @@ with:
 
 Package-level references (`minitest.X`, `rspec.Y`, `passthrough.Z`) do NOT change — only the import path.
 
-- [ ] **Step 2: Verify framework package compiles**
+- [x] **Step 2: Verify framework package compiles**
 
 Run: `go build ./framework/...`
 Expected: silent success.
@@ -174,7 +174,7 @@ Expected: silent success.
 - Modify: `docs/architecture/test-processing-flow.md:118`
 - Modify: `docs/architecture/go-concurrency-and-data-structures-review.md:88`
 
-- [ ] **Step 1: Update `complexity_test.go`**
+- [x] **Step 1: Update `complexity_test.go`**
 
 Edit `complexity_test.go`, replace:
 
@@ -188,7 +188,7 @@ with:
 	"github.com/rsanheim/plur/framework/rspec"
 ```
 
-- [ ] **Step 2: Update `benchmark_test.go`**
+- [x] **Step 2: Update `benchmark_test.go`**
 
 Edit `benchmark_test.go`, replace:
 
@@ -202,7 +202,7 @@ with:
 	"github.com/rsanheim/plur/framework/rspec"
 ```
 
-- [ ] **Step 3: Update `json_rows_formatter_spec.rb`**
+- [x] **Step 3: Update `json_rows_formatter_spec.rb`**
 
 Edit `spec/integration/spec/json_rows_formatter_spec.rb`, replace:
 
@@ -216,7 +216,7 @@ with:
 require_relative "../../../framework/rspec/formatter"
 ```
 
-- [ ] **Step 4: Update the moved parser comment**
+- [x] **Step 4: Update the moved parser comment**
 
 Edit `framework/rspec/parser.go`, replace:
 
@@ -230,7 +230,7 @@ with:
 // See framework/rspec/formatter.rb for the formatter implementation.
 ```
 
-- [ ] **Step 5: Update docs that describe the old layout**
+- [x] **Step 5: Update docs that describe the old layout**
 
 Edit `docs/architecture/test-processing-flow.md`, replace:
 
@@ -250,7 +250,7 @@ Edit `docs/architecture/go-concurrency-and-data-structures-review.md` to describ
 * RSpec now tracks `CurrentFile` directly inside `framework/rspec/parser.go` for trace output instead of emitting a separate group-started notification.
 ```
 
-- [ ] **Step 6: Confirm nothing else references the old repo-local paths**
+- [x] **Step 6: Confirm nothing else references the old repo-local paths**
 
 Run:
 
@@ -273,12 +273,12 @@ Expected: NO output. If anything matches, update that file too with the new `fra
 
 **Files:** None (verification)
 
-- [ ] **Step 1: Full module compile**
+- [x] **Step 1: Full module compile**
 
 Run: `go build ./...`
 Expected: silent success, exit 0.
 
-- [ ] **Step 2: Full module vet**
+- [x] **Step 2: Full module vet**
 
 Run: `go vet ./...`
 Expected: silent success, exit 0.
@@ -289,12 +289,12 @@ Expected: silent success, exit 0.
 
 **Files:** None (verification)
 
-- [ ] **Step 1: Run all Go tests**
+- [x] **Step 1: Run all Go tests**
 
 Run: `bin/rake test:go`
 Expected: PASS. Same test count and same pass rate as the baseline from Task 1. The moved tests (in `framework/minitest/`, `framework/rspec/`) execute under their new paths but produce identical results.
 
-- [ ] **Step 2: If any test fails, diagnose before proceeding**
+- [x] **Step 2: If any test fails, diagnose before proceeding**
 
 Common causes if this step fails:
 * Missed import update → re-run the grep from Task 5 Step 3.
@@ -307,17 +307,17 @@ Common causes if this step fails:
 
 **Files:** None (verification)
 
-- [ ] **Step 1: Run the formatter Ruby spec directly**
+- [x] **Step 1: Run the formatter Ruby spec directly**
 
 Run: `bin/rspec spec/integration/spec/json_rows_formatter_spec.rb`
 Expected: PASS. This directly verifies the moved `framework/rspec/formatter.rb` path still loads from Ruby.
 
-- [ ] **Step 2: Full `bin/rake`**
+- [x] **Step 2: Full `bin/rake`**
 
 Run: `bin/rake`
 Expected: PASS. This runs build → lint → install → tests (Go + Ruby integration). Ruby integration tests invoke the installed `plur` binary against fixtures under `fixtures/`; after the repo-local path updates above, they should pass unchanged.
 
-- [ ] **Step 3: Sanity-check installed binary works**
+- [x] **Step 3: Sanity-check installed binary works**
 
 Run: `plur --version && plur -C fixtures/projects/minitest-success --dry-run`
 Expected: version prints, dry-run shows detected tests. Confirms the reinstalled binary functions end-to-end.
@@ -328,7 +328,7 @@ Expected: version prints, dry-run shows detected tests. Confirms the reinstalled
 
 **Files:** All staged changes from Tasks 3–5.
 
-- [ ] **Step 1: Review the diff**
+- [x] **Step 1: Review the diff**
 
 Run: `git status && git diff --stat`
 Expected files changed:
@@ -341,7 +341,7 @@ Expected files changed:
 * `docs/architecture/go-concurrency-and-data-structures-review.md` (1 path reference changed)
 * Renames: `minitest/*` → `framework/minitest/*`, `rspec/*` → `framework/rspec/*`, `passthrough/*` → `framework/passthrough/*`
 
-- [ ] **Step 2: Stage and commit**
+- [x] **Step 2: Stage and commit**
 
 Run:
 
@@ -362,7 +362,7 @@ EOF
 
 Expected: commit created, `bin/rake` hook (if any) passes.
 
-- [ ] **Step 3: Confirm clean tree**
+- [x] **Step 3: Confirm clean tree**
 
 Run: `git status`
 Expected: `nothing to commit, working tree clean`.
@@ -412,7 +412,7 @@ This phase runs *after* Phase 1 (Tasks 1–9) is committed. It can stay on the s
 - Rename: `framework/minitest/failures.go` → `framework/minitest/summary_parser.go`
 - Rename: `framework/minitest/failures_test.go` → `framework/minitest/summary_parser_test.go`
 
-- [ ] **Step 1: Rename the streaming parser files**
+- [x] **Step 1: Rename the streaming parser files**
 
 Run:
 
@@ -423,7 +423,7 @@ git mv framework/minitest/output_parser_test.go framework/minitest/parser_test.g
 
 Expected: silent success for both.
 
-- [ ] **Step 2: Rename the summary parser files**
+- [x] **Step 2: Rename the summary parser files**
 
 Run:
 
@@ -434,12 +434,12 @@ git mv framework/minitest/failures_test.go framework/minitest/summary_parser_tes
 
 Expected: silent success for both.
 
-- [ ] **Step 3: Confirm git sees all four as renames (not delete+add)**
+- [x] **Step 3: Confirm git sees all four as renames (not delete+add)**
 
 Run: `git status`
 Expected: four `renamed:` lines. If any show as `deleted:` + `new file:`, stop and investigate — that means git lost rename detection.
 
-- [ ] **Step 4: Confirm no code-level references to the old filenames**
+- [x] **Step 4: Confirm no code-level references to the old filenames**
 
 Run:
 
@@ -454,17 +454,17 @@ Expected after the renames: NO output. Go symbol names inside the files (`output
 
 **Files:** None (verification)
 
-- [ ] **Step 1: Full module compile**
+- [x] **Step 1: Full module compile**
 
 Run: `go build ./...`
 Expected: silent success. Package name and all symbols unchanged; only the file name changed.
 
-- [ ] **Step 2: Run all Go tests**
+- [x] **Step 2: Run all Go tests**
 
 Run: `bin/rake test:go`
 Expected: PASS. Same tests run; identical results.
 
-- [ ] **Step 3: Full `bin/rake`**
+- [x] **Step 3: Full `bin/rake`**
 
 Run: `bin/rake`
 Expected: PASS.
@@ -473,12 +473,12 @@ Expected: PASS.
 
 **Files:** Four renames staged.
 
-- [ ] **Step 1: Review diff**
+- [x] **Step 1: Review diff**
 
 Run: `git status && git diff --stat`
 Expected: four renames, zero content changes.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 Run:
 
@@ -505,7 +505,7 @@ EOF
 
 Expected: commit created.
 
-- [ ] **Step 3: Confirm clean tree**
+- [x] **Step 3: Confirm clean tree**
 
 Run: `git status`
 Expected: `nothing to commit, working tree clean`.
