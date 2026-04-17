@@ -262,6 +262,108 @@ Expected: `nothing to commit, working tree clean`.
 
 ---
 
+---
+
+## Phase 2: Consistent adapter file names
+
+This phase runs *after* Phase 1 (Tasks 1–9) is committed. It can stay on the same branch as a follow-up commit, or be a separate PR — both are fine.
+
+**Inconsistency identified:** across the three adapters, the main streaming parser file is named differently:
+
+| Adapter | Current file | Symbol it exports |
+|---------|--------------|-------------------|
+| `framework/minitest/` | `output_parser.go` | `NewOutputParser() types.TestOutputParser` |
+| `framework/rspec/` | `parser.go` | `NewOutputParser() types.TestOutputParser` |
+| `framework/passthrough/` | `parser.go` | `NewOutputParser() types.TestOutputParser` |
+
+Two out of three already use `parser.go`; minitest is the odd one out. Renaming brings the layout in line.
+
+**Scope of Phase 2:** only the minitest parser file rename. Other file-name differences reflect genuine per-adapter responsibilities and are kept as-is:
+
+* `framework/minitest/failures.go` — standalone `ExtractFailures()` for minitest's end-of-run summary block; no rspec/passthrough equivalent.
+* `framework/rspec/json_output.go` — RSpec-specific JSON type definitions (`JSONOutput`, `Example`, `Exception`).
+* `framework/rspec/formatter.go` — wraps the embedded `formatter.rb` Ruby script via `//go:embed`.
+
+### Task 10: Rename minitest parser files
+
+**Files:**
+- Rename: `framework/minitest/output_parser.go` → `framework/minitest/parser.go`
+- Rename: `framework/minitest/output_parser_test.go` → `framework/minitest/parser_test.go`
+
+- [ ] **Step 1: Rename the implementation file**
+
+Run: `git mv framework/minitest/output_parser.go framework/minitest/parser.go`
+Expected: silent success.
+
+- [ ] **Step 2: Rename the test file**
+
+Run: `git mv framework/minitest/output_parser_test.go framework/minitest/parser_test.go`
+Expected: silent success.
+
+- [ ] **Step 3: Confirm git sees renames (not delete+add)**
+
+Run: `git status`
+Expected: `renamed:` lines for both files. If either shows as `deleted:` + `new file:`, stop and investigate.
+
+- [ ] **Step 4: Confirm no code-level references to the old filename**
+
+Run: `grep -rn 'output_parser' --include='*.go' --include='*.md' --include='Rakefile' . | grep -v '/tmp/' | grep -v '/vendor/' | grep -v 'docs/plans/'`
+Expected: NO output. (Comments in the moved files use the type name `outputParser`, not the filename — unaffected by rename.)
+
+### Task 11: Verify build and tests
+
+**Files:** None (verification)
+
+- [ ] **Step 1: Full module compile**
+
+Run: `go build ./...`
+Expected: silent success. Package name and all symbols unchanged; only the file name changed.
+
+- [ ] **Step 2: Run all Go tests**
+
+Run: `bin/rake test:go`
+Expected: PASS. Same tests run; identical results.
+
+- [ ] **Step 3: Full `bin/rake`**
+
+Run: `bin/rake`
+Expected: PASS.
+
+### Task 12: Commit
+
+**Files:** Two renames staged.
+
+- [ ] **Step 1: Review diff**
+
+Run: `git status && git diff --stat`
+Expected: two renames, zero content changes.
+
+- [ ] **Step 2: Commit**
+
+Run:
+
+```bash
+git add -A && git commit -m "$(cat <<'EOF'
+refactor: rename minitest output_parser.go to parser.go
+
+rspec and passthrough already use parser.go for their main streaming
+parser. Align minitest so the three adapter directories have directly
+comparable layouts.
+
+Pure git mv; no code changes.
+EOF
+)"
+```
+
+Expected: commit created.
+
+- [ ] **Step 3: Confirm clean tree**
+
+Run: `git status`
+Expected: `nothing to commit, working tree clean`.
+
+---
+
 ## Rollback Plan
 
 If anything fails after Task 3 and you want to start over:
