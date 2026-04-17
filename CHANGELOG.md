@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.46.1 - 2026-04-16
+* Move framework adapters into framework package [#42](https://github.com/rsanheim/plur/pull/42)
+* Fix install task to report correct version and warn on PATH shadowing [#36](https://github.com/rsanheim/plur/pull/36)
+
 ## v0.46.0 - 2026-04-04
 
 * Config validation now fails fast at startup for jobs without commands, unknown frameworks, undefined watch jobs, and invalid watch templates [#32](https://github.com/rsanheim/plur/pull/32)
