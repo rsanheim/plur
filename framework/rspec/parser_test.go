@@ -41,3 +41,36 @@ func TestOutputParser_FormatSummaryIncludesErrorCount(t *testing.T) {
 		assert.Contains(t, summary, "2 errors occurred outside of examples")
 	})
 }
+
+func TestOutputParser_ParseLine_GroupStartedTracksCurrentFileWithoutNotification(t *testing.T) {
+	parser := &outputParser{}
+	line := `PLUR_JSON:{"type":"group_started","group":{"description":"Calculator","file_path":"./spec/calculator_spec.rb","line_number":3}}`
+
+	notifications, consumed := parser.ParseLine(line)
+
+	require.True(t, consumed)
+	assert.Empty(t, notifications)
+	assert.Equal(t, "spec/calculator_spec.rb", parser.CurrentFile())
+}
+
+func TestOutputParser_FormatFailuresList(t *testing.T) {
+	parser := &outputParser{}
+	failures := []types.TestCaseNotification{
+		{
+			FullDescription: "Calculator#add returns the sum",
+			FilePath:        "spec/calculator_spec.rb",
+			LineNumber:      10,
+		},
+		{
+			FullDescription: "Calculator#subtract returns the difference",
+			FilePath:        "spec/calculator_spec.rb",
+			LineNumber:      20,
+		},
+	}
+
+	expected := `rspec spec/calculator_spec.rb:10 # Calculator#add returns the sum
+rspec spec/calculator_spec.rb:20 # Calculator#subtract returns the difference
+`
+
+	assert.Equal(t, expected, parser.FormatFailuresList(failures))
+}

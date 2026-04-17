@@ -65,7 +65,6 @@ rg -n -F \
   -e 'require_relative "../../../rspec/formatter"' \
   -e '// See rspec/formatter.rb for the formatter implementation.' \
   -e '### 3. **Parser** (rspec/ or minitest/)' \
-  -e '* `GroupStartedNotification` appears unused outside `rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `rspec/parser.go:107-115` + `test_collector.go:49-61`).' \
   . --glob '!docs/plans/**' --glob '!tmp/**' --glob '!vendor/**'
 ```
 
@@ -114,7 +113,7 @@ Expected: silent success. Verify with `ls framework/minitest` — should contain
 - [ ] **Step 2: Move rspec**
 
 Run: `git mv rspec framework/rspec`
-Expected: silent success. Verify with `ls framework/rspec` — should contain `formatter.go`, `formatter.rb`, `json_output.go`, `json_output_test.go`, `parser.go`, `parser_test.go`.
+Expected: silent success. Verify with `ls framework/rspec` — should contain `failure_list.go`, `formatter.go`, `formatter.rb`, `json_output.go`, `parser.go`, `parser_test.go`.
 
 - [ ] **Step 3: Move passthrough**
 
@@ -245,16 +244,10 @@ with:
 ### 3. **Parser** (framework/rspec/ or framework/minitest/)
 ```
 
-Edit `docs/architecture/go-concurrency-and-data-structures-review.md`, replace:
+Edit `docs/architecture/go-concurrency-and-data-structures-review.md` to describe the current RSpec file-tracking behavior:
 
 ```md
-* `GroupStartedNotification` appears unused outside `rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `rspec/parser.go:107-115` + `test_collector.go:49-61`).
-```
-
-with:
-
-```md
-* `GroupStartedNotification` appears unused outside `framework/rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `framework/rspec/parser.go:107-115` + `test_collector.go:49-61`).
+* RSpec now tracks `CurrentFile` directly inside `framework/rspec/parser.go` for trace output instead of emitting a separate group-started notification.
 ```
 
 - [ ] **Step 6: Confirm nothing else references the old repo-local paths**
@@ -269,7 +262,6 @@ rg -n -F \
   -e 'require_relative "../../../rspec/formatter"' \
   -e '// See rspec/formatter.rb for the formatter implementation.' \
   -e '### 3. **Parser** (rspec/ or minitest/)' \
-  -e '* `GroupStartedNotification` appears unused outside `rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `rspec/parser.go:107-115` + `test_collector.go:49-61`).' \
   . --glob '!docs/plans/**' --glob '!tmp/**' --glob '!vendor/**'
 ```
 
@@ -408,7 +400,8 @@ This phase runs *after* Phase 1 (Tasks 1–9) is committed. It can stay on the s
 
 **Scope of Phase 2:** four file renames in `framework/minitest/`. Other per-adapter file differences reflect real responsibilities and stay as-is:
 
-* `framework/rspec/json_output.go` — RSpec-specific JSON type definitions (`JSONOutput`, `Example`, `Exception`).
+* `framework/rspec/json_output.go` — streaming JSON row message structs (`StreamingMessage`, `StreamExample`, `StreamException`, `ExampleGroup`, `LoadSummary`).
+* `framework/rspec/failure_list.go` — helper for building the `Failed examples:` rerun list from parsed failures.
 * `framework/rspec/formatter.go` — wraps the embedded `formatter.rb` Ruby script via `//go:embed`; a setup-time concern, not a parsing concern.
 
 ### Task 10: Rename minitest parser files

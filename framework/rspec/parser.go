@@ -121,9 +121,6 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 				// RSpec outputs paths with "./" prefix, normalize to match glob discovery
 				filePath := strings.TrimPrefix(msg.ExampleGroup.FilePath, "./")
 				p.currentFile = filePath
-				notifications = append(notifications, types.GroupStartedNotification{
-					FilePath: filePath,
-				})
 			}
 		case "example_passed", "example_failed", "example_pending":
 			if msg.Example != nil {
