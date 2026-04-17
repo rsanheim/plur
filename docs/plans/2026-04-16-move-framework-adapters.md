@@ -38,10 +38,10 @@
 
 **Files:** None (verification only)
 
-- [ ] **Step 1: Confirm working tree clean on `main`**
+- [ ] **Step 1: Confirm working tree clean and note current branch**
 
 Run: `git status && git rev-parse --abbrev-ref HEAD`
-Expected: clean tree, on `main` (or note current branch — plan assumes starting from clean main).
+Expected: clean tree. If already on `refactor/framework-adapters-subpackages`, continue in place. If on `main`, create the refactor branch in Task 2. If on some other branch, stop and decide whether to continue there or create the planned refactor branch.
 
 - [ ] **Step 2: Run full build + test baseline**
 
@@ -58,7 +58,14 @@ Save the PASS/FAIL summary mentally (or scroll-back). You'll compare post-move.
 Run:
 
 ```bash
-rg -n 'github.com/rsanheim/plur/(minitest|rspec|passthrough)|require_relative .*../../../rspec/formatter|rspec/formatter\.rb|rspec/parser\.go' \
+rg -n -F \
+  -e 'github.com/rsanheim/plur/minitest' \
+  -e 'github.com/rsanheim/plur/rspec' \
+  -e 'github.com/rsanheim/plur/passthrough' \
+  -e 'require_relative "../../../rspec/formatter"' \
+  -e '// See rspec/formatter.rb for the formatter implementation.' \
+  -e '### 3. **Parser** (rspec/ or minitest/)' \
+  -e '* `GroupStartedNotification` appears unused outside `rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `rspec/parser.go:107-115` + `test_collector.go:49-61`).' \
   . --glob '!docs/plans/**' --glob '!tmp/**' --glob '!vendor/**'
 ```
 
@@ -79,10 +86,11 @@ Anything else needs to be reviewed before starting the move. The goal is to catc
 
 **Files:** None (git only)
 
-- [ ] **Step 1: Create and switch to branch**
+- [ ] **Step 1: Create and switch to branch if needed**
 
 Run: `git checkout -b refactor/framework-adapters-subpackages`
-Expected: `Switched to a new branch 'refactor/framework-adapters-subpackages'`
+Expected: `Switched to a new branch 'refactor/framework-adapters-subpackages'` if starting from `main`.
+If Task 1 already confirmed you are on `refactor/framework-adapters-subpackages`, skip this step.
 
 - [ ] **Step 2: Confirm branch**
 
@@ -254,7 +262,14 @@ with:
 Run:
 
 ```bash
-rg -n 'github.com/rsanheim/plur/(minitest|rspec|passthrough)|require_relative .*../../../rspec/formatter|rspec/formatter\.rb|rspec/parser\.go' \
+rg -n -F \
+  -e 'github.com/rsanheim/plur/minitest' \
+  -e 'github.com/rsanheim/plur/rspec' \
+  -e 'github.com/rsanheim/plur/passthrough' \
+  -e 'require_relative "../../../rspec/formatter"' \
+  -e '// See rspec/formatter.rb for the formatter implementation.' \
+  -e '### 3. **Parser** (rspec/ or minitest/)' \
+  -e '* `GroupStartedNotification` appears unused outside `rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `rspec/parser.go:107-115` + `test_collector.go:49-61`).' \
   . --glob '!docs/plans/**' --glob '!tmp/**' --glob '!vendor/**'
 ```
 
