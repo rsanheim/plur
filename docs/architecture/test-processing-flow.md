@@ -115,7 +115,7 @@ Handles real-time output processing with two concurrent goroutines:
   * For Minitest: Raw stdout is collected but NOT streamed (Minitest returns consumed=false for all lines)
 * **stderr goroutine**: Passes through to `outputChan` with type "stderr"
 
-### 3. **Parser** (rspec/ or minitest/)
+### 3. **Parser** (framework/rspec/ or framework/minitest/)
 Framework-specific output parsing:
 * `ParseLine(line)` returns `(notifications, consumed)`
 * Emits `ProgressEvent` for dots/failures, `TestCaseNotification` for test results

@@ -85,7 +85,7 @@ Recommended cleanup:
 
 The `types.TestNotification` interface + many concrete structs (`types/notifications.go`) is workable, but there are a few obvious simplifications:
 
-* `GroupStartedNotification` appears unused outside `rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `rspec/parser.go:107-115` + `test_collector.go:49-61`).
+* `GroupStartedNotification` appears unused outside `framework/rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `framework/rspec/parser.go:107-115` + `test_collector.go:49-61`).
   * If the only purpose is updating `CurrentFile`, then emitting a notification is unnecessary.
 * "Formatted*Notification" types all report `RawOutput` and are distinguished only by Go type (`types/notifications.go:86-109`).
   * Consider one `FormattedOutputNotification{Kind, Content}` instead of three separate structs.

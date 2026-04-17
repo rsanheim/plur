@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/framework/minitest"
+	"github.com/rsanheim/plur/framework/passthrough"
+	"github.com/rsanheim/plur/framework/rspec"
 	"github.com/rsanheim/plur/job"
-	"github.com/rsanheim/plur/minitest"
-	"github.com/rsanheim/plur/passthrough"
-	"github.com/rsanheim/plur/rspec"
 	"github.com/rsanheim/plur/types"
 )
 
