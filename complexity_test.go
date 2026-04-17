@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/rspec"
+	"github.com/rsanheim/plur/framework/rspec"
 )
 
 // Complexity detection tests measure execution time at multiple scales

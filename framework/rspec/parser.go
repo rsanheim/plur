@@ -87,7 +87,7 @@ const jsonPrefix string = "PLUR_JSON:"
 const jsonPrefixLen int = len(jsonPrefix)
 
 // ParseLine parses a single line of RSpec output from our Ruby based Plur::JsonRowsFormatter
-// See rspec/formatter.rb for the formatter implementation.
+// See framework/rspec/formatter.rb for the formatter implementation.
 func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	notifications := []types.TestNotification{}
 
@@ -121,9 +121,6 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 				// RSpec outputs paths with "./" prefix, normalize to match glob discovery
 				filePath := strings.TrimPrefix(msg.ExampleGroup.FilePath, "./")
 				p.currentFile = filePath
-				notifications = append(notifications, types.GroupStartedNotification{
-					FilePath: filePath,
-				})
 			}
 		case "example_passed", "example_failed", "example_pending":
 			if msg.Example != nil {
