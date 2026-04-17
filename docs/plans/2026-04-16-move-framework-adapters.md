@@ -451,10 +451,11 @@ Expected: four `renamed:` lines. If any show as `deleted:` + `new file:`, stop a
 Run:
 
 ```bash
-grep -rnE 'output_parser|failures\.go|failures_test\.go' --include='*.go' --include='*.md' --include='Rakefile' . | grep -v '/tmp/' | grep -v '/vendor/' | grep -v 'docs/plans/'
+rg --files framework/minitest | rg '(output_parser(_test)?|failures(_test)?)\.go$'
 ```
 
-Expected: NO output. Go symbol names inside the files (`outputParser` type, `ExtractFailures` function) are unchanged — only filenames moved. The grep uses lowercase `failures` specifically so it won't match the `ExtractFailures` function name (capital F).
+Expected before the renames: four matches (`output_parser.go`, `output_parser_test.go`, `failures.go`, `failures_test.go`).
+Expected after the renames: NO output. Go symbol names inside the files (`outputParser` type, `ExtractFailures` function) are unchanged — only filenames move.
 
 ### Task 11: Verify build and tests
 
