@@ -4,9 +4,11 @@
 
 **Goal:** Move `minitest/`, `rspec/`, and `passthrough/` to `framework/minitest/`, `framework/rspec/`, and `framework/passthrough/` so adapter packages live under their parent dispatcher.
 
-**Architecture:** Pure directory move. Go package names (`minitest`, `rspec`, `passthrough`) stay identical — only import paths change. No behavior changes, no file edits beyond import statements. Validated by unchanged Go tests and full `bin/rake`.
+**Architecture:** Move the three adapter directories under `framework/`, then update every repo-local path reference found by a repo-wide scan. Go package names (`minitest`, `rspec`, `passthrough`) stay identical; only repo-local import/path references change. No behavior changes. Validated by unchanged Go tests, the formatter Ruby spec, and full `bin/rake`.
 
 **Tech Stack:** Go modules, git, bin/rake (Ruby-driven build+test orchestration)
+
+**Overall Intention:** Use this reorg to move the repo toward clearer package ownership and a cleaner top level. Related packages should live with the code that owns them, and follow-up refactors should keep reducing root-level leaf packages and random one-off directories/files.
 
 ---
 
@@ -20,7 +22,11 @@
 | `plur/rspec` | `framework/framework.go`, `complexity_test.go`, `benchmark_test.go` |
 | `plur/passthrough` | `framework/framework.go` only |
 
-**Non-Go references:** None in `Rakefile`, `lib/`, `docs/`, `.circleci/config.yml`, `.github/workflows/`. Confirmed via grep.
+**Repo-wide scan findings (excluding `tmp/`, `vendor/`, and `docs/plans/`):**
+
+* Build-affecting non-Go repo-local path reference: `spec/integration/spec/json_rows_formatter_spec.rb:3` has `require_relative "../../../rspec/formatter"`.
+* Comment/doc references describing the old layout: `rspec/parser.go:90`, `docs/architecture/test-processing-flow.md:118`, `docs/architecture/go-concurrency-and-data-structures-review.md:88`.
+* Ignore matches that only name Ruby gems/frameworks rather than repo paths, e.g. `require "rspec/core/rake_task"` or `require 'minitest/autorun'`.
 
 **go:embed check:** `rspec/formatter.go:12` has `//go:embed formatter.rb`. Embed uses relative paths; moves cleanly with the directory.
 
@@ -46,6 +52,26 @@ Expected: PASS. If this fails, STOP — resolve pre-existing failures before ref
 
 Run: `bin/rake test:go 2>&1 | tail -20`
 Save the PASS/FAIL summary mentally (or scroll-back). You'll compare post-move.
+
+- [ ] **Step 4: Run a repo-wide scan for repo-local adapter path references**
+
+Run:
+
+```bash
+rg -n 'github.com/rsanheim/plur/(minitest|rspec|passthrough)|require_relative .*../../../rspec/formatter|rspec/formatter\.rb|rspec/parser\.go' \
+  . --glob '!docs/plans/**' --glob '!tmp/**' --glob '!vendor/**'
+```
+
+Expected matches:
+* `framework/framework.go`
+* `complexity_test.go`
+* `benchmark_test.go`
+* `spec/integration/spec/json_rows_formatter_spec.rb`
+* `rspec/parser.go`
+* `docs/architecture/test-processing-flow.md`
+* `docs/architecture/go-concurrency-and-data-structures-review.md`
+
+Anything else needs to be reviewed before starting the move. The goal is to catch repo-local path references, not every mention of the Ruby frameworks by name.
 
 ---
 
@@ -131,11 +157,15 @@ Expected: silent success.
 
 ---
 
-### Task 5: Update import paths in root-level test files
+### Task 5: Update import paths and repo-local path references
 
 **Files:**
 - Modify: `complexity_test.go:7`
 - Modify: `benchmark_test.go:9`
+- Modify: `spec/integration/spec/json_rows_formatter_spec.rb:3`
+- Modify: `framework/rspec/parser.go:90`
+- Modify: `docs/architecture/test-processing-flow.md:118`
+- Modify: `docs/architecture/go-concurrency-and-data-structures-review.md:88`
 
 - [ ] **Step 1: Update `complexity_test.go`**
 
@@ -165,10 +195,70 @@ with:
 	"github.com/rsanheim/plur/framework/rspec"
 ```
 
-- [ ] **Step 3: Confirm nothing else references the old paths**
+- [ ] **Step 3: Update `json_rows_formatter_spec.rb`**
 
-Run: `grep -rn 'plur/minitest"\|plur/rspec"\|plur/passthrough"' --include='*.go' . | grep -v '/tmp/' | grep -v '/vendor/'`
-Expected: NO output. If anything matches, update that file too with the new `framework/...` path.
+Edit `spec/integration/spec/json_rows_formatter_spec.rb`, replace:
+
+```ruby
+require_relative "../../../rspec/formatter"
+```
+
+with:
+
+```ruby
+require_relative "../../../framework/rspec/formatter"
+```
+
+- [ ] **Step 4: Update the moved parser comment**
+
+Edit `framework/rspec/parser.go`, replace:
+
+```go
+// See rspec/formatter.rb for the formatter implementation.
+```
+
+with:
+
+```go
+// See framework/rspec/formatter.rb for the formatter implementation.
+```
+
+- [ ] **Step 5: Update docs that describe the old layout**
+
+Edit `docs/architecture/test-processing-flow.md`, replace:
+
+```md
+### 3. **Parser** (rspec/ or minitest/)
+```
+
+with:
+
+```md
+### 3. **Parser** (framework/rspec/ or framework/minitest/)
+```
+
+Edit `docs/architecture/go-concurrency-and-data-structures-review.md`, replace:
+
+```md
+* `GroupStartedNotification` appears unused outside `rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `rspec/parser.go:107-115` + `test_collector.go:49-61`).
+```
+
+with:
+
+```md
+* `GroupStartedNotification` appears unused outside `framework/rspec/parser.go` and is ignored by the collector due to type mismatch (`types/notifications.go:110-117` + `framework/rspec/parser.go:107-115` + `test_collector.go:49-61`).
+```
+
+- [ ] **Step 6: Confirm nothing else references the old repo-local paths**
+
+Run:
+
+```bash
+rg -n 'github.com/rsanheim/plur/(minitest|rspec|passthrough)|require_relative .*../../../rspec/formatter|rspec/formatter\.rb|rspec/parser\.go' \
+  . --glob '!docs/plans/**' --glob '!tmp/**' --glob '!vendor/**'
+```
+
+Expected: NO output. If anything matches, update that file too with the new `framework/...` or `framework/rspec/...` path.
 
 ---
 
@@ -210,14 +300,19 @@ Common causes if this step fails:
 
 **Files:** None (verification)
 
-- [ ] **Step 1: Full `bin/rake`**
+- [ ] **Step 1: Run the formatter Ruby spec directly**
+
+Run: `bin/rspec spec/integration/spec/json_rows_formatter_spec.rb`
+Expected: PASS. This directly verifies the moved `framework/rspec/formatter.rb` path still loads from Ruby.
+
+- [ ] **Step 2: Full `bin/rake`**
 
 Run: `bin/rake`
-Expected: PASS. This runs build → lint → install → tests (Go + Ruby integration). Ruby integration tests invoke the installed `plur` binary against fixtures under `fixtures/`; they don't care about internal Go package structure, so they should pass unchanged.
+Expected: PASS. This runs build → lint → install → tests (Go + Ruby integration). Ruby integration tests invoke the installed `plur` binary against fixtures under `fixtures/`; after the repo-local path updates above, they should pass unchanged.
 
-- [ ] **Step 2: Sanity-check installed binary works**
+- [ ] **Step 3: Sanity-check installed binary works**
 
-Run: `plur --version && plur -C fixtures/minitest-success --dry-run`
+Run: `plur --version && plur -C fixtures/projects/minitest-success --dry-run`
 Expected: version prints, dry-run shows detected tests. Confirms the reinstalled binary functions end-to-end.
 
 ---
@@ -233,6 +328,10 @@ Expected files changed:
 * `framework/framework.go` (3 import lines changed)
 * `complexity_test.go` (1 import line changed)
 * `benchmark_test.go` (1 import line changed)
+* `spec/integration/spec/json_rows_formatter_spec.rb` (1 `require_relative` path changed)
+* `framework/rspec/parser.go` (1 comment path changed)
+* `docs/architecture/test-processing-flow.md` (1 heading path changed)
+* `docs/architecture/go-concurrency-and-data-structures-review.md` (1 path reference changed)
 * Renames: `minitest/*` → `framework/minitest/*`, `rspec/*` → `framework/rspec/*`, `passthrough/*` → `framework/passthrough/*`
 
 - [ ] **Step 2: Stage and commit**
@@ -248,8 +347,9 @@ the architecture directly in the directory layout — framework/ owns its
 adapters rather than having three sibling packages whose relationship
 is only visible by reading imports.
 
-No behavior change. Package names unchanged; only import paths shift
-to github.com/rsanheim/plur/framework/{minitest,rspec,passthrough}.
+No behavior change. Package names unchanged; repo-local paths shift
+to github.com/rsanheim/plur/framework/{minitest,rspec,passthrough}
+and framework/rspec/* where needed.
 EOF
 )"
 
@@ -418,6 +518,6 @@ No remote was touched; no destructive effect outside the branch.
 ## Post-Merge Follow-ups (out of scope for this plan)
 
 These are mentioned for context but are **not** part of this plan:
+* Apply the same direction elsewhere: move packages next to their owner when that reduces root-level clutter and makes responsibilities more obvious.
 * Tier 2 internal-ization: move `types/`, `job/` under `internal/`.
 * Tier 3 internal-ization: move `framework/`, `watch/`, `logger/`, `config/` under `internal/` (would cascade-move the adapter subpackages along for free — that's the design benefit of starting with this plan).
-* Investigate `tmp/review-smaller-binary/` — appears to be a stale snapshot of the codebase polluting grep results; unrelated to this refactor.
