@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.50.0 - 2026-04-22
+* Merge user watch config with defaults; reject duplicate watch names [#40](https://github.com/rsanheim/plur/pull/40)
+
 ## v0.46.1 - 2026-04-16
 * Move framework adapters into framework package [#42](https://github.com/rsanheim/plur/pull/42)
 * Fix install task to report correct version and warn on PATH shadowing [#36](https://github.com/rsanheim/plur/pull/36)
