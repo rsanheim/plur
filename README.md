@@ -39,7 +39,7 @@ See [Getting Started](docs/getting-started.md) for first-run details.
 cd my-rails-project
 plur -n 4 --dry-run # preview what would run (no actual test execution)
 plur -n 4           # run tests across four cores
-plur                # run tests with auto-detected workers (cores - 2)
+plur                # run tests with the default 4 workers
 plur watch          # watch for changes and run tests automatically
 ```
 
@@ -57,7 +57,7 @@ Watch mode (`plur watch`) will install platform-specific binaries on first use.
 ### Parallel Test Execution
 ```bash
 plur -n 4                    # Run with specific worker count
-plur                          # Auto-detect workers (cores-2)
+plur                          # Run with the default 4 workers
 plur --dry-run               # Preview execution plan
 ```
 

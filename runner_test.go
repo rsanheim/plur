@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -68,19 +67,19 @@ func TestGetWorkerCountEdgeCases(t *testing.T) {
 			name:       "Zero env var",
 			cliWorkers: 0,
 			envVar:     "0",
-			expected:   max(1, runtime.NumCPU()-2),
+			expected:   4,
 		},
 		{
 			name:       "Negative env var",
 			cliWorkers: 0,
 			envVar:     "-5",
-			expected:   max(1, runtime.NumCPU()-2),
+			expected:   4,
 		},
 		{
 			name:       "Empty env var",
 			cliWorkers: 0,
 			envVar:     "",
-			expected:   max(1, runtime.NumCPU()-2),
+			expected:   4,
 		},
 	}
 

@@ -5,7 +5,7 @@
 ### Running Tests
 
 ```bash
-# Run all specs with auto-detected parallelism
+# Run all specs with the default worker count
 plur
 
 # Explicit "spec" command (same as default)
@@ -78,7 +78,7 @@ plur doctor
 
 ### Global Options
 
-* `-n, --workers NUMBER` - Number of parallel workers (default: auto-detect)
+* `-n, --workers NUMBER` - Number of parallel workers (default: 4)
 * `--dry-run` - Show what would run without executing
 * `-h, --help` - Show help
 * `-v, --verbose` - Enable verbose logging
@@ -93,12 +93,12 @@ plur doctor
 
 ## Parallelism
 
-### Auto-Detection
+### Default Behavior
 
-Plur automatically detects the optimal number of workers:
-- Default: `CPU cores - 2` (minimum 1)
-- Leaves headroom for system responsiveness
+Plur uses 4 workers by default:
+- Override with `-n` or `--workers`
 - Respects `PARALLEL_TEST_PROCESSORS` if set
+- Project config can set a different default
 
 ### Manual Control
 
@@ -155,7 +155,7 @@ plur doctor
 
 ### Performance Tuning
 
-1. **Start with auto-detection**: Let Plur choose worker count
+1. **Start with the default**: Try `4` workers first
 2. **Measure and adjust**: Experiment with different worker counts
 3. **Consider test characteristics**:
 - Many small tests: More workers

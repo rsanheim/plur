@@ -38,7 +38,7 @@ Notes:
 
 ### Plur Commands
 ```bash
-plur                      # Run tests (auto-detect workers)
+plur                      # Run tests (default: 4 workers)
 plur -n 4                 # Specify workers (often fastest)
 plur -C path/to/project   # Change to directory before running (like git -C)
 plur --dry-run            # Preview what will run

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -265,12 +264,8 @@ func GetWorkerCount(cliWorkers int) int {
 		}
 	}
 
-	// Default: cores minus 2, minimum 1
-	workers := runtime.NumCPU() - 2
-	if workers < 1 {
-		workers = 1
-	}
-	return workers
+	// Default: use 4 workers unless explicitly overridden.
+	return 4
 }
 
 // GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index

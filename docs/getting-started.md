@@ -11,7 +11,7 @@ brew install rsanheim/tap/plur
 cd [my-project]
 plur --dry-run # preview what would run (no actual test execution)
 plur -n 4     # run tests across four cores
-plur          # run tests with auto-detected workers
+plur          # run tests with the default 4 workers
 plur watch    # watch for changes and run tests automatically
 ```
 
@@ -74,7 +74,7 @@ Plur works with Ruby projects that use RSpec, Minitest, or both. No Ruby gem ins
 ## First Run
 
 ```bash
-# Run all tests with auto-detected parallelism
+# Run all tests with the default worker count
 plur
 
 # Run with a specific number of workers
