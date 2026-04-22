@@ -283,6 +283,70 @@ func TestEventProcessorMultipleWatches(t *testing.T) {
 	}
 }
 
+func TestEventProcessorMergedWatches(t *testing.T) {
+	jobs := map[string]job.Job{
+		"rspec": {
+			Name: "rspec",
+			Cmd:  []string{"bundle", "exec", "rspec", "{{target}}"},
+		},
+	}
+
+	t.Run("override by name uses replacement targets", func(t *testing.T) {
+		watches := MergeWatches(
+			[]WatchMapping{
+				{
+					Name:    "lib-to-spec",
+					Source:  "lib/**/*.rb",
+					Targets: []string{"spec/{{match}}_spec.rb"},
+					Jobs:    []string{"rspec"},
+				},
+			},
+			[]WatchMapping{
+				{
+					Name:    "lib-to-spec",
+					Source:  "lib/**/*.rb",
+					Targets: []string{"spec/override/{{match}}_spec.rb"},
+					Jobs:    []string{"rspec"},
+				},
+			},
+		)
+
+		processor := NewEventProcessor(jobs, watches)
+		result, err := processor.ProcessPath("lib/user.rb")
+		require.NoError(t, err)
+		assert.Equal(t, []string{filepath.FromSlash("spec/override/user_spec.rb")}, result["rspec"])
+	})
+
+	t.Run("additive merge keeps distinct watches", func(t *testing.T) {
+		watches := MergeWatches(
+			[]WatchMapping{
+				{
+					Name:    "lib-to-spec",
+					Source:  "lib/**/*.rb",
+					Targets: []string{"spec/{{match}}_spec.rb"},
+					Jobs:    []string{"rspec"},
+				},
+			},
+			[]WatchMapping{
+				{
+					Name:    "lib-to-extra-spec",
+					Source:  "lib/**/*.rb",
+					Targets: []string{"spec/lib/{{match}}_spec.rb"},
+					Jobs:    []string{"rspec"},
+				},
+			},
+		)
+
+		processor := NewEventProcessor(jobs, watches)
+		result, err := processor.ProcessPath("lib/user.rb")
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{
+			filepath.FromSlash("spec/user_spec.rb"),
+			filepath.FromSlash("spec/lib/user_spec.rb"),
+		}, result["rspec"])
+	})
+}
+
 func TestEventProcessorDeduplication(t *testing.T) {
 	jobs := map[string]job.Job{
 		"rspec": {

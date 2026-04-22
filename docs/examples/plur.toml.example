@@ -63,6 +63,7 @@ target_pattern = "spec/integration/**/*_spec.rb"
 # =============================================================================
 
 # Watch lib files and run corresponding specs
+# Named watch mappings must be unique if you define them.
 [[watch]]
 name = "lib-to-spec"
 source = "lib/**/*.rb"

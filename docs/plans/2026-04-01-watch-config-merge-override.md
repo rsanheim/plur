@@ -4,7 +4,7 @@
 
 Branch `fix/watch-config-merge` changed watch mapping merges from "user replaces all defaults" to "user appends to defaults" via `slices.Concat`. This fixed the bug where adding one custom `[[watch]]` wiped all built-in mappings, but introduced a gap: users can't override or remove a specific built-in watch.
 
-**Solution:** Use a `map[string]WatchMapping` keyed by `mergeKey()` during resolve/merge time to enforce identity semantics. Named user watches with a matching key replace built-ins; unnamed/new watches are additive. The map is flattened to `[]WatchMapping` for all downstream consumers (processors, handlers, find) — they don't change at all.
+**Solution:** Use a `map[string]WatchMapping` keyed by `mergeKey()` during resolve/merge time to enforce identity semantics. Named user watches with a matching key replace built-ins; unnamed/new watches are additive. Duplicate named user watches are rejected during config validation. The map is flattened to `[]WatchMapping` for all downstream consumers (processors, handlers, find) — they don't change at all.
 
 ## Design
 
@@ -20,7 +20,7 @@ func (w WatchMapping) mergeKey() string {
 }
 ```
 
-* Named watches: keyed by name (enables override by name)
+* Named watches: keyed by name (enables override by name, after duplicate user names are rejected)
 * Unnamed watches: keyed by full field composite (only exact duplicates collapse)
 
 ### `MergeWatches` function
@@ -76,6 +76,7 @@ processors, handlers, find (unchanged — just iterate the slice)
 |----------|-------------|--------|
 | Add new mapping | `name = "custom"` with new source | Appended after builtins |
 | Override built-in | `name = "lib-to-spec"` with different targets | Replaces built-in, keeps its position |
+| Duplicate named user watches | two user `[[watch]]` entries with `name = "custom"` | Configuration error |
 | Unnamed new mapping | No name, unique source/targets/jobs | Appended after builtins |
 | Exact unnamed duplicate | No name, identical fields to a built-in | Collapsed to one (via composite key) |
 | No user watches | (empty) | All builtins returned unchanged |
@@ -102,6 +103,7 @@ processors, handlers, find (unchanged — just iterate the slice)
 | override preserves position | overridden watch keeps built-in's position in order |
 | override one, keep others | 3 builtins, 1 overridden → 2 original + 1 replaced |
 | mix of override and additive | 1 override + 1 new name → correct merge |
+| duplicate named user watches | rejected during config validation |
 | exact unnamed duplicate collapses | two unnamed watches with identical fields → one kept |
 
 **`TestMergeKey`**:
@@ -110,13 +112,15 @@ processors, handlers, find (unchanged — just iterate the slice)
 |------|-------------|
 | named watch | returns `"name:<name>"` |
 | unnamed watch | returns composite of all fields |
-| same name, different fields | same key (name wins) |
+| same name, different fields | same key (name wins, after duplicate user names are rejected) |
 | same fields, no name | same key (field hash matches) |
 | different fields, no name | different keys |
 
 ### Step 3: Update call sites
 
-**`internal/runtime/config.go`** — in `BuildRuntimeConfig`, the watch fallback path currently either uses user watches or falls back to builtin watches. Replace this with `MergeWatches(builtinWatches, userWatches)` so user watches override by name rather than replacing entirely.
+**`main.go`** — in `AfterApply` (after Kong has decoded `cli.WatchMappings` from user TOML, before `BuildRuntimeConfig`), call `validateUniqueWatchNames` to reject duplicate named user watches. Kong surfaces the returned error to stderr and exits non-zero, which is the correct boundary for user-config validation: `cli.WatchMappings` at this point holds *only* user watches (built-ins are loaded later inside `BuildRuntimeConfig`), so false positives against built-in names are impossible.
+
+**`internal/runtime/config.go`** — in `BuildRuntimeConfig`, replace the watch fallback path with `MergeWatches(builtinWatches, userWatches)` so user watches override by name rather than replacing entirely.
 
 ### Step 4: Update/add call-site tests
 
@@ -147,7 +151,9 @@ processors, handlers, find (unchanged — just iterate the slice)
 * `watch/processor_test.go` — behavior tests for `ProcessPath` with merged watches
 * `internal/runtime/config.go` — update watch fallback to use `MergeWatches`
 * `internal/runtime/config_test.go` — add override test
-* `spec/integration/watch/watch_integration_spec.rb` — integration test
+* `main.go` — add `validateUniqueWatchNames`, called from `AfterApply` before `BuildRuntimeConfig`
+* `main_test.go` — unit tests for `validateUniqueWatchNames`
+* `spec/integration/watch/watch_config_spec.rb` — integration tests for override, merge, duplicate rejection
 
 ## Verification
 

@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuildRuntimeConfig_PreservesUseJobsAndUserWatches(t *testing.T) {
+func TestBuildRuntimeConfig_MergesBuiltinAndUserWatches(t *testing.T) {
 	cli := &CLIInput{
 		Use: "rspec",
 		Jobs: map[string]job.Job{
 			"rspec": {Cmd: []string{"custom-rspec"}, Framework: "rspec"},
 		},
-		WatchMappings: []watch.WatchMapping{{Name: "custom-watch", Source: "spec/**/*_spec.rb", Jobs: []string{"rspec"}}},
+		WatchMappings: []watch.WatchMapping{{Name: "custom-watch", Source: "config/**/*.yml", Jobs: []string{"rspec"}}},
 		ConfigFiles:   []string{"~/.plur.toml", ".plur.toml"},
 	}
 
@@ -24,8 +24,13 @@ func TestBuildRuntimeConfig_PreservesUseJobsAndUserWatches(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "rspec", rc.Use)
 	assert.Contains(t, rc.Jobs, "rspec")
-	assert.Len(t, rc.Watches, 1)
-	assert.Equal(t, "custom-watch", rc.Watches[0].Name)
+	var names []string
+	for _, watch := range rc.Watches {
+		names = append(names, watch.Name)
+	}
+	assert.Contains(t, names, "custom-watch")
+	assert.Contains(t, names, "lib-to-spec")
+	assert.Contains(t, names, "spec-files")
 }
 
 func TestBuildRuntimeConfig_FallsBackToSelectedBuiltinWatches(t *testing.T) {
@@ -40,6 +45,39 @@ func TestBuildRuntimeConfig_FallsBackToSelectedBuiltinWatches(t *testing.T) {
 	for _, watch := range rc.Watches {
 		assert.Contains(t, watch.Jobs, "rspec")
 	}
+}
+
+func TestBuildRuntimeConfig_UserWatchOverridesBuiltinByName(t *testing.T) {
+	cli := &CLIInput{
+		Use: "rspec",
+		Jobs: map[string]job.Job{
+			"rspec": {Cmd: []string{"bin/rspec"}, Framework: "rspec"},
+		},
+		WatchMappings: []watch.WatchMapping{
+			{
+				Name:    "lib-to-spec",
+				Source:  "lib/**/*.rb",
+				Targets: []string{"spec/override_spec.rb"},
+				Jobs:    []string{"rspec"},
+			},
+		},
+	}
+
+	rc, err := BuildRuntimeConfig(cli)
+	require.NoError(t, err)
+
+	var override *watch.WatchMapping
+	var count int
+	for i := range rc.Watches {
+		if rc.Watches[i].Name == "lib-to-spec" {
+			override = &rc.Watches[i]
+			count++
+		}
+	}
+
+	require.NotNil(t, override)
+	assert.Equal(t, 1, count)
+	assert.Equal(t, []string{"spec/override_spec.rb"}, override.Targets)
 }
 
 func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
