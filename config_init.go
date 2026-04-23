@@ -58,11 +58,11 @@ func (c *ConfigInitCmd) Run(parent *ConfigCmd, globals *PlurCLI) error {
 	return nil
 }
 
-const simpleConfigTemplate = `# Plur configuration file
+var simpleConfigTemplate = fmt.Sprintf(`# Plur configuration file
 # See https://github.com/rsanheim/plur/blob/main/docs/configuration.md
 
 # Number of parallel workers
-workers = 4
+workers = %d
 use = "rspec"
 
 [job.rspec]
@@ -72,7 +72,7 @@ cmd = ["bundle", "exec", "rspec"]
 name = "spec-files"
 source = "spec/**/*_spec.rb"
 jobs = ["rspec"]
-`
+`, DefaultWorkerCount)
 
 const railsConfigTemplate = `# Plur configuration for Rails applications
 # See https://github.com/rsanheim/plur/blob/main/docs/configuration.md
@@ -91,11 +91,11 @@ source = "spec/**/*_spec.rb"
 jobs = ["rspec"]
 `
 
-const minitestConfigTemplate = `# Plur configuration for Minitest projects
+var minitestConfigTemplate = fmt.Sprintf(`# Plur configuration for Minitest projects
 # See https://github.com/rsanheim/plur/blob/main/docs/configuration.md
 
 # Standard worker configuration
-workers = 4
+workers = %d
 use = "minitest"
 
 [job.minitest]
@@ -105,4 +105,4 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 name = "test-files"
 source = "test/**/*_test.rb"
 jobs = ["minitest"]
-`
+`, DefaultWorkerCount)

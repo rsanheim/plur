@@ -19,6 +19,7 @@ import (
 const (
 	EnvTestEnvNumber      = "TEST_ENV_NUMBER"
 	EnvParallelTestGroups = "PARALLEL_TEST_GROUPS"
+	DefaultWorkerCount    = 4
 )
 
 // Handles grouping files into worker assignments and building the commands to run.
@@ -264,8 +265,8 @@ func GetWorkerCount(cliWorkers int) int {
 		}
 	}
 
-	// Default: use 4 workers unless explicitly overridden.
-	return 4
+	// Default: use a fixed worker count unless explicitly overridden.
+	return DefaultWorkerCount
 }
 
 // GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index

@@ -47,6 +47,11 @@ func (p *suiteCountParser) FormatFailuresList(_ []types.TestCaseNotification) st
 
 func (p *suiteCountParser) ColorizeSummary(summary string, _ bool) string { return summary }
 
+func TestDefaultWorkerCount(t *testing.T) {
+	assert.Equal(t, 4, DefaultWorkerCount)
+	assert.Equal(t, DefaultWorkerCount, GetWorkerCount(0))
+}
+
 func TestGetWorkerCountEdgeCases(t *testing.T) {
 	originalEnv := os.Getenv("PARALLEL_TEST_PROCESSORS")
 	defer os.Setenv("PARALLEL_TEST_PROCESSORS", originalEnv)
@@ -67,19 +72,19 @@ func TestGetWorkerCountEdgeCases(t *testing.T) {
 			name:       "Zero env var",
 			cliWorkers: 0,
 			envVar:     "0",
-			expected:   4,
+			expected:   DefaultWorkerCount,
 		},
 		{
 			name:       "Negative env var",
 			cliWorkers: 0,
 			envVar:     "-5",
-			expected:   4,
+			expected:   DefaultWorkerCount,
 		},
 		{
 			name:       "Empty env var",
 			cliWorkers: 0,
 			envVar:     "",
-			expected:   4,
+			expected:   DefaultWorkerCount,
 		},
 	}
 
