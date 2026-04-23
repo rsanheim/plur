@@ -210,6 +210,25 @@ func TestDynamicLevel_TakesEffectImmediately(t *testing.T) {
 	assert.NotContains(t, buf.String(), "debug 3")
 }
 
+func TestSetWriterRedirectsStructuredLogs(t *testing.T) {
+	originalLogger := Logger
+	defer func() {
+		Logger = originalLogger
+	}()
+
+	Init(slog.LevelDebug)
+
+	var buf bytes.Buffer
+	restore := SetWriter(&buf)
+	defer restore()
+
+	Logger.Debug("watch", "type", "watcher")
+
+	output := buf.String()
+	assert.Contains(t, output, "DEBUG")
+	assert.Contains(t, output, `type="watcher"`)
+}
+
 func TestCustomTextHandler_ConcurrentWrites(t *testing.T) {
 	var buf bytes.Buffer
 	handler := NewCustomTextHandler(&buf, &slog.HandlerOptions{

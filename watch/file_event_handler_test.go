@@ -20,7 +20,7 @@ type executorCall struct {
 	targets []string
 }
 
-func (m *mockExecutor) execute(j job.Job, targets []string, cwd string) error {
+func (m *mockExecutor) execute(j job.Job, targets []string, cwd string, terminal *Terminal) error {
 	m.calls = append(m.calls, executorCall{jobName: j.Name, targets: targets})
 	return nil
 }
