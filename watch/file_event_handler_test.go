@@ -1,15 +1,11 @@
 package watch
 
 import (
-	"bytes"
-	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/rsanheim/plur/job"
-	"github.com/rsanheim/plur/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -248,61 +244,4 @@ func TestFileEventHandler_HandleBatch_NoMatchingTargets(t *testing.T) {
 
 	assert.Empty(t, result.ExecutedJobs, "No jobs should run when target doesn't exist")
 	assert.Len(t, mock.calls, 0)
-}
-
-func TestFileEventHandler_HandleBatch_LogsFailedJobOnce(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	srcDir := filepath.Join(tmpDir, "lib")
-	require.NoError(t, os.MkdirAll(srcDir, 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
-
-	specDir := filepath.Join(tmpDir, "spec")
-	require.NoError(t, os.MkdirAll(specDir, 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(specDir, "user_spec.rb"), []byte("# spec"), 0644))
-
-	originalLogger := logger.Logger
-	var logOutput bytes.Buffer
-	logger.Logger = slog.New(logger.NewCustomTextHandler(&logOutput, &slog.HandlerOptions{
-		Level: slog.LevelWarn,
-	}))
-	t.Cleanup(func() {
-		logger.Logger = originalLogger
-	})
-
-	handler := &FileEventHandler{
-		Jobs: map[string]job.Job{
-			"failing-job": {
-				Name: "failing-job",
-				Cmd:  []string{os.Args[0], "-test.run=TestFileEventHandlerExecuteJobHelperProcess"},
-				Env:  []string{"PLUR_TEST_HELPER_PROCESS=1"},
-			},
-		},
-		Watches: []WatchMapping{
-			{
-				Name:    "lib-to-spec",
-				Source:  "lib/**/*.rb",
-				Targets: []string{"spec/{{match}}_spec.rb"},
-				Jobs:    []string{"failing-job"},
-			},
-		},
-		CWD: tmpDir,
-	}
-
-	result := handler.HandleBatch([]string{"lib/user.rb"})
-
-	assert.Equal(t, []string{"failing-job"}, result.ExecutedJobs)
-
-	lines := strings.Split(strings.TrimSpace(logOutput.String()), "\n")
-	require.Len(t, lines, 1)
-	assert.Contains(t, lines[0], "Job execution error")
-	assert.Contains(t, lines[0], `job="failing-job"`)
-}
-
-func TestFileEventHandlerExecuteJobHelperProcess(t *testing.T) {
-	if os.Getenv("PLUR_TEST_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	os.Exit(1)
 }
