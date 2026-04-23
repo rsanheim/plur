@@ -36,19 +36,21 @@ type WatcherConfig struct {
 	Directory      string // Single directory to watch
 	DebounceDelay  time.Duration
 	TimeoutSeconds int
+	StderrWriter   io.Writer
 }
 
 // Watcher manages the file watching process
 type Watcher struct {
-	config     *WatcherConfig
-	binaryPath string
-	process    *exec.Cmd
-	eventChan  chan Event
-	errorChan  chan error
-	stopChan   chan struct{}
-	done       chan struct{} // Signals cleanup is complete
-	stopOnce   sync.Once
-	started    bool
+	config       *WatcherConfig
+	binaryPath   string
+	process      *exec.Cmd
+	eventChan    chan Event
+	errorChan    chan error
+	stopChan     chan struct{}
+	done         chan struct{} // Signals cleanup is complete
+	stopOnce     sync.Once
+	started      bool
+	stderrWriter io.Writer
 }
 
 // NewWatcher creates a new watcher instance
@@ -60,6 +62,12 @@ func NewWatcher(config *WatcherConfig, binaryPath string) *Watcher {
 		errorChan:  make(chan error, 10),
 		stopChan:   make(chan struct{}),
 		done:       make(chan struct{}),
+		stderrWriter: func() io.Writer {
+			if config.StderrWriter != nil {
+				return config.StderrWriter
+			}
+			return os.Stderr
+		}(),
 	}
 }
 
@@ -197,7 +205,7 @@ func (w *Watcher) readErrors(stderr io.Reader) {
 		line = strings.TrimSuffix(line, "\r")
 
 		if line != "" {
-			fmt.Fprintf(os.Stderr, "watcher stderr: %s\n", line)
+			fmt.Fprintf(w.stderrWriter, "watcher stderr: %s\n", line)
 		}
 
 		if err == io.EOF {
@@ -210,40 +218,39 @@ func (w *Watcher) readErrors(stderr io.Reader) {
 var DefaultIgnorePatterns = []string{".git/**", "node_modules/**"}
 
 // RunCommand runs a command from a slice of arguments
-func RunCommand(args []string) {
+func RunCommand(args []string, terminal *Terminal) {
 	if len(args) == 0 {
 		return
 	}
 
-	fmt.Printf("\n[plur] %s\n", strings.Join(args, " "))
+	printCommand(args, terminal, true)
 
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = terminalRawStdout(terminal)
+	cmd.Stderr = terminalRawStderr(terminal)
 
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
+		fmt.Fprintf(terminalRawStderr(terminal), "Failed to run: %v\n", err)
 	}
 }
 
 // ExecuteJob runs a job with the given target files
 // If the job doesn't use targets (no {{target}} in cmd), it runs once without targets
-func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
+func ExecuteJob(j job.Job, targetFiles []string, cwd string, terminal *Terminal) error {
 	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
 
 	// Jobs without {{target}} placeholder run once without targets
 	if !j.UsesTargets() {
 		cmd := j.Cmd
-		fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
+		printCommand(cmd, terminal, false)
 
 		execCmd := exec.Command(cmd[0], cmd[1:]...)
 		execCmd.Dir = cwd
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
+		execCmd.Stdout = terminalRawStdout(terminal)
+		execCmd.Stderr = terminalRawStderr(terminal)
 		execCmd.Env = append(os.Environ(), j.Env...)
 
 		if err := execCmd.Run(); err != nil {
-			logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
 			return err
 		}
 		return nil
@@ -255,20 +262,54 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 	}
 
 	cmd := job.BuildJobCmd(j, targetFiles)
-	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
+	printCommand(cmd, terminal, false)
 
 	execCmd := exec.Command(cmd[0], cmd[1:]...)
 	execCmd.Dir = cwd
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
+	execCmd.Stdout = terminalRawStdout(terminal)
+	execCmd.Stderr = terminalRawStderr(terminal)
 	execCmd.Env = append(os.Environ(), j.Env...)
 
 	if err := execCmd.Run(); err != nil {
-		logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
 		return err
 	}
 
 	return nil
+}
+
+func printCommand(cmd []string, terminal *Terminal, includePrefix bool) {
+	if terminal != nil {
+		line := strings.Join(cmd, " ")
+		if includePrefix {
+			line = "[plur] " + line
+		}
+		terminal.PrintLine(line)
+		return
+	}
+
+	if includePrefix {
+		fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
+		return
+	}
+
+	fmt.Printf("%s\n", strings.Join(cmd, " "))
+}
+
+// terminalRawStdout returns the raw stdout writer for subprocess use.
+// This preserves TTY file descriptors so subprocesses can detect color support.
+func terminalRawStdout(terminal *Terminal) io.Writer {
+	if terminal != nil {
+		return terminal.RawStdout()
+	}
+	return os.Stdout
+}
+
+// terminalRawStderr returns the raw stderr writer for subprocess use.
+func terminalRawStderr(terminal *Terminal) io.Writer {
+	if terminal != nil {
+		return terminal.RawStderr()
+	}
+	return os.Stderr
 }
 
 // IsIgnored checks if a path matches any of the ignore patterns
