@@ -243,7 +243,6 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 		execCmd.Env = append(os.Environ(), j.Env...)
 
 		if err := execCmd.Run(); err != nil {
-			logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
 			return err
 		}
 		return nil
@@ -264,7 +263,6 @@ func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 	execCmd.Env = append(os.Environ(), j.Env...)
 
 	if err := execCmd.Run(); err != nil {
-		logger.Logger.Warn("Job execution failed", "job", j.Name, "error", err)
 		return err
 	}
 
