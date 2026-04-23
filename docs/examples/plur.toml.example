@@ -16,7 +16,7 @@
 # =============================================================================
 
 # Number of parallel workers to use
-# Default: auto-detect (number of CPU cores - 2)
+# Default: 4
 workers = 4
 
 # Enable colored output

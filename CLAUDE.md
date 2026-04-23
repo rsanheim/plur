@@ -22,6 +22,15 @@ Notes:
 - For a single spec file, use `bin/rspec spec/path/to/file_spec.rb`.
 - Install tools from top-level `.mise.toml`: `mise install --yes`
 
+## Internal Planning Repo
+
+- The private planning repo for this project is `plur-internal`.
+- On this machine, and on the user's other dev machines, it lives at `../plur-internal` relative to this repository.
+- GitHub: `https://github.com/rsanheim/plur-internal`
+- Git remote: `git@github.com:rsanheim/plur-internal.git`
+- Keep public product docs in this repo's `docs/` tree focused on current user-facing behavior.
+- Put planning docs, research notes, WIP writeups, marketing drafts, and internal design material in `../plur-internal`.
+
 ### bin/rake build vs bin/rake install
 
 * **bin/rake build** - Fast local build using `go build` (creates `./plur`)
@@ -38,7 +47,7 @@ Notes:
 
 ### Plur Commands
 ```bash
-plur                      # Run tests (auto-detect workers)
+plur                      # Run tests (default: 4 workers)
 plur -n 4                 # Specify workers (often fastest)
 plur -C path/to/project   # Change to directory before running (like git -C)
 plur --dry-run            # Preview what will run

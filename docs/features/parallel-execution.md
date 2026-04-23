@@ -17,7 +17,7 @@ Plur's core feature is running RSpec tests in parallel for faster feedback.
 
 ### Auto-Detection (Default)
 ```bash
-plur  # Uses CPU cores - 2
+plur  # Uses the default 4 workers
 ```
 
 ### Manual Control

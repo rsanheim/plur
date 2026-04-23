@@ -14,7 +14,7 @@ Plur is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) t
 * **TOML configuration**: local `.plur.toml` and global `~/.plur.toml` for persistent settings
 * **Custom jobs**: define your own jobs in config with arbitrary commands, frameworks, and target patterns
 * **Watch mode**: automatically runs tests on file changes with configurable source-to-test mappings
-* **Intelligent worker count**: defaults to cores-2, configurable via `-n` flag or `PARALLEL_TEST_PROCESSORS` env var
+* **Simple worker default**: uses 4 workers by default, configurable via `-n` flag or `PARALLEL_TEST_PROCESSORS` env var
 * **Glob-based file discovery** using doublestar for recursive `**` patterns
 * **Streaming JSON output** via a custom `JsonRowsFormatter` embedded in the binary
 * **Diagnostic command**: `plur doctor` for debugging installation and environment issues
@@ -23,7 +23,7 @@ Plur is a Go-based parallel test runner for Ruby projects (RSpec and Minitest) t
 ## CLI Interface
 
 ```bash
-plur                          # Run with auto-detected workers (cores-2)
+plur                          # Run with the default 4 workers
 plur -n 4                     # Run with 4 workers
 plur --dry-run                # Show what would run without execution
 plur --tag focus              # Filter RSpec tests by tag

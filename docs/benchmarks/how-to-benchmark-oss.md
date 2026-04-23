@@ -98,7 +98,7 @@ plur -n 1   # Serial (baseline)
 plur -n 2   # Minimal parallelism
 plur -n 4   # Light parallelism
 plur -n 8   # Moderate parallelism
-plur        # Default (auto-detect, typically CPU count)
+plur        # Default (4 workers)
 ```
 
 ## Troubleshooting

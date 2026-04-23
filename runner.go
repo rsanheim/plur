@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -20,6 +19,7 @@ import (
 const (
 	EnvTestEnvNumber      = "TEST_ENV_NUMBER"
 	EnvParallelTestGroups = "PARALLEL_TEST_GROUPS"
+	DefaultWorkerCount    = 4
 )
 
 // Handles grouping files into worker assignments and building the commands to run.
@@ -265,12 +265,8 @@ func GetWorkerCount(cliWorkers int) int {
 		}
 	}
 
-	// Default: cores minus 2, minimum 1
-	workers := runtime.NumCPU() - 2
-	if workers < 1 {
-		workers = 1
-	}
-	return workers
+	// Default: use a fixed worker count unless explicitly overridden.
+	return DefaultWorkerCount
 }
 
 // GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index

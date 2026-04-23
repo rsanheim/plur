@@ -37,7 +37,7 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 
 #### Global Settings
 
-* `workers` - Number of parallel workers (default: auto-detect)
+* `workers` - Number of parallel workers (default: 4)
 * `color` - Enable colored output (default: true)
 * `verbose` - Enable verbose output (default: false)
 * `use` - Default job to use (default: auto-detect based on project structure)
