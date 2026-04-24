@@ -24,12 +24,33 @@ RSpec.describe "plur watch command", :skip_if_ci do
     end
   end
 
+  context "interactive output" do
+    it "prints the startup prompt without a trailing newline" do
+      result = run_plur_watch_interactive(commands: ["exit"], timeout: 3)
+
+      expect(result.out).to include("exit (Ctrl-C)        Exit watch mode\n\n[plur] > Exiting watch mode...\n")
+    end
+
+    it "prints the manual run status on the prompt line before the command banner" do
+      result = run_plur_watch_interactive(commands: ["", "exit"], timeout: 3)
+
+      expect(result.out).to include("[plur] > Running all tests...\n\n[plur] bundle exec rspec\n")
+    end
+
+    it "keeps a blank line before the next watch message after a manual run" do
+      result = run_plur_watch_interactive(commands: ["", "exit"], timeout: 3)
+
+      expect(result.out).to match(/0 failures\n\n\n(?:\[plur\] > )?Exiting watch mode...\n/)
+    end
+  end
+
   context "file change detection" do
     it "detects when files are modified" do
-      result = run_plur_watch(timeout: 2) do
-        # Write back the same file to trigger a modify event
-        spec_file = Pathname.new(default_ruby_dir).join("spec", "calculator_spec.rb")
-        spec_file.write(spec_file.read)
+      spec_file = Pathname.new(default_ruby_dir).join("spec", "calculator_spec.rb")
+      original_content = spec_file.read
+
+      result = run_plur_watch(timeout: 10, until_output: "calculator_spec.rb") do
+        spec_file.write("# Modified by watch_spec\n#{original_content}")
       end
 
       # Debug output if test fails
@@ -44,6 +65,8 @@ RSpec.describe "plur watch command", :skip_if_ci do
       # Watch now maps file changes to jobs and executes them
       expect(result.err).to include("calculator_spec.rb")
       expect(result.success?).to be true
+    ensure
+      spec_file.write(original_content) if original_content
     end
   end
 
