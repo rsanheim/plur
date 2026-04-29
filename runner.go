@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"sync"
 	"time"
 
@@ -251,22 +250,6 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 
 func (r *Runner) Tracker() *RuntimeTracker {
 	return r.tracker
-}
-
-// GetWorkerCount determines number of workers to use; precedence is CLI > env > defaults
-func GetWorkerCount(cliWorkers int) int {
-	if cliWorkers > 0 {
-		return cliWorkers
-	}
-
-	if envVar := os.Getenv("PARALLEL_TEST_PROCESSORS"); envVar != "" {
-		if count, err := strconv.Atoi(envVar); err == nil && count > 0 {
-			return count
-		}
-	}
-
-	// Default: use a fixed worker count unless explicitly overridden.
-	return DefaultWorkerCount
 }
 
 // GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index
