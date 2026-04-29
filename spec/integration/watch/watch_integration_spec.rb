@@ -16,9 +16,6 @@ RSpec.describe "plur watch integration" do
   end
 
   it "deduplicates overlapping watch directories to avoid duplicate runs" do
-    calculator_file = default_ruby_dir.join("lib/calculator.rb")
-    original_content = calculator_file.read
-
     Dir.mktmpdir do |tmpdir|
       config_path = File.join(tmpdir, ".plur.toml")
       File.write(config_path, <<~TOML)
@@ -35,87 +32,91 @@ RSpec.describe "plur watch integration" do
       TOML
 
       plur_home = File.join(tmpdir, "plur-home")
-      result = run_plur_watch(
-        timeout: 10,
-        env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_HOME" => plur_home},
-        until_output: "Executing job"
-      ) do
-        calculator_file.write(original_content + "\n# Modified by test")
+      with_temp_watch_project do |project_dir|
+        calculator_file = project_dir.join("lib/calculator.rb")
+        original_content = calculator_file.read
+
+        result = run_plur_watch(
+          dir: project_dir,
+          timeout: 10,
+          env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_HOME" => plur_home},
+          until_output: "targets=\"[spec/calculator_spec.rb]\""
+        ) do
+          calculator_file.write(original_content + "\n# Modified by test")
+        end
+
+        directories_line = result.err.lines.find { |line| line.include?("directories=") }
+        expect(directories_line).not_to be_nil
+
+        raw_directories = directories_line[/directories=\[([^\]]*)\]/, 1].to_s
+        directories = raw_directories.split(" ").reject(&:empty?)
+        expect(directories.size).to eq(1), "Expected 1 watch directory, got #{directories.inspect}"
+
+        executions = result.err.scan('Executing job job="rspec"').count
+        expect(executions).to eq(1), "Expected 1 job execution, got #{executions}"
       end
-
-      directories_line = result.err.lines.find { |line| line.include?("directories=") }
-      expect(directories_line).not_to be_nil
-
-      raw_directories = directories_line[/directories=\[([^\]]*)\]/, 1].to_s
-      directories = raw_directories.split(" ").reject(&:empty?)
-      expect(directories.size).to eq(1), "Expected 1 watch directory, got #{directories.inspect}"
-
-      executions = result.err.scan('Executing job job="rspec"').count
-      expect(executions).to eq(1), "Expected 1 job execution, got #{executions}"
-    ensure
-      calculator_file.write(original_content)
     end
   end
 
   it "detects lib file changes" do
-    calculator_file = default_ruby_dir.join("lib/calculator.rb")
-    original_content = calculator_file.read
+    with_temp_watch_project do |project_dir|
+      calculator_file = project_dir.join("lib/calculator.rb")
+      original_content = calculator_file.read
 
-    result = run_plur_watch(timeout: 10, until_output: "Executing job") do
-      calculator_file.write(original_content + "\n# test")
+      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "Executing job") do
+        calculator_file.write(original_content + "\n# test")
+      end
+
+      expect(result.err).to include('event="modify" type="file"')
+      expect(result.err).to include('path="lib/calculator.rb"')
+      expect(result.err).to include('Executing job job="rspec"')
     end
-
-    expect(result.err).to include('event="modify" type="file"')
-    expect(result.err).to include('path="lib/calculator.rb"')
-    expect(result.err).to include('Executing job job="rspec"')
-  ensure
-    calculator_file.write(original_content) if original_content
   end
 
   it "detects spec_helper.rb changes" do
-    spec_helper = default_ruby_dir.join("spec/spec_helper.rb")
-    original_content = spec_helper.read
+    with_temp_watch_project do |project_dir|
+      spec_helper = project_dir.join("spec/spec_helper.rb")
+      original_content = spec_helper.read
 
-    result = run_plur_watch(timeout: 10, until_output: "No existing targets") do
-      spec_helper.write(original_content + "\n# Modified by test")
+      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "No existing targets") do
+        spec_helper.write(original_content + "\n# Modified by test")
+      end
+
+      expect_file_change_logged(result.err, "spec/spec_helper.rb")
+      # spec_helper.rb changes are detected but don't trigger jobs (no matching targets)
+      expect(result.err).to include("No existing targets for file")
     end
-
-    expect_file_change_logged(result.err, "spec/spec_helper.rb")
-    # spec_helper.rb changes are detected but don't trigger jobs (no matching targets)
-    expect(result.err).to include("No existing targets for file")
-  ensure
-    spec_helper.write(original_content) if original_content
   end
 
   it "detects spec file changes" do
-    spec_path = default_ruby_dir.join("spec/calculator_spec.rb")
-    contents = spec_path.read
+    with_temp_watch_project do |project_dir|
+      spec_path = project_dir.join("spec/calculator_spec.rb")
+      contents = spec_path.read
 
-    result = run_plur_watch(timeout: 10, until_output: "Executing job") do
-      File.write(spec_path, "# Modified\n" + contents)
+      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "Executing job") do
+        File.write(spec_path, "# Modified\n" + contents)
+      end
+
+      expect_file_change_logged(result.err, "spec/calculator_spec.rb")
+      # Watch now maps file changes to jobs and executes them
+      expect(result.err).to include("Executing job")
     end
-
-    expect_file_change_logged(result.err, "spec/calculator_spec.rb")
-    # Watch now maps file changes to jobs and executes them
-    expect(result.err).to include("Executing job")
-  ensure
-    File.write(spec_path, contents) if contents
   end
 
   it "ignores non-Ruby files" do
-    readme_file = default_ruby_dir.join("README.md")
-    original_content = readme_file.read
+    with_temp_watch_project do |project_dir|
+      readme_file = project_dir.join("README.md")
+      original_content = readme_file.read
 
-    result = run_plur_watch(timeout: 3) do
-      readme_file.write(original_content + "\n<!-- test -->")
+      result = run_plur_watch(dir: project_dir, timeout: 3) do
+        readme_file.write(original_content + "\n<!-- test -->")
+      end
+
+      output = result.out + result.err
+
+      # Should not see any change events for README.md
+      expect(output).not_to include("Changed: README.md")
     end
-
-    output = result.out + result.err
-
-    # Should not see any change events for README.md
-    expect(output).not_to include("Changed: README.md")
-  ensure
-    readme_file.write(original_content) if original_content
   end
 
   it "respects custom debounce delay" do
@@ -127,21 +128,23 @@ RSpec.describe "plur watch integration" do
   end
 
   it "detects multiple file changes with debouncing" do
-    result = run_plur_watch(timeout: 10, debounce: 200, until_output: "Executing job") do
-      calc_file = default_ruby_dir.join("lib/calculator.rb")
-      calc_file.write(calc_file.read + "\n# test")
+    with_temp_watch_project do |project_dir|
+      result = run_plur_watch(dir: project_dir, timeout: 10, debounce: 200, until_output: "Executing job") do
+        calc_file = project_dir.join("lib/calculator.rb")
+        calc_file.write(calc_file.read + "\n# test")
 
-      str_file = default_ruby_dir.join("lib/string_utils.rb")
-      str_file.write(str_file.read + "\n# test")
+        str_file = project_dir.join("lib/string_utils.rb")
+        str_file.write(str_file.read + "\n# test")
 
-      val_file = default_ruby_dir.join("lib/validator.rb")
-      val_file.write(val_file.read + "\n# test")
+        val_file = project_dir.join("lib/validator.rb")
+        val_file.write(val_file.read + "\n# test")
+      end
+
+      # Should see all changes in stderr
+      expect_file_change_logged(result.err, "lib/calculator.rb")
+      expect_file_change_logged(result.err, "lib/string_utils.rb")
+      expect_file_change_logged(result.err, "lib/validator.rb")
+      expect(result.err).to include("Executing job")
     end
-
-    # Should see all changes in stderr
-    expect_file_change_logged(result.err, "lib/calculator.rb")
-    expect_file_change_logged(result.err, "lib/string_utils.rb")
-    expect_file_change_logged(result.err, "lib/validator.rb")
-    expect(result.err).to include("Executing job")
   end
 end

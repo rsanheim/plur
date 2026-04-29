@@ -46,27 +46,27 @@ RSpec.describe "plur watch command", :skip_if_ci do
 
   context "file change detection" do
     it "detects when files are modified" do
-      spec_file = Pathname.new(default_ruby_dir).join("spec", "calculator_spec.rb")
-      original_content = spec_file.read
+      with_temp_watch_project do |project_dir|
+        spec_file = project_dir.join("spec", "calculator_spec.rb")
+        original_content = spec_file.read
 
-      result = run_plur_watch(timeout: 10, until_output: "calculator_spec.rb") do
-        spec_file.write("# Modified by watch_spec\n#{original_content}")
+        result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "calculator_spec.rb") do
+          spec_file.write("# Modified by watch_spec\n#{original_content}")
+        end
+
+        # Debug output if test fails
+        if ENV["DEBUG"]
+          puts "=== WATCH OUTPUT ==="
+          puts result.out
+          puts "=== STDERR ==="
+          puts result.err
+          puts "=================="
+        end
+
+        # Watch now maps file changes to jobs and executes them
+        expect(result.err).to include("calculator_spec.rb")
+        expect(result.success?).to be true
       end
-
-      # Debug output if test fails
-      if ENV["DEBUG"]
-        puts "=== WATCH OUTPUT ==="
-        puts result.out
-        puts "=== STDERR ==="
-        puts result.err
-        puts "=================="
-      end
-
-      # Watch now maps file changes to jobs and executes them
-      expect(result.err).to include("calculator_spec.rb")
-      expect(result.success?).to be true
-    ensure
-      spec_file.write(original_content) if original_content
     end
   end
 
