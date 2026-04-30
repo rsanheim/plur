@@ -80,11 +80,9 @@ plur doctor
 plur rails db:prepare -n 4
 plur rails db:migrate VERSION=20260429000000 -n 4
 plur rake db:setup -n 4
-RAILS_ENV=test plur rails db:prepare -n 4
-RAILS_ENV=test plur rake db:setup -n 4
 ```
 
-These commands run once per worker. Arguments after `rails` or `rake` are appended literally to the configured job command, not treated as test file patterns. They set Plur's worker env (`PARALLEL_TEST_GROUPS`, `TEST_ENV_NUMBER`) and inherit your shell env plus any explicit job env.
+These commands run once per worker. Arguments after `rails` or `rake` are appended literally to the configured job command, not treated as test file patterns. They set Plur's worker env (`PARALLEL_TEST_GROUPS`, `TEST_ENV_NUMBER`) and inherit your shell env plus any explicit job env. Plur does not choose a Rails environment for you.
 
 ## Command Line Options
 

@@ -28,7 +28,6 @@ Ship these commands:
 plur rails db:prepare -n 4
 plur rails db:migrate VERSION=20260429000000 -n 4
 plur rake db:setup -n 4
-RAILS_ENV=test plur rails db:prepare -n 4
 ```
 
 Each command runs:
@@ -56,7 +55,6 @@ Users can still override either job through the existing config merge:
 ```toml
 [job.rails]
 cmd = ["bundle", "exec", "rails"]
-env = ["RAILS_ENV=test"]
 ```
 
 ## Deliberate Non-Scope
@@ -110,7 +108,7 @@ Add tests that assert:
 - `rake` resolves to `cmd = ["bundle", "exec", "rake"]` and `framework = "passthrough"`.
 - Neither built-in job sets `Env`.
 - A user override can set only `cmd` while inheriting `framework = "passthrough"`.
-- A user override can set `env = ["RAILS_ENV=test"]` explicitly.
+- A user override can set explicit job env without Plur choosing a Rails environment.
 
 Run:
 
@@ -369,10 +367,10 @@ plur db:setup -n 3
 with:
 
 ```bash
-RAILS_ENV=test plur rails db:create -n 3
-RAILS_ENV=test plur rails db:migrate -n 3
-RAILS_ENV=test plur rails db:prepare -n 3
-RAILS_ENV=test plur rake db:setup -n 3
+plur rails db:create -n 3
+plur rails db:migrate -n 3
+plur rails db:prepare -n 3
+plur rake db:setup -n 3
 ```
 
 - [ ] **Step 2: Document built-in jobs**
@@ -389,12 +387,7 @@ cmd = ["bundle", "exec", "rake"]
 framework = "passthrough"
 ```
 
-Then show explicit env configuration as an opt-in:
-
-```toml
-[job.rails]
-env = ["RAILS_ENV=test"]
-```
+Then state plainly that users choose any Rails environment through their shell or explicit job env.
 
 - [ ] **Step 3: Explain behavior plainly**
 

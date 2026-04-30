@@ -160,12 +160,7 @@ cmd = ["bundle", "exec", "rake"]
 framework = "passthrough"
 ```
 
-`plur rails <args>` and `plur rake <args>` run the configured command once per worker. The arguments are appended literally; Plur does not discover files or parse test output for these commands. Rails environment is not forced by default, so set it in your shell or opt into job env:
-
-```toml
-[job.rails]
-env = ["RAILS_ENV=test"]
-```
+`plur rails <args>` and `plur rake <args>` run the configured command once per worker. The arguments are appended literally; Plur does not discover files or parse test output for these commands. Rails environment is not forced by default, so set the right environment in your shell or explicit job env.
 
 ### Custom Job Examples
 

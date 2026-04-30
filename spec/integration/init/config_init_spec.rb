@@ -28,9 +28,9 @@ RSpec.describe "plur config init command" do
       config_content = File.read(File.join(test_dir, ".plur.toml"))
       expect(config_content).to include("workers = 8")
       expect(config_content).to include("cmd = [\"bin/rspec\"]")
-      expect(config_content).to include("[job.rails]")
-      expect(config_content).to include("[job.rake]")
-      expect(config_content.scan("env = [\"RAILS_ENV=test\"]").length).to eq(2)
+      expect(config_content).not_to include("[job.rails]")
+      expect(config_content).not_to include("[job.rake]")
+      expect(config_content).not_to include("RAILS_ENV")
     end
 
     it "creates a Minitest config with --template=minitest" do

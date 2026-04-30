@@ -16,7 +16,7 @@ This command should make the "zero to parallel" experience as painless as possib
 
 3. *Warning scans* -- Checks for files that likely need manual parallel isolation: `.env.test`, sidekiq configs, elasticsearch/searchkick initializers. Prints warnings without modifying these files.
 
-4. *Next steps* -- After making changes, prints the follow-up commands (`RAILS_ENV=test plur rails db:create`, `RAILS_ENV=test plur rails db:migrate`, `plur spec`).
+4. *Next steps* -- After making changes, prints the follow-up commands (`plur rails db:create`, `plur rails db:migrate`, `plur spec`).
 
 Supports `--dry-run` (shows diffs without writing) and is idempotent (detects already-configured projects).
 

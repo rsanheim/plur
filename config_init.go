@@ -85,12 +85,6 @@ use = "rspec"
 [job.rspec]
 cmd = ["bin/rspec"]
 
-[job.rails]
-env = ["RAILS_ENV=test"]
-
-[job.rake]
-env = ["RAILS_ENV=test"]
-
 [[watch]]
 name = "spec-files"
 source = "spec/**/*_spec.rb"

@@ -194,7 +194,7 @@ func TestBuildRuntimeConfigRailsJobOverrides(t *testing.T) {
 		Jobs: map[string]job.Job{
 			"rails": {
 				Cmd: []string{"bundle", "exec", "rails"},
-				Env: []string{"RAILS_ENV=test"},
+				Env: []string{"CUSTOM_ENV=value"},
 			},
 		},
 	})
@@ -203,7 +203,7 @@ func TestBuildRuntimeConfigRailsJobOverrides(t *testing.T) {
 	require.Contains(t, rc.Jobs, "rails")
 	assert.Equal(t, []string{"bundle", "exec", "rails"}, rc.Jobs["rails"].Cmd)
 	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework)
-	assert.Equal(t, []string{"RAILS_ENV=test"}, rc.Jobs["rails"].Env)
+	assert.Equal(t, []string{"CUSTOM_ENV=value"}, rc.Jobs["rails"].Env)
 	assert.True(t, rc.Inherited["rails"].Framework)
 	assert.False(t, rc.Inherited["rails"].Env)
 }
@@ -211,7 +211,7 @@ func TestBuildRuntimeConfigRailsJobOverrides(t *testing.T) {
 func TestBuildRuntimeConfigRailsJobEnvOnlyOverrideInheritsCommand(t *testing.T) {
 	rc, err := BuildRuntimeConfig(&CLIInput{
 		Jobs: map[string]job.Job{
-			"rails": {Env: []string{"RAILS_ENV=test"}},
+			"rails": {Env: []string{"CUSTOM_ENV=value"}},
 		},
 	})
 
@@ -219,7 +219,7 @@ func TestBuildRuntimeConfigRailsJobEnvOnlyOverrideInheritsCommand(t *testing.T) 
 	require.Contains(t, rc.Jobs, "rails")
 	assert.Equal(t, []string{"bin/rails"}, rc.Jobs["rails"].Cmd)
 	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework)
-	assert.Equal(t, []string{"RAILS_ENV=test"}, rc.Jobs["rails"].Env)
+	assert.Equal(t, []string{"CUSTOM_ENV=value"}, rc.Jobs["rails"].Env)
 	assert.True(t, rc.Inherited["rails"].Cmd)
 	assert.True(t, rc.Inherited["rails"].Framework)
 	assert.False(t, rc.Inherited["rails"].Env)

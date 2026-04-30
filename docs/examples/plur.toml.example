@@ -53,12 +53,8 @@ target_pattern = "test/**/*_test.rb"
 
 # Rails and Rake command jobs
 # Built-in commands are ["bin/rails"] and ["bundle", "exec", "rake"].
-# Uncomment env if you want `plur rails ...` and `plur rake ...` to force test mode.
-# [job.rails]
-# env = ["RAILS_ENV=test"]
-#
-# [job.rake]
-# env = ["RAILS_ENV=test"]
+# Plur does not set a Rails environment for these jobs; use your shell
+# or explicit job env if your project wants that baked into config.
 
 # Custom job example - integration tests only
 [job.integration]

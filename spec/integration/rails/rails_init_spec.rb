@@ -185,8 +185,9 @@ RSpec.describe "plur rails:init command" do
 
         Dir.chdir(dir) do
           result = run_plur("rails:init")
-          expect(result.out).to include("RAILS_ENV=test plur rails db:create")
-          expect(result.out).to include("RAILS_ENV=test plur rails db:migrate")
+          expect(result.out).to include("plur rails db:create")
+          expect(result.out).to include("plur rails db:migrate")
+          expect(result.out).not_to include("RAILS_ENV=test")
           expect(result.out).to include("plur spec")
         end
       end
