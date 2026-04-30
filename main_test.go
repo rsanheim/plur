@@ -134,3 +134,32 @@ func TestValidateUniqueWatchNames(t *testing.T) {
 		assert.Contains(t, err.Error(), `"lint"`)
 	})
 }
+
+func TestRailsCommandAliasSelectsRakeJob(t *testing.T) {
+	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
+
+	var cli PlurCLI
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+
+	ctx, err := parser.Parse([]string{"--dry-run", "rake", "db:setup", "-n", "2"})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"db:setup"}, cli.Rails.Args)
+	assert.Equal(t, 2, int(cli.Workers))
+	assert.Equal(t, "rake", railsCommandJobName(ctx))
+}
+
+func TestRailsCommandNameIgnoresFlagValues(t *testing.T) {
+	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
+
+	var cli PlurCLI
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+
+	ctx, err := parser.Parse([]string{"-C", "rake", "rails", "db:prepare"})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"db:prepare"}, cli.Rails.Args)
+	assert.Equal(t, "rails", railsCommandJobName(ctx))
+}

@@ -132,9 +132,8 @@ RSpec.describe "Plur general integration" do
       result = run_plur("--help")
 
       expect(result.out).to include("A fast Go-based test runner for Ruby/RSpec")
-      expect(result.out).to include("db:create")
-      expect(result.out).to include("db:setup")
-      expect(result.out).to include("db:migrate")
+      expect(result.out).to include("rails")
+      expect(result.out).to include("rake")
     end
   end
 
@@ -142,8 +141,8 @@ RSpec.describe "Plur general integration" do
     it "runs tests in parallel", skip: "Database setup needs investigation" do
       Bundler.with_unbundled_env do
         Dir.chdir(default_rails_dir) do
-          run_plur("db:create", "-n", "3", printer: :quiet, allow_error: true)
-          system(plur_binary, "db", "migrate", "-n", "3", out: File::NULL, err: File::NULL)
+          run_plur("rails", "db:create", "-n", "3", printer: :quiet, allow_error: true, env: {"RAILS_ENV" => "test"})
+          system({"RAILS_ENV" => "test"}, plur_binary, "rails", "db:migrate", "-n", "3", out: File::NULL, err: File::NULL)
 
           result = run_plur("-n", "3")
 
@@ -155,8 +154,8 @@ RSpec.describe "Plur general integration" do
 
     it "assigns different TEST_ENV_NUMBER to workers", skip: "Database setup needs investigation" do
       chdir(default_rails_dir) do
-        system(plur_binary, "db:create", "-n", "2", out: File::NULL, err: File::NULL)
-        system(plur_binary, "db:migrate", "-n", "2", out: File::NULL, err: File::NULL)
+        system({"RAILS_ENV" => "test"}, plur_binary, "rails", "db:create", "-n", "2", out: File::NULL, err: File::NULL)
+        system({"RAILS_ENV" => "test"}, plur_binary, "rails", "db:migrate", "-n", "2", out: File::NULL, err: File::NULL)
 
         result = run_plur("-n", "2")
 

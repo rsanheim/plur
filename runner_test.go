@@ -465,6 +465,103 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 	assertEnvContains(t, env, "PARALLEL_TEST_GROUPS=3")
 }
 
+func TestRunnerBuildArgsPerWorkerCommands(t *testing.T) {
+	cfg := &config.GlobalConfig{
+		WorkerCount: 3,
+		FirstIs1:    true,
+		RuntimeDir:  t.TempDir(),
+	}
+	testJob := job.Job{
+		Name:      "rails",
+		Cmd:       []string{"bin/rails"},
+		Framework: "passthrough",
+		Env:       []string{"RAILS_ENV=test"},
+	}
+
+	runner, err := NewRunner(cfg, nil, testJob, nil)
+	require.NoError(t, err)
+
+	commands, err := runner.buildArgsPerWorkerCommands(context.Background(), []string{"db:prepare"})
+
+	require.NoError(t, err)
+	require.Len(t, commands, 3)
+	for _, cmd := range commands {
+		assert.Equal(t, []string{"bin/rails", "db:prepare"}, cmd.Args)
+		assertEnvContains(t, cmd.Env, "PARALLEL_TEST_GROUPS=3")
+		assertEnvContains(t, cmd.Env, "RAILS_ENV=test")
+	}
+	assertEnvContains(t, commands[0].Env, "TEST_ENV_NUMBER=1")
+	assertEnvContains(t, commands[1].Env, "TEST_ENV_NUMBER=2")
+	assertEnvContains(t, commands[2].Env, "TEST_ENV_NUMBER=3")
+}
+
+func TestRunnerBuildArgsPerWorkerCommandsSerialMode(t *testing.T) {
+	cfg := &config.GlobalConfig{
+		WorkerCount: 1,
+		FirstIs1:    true,
+		RuntimeDir:  t.TempDir(),
+	}
+	testJob := job.Job{
+		Name:      "rails",
+		Cmd:       []string{"bin/rails"},
+		Framework: "passthrough",
+	}
+
+	runner, err := NewRunner(cfg, nil, testJob, nil)
+	require.NoError(t, err)
+
+	commands, err := runner.buildArgsPerWorkerCommands(context.Background(), []string{"db:prepare"})
+
+	require.NoError(t, err)
+	require.Len(t, commands, 1)
+	assert.Equal(t, []string{"bin/rails", "db:prepare"}, commands[0].Args)
+	assertEnvContains(t, commands[0].Env, "PARALLEL_TEST_GROUPS=1")
+	assertEnvNotContains(t, commands[0].Env, "TEST_ENV_NUMBER=")
+	assertEnvNotContains(t, commands[0].Env, "RAILS_ENV=")
+}
+
+func TestRunnerRunArgsPerWorkerDryRunDoesNotExecute(t *testing.T) {
+	cfg := &config.GlobalConfig{
+		WorkerCount: 2,
+		FirstIs1:    true,
+		DryRun:      true,
+		RuntimeDir:  t.TempDir(),
+	}
+	testJob := job.Job{
+		Name:      "rails",
+		Cmd:       []string{"definitely-not-a-real-command"},
+		Framework: "passthrough",
+	}
+
+	runner, err := NewRunner(cfg, nil, testJob, nil)
+	require.NoError(t, err)
+
+	err = runner.RunArgsPerWorker([]string{"db:prepare"})
+
+	assert.NoError(t, err)
+}
+
+func TestRunnerRunArgsPerWorkerReturnsErrorWhenWorkerFails(t *testing.T) {
+	cfg := &config.GlobalConfig{
+		WorkerCount: 1,
+		FirstIs1:    true,
+		RuntimeDir:  t.TempDir(),
+	}
+	testJob := job.Job{
+		Name:      "rails",
+		Cmd:       []string{"sh", "-c", "echo broken >&2; exit 7"},
+		Framework: "passthrough",
+	}
+
+	runner, err := NewRunner(cfg, nil, testJob, nil)
+	require.NoError(t, err)
+
+	err = runner.RunArgsPerWorker([]string{"db:prepare"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "rails command failed")
+}
+
 // Helper functions for env assertions
 func assertEnvContains(t *testing.T, env []string, expected string) {
 	t.Helper()

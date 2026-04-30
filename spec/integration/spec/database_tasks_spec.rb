@@ -1,82 +1,112 @@
 require "spec_helper"
 
-RSpec.describe "Plur database tasks" do
+RSpec.describe "Plur Rails and Rake commands" do
   def dry_run_worker_line(output, worker)
     output.lines.find { |line| line.include?("[dry-run] Worker #{worker}:") }
   end
 
-  context "db:setup command (dry-run)" do
-    it "runs db:setup in dry-run mode for Rails app" do
-      Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:setup", "-n", "3").err
+  def without_rails_env
+    original = ENV.delete("RAILS_ENV")
+    yield
+  ensure
+    ENV["RAILS_ENV"] = original if original
+  end
 
-        worker0 = dry_run_worker_line(output, 0)
-        expect(worker0).to include("PARALLEL_TEST_GROUPS=3")
-        expect(worker0).to include("TEST_ENV_NUMBER=1")
-        expect(worker0).to include("RAILS_ENV=test")
-        expect(worker0).to include("bundle exec rake db:setup")
+  context "rails command (dry-run)" do
+    it "runs a Rails command in dry-run mode for each worker" do
+      without_rails_env do
+        Dir.chdir(default_rails_dir) do
+          output = run_plur("--dry-run", "rails", "db:prepare", "-n", "3").err
 
-        worker1 = dry_run_worker_line(output, 1)
-        expect(worker1).to include("PARALLEL_TEST_GROUPS=3")
-        expect(worker1).to include("TEST_ENV_NUMBER=2")
-        expect(worker1).to include("RAILS_ENV=test")
-        expect(worker1).to include("bundle exec rake db:setup")
+          worker0 = dry_run_worker_line(output, 0)
+          expect(worker0).to include("PARALLEL_TEST_GROUPS=3")
+          expect(worker0).to include("TEST_ENV_NUMBER=1")
+          expect(worker0).to include("bin/rails db:prepare")
+          expect(worker0).not_to include("RAILS_ENV=test")
 
-        worker2 = dry_run_worker_line(output, 2)
-        expect(worker2).to include("PARALLEL_TEST_GROUPS=3")
-        expect(worker2).to include("TEST_ENV_NUMBER=3")
-        expect(worker2).to include("RAILS_ENV=test")
-        expect(worker2).to include("bundle exec rake db:setup")
+          worker1 = dry_run_worker_line(output, 1)
+          expect(worker1).to include("PARALLEL_TEST_GROUPS=3")
+          expect(worker1).to include("TEST_ENV_NUMBER=2")
+          expect(worker1).to include("bin/rails db:prepare")
+          expect(worker1).not_to include("RAILS_ENV=test")
+
+          worker2 = dry_run_worker_line(output, 2)
+          expect(worker2).to include("PARALLEL_TEST_GROUPS=3")
+          expect(worker2).to include("TEST_ENV_NUMBER=3")
+          expect(worker2).to include("bin/rails db:prepare")
+          expect(worker2).not_to include("RAILS_ENV=test")
+        end
       end
     end
 
-    it "runs db:setup with legacy behavior when --no-first-is-1" do
-      Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:setup", "-n", "3", "--no-first-is-1").err
+    it "uses legacy first worker env when --no-first-is-1 is set" do
+      without_rails_env do
+        Dir.chdir(default_rails_dir) do
+          output = run_plur("--dry-run", "rails", "db:prepare", "-n", "3", "--no-first-is-1").err
 
-        worker0 = dry_run_worker_line(output, 0)
-        expect(worker0).to include("PARALLEL_TEST_GROUPS=3")
-        expect(worker0).to include("TEST_ENV_NUMBER=")
-        expect(worker0).to include("RAILS_ENV=test")
-        expect(worker0).to include("bundle exec rake db:setup")
+          worker0 = dry_run_worker_line(output, 0)
+          expect(worker0).to include("PARALLEL_TEST_GROUPS=3")
+          expect(worker0).to include("TEST_ENV_NUMBER=")
+          expect(worker0).to include("bin/rails db:prepare")
+          expect(worker0).not_to include("RAILS_ENV=test")
 
-        worker1 = dry_run_worker_line(output, 1)
-        expect(worker1).to include("PARALLEL_TEST_GROUPS=3")
-        expect(worker1).to include("TEST_ENV_NUMBER=2")
-        expect(worker1).to include("RAILS_ENV=test")
-        expect(worker1).to include("bundle exec rake db:setup")
-
-        worker2 = dry_run_worker_line(output, 2)
-        expect(worker2).to include("PARALLEL_TEST_GROUPS=3")
-        expect(worker2).to include("TEST_ENV_NUMBER=3")
-        expect(worker2).to include("RAILS_ENV=test")
-        expect(worker2).to include("bundle exec rake db:setup")
+          worker1 = dry_run_worker_line(output, 1)
+          expect(worker1).to include("PARALLEL_TEST_GROUPS=3")
+          expect(worker1).to include("TEST_ENV_NUMBER=2")
+          expect(worker1).to include("bin/rails db:prepare")
+        end
       end
     end
 
     it "does not set TEST_ENV_NUMBER in serial mode" do
-      # explicitly remove TEST_ENV_NUMBER from the environment for clean state
       ENV.delete("TEST_ENV_NUMBER")
-      Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:setup", "-n", "1").err
 
-        worker0 = dry_run_worker_line(output, 0)
-        expect(worker0).to include("PARALLEL_TEST_GROUPS=1")
-        expect(worker0).to include("RAILS_ENV=test")
-        expect(worker0).to include("bundle exec rake db:setup")
-        expect(worker0).not_to include("TEST_ENV_NUMBER")
+      without_rails_env do
+        Dir.chdir(default_rails_dir) do
+          output = run_plur("--dry-run", "rails", "db:prepare", "-n", "1").err
+
+          worker0 = dry_run_worker_line(output, 0)
+          expect(worker0).to include("PARALLEL_TEST_GROUPS=1")
+          expect(worker0).to include("bin/rails db:prepare")
+          expect(worker0).not_to include("TEST_ENV_NUMBER")
+          expect(worker0).not_to include("RAILS_ENV=test")
+        end
+      end
+    end
+
+    it "passes command args literally instead of treating them as file patterns" do
+      Dir.chdir(default_rails_dir) do
+        output = run_plur("--dry-run", "rails", "db:migrate", "VERSION=20260429000000", "-n", "2").err
+
+        expect(output).to include("bin/rails db:migrate VERSION=20260429000000")
+        expect(output).not_to include("no test files found")
+      end
+    end
+
+    it "shows explicit Rails env when the caller provides it" do
+      Dir.chdir(default_rails_dir) do
+        output = run_plur("--dry-run", "rails", "db:prepare", "-n", "1", env: {"RAILS_ENV" => "test"}).err
+
+        expect(output).to include("RAILS_ENV=test")
+        expect(output).to include("bin/rails db:prepare")
       end
     end
   end
 
-  context "db:create command (with default rails fixture project)" do
-    before do
-      # # Clean up any existing test databases
-      # Dir.chdir(default_rails_dir) do
-      #   FileUtils.rm_f(Dir.glob("storage/*.sqlite3"))
-      # end
-    end
+  context "rake alias (dry-run)" do
+    it "uses the configured rake job through the Kong alias" do
+      Dir.chdir(project_fixture("database-tasks")) do
+        output = run_plur("--dry-run", "rake", "db:setup", "-n", "2").err
 
+        expect(output).to include("bundle exec rake db:setup")
+        expect(output).to include("PARALLEL_TEST_GROUPS=2")
+        expect(output).to include("TEST_ENV_NUMBER=1")
+        expect(output).to include("TEST_ENV_NUMBER=2")
+      end
+    end
+  end
+
+  context "rails database commands with default rails fixture project" do
     it "creates and migrates databases for parallel testing" do
       Dir.chdir(default_rails_dir) do
         Bundler.with_unbundled_env do
@@ -86,41 +116,17 @@ RSpec.describe "Plur database tasks" do
             expect(status.exitstatus).to eq(0), "bundle install failed: #{stderr}"
           end
 
-          result = run_plur("db:create", "-n", "3", allow_error: true)
-          expect(result.status).to eq(0), "db:create failed: #{result.err}"
+          env = {"RAILS_ENV" => "test"}
+          result = run_plur("rails", "db:create", "-n", "3", allow_error: true, env: env)
+          expect(result.status).to eq(0), "rails db:create failed: #{result.err}"
 
-          # Check that databases were created
           expect(File.exist?("storage/test1.sqlite3")).to be true
           expect(File.exist?("storage/test2.sqlite3")).to be true
           expect(File.exist?("storage/test3.sqlite3")).to be true
 
-          # Run migrations
-          result = run_plur("db:migrate", "-n", "3")
-          expect(result.exit_status).to eq(0), "db:migrate failed: #{result.err}"
+          result = run_plur("rails", "db:migrate", "-n", "3", env: env)
+          expect(result.exit_status).to eq(0), "rails db:migrate failed: #{result.err}"
         end
-      end
-    end
-  end
-
-  describe "db:create command" do
-    it "displays db:create in dry-run mode" do
-      Dir.chdir(default_rails_dir) do
-        output = run_plur("--dry-run", "db:create", "-n", "2").err
-
-        expect(output).to include("RAILS_ENV=test")
-        expect(output).to include("bundle exec rake db:create")
-      end
-    end
-  end
-
-  describe "db:test:prepare command" do
-    it "displays db:test:prepare in dry-run mode" do
-      Dir.chdir(default_rails_dir) do
-        result = run_plur("--dry-run", "db:test:prepare", "-n", "2", allow_error: true)
-
-        expect(result.status).to eq(0)
-        expect(result.err).to include("RAILS_ENV=test")
-        expect(result.err).to include("bundle exec rake db:test:prepare")
       end
     end
   end
@@ -128,72 +134,49 @@ RSpec.describe "Plur database tasks" do
   context "verbose mode" do
     it "logs the full command when --verbose is used" do
       Dir.chdir(default_rails_dir) do
-        # Use db:migrate which will execute (allow_error for missing db)
-        result = run_plur("--verbose", "db:migrate", "-n", "2", allow_error: true)
+        result = run_plur("--verbose", "rails", "db:migrate", "-n", "2", allow_error: true, env: {"RAILS_ENV" => "test"})
 
         expect(result.err).to include("INFO")
         expect(result.err).to include("running")
         expect(result.err).to include("RAILS_ENV=test")
-        expect(result.err).to include("bundle exec rake db:migrate")
+        expect(result.err).to include("bin/rails db:migrate")
       end
     end
   end
 
-  describe "error handling" do
-    # We re-use the same fixture project with different tasks specified via
-    # the DB_TASK_FILE environment variable. This way we can test error handling
-    # without re-creating specific Rakefiles for each test.
-
-    it "shows stderr output when database tasks fail" do
+  describe "rake command error handling" do
+    it "shows stderr output when worker commands fail" do
       Dir.chdir(project_fixture("database-tasks")) do
         env = {"DB_TASK_FILE" => "lib/tasks/multi_db_connection_error.rake"}
-        result = run_plur("db:setup", "-n", "2", allow_error: true, env: env)
+        result = run_plur("rake", "db:setup", "-n", "2", allow_error: true, env: env)
 
         expect(result.status).to eq(1)
-        expect(result.out).to include("Running database task 'db:setup' with 2 workers...")
-
-        # Now we should see the actual stderr output in the error message
-        expect(result.err).to include("database task failed:")
         expect(result.err).to include("Error: Database connection failed")
         expect(result.err).to include("Could not connect to server: Connection refused")
         expect(result.err).to include("Is the server running on host 'localhost'")
       end
     end
 
-    it "deduplicates identical errors across all workers" do
+    it "shows duplicate worker errors without hiding task output" do
       Dir.chdir(project_fixture("database-tasks")) do
         env = {"DB_TASK_FILE" => "lib/tasks/multi_db_duplicate_errors.rake"}
-        result = run_plur("db:setup", "-n", "3", allow_error: true, env: env)
+        result = run_plur("rake", "db:setup", "-n", "3", allow_error: true, env: env)
 
         expect(result.status).to eq(1)
-        expect(result.out).to include("Running database task 'db:setup' with 3 workers...")
-
-        # Should show that all workers failed with the same error
-        expect(result.err).to include("All 3 workers failed with the same error:")
         expect(result.err).to include("Error: PostgreSQL is not installed")
         expect(result.err).to include("Please install PostgreSQL and try again")
-
-        # Should NOT show the error 3 times
-        expect(result.err.scan("PostgreSQL is not installed").length).to eq(1)
       end
     end
 
-    it "shows different errors separately when workers fail differently" do
+    it "shows different worker errors separately" do
       Dir.chdir(project_fixture("database-tasks")) do
         env = {"DB_TASK_FILE" => "lib/tasks/multi_db_different_errors.rake"}
-        result = run_plur("db:setup", "-n", "3", allow_error: true, env: env)
+        result = run_plur("rake", "db:setup", "-n", "3", allow_error: true, env: env)
 
         expect(result.status).to eq(1)
-        expect(result.out).to include("Running database task 'db:setup' with 3 workers...")
-
-        # Should show each unique error
-        expect(result.err).to include("database task failed:")
         expect(result.err).to include("Database test1 already exists")
         expect(result.err).to include("Permission denied for database test2")
-
-        # Worker 2 (TEST_ENV_NUMBER=3) should succeed, so only 2 errors
-        expect(result.err).to include("worker 0 failed")
-        expect(result.err).to include("worker 1 failed")
+        expect(result.out).to include("Successfully created test3")
       end
     end
   end

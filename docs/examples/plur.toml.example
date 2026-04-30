@@ -51,6 +51,15 @@ target_pattern = "spec/**/*_spec.rb"
 cmd = ["bundle", "exec", "ruby", "-Itest"]
 target_pattern = "test/**/*_test.rb"
 
+# Rails and Rake command jobs
+# Built-in commands are ["bin/rails"] and ["bundle", "exec", "rake"].
+# Uncomment env if you want `plur rails ...` and `plur rake ...` to force test mode.
+# [job.rails]
+# env = ["RAILS_ENV=test"]
+#
+# [job.rake]
+# env = ["RAILS_ENV=test"]
+
 # Custom job example - integration tests only
 [job.integration]
 framework = "rspec"

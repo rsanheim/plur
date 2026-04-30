@@ -68,30 +68,6 @@ func (d *DoctorCmd) Run(parent *PlurCLI) error {
 	return runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
 }
 
-type DBSetupCmd struct{}
-
-func (d *DBSetupCmd) Run(parent *PlurCLI) error {
-	return RunDatabaseTask("db:setup", parent.globalConfig)
-}
-
-type DBCreateCmd struct{}
-
-func (d *DBCreateCmd) Run(parent *PlurCLI) error {
-	return RunDatabaseTask("db:create", parent.globalConfig)
-}
-
-type DBMigrateCmd struct{}
-
-func (d *DBMigrateCmd) Run(parent *PlurCLI) error {
-	return RunDatabaseTask("db:migrate", parent.globalConfig)
-}
-
-type DBPrepareCmd struct{}
-
-func (d *DBPrepareCmd) Run(parent *PlurCLI) error {
-	return RunDatabaseTask("db:test:prepare", parent.globalConfig)
-}
-
 type ConfigCmd struct {
 	Init ConfigInitCmd `cmd:"" help:"Generate a starter configuration file"`
 }
@@ -99,14 +75,11 @@ type ConfigCmd struct {
 type PlurCLI struct {
 	// Commands
 	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
+	Rails     RailsCmd     `cmd:"" name:"rails" aliases:"rake" help:"Run a Rails or Rake command once per worker"`
 	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
 	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Plur installation and environment"`
 	Config    ConfigCmd    `cmd:"" help:"Configuration commands"`
 	RailsInit RailsInitCmd `cmd:"" name:"rails:init" help:"Configure a Rails project for parallel testing"`
-	DBSetup   DBSetupCmd   `cmd:"" name:"db:setup" help:"Setup test databases"`
-	DBCreate  DBCreateCmd  `cmd:"" name:"db:create" help:"Create test databases"`
-	DBMigrate DBMigrateCmd `cmd:"" name:"db:migrate" help:"Migrate test databases"`
-	DBPrepare DBPrepareCmd `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading

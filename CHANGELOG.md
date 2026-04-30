@@ -1,6 +1,7 @@
 # plur CHANGELOG
 
 ## Unreleased
+* Add `plur rails <args>` and `plur rake <args>` for running configured Rails/Rake jobs once per worker.
 
 ## v0.51.0 - 2026-04-29
 * Use four workers by default for parallel runs [#45](https://github.com/rsanheim/plur/pull/45) 
