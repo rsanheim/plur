@@ -220,7 +220,7 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 		workerIdx := i
 		workerCmd := cmd
 		if i > 0 {
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 		}
 		wg.Go(func() {
 			result := r.runCommand(ctx, workerIdx, workerCmd, outputChan)
