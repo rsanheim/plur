@@ -212,9 +212,16 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	})
 
 	var wg sync.WaitGroup
+	// Stagger worker spawns to reduce gem-load contention. Measured: 12
+	// simultaneous `bundle exec rspec` startups take ~6s vs ~1.3s for one;
+	// spreading the cold-start phase lets each process get its share of disk
+	// page-cache + CPU bandwidth without thrashing.
 	for i, cmd := range commands {
 		workerIdx := i
 		workerCmd := cmd
+		if i > 0 {
+			time.Sleep(50 * time.Millisecond)
+		}
 		wg.Go(func() {
 			result := r.runCommand(ctx, workerIdx, workerCmd, outputChan)
 			results <- result
