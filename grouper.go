@@ -107,6 +107,47 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 		"misses", misses,
 		"hit_rate", float64(hits)/float64(len(specFiles))*100)
 
+	// Long-pole splitting: any file whose runtime exceeds 1.5x the per-worker
+	// average is the wall-time bottleneck even with optimal LPT bin packing. Split
+	// such files into rspec file:line invocations distributed round-robin so
+	// multiple workers can run them concurrently.
+	totalRuntime := 0.0
+	for _, f := range filesWithRuntimes {
+		totalRuntime += f.runtime
+	}
+	if numWorkers > 1 && totalRuntime > 0 {
+		perWorkerTarget := totalRuntime / float64(numWorkers)
+		splitThreshold := perWorkerTarget * 1.5
+
+		var expanded []fileWithRuntime
+		splits := 0
+		for _, f := range filesWithRuntimes {
+			if f.runtime > splitThreshold {
+				numChunks := int(f.runtime/perWorkerTarget + 0.5)
+				if numChunks < 2 {
+					numChunks = 2
+				}
+				if numChunks > numWorkers {
+					numChunks = numWorkers
+				}
+				chunks, ok := splitFileByExamples(f.path, numChunks)
+				if ok {
+					chunkRuntime := f.runtime / float64(len(chunks))
+					for _, c := range chunks {
+						expanded = append(expanded, fileWithRuntime{c, chunkRuntime})
+					}
+					splits++
+					continue
+				}
+			}
+			expanded = append(expanded, f)
+		}
+		if splits > 0 {
+			logger.Logger.Debug("long-pole splitting", "files_split", splits, "per_worker_target_s", perWorkerTarget)
+			filesWithRuntimes = expanded
+		}
+	}
+
 	// Sort by runtime descending (slowest first)
 	sort.Slice(filesWithRuntimes, func(i, j int) bool {
 		return filesWithRuntimes[i].runtime > filesWithRuntimes[j].runtime
