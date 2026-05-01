@@ -19,7 +19,7 @@ import (
 const (
 	EnvTestEnvNumber      = "TEST_ENV_NUMBER"
 	EnvParallelTestGroups = "PARALLEL_TEST_GROUPS"
-	DefaultWorkerCount    = 4
+	DefaultWorkerCount    = 8
 )
 
 // Handles grouping files into worker assignments and building the commands to run.

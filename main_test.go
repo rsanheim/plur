@@ -86,7 +86,7 @@ func TestWorkerCountValidationRejectsConfigValue(t *testing.T) {
 }
 
 type workerCountTestCLI struct {
-	Workers WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
+	Workers WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"8"`
 }
 
 func (cli *workerCountTestCLI) Validate() error {
