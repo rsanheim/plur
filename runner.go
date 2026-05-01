@@ -191,14 +191,6 @@ func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
 		env = append(env, EnvTestEnvNumber+"="+testEnvNumber)
 	}
 
-	// Enable YJIT for rspec workers unless the user has already set RUBYOPT.
-	// On Ruby 3.2+ this trades a small cold-start cost for faster execution
-	// of hot Ruby code paths (parsing, AST traversal). For multi-second-per-
-	// worker test groups it's typically a net win.
-	if r.job.Framework == "rspec" && os.Getenv("RUBYOPT") == "" {
-		env = append(env, "RUBYOPT=--yjit")
-	}
-
 	env = append(env, r.job.Env...)
 
 	return env
