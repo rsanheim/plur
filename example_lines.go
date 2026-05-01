@@ -68,8 +68,26 @@ func enumerateExampleLines(rspecCmd []string, filePaths []string) (map[string][]
 	}
 	for k := range result {
 		sort.Ints(result[k])
+		result[k] = dedupSortedInts(result[k])
 	}
 	return result, nil
+}
+
+// dedupSortedInts returns xs with adjacent duplicates removed, in place.
+// xs must already be sorted. We dedupe because rspec's file:LINE syntax runs
+// every example registered at that line, so distributing a duplicated line
+// across two chunks would make both chunks run the same examples.
+func dedupSortedInts(xs []int) []int {
+	if len(xs) < 2 {
+		return xs
+	}
+	out := xs[:1]
+	for _, x := range xs[1:] {
+		if x != out[len(out)-1] {
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 // exampleLinesCacheDir returns the directory we persist per-file caches in.
