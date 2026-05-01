@@ -152,9 +152,13 @@ func GroupSpecFilesByRuntimeWithOpts(specFiles []string, numWorkers int, runtime
 
 		var expanded []fileWithRuntime
 		splits := 0
+		// Target chunk runtime = 0.7 of the per-worker average. Smaller chunks
+		// give LPT more flexibility to balance worker loads now that exact-line
+		// splitting eliminated the per-extra-chunk overhead penalty.
+		chunkTarget := perWorkerTarget * 0.7
 		for _, f := range filesWithRuntimes {
 			if f.runtime > splitThreshold {
-				numChunks := int(f.runtime/perWorkerTarget + 0.5)
+				numChunks := int(f.runtime/chunkTarget + 0.5)
 				if numChunks < 2 {
 					numChunks = 2
 				}
