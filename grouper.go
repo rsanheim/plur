@@ -78,8 +78,24 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 	return nonEmptyGroups
 }
 
-// GroupSpecFilesByRuntime distributes spec files based on their historical runtime
+// GroupOpts controls optional behavior for the runtime grouper.
+type GroupOpts struct {
+	// RspecCmd, when non-empty, is the base command (e.g. ["bundle", "exec",
+	// "rspec"]) used for an optional `--dry-run --format json` pass over
+	// long-pole files. The exact line numbers it returns are used in place of
+	// the regex-based extractor, eliminating fuzzy-match over-counting.
+	RspecCmd []string
+}
+
+// GroupSpecFilesByRuntime distributes spec files based on their historical runtime.
 func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map[string]float64) []FileGroup {
+	return GroupSpecFilesByRuntimeWithOpts(specFiles, numWorkers, runtimeData, GroupOpts{})
+}
+
+// GroupSpecFilesByRuntimeWithOpts is the variant that accepts opts. Callers
+// that have an rspec command available should use this entry point so the
+// dry-run-based exact line lookup engages.
+func GroupSpecFilesByRuntimeWithOpts(specFiles []string, numWorkers int, runtimeData map[string]float64, opts GroupOpts) []FileGroup {
 	// Create a struct to hold file and its runtime
 	type fileWithRuntime struct {
 		path    string
@@ -119,6 +135,21 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 		perWorkerTarget := totalRuntime / float64(numWorkers)
 		splitThreshold := perWorkerTarget * 1.5
 
+		// First pass: collect long-pole file paths so we can do a single
+		// batched dry-run for all of them (one gem-load amortized).
+		var longPoleFiles []string
+		for _, f := range filesWithRuntimes {
+			if f.runtime > splitThreshold {
+				longPoleFiles = append(longPoleFiles, f.path)
+			}
+		}
+
+		// resolveExampleLines is a no-op when RspecCmd is empty (tests).
+		var exactLines map[string][]int
+		if len(longPoleFiles) > 0 && len(opts.RspecCmd) > 0 {
+			exactLines = resolveExampleLines(opts.RspecCmd, longPoleFiles)
+		}
+
 		var expanded []fileWithRuntime
 		splits := 0
 		for _, f := range filesWithRuntimes {
@@ -130,7 +161,7 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 				if numChunks > numWorkers {
 					numChunks = numWorkers
 				}
-				chunks, ok := splitFileByExamples(f.path, numChunks)
+				chunks, ok := splitFileByExamples(f.path, numChunks, exactLines[f.path])
 				if ok {
 					chunkRuntime := f.runtime / float64(len(chunks))
 					for _, c := range chunks {
@@ -143,7 +174,7 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 			expanded = append(expanded, f)
 		}
 		if splits > 0 {
-			logger.Logger.Debug("long-pole splitting", "files_split", splits, "per_worker_target_s", perWorkerTarget)
+			logger.Logger.Debug("long-pole splitting", "files_split", splits, "per_worker_target_s", perWorkerTarget, "exact_lines_used", len(exactLines) > 0)
 			filesWithRuntimes = expanded
 		}
 	}

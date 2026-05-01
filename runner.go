@@ -111,13 +111,32 @@ func (r *Runner) groupFiles() []FileGroup {
 
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(r.files, r.config.WorkerCount, runtimeData)
+		groups = GroupSpecFilesByRuntimeWithOpts(r.files, r.config.WorkerCount, runtimeData, GroupOpts{
+			RspecCmd: rspecBaseCmd(r.job),
+		})
 		logger.Logger.Debug("Using runtime-based grouped execution", "group_count", len(groups))
 	} else {
 		groups = GroupSpecFilesBySize(r.files, r.config.WorkerCount)
 		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
 	}
 	return groups
+}
+
+// rspecBaseCmd returns the job's command stripped of {{target}} placeholders,
+// so callers can re-use it for ancillary rspec invocations like `--dry-run`.
+// Returns nil for non-rspec jobs.
+func rspecBaseCmd(j job.Job) []string {
+	if j.Framework != "rspec" {
+		return nil
+	}
+	out := make([]string, 0, len(j.Cmd))
+	for _, part := range j.Cmd {
+		if part == "{{target}}" {
+			continue
+		}
+		out = append(out, part)
+	}
+	return out
 }
 
 func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {

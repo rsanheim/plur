@@ -47,12 +47,25 @@ func findExampleLines(filePath string) ([]int, error) {
 //
 // Returns (paths, true) on success, ([originalPath], false) when the file
 // can't usefully be split (too few examples or unreadable).
-func splitFileByExamples(filePath string, numChunks int) ([]string, bool) {
+//
+// Source for line numbers is regex-based by default, but if knownLines is
+// non-nil it is used directly (skipping the regex pass). Pre-computed lines
+// from `rspec --dry-run --format json` are exact — they only reflect examples
+// rspec actually registers — and avoid the over-counting that fuzzy line
+// filters cause when an example sits inside a platform-conditional `if`.
+func splitFileByExamples(filePath string, numChunks int, knownLines []int) ([]string, bool) {
 	if numChunks <= 1 {
 		return []string{filePath}, false
 	}
-	lines, err := findExampleLines(filePath)
-	if err != nil || len(lines) < numChunks*4 {
+	lines := knownLines
+	if lines == nil {
+		var err error
+		lines, err = findExampleLines(filePath)
+		if err != nil {
+			return []string{filePath}, false
+		}
+	}
+	if len(lines) < numChunks*4 {
 		return []string{filePath}, false
 	}
 
