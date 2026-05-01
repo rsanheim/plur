@@ -133,7 +133,7 @@ func GroupSpecFilesByRuntimeWithOpts(specFiles []string, numWorkers int, runtime
 	}
 	if numWorkers > 1 && totalRuntime > 0 {
 		perWorkerTarget := totalRuntime / float64(numWorkers)
-		splitThreshold := perWorkerTarget * 1.5
+		splitThreshold := perWorkerTarget * 0.9
 
 		// First pass: collect long-pole file paths so we can do a single
 		// batched dry-run for all of them (one gem-load amortized).
