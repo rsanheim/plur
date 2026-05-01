@@ -152,14 +152,9 @@ func GroupSpecFilesByRuntimeWithOpts(specFiles []string, numWorkers int, runtime
 
 		var expanded []fileWithRuntime
 		splits := 0
-		// Cap any single chunk at maxChunkRuntime seconds. Smaller chunks let
-		// LPT pack more evenly; with exact-line splitting the per-extra-chunk
-		// cost is small (mostly the per-rspec-process gem-load amortized over
-		// the file's examples).
-		const maxChunkRuntime = 7.0
 		for _, f := range filesWithRuntimes {
 			if f.runtime > splitThreshold {
-				numChunks := int(f.runtime/maxChunkRuntime + 0.999)
+				numChunks := int(f.runtime/perWorkerTarget + 0.5)
 				if numChunks < 2 {
 					numChunks = 2
 				}
