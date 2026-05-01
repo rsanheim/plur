@@ -117,7 +117,7 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 	}
 	if numWorkers > 1 && totalRuntime > 0 {
 		perWorkerTarget := totalRuntime / float64(numWorkers)
-		splitThreshold := perWorkerTarget * 1.5
+		splitThreshold := perWorkerTarget * 1.0
 
 		var expanded []fileWithRuntime
 		splits := 0
