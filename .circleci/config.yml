@@ -6,7 +6,7 @@ parameters:
     default: "1.25.7"
   ruby_version:
     type: string
-    default: "4.0.3"
+    default: "4.0.2"
   alt_resource_class:
     type: string
     default: rsanheim/orbstack-arm64
