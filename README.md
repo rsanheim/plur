@@ -61,7 +61,7 @@ plur                          # Run with the default 4 workers
 plur --dry-run               # Preview execution plan
 ```
 
-### Rails And Rake Tasks
+### Rake (and Rails) Tasks
 ```bash
 plur rails db:create -n 3   # Create databases in parallel
 plur rails db:migrate -n 3  # Run migrations across all DBs

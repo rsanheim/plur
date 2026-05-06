@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
+	"github.com/rsanheim/plur/cmd"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/buildinfo"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/job"
@@ -73,13 +73,13 @@ type ConfigCmd struct {
 }
 
 type PlurCLI struct {
-	// Commands
-	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
-	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Rails     RailsCmd     `cmd:"" name:"rails" aliases:"rake" help:"Run a Rails or Rake command once per worker"`
-	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Plur installation and environment"`
-	Config    ConfigCmd    `cmd:"" help:"Configuration commands"`
-	RailsInit RailsInitCmd `cmd:"" name:"rails:init" help:"Configure a Rails project for parallel testing"`
+	Spec       SpecCmd        `cmd:"" help:"Run tests" default:"withargs"`
+	Watch      WatchCmd       `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Rails      RailsCmd       `cmd:"" name:"rails" aliases:"rake" help:"Run a Rails or Rake command once per worker"`
+	Doctor     DoctorCmd      `cmd:"" help:"Diagnose Plur installation and environment"`
+	Config     ConfigCmd      `cmd:"" help:"Configuration commands"`
+	RailsInit  RailsInitCmd   `cmd:"" name:"rails:init" help:"Configure a Rails project for parallel testing"`
+	VersionCmd cmd.VersionCmd `cmd:"" name:"version" help:"Show version information"`
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
@@ -128,8 +128,10 @@ func (cli *PlurCLI) AfterApply() error {
 	logger.Init(level)
 
 	if cli.Version {
-		fmt.Println(buildinfo.GetVersionInfo())
-		os.Exit(0)
+		err := (&cmd.VersionCmd{}).Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	configPaths := config.InitConfigPaths()
@@ -273,7 +275,7 @@ func main() {
 
 	parser, err := kong.New(&cli,
 		kong.Name("plur"),
-		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
+		kong.Description("A fast, parallel test runner and watcher for Ruby/RSpec"),
 		kong.Configuration(kongtoml.Loader, configFiles...))
 
 	if err != nil {
@@ -296,7 +298,6 @@ func main() {
 		if errors.As(err, &exitErr) {
 			os.Exit(exitErr.Code)
 		}
-		// Regular error - log and exit with code 1
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)
 	}
@@ -306,7 +307,6 @@ func commandSupportsPassthrough(command string) bool {
 	return strings.HasPrefix(command, "spec") || strings.HasPrefix(command, "rails")
 }
 
-// ExitCode is an error type that specifies a custom exit code
 type ExitCode struct {
 	Code int
 }
