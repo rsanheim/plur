@@ -2,7 +2,9 @@ require "spec_helper"
 
 RSpec.describe "Plur Rails and Rake commands" do
   def dry_run_worker_line(output, worker)
-    output.lines.find { |line| line.include?("[dry-run] Worker #{worker}:") }
+    line = output.lines.find { |candidate| candidate.include?("[dry-run] Worker #{worker}:") }
+    expect(line).not_to be_nil, "expected dry-run command for worker #{worker}, got:\n#{output}"
+    line
   end
 
   def without_rails_env
@@ -91,6 +93,22 @@ RSpec.describe "Plur Rails and Rake commands" do
         expect(output).to include("bin/rails db:prepare")
       end
     end
+
+    it "passes rails-specific flags after a double dash" do
+      Dir.chdir(default_rails_dir) do
+        output = run_plur("--dry-run", "rails", "db:migrate", "-n", "2", "--", "--trace").err
+
+        worker0 = dry_run_worker_line(output, 0)
+        expect(worker0).to include("PARALLEL_TEST_GROUPS=2")
+        expect(worker0).to include("TEST_ENV_NUMBER=1")
+        expect(worker0).to include("bin/rails db:migrate --trace")
+
+        worker1 = dry_run_worker_line(output, 1)
+        expect(worker1).to include("PARALLEL_TEST_GROUPS=2")
+        expect(worker1).to include("TEST_ENV_NUMBER=2")
+        expect(worker1).to include("bin/rails db:migrate --trace")
+      end
+    end
   end
 
   context "rake alias (dry-run)" do
@@ -102,6 +120,49 @@ RSpec.describe "Plur Rails and Rake commands" do
         expect(output).to include("PARALLEL_TEST_GROUPS=2")
         expect(output).to include("TEST_ENV_NUMBER=1")
         expect(output).to include("TEST_ENV_NUMBER=2")
+      end
+    end
+
+    it "passes multiple rake tasks in order" do
+      Dir.chdir(project_fixture("database-tasks")) do
+        output = run_plur("--dry-run", "rake", "db:create", "db:migrate", "-n", "2").err
+
+        worker0 = dry_run_worker_line(output, 0)
+        expect(worker0).to include("PARALLEL_TEST_GROUPS=2")
+        expect(worker0).to include("TEST_ENV_NUMBER=1")
+        expect(worker0).to include("bundle exec rake db:create db:migrate")
+
+        worker1 = dry_run_worker_line(output, 1)
+        expect(worker1).to include("PARALLEL_TEST_GROUPS=2")
+        expect(worker1).to include("TEST_ENV_NUMBER=2")
+        expect(worker1).to include("bundle exec rake db:create db:migrate")
+      end
+    end
+
+    it "passes rake-specific flags after a double dash" do
+      Dir.chdir(project_fixture("database-tasks")) do
+        output = run_plur("--dry-run", "rake", "db:setup", "-n", "2", "--", "--trace").err
+
+        worker0 = dry_run_worker_line(output, 0)
+        expect(worker0).to include("PARALLEL_TEST_GROUPS=2")
+        expect(worker0).to include("TEST_ENV_NUMBER=1")
+        expect(worker0).to include("bundle exec rake db:setup --trace")
+
+        worker1 = dry_run_worker_line(output, 1)
+        expect(worker1).to include("PARALLEL_TEST_GROUPS=2")
+        expect(worker1).to include("TEST_ENV_NUMBER=2")
+        expect(worker1).to include("bundle exec rake db:setup --trace")
+      end
+    end
+
+    it "passes rake-specific flags without requiring a task name" do
+      Dir.chdir(project_fixture("database-tasks")) do
+        output = run_plur("--dry-run", "rake", "-n", "1", "--", "--tasks").err
+
+        worker0 = dry_run_worker_line(output, 0)
+        expect(worker0).to include("PARALLEL_TEST_GROUPS=1")
+        expect(worker0).to include("bundle exec rake --tasks")
+        expect(worker0).not_to include("TEST_ENV_NUMBER")
       end
     end
   end

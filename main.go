@@ -284,8 +284,8 @@ func main() {
 	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(err)
 
-	if len(cli.passthroughArgs) > 0 && !strings.HasPrefix(ctx.Command(), "spec") {
-		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec command")
+	if len(cli.passthroughArgs) > 0 && !commandSupportsPassthrough(ctx.Command()) {
+		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec, rails, and rake commands")
 		os.Exit(1)
 	}
 
@@ -300,6 +300,10 @@ func main() {
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+func commandSupportsPassthrough(command string) bool {
+	return strings.HasPrefix(command, "spec") || strings.HasPrefix(command, "rails")
 }
 
 // ExitCode is an error type that specifies a custom exit code

@@ -17,11 +17,14 @@ func (r *RailsCmd) Run(parent *PlurCLI, ctx *kong.Context) error {
 		return fmt.Errorf("job %q not found", jobName)
 	}
 
+	args := append([]string{}, r.Args...)
+	args = append(args, parent.passthroughArgs...)
+
 	runner, err := NewRunner(parent.globalConfig, nil, j, nil)
 	if err != nil {
 		return err
 	}
-	return runner.RunArgsPerWorker(r.Args)
+	return runner.RunArgsPerWorker(args)
 }
 
 // railsCommandJobName returns "rake" when the user invoked the rails command

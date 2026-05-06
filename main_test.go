@@ -163,3 +163,10 @@ func TestRailsCommandNameIgnoresFlagValues(t *testing.T) {
 	assert.Equal(t, []string{"db:prepare"}, cli.Rails.Args)
 	assert.Equal(t, "rails", railsCommandJobName(ctx))
 }
+
+func TestCommandSupportsPassthrough(t *testing.T) {
+	assert.True(t, commandSupportsPassthrough("spec <patterns>"))
+	assert.True(t, commandSupportsPassthrough("rails <args>"))
+	assert.False(t, commandSupportsPassthrough("watch run"))
+	assert.False(t, commandSupportsPassthrough("doctor"))
+}

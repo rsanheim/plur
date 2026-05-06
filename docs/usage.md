@@ -79,10 +79,13 @@ plur doctor
 ```bash
 plur rails db:prepare -n 4
 plur rails db:migrate VERSION=20260429000000 -n 4
+plur rails db:migrate -n 4 -- --trace
 plur rake db:setup -n 4
+plur rake db:create db:migrate -n 4
+plur rake -n 1 -- --tasks
 ```
 
-These commands run once per worker. Arguments after `rails` or `rake` are appended literally to the configured job command, not treated as test file patterns. They set Plur's worker env (`PARALLEL_TEST_GROUPS`, `TEST_ENV_NUMBER`) and inherit your shell env plus any explicit job env. Plur does not choose a Rails environment for you.
+These commands run once per worker. Arguments after `rails` or `rake` are appended literally to the configured job command, not treated as test file patterns. Put Plur flags like `-n` before `--`; arguments after `--` are passed to Rails/Rake. They set Plur's worker env (`PARALLEL_TEST_GROUPS`, `TEST_ENV_NUMBER`) and inherit your shell env plus any explicit job env. Plur does not choose a Rails environment for you.
 
 ## Command Line Options
 
