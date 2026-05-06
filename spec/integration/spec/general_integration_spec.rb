@@ -131,7 +131,7 @@ RSpec.describe "Plur general integration" do
     it "shows help information" do
       result = run_plur("--help")
 
-      expect(result.out).to include("A fast Go-based test runner for Ruby/RSpec")
+      expect(result.out).to include("A fast, parallel test runner and watcher for Ruby/")
     end
   end
 
