@@ -82,7 +82,7 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 		return err
 	}
 
-	toStdErr(r.config.DryRun, "Running %s command '%s' in parallel using %d workers\n", r.job.Name, strings.Join(args, " "), len(commands))
+	toStdErr(r.config.DryRun, "Running %s command '%s' %s\n", r.job.Name, strings.Join(args, " "), workerCountPhrase(r.config, len(commands)))
 
 	if r.config.DryRun {
 		for i, cmd := range commands {
@@ -178,14 +178,9 @@ func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
 }
 
 func (r *Runner) printSummary(workerCount int) {
-	actualWorkers := workerCount
-	if len(r.files) < workerCount {
-		actualWorkers = len(r.files)
-	}
-
 	label := r.testLabel()
-	toStdErr(r.config.DryRun, "Running %d %s [%s] in parallel using %d workers\n",
-		len(r.files), label, r.framework.Name, actualWorkers)
+	toStdErr(r.config.DryRun, "Running %d %s [%s] %s\n",
+		len(r.files), label, r.framework.Name, workerCountPhrase(r.config, workerCount))
 }
 
 func (r *Runner) testLabel() string {

@@ -167,6 +167,26 @@ RSpec.describe "Plur Rails and Rake commands" do
     end
   end
 
+  context "summary line" do
+    it "says 'serially' for serial runs (-n 1)" do
+      Dir.chdir(project_fixture("database-tasks")) do
+        output = run_plur("--dry-run", "rake", "-n", "1", "--", "-T").err
+
+        expect(output).to include("Running rake command '-T' serially")
+        expect(output).not_to include("1 workers")
+        expect(output).not_to include("in parallel")
+      end
+    end
+
+    it "says 'in parallel using N workers' for parallel runs" do
+      Dir.chdir(project_fixture("database-tasks")) do
+        output = run_plur("--dry-run", "rake", "db:setup", "-n", "3").err
+
+        expect(output).to include("Running rake command 'db:setup' in parallel using 3 workers")
+      end
+    end
+  end
+
   context "rails database commands with default rails fixture project" do
     def ensure_default_rails_bundle_installed
       _, _, check_status = Open3.capture3("bundle check")
