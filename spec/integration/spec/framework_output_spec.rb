@@ -47,7 +47,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
         result = run_plur("--dry-run", "--debug")
 
         expect(result.success?).to be(true)
-        expect(result.err).to include("[dry-run] Running 1 spec [rspec] in parallel using 1 workers")
+        expect(result.err).to include("[dry-run] Running 1 spec [rspec] serially")
         expect(result.err).to include("framework=\"rspec\"")
 
         worker_line = result.err.lines.find { |line| line.include?("[dry-run] Worker 0:") }
@@ -71,7 +71,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
         )
 
         expect(result.actual.stderr).to include("--fail-fast")
-        expect(result.actual.stderr).to include("[dry-run] Running 1 spec [rspec] in parallel using 1 workers")
+        expect(result.actual.stderr).to include("[dry-run] Running 1 spec [rspec] serially")
       end
     end
   end

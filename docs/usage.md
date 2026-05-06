@@ -74,6 +74,19 @@ plur watch run --debounce 250 --timeout 60 --ignore "vendor/**" --ignore "tmp/**
 plur doctor
 ```
 
+### Rails And Rake Commands
+
+```bash
+plur rails db:prepare -n 4
+plur rails db:migrate VERSION=20260429000000 -n 4
+plur rails db:migrate -n 4 -- --trace
+plur rake db:setup -n 4
+plur rake db:create db:migrate -n 4
+plur rake -n 1 -- --tasks
+```
+
+These commands run the configured job once per worker, with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set. Arguments are appended literally — they're not treated as test file patterns. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake.
+
 ## Command Line Options
 
 ### Global Options

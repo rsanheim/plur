@@ -18,6 +18,14 @@ framework = "go-test"
 cmd = ["go", "test", "{{target}}"]
 target_pattern = "**/*_test.go"
 
+[defaults.job.rails]
+framework = "passthrough"
+cmd = ["bin/rails"]
+
+[defaults.job.rake]
+framework = "passthrough"
+cmd = ["bundle", "exec", "rake"]
+
 # Watch mappings - jobs field specifies which job to trigger
 
 # Ruby: lib files -> spec files

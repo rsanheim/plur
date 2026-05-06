@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -75,6 +76,36 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 	return results, wallTime, nil
 }
 
+func (r *Runner) RunArgsPerWorker(args []string) error {
+	commands, err := r.buildArgsPerWorkerCommands(context.Background(), args)
+	if err != nil {
+		return err
+	}
+
+	toStdErr(r.config.DryRun, "Running %s command '%s' %s\n", r.job.Name, strings.Join(args, " "), workerCountPhrase(r.config, len(commands)))
+
+	if r.config.DryRun {
+		for i, cmd := range commands {
+			printDryRunWorker(r.config.DryRun, i, cmd)
+		}
+		return nil
+	}
+
+	results, _ := r.executeWorkers(commands)
+	failed := 0
+	for _, result := range results {
+		if !result.Success() {
+			failed++
+		}
+	}
+
+	if failed > 0 {
+		return fmt.Errorf("%s command failed for %d %s", r.job.Name, failed, pluralize(failed, "worker", "workers"))
+	}
+
+	return nil
+}
+
 func (r *Runner) groupFiles() []FileGroup {
 	runtimeData := r.tracker.LoadedData()
 
@@ -110,6 +141,28 @@ func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
 	return commands, nil
 }
 
+func (r *Runner) buildArgsPerWorkerCommands(ctx context.Context, args []string) ([]*exec.Cmd, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("%s command requires at least one argument", r.job.Name)
+	}
+	if len(r.job.Cmd) == 0 {
+		return nil, fmt.Errorf("job %q must define a command", r.job.Name)
+	}
+
+	commands := make([]*exec.Cmd, r.config.WorkerCount)
+	for i := 0; i < r.config.WorkerCount; i++ {
+		cmdArgs := make([]string, 0, len(r.job.Cmd)+len(args))
+		cmdArgs = append(cmdArgs, r.job.Cmd...)
+		cmdArgs = append(cmdArgs, args...)
+
+		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+		cmd.Env = r.buildEnv(i, r.config.WorkerCount)
+		commands[i] = cmd
+	}
+
+	return commands, nil
+}
+
 func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("%s=%d", EnvParallelTestGroups, totalGroups))
@@ -125,14 +178,9 @@ func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
 }
 
 func (r *Runner) printSummary(workerCount int) {
-	actualWorkers := workerCount
-	if len(r.files) < workerCount {
-		actualWorkers = len(r.files)
-	}
-
 	label := r.testLabel()
-	toStdErr(r.config.DryRun, "Running %d %s [%s] in parallel using %d workers\n",
-		len(r.files), label, r.framework.Name, actualWorkers)
+	toStdErr(r.config.DryRun, "Running %d %s [%s] %s\n",
+		len(r.files), label, r.framework.Name, workerCountPhrase(r.config, workerCount))
 }
 
 func (r *Runner) testLabel() string {

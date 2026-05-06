@@ -1,6 +1,10 @@
 # plur CHANGELOG
 
 ## Unreleased
+* Add `plur rails <args>` and `plur rake <args>` for running configured Rails/Rake jobs once per worker. Arguments are appended literally; use `--` to pass flags through (e.g. `plur rails db:migrate -n 4 -- --trace`).
+* Breaking: the hardcoded `plur db:create`, `plur db:migrate`, `plur db:setup` subcommands are removed. Use `plur rails db:create -n 4` etc. instead.
+* Breaking: plur no longer sets `RAILS_ENV=test` automatically for database tasks; set it in your shell or pin it via job env in `.plur.toml`.
+* Fix run-summary phrasing: `-n 1` now reads `serially` (was `in parallel using 1 workers`); singular worker counts pluralize correctly.
 
 ## v0.51.0 - 2026-04-29
 * Use four workers by default for parallel runs [#45](https://github.com/rsanheim/plur/pull/45) 

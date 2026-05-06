@@ -17,7 +17,7 @@ RSpec.describe "pending specs output" do
       .gsub(/Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
         "Finished in [TIME] seconds (files took [TIME] seconds to load)")
       .gsub(/plur version=[\w.-]+\n/, "")
-      .gsub(/Running \d+ specs? \[rspec\] in parallel using \d+ workers?\n/, "")
+      .gsub(/Running \d+ specs? \[rspec\] (?:serially|in parallel using \d+ workers)\n/, "")
   end
 
   def normalize_pending_output_snapshot(snapshot)

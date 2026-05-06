@@ -172,3 +172,55 @@ func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
 	assert.Equal(t, ResolveReasonAutodetect, selected.Reason)
 	assert.True(t, selected.Inherited.Framework)
 }
+
+func TestBuildRuntimeConfigIncludesRailsAndRakeJobs(t *testing.T) {
+	rc, err := BuildRuntimeConfig(&CLIInput{})
+
+	require.NoError(t, err)
+	require.Contains(t, rc.Jobs, "rails")
+	require.Contains(t, rc.Jobs, "rake")
+
+	assert.Equal(t, []string{"bin/rails"}, rc.Jobs["rails"].Cmd)
+	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework)
+	assert.Empty(t, rc.Jobs["rails"].Env)
+
+	assert.Equal(t, []string{"bundle", "exec", "rake"}, rc.Jobs["rake"].Cmd)
+	assert.Equal(t, "passthrough", rc.Jobs["rake"].Framework)
+	assert.Empty(t, rc.Jobs["rake"].Env)
+}
+
+func TestBuildRuntimeConfigRailsJobOverrides(t *testing.T) {
+	rc, err := BuildRuntimeConfig(&CLIInput{
+		Jobs: map[string]job.Job{
+			"rails": {
+				Cmd: []string{"bundle", "exec", "rails"},
+				Env: []string{"CUSTOM_ENV=value"},
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Contains(t, rc.Jobs, "rails")
+	assert.Equal(t, []string{"bundle", "exec", "rails"}, rc.Jobs["rails"].Cmd)
+	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework)
+	assert.Equal(t, []string{"CUSTOM_ENV=value"}, rc.Jobs["rails"].Env)
+	assert.True(t, rc.Inherited["rails"].Framework)
+	assert.False(t, rc.Inherited["rails"].Env)
+}
+
+func TestBuildRuntimeConfigRailsJobEnvOnlyOverrideInheritsCommand(t *testing.T) {
+	rc, err := BuildRuntimeConfig(&CLIInput{
+		Jobs: map[string]job.Job{
+			"rails": {Env: []string{"CUSTOM_ENV=value"}},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Contains(t, rc.Jobs, "rails")
+	assert.Equal(t, []string{"bin/rails"}, rc.Jobs["rails"].Cmd)
+	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework)
+	assert.Equal(t, []string{"CUSTOM_ENV=value"}, rc.Jobs["rails"].Env)
+	assert.True(t, rc.Inherited["rails"].Cmd)
+	assert.True(t, rc.Inherited["rails"].Framework)
+	assert.False(t, rc.Inherited["rails"].Env)
+}

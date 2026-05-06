@@ -53,7 +53,7 @@ A Job in Plur encapsulates:
 * The command to run (as an array)
 * File patterns to match for test discovery
 
-Plur comes with built-in jobs for RSpec, Minitest, and Go tests, but you can define custom jobs for any tool.
+Plur comes with built-in jobs for RSpec, Minitest, Go tests, Rails, and Rake, but you can define custom jobs for any tool.
 
 ### Job Selection Priority
 
@@ -148,6 +148,19 @@ target_pattern = "test/**/*_test.rb"
 cmd = ["go", "test"]
 target_pattern = "**/*_test.go"
 ```
+
+#### Rails And Rake
+```toml
+[job.rails]
+cmd = ["bin/rails"]
+framework = "passthrough"
+
+[job.rake]
+cmd = ["bundle", "exec", "rake"]
+framework = "passthrough"
+```
+
+`plur rails <args>` and `plur rake <args>` run the configured command once per worker. Arguments are appended literally — Plur does not discover files or parse test output for these commands. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake.
 
 ### Custom Job Examples
 

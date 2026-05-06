@@ -16,7 +16,7 @@ This command should make the "zero to parallel" experience as painless as possib
 
 3. *Warning scans* -- Checks for files that likely need manual parallel isolation: `.env.test`, sidekiq configs, elasticsearch/searchkick initializers. Prints warnings without modifying these files.
 
-4. *Next steps* -- After making changes, prints the follow-up commands (`plur db:create`, `plur db:migrate`, `plur spec`).
+4. *Next steps* -- After making changes, prints the follow-up commands (`plur rails db:create`, `plur rails db:migrate`, `plur spec`).
 
 Supports `--dry-run` (shows diffs without writing) and is idempotent (detects already-configured projects).
 
@@ -107,7 +107,7 @@ A `plur rails:check` or `plur rails:init --check` that verifies the project is c
 
 ## Implementation Notes
 
-* Command is registered as a flat `name:"rails:init"` command (like `db:setup`), not a nested subcommand. This keeps the invocation as `plur rails:init` with a colon.
+* Command is registered as a flat `name:"rails:init"` command, not a nested subcommand. This keeps the invocation as `plur rails:init` with a colon.
 * Core transformation functions (`transformDatabaseYml`, `insertTestEnvNumber`, etc.) are pure functions that take strings and return strings, making them easy to unit test without filesystem setup.
 * The two-pass approach in `transformDatabaseYml` (first pass checks if already configured, second pass transforms) keeps the idempotency logic clean.
 * Go unit tests cover the transformation logic; Ruby integration tests cover the full command behavior including file I/O, dry-run, and error cases.

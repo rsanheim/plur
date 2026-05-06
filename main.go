@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
+	"github.com/rsanheim/plur/cmd"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/buildinfo"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/job"
@@ -68,45 +68,18 @@ func (d *DoctorCmd) Run(parent *PlurCLI) error {
 	return runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
 }
 
-type DBSetupCmd struct{}
-
-func (d *DBSetupCmd) Run(parent *PlurCLI) error {
-	return RunDatabaseTask("db:setup", parent.globalConfig)
-}
-
-type DBCreateCmd struct{}
-
-func (d *DBCreateCmd) Run(parent *PlurCLI) error {
-	return RunDatabaseTask("db:create", parent.globalConfig)
-}
-
-type DBMigrateCmd struct{}
-
-func (d *DBMigrateCmd) Run(parent *PlurCLI) error {
-	return RunDatabaseTask("db:migrate", parent.globalConfig)
-}
-
-type DBPrepareCmd struct{}
-
-func (d *DBPrepareCmd) Run(parent *PlurCLI) error {
-	return RunDatabaseTask("db:test:prepare", parent.globalConfig)
-}
-
 type ConfigCmd struct {
 	Init ConfigInitCmd `cmd:"" help:"Generate a starter configuration file"`
 }
 
 type PlurCLI struct {
-	// Commands
-	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
-	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Plur installation and environment"`
-	Config    ConfigCmd    `cmd:"" help:"Configuration commands"`
-	RailsInit RailsInitCmd `cmd:"" name:"rails:init" help:"Configure a Rails project for parallel testing"`
-	DBSetup   DBSetupCmd   `cmd:"" name:"db:setup" help:"Setup test databases"`
-	DBCreate  DBCreateCmd  `cmd:"" name:"db:create" help:"Create test databases"`
-	DBMigrate DBMigrateCmd `cmd:"" name:"db:migrate" help:"Migrate test databases"`
-	DBPrepare DBPrepareCmd `cmd:"" name:"db:test:prepare" help:"Prepare test databases"`
+	Spec       SpecCmd        `cmd:"" help:"Run tests" default:"withargs"`
+	Watch      WatchCmd       `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Rails      RailsCmd       `cmd:"" name:"rails" aliases:"rake" help:"Run a Rails or Rake command once per worker"`
+	Doctor     DoctorCmd      `cmd:"" help:"Diagnose Plur installation and environment"`
+	Config     ConfigCmd      `cmd:"" help:"Configuration commands"`
+	RailsInit  RailsInitCmd   `cmd:"" name:"rails:init" help:"Configure a Rails project for parallel testing"`
+	VersionCmd cmd.VersionCmd `cmd:"" name:"version" help:"Show version information"`
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
@@ -155,8 +128,10 @@ func (cli *PlurCLI) AfterApply() error {
 	logger.Init(level)
 
 	if cli.Version {
-		fmt.Println(buildinfo.GetVersionInfo())
-		os.Exit(0)
+		err := (&cmd.VersionCmd{}).Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	configPaths := config.InitConfigPaths()
@@ -300,7 +275,7 @@ func main() {
 
 	parser, err := kong.New(&cli,
 		kong.Name("plur"),
-		kong.Description("A fast Go-based test runner for Ruby/RSpec"),
+		kong.Description("A fast, parallel test runner and watcher for Ruby/RSpec"),
 		kong.Configuration(kongtoml.Loader, configFiles...))
 
 	if err != nil {
@@ -311,8 +286,8 @@ func main() {
 	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(err)
 
-	if len(cli.passthroughArgs) > 0 && !strings.HasPrefix(ctx.Command(), "spec") {
-		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec command")
+	if len(cli.passthroughArgs) > 0 && !commandSupportsPassthrough(ctx.Command()) {
+		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec, rails, and rake commands")
 		os.Exit(1)
 	}
 
@@ -323,13 +298,15 @@ func main() {
 		if errors.As(err, &exitErr) {
 			os.Exit(exitErr.Code)
 		}
-		// Regular error - log and exit with code 1
 		logger.Logger.Error("Command failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-// ExitCode is an error type that specifies a custom exit code
+func commandSupportsPassthrough(command string) bool {
+	return strings.HasPrefix(command, "spec") || strings.HasPrefix(command, "rails")
+}
+
 type ExitCode struct {
 	Code int
 }

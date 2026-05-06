@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/rsanheim/plur/config"
 )
 
 // pluralize returns the singular or plural form of a word based on count
@@ -13,6 +15,17 @@ func pluralize(count int, singular, plural string) string {
 		return singular
 	}
 	return plural
+}
+
+// workerCountPhrase formats the worker count for run-summary lines.
+// IsSerial() (single knob: -n 1) decides serial vs parallel wording;
+// count is the actual worker count for the run, which may be clamped
+// below WorkerCount when fewer files than workers exist.
+func workerCountPhrase(cfg *config.GlobalConfig, count int) string {
+	if cfg.IsSerial() {
+		return "serially"
+	}
+	return fmt.Sprintf("in parallel using %d %s", count, pluralize(count, "worker", "workers"))
 }
 
 func toStdErr(dryRun bool, format string, args ...any) {

@@ -568,8 +568,8 @@ func printInitSummary(cfg *config.GlobalConfig, result *initResult) {
 	if result.changesApplied > 0 && !cfg.DryRun {
 		fmt.Println("Next steps:")
 		fmt.Println("  1. Review the changes above")
-		fmt.Println("  2. plur db:create    - Create parallel test databases")
-		fmt.Println("  3. plur db:migrate   - Run migrations on all test databases")
+		fmt.Println("  2. plur rails db:create    - Create parallel databases")
+		fmt.Println("  3. plur rails db:migrate   - Run migrations on all databases")
 		fmt.Println("  4. plur spec         - Run your tests in parallel")
 	} else if cfg.DryRun {
 		fmt.Println("Run 'plur rails:init' without --dry-run to apply these changes.")
@@ -577,8 +577,8 @@ func printInitSummary(cfg *config.GlobalConfig, result *initResult) {
 		fmt.Println("Your project appears ready for parallel testing.")
 		fmt.Println()
 		fmt.Println("Next steps:")
-		fmt.Println("  1. plur db:create    - Create parallel test databases")
-		fmt.Println("  2. plur db:migrate   - Run migrations on all test databases")
+		fmt.Println("  1. plur rails db:create    - Create parallel databases")
+		fmt.Println("  2. plur rails db:migrate   - Run migrations on all databases")
 		fmt.Println("  3. plur spec         - Run your tests in parallel")
 	}
 }
