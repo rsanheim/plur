@@ -6,6 +6,7 @@ gem "benchmark"
 gem "guard-rspec", require: false
 gem "minitest", require: false
 gem "optimist"
+gem "ostruct"
 gem "parallel", require: false
 gem "rake"
 gem "rspec", "~> 3"
