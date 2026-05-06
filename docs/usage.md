@@ -85,7 +85,7 @@ plur rake db:create db:migrate -n 4
 plur rake -n 1 -- --tasks
 ```
 
-These commands run once per worker. Arguments after `rails` or `rake` are appended literally to the configured job command, not treated as test file patterns. Put Plur flags like `-n` before `--`; arguments after `--` are passed to Rails/Rake. They set Plur's worker env (`PARALLEL_TEST_GROUPS`, `TEST_ENV_NUMBER`) and inherit your shell env plus any explicit job env. Plur does not choose a Rails environment for you.
+These commands run the configured job once per worker, with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set. Arguments are appended literally — they're not treated as test file patterns. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake.
 
 ## Command Line Options
 

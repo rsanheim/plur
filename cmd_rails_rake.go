@@ -10,6 +10,24 @@ type RailsCmd struct {
 	Args []string `arg:"" optional:"" name:"args" help:"Rails or Rake arguments to run once per worker"`
 }
 
+func (r *RailsCmd) Help() string {
+	return `Runs the configured rails or rake job once per worker, appending the
+given arguments literally. Each worker gets PARALLEL_TEST_GROUPS and
+TEST_ENV_NUMBER in its environment.
+
+Put plur flags before the command args. Use -- to pass flags through
+to rails/rake unchanged.
+
+Examples:
+
+	plur rails db:prepare -n 4
+	plur rails db:migrate VERSION=20260429000000 -n 4
+	plur rails db:migrate -n 4 -- --trace
+	plur rake db:setup -n 4
+	plur rake db:create db:migrate -n 4
+	plur rake -n 1 -- --tasks`
+}
+
 func (r *RailsCmd) Run(parent *PlurCLI, ctx *kong.Context) error {
 	jobName := railsCommandJobName(ctx)
 	j, ok := parent.runtimeConfig.Jobs[jobName]

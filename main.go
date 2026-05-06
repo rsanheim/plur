@@ -75,8 +75,8 @@ type ConfigCmd struct {
 type PlurCLI struct {
 	// Commands
 	Spec      SpecCmd      `cmd:"" help:"Run tests" default:"withargs"`
-	Rails     RailsCmd     `cmd:"" name:"rails" aliases:"rake" help:"Run a Rails or Rake command once per worker"`
 	Watch     WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Rails     RailsCmd     `cmd:"" name:"rails" aliases:"rake" help:"Run a Rails or Rake command once per worker"`
 	Doctor    DoctorCmd    `cmd:"" help:"Diagnose Plur installation and environment"`
 	Config    ConfigCmd    `cmd:"" help:"Configuration commands"`
 	RailsInit RailsInitCmd `cmd:"" name:"rails:init" help:"Configure a Rails project for parallel testing"`

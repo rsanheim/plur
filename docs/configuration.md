@@ -160,7 +160,7 @@ cmd = ["bundle", "exec", "rake"]
 framework = "passthrough"
 ```
 
-`plur rails <args>` and `plur rake <args>` run the configured command once per worker. The arguments are appended literally; Plur does not discover files or parse test output for these commands. Put Plur flags like `-n` before `--`; arguments after `--` are passed to Rails/Rake. Rails environment is not forced by default, so set the right environment in your shell or explicit job env.
+`plur rails <args>` and `plur rake <args>` run the configured command once per worker. Arguments are appended literally — Plur does not discover files or parse test output for these commands. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake.
 
 ### Custom Job Examples
 

@@ -56,8 +56,6 @@ target_pattern = "test/**/*_test.rb"
 # Use -- to pass Rails/Rake-specific flags:
 #   plur rake -n 1 -- --tasks
 #   plur rails db:migrate -n 4 -- --trace
-# Plur does not set a Rails environment for these jobs; use your shell
-# or explicit job env if your project wants that baked into config.
 
 # Custom job example - integration tests only
 [job.integration]
