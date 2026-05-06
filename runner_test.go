@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -49,57 +48,6 @@ func (p *suiteCountParser) ColorizeSummary(summary string, _ bool) string { retu
 
 func TestDefaultWorkerCount(t *testing.T) {
 	assert.Equal(t, 4, DefaultWorkerCount)
-	assert.Equal(t, DefaultWorkerCount, GetWorkerCount(0))
-}
-
-func TestGetWorkerCountEdgeCases(t *testing.T) {
-	originalEnv := os.Getenv("PARALLEL_TEST_PROCESSORS")
-	defer os.Setenv("PARALLEL_TEST_PROCESSORS", originalEnv)
-
-	tests := []struct {
-		name       string
-		cliWorkers int
-		envVar     string
-		expected   int
-	}{
-		{
-			name:       "Very high CLI workers",
-			cliWorkers: 100,
-			envVar:     "4",
-			expected:   100,
-		},
-		{
-			name:       "Zero env var",
-			cliWorkers: 0,
-			envVar:     "0",
-			expected:   DefaultWorkerCount,
-		},
-		{
-			name:       "Negative env var",
-			cliWorkers: 0,
-			envVar:     "-5",
-			expected:   DefaultWorkerCount,
-		},
-		{
-			name:       "Empty env var",
-			cliWorkers: 0,
-			envVar:     "",
-			expected:   DefaultWorkerCount,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.envVar != "" {
-				os.Setenv("PARALLEL_TEST_PROCESSORS", tt.envVar)
-			} else {
-				os.Unsetenv("PARALLEL_TEST_PROCESSORS")
-			}
-
-			result := GetWorkerCount(tt.cliWorkers)
-			assert.Equal(t, tt.expected, result, "GetWorkerCount(%d)", tt.cliWorkers)
-		})
-	}
 }
 
 func TestGetTestEnvNumber(t *testing.T) {

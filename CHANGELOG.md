@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.51.0 - 2026-04-29
+* Use four workers by default for parallel runs [#45](https://github.com/rsanheim/plur/pull/45) 
+
 ## v0.50.0 - 2026-04-22
 * Merge user watch config with defaults; reject duplicate watch names [#40](https://github.com/rsanheim/plur/pull/40)
 
