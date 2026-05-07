@@ -54,6 +54,27 @@ Or set a permanent default in `.plur.toml`:
 use = "minitest"  # Override default to use Minitest
 ```
 
+### Excluding Tests From Discovery
+
+Use `--exclude-pattern` (repeatable) to drop matching files from the test plan
+before workers run. Patterns use doublestar semantics.
+
+```bash
+# Skip a single file
+plur --exclude-pattern 'spec/legacy/old_spec.rb'
+
+# Skip all system specs
+plur --exclude-pattern 'spec/system/**/*_spec.rb'
+
+# Multiple patterns OR together
+plur --exclude-pattern 'spec/system/**/*_spec.rb' \
+     --exclude-pattern 'spec/legacy/**/*_spec.rb'
+```
+
+Excludes can also be configured per-job in `.plur.toml`. CLI excludes are
+*additive on top of* configured excludes — they do not replace them. See
+[Configuration](configuration.md) for details.
+
 ### Watch Mode
 
 ```bash

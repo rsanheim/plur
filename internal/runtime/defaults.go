@@ -35,10 +35,11 @@ func init() {
 
 // InheritedFields indicates which fields were inherited from a built-in default.
 type InheritedFields struct {
-	Cmd           bool
-	Env           bool
-	Framework     bool
-	TargetPattern bool
+	Cmd             bool
+	Env             bool
+	Framework       bool
+	TargetPattern   bool
+	ExcludePatterns bool
 }
 
 // autodetectJobName runs autodetection against the given resolved jobs and returns the
@@ -120,6 +121,12 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 				resolvedJob.TargetPattern = user.TargetPattern
 			} else if resolvedJob.TargetPattern != "" {
 				inherit.TargetPattern = true
+			}
+
+			if len(user.ExcludePatterns) > 0 {
+				resolvedJob.ExcludePatterns = user.ExcludePatterns
+			} else if len(resolvedJob.ExcludePatterns) > 0 {
+				inherit.ExcludePatterns = true
 			}
 		}
 

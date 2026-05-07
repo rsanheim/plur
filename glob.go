@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -11,92 +12,85 @@ import (
 	"github.com/rsanheim/plur/job"
 )
 
-// FindFilesFromJob discovers all files based on the job's target pattern
-func FindFilesFromJob(j job.Job) ([]string, error) {
-	patterns, err := framework.TargetPatternsForJob(j)
+// hasGlobMeta reports whether s contains any doublestar metacharacters.
+func hasGlobMeta(s string) bool { return strings.ContainsAny(s, "*?[{") }
+
+// DiscoverFiles returns sorted, deduped, exclude-filtered test files for a job.
+// When inputs is empty, framework target patterns drive discovery; otherwise
+// each input is classified as a glob, an existing file (passthrough), or a
+// directory (joined with framework target tails). Exclude patterns are applied
+// after expansion using doublestar semantics.
+func DiscoverFiles(j job.Job, inputs, excludes []string) ([]string, error) {
+	patterns, err := classifyInputs(j, inputs)
 	if err != nil {
 		return nil, err
 	}
-	return expandGlobPatterns(patterns)
+
+	var files []string
+	for _, p := range patterns {
+		if !hasGlobMeta(p) {
+			files = append(files, p)
+			continue
+		}
+		matches, err := doublestar.FilepathGlob(p)
+		if err != nil {
+			return nil, fmt.Errorf("error finding files with pattern %q: %w", p, err)
+		}
+		files = append(files, matches...)
+	}
+
+	for _, ex := range excludes {
+		if _, err := doublestar.PathMatch(ex, ""); err != nil {
+			return nil, fmt.Errorf("invalid exclude pattern %q: %w", ex, err)
+		}
+	}
+	files = slices.DeleteFunc(files, func(f string) bool {
+		s := filepath.ToSlash(f)
+		for _, ex := range excludes {
+			if ok, _ := doublestar.PathMatch(ex, s); ok {
+				return true
+			}
+		}
+		return false
+	})
+
+	slices.Sort(files)
+	return slices.Compact(files), nil
 }
 
-// ExpandPatternsFromJob takes a list of file paths/patterns and expands any glob patterns.
-// Directories expand using the job's target pattern or framework detect patterns.
-func ExpandPatternsFromJob(patternsInput []string, j job.Job) ([]string, error) {
+func classifyInputs(j job.Job, inputs []string) ([]string, error) {
+	if len(inputs) == 0 {
+		return framework.TargetPatternsForJob(j)
+	}
 	spec, err := framework.Get(j.Framework)
 	if err != nil {
 		return nil, err
 	}
-
-	seenFiles := make(map[string]struct{})
-
-	for _, pattern := range patternsInput {
-		var matches []string
-		var err error
-
-		// Check if it's a plain path (no glob characters)
-		if !strings.ContainsAny(pattern, "*?[{") && !strings.Contains(pattern, "**") {
-			fileInfo, statErr := os.Stat(pattern)
-			if statErr != nil {
-				return nil, fmt.Errorf("file not found: %s", pattern)
-			}
-
-			if fileInfo.IsDir() {
-				targetPatterns, err := framework.TargetPatternsForJobWithSpec(j, spec)
-				if err != nil {
-					return nil, err
-				}
-				for _, targetPattern := range targetPatterns {
-					_, tail := doublestar.SplitPattern(targetPattern)
-					dirPattern := filepath.Join(pattern, filepath.FromSlash(tail))
-					dirMatches, globErr := doublestar.FilepathGlob(dirPattern)
-					if globErr != nil {
-						return nil, fmt.Errorf("error expanding pattern %q: %v", dirPattern, globErr)
-					}
-					matches = append(matches, dirMatches...)
-				}
-			} else {
-				// Single file: pass it through
-				matches = []string{pattern}
-			}
-		} else {
-			// It's already a glob pattern - expand it directly
-			matches, err = doublestar.FilepathGlob(pattern)
+	var targets []string
+	var out []string
+	for _, in := range inputs {
+		if hasGlobMeta(in) {
+			out = append(out, in)
+			continue
 		}
-
+		info, err := os.Stat(in)
 		if err != nil {
-			return nil, fmt.Errorf("error expanding pattern %q: %v", pattern, err)
+			return nil, fmt.Errorf("file not found: %s", in)
 		}
-
-		// Add matches to set
-		for _, match := range matches {
-			seenFiles[match] = struct{}{}
+		if !info.IsDir() {
+			out = append(out, in)
+			continue
 		}
-	}
-
-	// Convert map keys to slice
-	allFiles := make([]string, 0, len(seenFiles))
-	for file := range seenFiles {
-		allFiles = append(allFiles, file)
-	}
-
-	return allFiles, nil
-}
-
-func expandGlobPatterns(patterns []string) ([]string, error) {
-	seenFiles := make(map[string]struct{})
-	for _, pattern := range patterns {
-		matches, err := doublestar.FilepathGlob(pattern)
-		if err != nil {
-			return nil, fmt.Errorf("error finding files with pattern %q: %w", pattern, err)
+		if targets == nil {
+			targets, err = framework.TargetPatternsForJobWithSpec(j, spec)
+			if err != nil {
+				return nil, err
+			}
 		}
-		for _, match := range matches {
-			seenFiles[match] = struct{}{}
+		for _, t := range targets {
+			_, tail := doublestar.SplitPattern(t)
+			out = append(out, filepath.Join(in, filepath.FromSlash(tail)))
 		}
 	}
-	allFiles := make([]string, 0, len(seenFiles))
-	for file := range seenFiles {
-		allFiles = append(allFiles, file)
-	}
-	return allFiles, nil
+	return out, nil
 }

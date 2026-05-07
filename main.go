@@ -18,10 +18,11 @@ import (
 )
 
 type SpecCmd struct {
-	Patterns   []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
-	Tags       []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
-	Auto       bool     `help:"Automatically run bundle install before tests" default:"false"`
-	RspecTrace bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
+	Patterns        []string `arg:"" optional:"" help:"Spec files or patterns to run (default: spec/**/*_spec.rb)"`
+	Tags            []string `help:"Filter RSpec by tag (repeatable)" name:"tag"`
+	ExcludePatterns []string `help:"Exclude test files matching glob (repeatable)" name:"exclude-pattern"`
+	Auto            bool     `help:"Automatically run bundle install before tests" default:"false"`
+	RspecTrace      bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
 }
 
 type WorkerCount int

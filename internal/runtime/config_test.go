@@ -80,6 +80,25 @@ func TestBuildRuntimeConfig_UserWatchOverridesBuiltinByName(t *testing.T) {
 	assert.Equal(t, []string{"spec/override_spec.rb"}, override.Targets)
 }
 
+func TestBuildRuntimeConfig_PreservesUserExcludePatterns(t *testing.T) {
+	cli := &CLIInput{
+		Use: "rspec",
+		Jobs: map[string]job.Job{
+			"rspec": {
+				Cmd:             []string{"bin/rspec"},
+				Framework:       "rspec",
+				ExcludePatterns: []string{"spec/system/**/*_spec.rb"},
+			},
+		},
+	}
+
+	rc, err := BuildRuntimeConfig(cli)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"spec/system/**/*_spec.rb"}, rc.Jobs["rspec"].ExcludePatterns)
+	assert.False(t, rc.Inherited["rspec"].ExcludePatterns,
+		"user-supplied excludes should not be marked as inherited")
+}
+
 func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
 	rc := &RuntimeConfig{
 		Use: "rspec",
