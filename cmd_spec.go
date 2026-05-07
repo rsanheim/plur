@@ -56,8 +56,28 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 			return fmt.Errorf("no test files found (looking for %s)", strings.Join(patterns, ", "))
 		}
 	}
-	msg := fmt.Sprintf("found %v test files", len(testFiles))
-	logger.Logger.Debug(msg, "testFiles", testFiles)
+
+	// Apply excludes (job + CLI, additive). CLI is appended after job so the
+	// effective list logs in a stable order: job first, CLI second.
+	excludes := append(append([]string{}, currentJob.ExcludePatterns...), r.ExcludePatterns...)
+	discoveredCount := len(testFiles)
+	if len(excludes) > 0 {
+		testFiles, err = applyExcludes(testFiles, excludes)
+		if err != nil {
+			return err
+		}
+		if len(testFiles) == 0 {
+			return fmt.Errorf("no test files remain after applying exclude patterns")
+		}
+	}
+	logger.Logger.Debug("test file discovery",
+		"job", currentJob.Name,
+		"framework", currentJob.Framework,
+		"patterns", r.Patterns,
+		"exclude_patterns", excludes,
+		"discovered", discoveredCount,
+		"excluded", discoveredCount-len(testFiles),
+		"remaining", len(testFiles))
 
 	if r.Auto {
 		depManager := NewDependencyManager(cfg.DryRun)

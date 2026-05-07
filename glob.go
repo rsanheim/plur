@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -17,7 +18,12 @@ func FindFilesFromJob(j job.Job) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return expandGlobPatterns(patterns)
+	files, err := expandGlobPatterns(patterns)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(files)
+	return files, nil
 }
 
 // ExpandPatternsFromJob takes a list of file paths/patterns and expands any glob patterns.
@@ -80,7 +86,35 @@ func ExpandPatternsFromJob(patternsInput []string, j job.Job) ([]string, error) 
 		allFiles = append(allFiles, file)
 	}
 
+	sort.Strings(allFiles)
 	return allFiles, nil
+}
+
+// applyExcludes filters files using doublestar exclude patterns. Repeated
+// patterns are OR'd together. Returns an error if any pattern is invalid.
+func applyExcludes(files, excludes []string) ([]string, error) {
+	if len(excludes) == 0 {
+		return files, nil
+	}
+	out := make([]string, 0, len(files))
+	for _, f := range files {
+		normalized := filepath.ToSlash(f)
+		drop := false
+		for _, pattern := range excludes {
+			matched, err := doublestar.PathMatch(pattern, normalized)
+			if err != nil {
+				return nil, fmt.Errorf("invalid exclude pattern %q: %w", pattern, err)
+			}
+			if matched {
+				drop = true
+				break
+			}
+		}
+		if !drop {
+			out = append(out, f)
+		}
+	}
+	return out, nil
 }
 
 func expandGlobPatterns(patterns []string) ([]string, error) {
@@ -98,5 +132,6 @@ func expandGlobPatterns(patterns []string) ([]string, error) {
 	for file := range seenFiles {
 		allFiles = append(allFiles, file)
 	}
+	sort.Strings(allFiles)
 	return allFiles, nil
 }
