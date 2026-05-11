@@ -1,4 +1,4 @@
-package main
+package fileset
 
 import (
 	"fmt"
@@ -12,15 +12,12 @@ import (
 	"github.com/rsanheim/plur/job"
 )
 
-// hasGlobMeta reports whether s contains any doublestar metacharacters.
-func hasGlobMeta(s string) bool { return strings.ContainsAny(s, "*?[{") }
-
-// DiscoverFiles returns sorted, deduped, exclude-filtered test files for a job.
+// Discover returns sorted, deduped, exclude-filtered files for a job.
 // When inputs is empty, framework target patterns drive discovery; otherwise
 // each input is classified as a glob, an existing file (passthrough), or a
 // directory (joined with framework target tails). Exclude patterns are applied
 // after expansion using doublestar semantics.
-func DiscoverFiles(j job.Job, inputs, excludes []string) ([]string, error) {
+func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
 	patterns, err := classifyInputs(j, inputs)
 	if err != nil {
 		return nil, err
@@ -57,6 +54,9 @@ func DiscoverFiles(j job.Job, inputs, excludes []string) ([]string, error) {
 	slices.Sort(files)
 	return slices.Compact(files), nil
 }
+
+// hasGlobMeta reports whether s contains any doublestar metacharacters.
+func hasGlobMeta(s string) bool { return strings.ContainsAny(s, "*?[{") }
 
 func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 	if len(inputs) == 0 {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/fileset"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -34,7 +35,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := append(append([]string{}, currentJob.ExcludePatterns...), r.ExcludePatterns...)
-	testFiles, err := DiscoverFiles(currentJob, r.Patterns, excludes)
+	testFiles, err := fileset.Discover(currentJob, r.Patterns, excludes)
 	if err != nil {
 		return err
 	}
