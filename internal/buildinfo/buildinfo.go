@@ -22,7 +22,6 @@ func GetVersionInfo() string {
 
 	// Try to get version info from runtime
 	if info, ok := debug.ReadBuildInfo(); ok {
-		// Check if this is a versioned module install (go install pkg@version)
 		if info.Main.Version != "(devel)" && info.Main.Version != "" {
 			return info.Main.Version
 		}
@@ -59,6 +58,5 @@ func GetVersionInfo() string {
 		}
 	}
 
-	// Fallback to simple "dev"
 	return Version
 }

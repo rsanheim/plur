@@ -86,6 +86,7 @@ Jobs are selected in the following priority order:
 | `cmd` | string[] | Command array to execute | Yes | Built-in default for canonical jobs (`rspec`, `minitest`, `go-test`) |
 | `framework` | string | Framework identity (`rspec`, `minitest`, `go-test`, `passthrough`) | No | Built-in framework for canonical jobs, otherwise `passthrough` |
 | `target_pattern` | string | Glob pattern for test files | No | Built-in default for canonical jobs; for custom jobs with a framework uses framework detect patterns; passthrough jobs default to empty |
+| `exclude_patterns` | string[] | Glob patterns to exclude from discovered test files | No | `[]` |
 | `env` | string[] | Environment variables (e.g., `["VAR=value"]`) | No | `[]` |
 
 **Note**: In run mode (`plur` / `plur spec`), any `{{target}}` tokens in `cmd` are ignored and targets are always appended (or expanded into Minitest `-e` requires). In watch mode, `{{target}}` is honored.
@@ -124,6 +125,24 @@ target_pattern = "spec/api/**/*_spec.rb"
 
 > **Note**: Passthrough jobs (like `rubocop` or `jest`) should define `target_pattern` or be run with explicit paths.
 
+### Exclude Patterns
+
+Use `exclude_patterns` to drop matching files from discovery. Patterns use
+doublestar semantics. Multiple entries are OR'd together.
+
+```toml
+[job.rspec]
+exclude_patterns = ["spec/system/**/*_spec.rb"]
+```
+
+The CLI flag `--exclude-pattern` (repeatable) is *additive* on top of
+`exclude_patterns`. Given the config above, this command excludes both
+`spec/system/**` and `spec/legacy/**`:
+
+```bash
+plur --exclude-pattern 'spec/legacy/**/*_spec.rb'
+```
+
 ### Built-in Jobs
 
 These examples show the built-in defaults. Targets are appended automatically in run mode.
@@ -160,7 +179,7 @@ cmd = ["bundle", "exec", "rake"]
 framework = "passthrough"
 ```
 
-`plur rails <args>` and `plur rake <args>` run the configured command once per worker. The arguments are appended literally; Plur does not discover files or parse test output for these commands. Rails environment is not forced by default, so set the right environment in your shell or explicit job env.
+`plur rails <args>` and `plur rake <args>` run the configured command once per worker. Arguments are appended literally — Plur does not discover files or parse test output for these commands. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake.
 
 ### Custom Job Examples
 

@@ -2,9 +2,9 @@ package runtime
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -136,11 +136,7 @@ func SelectJobFromRuntimeConfig(rc *RuntimeConfig, patterns []string) (*Selected
 func buildSelectedJob(rc *RuntimeConfig, name string, reason ResolveReason) (*SelectedJob, error) {
 	j, ok := rc.Jobs[name]
 	if !ok {
-		available := make([]string, 0, len(rc.Jobs))
-		for jobName := range rc.Jobs {
-			available = append(available, jobName)
-		}
-		sort.Strings(available)
+		available := slices.Sorted(maps.Keys(rc.Jobs))
 		return nil, fmt.Errorf("job '%s' not found. Available jobs: %s", name, strings.Join(available, ", "))
 	}
 	return &SelectedJob{
@@ -152,7 +148,7 @@ func buildSelectedJob(rc *RuntimeConfig, name string, reason ResolveReason) (*Se
 }
 
 func LogInheritedFields(jobName string, inherited InheritedFields) {
-	if !inherited.Cmd && !inherited.Env && !inherited.Framework && !inherited.TargetPattern {
+	if inherited == (InheritedFields{}) {
 		return
 	}
 	logger.Logger.Info("job inherited defaults",
@@ -160,5 +156,6 @@ func LogInheritedFields(jobName string, inherited InheritedFields) {
 		"cmd", inherited.Cmd,
 		"env", inherited.Env,
 		"framework", inherited.Framework,
-		"target_pattern", inherited.TargetPattern)
+		"target_pattern", inherited.TargetPattern,
+		"exclude_patterns", inherited.ExcludePatterns)
 }

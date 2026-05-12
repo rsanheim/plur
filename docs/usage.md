@@ -54,6 +54,27 @@ Or set a permanent default in `.plur.toml`:
 use = "minitest"  # Override default to use Minitest
 ```
 
+### Excluding Tests From Discovery
+
+Use `--exclude-pattern` (repeatable) to drop matching files from the test plan
+before workers run. Patterns use doublestar semantics.
+
+```bash
+# Skip a single file
+plur --exclude-pattern 'spec/legacy/old_spec.rb'
+
+# Skip all system specs
+plur --exclude-pattern 'spec/system/**/*_spec.rb'
+
+# Multiple patterns OR together
+plur --exclude-pattern 'spec/system/**/*_spec.rb' \
+     --exclude-pattern 'spec/legacy/**/*_spec.rb'
+```
+
+Excludes can also be configured per-job in `.plur.toml`. CLI excludes are
+*additive on top of* configured excludes — they do not replace them. See
+[Configuration](configuration.md) for details.
+
 ### Watch Mode
 
 ```bash
@@ -79,10 +100,13 @@ plur doctor
 ```bash
 plur rails db:prepare -n 4
 plur rails db:migrate VERSION=20260429000000 -n 4
+plur rails db:migrate -n 4 -- --trace
 plur rake db:setup -n 4
+plur rake db:create db:migrate -n 4
+plur rake -n 1 -- --tasks
 ```
 
-These commands run once per worker. Arguments after `rails` or `rake` are appended literally to the configured job command, not treated as test file patterns. They set Plur's worker env (`PARALLEL_TEST_GROUPS`, `TEST_ENV_NUMBER`) and inherit your shell env plus any explicit job env. Plur does not choose a Rails environment for you.
+These commands run the configured job once per worker, with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set. Arguments are appended literally — they're not treated as test file patterns. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake.
 
 ## Command Line Options
 

@@ -20,9 +20,7 @@ func TestFilterDirectories(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, d), 0755))
 	}
 
-	origDir, _ := os.Getwd()
-	require.NoError(t, os.Chdir(tmpDir))
-	defer os.Chdir(origDir)
+	t.Chdir(tmpDir)
 
 	tests := []struct {
 		name     string
@@ -56,9 +54,7 @@ func TestFilterDirectories_SymlinkDedup(t *testing.T) {
 
 	// Use relative symlink (not absolute) so os.Root accepts it
 	symLib := filepath.Join(tmpDir, "lib")
-	origDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(origDir)
+	t.Chdir(tmpDir)
 
 	require.NoError(t, os.Symlink("real_lib", symLib))
 
@@ -78,9 +74,7 @@ func TestFilterDirectories_RejectsEscapingSymlinks(t *testing.T) {
 	// Create a valid directory too
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "valid"), 0755))
 
-	origDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(origDir)
+	t.Chdir(tmpDir)
 
 	// "escape" symlink should be rejected, "valid" should remain
 	result, err := FilterDirectories([]string{"escape", "valid"})
@@ -94,9 +88,7 @@ func TestFilterDirectories_NonexistentDirSkipped(t *testing.T) {
 	// Create only one valid directory
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "exists"), 0755))
 
-	origDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(origDir)
+	t.Chdir(tmpDir)
 
 	// "nonexistent" should be skipped, "exists" should remain
 	result, err := FilterDirectories([]string{"nonexistent", "exists"})

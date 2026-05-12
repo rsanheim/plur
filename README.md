@@ -61,15 +61,17 @@ plur                          # Run with the default 4 workers
 plur --dry-run               # Preview execution plan
 ```
 
-### Rails And Rake Tasks
+### Rake (and Rails) Tasks
 ```bash
 plur rails db:create -n 3   # Create databases in parallel
 plur rails db:migrate -n 3  # Run migrations across all DBs
 plur rails db:prepare -n 3  # Prepare all DBs
 plur rake db:setup -n 3     # Run a Rake task once per worker
+plur rake db:create db:migrate -n 3 # Run multiple Rake tasks per worker
+plur rake -n 1 -- --tasks    # Pass Rake-specific flags after --
 ```
 
-`plur rails <args>` and `plur rake <args>` append arguments literally to the configured job command. They set Plur's worker env (`PARALLEL_TEST_GROUPS`, `TEST_ENV_NUMBER`) and inherit your shell env. Plur does not set `RAILS_ENV`; pick the right environment in your shell or explicit job config.
+`plur rails <args>` and `plur rake <args>` run the configured command once per worker with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set. Arguments are appended literally; put Plur flags like `-n` before `--`, and use `--` to pass flags through to Rails/Rake.
 
 ### Explicit Framework Selection
 

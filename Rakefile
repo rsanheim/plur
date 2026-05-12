@@ -60,7 +60,7 @@ task :install do
   sh %(goreleaser build --snapshot --single-target --clean -o #{temp} > /dev/null 2>&1)
   File.chmod(0o755, temp)
   File.rename(temp, final)
-  puts "[install] Installed plur with version: #{`#{final} --version`.strip}"
+  puts "[install] Installed plur=#{final} with version: #{`#{final} --version`.strip}"
 
   path_plur, status = Open3.capture2("which", "plur")
   path_plur = path_plur.strip
