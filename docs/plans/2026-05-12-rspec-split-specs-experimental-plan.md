@@ -2,29 +2,31 @@
 
 > **For implementation workers:** Implement this task-by-task. Keep each task small, verify before moving on, and commit after each completed task.
 
-**Goal:** Land the autoresearch RSpec long-spec splitting win behind an explicit experimental flag so it can be tested in mainline without changing default behavior.
+**Goal:** Reshape Plur's default runtime tracking data so it supports both today's file-level balancing and future RSpec long-file splitting, then expose RSpec splitting behind `--rspec-split`.
 
-**Architecture:** Keep Plur's current file-level runtime grouping as the default. When `--rspec-split` or `PLUR_RSPEC_SPLIT=1` is set for an RSpec job, split historically long-running spec files into focused `file:line:line` targets using an exact example index captured by Plur's own RSpec formatter during prior normal runs. If the index is missing, stale, or incompatible with the current selector args, fall back to file-level grouping and refresh the index as the run executes.
+**Architecture:** Runtime tracking gets a v2 cache format that is written by default, independent of `--rspec-split`. Plur's RSpec formatter always emits richer selected-example metadata and per-example runtime details; the runtime tracker persists file-level aggregates for normal worker balancing plus example-level metadata that `--rspec-split` can consume. The experimental flag only changes grouping behavior; it does not control whether runtime metadata is collected.
 
-**Tech Stack:** Go CLI with Kong, existing Plur runtime data, Plur's RSpec JSON rows formatter, RSpec focused line execution, `$PLUR_HOME` cache.
+**Tech Stack:** Go CLI with Kong, Plur runtime tracker, Plur's RSpec JSON rows formatter, RSpec focused line execution, `$PLUR_HOME/runtime`.
 
 ---
 
-## Source Material
+## Position
 
-Use the `autoresearch` branch as reference only. Do not cherry-pick it wholesale.
+The runtime data shape should change first. Plur is pre-1.0, and the current cache is just:
 
-Adapt the useful ideas:
-- Converting a long spec file into multiple RSpec focused targets.
-- Expanding long-pole files before existing runtime-based bin packing.
-- Caching exact example line metadata.
+```json
+{
+  "spec/calculator_spec.rb": 1.234
+}
+```
 
-Do not bring over:
-- Worker count default changes.
-- Rails setup changes from the separate Rails branch.
-- Regex/source-code fallback for example lines.
-- Always-on splitting.
-- A separate RSpec JSON dry-run discovery command for the first implementation.
+That is enough for simple file balancing, but it is the wrong foundation for splitting. A separate `rspec-example-index` cache would duplicate state and create drift. Instead, make the default runtime cache carry the data both features need:
+
+- file-level runtime for normal grouping
+- per-example line metadata for splitting
+- per-example runtime observations when available
+- source freshness metadata so stale line data is ignored
+- selector fingerprints so tag/focused runs do not corrupt full-file data
 
 ## Key RSpec Finding
 
@@ -43,9 +45,59 @@ The useful fields are richer than the current `location.split(":").last.to_i` ap
 }
 ```
 
-Use `metadata[:line_number]` for line data, not string parsing. Keep `location` and `location_rerun_argument` in the JSON for debugging and future-proofing.
+Use `metadata[:line_number]` for line data, not string parsing. Keep `location`, `location_rerun_argument`, and `scoped_id` in the JSON for diagnostics and future grouping choices.
 
-The tradeoff is intentional: a project may need one normal run to populate the example index before `--rspec-split` can split that file. That is acceptable for the experimental version because it avoids extra RSpec startup and avoids running suite code during Plur `--dry-run`.
+## Runtime Cache V2
+
+The exact Go structs can be refined during implementation, but the persisted shape should be versioned and object-based rather than `map[string]float64`.
+
+Critical shape:
+
+```json
+{
+  "schema_version": 2,
+  "generated_at": "2026-05-12T18:30:00Z",
+  "project_root": "/repo",
+  "jobs": {
+    "rspec": {
+      "framework": "rspec",
+      "selections": {
+        "default": {
+          "files": {
+            "spec/slow_spec.rb": {
+              "path": "spec/slow_spec.rb",
+              "abs_path": "/repo/spec/slow_spec.rb",
+              "mtime_unix_nano": 1778610000000000000,
+              "size_bytes": 12345,
+              "runtime_seconds": 12.34,
+              "example_count": 3,
+              "examples": [
+                {
+                  "line_number": 12,
+                  "location": "./spec/slow_spec.rb:12",
+                  "location_rerun_argument": "./spec/slow_spec.rb:12",
+                  "scoped_id": "1:1",
+                  "runtime_seconds": 0.40,
+                  "status": "passed"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Notes:
+- `selections.default` means no Plur-owned selector args and no focused line selection.
+- Tag runs should use a selector fingerprint such as `tag:<hash>`.
+- Focused file:line runs may update example observations, but they must not overwrite the default full-file aggregate.
+- Normal grouping reads file-level `runtime_seconds`.
+- RSpec splitting reads the same file entry's `examples[].line_number`.
+- Minitest and passthrough jobs can store file-level entries without example arrays.
+- No backward-compatibility shim is required. If an old v1 cache is present, ignore it and regenerate v2 data.
 
 ## User Interface
 
@@ -67,54 +119,99 @@ Critical CLI field:
 RspecSplit bool `help:"EXPERIMENTAL: split long-running RSpec files into focused file:line runs" name:"rspec-split" env:"PLUR_RSPEC_SPLIT" default:"false"`
 ```
 
-First iteration should document only the CLI flag and environment variable. If Kong's TOML loader makes a config-file key work automatically, treat that as incidental until we intentionally document it.
+The runtime cache v2 and formatter metadata changes are not gated by this flag.
 
 ## Safety Rules
 
-- Default behavior is unchanged.
+- Default grouping behavior remains file-level.
+- Runtime cache v2 is written for normal runs regardless of `--rspec-split`.
 - Splitting applies only to selected jobs with `Framework == "rspec"`.
 - Splitting is disabled in serial mode or when worker count is 1.
-- Splitting requires runtime data and a fresh formatter-captured example index.
-- Missing or stale example-index cache means current file-level grouping; the run may refresh the cache for next time.
+- Splitting requires v2 runtime data with fresh source metadata and example lines for the file.
+- Missing or stale example data means current file-level grouping.
 - No regex/source-code fallback.
 - No RSpec subprocess for discovery during `plur --dry-run`.
-- No splitting when unsupported passthrough args are present.
-- For Plur-owned `--tag` filters, include a selector fingerprint in the cache key so tag-specific runs do not reuse a full-suite example index.
-- Runtime tracking stays keyed by original spec file path. RSpec formatter events should continue to report `file_path` without line selectors.
-
-Critical dry-run rule:
-
-```go
-if cfg.DryRun {
-	// Dry-run plans only from existing cache. It never launches RSpec to discover lines.
-	return cachedIndexOnly()
-}
-```
+- Focused runs and tag runs must not clobber default full-file runtime aggregates.
 
 ## File Responsibilities
 
 Create:
-- `rspec_example_index.go`: cache model, freshness checks, selector fingerprinting, cache load/save.
-- `rspec_example_index_test.go`: parser/cache/freshness/selector tests.
+- `runtime_cache.go`: v2 persisted data model, load/save, freshness checks, selector fingerprinting.
+- `runtime_cache_test.go`: cache shape, v1 ignore behavior, selector behavior, freshness behavior.
 - `rspec_line_splitter.go`: pure split decisions and focused target generation.
 - `rspec_line_splitter_test.go`: pure behavior around thresholds, chunking, and fallbacks.
 
 Modify:
-- `main.go`: add the experimental CLI/env flag and populate global config.
-- `config/config.go`: carry the boolean through `GlobalConfig`.
-- `main_test.go`: cover flag metadata and parsing.
-- `framework/rspec/formatter.rb`: emit exact selected example index and stop parsing line numbers from location strings.
-- `framework/rspec/json_output.go`: add structs for the formatter-emitted example index.
-- `framework/rspec/parser.go`: consume example index messages.
-- `types/notifications.go`: add a notification or data carrier for RSpec example index rows.
-- `runner.go`: collect index rows from workers, save cache, and pass cached index to grouping.
-- `grouper.go`: add optional RSpec split expansion before runtime grouping.
-- `grouper_test.go`, `runner_test.go`, formatter/parser specs: cover the new data flow.
-- `docs/usage.md`: document the experimental flag and fallback rules.
+- `framework/rspec/formatter.rb`: always emit selected example metadata and stop parsing line numbers from location strings.
+- `framework/rspec/json_output.go`: add structs for formatter-emitted selected examples.
+- `framework/rspec/parser.go`: consume selected-example and per-example metadata messages.
+- `types/notifications.go`: carry selected example metadata through parser/collector.
+- `test_collector.go`: retain selected example metadata alongside test notifications.
+- `runtime_tracker.go`: replace map-only persistence with runtime cache v2 and expose file-runtime data for grouping.
+- `runner.go`: save v2 runtime data after workers finish and pass v2 data to grouping.
+- `grouper.go`: use file-level v2 runtimes for existing grouping and example lines for optional splitting.
+- `main.go`, `config/config.go`, `main_test.go`: add the experimental boolean flag.
+- Formatter, parser, runtime tracker, grouper, runner, and integration specs.
+- `docs/usage.md`: document runtime cache behavior and the experimental flag.
 
 ---
 
-## Task 1: Add the Boolean Experimental Flag
+## Task 1: Define Runtime Cache V2
+
+**Files:** `runtime_cache.go`, `runtime_cache_test.go`, `runtime_tracker.go`, `runtime_tracker_test.go`
+
+- [ ] Add a versioned runtime cache data model based on the critical shape above.
+- [ ] Ignore old `map[string]float64` cache files rather than migrating them.
+- [ ] Expose a small method that returns `map[string]float64` for normal file-level grouping.
+- [ ] Add source freshness helpers based on absolute path, `mtime_unix_nano`, and `size_bytes`.
+- [ ] Add selector fingerprinting for default runs and Plur-owned tag runs.
+- [ ] Verify with focused Go tests:
+
+```bash
+go test -mod=mod . -run 'TestRuntimeCache|TestRuntimeTracker'
+```
+
+## Task 2: Emit RSpec Metadata by Default
+
+**Files:** `framework/rspec/formatter.rb`, `spec/integration/spec/json_rows_formatter_spec.rb`
+
+- [ ] Add a formatter row for selected examples during `start`.
+- [ ] Build the row from `RSpec.world.example_groups.flat_map(&:descendant_filtered_examples)`.
+- [ ] Include `file_path`, `absolute_file_path`, `line_number`, `location`, `location_rerun_argument`, and `scoped_id`.
+- [ ] Change existing group/example line extraction to prefer `metadata[:line_number]` instead of `location.split(":").last.to_i`.
+- [ ] Keep the existing progress, failure, pending, and summary rows compatible.
+- [ ] Verify with:
+
+```bash
+mise exec -- bundle exec rspec spec/integration/spec/json_rows_formatter_spec.rb
+```
+
+## Task 3: Parse and Collect RSpec Metadata
+
+**Files:** `framework/rspec/json_output.go`, `framework/rspec/parser.go`, `types/notifications.go`, `test_collector.go`
+
+- [ ] Add Go structs matching the formatter's selected-example row.
+- [ ] Normalize `./spec/foo_spec.rb` and `spec/foo_spec.rb` to the same project-relative path.
+- [ ] Preserve per-example runtime from existing pass/fail/pending rows.
+- [ ] Make `TestCollector` expose selected examples and executed test notifications to the runtime tracker.
+- [ ] Verify parser and collector behavior with focused Go tests.
+
+## Task 4: Save Useful Runtime Data for Normal Runs
+
+**Files:** `runtime_tracker.go`, `runner.go`, `spec/integration/spec/runtime_tracking_spec.rb`
+
+- [ ] Save v2 runtime cache entries after normal runs.
+- [ ] Update default full-file aggregates only for runs that selected whole files under the default selector.
+- [ ] Preserve prior default file aggregates when a focused run only covers a subset of a file.
+- [ ] Store selected example lines even when runtimes are incomplete, as long as the source metadata is fresh.
+- [ ] Keep existing runtime-based grouping behavior working through the v2 file-level runtime view.
+- [ ] Verify with:
+
+```bash
+bin/rspec spec/integration/spec/runtime_tracking_spec.rb
+```
+
+## Task 5: Add the Boolean Experimental Flag
 
 **Files:** `main.go`, `config/config.go`, `main_test.go`
 
@@ -128,47 +225,7 @@ Modify:
 go test -mod=mod . -run 'TestRspecSplit'
 ```
 
-## Task 2: Emit Exact Example Index From the Formatter
-
-**Files:** `framework/rspec/formatter.rb`, `spec/integration/spec/json_rows_formatter_spec.rb`
-
-- [ ] Add an `example_index` JSON row during formatter `start`.
-- [ ] Build the row from `RSpec.world.example_groups.flat_map(&:descendant_filtered_examples)`.
-- [ ] Include `file_path`, `absolute_file_path`, `line_number`, `location`, `location_rerun_argument`, and `scoped_id`.
-- [ ] Change existing group/example line extraction to prefer metadata line numbers instead of `location.split(":").last.to_i`.
-- [ ] Keep the existing `load_summary` row so current parser behavior remains intact.
-- [ ] Verify formatter output with focused Ruby specs:
-
-```bash
-mise exec -- bundle exec rspec spec/integration/spec/json_rows_formatter_spec.rb
-```
-
-## Task 3: Parse and Cache Example Index Rows
-
-**Files:** `framework/rspec/json_output.go`, `framework/rspec/parser.go`, `types/notifications.go`, `rspec_example_index.go`, `rspec_example_index_test.go`
-
-- [ ] Add Go structs matching the formatter's `example_index` row.
-- [ ] Parse `example_index` rows into an internal notification or data carrier.
-- [ ] Normalize `./spec/foo_spec.rb` and `spec/foo_spec.rb` to the same project-relative path.
-- [ ] Persist index data under `$PLUR_HOME/cache/rspec-example-index`.
-- [ ] Include schema version, absolute path, file size, file mtime, selector fingerprint, and the sorted exact line numbers.
-
-Critical cache contract:
-
-```json
-{
-  "schema_version": 1,
-  "abs_path": "/repo/spec/slow_spec.rb",
-  "selector_fingerprint": "default",
-  "mtime_unix_nano": 1778610000000000000,
-  "size_bytes": 12345,
-  "lines": [12, 38, 91]
-}
-```
-
-Cache freshness is based on schema version, selector fingerprint, absolute path, `mtime_unix_nano`, and `size_bytes`. The cache filename should be derived from a stable hash of absolute path plus selector fingerprint.
-
-## Task 4: Add Pure Split Decisions
+## Task 6: Add Pure Split Decisions
 
 **Files:** `rspec_line_splitter.go`, `rspec_line_splitter_test.go`
 
@@ -185,31 +242,29 @@ spec/slow_spec.rb:12:38:91
 - [ ] Make chunking deterministic so repeated runs produce stable commands.
 - [ ] Verify the pure splitter with table-driven tests.
 
-## Task 5: Expand Runtime Grouping When Enabled
+## Task 7: Expand Runtime Grouping When Enabled
 
 **Files:** `grouper.go`, `grouper_test.go`, `runner.go`, `runner_test.go`
 
-- [ ] Add an options struct for runtime grouping so the existing function can remain readable.
-- [ ] Keep the old grouping path intact when `RspecSplit` is false.
-- [ ] For eligible RSpec runs, load the cached example index before grouping.
+- [ ] Keep the old grouping behavior when `RspecSplit` is false.
+- [ ] For eligible RSpec runs, read file runtimes and example lines from runtime cache v2.
 - [ ] Expand long-pole files into focused targets before existing longest-processing-time grouping.
 - [ ] Assign each generated target an estimated runtime of `original_file_runtime / chunk_count` for grouping balance only.
-- [ ] Preserve runtime tracking by original file path; do not persist runtime entries for `file:line` targets.
-- [ ] Save formatter-emitted example index rows after workers finish so the next run can split.
+- [ ] Do not persist runtime entries for generated `file:line` targets.
 - [ ] Log debug reasons when splitting is skipped.
 - [ ] Verify:
 
 ```bash
-go test -mod=mod . -run 'TestGroupSpecFilesByRuntime|TestRunner|TestRSpecExampleIndex'
+go test -mod=mod . -run 'TestGroupSpecFilesByRuntime|TestRunner|TestRspecSplit'
 ```
 
-## Task 6: Add Integration Coverage
+## Task 8: Add Integration Coverage
 
 **Files:** likely `spec/integration/spec/runtime_tracking_spec.rb`, `spec/integration/spec/rspec_args_spec.rb`, fixture specs as needed.
 
-- [ ] Create or reuse a fixture with one historically slow spec file containing multiple examples.
-- [ ] Seed runtime data so the file is clearly the long pole.
-- [ ] Assert default Plur command keeps file-level targets.
+- [ ] Assert normal RSpec runs write v2 runtime data with file aggregates and selected example lines.
+- [ ] Assert existing runtime grouping still balances slow files from v2 file aggregates.
+- [ ] Assert focused file:line runs do not overwrite default full-file runtime aggregates.
 - [ ] Assert `plur --rspec-split -n 4 --dry-run` uses cached focused targets and does not invoke RSpec.
 - [ ] Assert a real `plur --rspec-split -n 4` run executes focused `file:line` targets and passes after cache exists.
 - [ ] Assert unsupported passthrough args fall back to file-level grouping.
@@ -220,21 +275,22 @@ go test -mod=mod . -run 'TestGroupSpecFilesByRuntime|TestRunner|TestRSpecExample
 bin/rspec spec/integration/spec/runtime_tracking_spec.rb spec/integration/spec/rspec_args_spec.rb
 ```
 
-## Task 7: Document the Experimental Flag
+## Task 9: Document Runtime Cache V2 and Experimental Split
 
 **Files:** `docs/usage.md`
 
+- [ ] Update runtime tracking docs to describe the v2 cache at a high level.
 - [ ] Add a short experimental section for `--rspec-split`.
 - [ ] State that the feature is opt-in, RSpec-only, runtime-data-driven, and cache-driven.
-- [ ] Mention that a first run may populate the example index before future runs split long files.
+- [ ] Mention that normal runs populate the metadata future split runs need.
 - [ ] Include the CLI and environment examples from this plan.
-- [ ] Avoid promising stable behavior while it is experimental.
+- [ ] Avoid promising stable split behavior while it is experimental.
 
-## Task 8: Final Verification
+## Task 10: Final Verification
 
 - [ ] Run focused Go tests for the new code.
 - [ ] Run focused formatter specs through mise and Bundler.
-- [ ] Run focused integration specs for RSpec runtime grouping and args.
+- [ ] Run focused integration specs for runtime tracking and RSpec args.
 - [ ] Run the standard project verification:
 
 ```bash
@@ -247,9 +303,11 @@ bin/rake test
 
 ## Success Criteria
 
-- `plur` without `--rspec-split` behaves exactly as it does today.
-- Normal RSpec runs emit and cache exact selected example line metadata through Plur's formatter.
-- `plur --rspec-split` can split a long RSpec file into focused line targets when runtime data and cached exact example lines are available.
+- Normal runtime tracking writes v2 data by default with no `--rspec-split` flag.
+- Existing runtime-based file grouping still works from v2 file aggregates.
+- RSpec formatter output no longer depends on parsing line numbers out of location strings.
+- RSpec selected example metadata and per-example runtime details live in the main runtime cache.
+- Focused or tag-filtered runs do not corrupt default full-file runtime aggregates.
+- `plur --rspec-split` can split a long RSpec file into focused line targets when v2 runtime data has fresh example lines.
 - `plur --dry-run --rspec-split` never shells out to RSpec.
-- Unsupported args, missing runtime data, stale cache, invalid cache, and incompatible selector fingerprints all fall back to file-level grouping.
-- Docs clearly mark the flag experimental.
+- Docs clearly mark the split flag experimental.
