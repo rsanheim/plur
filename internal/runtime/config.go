@@ -2,9 +2,9 @@ package runtime
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -136,11 +136,7 @@ func SelectJobFromRuntimeConfig(rc *RuntimeConfig, patterns []string) (*Selected
 func buildSelectedJob(rc *RuntimeConfig, name string, reason ResolveReason) (*SelectedJob, error) {
 	j, ok := rc.Jobs[name]
 	if !ok {
-		available := make([]string, 0, len(rc.Jobs))
-		for jobName := range rc.Jobs {
-			available = append(available, jobName)
-		}
-		sort.Strings(available)
+		available := slices.Sorted(maps.Keys(rc.Jobs))
 		return nil, fmt.Errorf("job '%s' not found. Available jobs: %s", name, strings.Join(available, ", "))
 	}
 	return &SelectedJob{

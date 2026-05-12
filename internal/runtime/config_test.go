@@ -147,12 +147,10 @@ func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {
 
 func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-	os.Chdir(tmpDir)
+	t.Chdir(tmpDir)
 
-	os.MkdirAll("spec", 0o755)
-	os.WriteFile("spec/example_spec.rb", []byte(""), 0o644)
+	require.NoError(t, os.MkdirAll("spec", 0o755))
+	require.NoError(t, os.WriteFile("spec/example_spec.rb", []byte(""), 0o644))
 
 	rc := &RuntimeConfig{
 		Jobs: map[string]job.Job{
@@ -169,12 +167,10 @@ func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 
 func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-	os.Chdir(tmpDir)
+	t.Chdir(tmpDir)
 
-	os.MkdirAll("spec", 0o755)
-	os.WriteFile("spec/example_spec.rb", []byte(""), 0o644)
+	require.NoError(t, os.MkdirAll("spec", 0o755))
+	require.NoError(t, os.WriteFile("spec/example_spec.rb", []byte(""), 0o644))
 
 	rc := &RuntimeConfig{
 		Jobs: map[string]job.Job{

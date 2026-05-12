@@ -2,6 +2,7 @@ package fileset
 
 import (
 	"os"
+	"path"
 	"testing"
 
 	"github.com/rsanheim/plur/job"
@@ -9,36 +10,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// dirOf returns the directory portion of a forward-slashed relative path, or
-// "." if none.
-func dirOf(path string) string {
-	lastSlash := -1
-	for i := 0; i < len(path); i++ {
-		if path[i] == '/' {
-			lastSlash = i
-		}
-	}
-	if lastSlash <= 0 {
-		return "."
-	}
-	return path[:lastSlash]
-}
-
 func discoverChdir(t *testing.T) string {
 	t.Helper()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(originalDir) })
-
 	tempDir := t.TempDir()
-	require.NoError(t, os.Chdir(tempDir))
+	t.Chdir(tempDir)
 	return tempDir
 }
 
 func writeStubFiles(t *testing.T, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
-		require.NoError(t, os.MkdirAll(dirOf(p), 0o755))
+		require.NoError(t, os.MkdirAll(path.Dir(p), 0o755))
 		require.NoError(t, os.WriteFile(p, []byte(""), 0o644))
 	}
 }

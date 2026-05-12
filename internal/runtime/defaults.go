@@ -3,8 +3,9 @@ package runtime
 import (
 	_ "embed"
 	"fmt"
+	"maps"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -187,11 +188,7 @@ func inferFrameworkFromPatterns(patterns []string) (string, error) {
 	}
 
 	if len(union) > 1 {
-		frameworks := make([]string, 0, len(union))
-		for name := range union {
-			frameworks = append(frameworks, name)
-		}
-		sort.Strings(frameworks)
+		frameworks := slices.Sorted(maps.Keys(union))
 		return "", fmt.Errorf("explicit patterns match multiple frameworks (%s). Split the command or pass --use to select one", strings.Join(frameworks, ", "))
 	}
 

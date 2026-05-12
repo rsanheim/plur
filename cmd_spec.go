@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/rsanheim/plur/framework"
@@ -34,7 +35,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	targetPatterns, _ := framework.TargetPatternsForJob(currentJob)
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
-	excludes := append(append([]string{}, currentJob.ExcludePatterns...), r.ExcludePatterns...)
+	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
 	testFiles, err := fileset.Discover(currentJob, r.Patterns, excludes)
 	if err != nil {
 		return err
