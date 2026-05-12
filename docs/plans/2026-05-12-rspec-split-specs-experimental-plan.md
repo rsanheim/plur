@@ -28,24 +28,57 @@ That is enough for simple file balancing, but it is the wrong foundation for spl
 - source freshness metadata so stale line data is ignored
 - selector fingerprints so tag/focused runs do not corrupt full-file data
 
-## Key RSpec Finding
+## RSpec Formatter Baseline
 
-Plur's formatter already runs after RSpec has loaded spec files and applied filters. At formatter `start`, `RSpec.world.example_groups.flat_map(&:descendant_filtered_examples)` exposes the exact examples selected for the current process.
+As of the local RSpec checkout, `RSpec::Core::Formatters::JsonFormatter` registers `:stop` and builds its `examples` array from `group_notification.notifications.map { |notification| notification.example }`.
 
-The useful fields are richer than the current `location.split(":").last.to_i` approach:
+It does not use `RSpec.world.example_groups.flat_map(&:descendant_filtered_examples)` as its JSON output source. That world traversal proves the filtered examples are available after load, but Plur should prefer the same reporter notification path RSpec's JSON formatter uses unless a later requirement needs pre-execution data.
 
-```ruby
-{
-  file_path: example.metadata[:file_path],
-  absolute_file_path: example.metadata[:absolute_file_path],
-  line_number: example.metadata[:line_number],
-  location: example.location,
-  location_rerun_argument: example.location_rerun_argument,
-  scoped_id: example.metadata[:scoped_id]
-}
+RSpec's `JsonFormatter#format_example` includes:
+
+- `id`
+- `description`
+- `full_description`
+- `status`
+- `file_path`
+- `line_number`
+- `run_time`
+- `pending_message`
+- `exception` only when present, with class, message, and formatted backtrace
+
+Plur's runtime cache does not need to persist everything RSpec JSON emits. It should persist:
+
+- `id`, because it is RSpec's stable example identifier
+- `file_path`, `absolute_file_path`, and source freshness metadata
+- `line_number`, `location`, and `location_rerun_argument`
+- `scoped_id` if available
+- `runtime_seconds` and `status`
+- `pending_message` only if useful for diagnostics
+
+It should not persist descriptions, full descriptions, exception messages, backtraces, formatter messages, profile output, summaries, or seeds in the runtime cache. Those are output/reporting concerns, and storing them would grow the cache without helping file balancing or line splitting.
+
+Use `metadata[:line_number]` for line data, not string parsing. Keep `location` and `location_rerun_argument` for diagnostics and future grouping choices.
+
+## Existing Type Changes
+
+Modify the structs Plur already has before adding new data carriers.
+
+- Extend `framework/rspec.StreamExample` with `ID`, `AbsoluteFilePath`, `LocationRerunArgument`, and `ScopedID`.
+- Extend `framework/rspec.StreamingMessage` only if the formatter emits a batch row for selected examples.
+- Extend `types.TestCaseNotification` with the same identity/location fields needed by runtime tracking.
+- Keep `TestCollector` as the place that aggregates parsed framework notifications before `RuntimeTracker` persists them.
+- Add new runtime-cache structs only for the persisted v2 file format.
+
+This keeps the data flow coherent:
+
+```text
+RSpec formatter JSON rows
+  -> framework/rspec parser structs
+  -> types.TestCaseNotification / collector data
+  -> RuntimeTracker
+  -> runtime cache v2
+  -> grouper
 ```
-
-Use `metadata[:line_number]` for line data, not string parsing. Keep `location`, `location_rerun_argument`, and `scoped_id` in the JSON for diagnostics and future grouping choices.
 
 ## Runtime Cache V2
 
@@ -73,6 +106,7 @@ Critical shape:
               "example_count": 3,
               "examples": [
                 {
+                  "id": "./spec/slow_spec.rb[1:1]",
                   "line_number": 12,
                   "location": "./spec/slow_spec.rb:12",
                   "location_rerun_argument": "./spec/slow_spec.rb:12",
@@ -98,6 +132,14 @@ Notes:
 - RSpec splitting reads the same file entry's `examples[].line_number`.
 - Minitest and passthrough jobs can store file-level entries without example arrays.
 - No backward-compatibility shim is required. If an old v1 cache is present, ignore it and regenerate v2 data.
+
+## Known Pitfalls
+
+- `before(:all)` / `before(:context)` state can break when examples from one file are split across workers, because context setup may run once per split process rather than once for the original full file process.
+- RSpec suites that define examples dynamically from environment, database state, time, random data, or metaprogramming may produce different example sets between cache generation and split execution.
+- Shared examples and custom DSLs can create surprising source locations. Store RSpec's `id` and `location_rerun_argument` so we can debug those cases instead of relying only on line numbers.
+- Custom ordering, fail-fast, focus filters, and tag filters can make a run incomplete. Incomplete runs must not overwrite the default full-file aggregate.
+- Ruby is dynamic. Expect some meta-heavy suites to need fallback-to-file behavior until we have real-world test coverage.
 
 ## User Interface
 
@@ -125,8 +167,7 @@ The runtime cache v2 and formatter metadata changes are not gated by this flag.
 
 - Default grouping behavior remains file-level.
 - Runtime cache v2 is written for normal runs regardless of `--rspec-split`.
-- Splitting applies only to selected jobs with `Framework == "rspec"`.
-- Splitting is disabled in serial mode or when worker count is 1.
+- Splitting applies only when `RspecSplit == true`, the selected job has `Framework == "rspec"`, and worker count is greater than 1.
 - Splitting requires v2 runtime data with fresh source metadata and example lines for the file.
 - Missing or stale example data means current file-level grouping.
 - No regex/source-code fallback.
@@ -142,17 +183,17 @@ Create:
 - `rspec_line_splitter_test.go`: pure behavior around thresholds, chunking, and fallbacks.
 
 Modify:
-- `framework/rspec/formatter.rb`: always emit selected example metadata and stop parsing line numbers from location strings.
-- `framework/rspec/json_output.go`: add structs for formatter-emitted selected examples.
+- `framework/rspec/formatter.rb`: align example metadata with RSpec's JSON formatter path and stop parsing line numbers from location strings.
+- `framework/rspec/json_output.go`: extend existing structs for formatter-emitted selected examples.
 - `framework/rspec/parser.go`: consume selected-example and per-example metadata messages.
-- `types/notifications.go`: carry selected example metadata through parser/collector.
+- `types/notifications.go`: extend existing notification structs with selected example metadata.
 - `test_collector.go`: retain selected example metadata alongside test notifications.
 - `runtime_tracker.go`: replace map-only persistence with runtime cache v2 and expose file-runtime data for grouping.
 - `runner.go`: save v2 runtime data after workers finish and pass v2 data to grouping.
-- `grouper.go`: use file-level v2 runtimes for existing grouping and example lines for optional splitting.
+- `grouper.go`: use file-level v2 runtimes for existing grouping and example lines only when `RspecSplit == true`.
 - `main.go`, `config/config.go`, `main_test.go`: add the experimental boolean flag.
 - Formatter, parser, runtime tracker, grouper, runner, and integration specs.
-- `docs/usage.md`: document runtime cache behavior and the experimental flag.
+- `docs/usage.md`: document runtime cache behavior, pitfalls, and the experimental flag.
 
 ---
 
@@ -173,13 +214,14 @@ go test -mod=mod . -run 'TestRuntimeCache|TestRuntimeTracker'
 
 ## Task 2: Emit RSpec Metadata by Default
 
-**Files:** `framework/rspec/formatter.rb`, `spec/integration/spec/json_rows_formatter_spec.rb`
+**Files:** `framework/rspec/formatter.rb`, `framework/rspec/json_output.go`, `spec/integration/spec/json_rows_formatter_spec.rb`
 
-- [ ] Add a formatter row for selected examples during `start`.
-- [ ] Build the row from `RSpec.world.example_groups.flat_map(&:descendant_filtered_examples)`.
-- [ ] Include `file_path`, `absolute_file_path`, `line_number`, `location`, `location_rerun_argument`, and `scoped_id`.
+- [ ] Register the formatter for `:stop` if it is not already registered.
+- [ ] Emit the runtime metadata row from the `stop(group_notification)` path, using `group_notification.notifications.map(&:example)`, matching RSpec's JSON formatter source.
+- [ ] Extend existing `StreamExample` fields rather than introducing a parallel example struct.
+- [ ] Include `id`, `file_path`, `absolute_file_path`, `line_number`, `location`, `location_rerun_argument`, `scoped_id`, `run_time`, `status`, and `pending_message`.
 - [ ] Change existing group/example line extraction to prefer `metadata[:line_number]` instead of `location.split(":").last.to_i`.
-- [ ] Keep the existing progress, failure, pending, and summary rows compatible.
+- [ ] Keep existing progress, failure, pending, and summary rows compatible.
 - [ ] Verify with:
 
 ```bash
@@ -188,9 +230,9 @@ mise exec -- bundle exec rspec spec/integration/spec/json_rows_formatter_spec.rb
 
 ## Task 3: Parse and Collect RSpec Metadata
 
-**Files:** `framework/rspec/json_output.go`, `framework/rspec/parser.go`, `types/notifications.go`, `test_collector.go`
+**Files:** `framework/rspec/parser.go`, `types/notifications.go`, `test_collector.go`
 
-- [ ] Add Go structs matching the formatter's selected-example row.
+- [ ] Extend existing Go structs to match the formatter's enriched example fields.
 - [ ] Normalize `./spec/foo_spec.rb` and `spec/foo_spec.rb` to the same project-relative path.
 - [ ] Preserve per-example runtime from existing pass/fail/pending rows.
 - [ ] Make `TestCollector` expose selected examples and executed test notifications to the runtime tracker.
@@ -205,7 +247,16 @@ mise exec -- bundle exec rspec spec/integration/spec/json_rows_formatter_spec.rb
 - [ ] Preserve prior default file aggregates when a focused run only covers a subset of a file.
 - [ ] Store selected example lines even when runtimes are incomplete, as long as the source metadata is fresh.
 - [ ] Keep existing runtime-based grouping behavior working through the v2 file-level runtime view.
-- [ ] Verify with:
+
+Concrete success criteria:
+- A normal `plur spec/calculator_spec.rb` run writes one v2 runtime file under `$PLUR_HOME/runtime`.
+- The v2 file has `schema_version: 2`.
+- The default RSpec selection contains `files["spec/calculator_spec.rb"].runtime_seconds > 0`.
+- The same file entry contains at least one example with `id`, `line_number`, and `runtime_seconds`.
+- A second run logs `Using runtime-based grouped execution`.
+- A focused `spec/calculator_spec.rb:<line>` run does not overwrite the default full-file `runtime_seconds`.
+
+Verify with:
 
 ```bash
 bin/rspec spec/integration/spec/runtime_tracking_spec.rb
@@ -247,7 +298,7 @@ spec/slow_spec.rb:12:38:91
 **Files:** `grouper.go`, `grouper_test.go`, `runner.go`, `runner_test.go`
 
 - [ ] Keep the old grouping behavior when `RspecSplit` is false.
-- [ ] For eligible RSpec runs, read file runtimes and example lines from runtime cache v2.
+- [ ] When `RspecSplit == true` for an RSpec job, read file runtimes and example lines from runtime cache v2.
 - [ ] Expand long-pole files into focused targets before existing longest-processing-time grouping.
 - [ ] Assign each generated target an estimated runtime of `original_file_runtime / chunk_count` for grouping balance only.
 - [ ] Do not persist runtime entries for generated `file:line` targets.
@@ -275,12 +326,29 @@ go test -mod=mod . -run 'TestGroupSpecFilesByRuntime|TestRunner|TestRspecSplit'
 bin/rspec spec/integration/spec/runtime_tracking_spec.rb spec/integration/spec/rspec_args_spec.rb
 ```
 
+## Task 8.1: Full Build, Real-Project QA, And Benchmarks
+
+**Files:** no planned source edits; record findings in the PR or a short docs note if needed.
+
+- [ ] Run the full build:
+
+```bash
+bin/rake
+```
+
+- [ ] Run agent-driven QA against Plur itself, RuboCop, and at least one other real-world RSpec project.
+- [ ] For each real-world project, warm the v2 runtime cache, run with `--rspec-split` off, then run with `--rspec-split` on using the same worker count.
+- [ ] Record whether any suites hit known pitfalls such as `before(:all)`, dynamic examples, or custom RSpec DSLs.
+- [ ] Benchmark `--rspec-split` off vs on after cache warmup, and record wall-time, slowest worker, and command count.
+- [ ] Treat correctness failures as blockers; treat benchmark regressions as reasons to keep the feature behind the experimental flag.
+
 ## Task 9: Document Runtime Cache V2 and Experimental Split
 
 **Files:** `docs/usage.md`
 
 - [ ] Update runtime tracking docs to describe the v2 cache at a high level.
 - [ ] Add a short experimental section for `--rspec-split`.
+- [ ] Document known pitfalls: `before(:all)`, dynamic RSpec suites, shared examples, custom DSLs, and Ruby metaprogramming.
 - [ ] State that the feature is opt-in, RSpec-only, runtime-data-driven, and cache-driven.
 - [ ] Mention that normal runs populate the metadata future split runs need.
 - [ ] Include the CLI and environment examples from this plan.
@@ -291,6 +359,7 @@ bin/rspec spec/integration/spec/runtime_tracking_spec.rb spec/integration/spec/r
 - [ ] Run focused Go tests for the new code.
 - [ ] Run focused formatter specs through mise and Bundler.
 - [ ] Run focused integration specs for runtime tracking and RSpec args.
+- [ ] Run the full build and real-project QA from Task 8.1.
 - [ ] Run the standard project verification:
 
 ```bash
@@ -305,9 +374,11 @@ bin/rake test
 
 - Normal runtime tracking writes v2 data by default with no `--rspec-split` flag.
 - Existing runtime-based file grouping still works from v2 file aggregates.
-- RSpec formatter output no longer depends on parsing line numbers out of location strings.
+- RSpec formatter output aligns with RSpec's JSON formatter data source and no longer depends on parsing line numbers out of location strings.
 - RSpec selected example metadata and per-example runtime details live in the main runtime cache.
 - Focused or tag-filtered runs do not corrupt default full-file runtime aggregates.
 - `plur --rspec-split` can split a long RSpec file into focused line targets when v2 runtime data has fresh example lines.
 - `plur --dry-run --rspec-split` never shells out to RSpec.
-- Docs clearly mark the split flag experimental.
+- Real-project QA has covered Plur, RuboCop, and at least one other RSpec project.
+- Benchmarks compare `--rspec-split` off vs on after cache warmup.
+- Docs clearly mark the split flag experimental and document known pitfalls.
