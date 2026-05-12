@@ -91,11 +91,31 @@ Critical shape:
   "schema_version": 2,
   "generated_at": "2026-05-12T18:30:00Z",
   "project_root": "/repo",
+  "producer": {
+    "name": "plur",
+    "version": "dev-abc1234",
+    "commit": "abc1234",
+    "built_at": "2026-05-12T18:00:00Z",
+    "built_by": "goreleaser",
+    "race_enabled": false,
+    "go_version": "go1.25.8",
+    "goos": "darwin",
+    "goarch": "arm64"
+  },
   "jobs": {
     "rspec": {
       "framework": "rspec",
       "selections": {
         "default": {
+          "last_run": {
+            "started_at": "2026-05-12T18:29:30Z",
+            "worker_count": 4,
+            "test_env_number_first_is_1": false,
+            "command": ["bundle", "exec", "rspec"],
+            "extra_args": [],
+            "rspec_split": false,
+            "dry_run": false
+          },
           "files": {
             "spec/slow_spec.rb": {
               "path": "spec/slow_spec.rb",
@@ -126,6 +146,8 @@ Critical shape:
 
 Notes:
 - `selections.default` means no Plur-owned selector args and no focused line selection.
+- `producer` should come from existing build/runtime data where possible: `buildinfo.GetVersionInfo()`, `buildinfo.Commit`, `buildinfo.Date`, `buildinfo.BuiltBy`, `buildinfo.RaceEnabled`, `runtime.Version()`, `runtime.GOOS`, and `runtime.GOARCH`.
+- `last_run` should capture the execution context that generated or last refreshed that selection: command, extra args, worker count, `first-is-1`, `--rspec-split`, `--dry-run`, and start time.
 - Tag runs should use a selector fingerprint such as `tag:<hash>`.
 - Focused file:line runs may update example observations, but they must not overwrite the default full-file aggregate.
 - Normal grouping reads file-level `runtime_seconds`.
@@ -206,6 +228,8 @@ Modify:
 - [ ] Expose a small method that returns `map[string]float64` for normal file-level grouping.
 - [ ] Add source freshness helpers based on absolute path, `mtime_unix_nano`, and `size_bytes`.
 - [ ] Add selector fingerprinting for default runs and Plur-owned tag runs.
+- [ ] Persist producer metadata from existing build info and Go runtime info.
+- [ ] Persist per-selection `last_run` metadata from the actual Plur invocation.
 - [ ] Verify with focused Go tests:
 
 ```bash
@@ -252,6 +276,8 @@ Concrete success criteria:
 - A normal `plur spec/calculator_spec.rb` run writes one v2 runtime file under `$PLUR_HOME/runtime`.
 - The v2 file has `schema_version: 2`.
 - The default RSpec selection contains `files["spec/calculator_spec.rb"].runtime_seconds > 0`.
+- The cache includes `producer.version`, `producer.goos`, `producer.goarch`, and `producer.race_enabled`.
+- The default selection includes `last_run.worker_count`, `last_run.command`, `last_run.extra_args`, and `last_run.rspec_split`.
 - The same file entry contains at least one example with `id`, `line_number`, and `runtime_seconds`.
 - A second run logs `Using runtime-based grouped execution`.
 - A focused `spec/calculator_spec.rb:<line>` run does not overwrite the default full-file `runtime_seconds`.
