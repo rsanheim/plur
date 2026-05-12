@@ -26,7 +26,7 @@ That is enough for simple file balancing, but it is the wrong foundation for spl
 - per-example line metadata for splitting
 - per-example runtime observations when available
 - source freshness metadata so stale line data is ignored
-- selector fingerprints so tag/focused runs do not corrupt full-file data
+- run-selection metadata so tag/focused runs do not corrupt full-file data
 
 ## RSpec Formatter Baseline
 
@@ -48,7 +48,7 @@ RSpec's `JsonFormatter#format_example` includes:
 
 Plur's runtime cache does not need to persist everything RSpec JSON emits. It should persist:
 
-- `id`, because it is RSpec's stable example identifier
+- `id`, because it is RSpec's canonical stable example identifier and should be the map key for examples
 - `file_path`, `absolute_file_path`, and source freshness metadata
 - `line_number`, `location`, and `location_rerun_argument`
 - `scoped_id` if available
@@ -105,36 +105,38 @@ Critical shape:
   "jobs": {
     "rspec": {
       "framework": "rspec",
-      "selections": {
-        "default": {
-          "last_run": {
-            "started_at": "2026-05-12T18:29:30Z",
-            "worker_count": 4,
-            "test_env_number_first_is_1": false,
-            "command": ["bundle", "exec", "rspec"],
-            "extra_args": [],
-            "rspec_split": false,
-            "dry_run": false
-          },
-          "files": {
-            "spec/slow_spec.rb": {
-              "path": "spec/slow_spec.rb",
-              "abs_path": "/repo/spec/slow_spec.rb",
-              "mtime_unix_nano": 1778610000000000000,
-              "size_bytes": 12345,
-              "runtime_seconds": 12.34,
-              "example_count": 3,
-              "examples": [
-                {
-                  "id": "./spec/slow_spec.rb[1:1]",
-                  "line_number": 12,
-                  "location": "./spec/slow_spec.rb:12",
-                  "location_rerun_argument": "./spec/slow_spec.rb:12",
-                  "scoped_id": "1:1",
-                  "runtime_seconds": 0.40,
-                  "status": "passed"
-                }
-              ]
+      "last_run": {
+        "started_at": "2026-05-12T18:29:30Z",
+        "worker_count": 4,
+        "test_env_number_first_is_1": false,
+        "command": ["bundle", "exec", "rspec"],
+        "extra_args": [],
+        "rspec_split": false,
+        "dry_run": false,
+        "selection": {
+          "kind": "default",
+          "aggregate_eligible": true,
+          "args": []
+        }
+      },
+      "files": {
+        "spec/slow_spec.rb": {
+          "path": "spec/slow_spec.rb",
+          "abs_path": "/repo/spec/slow_spec.rb",
+          "mtime_unix_nano": 1778610000000000000,
+          "size_bytes": 12345,
+          "runtime_seconds": 12.34,
+          "example_count": 3,
+          "example_index_complete": true,
+          "examples": {
+            "./spec/slow_spec.rb[1:1]": {
+              "id": "./spec/slow_spec.rb[1:1]",
+              "line_number": 12,
+              "location": "./spec/slow_spec.rb:12",
+              "location_rerun_argument": "./spec/slow_spec.rb:12",
+              "scoped_id": "1:1",
+              "runtime_seconds": 0.40,
+              "status": "passed"
             }
           }
         }
@@ -145,13 +147,16 @@ Critical shape:
 ```
 
 Notes:
-- `selections.default` means no Plur-owned selector args and no focused line selection.
+- `examples` is keyed by RSpec's canonical `example.id`; do not invent a separate example key.
+- `last_run.selection` is metadata about the run that produced the newest observations. It is not a cache partition key.
+- `selection.kind == "default"` means no Plur-owned tag filters, no focused file:line selection, and no unsupported custom args.
+- `selection.aggregate_eligible == true` means this run is allowed to update file-level `runtime_seconds` and mark `example_index_complete`.
+- Tag, focused, and custom-arg runs should set `aggregate_eligible: false`; they may merge individual example observations by `id`, but they must not overwrite full-file aggregates or mark an example index complete.
 - `producer` should come from existing build/runtime data where possible: `buildinfo.GetVersionInfo()`, `buildinfo.Commit`, `buildinfo.Date`, `buildinfo.BuiltBy`, `buildinfo.RaceEnabled`, `runtime.Version()`, `runtime.GOOS`, and `runtime.GOARCH`.
-- `last_run` should capture the execution context that generated or last refreshed that selection: command, extra args, worker count, `first-is-1`, `--rspec-split`, `--dry-run`, and start time.
-- Tag runs should use a selector fingerprint such as `tag:<hash>`.
+- `last_run` should capture the execution context that generated or last refreshed observations: command, extra args, worker count, `first-is-1`, `--rspec-split`, `--dry-run`, selection metadata, and start time.
 - Focused file:line runs may update example observations, but they must not overwrite the default full-file aggregate.
 - Normal grouping reads file-level `runtime_seconds`.
-- RSpec splitting reads the same file entry's `examples[].line_number`.
+- RSpec splitting reads each cached example entry's `line_number`.
 - Minitest and passthrough jobs can store file-level entries without example arrays.
 - No backward-compatibility shim is required. If an old v1 cache is present, ignore it and regenerate v2 data.
 
@@ -199,8 +204,8 @@ The runtime cache v2 and formatter metadata changes are not gated by this flag.
 ## File Responsibilities
 
 Create:
-- `runtime_cache.go`: v2 persisted data model, load/save, freshness checks, selector fingerprinting.
-- `runtime_cache_test.go`: cache shape, v1 ignore behavior, selector behavior, freshness behavior.
+- `runtime_cache.go`: v2 persisted data model, load/save, freshness checks, run selection classification.
+- `runtime_cache_test.go`: cache shape, v1 ignore behavior, selection behavior, freshness behavior.
 - `rspec_line_splitter.go`: pure split decisions and focused target generation.
 - `rspec_line_splitter_test.go`: pure behavior around thresholds, chunking, and fallbacks.
 
@@ -227,9 +232,10 @@ Modify:
 - [ ] Ignore old `map[string]float64` cache files rather than migrating them.
 - [ ] Expose a small method that returns `map[string]float64` for normal file-level grouping.
 - [ ] Add source freshness helpers based on absolute path, `mtime_unix_nano`, and `size_bytes`.
-- [ ] Add selector fingerprinting for default runs and Plur-owned tag runs.
+- [ ] Add run selection classification for `default`, `focused`, `tagged`, and `custom_args` runs.
+- [ ] Use `example.id` as the canonical key for persisted RSpec example entries.
 - [ ] Persist producer metadata from existing build info and Go runtime info.
-- [ ] Persist per-selection `last_run` metadata from the actual Plur invocation.
+- [ ] Persist `last_run.selection` metadata from the actual Plur invocation, including whether the run is allowed to update full-file aggregates.
 - [ ] Verify with focused Go tests:
 
 ```bash
@@ -267,18 +273,19 @@ mise exec -- bundle exec rspec spec/integration/spec/json_rows_formatter_spec.rb
 **Files:** `runtime_tracker.go`, `runner.go`, `spec/integration/spec/runtime_tracking_spec.rb`
 
 - [ ] Save v2 runtime cache entries after normal runs.
-- [ ] Update default full-file aggregates only for runs that selected whole files under the default selector.
+- [ ] Update full-file aggregates only for aggregate-eligible default/full-file runs.
 - [ ] Preserve prior default file aggregates when a focused run only covers a subset of a file.
-- [ ] Store selected example lines even when runtimes are incomplete, as long as the source metadata is fresh.
+- [ ] Merge selected example observations by RSpec `example.id`; incomplete runs must not prune examples missing from that run.
+- [ ] Mark `example_index_complete` only after aggregate-eligible default/full-file runs with fresh source metadata.
 - [ ] Keep existing runtime-based grouping behavior working through the v2 file-level runtime view.
 
 Concrete success criteria:
 - A normal `plur spec/calculator_spec.rb` run writes one v2 runtime file under `$PLUR_HOME/runtime`.
 - The v2 file has `schema_version: 2`.
-- The default RSpec selection contains `files["spec/calculator_spec.rb"].runtime_seconds > 0`.
+- The RSpec job entry contains `files["spec/calculator_spec.rb"].runtime_seconds > 0`.
 - The cache includes `producer.version`, `producer.goos`, `producer.goarch`, and `producer.race_enabled`.
-- The default selection includes `last_run.worker_count`, `last_run.command`, `last_run.extra_args`, and `last_run.rspec_split`.
-- The same file entry contains at least one example with `id`, `line_number`, and `runtime_seconds`.
+- The RSpec job entry includes `last_run.worker_count`, `last_run.command`, `last_run.extra_args`, `last_run.rspec_split`, and `last_run.selection.kind`.
+- The same file entry contains an `examples` object keyed by RSpec `example.id`, with at least one entry containing `line_number` and `runtime_seconds`.
 - A second run logs `Using runtime-based grouped execution`.
 - A focused `spec/calculator_spec.rb:<line>` run does not overwrite the default full-file `runtime_seconds`.
 
@@ -345,7 +352,7 @@ go test -mod=mod . -run 'TestGroupSpecFilesByRuntime|TestRunner|TestRspecSplit'
 - [ ] Assert `plur --rspec-split -n 4 --dry-run` uses cached focused targets and does not invoke RSpec.
 - [ ] Assert a real `plur --rspec-split -n 4` run executes focused `file:line` targets and passes after cache exists.
 - [ ] Assert unsupported passthrough args fall back to file-level grouping.
-- [ ] Assert Plur-owned `--tag` filters use a distinct selector fingerprint.
+- [ ] Assert Plur-owned `--tag` filters are classified as tagged and do not update default full-file aggregates.
 - [ ] Verify with:
 
 ```bash
