@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.56.0 - 2026-05-12
+* Add --exclude patterns for excluding files from plur file discovery before sending to workers [#58](https://github.com/rsanheim/plur/pull/58)
 
 ## v0.55.0 - 2026-05-06
 * Add `plur rails <args>` and `plur rake <args>` for running configured Rails/Rake jobs once per worker. Arguments are appended literally; use `--` to pass flags through (e.g. `plur rails db:migrate -n 4 -- --trace`).
