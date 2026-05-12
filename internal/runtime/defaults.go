@@ -3,8 +3,9 @@ package runtime
 import (
 	_ "embed"
 	"fmt"
+	"maps"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -35,10 +36,11 @@ func init() {
 
 // InheritedFields indicates which fields were inherited from a built-in default.
 type InheritedFields struct {
-	Cmd           bool
-	Env           bool
-	Framework     bool
-	TargetPattern bool
+	Cmd             bool
+	Env             bool
+	Framework       bool
+	TargetPattern   bool
+	ExcludePatterns bool
 }
 
 // autodetectJobName runs autodetection against the given resolved jobs and returns the
@@ -121,6 +123,12 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 			} else if resolvedJob.TargetPattern != "" {
 				inherit.TargetPattern = true
 			}
+
+			if len(user.ExcludePatterns) > 0 {
+				resolvedJob.ExcludePatterns = user.ExcludePatterns
+			} else if len(resolvedJob.ExcludePatterns) > 0 {
+				inherit.ExcludePatterns = true
+			}
 		}
 
 		resolvedJob.Name = name
@@ -180,11 +188,7 @@ func inferFrameworkFromPatterns(patterns []string) (string, error) {
 	}
 
 	if len(union) > 1 {
-		frameworks := make([]string, 0, len(union))
-		for name := range union {
-			frameworks = append(frameworks, name)
-		}
-		sort.Strings(frameworks)
+		frameworks := slices.Sorted(maps.Keys(union))
 		return "", fmt.Errorf("explicit patterns match multiple frameworks (%s). Split the command or pass --use to select one", strings.Join(frameworks, ", "))
 	}
 

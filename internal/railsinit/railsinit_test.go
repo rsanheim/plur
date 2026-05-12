@@ -3,6 +3,7 @@ package railsinit
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -279,7 +280,7 @@ production:
 		assert.False(t, skipped)
 		assert.Contains(t, result, `redis://localhost:6379/<%= ENV.fetch('TEST_ENV_NUMBER', '0').to_i %>`)
 		// Development and production should be unchanged
-		lines := splitLines(result)
+		lines := strings.Split(result, "\n")
 		devURL := findLineContaining(lines, "development", "url:")
 		assert.Contains(t, devURL, "redis://localhost:6379/1")
 	})
@@ -417,9 +418,7 @@ func TestVerifyRailsProject(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "config", "database.yml"), []byte("test:\n"), 0644))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "Gemfile"), []byte("source 'https://rubygems.org'\n"), 0644))
 
-		origDir, _ := os.Getwd()
-		require.NoError(t, os.Chdir(dir))
-		defer os.Chdir(origDir)
+		t.Chdir(dir)
 
 		err := verifyRailsProject()
 		assert.NoError(t, err)
@@ -431,9 +430,7 @@ func TestVerifyRailsProject(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "config", "database.yml"), []byte("test:\n"), 0644))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "config", "application.rb"), []byte("# rails\n"), 0644))
 
-		origDir, _ := os.Getwd()
-		require.NoError(t, os.Chdir(dir))
-		defer os.Chdir(origDir)
+		t.Chdir(dir)
 
 		err := verifyRailsProject()
 		assert.NoError(t, err)
@@ -443,9 +440,7 @@ func TestVerifyRailsProject(t *testing.T) {
 		dir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "Gemfile"), []byte("source 'https://rubygems.org'\n"), 0644))
 
-		origDir, _ := os.Getwd()
-		require.NoError(t, os.Chdir(dir))
-		defer os.Chdir(origDir)
+		t.Chdir(dir)
 
 		err := verifyRailsProject()
 		require.Error(t, err)
@@ -457,9 +452,7 @@ func TestVerifyRailsProject(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Join(dir, "config"), 0755))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "config", "database.yml"), []byte("test:\n"), 0644))
 
-		origDir, _ := os.Getwd()
-		require.NoError(t, os.Chdir(dir))
-		defer os.Chdir(origDir)
+		t.Chdir(dir)
 
 		err := verifyRailsProject()
 		require.Error(t, err)
@@ -467,27 +460,10 @@ func TestVerifyRailsProject(t *testing.T) {
 	})
 }
 
-// helpers for cable.yml tests
-
-func splitLines(s string) []string {
-	var result []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == '\n' {
-			result = append(result, s[start:i])
-			start = i + 1
-		}
-	}
-	if start < len(s) {
-		result = append(result, s[start:])
-	}
-	return result
-}
-
 func findLineContaining(lines []string, sectionHint, key string) string {
 	inSection := false
 	for _, line := range lines {
-		trimmed := trimLeftSpaces(line)
+		trimmed := strings.TrimLeft(line, " ")
 		if trimmed == sectionHint+":" {
 			inSection = true
 			continue
@@ -495,30 +471,9 @@ func findLineContaining(lines []string, sectionHint, key string) string {
 		if inSection && len(line) > 0 && line[0] != ' ' && line[0] != '\t' {
 			inSection = false
 		}
-		if inSection && containsStr(trimmed, key) {
+		if inSection && strings.Contains(trimmed, key) {
 			return line
 		}
 	}
 	return ""
-}
-
-func trimLeftSpaces(s string) string {
-	i := 0
-	for i < len(s) && s[i] == ' ' {
-		i++
-	}
-	return s[i:]
-}
-
-func containsStr(s, sub string) bool {
-	return len(s) >= len(sub) && searchStr(s, sub)
-}
-
-func searchStr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }

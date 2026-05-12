@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/fileset"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -33,31 +35,23 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	targetPatterns, _ := framework.TargetPatternsForJob(currentJob)
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
-	// Discover test files
-	var testFiles []string
-	if len(r.Patterns) > 0 {
-		testFiles, err = ExpandPatternsFromJob(r.Patterns, currentJob)
-		if err != nil {
-			return err
-		}
-		if len(testFiles) == 0 {
-			return fmt.Errorf("no test files found matching provided patterns")
-		}
-	} else {
-		testFiles, err = FindFilesFromJob(currentJob)
-		if err != nil {
-			return err
-		}
-		if len(testFiles) == 0 {
-			patterns, err := framework.TargetPatternsForJob(currentJob)
-			if err != nil || len(patterns) == 0 {
-				return fmt.Errorf("no test files found")
-			}
-			return fmt.Errorf("no test files found (looking for %s)", strings.Join(patterns, ", "))
-		}
+	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
+	testFiles, err := fileset.Discover(currentJob, r.Patterns, excludes)
+	if err != nil {
+		return err
 	}
-	msg := fmt.Sprintf("found %v test files", len(testFiles))
-	logger.Logger.Debug(msg, "testFiles", testFiles)
+	if len(testFiles) == 0 {
+		switch {
+		case len(excludes) > 0:
+			return fmt.Errorf("no test files remain after applying exclude patterns")
+		case len(r.Patterns) > 0:
+			return fmt.Errorf("no test files found matching provided patterns")
+		case len(targetPatterns) > 0:
+			return fmt.Errorf("no test files found (looking for %s)", strings.Join(targetPatterns, ", "))
+		}
+		return fmt.Errorf("no test files found")
+	}
+	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
 	if r.Auto {
 		depManager := NewDependencyManager(cfg.DryRun)

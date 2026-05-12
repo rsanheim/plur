@@ -80,6 +80,25 @@ func TestBuildRuntimeConfig_UserWatchOverridesBuiltinByName(t *testing.T) {
 	assert.Equal(t, []string{"spec/override_spec.rb"}, override.Targets)
 }
 
+func TestBuildRuntimeConfig_PreservesUserExcludePatterns(t *testing.T) {
+	cli := &CLIInput{
+		Use: "rspec",
+		Jobs: map[string]job.Job{
+			"rspec": {
+				Cmd:             []string{"bin/rspec"},
+				Framework:       "rspec",
+				ExcludePatterns: []string{"spec/system/**/*_spec.rb"},
+			},
+		},
+	}
+
+	rc, err := BuildRuntimeConfig(cli)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"spec/system/**/*_spec.rb"}, rc.Jobs["rspec"].ExcludePatterns)
+	assert.False(t, rc.Inherited["rspec"].ExcludePatterns,
+		"user-supplied excludes should not be marked as inherited")
+}
+
 func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
 	rc := &RuntimeConfig{
 		Use: "rspec",
@@ -128,12 +147,10 @@ func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {
 
 func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-	os.Chdir(tmpDir)
+	t.Chdir(tmpDir)
 
-	os.MkdirAll("spec", 0o755)
-	os.WriteFile("spec/example_spec.rb", []byte(""), 0o644)
+	require.NoError(t, os.MkdirAll("spec", 0o755))
+	require.NoError(t, os.WriteFile("spec/example_spec.rb", []byte(""), 0o644))
 
 	rc := &RuntimeConfig{
 		Jobs: map[string]job.Job{
@@ -150,12 +167,10 @@ func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 
 func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-	os.Chdir(tmpDir)
+	t.Chdir(tmpDir)
 
-	os.MkdirAll("spec", 0o755)
-	os.WriteFile("spec/example_spec.rb", []byte(""), 0o644)
+	require.NoError(t, os.MkdirAll("spec", 0o755))
+	require.NoError(t, os.WriteFile("spec/example_spec.rb", []byte(""), 0o644))
 
 	rc := &RuntimeConfig{
 		Jobs: map[string]job.Job{
