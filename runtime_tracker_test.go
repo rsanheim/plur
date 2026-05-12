@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -20,8 +21,9 @@ func TestRuntimeTracker(t *testing.T) {
 		rt.AddRuntime("spec/bar_spec.rb", 2.0)
 		rt.AddRuntime("spec/foo_spec.rb", 0.5)
 
-		assert.Equal(t, 2.0, rt.runtimes["spec/foo_spec.rb"], "foo_spec.rb runtime should be accumulated")
-		assert.Equal(t, 2.0, rt.runtimes["spec/bar_spec.rb"], "bar_spec.rb runtime should be correct")
+		pending := rt.PendingFileRuntimes()
+		assert.Equal(t, 2.0, pending["spec/foo_spec.rb"])
+		assert.Equal(t, 2.0, pending["spec/bar_spec.rb"])
 	})
 
 	t.Run("AddTestNotification extracts runtime from test notification", func(t *testing.T) {
@@ -36,53 +38,124 @@ func TestRuntimeTracker(t *testing.T) {
 
 		rt.AddTestNotification(notification)
 
-		assert.InDelta(t, 0.123, rt.runtimes["spec/test_spec.rb"], 0.001, "test_spec.rb runtime should be extracted from notification")
+		assert.InDelta(t, 0.123, rt.PendingFileRuntimes()["spec/test_spec.rb"], 0.001)
 	})
 
-	t.Run("SaveToFile creates runtime file and RuntimeFilePath returns correct path", func(t *testing.T) {
+	t.Run("SaveToFile creates v2 runtime file under returned path", func(t *testing.T) {
 		tempDir := t.TempDir()
+		specPath := writeFixtureSpec(t, tempDir, "foo_spec.rb")
+
 		rt, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
+		rt.AddRuntime(specPath, 1.5)
 
-		rt.AddRuntime("spec/foo_spec.rb", 1.5)
-		rt.AddRuntime("spec/bar_spec.rb", 2.0)
-
-		err = rt.SaveToFile()
-		assert.NoError(t, err, "Failed to save runtime data")
+		require.NoError(t, rt.SaveToFile(RunKindAggregate))
 
 		runtimeFile := rt.RuntimeFilePath()
 		_, err = os.Stat(runtimeFile)
-		assert.NoError(t, err, "runtime file should be created at path returned by RuntimeFilePath()")
+		assert.NoError(t, err)
+
+		reloaded := LoadRuntimeCache(runtimeFile)
+		assert.Equal(t, RuntimeCacheSchemaVersion, reloaded.SchemaVersion)
+		assert.NotEmpty(t, reloaded.PlurVersion)
+		entry := reloaded.File(specPath)
+		require.NotNil(t, entry)
+		assert.Equal(t, 1.5, entry.RuntimeSeconds)
+		assert.True(t, entry.ExampleIndexComplete)
 	})
 
-	t.Run("SaveToFile merges existing data with new data", func(t *testing.T) {
+	t.Run("Aggregate-eligible runs overwrite file-level runtime; partial runs preserve it", func(t *testing.T) {
 		tempDir := t.TempDir()
+		specPath := writeFixtureSpec(t, tempDir, "foo_spec.rb")
 
-		// First tracker: save some data
 		rt1, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
-		rt1.AddRuntime("spec/foo_spec.rb", 1.5)
-		rt1.AddRuntime("spec/bar_spec.rb", 2.0)
-		err = rt1.SaveToFile()
-		require.NoError(t, err)
+		rt1.AddRuntime(specPath, 5.0)
+		require.NoError(t, rt1.SaveToFile(RunKindAggregate))
 
-		// Second tracker: add new data for one file, leave other untouched
 		rt2, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
-		// Should have loaded existing data
-		assert.Equal(t, 1.5, rt2.LoadedData()["spec/foo_spec.rb"])
-		assert.Equal(t, 2.0, rt2.LoadedData()["spec/bar_spec.rb"])
+		rt2.AddRuntime(specPath, 0.1) // a focused observation
+		require.NoError(t, rt2.SaveToFile(RunKindPartial))
 
-		// Add new runtime for just one file
-		rt2.AddRuntime("spec/foo_spec.rb", 3.0)
-		err = rt2.SaveToFile()
-		require.NoError(t, err)
-
-		// Third tracker: verify merge happened correctly
 		rt3, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
-		// foo_spec.rb should have new value, bar_spec.rb should be preserved
-		assert.Equal(t, 3.0, rt3.LoadedData()["spec/foo_spec.rb"], "foo should have new value")
-		assert.Equal(t, 2.0, rt3.LoadedData()["spec/bar_spec.rb"], "bar should be preserved")
+		assert.Equal(t, 5.0, rt3.LoadedData()[specPath],
+			"partial run must not overwrite the aggregate")
 	})
+
+	t.Run("Per-example observations merge by TestID into existing aggregate", func(t *testing.T) {
+		tempDir := t.TempDir()
+		specPath := writeFixtureSpec(t, tempDir, "foo_spec.rb")
+
+		rt1, err := NewRuntimeTracker(tempDir)
+		require.NoError(t, err)
+		rt1.AddTestNotification(types.TestCaseNotification{
+			TestID:     "./" + specPath + "[1:1]",
+			FilePath:   specPath,
+			LineNumber: 5,
+			Duration:   500 * time.Millisecond,
+		})
+		rt1.AddTestNotification(types.TestCaseNotification{
+			TestID:     "./" + specPath + "[1:2]",
+			FilePath:   specPath,
+			LineNumber: 10,
+			Duration:   1500 * time.Millisecond,
+		})
+		require.NoError(t, rt1.SaveToFile(RunKindAggregate))
+
+		rt2, err := NewRuntimeTracker(tempDir)
+		require.NoError(t, err)
+		entry := rt2.Cache().File(specPath)
+		require.NotNil(t, entry)
+		assert.Len(t, entry.Examples, 2)
+		assert.Equal(t, 5, entry.Examples["./"+specPath+"[1:1]"].LineNumber)
+	})
+
+	t.Run("LoadedData reflects loaded v2 cache", func(t *testing.T) {
+		tempDir := t.TempDir()
+		specPath := writeFixtureSpec(t, tempDir, "foo_spec.rb")
+
+		rt1, err := NewRuntimeTracker(tempDir)
+		require.NoError(t, err)
+		rt1.AddRuntime(specPath, 7.0)
+		require.NoError(t, rt1.SaveToFile(RunKindAggregate))
+
+		rt2, err := NewRuntimeTracker(tempDir)
+		require.NoError(t, err)
+		assert.Equal(t, 7.0, rt2.LoadedData()[specPath])
+	})
+}
+
+func TestClassifyRunKind(t *testing.T) {
+	cases := []struct {
+		name            string
+		patterns        []string
+		tags            []string
+		passthroughArgs []string
+		aborted         bool
+		want            RunKind
+	}{
+		{"default run", nil, nil, nil, false, RunKindAggregate},
+		{"with patterns no colon", []string{"spec/foo_spec.rb"}, nil, nil, false, RunKindAggregate},
+		{"file:line pattern", []string{"spec/foo_spec.rb:42"}, nil, nil, false, RunKindPartial},
+		{"with tag", nil, []string{"focus"}, nil, false, RunKindPartial},
+		{"with passthrough", nil, nil, []string{"--fail-fast"}, false, RunKindPartial},
+		{"aborted", nil, nil, nil, true, RunKindPartial},
+		{"with example id pattern", []string{"spec/foo_spec.rb[1:1]"}, nil, nil, false, RunKindPartial},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := classifyRunKind(tc.patterns, tc.tags, tc.passthroughArgs, tc.aborted)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func writeFixtureSpec(t *testing.T, dir, name string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	require.NoError(t, os.WriteFile(path, []byte("# fixture\n"), 0644))
+	return path
 }

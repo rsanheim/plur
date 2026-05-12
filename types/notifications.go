@@ -34,14 +34,19 @@ type TestNotification interface {
 // TestCaseNotification represents events for individual test cases
 type TestCaseNotification struct {
 	Event           TestEvent
-	TestID          string
+	TestID          string // RSpec canonical example.id when available; otherwise location-derived
 	Description     string
 	FullDescription string
 	Location        string // e.g. "./spec/foo_spec.rb:42"
-	FilePath        string
+	FilePath        string // project-relative path (no "./" prefix)
 	LineNumber      int
 	Status          string // Original status from framework
 	Duration        time.Duration
+
+	// RSpec-specific identifiers (empty for other frameworks)
+	AbsoluteFilePath      string // file_path metadata.absolute_file_path
+	LocationRerunArgument string // file:line argument RSpec recommends for re-running
+	ScopedID              string // RSpec metadata[:scoped_id]
 
 	// Only populated for failures
 	Exception *TestException
