@@ -53,6 +53,49 @@ func TestOutputParser_ParseLine_GroupStartedTracksCurrentFileWithoutNotification
 	assert.Equal(t, "spec/calculator_spec.rb", parser.CurrentFile())
 }
 
+func TestOutputParser_ParseLine_ExamplePassedCarriesIdentityFields(t *testing.T) {
+	parser := &outputParser{}
+	line := `PLUR_JSON:{"type":"example_passed","example":{` +
+		`"id":"./spec/calc_spec.rb[1:1]",` +
+		`"description":"adds","full_description":"Calculator adds",` +
+		`"location":"./spec/calc_spec.rb:10","file_path":"./spec/calc_spec.rb",` +
+		`"absolute_file_path":"/repo/spec/calc_spec.rb","line_number":10,` +
+		`"location_rerun_argument":"./spec/calc_spec.rb:10","scoped_id":"1:1",` +
+		`"status":"passed","run_time":0.25}}`
+
+	notifications, consumed := parser.ParseLine(line)
+
+	require.True(t, consumed)
+	require.Len(t, notifications, 1)
+
+	tc, ok := notifications[0].(types.TestCaseNotification)
+	require.True(t, ok)
+	assert.Equal(t, "./spec/calc_spec.rb[1:1]", tc.TestID, "TestID should be RSpec example.id when present")
+	assert.Equal(t, "spec/calc_spec.rb", tc.FilePath, "leading ./ must be stripped")
+	assert.Equal(t, "/repo/spec/calc_spec.rb", tc.AbsoluteFilePath)
+	assert.Equal(t, "./spec/calc_spec.rb:10", tc.LocationRerunArgument)
+	assert.Equal(t, "1:1", tc.ScopedID)
+	assert.Equal(t, 10, tc.LineNumber)
+	assert.Equal(t, types.TestPassed, tc.Event)
+}
+
+func TestOutputParser_ParseLine_ExamplePassedFallsBackToLocationWhenNoID(t *testing.T) {
+	parser := &outputParser{}
+	line := `PLUR_JSON:{"type":"example_passed","example":{` +
+		`"description":"legacy","full_description":"legacy",` +
+		`"location":"./spec/legacy_spec.rb:7","file_path":"./spec/legacy_spec.rb",` +
+		`"line_number":7,"status":"passed","run_time":0.1}}`
+
+	notifications, consumed := parser.ParseLine(line)
+
+	require.True(t, consumed)
+	require.Len(t, notifications, 1)
+	tc, ok := notifications[0].(types.TestCaseNotification)
+	require.True(t, ok)
+	assert.Equal(t, "./spec/legacy_spec.rb:7", tc.TestID, "falls back to location when id is empty")
+	assert.Equal(t, "spec/legacy_spec.rb", tc.FilePath)
+}
+
 func TestOutputParser_FormatFailuresList(t *testing.T) {
 	parser := &outputParser{}
 	failures := []types.TestCaseNotification{
