@@ -151,6 +151,29 @@ func SourceFreshness(path string) (mtimeUnixNano, sizeBytes int64, ok bool) {
 	return info.ModTime().UnixNano(), info.Size(), true
 }
 
+// exampleLines returns sorted, deduplicated line numbers for the examples
+// recorded against a file. Empty if the file is missing from the cache or
+// has no recorded examples.
+func (c *RuntimeCache) exampleLines(filePath string) []int {
+	entry := c.Files[filePath]
+	if entry == nil || len(entry.Examples) == 0 {
+		return nil
+	}
+	out := make([]int, 0, len(entry.Examples))
+	seen := make(map[int]struct{}, len(entry.Examples))
+	for _, ex := range entry.Examples {
+		if ex == nil || ex.LineNumber <= 0 {
+			continue
+		}
+		if _, dup := seen[ex.LineNumber]; dup {
+			continue
+		}
+		seen[ex.LineNumber] = struct{}{}
+		out = append(out, ex.LineNumber)
+	}
+	return out
+}
+
 // IsExamplesFresh reports whether the cached examples for a file can be
 // trusted by the splitter: example_index_complete is true AND the recorded
 // mtime/size still match the current source file.

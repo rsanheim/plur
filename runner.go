@@ -109,15 +109,103 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 func (r *Runner) groupFiles() []FileGroup {
 	runtimeData := r.tracker.LoadedData()
 
+	files := r.files
+	if r.shouldExpandSplits() {
+		expandedFiles, expandedRuntimes := r.expandRspecSplits(runtimeData)
+		files = expandedFiles
+		runtimeData = expandedRuntimes
+	}
+
 	var groups []FileGroup
 	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(r.files, r.config.WorkerCount, runtimeData)
+		groups = GroupSpecFilesByRuntime(files, r.config.WorkerCount, runtimeData)
 		logger.Logger.Debug("Using runtime-based grouped execution", "group_count", len(groups))
 	} else {
-		groups = GroupSpecFilesBySize(r.files, r.config.WorkerCount)
+		groups = GroupSpecFilesBySize(files, r.config.WorkerCount)
 		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
 	}
 	return groups
+}
+
+// shouldExpandSplits reports whether the runner should expand long-running
+// RSpec files into focused file:line targets before grouping.
+func (r *Runner) shouldExpandSplits() bool {
+	if !r.config.RspecSplit {
+		return false
+	}
+	if r.framework.Name != "rspec" {
+		return false
+	}
+	if r.config.WorkerCount <= 1 {
+		return false
+	}
+	return true
+}
+
+// expandRspecSplits walks the file list and replaces long-pole files with
+// focused file:line targets when the v2 cache has fresh example lines for
+// them. Files that cannot be split (no fresh cache, too few examples, under
+// the per-worker budget) pass through unchanged.
+//
+// Returns the expanded file list and a runtime map keyed by the expanded
+// targets, suitable for GroupSpecFilesByRuntime.
+func (r *Runner) expandRspecSplits(fileRuntimes map[string]float64) ([]string, map[string]float64) {
+	budget := perWorkerBudget(fileRuntimes, r.files, r.config.WorkerCount)
+	cache := r.tracker.Cache()
+
+	expandedFiles := make([]string, 0, len(r.files))
+	expandedRuntimes := make(map[string]float64, len(r.files))
+
+	for _, file := range r.files {
+		runtime, hasRuntime := fileRuntimes[file]
+		if !hasRuntime {
+			logger.Logger.Debug("rspec-split skipped", "file", file, "reason", "no recorded runtime")
+			expandedFiles = append(expandedFiles, file)
+			continue
+		}
+		if !cache.IsExamplesFresh(file) {
+			logger.Logger.Debug("rspec-split skipped", "file", file, "reason", "examples not fresh")
+			expandedFiles = append(expandedFiles, file)
+			expandedRuntimes[file] = runtime
+			continue
+		}
+
+		lines := cache.exampleLines(file)
+		decision := SplitFile(file, runtime, lines, r.config.WorkerCount, budget)
+		if decision.Chunks <= 1 {
+			logger.Logger.Debug("rspec-split skipped", "file", file, "reason", "under per-worker budget or too few examples", "runtime", runtime, "budget", budget, "examples", len(lines))
+			expandedFiles = append(expandedFiles, file)
+			expandedRuntimes[file] = runtime
+			continue
+		}
+
+		logger.Logger.Debug("rspec-split applied", "file", file, "chunks", decision.Chunks, "chunk_runtime", decision.ChunkRuntimeSeconds)
+		for _, target := range decision.Targets {
+			expandedFiles = append(expandedFiles, target)
+			expandedRuntimes[target] = decision.ChunkRuntimeSeconds
+		}
+	}
+
+	return expandedFiles, expandedRuntimes
+}
+
+// perWorkerBudget returns the target per-worker runtime (seconds) used as the
+// splitter threshold. Uses the historical sum of runtimes for the files in
+// this run, divided by worker count. Files without recorded runtime fall back
+// to a 1-second default to match the grouper's miss behavior.
+func perWorkerBudget(fileRuntimes map[string]float64, files []string, workerCount int) float64 {
+	if workerCount <= 0 {
+		return 0
+	}
+	var total float64
+	for _, f := range files {
+		if rt, ok := fileRuntimes[f]; ok {
+			total += rt
+		} else {
+			total += 1.0
+		}
+	}
+	return total / float64(workerCount)
 }
 
 func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
