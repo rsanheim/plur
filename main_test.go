@@ -164,6 +164,57 @@ func TestRailsCommandNameIgnoresFlagValues(t *testing.T) {
 	assert.Equal(t, "rails", railsCommandJobName(ctx))
 }
 
+func TestRspecSplitFlagDefaultsOff(t *testing.T) {
+	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
+	setTestEnv(t, "PLUR_RSPEC_SPLIT", "", false)
+
+	var cli PlurCLI
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+
+	_, err = parser.Parse([]string{"--dry-run"})
+	require.NoError(t, err)
+	assert.False(t, cli.RspecSplit, "default must be off")
+	assert.False(t, cli.globalConfig.RspecSplit, "default must propagate to GlobalConfig")
+}
+
+func TestRspecSplitFlagEnabledByCLI(t *testing.T) {
+	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
+	setTestEnv(t, "PLUR_RSPEC_SPLIT", "", false)
+
+	var cli PlurCLI
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+
+	_, err = parser.Parse([]string{"--rspec-split", "--dry-run"})
+	require.NoError(t, err)
+	assert.True(t, cli.RspecSplit)
+	assert.True(t, cli.globalConfig.RspecSplit)
+}
+
+func TestRspecSplitFlagEnabledByEnv(t *testing.T) {
+	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
+	setTestEnv(t, "PLUR_RSPEC_SPLIT", "1", true)
+
+	var cli PlurCLI
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+
+	_, err = parser.Parse([]string{"--dry-run"})
+	require.NoError(t, err)
+	assert.True(t, cli.RspecSplit, "PLUR_RSPEC_SPLIT=1 should enable the flag")
+	assert.True(t, cli.globalConfig.RspecSplit)
+}
+
+func TestRspecSplitFlagHelpMarksExperimental(t *testing.T) {
+	field, ok := reflect.TypeOf(PlurCLI{}).FieldByName("RspecSplit")
+	require.True(t, ok)
+	help := field.Tag.Get("help")
+	assert.Contains(t, help, "EXPERIMENTAL", "help text should mark the flag experimental")
+	assert.Equal(t, "rspec-split", field.Tag.Get("name"))
+	assert.Equal(t, "PLUR_RSPEC_SPLIT", field.Tag.Get("env"))
+}
+
 func TestCommandSupportsPassthrough(t *testing.T) {
 	assert.True(t, commandSupportsPassthrough("spec <patterns>"))
 	assert.True(t, commandSupportsPassthrough("rails <args>"))

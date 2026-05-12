@@ -92,8 +92,9 @@ type PlurCLI struct {
 	JSON      string      `help:"Save detailed test results as JSON to the specified file" default:""`
 	Use       string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Verbose   bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
-	Version   bool        `help:"Show version information"`
-	Workers   WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
+	Version    bool        `help:"Show version information"`
+	Workers    WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
+	RspecSplit bool        `help:"EXPERIMENTAL: split long-running RSpec files into focused file:line runs" name:"rspec-split" env:"PLUR_RSPEC_SPLIT" default:"false"`
 
 	// Job and watch configuration
 	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
@@ -155,6 +156,7 @@ func (cli *PlurCLI) AfterApply() error {
 		RuntimeDir:    configPaths.RuntimeDir,
 		JSON:          cli.JSON,
 		FirstIs1:      cli.FirstIs1,
+		RspecSplit:    cli.RspecSplit,
 		LoadedConfigs: loadedConfigs,
 	}
 
