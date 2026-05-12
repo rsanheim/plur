@@ -48,7 +48,7 @@ module Plur
         group: {
           description: notification.group.description,
           file_path: notification.group.file_path,
-          line_number: notification.group.location.split(":").last.to_i
+          line_number: group_line_number(notification.group)
         }
       )
     end
@@ -155,17 +155,44 @@ module Plur
     private
 
     def example_to_json(example)
+      metadata = example_metadata(example)
       {
+        id: safe_call(example, :id),
         description: example.description,
         full_description: example.full_description,
         location: example.location,
         file_path: example.file_path,
-        line_number: example.location.split(":").last.to_i,
+        absolute_file_path: metadata[:absolute_file_path],
+        line_number: example_line_number(example, metadata),
+        location_rerun_argument: safe_call(example, :location_rerun_argument),
+        scoped_id: metadata[:scoped_id],
         status: example.execution_result.status,
         run_time: example.execution_result.run_time,
         pending_message: example.execution_result.pending_message,
         exception: exception_to_json(example.execution_result.exception)
       }
+    end
+
+    # Prefer the RSpec-supplied metadata line number; fall back to parsing
+    # location for older RSpec versions or doubles that omit metadata.
+    def example_line_number(example, metadata)
+      metadata[:line_number] || example.location.to_s.split(":").last.to_i
+    end
+
+    def group_line_number(group)
+      metadata = example_metadata(group)
+      metadata[:line_number] || group.location.to_s.split(":").last.to_i
+    end
+
+    def example_metadata(example_or_group)
+      example_or_group.respond_to?(:metadata) ? (example_or_group.metadata || {}) : {}
+    end
+
+    def safe_call(obj, method)
+      return nil unless obj.respond_to?(method)
+      obj.public_send(method)
+    rescue StandardError
+      nil
     end
 
     def exception_to_json(exception)
