@@ -122,6 +122,26 @@ Notes:
 - Non-RSpec runs can store file-level entries without example arrays.
 - No backward-compatibility shim is required. If an old v1 cache is present, ignore it and regenerate v2 data.
 
+### `example_index_complete` Lifecycle (KISS)
+
+One bit, one meaning: "the `examples` map was populated by a recent aggregate-eligible full run against a source file whose mtime/size match what we stored."
+
+Write rules:
+
+- Aggregate-eligible full run (fresh source): clear and rewrite `examples`, set `example_index_complete = true`, record current `mtime_unix_nano` and `size_bytes`.
+- Partial run (focused/tagged/fail-fast/aborted/custom-arg) where stored `mtime_unix_nano` and `size_bytes` still match the source file: merge observed examples by `example.id`; do not touch `example_index_complete`.
+- Partial run where stored freshness no longer matches the source: leave `examples` and `example_index_complete` alone. Only update individual observed example entries' runtime fields; do not flip the flag.
+- The flag is never flipped from `false` to `true` by a partial run.
+
+Read rules (splitter):
+
+- Use the `examples` map only when `example_index_complete == true` AND current source `mtime_unix_nano` and `size_bytes` equal the stored values.
+- Any mismatch means fall back to file-level grouping.
+
+### Future Work (Out Of Scope)
+
+- Cache-size bounds. With very large suites the persisted JSON may grow large. Defer per-file example caps, threshold-based persistence, or eviction until real-world QA shows a problem.
+
 ## Known Pitfalls
 
 - `before(:all)` / `before(:context)` state can break when examples from one file are split across workers, because context setup may run once per split process rather than once for the original full file process.
@@ -281,7 +301,7 @@ go test -mod=mod . -run 'TestRspecSplit'
 
 - [ ] Define a pure function that receives file path, historical runtime, worker count, target group runtime, and exact example lines.
 - [ ] Return the original file path unchanged when the file is not a long pole or has too few exact lines.
-- [ ] Split only files whose historical runtime is large enough to distort worker balance. A reasonable first rule is: split files whose runtime is greater than the target per-worker runtime budget.
+- [ ] Use the simplest possible threshold for the experimental rollout: split files whose historical `runtime_seconds` is greater than the target per-worker runtime budget. No multiplier, no floor, no top-N selection. Tune later based on real-world QA.
 - [ ] Produce focused targets like:
 
 ```text
@@ -340,11 +360,24 @@ bin/rspec spec/integration/spec/runtime_tracking_spec.rb spec/integration/spec/r
 bin/rake
 ```
 
-- [ ] Run agent-driven QA against Plur itself, RuboCop, and at least one other real-world RSpec project.
-- [ ] For each real-world project, warm the v2 runtime cache, run with `--rspec-split` off, then run with `--rspec-split` on using the same worker count.
+- [ ] Run agent-driven QA against the following real-world RSpec projects:
+  - Plur itself
+  - RuboCop
+  - RSpec (rspec-core or the rspec meta-repo)
+  - A large subset of Mastodon
+  - A subset of Discourse
+- [ ] For each project, warm the v2 runtime cache, then benchmark `--rspec-split` off vs on with the same worker count using `hyperfine` (already installed). Use enough runs to get stable numbers — at minimum:
+
+```bash
+hyperfine --warmup 1 --runs 5 \
+  --export-json tmp/bench-<project>.json \
+  -n 'split-off' 'plur -n 8' \
+  -n 'split-on'  'plur -n 8 --rspec-split'
+```
+
+- [ ] Record wall-time mean/stddev, slowest worker, and command count from each run set. Per-worker timing is not in `hyperfine` output; capture it from plur's own summary or logs alongside the hyperfine numbers.
 - [ ] Record whether any suites hit known pitfalls such as `before(:all)`, dynamic examples, or custom RSpec DSLs.
-- [ ] Benchmark `--rspec-split` off vs on after cache warmup, and record wall-time, slowest worker, and command count.
-- [ ] Treat correctness failures as blockers; treat benchmark regressions as reasons to keep the feature behind the experimental flag.
+- [ ] Treat correctness failures (different test counts, new failures attributable to splitting) as blockers; treat benchmark regressions as reasons to keep the feature behind the experimental flag.
 
 ## Task 9: Document Runtime Cache V2 and Experimental Split
 
