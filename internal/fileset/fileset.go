@@ -73,6 +73,10 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 			out = append(out, in)
 			continue
 		}
+		if isFileLineTarget(in) {
+			out = append(out, in)
+			continue
+		}
 		info, err := os.Stat(in)
 		if err != nil {
 			return nil, fmt.Errorf("file not found: %s", in)
@@ -93,4 +97,18 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// isFileLineTarget reports whether s looks like an RSpec focused target:
+// the substring before the first ':' is an existing regular file. We pass the
+// full string through to the framework and let RSpec interpret the suffix
+// (line numbers, scoped IDs, etc.) — plur does not parse what comes after the
+// colon.
+func isFileLineTarget(s string) bool {
+	idx := strings.IndexByte(s, ':')
+	if idx <= 0 {
+		return false
+	}
+	info, err := os.Stat(s[:idx])
+	return err == nil && !info.IsDir()
 }
