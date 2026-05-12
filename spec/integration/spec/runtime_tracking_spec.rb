@@ -209,5 +209,102 @@ RSpec.describe "Plur runtime tracking" do
         end
       end
     end
+
+    it "does not update default aggregates when --tag is supplied" do
+      Dir.chdir(default_ruby_dir) do
+        run_plur("-n", "2")
+        initial, _ = runtime_cache_data
+        original = initial["files"]["spec/calculator_spec.rb"]
+
+        run_plur_allowing_errors("-n", "2", "--tag=focus")
+
+        updated, _ = runtime_cache_data
+        entry = updated["files"]["spec/calculator_spec.rb"]
+        expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"]),
+          "tagged runs are classified as partial; aggregates must not change"
+      end
+    end
+
+    it "does not update default aggregates when fail-fast aborts the run" do
+      Dir.chdir(default_ruby_dir) do
+        run_plur("-n", "2")
+        initial, _ = runtime_cache_data
+        original = initial["files"]["spec/calculator_spec.rb"]
+
+        run_plur_allowing_errors("-n", "1", "--", "--fail-fast")
+
+        updated, _ = runtime_cache_data
+        entry = updated["files"]["spec/calculator_spec.rb"]
+        expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"]),
+          "fail-fast/aborted runs must not overwrite the aggregate"
+      end
+    end
+
+    it "falls back to file-level grouping when arbitrary passthrough args are present" do
+      Dir.chdir(default_ruby_dir) do
+        run_plur("-n", "2")
+        initial, _ = runtime_cache_data
+        original = initial["files"]["spec/calculator_spec.rb"]
+
+        run_plur("-n", "2", "--", "--seed", "1234")
+
+        updated, _ = runtime_cache_data
+        entry = updated["files"]["spec/calculator_spec.rb"]
+        expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"]),
+          "any passthrough arg makes the run partial"
+      end
+    end
+  end
+
+  context "--rspec-split (experimental)" do
+    around_with_tmp_plur_home
+
+    it "passes through file-level targets in dry-run when cache lacks examples" do
+      Dir.chdir(default_ruby_dir) do
+        # Without a cache, splitting is impossible.
+        result = run_plur("--rspec-split", "--dry-run", "-n", "4")
+        worker_lines = result.err.lines.select { |l| l.include?("[dry-run] Worker") }
+        expect(worker_lines).not_to be_empty
+        # No worker should have a file:line target with the splitter format.
+        worker_lines.each do |line|
+          line.scan(/spec\/[\w\/]+_spec\.rb(?::\d+)+/) do |target|
+            raise "unexpected split target in cold-cache run: #{target}"
+          end
+        end
+      end
+    end
+
+    it "splits long-running files into focused file:line targets after the cache is warmed" do
+      Dir.chdir(default_ruby_dir) do
+        # Warm the v2 cache with a real run.
+        run_plur("-n", "2")
+        cache, runtime_file = runtime_cache_data
+
+        # Force calculator_spec to look slow so the splitter triggers.
+        entry = cache["files"]["spec/calculator_spec.rb"]
+        entry["runtime_seconds"] = 60.0
+        File.write(runtime_file, JSON.pretty_generate(cache))
+
+        result = run_plur("--rspec-split", "--dry-run", "-n", "4", "--debug")
+        worker_lines = result.err.lines.select { |l| l.include?("[dry-run] Worker") }
+        joined = worker_lines.join
+        expect(joined).to match(%r{spec/calculator_spec\.rb(?::\d+)+}),
+          "calculator_spec should appear as a file:line target"
+        expect(result.err).to include("rspec-split applied")
+      end
+    end
+
+    it "actually runs split file:line targets and passes" do
+      Dir.chdir(default_ruby_dir) do
+        # Warm cache, mark calculator as slow.
+        run_plur("-n", "2")
+        cache, runtime_file = runtime_cache_data
+        cache["files"]["spec/calculator_spec.rb"]["runtime_seconds"] = 60.0
+        File.write(runtime_file, JSON.pretty_generate(cache))
+
+        result = run_plur("--rspec-split", "-n", "4", "spec/calculator_spec.rb")
+        expect(result.exit_status).to eq(0)
+      end
+    end
   end
 end
