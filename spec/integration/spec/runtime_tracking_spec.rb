@@ -142,8 +142,8 @@ RSpec.describe "Plur runtime tracking" do
 
         expect(worker0_files + worker1_files).to include(match(/calculator_spec\.rb/))
 
-        slow_worker = worker0_files.any? { |f| f.include?("calculator_spec.rb") } ? worker0_files : worker1_files
-        fast_worker = (slow_worker.equal?(worker0_files) ? worker1_files : worker0_files)
+        slow_worker = (worker0_files.any? { |f| f.include?("calculator_spec.rb") }) ? worker0_files : worker1_files
+        fast_worker = slow_worker.equal?(worker0_files) ? worker1_files : worker0_files
         expect(slow_worker.size).to be <= fast_worker.size
       end
     end

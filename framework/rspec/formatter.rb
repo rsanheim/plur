@@ -191,7 +191,7 @@ module Plur
     def safe_call(obj, method)
       return nil unless obj.respond_to?(method)
       obj.public_send(method)
-    rescue StandardError
+    rescue
       nil
     end
 
