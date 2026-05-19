@@ -180,6 +180,35 @@ func TestDiscover_PassthroughJobWithExplicitFile(t *testing.T) {
 	assert.Equal(t, []string{"spec/calculator_spec.rb"}, files)
 }
 
+func TestDiscover_FileLinePassthrough(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t, "spec/foo_spec.rb")
+
+	j := job.Job{Name: "rspec", Framework: "rspec"}
+	files, err := Discover(j, []string{"spec/foo_spec.rb:12"}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"spec/foo_spec.rb:12"}, files)
+}
+
+func TestDiscover_MultiFileLinePassthrough(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t, "spec/slow_spec.rb")
+
+	j := job.Job{Name: "rspec", Framework: "rspec"}
+	files, err := Discover(j, []string{"spec/slow_spec.rb:12:38:91"}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"spec/slow_spec.rb:12:38:91"}, files)
+}
+
+func TestDiscover_FileLineNonExistentFileErrors(t *testing.T) {
+	discoverChdir(t)
+
+	j := job.Job{Name: "rspec", Framework: "rspec"}
+	_, err := Discover(j, []string{"spec/missing_spec.rb:12"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "file not found")
+}
+
 func TestDiscover_DedupsAcrossInputs(t *testing.T) {
 	discoverChdir(t)
 	writeStubFiles(t, "spec/a_spec.rb")

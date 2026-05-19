@@ -33,12 +33,19 @@ RSpec.describe Plur::JsonRowsFormatter do
   end
 
   describe "#example_passed" do
-    it "outputs a passed example message" do
+    it "outputs a passed example message with full identity metadata" do
       example = double("example",
+        id: "./spec/foo_spec.rb[1:1]",
         description: "does something",
         full_description: "MyClass does something",
         location: "./spec/foo_spec.rb:10",
         file_path: "./spec/foo_spec.rb",
+        location_rerun_argument: "./spec/foo_spec.rb:10",
+        metadata: {
+          line_number: 10,
+          absolute_file_path: "/abs/spec/foo_spec.rb",
+          scoped_id: "1:1"
+        },
         execution_result: double("result",
           status: :passed,
           run_time: 0.01,
@@ -50,20 +57,41 @@ RSpec.describe Plur::JsonRowsFormatter do
 
       messages = json_messages
       expect(messages.size).to eq(1)
-      expect(messages[0]).to include({
-        "type" => "example_passed",
-        "example" => {
-          "description" => "does something",
-          "full_description" => "MyClass does something",
-          "location" => "./spec/foo_spec.rb:10",
-          "file_path" => "./spec/foo_spec.rb",
-          "line_number" => 10,
-          "status" => "passed",
-          "run_time" => 0.01,
-          "pending_message" => nil,
-          "exception" => nil
-        }
-      })
+      example_json = messages[0]["example"]
+      expect(messages[0]["type"]).to eq("example_passed")
+      expect(example_json).to include(
+        "id" => "./spec/foo_spec.rb[1:1]",
+        "description" => "does something",
+        "full_description" => "MyClass does something",
+        "location" => "./spec/foo_spec.rb:10",
+        "file_path" => "./spec/foo_spec.rb",
+        "absolute_file_path" => "/abs/spec/foo_spec.rb",
+        "line_number" => 10,
+        "location_rerun_argument" => "./spec/foo_spec.rb:10",
+        "scoped_id" => "1:1",
+        "status" => "passed",
+        "run_time" => 0.01
+      )
+    end
+
+    it "falls back to parsing location when metadata is absent" do
+      example = double("example",
+        description: "old style",
+        full_description: "old style",
+        location: "./spec/legacy_spec.rb:42",
+        file_path: "./spec/legacy_spec.rb",
+        execution_result: double("result",
+          status: :passed,
+          run_time: 0.5,
+          pending_message: nil,
+          exception: nil))
+      notification = double("notification", example: example)
+
+      formatter.example_passed(notification)
+
+      messages = json_messages
+      expect(messages.size).to eq(1)
+      expect(messages[0]["example"]["line_number"]).to eq(42)
     end
   end
 
@@ -76,10 +104,13 @@ RSpec.describe Plur::JsonRowsFormatter do
       ])
 
       example = double("example",
+        id: "./spec/foo_spec.rb[1:2]",
         description: "fails",
         full_description: "MyClass fails",
         location: "./spec/foo_spec.rb:20",
         file_path: "./spec/foo_spec.rb",
+        location_rerun_argument: "./spec/foo_spec.rb:20",
+        metadata: {line_number: 20, absolute_file_path: "/abs/spec/foo_spec.rb", scoped_id: "1:2"},
         execution_result: double("result",
           status: :failed,
           run_time: 0.02,
@@ -112,11 +143,12 @@ RSpec.describe Plur::JsonRowsFormatter do
   end
 
   describe "#example_group_started" do
-    it "outputs a group started message" do
+    it "uses metadata[:line_number] when available" do
       group = double("group",
         description: "MyClass",
         file_path: "./spec/my_class_spec.rb",
-        location: "./spec/my_class_spec.rb:5")
+        location: "./spec/my_class_spec.rb:5",
+        metadata: {line_number: 7})
       notification = double("notification", group: group)
 
       formatter.example_group_started(notification)
@@ -128,9 +160,22 @@ RSpec.describe Plur::JsonRowsFormatter do
         "group" => {
           "description" => "MyClass",
           "file_path" => "./spec/my_class_spec.rb",
-          "line_number" => 5
+          "line_number" => 7
         }
       })
+    end
+
+    it "falls back to location-derived line when metadata is absent" do
+      group = double("group",
+        description: "MyClass",
+        file_path: "./spec/my_class_spec.rb",
+        location: "./spec/my_class_spec.rb:5")
+      notification = double("notification", group: group)
+
+      formatter.example_group_started(notification)
+
+      messages = json_messages
+      expect(messages[0]["group"]["line_number"]).to eq(5)
     end
   end
 

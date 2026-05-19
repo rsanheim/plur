@@ -196,6 +196,92 @@ plur doctor
 - Few large tests: Fewer workers
 - I/O heavy tests: More workers than CPU cores
 
+## Runtime Tracking
+
+Plur records per-file runtime data to `$PLUR_HOME/runtime/<project-hash>.json`
+so it can balance subsequent worker assignments using historical timing.
+
+The on-disk format is a versioned v2 cache:
+
+```json
+{
+  "schema_version": 2,
+  "plur_version": "0.56.0-dev-abc1234",
+  "files": {
+    "spec/slow_spec.rb": {
+      "mtime_unix_nano": 1778610000000000000,
+      "size_bytes": 12345,
+      "runtime_seconds": 12.34,
+      "example_count": 27,
+      "example_index_complete": true,
+      "examples": {
+        "./spec/slow_spec.rb[1:1]": {
+          "line_number": 12,
+          "location_rerun_argument": "./spec/slow_spec.rb:12",
+          "scoped_id": "1:1",
+          "runtime_seconds": 0.40,
+          "status": "passed"
+        }
+      }
+    }
+  }
+}
+```
+
+Behavior:
+
+- The cache is rewritten only by default/full-file RSpec runs. Focused
+  (`spec/foo_spec.rb:42`), tag-filtered (`--tag=…`), `--fail-fast`, aborted,
+  and `--`-passthrough runs are classified as *partial* and merge
+  per-example observations without overwriting the file aggregate or
+  flipping `example_index_complete`.
+- `--dry-run` never writes the cache.
+- Invalid or corrupt v2 files are ignored and replaced on the next
+  successful default run.
+- Old v1 caches (`map[string]float64`) are ignored and regenerated.
+
+### `--rspec-split` (EXPERIMENTAL)
+
+`--rspec-split` is an opt-in, RSpec-only flag that expands long-running
+spec files into focused `file:line:line:line` targets, then lets the
+existing runtime grouper balance them across workers.
+
+```bash
+plur --rspec-split -n 8
+PLUR_RSPEC_SPLIT=1 plur -n 8
+```
+
+How it works:
+
+- Splitting requires `--rspec-split == true`, an RSpec job, and worker
+  count greater than 1.
+- For each file, plur consults the v2 cache. If `example_index_complete`
+  is true AND the recorded `mtime_unix_nano`/`size_bytes` still match the
+  source file, plur considers the example index trustworthy.
+- A file is split only if its historical `runtime_seconds` exceeds the
+  per-worker budget (`total_runtime / worker_count`). This is the simple
+  experimental rule — no multipliers, no floors.
+- When split, each chunk gets `original_runtime / chunk_count` as its
+  estimated runtime for grouping balance only. The generated `file:line`
+  targets are not persisted in the cache.
+
+Known pitfalls:
+
+- `before(:all)` / `before(:context)` state may run once per chunk
+  process instead of once per file, which can break suites that rely on
+  shared context fixtures.
+- Suites that define examples dynamically (from environment, time,
+  random data, database state, or metaprogramming) may produce different
+  example sets between cache generation and split execution.
+- Shared examples and custom DSLs can produce surprising source
+  locations. Plur stores `id` and `location_rerun_argument` so
+  divergence can be debugged.
+- Splitting is cache-driven: a cold run (no v2 entries yet) falls back
+  to file-level grouping. The next default run populates the cache.
+
+Splitting is intentionally experimental. The semantics may change as
+real-world data is collected; do not rely on stable split behavior yet.
+
 ## Next Steps
 
 - See [Configuration](configuration.md) for customization

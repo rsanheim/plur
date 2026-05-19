@@ -1,6 +1,12 @@
 require "spec_helper"
 
 RSpec.describe "Plur runtime tracking" do
+  def runtime_cache_data
+    runtime_files = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
+    expect(runtime_files.size).to eq(1)
+    [JSON.parse(File.read(runtime_files.first)), runtime_files.first]
+  end
+
   context "explicit runtime dir" do
     around_with_tmp_plur_home
 
@@ -18,56 +24,87 @@ RSpec.describe "Plur runtime tracking" do
     end
   end
 
-  context "runtime data collection" do
+  context "runtime data collection (v2 schema)" do
     around_with_tmp_plur_home
 
-    it "saves runtime data after running specs" do
+    it "writes a v2 cache with schema_version, plur_version, file aggregates, and example index" do
       Dir.chdir(default_ruby_dir) do
         run_plur("-n", "2")
 
-        # Find the runtime file directly instead of parsing logs
-        runtime_files = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
-        expect(runtime_files.size).to eq(1)
-        runtime_file = runtime_files.first
+        data, runtime_file = runtime_cache_data
+        expect(data["schema_version"]).to eq(2)
+        expect(data["plur_version"]).to be_a(String).and(satisfy { |v| !v.empty? })
 
-        runtime_data = JSON.parse(File.read(runtime_file))
-        expect(runtime_data).to be_a(Hash)
-        # Paths are saved without "./" prefix (matches glob discovery)
-        expect(runtime_data.keys).to include("spec/calculator_spec.rb")
-        expect(runtime_data.values.all? { |v| v.is_a?(Numeric) && v > 0 }).to be true
+        files = data["files"]
+        expect(files).to be_a(Hash)
+        expect(files).to include("spec/calculator_spec.rb")
 
-        # Verify it's in the temp directory with a hash filename
+        entry = files["spec/calculator_spec.rb"]
+        expect(entry["runtime_seconds"]).to be > 0
+        expect(entry["mtime_unix_nano"]).to be > 0
+        expect(entry["size_bytes"]).to be > 0
+        expect(entry["example_index_complete"]).to be true
+
+        examples = entry["examples"]
+        expect(examples).to be_a(Hash)
+        expect(examples).not_to be_empty
+        sample_id, sample = examples.first
+        expect(sample_id).to include("calculator_spec.rb")
+        expect(sample["line_number"]).to be > 0
+        expect(sample["runtime_seconds"]).to be >= 0
+
         expect(runtime_file).to match(%r{#{tmp_plur_home}/runtime/[a-f0-9]{8}\.json$})
       end
     end
 
-    it "uses runtime data for grouping when available" do
-      chdir(default_ruby_dir) do
-        # First run creates runtime data (use --debug to see log messages)
+    it "uses runtime data for grouping after the first run" do
+      Dir.chdir(default_ruby_dir) do
         result = run_plur("-n", "2", "--debug")
         expect(result.err).to include("Using size-based grouping")
 
-        # Second run should use runtime data
         result = run_plur("-n", "2", "--debug", "--dry-run")
         expect(result.err).to include("Using runtime-based grouped execution")
       end
     end
+
+    it "ignores corrupt v2 cache files and replaces them with valid v2 JSON" do
+      Dir.chdir(default_ruby_dir) do
+        runtime_dir = File.join(tmp_plur_home, "runtime")
+        FileUtils.mkdir_p(runtime_dir)
+        require "digest"
+        project_hash = Digest::SHA256.hexdigest(File.expand_path("."))[0..7]
+        cache_path = File.join(runtime_dir, "#{project_hash}.json")
+        File.write(cache_path, "{{{ not json")
+
+        run_plur("-n", "2")
+
+        data = JSON.parse(File.read(cache_path))
+        expect(data["schema_version"]).to eq(2)
+        expect(data["files"]).to include("spec/calculator_spec.rb")
+      end
+    end
+
+    it "does not create or modify the runtime cache during --dry-run" do
+      Dir.chdir(default_ruby_dir) do
+        runtime_dir = File.join(tmp_plur_home, "runtime")
+        run_plur("--dry-run", "-n", "2")
+
+        matches = Dir.glob(File.join(runtime_dir, "*.json"))
+        expect(matches).to be_empty
+      end
+    end
   end
 
-  context "runtime-based grouping" do
+  context "runtime-based grouping from v2 aggregates" do
     around_with_tmp_plur_home
 
-    it "distributes files based on their runtime" do
+    it "distributes files based on stored runtime_seconds" do
       Dir.chdir(default_ruby_dir) do
-        # Calculate project hash
         require "digest"
         project_hash = Digest::SHA256.hexdigest(File.expand_path("."))[0..7]
 
-        # Create fake runtime data with uneven distribution
-        # Paths should NOT have "./" prefix (matches glob discovery format)
-        # Must match actual file paths including subdirectories
-        runtime_data = {
-          "spec/calculator_spec.rb" => 5.0,  # Very slow file
+        files = {
+          "spec/calculator_spec.rb" => 5.0,
           "spec/counter_spec.rb" => 0.1,
           "spec/validator_spec.rb" => 0.1,
           "spec/string_utils_spec.rb" => 0.1,
@@ -81,70 +118,192 @@ RSpec.describe "Plur runtime tracking" do
           "spec/services/email_service_spec.rb" => 0.1
         }
 
-        # Write fake runtime data to PLUR_HOME/runtime
+        cache = {
+          "schema_version" => 2,
+          "plur_version" => "fixture",
+          "files" => files.transform_values { |rt|
+            {"mtime_unix_nano" => 0, "size_bytes" => 0, "runtime_seconds" => rt,
+             "example_index_complete" => false}
+          }
+        }
+
         runtime_dir = File.join(tmp_plur_home, "runtime")
         FileUtils.mkdir_p(runtime_dir)
-        File.write(File.join(runtime_dir, "#{project_hash}.json"), JSON.pretty_generate(runtime_data))
+        File.write(File.join(runtime_dir, "#{project_hash}.json"), JSON.pretty_generate(cache))
 
-        # Run dry-run with debug to see grouping strategy
         result = run_plur("--dry-run", "--debug", "-n", "2")
-
-        # The slow file should be in its own group or with minimal other files
         expect(result.err).to include("Using runtime-based grouped execution")
 
-        # Extract worker assignments
         worker_lines = result.err.lines.select { |l| l.include?("[dry-run] Worker") }
         expect(worker_lines.size).to eq(2)
 
-        # Both workers should have files, but runtime distribution should be balanced
         worker0_files = worker_lines[0].scan(/spec\/[\w\/]+_spec\.rb/)
         worker1_files = worker_lines[1].scan(/spec\/[\w\/]+_spec\.rb/)
 
-        # At least one worker should have the slow file
         expect(worker0_files + worker1_files).to include(match(/calculator_spec\.rb/))
 
-        # The algorithm should have distributed files to balance runtime
-        # The worker with calculator_spec.rb (5.0s) should have fewer other files
-        if worker0_files.any? { |f| f.include?("calculator_spec.rb") }
-          # Worker 0 has the slow file, so it should have fewer total files
-          expect(worker0_files.size).to be <= worker1_files.size
-        else
-          # Worker 1 has the slow file, so it should have fewer total files
-          expect(worker1_files.size).to be <= worker0_files.size
-        end
+        slow_worker = (worker0_files.any? { |f| f.include?("calculator_spec.rb") }) ? worker0_files : worker1_files
+        fast_worker = slow_worker.equal?(worker0_files) ? worker1_files : worker0_files
+        expect(slow_worker.size).to be <= fast_worker.size
       end
     end
   end
 
-  context "merge behavior" do
+  context "aggregate-eligibility rules" do
     around_with_tmp_plur_home
+
+    it "preserves the full-file aggregate when a focused file:line run executes a subset" do
+      Dir.chdir(default_ruby_dir) do
+        run_plur("-n", "2")
+        initial, _ = runtime_cache_data
+        original = initial["files"]["spec/calculator_spec.rb"]
+        expect(original["runtime_seconds"]).to be > 0
+
+        original_example_count = original["examples"].size
+        focused_line = original["examples"].values.first["line_number"]
+
+        run_plur("-n", "1", "spec/calculator_spec.rb:#{focused_line}")
+
+        updated, _ = runtime_cache_data
+        entry = updated["files"]["spec/calculator_spec.rb"]
+        expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"])
+        expect(entry["example_index_complete"]).to be true
+        expect(entry["examples"].size).to eq(original_example_count)
+      end
+    end
+
+    it "merges per-example observations by RSpec example.id without dropping others" do
+      Dir.chdir(default_ruby_dir) do
+        run_plur("-n", "2")
+        initial, _ = runtime_cache_data
+        examples = initial["files"]["spec/calculator_spec.rb"]["examples"]
+        original_example_count = examples.size
+        first_id, first_entry = examples.first
+
+        run_plur("-n", "1", "spec/calculator_spec.rb:#{first_entry["line_number"]}")
+
+        updated, _ = runtime_cache_data
+        merged_examples = updated["files"]["spec/calculator_spec.rb"]["examples"]
+        expect(merged_examples.size).to eq(original_example_count)
+        expect(merged_examples).to include(first_id)
+      end
+    end
 
     it "preserves runtime data for unrun files when running a subset" do
       Dir.chdir(default_ruby_dir) do
-        # Run all specs to generate initial runtime data
         run_plur("-n", "2")
+        initial, runtime_file = runtime_cache_data
+        initial_files = initial["files"]
 
-        # Read the initial runtime data
-        runtime_files = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
-        expect(runtime_files.size).to eq(1)
-        runtime_file = runtime_files.first
-        initial_data = JSON.parse(File.read(runtime_file))
-
-        # Run only a subset of specs
         run_plur("-n", "1", "spec/calculator_spec.rb")
 
-        # Read the updated runtime data
-        updated_data = JSON.parse(File.read(runtime_file))
+        updated = JSON.parse(File.read(runtime_file))
+        updated_files = updated["files"]
+        expect(updated_files.keys).to include("spec/calculator_spec.rb")
+        expect(updated_files.keys.size).to eq(initial_files.keys.size)
 
-        # Should still have all files, not just calculator
-        expect(updated_data.keys).to include("spec/calculator_spec.rb")
-        expect(updated_data.keys.size).to eq(initial_data.keys.size)
-
-        # Other files should have their original timing preserved
-        initial_data.each do |file, time|
-          next if file == "spec/calculator_spec.rb" # This one may have changed
-          expect(updated_data[file]).to eq(time), "#{file} runtime should be preserved"
+        initial_files.each do |file, entry|
+          next if file == "spec/calculator_spec.rb"
+          expect(updated_files[file]["runtime_seconds"]).to eq(entry["runtime_seconds"]),
+            "#{file} runtime should be preserved"
         end
+      end
+    end
+
+    it "does not update default aggregates when --tag is supplied" do
+      Dir.chdir(default_ruby_dir) do
+        run_plur("-n", "2")
+        initial, _ = runtime_cache_data
+        original = initial["files"]["spec/calculator_spec.rb"]
+
+        run_plur_allowing_errors("-n", "2", "--tag=focus")
+
+        updated, _ = runtime_cache_data
+        entry = updated["files"]["spec/calculator_spec.rb"]
+        expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"]),
+          "tagged runs are classified as partial; aggregates must not change"
+      end
+    end
+
+    it "does not update default aggregates when fail-fast aborts the run" do
+      Dir.chdir(default_ruby_dir) do
+        run_plur("-n", "2")
+        initial, _ = runtime_cache_data
+        original = initial["files"]["spec/calculator_spec.rb"]
+
+        run_plur_allowing_errors("-n", "1", "--", "--fail-fast")
+
+        updated, _ = runtime_cache_data
+        entry = updated["files"]["spec/calculator_spec.rb"]
+        expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"]),
+          "fail-fast/aborted runs must not overwrite the aggregate"
+      end
+    end
+
+    it "falls back to file-level grouping when arbitrary passthrough args are present" do
+      Dir.chdir(default_ruby_dir) do
+        run_plur("-n", "2")
+        initial, _ = runtime_cache_data
+        original = initial["files"]["spec/calculator_spec.rb"]
+
+        run_plur("-n", "2", "--", "--seed", "1234")
+
+        updated, _ = runtime_cache_data
+        entry = updated["files"]["spec/calculator_spec.rb"]
+        expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"]),
+          "any passthrough arg makes the run partial"
+      end
+    end
+  end
+
+  context "--rspec-split (experimental)" do
+    around_with_tmp_plur_home
+
+    it "passes through file-level targets in dry-run when cache lacks examples" do
+      Dir.chdir(default_ruby_dir) do
+        # Without a cache, splitting is impossible.
+        result = run_plur("--rspec-split", "--dry-run", "-n", "4")
+        worker_lines = result.err.lines.select { |l| l.include?("[dry-run] Worker") }
+        expect(worker_lines).not_to be_empty
+        # No worker should have a file:line target with the splitter format.
+        worker_lines.each do |line|
+          line.scan(/spec\/[\w\/]+_spec\.rb(?::\d+)+/) do |target|
+            raise "unexpected split target in cold-cache run: #{target}"
+          end
+        end
+      end
+    end
+
+    it "splits long-running files into focused file:line targets after the cache is warmed" do
+      Dir.chdir(default_ruby_dir) do
+        # Warm the v2 cache with a real run.
+        run_plur("-n", "2")
+        cache, runtime_file = runtime_cache_data
+
+        # Force calculator_spec to look slow so the splitter triggers.
+        entry = cache["files"]["spec/calculator_spec.rb"]
+        entry["runtime_seconds"] = 60.0
+        File.write(runtime_file, JSON.pretty_generate(cache))
+
+        result = run_plur("--rspec-split", "--dry-run", "-n", "4", "--debug")
+        worker_lines = result.err.lines.select { |l| l.include?("[dry-run] Worker") }
+        joined = worker_lines.join
+        expect(joined).to match(%r{spec/calculator_spec\.rb(?::\d+)+}),
+          "calculator_spec should appear as a file:line target"
+        expect(result.err).to include("rspec-split applied")
+      end
+    end
+
+    it "actually runs split file:line targets and passes" do
+      Dir.chdir(default_ruby_dir) do
+        # Warm cache, mark calculator as slow.
+        run_plur("-n", "2")
+        cache, runtime_file = runtime_cache_data
+        cache["files"]["spec/calculator_spec.rb"]["runtime_seconds"] = 60.0
+        File.write(runtime_file, JSON.pretty_generate(cache))
+
+        result = run_plur("--rspec-split", "-n", "4", "spec/calculator_spec.rb")
+        expect(result.exit_status).to eq(0)
       end
     end
   end
