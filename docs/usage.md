@@ -95,6 +95,11 @@ plur watch run --debounce 250 --timeout 60 --ignore "vendor/**" --ignore "tmp/**
 plur doctor
 ```
 
+The `Runtime Data:` block reports the cache file path along with its
+size, file count, and example count when the cache exists (e.g.
+`21K / 13 files / 68 examples`), or `(file does not exist)` on a
+fresh project.
+
 ### Rails And Rake Commands
 
 ```bash
@@ -224,9 +229,7 @@ The on-disk format is a versioned v2 cache:
         "./spec/slow_spec.rb[1:1]": {
           "line_number": 12,
           "location_rerun_argument": "./spec/slow_spec.rb:12",
-          "scoped_id": "1:1",
-          "runtime_seconds": 0.40,
-          "status": "passed"
+          "runtime_seconds": 0.40
         }
       }
     }
@@ -245,6 +248,15 @@ Behavior:
 - Invalid or corrupt v2 files are ignored and replaced on the next
   successful default run.
 - Old v1 caches (`map[string]float64`) are ignored and regenerated.
+- Shared examples are attributed to their rerunnable owning spec file
+  (the file the focused-target points back to), not the support file
+  whose source contains the shared block. Both the support file's
+  location and the rerunnable target are kept per example for
+  diagnostics.
+- Each cache load and save emits a structured debug log line
+  (`runtimeCache loaded` / `runtimeCache saved`) with `duration_ms`,
+  `path`, `files`, and `examples` keys. Grep for `runtimeCache` under
+  `PLUR_DEBUG=1` to inspect cache size and timing across runs.
 
 ### `--rspec-split` (EXPERIMENTAL)
 
@@ -267,9 +279,15 @@ How it works:
 - A file is split only if its historical `runtime_seconds` exceeds the
   per-worker budget (`total_runtime / worker_count`). This is the simple
   experimental rule — no multipliers, no floors.
-- When split, each chunk gets `original_runtime / chunk_count` as its
-  estimated runtime for grouping balance only. The generated `file:line`
-  targets are not persisted in the cache.
+- Split chunks are built by bin-packing the file's cached per-example
+  runtimes using longest-processing-time greedy: each example lands in
+  the bin with the smallest current sum, so a single heavy example ends
+  up isolated in its own chunk. Examples with no recorded runtime fall
+  back to the file's mean per-example runtime.
+- Each chunk's summed runtime feeds back into the grouper as the
+  target's runtime weight, so worker balancing reflects the actual
+  bin-pack distribution. The generated `file:line:line:...` targets are
+  not persisted in the cache.
 
 Known pitfalls:
 
