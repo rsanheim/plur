@@ -71,6 +71,9 @@ func NewCache() *Cache {
 func LoadCache(path string) (cache *Cache) {
 	start := time.Now()
 	defer func() {
+		if cache == nil {
+			cache = NewCache()
+		}
 		logger.Logger.Debug("runtimeCache loaded",
 			"duration", time.Since(start),
 			"path", path,
@@ -85,6 +88,9 @@ func LoadCache(path string) (cache *Cache) {
 	}
 
 	if err := json.Unmarshal(data, &cache); err != nil {
+		return NewCache()
+	}
+	if cache == nil {
 		return NewCache()
 	}
 	if cache.Meta.SchemaVersion != SchemaVersion {
@@ -112,11 +118,6 @@ func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time)
 		cache.Files = make(map[string]*FileEntry)
 	}
 
-	data, err := json.MarshalIndent(cache, "", "  ")
-	if err != nil {
-		return err
-	}
-
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".runtime-*.tmp")
 	if err != nil {
@@ -130,7 +131,9 @@ func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time)
 		}
 	}()
 
-	if _, err := tmp.Write(data); err != nil {
+	enc := json.NewEncoder(tmp)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(cache); err != nil {
 		tmp.Close()
 		return err
 	}

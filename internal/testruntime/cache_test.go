@@ -48,6 +48,17 @@ func TestCache_IgnoresCorruptCache(t *testing.T) {
 	assert.Empty(t, cache.Files)
 }
 
+func TestCache_IgnoresNullCache(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cache.json")
+	require.NoError(t, os.WriteFile(path, []byte("null"), 0644))
+
+	cache := LoadCache(path)
+	require.NotNil(t, cache)
+	assert.Equal(t, SchemaVersion, cache.Meta.SchemaVersion)
+	assert.Empty(t, cache.Files)
+}
+
 func TestCache_IgnoresUnknownSchemaVersion(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
@@ -134,7 +145,7 @@ func TestCache_IgnoresOldShapeFields(t *testing.T) {
 	assert.Equal(t, 0.5, ex.RuntimeSeconds)
 }
 
-func TestCache_SaveWritesHumanReadableHeaderOrder(t *testing.T) {
+func TestCache_SaveWritesCompactJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -145,7 +156,32 @@ func TestCache_SaveWritesHumanReadableHeaderOrder(t *testing.T) {
 
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
-	assert.Contains(t, string(data), "{\n  \"meta\": {\n    \"schema_version\": 2,\n    \"plur_version\": \"plur-test\"\n  },\n  \"run\": {\n    \"cwd\": \"/tmp/project\",\n    \"last_run_at\": \"2026-05-22T01:02:03Z\"\n  },\n  \"files\": {")
+	assert.NotContains(t, string(data), "\n  \"", "runtime cache should avoid pretty-print indentation")
+	assert.Contains(t, string(data), `"meta":{"schema_version":2,"plur_version":"plur-test"}`)
+	assert.Contains(t, string(data), `"run":{"cwd":"/tmp/project","last_run_at":"2026-05-22T01:02:03Z"}`)
+}
+
+func TestCache_SaveDoesNotEscapeHTML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cache.json")
+
+	cache := NewCache()
+	cache.MergeAggregateRun("spec/html_escape_spec.rb", 1, 2, 1.0, map[string]*ExampleEntry{
+		`./spec/html_escape_spec.rb[1:1]`: {
+			LineNumber:            1,
+			LocationRerunArgument: `./spec/html_escape_spec.rb:1?value=<tag>&other=>`,
+			RuntimeSeconds:        1.0,
+		},
+	})
+
+	require.NoError(t, SaveCache(cache, path, "plur-test", "/tmp/project", time.Date(2026, 5, 22, 1, 2, 3, 0, time.UTC)))
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `<tag>&other=>`)
+	assert.NotContains(t, string(data), `\u003c`)
+	assert.NotContains(t, string(data), `\u0026`)
+	assert.NotContains(t, string(data), `\u003e`)
 }
 
 func TestCache_SaveIsAtomic(t *testing.T) {
