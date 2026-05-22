@@ -6,12 +6,11 @@
 
 **Architecture:** One branch on top of `rspec-split-specs`. Task 1 is a series of small move + rename commits to keep each step reviewable. Tasks 2–9 build on the new layout. Task 10 is a dedicated simplification pass. Task 11 verifies and finalizes.
 
-**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is partially complete for Plur and RuboCop only. Task 11 remains open because the full verification matrix, benchmark rerun, and performance follow-ups remain.
+**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is complete for Plur and RuboCop, including the post selector-grouping RuboCop split rerun, but still needs either RSpec-core/Mastodon/Discourse measurements or an explicit matrix-narrowing decision. Task 11 remains open for the Phase B follow-up/PR-description linkage and any remaining verification before merge.
 
 **Open follow-ups:**
-- Re-run the RuboCop `--rspec-split` benchmark after the selector-grouping fix to confirm the example count now matches baseline.
 - `LoadCache` needs a nil/wrong-shape guard after JSON decode. A cache file containing valid JSON `null` can leave the decoded `*Cache` nil and panic before the intended "ignore corrupt/unexpected cache" fallback.
-- RuboCop's v2 debug measurements exceed the large-project runtime-cache overhead threshold, so the Phase B cache-format follow-up remains open.
+- RuboCop's v2 debug measurements exceed the large-project runtime-cache overhead threshold, so create/link the Phase B cache-format follow-up.
 - Task 8 still needs the RSpec-core, Mastodon, and Discourse measurements, or an explicit decision to narrow the QA matrix.
 - Plur's own suite needs a cleaner benchmark harness before its `plur -n 8` result can be treated as a valid cache comparison.
 
@@ -475,13 +474,13 @@ plur doctor   # eyeball check
 
 **Files:** none for source. Results go in the PR description, or `docs/plans/2026-05-22-runtime-cache-measurement-results.md` if Phase B is triggered.
 
-**Status:** Partially complete. Results and evidence are being recorded in [2026-05-22-runtime-cache-measurement-results.md](2026-05-22-runtime-cache-measurement-results.md). RuboCop exceeds the large-project cache-overhead threshold, so Phase B remains warranted. Plur and RuboCop were measured; RSpec-core, Mastodon, and Discourse are still open.
+**Status:** Partially complete. Results and evidence are recorded in [2026-05-22-runtime-cache-measurement-results.md](2026-05-22-runtime-cache-measurement-results.md). RuboCop exceeds the large-project cache-overhead threshold, so Phase B remains warranted. Plur and RuboCop were measured; the post selector-grouping RuboCop rerun confirms `--rspec-split` now preserves the baseline example count. RSpec-core, Mastodon, and Discourse are still open unless the matrix is explicitly narrowed.
 
 ### Requirements
 
 Measure on:
 - [x] Plur (this repo) — attempted and documented; current outer-Plur benchmark is blocked by suite isolation issues.
-- [x] RuboCop — full-suite benchmark captured for legacy v1, v2 runtime cache, and v2 `--rspec-split`.
+- [x] RuboCop — full-suite benchmark captured for legacy v1, v2 runtime cache, v2 `--rspec-split`, and post selector-grouping `--rspec-split`.
 - [ ] RSpec (rspec-core)
 - [ ] Mastodon (subset Rob has been using)
 - [ ] Discourse (subset Rob has been using)
@@ -492,6 +491,7 @@ For each project:
 - [x] Capture runtime-cache load/save timings for RuboCop v2 debug and split-debug runs.
 - [x] Note the on-disk cache file size and examples count for RuboCop.
 - [x] Spot-check the RuboCop cache JSON: `"status"` and `"scoped_id"` are absent.
+- [x] Re-run RuboCop `--rspec-split` after selector grouping and confirm baseline and split both report `31672 examples, 0 failures, 3 pending`.
 - [ ] Repeat the above for RSpec-core, Mastodon, and Discourse if they remain in scope.
 
 Aggregate into:
@@ -569,7 +569,7 @@ Do not skip this task silently — make the decision explicit.
 
 **Files:** none modified.
 
-**Status:** Not complete. Targeted checks have passed for the selector-grouping fix, but the full `bin/rake` verification matrix remains open.
+**Status:** Not complete. Targeted checks and the full `bin/rake` build have passed for the selector-grouping/shared-example fixture work, but Phase B follow-up linkage and any final merge-time verification remain open.
 
 Targeted checks run for the selector-grouping fix:
 - [x] `go test -mod=mod ./internal/testruntime -run TestSplitFile_GroupsExamplesByRerunnableSelector -v`
@@ -579,12 +579,13 @@ Targeted checks run for the selector-grouping fix:
 - [x] `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/runtime_tracking_spec.rb:319`
 - [x] `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/runtime_tracking_spec.rb`
 - [x] `bin/rake test:go`
+- [x] `bin/rake` — full build green after the selector-grouping/shared-example fixture work.
 
 - [x] `bin/rake test:go` — Go tests green.
-- [ ] `bin/rake test` — Ruby integration tests green.
-- [ ] `bin/rake standard:fix` — Ruby lint applied.
+- [x] `bin/rake test` — Ruby integration tests green via the full `bin/rake` run.
+- [x] Ruby lint — `standard` passed via the full `bin/rake` run; no `bin/rake standard:fix` changes were needed.
 - [x] `git diff --check` — no trailing whitespace or conflict markers.
-- [ ] If anything from Task 8 indicates a threshold breach, confirm the Phase B follow-up plan exists and is linked from the PR description.
+- [ ] If anything from Task 8 indicates a threshold breach, create/link the Phase B follow-up plan from the PR description.
 
 ### Success criteria
 - All verification commands exit zero.

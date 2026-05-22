@@ -222,6 +222,7 @@ Dry runs only load the cache. They must not save or modify the runtime file.
 | Worker count | 8 |
 | v1 ref | `5f272dd` (`main`) |
 | v2 ref | `29c8031` (`rspec-split-specs`) |
+| v2 selector-grouping rerun ref | `81c842a` (`rspec-split-specs`) |
 | Plur Ruby | Ruby 4.0.3, RSpec 3.13 |
 | RuboCop Ruby | Ruby 4.0.5, RSpec 3.13 |
 
@@ -272,7 +273,31 @@ Notes:
 
 - The v2 cache is ~8.16 MB for RuboCop, versus ~55 KB for the legacy v1 file-level map.
 - The v2 debug run shows 111.710 ms combined load+save. The v2 split debug run shows 114.538 ms combined load+save. Both exceed the 50 ms large-suite threshold.
-- The `v2-split` timings are not safe to treat as a win yet because the example count changed in this benchmark. Baseline v2 ran 31672 examples; split runs observed 31687 and 31694 examples. That benchmark was captured before the selector-grouping fix that keeps examples sharing one rerunnable selector in the same split unit, so RuboCop needs to be re-measured before using the split timing.
+- The original `v2-split` rows above are retained as historical pre-fix evidence. They are not valid speedup evidence because baseline v2 ran 31672 examples while the split runs observed 31687 and 31694 examples.
+
+#### Post Selector-Grouping RuboCop Rerun
+
+After the splitter changed to keep cache identity by `example.id` but group scheduling units by rerunnable selector, RuboCop was rerun at `81c842a` with isolated warmed `PLUR_HOME` directories:
+
+| Mode | Status | Wall seconds | RSpec summary | Cache size | Files | Examples | Cache load ms | Cache save ms | Evidence |
+|---|---|---:|---|---:|---:|---:|---:|---:|---|
+| `v2-postfix` | pass | 29.246 +/- 0.334 | 31672 examples, 0 failures, 3 pending | 8,159,967 B | 745 | 31672 | n/a | n/a | `tmp/bench/runtime-cache/logs/rubocop/postfix-81c842a-warm-v2.log` |
+| `v2-split-postfix` | pass | 21.211 +/- 0.012 | 31672 examples, 0 failures, 3 pending | 8,159,747 B | 745 | 31672 | 54.469 | 56.522 | `tmp/bench/runtime-cache/logs/rubocop/postfix-81c842a-v2-split-debug.log` |
+
+Evidence:
+
+- Hyperfine: `tmp/bench/runtime-cache/results/rubocop-postfix-81c842a-runtime-cache.md`
+- Split debug log: `tmp/bench/runtime-cache/logs/rubocop/postfix-81c842a-v2-split-debug.log`
+- Warmup logs: `tmp/bench/runtime-cache/logs/rubocop/postfix-81c842a-warm-v2.log`, `tmp/bench/runtime-cache/logs/rubocop/postfix-81c842a-warm-v2-split.log`
+
+Validation:
+
+- Plain v2 warmup: `31672 examples, 0 failures, 3 pending`.
+- Split debug run: `31672 examples, 0 failures, 3 pending`.
+- `--rspec-split` applied to 2 files and emitted 16 planned split chunks total.
+- Hyperfine result: `v2-split-postfix` ran `1.38 +/- 0.02` times faster than `v2-postfix`.
+- Split cache overhead was 110.991 ms combined load+save, still above the 50 ms large-suite threshold.
+- A matching plain `--debug` diagnostic run loaded the cache in 56.361 ms but was terminated after one RSpec worker hung, so its save timing is not used as evidence.
 
 ### Split Planning Notes
 
@@ -283,17 +308,18 @@ Capture `rspec-split applied` count from the `v2-split-debug` and `v2-split-dry-
 | Plur | `v2-split` | not trusted | not trusted | Plur suite did not complete cleanly under outer Plur. |
 | RuboCop | `v2-split-debug` | 2 | 16 | `tmp/bench/runtime-cache/logs/rubocop/v2-split-debug.log` |
 | RuboCop | `v2-split-dry-run` | 2 | 16 | `tmp/bench/runtime-cache/logs/rubocop/v2-split-dry-run.log` |
+| RuboCop | `v2-split-postfix-debug` | 2 | 16 | `tmp/bench/runtime-cache/logs/rubocop/postfix-81c842a-v2-split-debug.log` |
 
 ### Decision
 
 - Plur: blocked as a full-suite runner benchmark. The benchmark protocol needs a Plur-safe entry point before the numbers are meaningful.
 - RuboCop runtime cache overhead: Phase B is warranted. v2 load+save is ~112 ms on a 31.7K-example cache, above the 50 ms large-suite threshold.
-- RuboCop `--rspec-split`: keep experimental and do not advertise the speedup from this benchmark yet. It is faster in wall time here, but this pre-fix measurement changed the executed example count. Re-run after the selector-grouping fix.
+- RuboCop `--rspec-split`: the post selector-grouping rerun is now a valid apples-to-apples comparison. It preserves the baseline example count and is ~1.38x faster on this suite. Keep it experimental until the broader QA matrix is either completed or explicitly narrowed, but the RuboCop correctness blocker from duplicate rerunnable selectors is resolved.
 
 ## Obstacles and Blockers
 
 Record any setup or suite failures here instead of silently skipping a benchmark.
 
 - **Plur full suite under outer Plur:** not clean. `PLUR_HOME` cache isolation conflicts with a watcher-path expectation, and parallel outer execution exposes Rails fixture DB isolation failures.
-- **RuboCop split correctness:** this benchmark showed `--rspec-split` changing example counts from 31672 to 31687/31694 with zero failures. The selector-grouping fix is intended to address that; re-run RuboCop before treating the timing as valid.
+- **RuboCop split correctness:** the original benchmark showed `--rspec-split` changing example counts from 31672 to 31687/31694 with zero failures. The selector-grouping fix addressed that in the `81c842a` rerun: baseline and split both report 31672 examples, 0 failures, 3 pending.
 - **Cache overhead threshold:** RuboCop v2 cache load/save exceeds the measurement plan's threshold.
