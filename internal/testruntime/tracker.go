@@ -6,6 +6,8 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rsanheim/plur/internal/buildinfo"
@@ -70,26 +72,44 @@ func (rt *RuntimeTracker) AddRuntime(filePath string, runtime float64) {
 	rt.fileRuntimes[filePath] += runtime
 }
 
-// AddTestNotification accumulates runtime from a test notification. Examples
-// with file path and example identity are also buffered for example-level
-// merging at save time.
+// AddTestNotification accumulates runtime from a test notification. The
+// example is attributed to the rerunnable owning spec file derived from
+// LocationRerunArgument (which equals file_path:line for plain examples and
+// points back to the owning spec for shared examples). Both file-level
+// runtime and per-example metadata key by that owner.
 func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotification) {
 	if notification.FilePath == "" {
 		return
 	}
+	owner, ownerLine := owningFileAndLine(notification)
 	if notification.Duration > 0 {
-		rt.AddRuntime(notification.FilePath, notification.Duration.Seconds())
+		rt.AddRuntime(owner, notification.Duration.Seconds())
 	}
-	if notification.TestID != "" && notification.LineNumber > 0 {
-		if rt.pendingExamples[notification.FilePath] == nil {
-			rt.pendingExamples[notification.FilePath] = make(map[string]*ExampleEntry)
+	if notification.TestID != "" && ownerLine > 0 {
+		if rt.pendingExamples[owner] == nil {
+			rt.pendingExamples[owner] = make(map[string]*ExampleEntry)
 		}
-		rt.pendingExamples[notification.FilePath][notification.TestID] = &ExampleEntry{
-			LineNumber:            notification.LineNumber,
+		rt.pendingExamples[owner][notification.TestID] = &ExampleEntry{
+			LineNumber:            ownerLine,
 			LocationRerunArgument: notification.LocationRerunArgument,
 			RuntimeSeconds:        notification.Duration.Seconds(),
 		}
 	}
+}
+
+// owningFileAndLine derives the owning project-relative spec file and line
+// from RSpec's location_rerun_argument, the canonical rerunnable target. For
+// non-shared examples this is just file_path:line_number; for shared
+// examples it points back to the owning spec file. Falls back to the raw
+// notification fields when location_rerun_argument is empty or malformed.
+func owningFileAndLine(n types.TestCaseNotification) (string, int) {
+	s := strings.TrimPrefix(n.LocationRerunArgument, "./")
+	if i := strings.LastIndex(s, ":"); i > 0 {
+		if line, err := strconv.Atoi(s[i+1:]); err == nil && line > 0 {
+			return s[:i], line
+		}
+	}
+	return n.FilePath, n.LineNumber
 }
 
 // SaveToFile persists the runtime data to the v2 cache file. runKind dictates

@@ -131,6 +131,92 @@ func TestRuntimeTracker(t *testing.T) {
 	})
 }
 
+func TestOwningFileAndLine(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    types.TestCaseNotification
+		wantFile string
+		wantLine int
+	}{
+		{
+			name: "plain example uses rerun argument",
+			input: types.TestCaseNotification{
+				FilePath:              "spec/foo_spec.rb",
+				LineNumber:            42,
+				LocationRerunArgument: "./spec/foo_spec.rb:42",
+			},
+			wantFile: "spec/foo_spec.rb",
+			wantLine: 42,
+		},
+		{
+			name: "shared example attributes to owning spec",
+			input: types.TestCaseNotification{
+				FilePath:              "spec/support/shared_examples/user_role.rb",
+				LineNumber:            8,
+				LocationRerunArgument: "./spec/models/user_spec.rb:42",
+			},
+			wantFile: "spec/models/user_spec.rb",
+			wantLine: 42,
+		},
+		{
+			name: "empty rerun argument falls back to file_path/line_number",
+			input: types.TestCaseNotification{
+				FilePath:              "spec/foo_spec.rb",
+				LineNumber:            12,
+				LocationRerunArgument: "",
+			},
+			wantFile: "spec/foo_spec.rb",
+			wantLine: 12,
+		},
+		{
+			name: "malformed rerun argument falls back",
+			input: types.TestCaseNotification{
+				FilePath:              "spec/foo_spec.rb",
+				LineNumber:            12,
+				LocationRerunArgument: "no-colon-here",
+			},
+			wantFile: "spec/foo_spec.rb",
+			wantLine: 12,
+		},
+		{
+			name: "non-numeric line in rerun argument falls back",
+			input: types.TestCaseNotification{
+				FilePath:              "spec/foo_spec.rb",
+				LineNumber:            12,
+				LocationRerunArgument: "./spec/foo_spec.rb:not-a-number",
+			},
+			wantFile: "spec/foo_spec.rb",
+			wantLine: 12,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotFile, gotLine := owningFileAndLine(tc.input)
+			assert.Equal(t, tc.wantFile, gotFile)
+			assert.Equal(t, tc.wantLine, gotLine)
+		})
+	}
+}
+
+func TestAddTestNotification_AttributesSharedExampleToOwner(t *testing.T) {
+	tempDir := t.TempDir()
+	rt, err := NewRuntimeTracker(tempDir)
+	require.NoError(t, err)
+
+	rt.AddTestNotification(types.TestCaseNotification{
+		TestID:                "./spec/models/user_spec.rb[1:5:1]",
+		FilePath:              "spec/support/shared_examples/user_role.rb",
+		LineNumber:            8,
+		LocationRerunArgument: "./spec/models/user_spec.rb:42",
+		Duration:              500 * time.Millisecond,
+	})
+
+	pending := rt.PendingFileRuntimes()
+	assert.Equal(t, 0.5, pending["spec/models/user_spec.rb"])
+	_, supportFilePresent := pending["spec/support/shared_examples/user_role.rb"]
+	assert.False(t, supportFilePresent, "shared support file must not accumulate phantom runtime")
+}
+
 func writeFixtureSpec(t *testing.T, dir, name string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
