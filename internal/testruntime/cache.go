@@ -8,29 +8,29 @@ import (
 	"time"
 )
 
-// RuntimeCacheSchemaVersion is the on-disk schema version Plur reads and writes.
+// SchemaVersion is the on-disk schema version Plur reads and writes.
 // Older v1 caches (plain map[string]float64) are ignored and replaced on the
 // next aggregate-eligible run.
-const RuntimeCacheSchemaVersion = 2
+const SchemaVersion = 2
 
-// RuntimeCache is the persisted v2 runtime cache.
+// Cache is the persisted v2 runtime cache.
 // See docs/plans/2026-05-12-rspec-split-specs-experimental-plan.md for the
 // shape and lifecycle rules.
-type RuntimeCache struct {
-	Meta  RuntimeCacheMeta      `json:"meta"`
-	Run   RuntimeCacheRun       `json:"run"`
+type Cache struct {
+	Meta  CacheMeta      `json:"meta"`
+	Run   CacheRun       `json:"run"`
 	Files map[string]*FileEntry `json:"files"`
 }
 
-// RuntimeCacheMeta stores cache metadata intended to be readable near the top
+// CacheMeta stores cache metadata intended to be readable near the top
 // of the JSON file.
-type RuntimeCacheMeta struct {
+type CacheMeta struct {
 	SchemaVersion int    `json:"schema_version"`
 	PlurVersion   string `json:"plur_version,omitempty"`
 }
 
-// RuntimeCacheRun stores metadata about the most recent cache write.
-type RuntimeCacheRun struct {
+// CacheRun stores metadata about the most recent cache write.
+type CacheRun struct {
 	Cwd       string `json:"cwd,omitempty"`
 	LastRunAt string `json:"last_run_at,omitempty"`
 }
@@ -57,29 +57,29 @@ type ExampleEntry struct {
 	Status                string  `json:"status,omitempty"`
 }
 
-// NewRuntimeCache returns an empty v2 cache.
-func NewRuntimeCache() *RuntimeCache {
-	return &RuntimeCache{
-		Meta:  RuntimeCacheMeta{SchemaVersion: RuntimeCacheSchemaVersion},
+// NewCache returns an empty v2 cache.
+func NewCache() *Cache {
+	return &Cache{
+		Meta:  CacheMeta{SchemaVersion: SchemaVersion},
 		Files: make(map[string]*FileEntry),
 	}
 }
 
-// LoadRuntimeCache reads a v2 cache from disk. It returns an empty cache for
+// LoadCache reads a v2 cache from disk. It returns an empty cache for
 // missing files, v1 caches (map[string]float64), corrupt JSON, and entries
 // with a non-v2 schema_version.
-func LoadRuntimeCache(path string) *RuntimeCache {
+func LoadCache(path string) *Cache {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return NewRuntimeCache()
+		return NewCache()
 	}
 
-	var cache RuntimeCache
+	var cache Cache
 	if err := json.Unmarshal(data, &cache); err != nil {
-		return NewRuntimeCache()
+		return NewCache()
 	}
-	if cache.Meta.SchemaVersion != RuntimeCacheSchemaVersion {
-		return NewRuntimeCache()
+	if cache.Meta.SchemaVersion != SchemaVersion {
+		return NewCache()
 	}
 	if cache.Files == nil {
 		cache.Files = make(map[string]*FileEntry)
@@ -87,12 +87,12 @@ func LoadRuntimeCache(path string) *RuntimeCache {
 	return &cache
 }
 
-// SaveRuntimeCache writes the cache atomically: temp file in the same
+// SaveCache writes the cache atomically: temp file in the same
 // directory + rename into place. The caller supplies the current plur version
 // to record.
-func SaveRuntimeCache(cache *RuntimeCache, path, plurVersion, cwd string, lastRunAt time.Time) error {
+func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time) error {
 	if cache.Meta.SchemaVersion == 0 {
-		cache.Meta.SchemaVersion = RuntimeCacheSchemaVersion
+		cache.Meta.SchemaVersion = SchemaVersion
 	}
 	cache.Meta.PlurVersion = plurVersion
 	cache.Run.Cwd = cwd
@@ -141,7 +141,7 @@ func SaveRuntimeCache(cache *RuntimeCache, path, plurVersion, cwd string, lastRu
 // runtime in seconds. Used by file-level worker grouping. Entries with no
 // recorded aggregate runtime (RuntimeSeconds == 0) are skipped so the grouper
 // can apply its default-runtime fallback.
-func (c *RuntimeCache) FileRuntimes() map[string]float64 {
+func (c *Cache) FileRuntimes() map[string]float64 {
 	out := make(map[string]float64, len(c.Files))
 	for path, entry := range c.Files {
 		if entry == nil || entry.RuntimeSeconds == 0 {
@@ -153,7 +153,7 @@ func (c *RuntimeCache) FileRuntimes() map[string]float64 {
 }
 
 // File returns the entry for a file path (project-relative), or nil if absent.
-func (c *RuntimeCache) File(path string) *FileEntry {
+func (c *Cache) File(path string) *FileEntry {
 	return c.Files[path]
 }
 
@@ -170,7 +170,7 @@ func SourceFreshness(path string) (mtimeUnixNano, sizeBytes int64, ok bool) {
 // ExampleLines returns sorted, deduplicated line numbers for the examples
 // recorded against a file. Empty if the file is missing from the cache or
 // has no recorded examples.
-func (c *RuntimeCache) ExampleLines(filePath string) []int {
+func (c *Cache) ExampleLines(filePath string) []int {
 	entry := c.Files[filePath]
 	if entry == nil || len(entry.Examples) == 0 {
 		return nil
@@ -193,7 +193,7 @@ func (c *RuntimeCache) ExampleLines(filePath string) []int {
 // IsExamplesFresh reports whether the cached examples for a file can be
 // trusted by the splitter: example_index_complete is true AND the recorded
 // mtime/size still match the current source file.
-func (c *RuntimeCache) IsExamplesFresh(filePath string) bool {
+func (c *Cache) IsExamplesFresh(filePath string) bool {
 	entry := c.Files[filePath]
 	if entry == nil || !entry.ExampleIndexComplete {
 		return false
@@ -230,7 +230,7 @@ func (k RunKind) IsAggregateEligible() bool {
 // It replaces the file's examples map and runtime aggregate, sets
 // example_index_complete, and records current source freshness. The caller
 // must have already verified this is an aggregate-eligible run.
-func (c *RuntimeCache) MergeAggregateRun(filePath string, mtimeUnixNano, sizeBytes int64, runtimeSeconds float64, examples map[string]*ExampleEntry) {
+func (c *Cache) MergeAggregateRun(filePath string, mtimeUnixNano, sizeBytes int64, runtimeSeconds float64, examples map[string]*ExampleEntry) {
 	if examples == nil {
 		examples = make(map[string]*ExampleEntry)
 	}
@@ -249,7 +249,7 @@ func (c *RuntimeCache) MergeAggregateRun(filePath string, mtimeUnixNano, sizeByt
 // ExampleIndexComplete from false to true, and never prunes examples missing
 // from this run. If the file has no existing entry, nothing is written:
 // partial runs must not create file-level aggregates.
-func (c *RuntimeCache) MergeObservations(filePath string, examples map[string]*ExampleEntry) {
+func (c *Cache) MergeObservations(filePath string, examples map[string]*ExampleEntry) {
 	existing := c.Files[filePath]
 	if existing == nil {
 		return

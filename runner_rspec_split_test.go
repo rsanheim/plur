@@ -26,8 +26,8 @@ func TestPerWorkerBudget_ZeroWorkers(t *testing.T) {
 	assert.Equal(t, 0.0, perWorkerBudget(nil, []string{"a"}, 0))
 }
 
-func TestRuntimeCache_ExampleLines(t *testing.T) {
-	cache := testruntime.NewRuntimeCache()
+func TestCache_ExampleLines(t *testing.T) {
+	cache := testruntime.NewCache()
 	cache.MergeAggregateRun("spec/foo_spec.rb", 0, 0, 1.0, map[string]*testruntime.ExampleEntry{
 		"./spec/foo_spec.rb[1:1]": {LineNumber: 20, RuntimeSeconds: 1.0},
 		"./spec/foo_spec.rb[1:2]": {LineNumber: 5, RuntimeSeconds: 1.0},

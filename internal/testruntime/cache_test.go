@@ -11,17 +11,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRuntimeCache_LoadEmptyOrMissing(t *testing.T) {
+func TestCache_LoadEmptyOrMissing(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "missing.json")
 
-	cache := LoadRuntimeCache(path)
+	cache := LoadCache(path)
 	require.NotNil(t, cache)
-	assert.Equal(t, RuntimeCacheSchemaVersion, cache.Meta.SchemaVersion)
+	assert.Equal(t, SchemaVersion, cache.Meta.SchemaVersion)
 	assert.Empty(t, cache.Files)
 }
 
-func TestRuntimeCache_IgnoresV1Cache(t *testing.T) {
+func TestCache_IgnoresV1Cache(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -33,36 +33,36 @@ func TestRuntimeCache_IgnoresV1Cache(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(path, data, 0644))
 
-	cache := LoadRuntimeCache(path)
-	assert.Equal(t, RuntimeCacheSchemaVersion, cache.Meta.SchemaVersion)
+	cache := LoadCache(path)
+	assert.Equal(t, SchemaVersion, cache.Meta.SchemaVersion)
 	assert.Empty(t, cache.Files, "v1 caches must be ignored, not migrated")
 }
 
-func TestRuntimeCache_IgnoresCorruptCache(t *testing.T) {
+func TestCache_IgnoresCorruptCache(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 	require.NoError(t, os.WriteFile(path, []byte("not json {{{"), 0644))
 
-	cache := LoadRuntimeCache(path)
-	assert.Equal(t, RuntimeCacheSchemaVersion, cache.Meta.SchemaVersion)
+	cache := LoadCache(path)
+	assert.Equal(t, SchemaVersion, cache.Meta.SchemaVersion)
 	assert.Empty(t, cache.Files)
 }
 
-func TestRuntimeCache_IgnoresUnknownSchemaVersion(t *testing.T) {
+func TestCache_IgnoresUnknownSchemaVersion(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"meta": {"schema_version": 99}, "files": {"spec/x.rb": {"runtime_seconds": 1.0}}}`), 0644))
 
-	cache := LoadRuntimeCache(path)
-	assert.Equal(t, RuntimeCacheSchemaVersion, cache.Meta.SchemaVersion)
+	cache := LoadCache(path)
+	assert.Equal(t, SchemaVersion, cache.Meta.SchemaVersion)
 	assert.Empty(t, cache.Files)
 }
 
-func TestRuntimeCache_SaveAndReload(t *testing.T) {
+func TestCache_SaveAndReload(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
-	cache := NewRuntimeCache()
+	cache := NewCache()
 	cache.MergeAggregateRun("spec/foo_spec.rb", 123, 456, 2.5, map[string]*ExampleEntry{
 		"./spec/foo_spec.rb[1:1]": {
 			LineNumber:            12,
@@ -74,10 +74,10 @@ func TestRuntimeCache_SaveAndReload(t *testing.T) {
 	})
 
 	savedAt := time.Date(2026, 5, 22, 15, 4, 5, 0, time.UTC)
-	require.NoError(t, SaveRuntimeCache(cache, path, "plur-test", "/Users/example/project", savedAt))
+	require.NoError(t, SaveCache(cache, path, "plur-test", "/Users/example/project", savedAt))
 
-	reloaded := LoadRuntimeCache(path)
-	assert.Equal(t, RuntimeCacheSchemaVersion, reloaded.Meta.SchemaVersion)
+	reloaded := LoadCache(path)
+	assert.Equal(t, SchemaVersion, reloaded.Meta.SchemaVersion)
 	assert.Equal(t, "plur-test", reloaded.Meta.PlurVersion)
 	assert.Equal(t, "/Users/example/project", reloaded.Run.Cwd)
 	assert.Equal(t, "2026-05-22T15:04:05Z", reloaded.Run.LastRunAt)
@@ -97,27 +97,27 @@ func TestRuntimeCache_SaveAndReload(t *testing.T) {
 	assert.Equal(t, 1.0, ex.RuntimeSeconds)
 }
 
-func TestRuntimeCache_SaveWritesHumanReadableHeaderOrder(t *testing.T) {
+func TestCache_SaveWritesHumanReadableHeaderOrder(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
-	cache := NewRuntimeCache()
+	cache := NewCache()
 	cache.MergeAggregateRun("spec/foo_spec.rb", 1, 2, 1.0, nil)
 
-	require.NoError(t, SaveRuntimeCache(cache, path, "plur-test", "/tmp/project", time.Date(2026, 5, 22, 1, 2, 3, 0, time.UTC)))
+	require.NoError(t, SaveCache(cache, path, "plur-test", "/tmp/project", time.Date(2026, 5, 22, 1, 2, 3, 0, time.UTC)))
 
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "{\n  \"meta\": {\n    \"schema_version\": 2,\n    \"plur_version\": \"plur-test\"\n  },\n  \"run\": {\n    \"cwd\": \"/tmp/project\",\n    \"last_run_at\": \"2026-05-22T01:02:03Z\"\n  },\n  \"files\": {")
 }
 
-func TestRuntimeCache_SaveIsAtomic(t *testing.T) {
+func TestCache_SaveIsAtomic(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
-	cache := NewRuntimeCache()
+	cache := NewCache()
 	cache.MergeAggregateRun("spec/foo_spec.rb", 1, 2, 1.0, nil)
-	require.NoError(t, SaveRuntimeCache(cache, path, "v1", "/tmp/project", time.Now()))
+	require.NoError(t, SaveCache(cache, path, "v1", "/tmp/project", time.Now()))
 
 	// No leftover temp files in the directory.
 	entries, err := os.ReadDir(dir)
@@ -127,8 +127,8 @@ func TestRuntimeCache_SaveIsAtomic(t *testing.T) {
 	}
 }
 
-func TestRuntimeCache_FileRuntimesSkipsZero(t *testing.T) {
-	cache := NewRuntimeCache()
+func TestCache_FileRuntimesSkipsZero(t *testing.T) {
+	cache := NewCache()
 	cache.MergeAggregateRun("spec/has_runtime.rb", 0, 0, 3.14, nil)
 	cache.Files["spec/no_runtime.rb"] = &FileEntry{ExampleIndexComplete: false}
 
@@ -138,8 +138,8 @@ func TestRuntimeCache_FileRuntimesSkipsZero(t *testing.T) {
 	assert.False(t, present, "files with no recorded runtime should be omitted")
 }
 
-func TestRuntimeCache_MergeAggregateRunReplacesExamples(t *testing.T) {
-	cache := NewRuntimeCache()
+func TestCache_MergeAggregateRunReplacesExamples(t *testing.T) {
+	cache := NewCache()
 	cache.MergeAggregateRun("spec/x_spec.rb", 1, 2, 1.0, map[string]*ExampleEntry{
 		"./spec/x_spec.rb[1:1]": {LineNumber: 5, RuntimeSeconds: 0.5},
 		"./spec/x_spec.rb[1:2]": {LineNumber: 10, RuntimeSeconds: 0.5},
@@ -158,8 +158,8 @@ func TestRuntimeCache_MergeAggregateRunReplacesExamples(t *testing.T) {
 	assert.Len(t, entry.Examples, 1, "aggregate run prunes examples missing from the run")
 }
 
-func TestRuntimeCache_MergeObservationsPreservesAggregate(t *testing.T) {
-	cache := NewRuntimeCache()
+func TestCache_MergeObservationsPreservesAggregate(t *testing.T) {
+	cache := NewCache()
 	cache.MergeAggregateRun("spec/x_spec.rb", 1, 2, 5.0, map[string]*ExampleEntry{
 		"./spec/x_spec.rb[1:1]": {LineNumber: 5, RuntimeSeconds: 1.0},
 		"./spec/x_spec.rb[1:2]": {LineNumber: 10, RuntimeSeconds: 4.0},
@@ -179,8 +179,8 @@ func TestRuntimeCache_MergeObservationsPreservesAggregate(t *testing.T) {
 	assert.Equal(t, 4.0, entry.Examples["./spec/x_spec.rb[1:2]"].RuntimeSeconds)
 }
 
-func TestRuntimeCache_MergeObservationsSkipsUnseenFiles(t *testing.T) {
-	cache := NewRuntimeCache()
+func TestCache_MergeObservationsSkipsUnseenFiles(t *testing.T) {
+	cache := NewCache()
 	cache.MergeObservations("spec/never_seen.rb", map[string]*ExampleEntry{
 		"./spec/never_seen.rb[1:1]": {LineNumber: 1, RuntimeSeconds: 0.1},
 	})
@@ -188,7 +188,7 @@ func TestRuntimeCache_MergeObservationsSkipsUnseenFiles(t *testing.T) {
 	assert.Nil(t, cache.File("spec/never_seen.rb"), "partial runs must not create file-level entries")
 }
 
-func TestRuntimeCache_IsExamplesFresh(t *testing.T) {
+func TestCache_IsExamplesFresh(t *testing.T) {
 	dir := t.TempDir()
 	source := filepath.Join(dir, "foo_spec.rb")
 	require.NoError(t, os.WriteFile(source, []byte("# spec\n"), 0644))
@@ -196,7 +196,7 @@ func TestRuntimeCache_IsExamplesFresh(t *testing.T) {
 	info, err := os.Stat(source)
 	require.NoError(t, err)
 
-	cache := NewRuntimeCache()
+	cache := NewCache()
 	cache.MergeAggregateRun(source, info.ModTime().UnixNano(), info.Size(), 1.0, map[string]*ExampleEntry{
 		"id": {LineNumber: 1, RuntimeSeconds: 0.1},
 	})
@@ -209,12 +209,12 @@ func TestRuntimeCache_IsExamplesFresh(t *testing.T) {
 	assert.False(t, cache.IsExamplesFresh(source), "modified source should report stale")
 }
 
-func TestRuntimeCache_IsExamplesFreshFalseWhenIncomplete(t *testing.T) {
+func TestCache_IsExamplesFreshFalseWhenIncomplete(t *testing.T) {
 	dir := t.TempDir()
 	source := filepath.Join(dir, "foo_spec.rb")
 	require.NoError(t, os.WriteFile(source, []byte("# spec\n"), 0644))
 
-	cache := NewRuntimeCache()
+	cache := NewCache()
 	mtime, size, ok := SourceFreshness(source)
 	require.True(t, ok)
 	cache.Files[source] = &FileEntry{
@@ -228,7 +228,7 @@ func TestRuntimeCache_IsExamplesFreshFalseWhenIncomplete(t *testing.T) {
 	assert.False(t, cache.IsExamplesFresh(source), "incomplete index must report not-fresh")
 }
 
-func TestRuntimeCache_RunKindEligibility(t *testing.T) {
+func TestCache_RunKindEligibility(t *testing.T) {
 	assert.True(t, RunKindAggregate.IsAggregateEligible())
 	assert.False(t, RunKindPartial.IsAggregateEligible())
 }

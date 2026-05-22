@@ -21,7 +21,7 @@ import (
 // pendingExamples until SaveToFile decides (per RunKind) whether to merge them
 // as an aggregate-eligible full run or a partial observation.
 type RuntimeTracker struct {
-	cache           *RuntimeCache
+	cache           *Cache
 	fileRuntimes    map[string]float64                              // collected this run, by project-relative file path
 	pendingExamples map[string]map[string]*ExampleEntry // collected this run, file -> example.id -> entry
 	runtimeFile     string
@@ -37,7 +37,7 @@ func NewRuntimeTracker(runtimeDir string) (*RuntimeTracker, error) {
 		return nil, err
 	}
 
-	cache := LoadRuntimeCache(runtimeFile)
+	cache := LoadCache(runtimeFile)
 
 	return &RuntimeTracker{
 		cache:           cache,
@@ -61,7 +61,7 @@ func (rt *RuntimeTracker) LoadedData() map[string]float64 {
 
 // Cache returns the underlying v2 cache. Read-only for callers that need
 // per-example data (the splitter).
-func (rt *RuntimeTracker) Cache() *RuntimeCache {
+func (rt *RuntimeTracker) Cache() *Cache {
 	return rt.cache
 }
 
@@ -120,7 +120,7 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 		rt.cache.MergeObservations(filePath, examples)
 	}
 
-	return SaveRuntimeCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
+	return SaveCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
 }
 
 // PendingFileRuntimes returns a copy of the file-runtime observations

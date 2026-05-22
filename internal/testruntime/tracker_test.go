@@ -55,8 +55,8 @@ func TestRuntimeTracker(t *testing.T) {
 		_, err = os.Stat(runtimeFile)
 		assert.NoError(t, err)
 
-		reloaded := LoadRuntimeCache(runtimeFile)
-		assert.Equal(t, RuntimeCacheSchemaVersion, reloaded.Meta.SchemaVersion)
+		reloaded := LoadCache(runtimeFile)
+		assert.Equal(t, SchemaVersion, reloaded.Meta.SchemaVersion)
 		assert.NotEmpty(t, reloaded.Meta.PlurVersion)
 		assert.NotEmpty(t, reloaded.Run.Cwd)
 		assert.NotEmpty(t, reloaded.Run.LastRunAt)
