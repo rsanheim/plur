@@ -10,6 +10,7 @@ import (
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/fileset"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -92,7 +93,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	if hasValidRuntimeData {
-		runKind := classifyRunKind(r.Patterns, r.Tags, parent.passthroughArgs, aborted)
+		runKind := testruntime.ClassifyRunKind(r.Patterns, r.Tags, parent.passthroughArgs, aborted)
 		if err := runner.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
