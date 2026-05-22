@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,15 +27,15 @@ func TestPerWorkerBudget_ZeroWorkers(t *testing.T) {
 }
 
 func TestRuntimeCache_ExampleLines(t *testing.T) {
-	cache := NewRuntimeCache()
-	cache.MergeAggregateRun("spec/foo_spec.rb", 0, 0, 1.0, map[string]*ExampleEntry{
+	cache := testruntime.NewRuntimeCache()
+	cache.MergeAggregateRun("spec/foo_spec.rb", 0, 0, 1.0, map[string]*testruntime.ExampleEntry{
 		"./spec/foo_spec.rb[1:1]": {LineNumber: 20, RuntimeSeconds: 1.0},
 		"./spec/foo_spec.rb[1:2]": {LineNumber: 5, RuntimeSeconds: 1.0},
 		"./spec/foo_spec.rb[1:3]": {LineNumber: 5, RuntimeSeconds: 1.0}, // duplicate line — dedup
 		"./spec/foo_spec.rb[2:1]": {LineNumber: 0, RuntimeSeconds: 1.0}, // zero line — skip
 	})
 
-	lines := cache.exampleLines("spec/foo_spec.rb")
+	lines := cache.ExampleLines("spec/foo_spec.rb")
 	assert.ElementsMatch(t, []int{5, 20}, lines, "duplicates and zero-line entries are dropped")
 }
 
@@ -54,9 +55,9 @@ func TestExpandRspecSplits_SplitsLongFile(t *testing.T) {
 
 	// Seed v2 cache with a long-running file and 4 example lines.
 	cache := runner.tracker.Cache()
-	mtime, size, ok := SourceFreshness(specPath)
+	mtime, size, ok := testruntime.SourceFreshness(specPath)
 	require.True(t, ok)
-	cache.MergeAggregateRun(specPath, mtime, size, 8.0, map[string]*ExampleEntry{
+	cache.MergeAggregateRun(specPath, mtime, size, 8.0, map[string]*testruntime.ExampleEntry{
 		"id1": {LineNumber: 5, RuntimeSeconds: 2.0},
 		"id2": {LineNumber: 10, RuntimeSeconds: 2.0},
 		"id3": {LineNumber: 15, RuntimeSeconds: 2.0},
@@ -86,16 +87,16 @@ func TestExpandRspecSplits_PassesThroughFreshButShortFile(t *testing.T) {
 	require.NoError(t, err)
 
 	cache := runner.tracker.Cache()
-	fastMtime, fastSize, ok := SourceFreshness(fastPath)
+	fastMtime, fastSize, ok := testruntime.SourceFreshness(fastPath)
 	require.True(t, ok)
-	slowMtime, slowSize, ok := SourceFreshness(slowPath)
+	slowMtime, slowSize, ok := testruntime.SourceFreshness(slowPath)
 	require.True(t, ok)
 
-	cache.MergeAggregateRun(fastPath, fastMtime, fastSize, 0.5, map[string]*ExampleEntry{
+	cache.MergeAggregateRun(fastPath, fastMtime, fastSize, 0.5, map[string]*testruntime.ExampleEntry{
 		"id1": {LineNumber: 5, RuntimeSeconds: 0.25},
 		"id2": {LineNumber: 10, RuntimeSeconds: 0.25},
 	})
-	cache.MergeAggregateRun(slowPath, slowMtime, slowSize, 19.5, map[string]*ExampleEntry{
+	cache.MergeAggregateRun(slowPath, slowMtime, slowSize, 19.5, map[string]*testruntime.ExampleEntry{
 		"id3": {LineNumber: 1, RuntimeSeconds: 19.5},
 	})
 
@@ -122,7 +123,7 @@ func TestExpandRspecSplits_PassesThroughStaleCache(t *testing.T) {
 
 	cache := runner.tracker.Cache()
 	// Seed cache with a different mtime/size than what's on disk.
-	cache.MergeAggregateRun(specPath, 1, 999999, 8.0, map[string]*ExampleEntry{
+	cache.MergeAggregateRun(specPath, 1, 999999, 8.0, map[string]*testruntime.ExampleEntry{
 		"id1": {LineNumber: 5, RuntimeSeconds: 4.0},
 		"id2": {LineNumber: 10, RuntimeSeconds: 4.0},
 	})

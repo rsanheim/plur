@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -21,9 +22,9 @@ import (
 // pendingExamples until SaveToFile decides (per RunKind) whether to merge them
 // as an aggregate-eligible full run or a partial observation.
 type RuntimeTracker struct {
-	cache           *RuntimeCache
-	fileRuntimes    map[string]float64                  // collected this run, by project-relative file path
-	pendingExamples map[string]map[string]*ExampleEntry // collected this run, file -> example.id -> entry
+	cache           *testruntime.RuntimeCache
+	fileRuntimes    map[string]float64                              // collected this run, by project-relative file path
+	pendingExamples map[string]map[string]*testruntime.ExampleEntry // collected this run, file -> example.id -> entry
 	runtimeFile     string
 	cwd             string
 }
@@ -37,12 +38,12 @@ func NewRuntimeTracker(runtimeDir string) (*RuntimeTracker, error) {
 		return nil, err
 	}
 
-	cache := LoadRuntimeCache(runtimeFile)
+	cache := testruntime.LoadRuntimeCache(runtimeFile)
 
 	return &RuntimeTracker{
 		cache:           cache,
 		fileRuntimes:    make(map[string]float64),
-		pendingExamples: make(map[string]map[string]*ExampleEntry),
+		pendingExamples: make(map[string]map[string]*testruntime.ExampleEntry),
 		runtimeFile:     runtimeFile,
 		cwd:             cwd,
 	}, nil
@@ -61,7 +62,7 @@ func (rt *RuntimeTracker) LoadedData() map[string]float64 {
 
 // Cache returns the underlying v2 cache. Read-only for callers that need
 // per-example data (the splitter).
-func (rt *RuntimeTracker) Cache() *RuntimeCache {
+func (rt *RuntimeTracker) Cache() *testruntime.RuntimeCache {
 	return rt.cache
 }
 
@@ -82,9 +83,9 @@ func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotific
 	}
 	if notification.TestID != "" && notification.LineNumber > 0 {
 		if rt.pendingExamples[notification.FilePath] == nil {
-			rt.pendingExamples[notification.FilePath] = make(map[string]*ExampleEntry)
+			rt.pendingExamples[notification.FilePath] = make(map[string]*testruntime.ExampleEntry)
 		}
-		rt.pendingExamples[notification.FilePath][notification.TestID] = &ExampleEntry{
+		rt.pendingExamples[notification.FilePath][notification.TestID] = &testruntime.ExampleEntry{
 			LineNumber:            notification.LineNumber,
 			LocationRerunArgument: notification.LocationRerunArgument,
 			ScopedID:              notification.ScopedID,
@@ -97,9 +98,9 @@ func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotific
 // SaveToFile persists the runtime data to the v2 cache file. runKind dictates
 // whether the file-level aggregates are updated (RunKindAggregate) or
 // preserved (RunKindPartial). See runtime_cache.go for the full lifecycle.
-func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
+func (rt *RuntimeTracker) SaveToFile(runKind testruntime.RunKind) error {
 	for filePath, runtime := range rt.fileRuntimes {
-		mtime, size, ok := SourceFreshness(filePath)
+		mtime, size, ok := testruntime.SourceFreshness(filePath)
 		if !ok {
 			continue
 		}
@@ -120,7 +121,7 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 		rt.cache.MergeObservations(filePath, examples)
 	}
 
-	return SaveRuntimeCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
+	return testruntime.SaveRuntimeCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
 }
 
 // PendingFileRuntimes returns a copy of the file-runtime observations

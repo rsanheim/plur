@@ -1,6 +1,10 @@
 package main
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/rsanheim/plur/internal/testruntime"
+)
 
 // classifyRunKind determines whether the current invocation should be treated
 // as aggregate-eligible (full default run) or partial. Partial classification
@@ -14,20 +18,20 @@ import "strings"
 //   - passthroughArgs: anything after `--`
 //   - aborted:         true if the run did not complete naturally (fail-fast,
 //     ctrl-c, worker error)
-func classifyRunKind(patterns, tags, passthroughArgs []string, aborted bool) RunKind {
+func classifyRunKind(patterns, tags, passthroughArgs []string, aborted bool) testruntime.RunKind {
 	if aborted {
-		return RunKindPartial
+		return testruntime.RunKindPartial
 	}
 	if len(tags) > 0 {
-		return RunKindPartial
+		return testruntime.RunKindPartial
 	}
 	if hasFileLinePattern(patterns) {
-		return RunKindPartial
+		return testruntime.RunKindPartial
 	}
 	if hasAggregateBreakingArg(passthroughArgs) {
-		return RunKindPartial
+		return testruntime.RunKindPartial
 	}
-	return RunKindAggregate
+	return testruntime.RunKindAggregate
 }
 
 // hasFileLinePattern reports whether any positional pattern looks like a

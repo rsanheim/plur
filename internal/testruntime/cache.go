@@ -1,4 +1,4 @@
-package main
+package testruntime
 
 import (
 	"encoding/json"
@@ -167,10 +167,10 @@ func SourceFreshness(path string) (mtimeUnixNano, sizeBytes int64, ok bool) {
 	return info.ModTime().UnixNano(), info.Size(), true
 }
 
-// exampleLines returns sorted, deduplicated line numbers for the examples
+// ExampleLines returns sorted, deduplicated line numbers for the examples
 // recorded against a file. Empty if the file is missing from the cache or
 // has no recorded examples.
-func (c *RuntimeCache) exampleLines(filePath string) []int {
+func (c *RuntimeCache) ExampleLines(filePath string) []int {
 	entry := c.Files[filePath]
 	if entry == nil || len(entry.Examples) == 0 {
 		return nil

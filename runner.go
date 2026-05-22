@@ -170,7 +170,7 @@ func (r *Runner) expandRspecSplits(fileRuntimes map[string]float64) ([]string, m
 			continue
 		}
 
-		lines := cache.exampleLines(file)
+		lines := cache.ExampleLines(file)
 		decision := SplitFile(file, runtime, lines, r.config.WorkerCount, budget)
 		if decision.Chunks <= 1 {
 			logger.Logger.Debug("rspec-split skipped", "file", file, "reason", "under per-worker budget or too few examples", "runtime", runtime, "budget", budget, "examples", len(lines))
