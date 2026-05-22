@@ -88,8 +88,14 @@ Critical shape:
 
 ```json
 {
-  "schema_version": 2,
-  "plur_version": "dev-abc1234",
+  "meta": {
+    "schema_version": 2,
+    "plur_version": "dev-abc1234"
+  },
+  "run": {
+    "cwd": "/Users/example/src/project",
+    "last_run_at": "2026-05-22T15:04:05Z"
+  },
   "files": {
     "spec/slow_spec.rb": {
       "mtime_unix_nano": 1778610000000000000,
@@ -112,7 +118,9 @@ Critical shape:
 ```
 
 Notes:
-- `plur_version` should come from `buildinfo.GetVersionInfo()`. Do not persist commit, build date, Go version, OS, architecture, race detector state, job name, framework name, command args, worker count, or last-run metadata.
+- `meta.plur_version` should come from `buildinfo.GetVersionInfo()`. Do not persist commit, build date, Go version, OS, architecture, race detector state, job name, framework name, command args, worker count, or historical run metadata.
+- `run.cwd` should be the project cwd Plur already uses for the runtime file hash.
+- `run.last_run_at` should be overwritten on every cache save in UTC RFC3339 format.
 - `files` is keyed by project-relative file path.
 - `examples` is keyed by RSpec's canonical `example.id`; do not invent a separate example key.
 - Run selection is a write-time decision, not persisted cache structure. Default/full-file runs may update file-level `runtime_seconds` and mark `example_index_complete`; focused, tagged, fail-fast, aborted, or custom-arg runs must not.
@@ -183,6 +191,29 @@ The runtime cache v2 and formatter metadata changes are not gated by this flag.
 - No RSpec subprocess for discovery during `plur --dry-run`.
 - Focused runs and tag runs must not clobber default full-file runtime aggregates.
 
+## Current Gap From Branch Review
+
+Real-project review on Discourse showed an important gap between the feature's intended value and the current implementation.
+
+The current branch collects per-example runtime observations in the v2 cache, but `--rspec-split` does not use those per-example runtimes to build balanced split chunks. The implemented flow is:
+
+1. Use file-level `runtime_seconds` to decide whether a file is a long pole.
+2. Read cached example line numbers for that file.
+3. Split those line numbers round-robin into focused `file:line:line...` targets.
+4. Assign each generated target `original_file_runtime / chunk_count` as its estimated runtime.
+
+That means split mode currently uses runtime data to decide whether to split a file, but not to decide which examples should be grouped together. This is only a coarse line-based split. It is not yet the intended runtime-weighted example splitting.
+
+The intended follow-up behavior should be:
+
+1. Build split units from cached examples, preferring `location_rerun_argument` or another RSpec-rerunnable target that maps back to the owning spec file.
+2. Assign each unit its observed `runtime_seconds`.
+3. Bin-pack units into chunks with longest-runtime-first greedy balancing.
+4. Feed each chunk's summed runtime into `GroupSpecFilesByRuntime`.
+5. Keep deterministic output for repeated runs against the same cache.
+
+Discourse also exposed a related ownership issue: shared examples can report `file_path` as `spec/support/shared_examples/...` while their `example.id` and `location_rerun_argument` point back to a real model spec. Runtime tracking and splitting should key aggregate ownership by the rerunnable/owning spec file when RSpec provides enough metadata, while still keeping support-file source locations available for diagnostics.
+
 ## File Responsibilities
 
 Create:
@@ -216,7 +247,7 @@ Modify:
 - [ ] Add source freshness helpers based on project-relative path, `mtime_unix_nano`, and `size_bytes`.
 - [ ] Add aggregate-eligibility rules for default/full-file, focused, tagged, fail-fast, aborted, and custom-arg runs.
 - [ ] Use `example.id` as the canonical key for persisted RSpec example entries.
-- [ ] Persist only `plur_version` from existing build info; do not persist job/framework/build/platform/run metadata.
+- [ ] Persist only `meta.plur_version` from existing build info plus `run.cwd` and `run.last_run_at`; do not persist job/framework/build/platform metadata or historical run metadata.
 - [ ] Write cache files atomically by writing a temporary file in the runtime directory and renaming it into place.
 - [ ] Ignore invalid or corrupt v2 cache files and regenerate from the next successful run.
 - [ ] Verify with focused Go tests:
@@ -264,8 +295,10 @@ mise exec -- bundle exec rspec spec/integration/spec/json_rows_formatter_spec.rb
 
 Concrete success criteria:
 - A normal `plur spec/calculator_spec.rb` run writes one v2 runtime file under `$PLUR_HOME/runtime`.
-- The v2 file has `schema_version: 2`.
-- The v2 file has `plur_version`.
+- The v2 file has `meta.schema_version: 2`.
+- The v2 file has `meta.plur_version`.
+- The v2 file has `run.cwd`.
+- The v2 file has `run.last_run_at` in UTC RFC3339 format.
 - The top-level `files["spec/calculator_spec.rb"].runtime_seconds` is greater than 0.
 - The same file entry contains an `examples` object keyed by RSpec `example.id`, with at least one entry containing `line_number` and `runtime_seconds`.
 - A second run logs `Using runtime-based grouped execution`.
@@ -299,7 +332,7 @@ go test -mod=mod . -run 'TestRspecSplit'
 
 **Files:** `rspec_line_splitter.go`, `rspec_line_splitter_test.go`
 
-- [ ] Define a pure function that receives file path, historical runtime, worker count, target group runtime, and exact example lines.
+- [ ] Define a pure function that receives file path, historical runtime, worker count, target group runtime, and exact example units with line/rerun target/runtime data.
 - [ ] Return the original file path unchanged when the file is not a long pole or has too few exact lines.
 - [ ] Use the simplest possible threshold for the experimental rollout: split files whose historical `runtime_seconds` is greater than the target per-worker runtime budget. No multiplier, no floor, no top-N selection. Tune later based on real-world QA.
 - [ ] Produce focused targets like:
@@ -309,7 +342,10 @@ spec/slow_spec.rb:12:38:91
 ```
 
 - [ ] Keep chunk count bounded by worker count and example count.
+- [ ] Use cached per-example runtime seconds to bin-pack examples into chunks instead of round-robin splitting by line number.
+- [ ] Assign each generated target the summed runtime of its examples, not `original_file_runtime / chunk_count`.
 - [ ] Make chunking deterministic so repeated runs produce stable commands.
+- [ ] Preserve a simple fallback for examples with missing runtime, such as a per-file average or small default.
 - [ ] Verify the pure splitter with table-driven tests.
 
 ## Task 7: Expand Runtime Grouping When Enabled
@@ -317,11 +353,12 @@ spec/slow_spec.rb:12:38:91
 **Files:** `grouper.go`, `grouper_test.go`, `runner.go`, `runner_test.go`
 
 - [ ] Keep the old grouping behavior when `RspecSplit` is false.
-- [ ] When `RspecSplit == true` for an RSpec job, read file runtimes and example lines from runtime cache v2.
+- [ ] When `RspecSplit == true` for an RSpec job, read file runtimes and example runtime units from runtime cache v2.
 - [ ] Expand long-pole files into focused targets before existing longest-processing-time grouping.
-- [ ] Assign each generated target an estimated runtime of `original_file_runtime / chunk_count` for grouping balance only.
+- [ ] Assign each generated target the summed runtime of its examples for grouping balance.
 - [ ] Do not persist runtime entries for generated `file:line` targets.
 - [ ] Log debug reasons when splitting is skipped.
+- [ ] Treat shared examples carefully: the cache should preserve diagnostic source file information, but grouping/splitting ownership should follow the rerunnable owning spec file when available.
 - [ ] Verify:
 
 ```bash
@@ -342,6 +379,8 @@ go test -mod=mod . -run 'TestGroupSpecFilesByRuntime|TestRunner|TestRspecSplit'
 - [ ] Assert focused file:line runs merge observations by RSpec `example.id`.
 - [ ] Assert `plur --rspec-split -n 4 --dry-run` uses cached focused targets and does not invoke RSpec.
 - [ ] Assert a real `plur --rspec-split -n 4` run executes focused `file:line` targets and passes after cache exists.
+- [ ] Assert split chunks are balanced from cached per-example runtime data, not just from line count.
+- [ ] Assert shared examples are attributed to the rerunnable owning spec file for aggregate grouping when `location_rerun_argument` points there.
 - [ ] Assert unsupported passthrough args fall back to file-level grouping.
 - [ ] Assert Plur-owned `--tag` filters are classified as tagged and do not update default full-file aggregates.
 - [ ] Verify with:
@@ -415,6 +454,7 @@ bin/rake test
 - RSpec selected example metadata and per-example runtime details live in the main runtime cache.
 - Focused or tag-filtered runs do not corrupt default full-file runtime aggregates.
 - `plur --rspec-split` can split a long RSpec file into focused line targets when v2 runtime data has fresh example lines.
+- Split chunks use cached per-example runtimes for balancing when those runtimes are available.
 - `plur --dry-run --rspec-split` never shells out to RSpec.
 - Real-project QA has covered Plur, RuboCop, and at least one other RSpec project.
 - Benchmarks compare `--rspec-split` off vs on after cache warmup.

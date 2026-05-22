@@ -5,6 +5,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // RuntimeCacheSchemaVersion is the on-disk schema version Plur reads and writes.
@@ -16,9 +17,22 @@ const RuntimeCacheSchemaVersion = 2
 // See docs/plans/2026-05-12-rspec-split-specs-experimental-plan.md for the
 // shape and lifecycle rules.
 type RuntimeCache struct {
-	SchemaVersion int                   `json:"schema_version"`
-	PlurVersion   string                `json:"plur_version,omitempty"`
-	Files         map[string]*FileEntry `json:"files"`
+	Meta  RuntimeCacheMeta      `json:"meta"`
+	Run   RuntimeCacheRun       `json:"run"`
+	Files map[string]*FileEntry `json:"files"`
+}
+
+// RuntimeCacheMeta stores cache metadata intended to be readable near the top
+// of the JSON file.
+type RuntimeCacheMeta struct {
+	SchemaVersion int    `json:"schema_version"`
+	PlurVersion   string `json:"plur_version,omitempty"`
+}
+
+// RuntimeCacheRun stores metadata about the most recent cache write.
+type RuntimeCacheRun struct {
+	Cwd       string `json:"cwd,omitempty"`
+	LastRunAt string `json:"last_run_at,omitempty"`
 }
 
 // FileEntry is the per-file record in the v2 cache. RuntimeSeconds is the
@@ -46,8 +60,8 @@ type ExampleEntry struct {
 // NewRuntimeCache returns an empty v2 cache.
 func NewRuntimeCache() *RuntimeCache {
 	return &RuntimeCache{
-		SchemaVersion: RuntimeCacheSchemaVersion,
-		Files:         make(map[string]*FileEntry),
+		Meta:  RuntimeCacheMeta{SchemaVersion: RuntimeCacheSchemaVersion},
+		Files: make(map[string]*FileEntry),
 	}
 }
 
@@ -64,7 +78,7 @@ func LoadRuntimeCache(path string) *RuntimeCache {
 	if err := json.Unmarshal(data, &cache); err != nil {
 		return NewRuntimeCache()
 	}
-	if cache.SchemaVersion != RuntimeCacheSchemaVersion {
+	if cache.Meta.SchemaVersion != RuntimeCacheSchemaVersion {
 		return NewRuntimeCache()
 	}
 	if cache.Files == nil {
@@ -76,11 +90,13 @@ func LoadRuntimeCache(path string) *RuntimeCache {
 // SaveRuntimeCache writes the cache atomically: temp file in the same
 // directory + rename into place. The caller supplies the current plur version
 // to record.
-func SaveRuntimeCache(cache *RuntimeCache, path, plurVersion string) error {
-	if cache.SchemaVersion == 0 {
-		cache.SchemaVersion = RuntimeCacheSchemaVersion
+func SaveRuntimeCache(cache *RuntimeCache, path, plurVersion, cwd string, lastRunAt time.Time) error {
+	if cache.Meta.SchemaVersion == 0 {
+		cache.Meta.SchemaVersion = RuntimeCacheSchemaVersion
 	}
-	cache.PlurVersion = plurVersion
+	cache.Meta.PlurVersion = plurVersion
+	cache.Run.Cwd = cwd
+	cache.Run.LastRunAt = lastRunAt.UTC().Format(time.RFC3339)
 	if cache.Files == nil {
 		cache.Files = make(map[string]*FileEntry)
 	}

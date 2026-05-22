@@ -205,8 +205,14 @@ The on-disk format is a versioned v2 cache:
 
 ```json
 {
-  "schema_version": 2,
-  "plur_version": "0.56.0-dev-abc1234",
+  "meta": {
+    "schema_version": 2,
+    "plur_version": "0.56.0-dev-abc1234"
+  },
+  "run": {
+    "cwd": "/Users/example/src/my-project",
+    "last_run_at": "2026-05-22T15:04:05Z"
+  },
   "files": {
     "spec/slow_spec.rb": {
       "mtime_unix_nano": 1778610000000000000,
@@ -230,7 +236,7 @@ The on-disk format is a versioned v2 cache:
 
 Behavior:
 
-- The cache is rewritten only by default/full-file RSpec runs. Focused
+- File aggregates are rewritten only by default/full-file RSpec runs. Focused
   (`spec/foo_spec.rb:42`), tag-filtered (`--tag=…`), `--fail-fast`, aborted,
   and `--`-passthrough runs are classified as *partial* and merge
   per-example observations without overwriting the file aggregate or

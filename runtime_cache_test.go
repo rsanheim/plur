@@ -17,7 +17,7 @@ func TestRuntimeCache_LoadEmptyOrMissing(t *testing.T) {
 
 	cache := LoadRuntimeCache(path)
 	require.NotNil(t, cache)
-	assert.Equal(t, RuntimeCacheSchemaVersion, cache.SchemaVersion)
+	assert.Equal(t, RuntimeCacheSchemaVersion, cache.Meta.SchemaVersion)
 	assert.Empty(t, cache.Files)
 }
 
@@ -34,7 +34,7 @@ func TestRuntimeCache_IgnoresV1Cache(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, data, 0644))
 
 	cache := LoadRuntimeCache(path)
-	assert.Equal(t, RuntimeCacheSchemaVersion, cache.SchemaVersion)
+	assert.Equal(t, RuntimeCacheSchemaVersion, cache.Meta.SchemaVersion)
 	assert.Empty(t, cache.Files, "v1 caches must be ignored, not migrated")
 }
 
@@ -44,17 +44,17 @@ func TestRuntimeCache_IgnoresCorruptCache(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte("not json {{{"), 0644))
 
 	cache := LoadRuntimeCache(path)
-	assert.Equal(t, RuntimeCacheSchemaVersion, cache.SchemaVersion)
+	assert.Equal(t, RuntimeCacheSchemaVersion, cache.Meta.SchemaVersion)
 	assert.Empty(t, cache.Files)
 }
 
 func TestRuntimeCache_IgnoresUnknownSchemaVersion(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{"schema_version": 99, "files": {"spec/x.rb": {"runtime_seconds": 1.0}}}`), 0644))
+	require.NoError(t, os.WriteFile(path, []byte(`{"meta": {"schema_version": 99}, "files": {"spec/x.rb": {"runtime_seconds": 1.0}}}`), 0644))
 
 	cache := LoadRuntimeCache(path)
-	assert.Equal(t, RuntimeCacheSchemaVersion, cache.SchemaVersion)
+	assert.Equal(t, RuntimeCacheSchemaVersion, cache.Meta.SchemaVersion)
 	assert.Empty(t, cache.Files)
 }
 
@@ -73,11 +73,14 @@ func TestRuntimeCache_SaveAndReload(t *testing.T) {
 		},
 	})
 
-	require.NoError(t, SaveRuntimeCache(cache, path, "plur-test"))
+	savedAt := time.Date(2026, 5, 22, 15, 4, 5, 0, time.UTC)
+	require.NoError(t, SaveRuntimeCache(cache, path, "plur-test", "/Users/example/project", savedAt))
 
 	reloaded := LoadRuntimeCache(path)
-	assert.Equal(t, RuntimeCacheSchemaVersion, reloaded.SchemaVersion)
-	assert.Equal(t, "plur-test", reloaded.PlurVersion)
+	assert.Equal(t, RuntimeCacheSchemaVersion, reloaded.Meta.SchemaVersion)
+	assert.Equal(t, "plur-test", reloaded.Meta.PlurVersion)
+	assert.Equal(t, "/Users/example/project", reloaded.Run.Cwd)
+	assert.Equal(t, "2026-05-22T15:04:05Z", reloaded.Run.LastRunAt)
 
 	entry := reloaded.File("spec/foo_spec.rb")
 	require.NotNil(t, entry)
@@ -94,13 +97,27 @@ func TestRuntimeCache_SaveAndReload(t *testing.T) {
 	assert.Equal(t, 1.0, ex.RuntimeSeconds)
 }
 
+func TestRuntimeCache_SaveWritesHumanReadableHeaderOrder(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cache.json")
+
+	cache := NewRuntimeCache()
+	cache.MergeAggregateRun("spec/foo_spec.rb", 1, 2, 1.0, nil)
+
+	require.NoError(t, SaveRuntimeCache(cache, path, "plur-test", "/tmp/project", time.Date(2026, 5, 22, 1, 2, 3, 0, time.UTC)))
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "{\n  \"meta\": {\n    \"schema_version\": 2,\n    \"plur_version\": \"plur-test\"\n  },\n  \"run\": {\n    \"cwd\": \"/tmp/project\",\n    \"last_run_at\": \"2026-05-22T01:02:03Z\"\n  },\n  \"files\": {")
+}
+
 func TestRuntimeCache_SaveIsAtomic(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
 	cache := NewRuntimeCache()
 	cache.MergeAggregateRun("spec/foo_spec.rb", 1, 2, 1.0, nil)
-	require.NoError(t, SaveRuntimeCache(cache, path, "v1"))
+	require.NoError(t, SaveRuntimeCache(cache, path, "v1", "/tmp/project", time.Now()))
 
 	// No leftover temp files in the directory.
 	entries, err := os.ReadDir(dir)

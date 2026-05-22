@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/types"
@@ -24,13 +25,14 @@ type RuntimeTracker struct {
 	fileRuntimes    map[string]float64                  // collected this run, by project-relative file path
 	pendingExamples map[string]map[string]*ExampleEntry // collected this run, file -> example.id -> entry
 	runtimeFile     string
+	cwd             string
 }
 
 // NewRuntimeTracker creates a tracker, computing the project-specific cache
 // file path and loading any existing v2 data. Missing, v1, or corrupt cache
 // files are silently replaced by an empty cache.
 func NewRuntimeTracker(runtimeDir string) (*RuntimeTracker, error) {
-	runtimeFile, err := computeRuntimeFilePath(runtimeDir)
+	runtimeFile, cwd, err := computeRuntimeFilePath(runtimeDir)
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +44,7 @@ func NewRuntimeTracker(runtimeDir string) (*RuntimeTracker, error) {
 		fileRuntimes:    make(map[string]float64),
 		pendingExamples: make(map[string]map[string]*ExampleEntry),
 		runtimeFile:     runtimeFile,
+		cwd:             cwd,
 	}, nil
 }
 
@@ -117,7 +120,7 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 		rt.cache.MergeObservations(filePath, examples)
 	}
 
-	return SaveRuntimeCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo())
+	return SaveRuntimeCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
 }
 
 // PendingFileRuntimes returns a copy of the file-runtime observations
@@ -126,23 +129,23 @@ func (rt *RuntimeTracker) PendingFileRuntimes() map[string]float64 {
 	return maps.Clone(rt.fileRuntimes)
 }
 
-func computeRuntimeFilePath(runtimeDir string) (string, error) {
-	projectHash, err := getProjectHash()
+func computeRuntimeFilePath(runtimeDir string) (string, string, error) {
+	projectHash, cwd, err := getProjectHash()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return filepath.Join(runtimeDir, projectHash+".json"), nil
+	return filepath.Join(runtimeDir, projectHash+".json"), cwd, nil
 }
 
-func getProjectHash() (string, error) {
+func getProjectHash() (string, string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	absPath, err := filepath.Abs(cwd)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	hash := sha256.Sum256([]byte(absPath))
-	return hex.EncodeToString(hash[:])[:8], nil
+	return hex.EncodeToString(hash[:])[:8], absPath, nil
 }

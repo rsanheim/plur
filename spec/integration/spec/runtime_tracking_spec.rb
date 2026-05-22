@@ -1,4 +1,5 @@
 require "spec_helper"
+require "time"
 
 RSpec.describe "Plur runtime tracking" do
   def runtime_cache_data
@@ -27,13 +28,15 @@ RSpec.describe "Plur runtime tracking" do
   context "runtime data collection (v2 schema)" do
     around_with_tmp_plur_home
 
-    it "writes a v2 cache with schema_version, plur_version, file aggregates, and example index" do
+    it "writes a v2 cache with meta, run metadata, file aggregates, and example index" do
       Dir.chdir(default_ruby_dir) do
         run_plur("-n", "2")
 
         data, runtime_file = runtime_cache_data
-        expect(data["schema_version"]).to eq(2)
-        expect(data["plur_version"]).to be_a(String).and(satisfy { |v| !v.empty? })
+        expect(data["meta"]["schema_version"]).to eq(2)
+        expect(data["meta"]["plur_version"]).to be_a(String).and(satisfy { |v| !v.empty? })
+        expect(data["run"]["cwd"]).to eq(default_ruby_dir.to_s)
+        expect(Time.iso8601(data["run"]["last_run_at"]).utc.iso8601).to eq(data["run"]["last_run_at"])
 
         files = data["files"]
         expect(files).to be_a(Hash)
@@ -79,7 +82,7 @@ RSpec.describe "Plur runtime tracking" do
         run_plur("-n", "2")
 
         data = JSON.parse(File.read(cache_path))
-        expect(data["schema_version"]).to eq(2)
+        expect(data["meta"]["schema_version"]).to eq(2)
         expect(data["files"]).to include("spec/calculator_spec.rb")
       end
     end
@@ -119,8 +122,14 @@ RSpec.describe "Plur runtime tracking" do
         }
 
         cache = {
-          "schema_version" => 2,
-          "plur_version" => "fixture",
+          "meta" => {
+            "schema_version" => 2,
+            "plur_version" => "fixture"
+          },
+          "run" => {
+            "cwd" => default_ruby_dir,
+            "last_run_at" => "2026-05-22T00:00:00Z"
+          },
           "files" => files.transform_values { |rt|
             {"mtime_unix_nano" => 0, "size_bytes" => 0, "runtime_seconds" => rt,
              "example_index_complete" => false}
