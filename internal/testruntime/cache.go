@@ -2,6 +2,7 @@ package testruntime
 
 import (
 	"encoding/json"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -78,7 +79,7 @@ func LoadCache(path string) (cache *Cache) {
 			"duration", time.Since(start),
 			"path", path,
 			"files", len(cache.Files),
-			"examples", countExamples(cache),
+			"examples", exampleCountValue{cache: cache},
 		)
 	}()
 
@@ -153,9 +154,17 @@ func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time)
 		"duration", time.Since(start),
 		"path", path,
 		"files", len(cache.Files),
-		"examples", countExamples(cache),
+		"examples", exampleCountValue{cache: cache},
 	)
 	return nil
+}
+
+type exampleCountValue struct {
+	cache *Cache
+}
+
+func (v exampleCountValue) LogValue() slog.Value {
+	return slog.IntValue(countExamples(v.cache))
 }
 
 // countExamples sums per-file example counts across the cache. Used for the

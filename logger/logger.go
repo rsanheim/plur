@@ -95,6 +95,7 @@ func (h *CustomTextHandler) Handle(_ context.Context, r slog.Record) error {
 	// Add attributes
 	r.Attrs(func(a slog.Attr) bool {
 		// Format value based on type
+		a.Value = a.Value.Resolve()
 		var value string
 		switch v := a.Value.Any().(type) {
 		case string:

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -245,6 +246,43 @@ func TestCustomTextHandler_ConcurrentWrites(t *testing.T) {
 		assert.Contains(t, line, "worker=", "Line %d should contain worker attribute", i)
 		assert.Contains(t, line, "iteration=", "Line %d should contain iteration attribute", i)
 	}
+}
+
+type countingLogValue struct {
+	calls *atomic.Int32
+}
+
+func (v countingLogValue) LogValue() slog.Value {
+	v.calls.Add(1)
+	return slog.IntValue(42)
+}
+
+func TestCustomTextHandler_ResolvesLogValuer(t *testing.T) {
+	var calls atomic.Int32
+	var buf bytes.Buffer
+	handler := NewCustomTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	logger := slog.New(handler)
+
+	logger.Debug("message", "expensive", countingLogValue{calls: &calls})
+
+	assert.Equal(t, int32(1), calls.Load())
+	assert.Contains(t, buf.String(), "expensive=42")
+}
+
+func TestCustomTextHandler_DoesNotResolveLogValuerWhenDisabled(t *testing.T) {
+	var calls atomic.Int32
+	var buf bytes.Buffer
+	handler := NewCustomTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+	logger := slog.New(handler)
+
+	logger.Debug("message", "expensive", countingLogValue{calls: &calls})
+
+	assert.Zero(t, calls.Load())
+	assert.Empty(t, buf.String())
 }
 
 func TestIsVerboseEnabled(t *testing.T) {
