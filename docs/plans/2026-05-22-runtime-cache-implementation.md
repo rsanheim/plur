@@ -6,6 +6,15 @@
 
 **Architecture:** One branch on top of `rspec-split-specs`. Task 1 is a series of small move + rename commits to keep each step reviewable. Tasks 2–9 build on the new layout. Task 10 is a dedicated simplification pass. Task 11 verifies and finalizes.
 
+**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is partially complete for Plur and RuboCop only. Task 11 remains open because review and benchmark evidence found correctness and performance follow-ups.
+
+**Open follow-ups:**
+- `--rspec-split` must group or dedupe examples by rerunnable source line before bin-packing. The current branch can emit the same `file:line` in multiple chunks when several examples share one line, which reruns examples. This was observed in RuboCop full-suite measurements as higher example counts under split mode.
+- `LoadCache` needs a nil/wrong-shape guard after JSON decode. A cache file containing valid JSON `null` can leave the decoded `*Cache` nil and panic before the intended "ignore corrupt/unexpected cache" fallback.
+- RuboCop's v2 debug measurements exceed the large-project runtime-cache overhead threshold, so the Phase B cache-format follow-up remains open.
+- Task 8 still needs the RSpec-core, Mastodon, and Discourse measurements, or an explicit decision to narrow the QA matrix.
+- Plur's own suite needs a cleaner benchmark harness before its `plur -n 8` result can be treated as a valid cache comparison.
+
 > **Note on cherry-picking to main:** an earlier draft of this plan claimed Task 1's commits could be cherry-picked back onto `main` as a standalone PR. That premise was wrong — the source files (`runtime_cache.go`, `runtime_run_kind.go`, `rspec_line_splitter.go`) only exist on `rspec-split-specs`, and even `runtime_tracker.go` on `main` is the v1 `map[string]float64` shape that pre-dates the v2 cache work. The package re-org ships as part of `rspec-split-specs`.
 
 **Tech Stack:** Go (existing toolchain), structured `log/slog` via `logger.Logger`, RSpec JSON rows formatter (unchanged), backspin for doctor integration tests.
@@ -18,11 +27,12 @@ After this plan completes, the runtime concerns live together:
 
 ```
 internal/testruntime/
-  cache.go           — RuntimeCache renamed to Cache; SplitFile method lives here
+  cache.go           — Cache shape, load/save, source freshness, and cache query helpers
   tracker.go         — write-time logic, shared-example attribution
-  run_kind.go        — RunKind enum (may fold into cache.go during Task 10)
-  splitter.go        — bin-packing helpers if cache.go grows unwieldy; otherwise empty / removed
-  cache_test.go      — schema, load/save, freshness, SplitFile bin-packing
+  run_kind.go        — RunKind enum and aggregate/partial classification
+  splitter.go        — SplitDecision and bin-packing Cache.SplitFile method
+  cache_test.go      — schema, load/save, freshness
+  splitter_test.go   — SplitFile bin-packing
   tracker_test.go    — aggregate vs partial runs, shared-example attribution
 ```
 
@@ -51,34 +61,34 @@ Order matters: **build always green** — every commit must pass `bin/rake build
 
 ### Task 1.1: Move the runtime cache file
 
-- [ ] `git mv runtime_cache.go internal/testruntime/cache.go`
-- [ ] `git mv runtime_cache_test.go internal/testruntime/cache_test.go`
-- [ ] Change `package main` → `package testruntime` at the top of both files.
-- [ ] Update every import site to add `"github.com/rsanheim/plur/internal/testruntime"` and qualify references (`testruntime.RuntimeCache`, `testruntime.LoadRuntimeCache`, etc.).
-- [ ] Do NOT rename types yet — that's Task 1.5.
-- [ ] Verify: `bin/rake build && bin/rake test:go`
-- [ ] Commit: `Move runtime cache into internal/testruntime`
+- [x] `git mv runtime_cache.go internal/testruntime/cache.go`
+- [x] `git mv runtime_cache_test.go internal/testruntime/cache_test.go`
+- [x] Change `package main` → `package testruntime` at the top of both files.
+- [x] Update every import site to add `"github.com/rsanheim/plur/internal/testruntime"` and qualify references (`testruntime.RuntimeCache`, `testruntime.LoadRuntimeCache`, etc.).
+- [x] Do NOT rename types yet — that's Task 1.5.
+- [x] Verify: `bin/rake build && bin/rake test:go`
+- [x] Commit: `Move runtime cache into internal/testruntime`
 
 ### Task 1.2: Move the tracker
 
-- [ ] Same pattern: `git mv runtime_tracker.go internal/testruntime/tracker.go` and its test.
-- [ ] `package main` → `package testruntime`. Import-site updates.
-- [ ] Verify: `bin/rake build && bin/rake test:go`
-- [ ] Commit: `Move runtime tracker into internal/testruntime`
+- [x] Same pattern: `git mv runtime_tracker.go internal/testruntime/tracker.go` and its test.
+- [x] `package main` → `package testruntime`. Import-site updates.
+- [x] Verify: `bin/rake build && bin/rake test:go`
+- [x] Commit: `Move runtime tracker into internal/testruntime`
 
 ### Task 1.3: Move run_kind
 
-- [ ] `git mv runtime_run_kind.go internal/testruntime/run_kind.go`. No `_test.go` to move (per the existing file list).
-- [ ] Same package + import surgery.
-- [ ] Verify: `bin/rake build && bin/rake test:go`
-- [ ] Commit: `Move RunKind into internal/testruntime`
+- [x] `git mv runtime_run_kind.go internal/testruntime/run_kind.go`. No `_test.go` to move (per the existing file list).
+- [x] Same package + import surgery.
+- [x] Verify: `bin/rake build && bin/rake test:go`
+- [x] Commit: `Move RunKind into internal/testruntime`
 
 ### Task 1.4: Move the splitter
 
-- [ ] `git mv rspec_line_splitter.go internal/testruntime/splitter.go` and its test.
-- [ ] Same package + import surgery. `SplitFile` is still a free function at this point — keep it as-is.
-- [ ] Verify: `bin/rake build && bin/rake test:go`
-- [ ] Commit: `Move RSpec line splitter into internal/testruntime`
+- [x] `git mv rspec_line_splitter.go internal/testruntime/splitter.go` and its test.
+- [x] Same package + import surgery. `SplitFile` is still a free function at this point — keep it as-is.
+- [x] Verify: `bin/rake build && bin/rake test:go`
+- [x] Commit: `Move RSpec line splitter into internal/testruntime`
 
 ### Task 1.5: Rename types to drop the redundant `Runtime` prefix
 
@@ -103,10 +113,10 @@ SourceFreshness — fine
 SplitDecision, SplitFile — fine
 ```
 
-- [ ] Rename in the source files.
-- [ ] Update every call site (use `gopls` rename or sed-then-build-loop).
-- [ ] Verify: `bin/rake build && bin/rake test:go && bin/rake test`
-- [ ] Commit: `Drop redundant Runtime prefix in runtime package`
+- [x] Rename in the source files.
+- [x] Update every call site (use `gopls` rename or sed-then-build-loop).
+- [x] Verify: `bin/rake build && bin/rake test:go && bin/rake test`
+- [x] Commit: `Drop redundant Runtime prefix in runtime package`
 
 **Task 1 success criteria:**
 - Build is green after every single commit.
@@ -128,17 +138,17 @@ SplitDecision, SplitFile — fine
 
 ### Steps
 
-- [ ] Update the struct definition in `cache.go`.
-- [ ] Remove any code in `tracker.go` that populates the dropped fields.
-- [ ] Add a test that writes an old-shape cache JSON literal to disk, calls `LoadCache`, and asserts the load returns a valid `Cache` without error.
-- [ ] Update existing tests that asserted on `Status` / `ScopedID` — assert on the remaining three fields instead.
-- [ ] Verify:
+- [x] Update the struct definition in `cache.go`.
+- [x] Remove any code in `tracker.go` that populates the dropped fields.
+- [x] Add a test that writes an old-shape cache JSON literal to disk, calls `LoadCache`, and asserts the load returns a valid `Cache` without error.
+- [x] Update existing tests that asserted on `Status` / `ScopedID` — assert on the remaining three fields instead.
+- [x] Verify:
 
 ```bash
 go test -mod=mod ./internal/testruntime/ -run TestCache -v
 ```
 
-- [ ] Commit: `Trim Status and ScopedID from ExampleEntry`
+- [x] Commit: `Trim Status and ScopedID from ExampleEntry`
 
 ### Success criteria
 - All cache tests pass.
@@ -178,19 +188,19 @@ Use existing `normalize` (or whatever the parser uses today — find it in `fram
 
 ### Steps
 
-- [ ] Find the current write-time site in `tracker.go` where `examples` are bucketed into files. There is likely a loop that already uses `file_path`. Replace with `owningFile(file_path, location_rerun_argument)`.
-- [ ] Add the `owningFile` helper above (private to the package).
-- [ ] Tests cover three cases:
+- [x] Find the current write-time site in `tracker.go` where `examples` are bucketed into files. There is likely a loop that already uses `file_path`. Replace with `owningFile(file_path, location_rerun_argument)`.
+- [x] Add the `owningFile` helper above (private to the package).
+- [x] Tests cover three cases:
   - **Plain example:** `file_path = spec/foo_spec.rb`, `location_rerun_argument = ./spec/foo_spec.rb:42` → owner is `spec/foo_spec.rb`.
   - **Shared example:** `file_path = spec/support/shared_examples/x.rb`, `location_rerun_argument = ./spec/models/user_spec.rb:42` → owner is `spec/models/user_spec.rb`.
   - **Missing rerun arg:** `location_rerun_argument = ""` → owner is `file_path`.
-- [ ] Verify:
+- [x] Verify:
 
 ```bash
 go test -mod=mod ./internal/testruntime/ -run TestTracker -v
 ```
 
-- [ ] Commit: `Attribute shared examples via location_rerun_argument`
+- [x] Commit: `Attribute shared examples via location_rerun_argument`
 
 ### Success criteria
 - All tracker tests pass.
@@ -204,6 +214,8 @@ go test -mod=mod ./internal/testruntime/ -run TestTracker -v
 **Goal:** Move splitting logic onto the cache type. Replace round-robin with longest-processing-time bin-packing using cached per-example runtimes. Return a `map[string]float64`.
 
 **Files:** `internal/testruntime/cache.go` (or `splitter.go` if it's cleaner to keep it separate; decide once you see the size), `internal/testruntime/splitter_test.go`
+
+**Status:** Implemented in `internal/testruntime/splitter.go`. Review found one missing correctness case: examples with the same rerunnable source line must be grouped before bin-packing so the same line cannot be emitted into multiple split targets.
 
 ### Requirements
 
@@ -275,17 +287,17 @@ Table-driven, in `splitter_test.go`:
 
 ### Steps
 
-- [ ] Delete the old free-function `SplitFile` in `splitter.go` (after moving the bin-packing logic to the method).
-- [ ] Define `SplitDecision` typedef next to `Cache`.
-- [ ] Implement the method per the pseudo-code.
-- [ ] Write the test cases above. Use testify `require`/`assert` per project conventions.
-- [ ] Verify:
+- [x] Delete the old free-function `SplitFile` in `splitter.go` (after moving the bin-packing logic to the method).
+- [x] Define `SplitDecision` typedef next to `Cache`.
+- [x] Implement the method per the pseudo-code.
+- [x] Write the test cases above. Use testify `require`/`assert` per project conventions.
+- [x] Verify:
 
 ```bash
 go test -mod=mod ./internal/testruntime/ -run TestSplitFile -v
 ```
 
-- [ ] Commit: `Replace round-robin splitter with bin-packing method on Cache`
+- [x] Commit: `Replace round-robin splitter with bin-packing method on Cache`
 
 ### Success criteria
 - The old free function `SplitFile` is gone.
@@ -299,6 +311,8 @@ go test -mod=mod ./internal/testruntime/ -run TestSplitFile -v
 **Goal:** Replace the existing call site that builds `exampleLines []int` and consumes the old `SplitDecision` struct with a direct `cache.SplitFile(...)` call returning the map.
 
 **Files:** `runner.go`, `runner_rspec_split_test.go`
+
+**Status:** Implemented. This wiring depends on the Task 4 duplicate-line follow-up before `--rspec-split` is safe for large real suites.
 
 ### Requirements
 
@@ -320,18 +334,18 @@ logger.Logger.Debug("rspec-split applied", "file", file, "chunks", len(decision)
 
 ### Steps
 
-- [ ] Locate every reference to the old `SplitDecision` struct in `runner.go`. Update.
-- [ ] Adapt the existing `rspec-split skipped` log calls — most of those don't need to change since they fire before calling `SplitFile`.
-- [ ] Update existing tests in `runner_rspec_split_test.go` to match the new shape. Watch for assertions on `decision.Chunks` or `decision.ChunkRuntimeSeconds`.
-- [ ] Add a new test: build a cache with one heavy example (1s) and four light examples (0.1s each), call the split path, and assert the resulting `fileRuntimes` map has uneven values across the generated targets.
-- [ ] Verify:
+- [x] Locate every reference to the old `SplitDecision` struct in `runner.go`. Update.
+- [x] Adapt the existing `rspec-split skipped` log calls — most of those don't need to change since they fire before calling `SplitFile`.
+- [x] Update existing tests in `runner_rspec_split_test.go` to match the new shape. Watch for assertions on `decision.Chunks` or `decision.ChunkRuntimeSeconds`.
+- [x] Add a new test: build a cache with one heavy example (1s) and four light examples (0.1s each), call the split path, and assert the resulting `fileRuntimes` map has uneven values across the generated targets.
+- [x] Verify:
 
 ```bash
 go test -mod=mod . -run 'TestRunner|TestRspecSplit' -v
 bin/rspec spec/integration/spec/runtime_tracking_spec.rb
 ```
 
-- [ ] Commit: `Use SplitDecision map and per-target runtimes for grouping`
+- [x] Commit: `Use SplitDecision map and per-target runtimes for grouping`
 
 ### Success criteria
 - All existing splitter integration tests pass without code changes (the public behavior is the same; only data flow changed).
@@ -361,17 +375,17 @@ logger.Logger.Debug("runtimeCache saved",  "duration", dur, "path", path, "files
 
 ### Steps
 
-- [ ] In `LoadCache`, capture `start := time.Now()` at the top. Before returning, compute counts and log.
-- [ ] In `SaveCache`, capture `start := time.Now()` at the top. After the rename succeeds (success branch only), compute counts and log.
-- [ ] No public signature changes.
-- [ ] If there's no existing logger import in `cache.go`, add it. Match how `runner.go` imports the logger.
-- [ ] Verify by running an integration spec with debug logging enabled and confirming both lines appear:
+- [x] In `LoadCache`, capture `start := time.Now()` at the top. Before returning, compute counts and log.
+- [x] In `SaveCache`, capture `start := time.Now()` at the top. After the rename succeeds (success branch only), compute counts and log.
+- [x] No public signature changes.
+- [x] If there's no existing logger import in `cache.go`, add it. Match how `runner.go` imports the logger.
+- [x] Verify by running an integration spec with debug logging enabled and confirming both lines appear:
 
 ```bash
 PLUR_DEBUG=1 bin/rspec spec/integration/spec/runtime_tracking_spec.rb 2>&1 | grep runtimeCache
 ```
 
-- [ ] Commit: `Log structured debug lines on runtime cache load/save`
+- [x] Commit: `Log structured debug lines on runtime cache load/save`
 
 ### Success criteria
 - Debug logs appear with the exact keys above.
@@ -383,7 +397,7 @@ PLUR_DEBUG=1 bin/rspec spec/integration/spec/runtime_tracking_spec.rb 2>&1 | gre
 
 **Goal:** Replace the `(file exists)` line in [cmd_doctor.go:113](../../cmd_doctor.go) with a stats summary when the file exists. Keep `(file does not exist)` unchanged.
 
-**Files:** `cmd_doctor.go`, `spec/integration/plur_doctor/doctor_spec.rb`
+**Files:** `cmd_doctor.go`, `spec/integration/doctor/doctor_spec.rb`
 
 ### Requirements
 
@@ -414,18 +428,18 @@ func humanSize(n int64) string {
 
 ### Steps
 
-- [ ] In `cmd_doctor.go`, after the existing `os.Stat` check confirms the file exists, attempt to load the cache via `testruntime.LoadCache(runtimePath)`. Compute stats. Emit the new line.
-- [ ] Keep the `(file does not exist)` branch unchanged.
-- [ ] Use the cache loader from the runtime package — doctor does not need a separate read path.
-- [ ] Update the existing backspin snapshot in `spec/integration/plur_doctor/doctor_spec.rb`. The snapshot file likely lives under `spec/integration/plur_doctor/backspin/` — re-record it with `BACKSPIN_RECORD=1 bin/rspec ...` per existing project conventions.
-- [ ] Verify:
+- [x] In `cmd_doctor.go`, after the existing `os.Stat` check confirms the file exists, attempt to load the cache via `testruntime.LoadCache(runtimePath)`. Compute stats. Emit the new line.
+- [x] Keep the `(file does not exist)` branch unchanged.
+- [x] Use the cache loader from the runtime package — doctor does not need a separate read path.
+- [x] Update the existing backspin snapshot in `spec/integration/doctor/doctor_spec.rb`.
+- [x] Verify:
 
 ```bash
-bin/rspec spec/integration/plur_doctor/doctor_spec.rb
+bin/rspec spec/integration/doctor/doctor_spec.rb
 plur doctor   # eyeball check
 ```
 
-- [ ] Commit: `Show cache stats in plur doctor runtime data block`
+- [x] Commit: `Show cache stats in plur doctor runtime data block`
 
 ### Success criteria
 - `plur doctor` shows size / files / examples in place of `(file exists)` when a cache exists.
@@ -440,21 +454,24 @@ plur doctor   # eyeball check
 
 **Files:** none for source. Results go in the PR description, or `docs/plans/2026-05-22-runtime-cache-measurement-results.md` if Phase B is triggered.
 
+**Status:** Partially complete. Results and evidence are being recorded in [2026-05-22-runtime-cache-measurement-results.md](2026-05-22-runtime-cache-measurement-results.md). RuboCop exceeds the large-project cache-overhead threshold, so Phase B remains warranted. Plur and RuboCop were measured; RSpec-core, Mastodon, and Discourse are still open.
+
 ### Requirements
 
 Measure on:
-- Plur (this repo)
-- RuboCop
-- RSpec (rspec-core)
-- Mastodon (subset Rob has been using)
-- Discourse (subset Rob has been using)
+- [x] Plur (this repo) — attempted and documented; current outer-Plur benchmark is blocked by suite isolation issues.
+- [x] RuboCop — full-suite benchmark captured for legacy v1, v2 runtime cache, and v2 `--rspec-split`.
+- [ ] RSpec (rspec-core)
+- [ ] Mastodon (subset Rob has been using)
+- [ ] Discourse (subset Rob has been using)
 
 For each project:
 
-- [ ] Warm the cache: run `plur -n 8` once with the new binary so the cache is populated and the format reflects the schema trim.
-- [ ] Take three measurement runs with `PLUR_DEBUG=1 plur -n 8 2>&1 | grep runtimeCache`. Record the `duration` values for both load and save.
-- [ ] Note the on-disk cache file size and the `examples` count from the doctor output.
-- [ ] Spot-check the cache JSON: grep for `"status"` and `"scoped_id"` — should be absent. Sanity-check that `examples` map entries have exactly the three expected fields.
+- [x] Warm the cache for Plur and RuboCop so the cache is populated and the format reflects the schema trim.
+- [x] Capture runtime-cache load/save timings for RuboCop v2 debug and split-debug runs.
+- [x] Note the on-disk cache file size and examples count for RuboCop.
+- [x] Spot-check the RuboCop cache JSON: `"status"` and `"scoped_id"` are absent.
+- [ ] Repeat the above for RSpec-core, Mastodon, and Discourse if they remain in scope.
 
 Aggregate into:
 
@@ -467,8 +484,8 @@ Decision rule:
 - Any over threshold → write `docs/plans/2026-05-22-runtime-cache-measurement-results.md` recording the data and proposing a Phase B plan per the menu in the spec.
 
 ### Success criteria
-- Numbers table exists for all five projects.
-- A clear decision (close / Phase B) is recorded.
+- [ ] Numbers table exists for all five projects, or the QA matrix is explicitly narrowed.
+- [x] A clear decision (close / Phase B) is recorded for RuboCop: Phase B is still open.
 
 ---
 
@@ -487,9 +504,9 @@ Do **not** document Phase B options as user-facing — gate on Task 8.
 
 ### Steps
 
-- [ ] Edit `docs/usage.md`. Keep additions minimal — one or two sentences each.
-- [ ] Verify the doc renders sensibly (mkdocs builds, if applicable).
-- [ ] Commit: `Document runtime cache debug log and doctor stats`
+- [x] Edit `docs/usage.md`. Keep additions minimal — one or two sentences each.
+- [x] Verify the doc renders sensibly (mkdocs builds, if applicable).
+- [x] Commit: `Document runtime cache debug log and doctor stats`
 
 ---
 
@@ -498,6 +515,8 @@ Do **not** document Phase B options as user-facing — gate on Task 8.
 **Goal:** Re-read every modified file with fresh eyes. Remove what shouldn't have stayed.
 
 **Files:** every file touched by Tasks 1–9.
+
+**Status:** Completed. Cleanup commits consolidated `RunKind` into `run_kind.go`, trimmed stale comments, and kept `SplitDecision` as the public splitter result typedef for readability at the single runner call site.
 
 ### Requirements
 
@@ -516,6 +535,11 @@ Either:
 - One or more cleanup commits with descriptive messages (`Remove SplitDecision typedef in favor of inline map`, `Fold RunKind into tracker.go`, etc.); or
 - A line in the PR description: "Reviewed for simplification — nothing to remove."
 
+Completed output:
+- [x] Reviewed modified files for stale comments and dead round-robin code.
+- [x] Removed stale comments and consolidated `RunKind` in `internal/testruntime/run_kind.go`.
+- [x] Decided to keep `SplitDecision` as a named map type.
+
 Do not skip this task silently — make the decision explicit.
 
 ---
@@ -524,10 +548,12 @@ Do not skip this task silently — make the decision explicit.
 
 **Files:** none modified.
 
+**Status:** Not complete. During this status update, `git diff --check` and the targeted `go test -mod=mod ./internal/testruntime` package check passed; the full `bin/rake` verification matrix remains open.
+
 - [ ] `bin/rake test:go` — Go tests green.
 - [ ] `bin/rake test` — Ruby integration tests green.
 - [ ] `bin/rake standard:fix` — Ruby lint applied.
-- [ ] `git diff --check` — no trailing whitespace or conflict markers.
+- [x] `git diff --check` — no trailing whitespace or conflict markers.
 - [ ] If anything from Task 8 indicates a threshold breach, confirm the Phase B follow-up plan exists and is linked from the PR description.
 
 ### Success criteria
