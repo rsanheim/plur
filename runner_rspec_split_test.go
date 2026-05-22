@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -201,7 +202,56 @@ func TestShouldExpandSplits(t *testing.T) {
 	}
 }
 
+func TestPrintSummary_IncludesSplitInFrameworkLabel(t *testing.T) {
+	tempDir := t.TempDir()
+	cfg := &config.GlobalConfig{WorkerCount: 8, RuntimeDir: tempDir, RspecSplit: true}
+	rspecJob := job.Job{Name: "rspec", Framework: "rspec"}
+	runner, err := NewRunner(cfg, []string{"spec/project_spec.rb", "spec/rubocop/target_finder_spec.rb"}, rspecJob, nil)
+	require.NoError(t, err)
+
+	output := captureStderr(t, func() {
+		runner.printSummary(8)
+	})
+
+	assert.Equal(t, "Running 2 specs [rspec, split] in parallel using 8 workers\n", output)
+}
+
+func TestPrintSummary_LeavesFrameworkLabelAloneWithoutSplit(t *testing.T) {
+	tempDir := t.TempDir()
+	cfg := &config.GlobalConfig{WorkerCount: 8, RuntimeDir: tempDir}
+	rspecJob := job.Job{Name: "rspec", Framework: "rspec"}
+	runner, err := NewRunner(cfg, []string{"spec/project_spec.rb", "spec/rubocop/target_finder_spec.rb"}, rspecJob, nil)
+	require.NoError(t, err)
+
+	output := captureStderr(t, func() {
+		runner.printSummary(8)
+	})
+
+	assert.Equal(t, "Running 2 specs [rspec] in parallel using 8 workers\n", output)
+}
+
 func writeFile(t *testing.T, path, body string) {
 	t.Helper()
 	require.NoError(t, os.WriteFile(path, []byte(body), 0644))
+}
+
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+
+	original := os.Stderr
+	reader, writer, err := os.Pipe()
+	require.NoError(t, err)
+	defer reader.Close()
+
+	os.Stderr = writer
+	defer func() {
+		os.Stderr = original
+	}()
+
+	fn()
+
+	require.NoError(t, writer.Close())
+	output, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	return string(output)
 }

@@ -268,7 +268,7 @@ func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
 func (r *Runner) printSummary(workerCount int) {
 	label := r.testLabel()
 	toStdErr(r.config.DryRun, "Running %d %s [%s] %s\n",
-		len(r.files), label, r.framework.Name, workerCountPhrase(r.config, workerCount))
+		len(r.files), label, r.frameworkLabel(), workerCountPhrase(r.config, workerCount))
 }
 
 func (r *Runner) testLabel() string {
@@ -276,6 +276,13 @@ func (r *Runner) testLabel() string {
 		return pluralize(len(r.files), "spec", "specs")
 	}
 	return pluralize(len(r.files), "test", "tests")
+}
+
+func (r *Runner) frameworkLabel() string {
+	if r.shouldExpandSplits() {
+		return r.framework.Name + ", split"
+	}
+	return r.framework.Name
 }
 
 func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
