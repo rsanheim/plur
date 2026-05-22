@@ -4,7 +4,7 @@
 
 **Goal:** Close the [Current Gap from Branch Review](2026-05-12-rspec-split-specs-experimental-plan.md#current-gap-from-branch-review) by building the runtime-weighted bin-packing splitter, trim the obvious dead-weight from the v2 runtime cache per-example schema, and add measurement so we can decide whether further format work is justified by real performance data.
 
-**Architecture:** Phase A in one branch — move the runtime files into `internal/runtime/`, trim derivable per-example fields, attribute shared examples at write time, implement runtime-weighted splitter as a method on the cache, add load/save debug logging, amend the existing `plur doctor` output. Real-project QA from Task 8.1 of the parent plan supplies the data. Phase B is gated on Phase A measurements meeting the decision criteria.
+**Architecture:** Phase A in one branch — move the runtime files into `internal/testruntime/`, trim derivable per-example fields, attribute shared examples at write time, implement runtime-weighted splitter as a method on the cache, add load/save debug logging, amend the existing `plur doctor` output. Real-project QA from Task 8.1 of the parent plan supplies the data. Phase B is gated on Phase A measurements meeting the decision criteria.
 
 **Tech Stack:** Go CLI, `encoding/json`, structured `log/slog` (existing `logger.Logger`), existing Plur runtime tracker.
 
@@ -106,7 +106,7 @@ Determinism: same cache state → same `SplitDecision` map contents on every cal
 
 ## Instrumentation
 
-`internal/runtime/cache.go` — log inside `LoadRuntimeCache` and `SaveRuntimeCache`. No signature changes; no caller plumbing.
+`internal/testruntime/cache.go` — log inside `LoadRuntimeCache` and `SaveRuntimeCache`. No signature changes; no caller plumbing.
 
 ```go
 logger.Logger.Debug("runtimeCache loaded", "duration_ms", ms, "path", path, "files", filesCount, "examples", examplesCount)
@@ -159,10 +159,10 @@ No Phase B work happens until Phase A measurements are in.
 
 ## Package Re-Organization
 
-Top-level `runtime_*.go` and `rspec_line_splitter.go` move into `internal/runtime/`:
+Top-level `runtime_*.go` and `rspec_line_splitter.go` move into `internal/testruntime/`:
 
 ```
-internal/runtime/
+internal/testruntime/
   cache.go         (was runtime_cache.go; possibly absorbs run_kind.go — see code-review task)
   tracker.go       (was runtime_tracker.go)
   run_kind.go      (was runtime_run_kind.go — keep or fold during code review)
@@ -174,23 +174,23 @@ internal/runtime/
 
 **Cherry-pick strategy:** the pure file-rename commits (no content changes other than package declaration and imports) live in their own commits early in the branch so they can be cherry-picked back onto a fresh branch off `main` independently of the bin-packing / schema / shared-example work. Each pure-move commit must contain only:
 
-- `git mv` of the file into `internal/runtime/`
-- `package runtime` declaration at the top
+- `git mv` of the file into `internal/testruntime/`
+- `package testruntime` declaration at the top
 - import-path updates in callers
 - nothing else — no field renames, no logic changes, no test changes
 
 That makes Task 1 cherry-pickable for an early-merge if reviewers want the re-org without the rest of the plan.
 
-Note: the type names also change to drop the redundant `Runtime` prefix once they are in `package runtime`. That rename is its own commit, *after* the pure move, so the pure moves stay clean.
+Note: the type names also change to drop the redundant `Runtime` prefix once they are in `package testruntime`. That rename is its own commit, *after* the pure move, so the pure moves stay clean.
 
 ## File Responsibilities
 
 Modify (after the move):
 
-- `internal/runtime/cache.go`: drop `Status` and `ScopedID` from `ExampleEntry`. Add the `SplitFile` method and `SplitDecision` map typedef. Add debug logging inside `LoadRuntimeCache` and `SaveRuntimeCache`.
-- `internal/runtime/tracker.go`: ownership via `location_rerun_argument`, always.
-- `internal/runtime/splitter.go`: deleted in favor of the method on `*Cache`, OR retained as a small file holding `SplitDecision`'s typedef and split helpers if the cache file grows too long. Decide during code review.
-- `internal/runtime/*_test.go`: updated tests for the trimmed schema, the new ownership rule, and the bin-packing algorithm.
+- `internal/testruntime/cache.go`: drop `Status` and `ScopedID` from `ExampleEntry`. Add the `SplitFile` method and `SplitDecision` map typedef. Add debug logging inside `LoadRuntimeCache` and `SaveRuntimeCache`.
+- `internal/testruntime/tracker.go`: ownership via `location_rerun_argument`, always.
+- `internal/testruntime/splitter.go`: deleted in favor of the method on `*Cache`, OR retained as a small file holding `SplitDecision`'s typedef and split helpers if the cache file grows too long. Decide during code review.
+- `internal/testruntime/*_test.go`: updated tests for the trimmed schema, the new ownership rule, and the bin-packing algorithm.
 - `runner.go`: consume `SplitDecision` (map) directly; merge into the file-runtimes view passed to `GroupSpecFilesByRuntime`. No `ExampleUnit` construction in the caller.
 - `cmd_doctor.go`: amend the runtime data block per the example above.
 - `spec/integration/spec/runtime_tracking_spec.rb`: cover shared-example attribution end-to-end; assert old-schema caches are still loadable.
@@ -209,17 +209,17 @@ Not creating:
 
 ---
 
-## Task 1: Move runtime files into `internal/runtime/` (pure moves)
+## Task 1: Move runtime files into `internal/testruntime/` (pure moves)
 
 **Files:** `runtime_cache.go`, `runtime_tracker.go`, `runtime_run_kind.go`, `rspec_line_splitter.go` and their `_test.go` siblings.
 
 Each move is its own commit so any subset can be cherry-picked back onto `main`.
 
-- [ ] Commit 1: `git mv runtime_cache.go internal/runtime/cache.go` and its test. Change `package main` → `package runtime`. Update import paths in callers. No other changes.
-- [ ] Commit 2: same for `runtime_tracker.go` → `internal/runtime/tracker.go`.
-- [ ] Commit 3: same for `runtime_run_kind.go` → `internal/runtime/run_kind.go`.
-- [ ] Commit 4: same for `rspec_line_splitter.go` → `internal/runtime/splitter.go`.
-- [ ] Commit 5: rename types to drop the redundant `Runtime` prefix now that they're in `package runtime` (`RuntimeCache` → `Cache`, `LoadRuntimeCache` → `LoadCache`, `SaveRuntimeCache` → `SaveCache`, `RuntimeCacheMeta` → `CacheMeta`, etc.). Update all references.
+- [ ] Commit 1: `git mv runtime_cache.go internal/testruntime/cache.go` and its test. Change `package main` → `package testruntime`. Update import paths in callers. No other changes.
+- [ ] Commit 2: same for `runtime_tracker.go` → `internal/testruntime/tracker.go`.
+- [ ] Commit 3: same for `runtime_run_kind.go` → `internal/testruntime/run_kind.go`.
+- [ ] Commit 4: same for `rspec_line_splitter.go` → `internal/testruntime/splitter.go`.
+- [ ] Commit 5: rename types to drop the stuttery `Runtime` prefix now that they're in `package testruntime` (`RuntimeCache` → `Cache`, `LoadRuntimeCache` → `LoadCache`, `SaveRuntimeCache` → `SaveCache`, `RuntimeCacheMeta` → `CacheMeta`, etc.). Update all references.
 - [ ] Verify after each commit:
 
 ```bash
@@ -228,7 +228,7 @@ bin/rake build && bin/rake test:go
 
 ## Task 2: Trim `ExampleEntry` schema
 
-**Files:** `internal/runtime/cache.go`, `internal/runtime/cache_test.go`
+**Files:** `internal/testruntime/cache.go`, `internal/testruntime/cache_test.go`
 
 - [ ] Remove `ScopedID` and `Status` fields from `ExampleEntry`.
 - [ ] Remove related test assertions.
@@ -236,12 +236,12 @@ bin/rake build && bin/rake test:go
 - [ ] Verify:
 
 ```bash
-go test -mod=mod ./internal/runtime/ -run TestCache
+go test -mod=mod ./internal/testruntime/ -run TestCache
 ```
 
 ## Task 3: Shared-example attribution via `location_rerun_argument`
 
-**Files:** `internal/runtime/tracker.go`, `internal/runtime/tracker_test.go`
+**Files:** `internal/testruntime/tracker.go`, `internal/testruntime/tracker_test.go`
 
 - [ ] At write time, always derive the owning file from `location_rerun_argument` by stripping the trailing `:line` portion.
 - [ ] Fall back to `file_path` only when `location_rerun_argument` is empty or malformed.
@@ -250,12 +250,12 @@ go test -mod=mod ./internal/runtime/ -run TestCache
 - [ ] Verify:
 
 ```bash
-go test -mod=mod ./internal/runtime/ -run TestTracker
+go test -mod=mod ./internal/testruntime/ -run TestTracker
 ```
 
 ## Task 4: Bin-packing `SplitFile` as a method on `*Cache`
 
-**Files:** `internal/runtime/cache.go` (or `internal/runtime/splitter.go` if extracted), `internal/runtime/splitter_test.go`
+**Files:** `internal/testruntime/cache.go` (or `internal/testruntime/splitter.go` if extracted), `internal/testruntime/splitter_test.go`
 
 - [ ] Define `type SplitDecision map[string]float64` next to the cache type.
 - [ ] Add method `func (c *Cache) SplitFile(filePath string, workerCount int, targetPerWorkerRuntime float64) SplitDecision`.
@@ -268,7 +268,7 @@ go test -mod=mod ./internal/runtime/ -run TestTracker
 - [ ] Verify:
 
 ```bash
-go test -mod=mod ./internal/runtime/ -run TestSplitFile
+go test -mod=mod ./internal/testruntime/ -run TestSplitFile
 ```
 
 ## Task 5: Wire `SplitDecision` into the grouper
@@ -286,7 +286,7 @@ go test -mod=mod . -run 'TestRunner|TestRspecSplit'
 
 ## Task 6: Debug logging inside Load/Save
 
-**Files:** `internal/runtime/cache.go`
+**Files:** `internal/testruntime/cache.go`
 
 - [ ] Capture `time.Now()` at the top of `LoadCache` and `SaveCache`. Compute duration before return.
 - [ ] Log via existing `logger.Logger.Debug` with structured keys:
@@ -363,7 +363,7 @@ bin/rspec spec/integration/plur_doctor/doctor_spec.rb
 
 ## Success Criteria
 
-- All runtime / splitter code lives in `internal/runtime/`. The pure-move commits are cherry-pickable to `main`.
+- All runtime / splitter code lives in `internal/testruntime/`. The pure-move commits are cherry-pickable to `main`.
 - Per-example records carry three fields, not five.
 - Shared examples are attributed to the rerunnable owning spec file at write time via `location_rerun_argument`, unconditionally.
 - The splitter is a method on `*Cache`, uses cached per-example runtimes for longest-processing-time bin-packing, and returns a `SplitDecision` map (target → runtime) with no projection types in between.
