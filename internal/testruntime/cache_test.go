@@ -264,4 +264,3 @@ func TestCache_IsExamplesFreshFalseWhenIncomplete(t *testing.T) {
 
 	assert.False(t, cache.IsExamplesFresh(source), "incomplete index must report not-fresh")
 }
-

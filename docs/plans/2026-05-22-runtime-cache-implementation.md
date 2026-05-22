@@ -6,10 +6,10 @@
 
 **Architecture:** One branch on top of `rspec-split-specs`. Task 1 is a series of small move + rename commits to keep each step reviewable. Tasks 2–9 build on the new layout. Task 10 is a dedicated simplification pass. Task 11 verifies and finalizes.
 
-**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is partially complete for Plur and RuboCop only. Task 11 remains open because review and benchmark evidence found correctness and performance follow-ups.
+**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is partially complete for Plur and RuboCop only. Task 11 remains open because the full verification matrix, benchmark rerun, and performance follow-ups remain.
 
 **Open follow-ups:**
-- `--rspec-split` must group or dedupe examples by rerunnable source line before bin-packing. The current branch can emit the same `file:line` in multiple chunks when several examples share one line, which reruns examples. This was observed in RuboCop full-suite measurements as higher example counts under split mode.
+- Re-run the RuboCop `--rspec-split` benchmark after the selector-grouping fix to confirm the example count now matches baseline.
 - `LoadCache` needs a nil/wrong-shape guard after JSON decode. A cache file containing valid JSON `null` can leave the decoded `*Cache` nil and panic before the intended "ignore corrupt/unexpected cache" fallback.
 - RuboCop's v2 debug measurements exceed the large-project runtime-cache overhead threshold, so the Phase B cache-format follow-up remains open.
 - Task 8 still needs the RSpec-core, Mastodon, and Discourse measurements, or an explicit decision to narrow the QA matrix.
@@ -215,7 +215,9 @@ go test -mod=mod ./internal/testruntime/ -run TestTracker -v
 
 **Files:** `internal/testruntime/cache.go` (or `splitter.go` if it's cleaner to keep it separate; decide once you see the size), `internal/testruntime/splitter_test.go`
 
-**Status:** Implemented in `internal/testruntime/splitter.go`. Review found one missing correctness case: examples with the same rerunnable source line must be grouped before bin-packing so the same line cannot be emitted into multiple split targets.
+**Status:** Implemented in `internal/testruntime/splitter.go`. The follow-up selector-grouping correction is also implemented: the splitter keeps cache identity by `example.id`, but bin-packs temporary scheduling units grouped by RSpec rerunnable selector so one `file:line` cannot be emitted into multiple split targets.
+
+**Corrective design:** Keep storing examples by `example.id`; that is the right identity for cache merge/update behavior. At split time, derive temporary scheduling units by grouping existing `ExampleEntry` records by rerunnable selector. Prefer `ExampleEntry.LocationRerunArgument` when present, because it is RSpec's canonical rerun target and already handles shared examples. Fall back to `filePath:LineNumber` when the rerun argument is empty. Sum `RuntimeSeconds` across all examples in each selector group, then bin-pack those selector groups. Do not add new cache fields, JSON schema, or persisted types for this.
 
 ### Requirements
 
@@ -239,11 +241,17 @@ No-split conditions (return single-entry map `{filePath: file.RuntimeSeconds}`):
 - `len(c.Files[filePath].Examples) < 2`
 
 When splitting applies:
-- `chunks := min(workerCount, len(examples))`
+- Build scheduling units from the already-cached examples. The cache key is `example.id`; the scheduling key is the RSpec rerunnable selector.
+- Selector derivation:
+  - Prefer `ExampleEntry.LocationRerunArgument`, with a leading `./` stripped for consistency.
+  - If it is empty, use `filePath:LineNumber`.
+  - Ignore examples with no usable selector or non-positive line fallback.
 - For each example with `RuntimeSeconds <= 0`, treat it as the file's mean per-example runtime (`file.RuntimeSeconds / len(examples)`). Do not mutate the cached `ExampleEntry`.
-- Sort examples descending by effective runtime; tiebreak ascending by line number.
-- Initialize `chunks` empty bins; iterate examples placing each into the bin with the smallest current sum. Tiebreak by smallest bin index for determinism.
-- For each bin, sort its example line numbers ascending and emit a target string `filePath:line:line:...`.
+- Group examples by selector and sum their effective runtimes. Multiple `example.id` values can contribute to one selector.
+- `chunks := min(workerCount, len(selectorGroups))`
+- Sort selector groups descending by effective runtime; tiebreak ascending by selector string.
+- Initialize `chunks` empty bins; iterate selector groups placing each into the bin with the smallest current sum. Tiebreak by smallest bin index for determinism.
+- For each bin, sort its selectors ascending and emit a target string. For selectors belonging to the same file, this remains `filePath:line:line:...`.
 - Return `{target1: bin1_sum, target2: bin2_sum, ...}`.
 
 ### Pseudo-code
@@ -254,21 +262,32 @@ func (c *Cache) SplitFile(path, workers, budget) SplitDecision:
     if no-split conditions met:
         return {path: file.RuntimeSeconds}
 
-    examples := list of (line, effectiveRuntime) from file.Examples
-                with fallback applied
-    sort examples descending by effectiveRuntime, tiebreak ascending by line
+    groups := map selector -> summed effective runtime
+    for each exampleID, ex in file.Examples:
+        selector := strings.TrimPrefix(ex.LocationRerunArgument, "./")
+        if selector == "":
+            selector = fmt.Sprintf("%s:%d", path, ex.LineNumber)
+        if selector unusable:
+            continue
+        runtime := ex.RuntimeSeconds
+        if runtime <= 0:
+            runtime = file.RuntimeSeconds / len(file.Examples)
+        groups[selector] += runtime
 
-    chunks := min(workers, len(examples))
-    bins := chunks empty (lines []int, sum float64)
-    for each example:
+    units := sorted list of (selector, summedRuntime)
+             descending by summedRuntime, tiebreak ascending by selector
+
+    chunks := min(workers, len(units))
+    bins := chunks empty (selectors []string, sum float64)
+    for each unit:
         b := index of bin with smallest sum (tiebreak: smallest index)
-        bins[b].lines.append(example.line)
-        bins[b].sum += example.effectiveRuntime
+        bins[b].selectors.append(unit.selector)
+        bins[b].sum += unit.summedRuntime
 
     decision := empty map
     for each bin:
-        sort bin.lines ascending
-        target := path + ":" + join(bin.lines, ":")
+        sort bin.selectors ascending
+        target := collapse selectors for this file into file:line:line form
         decision[target] = bin.sum
     return decision
 ```
@@ -277,10 +296,12 @@ func (c *Cache) SplitFile(path, workers, budget) SplitDecision:
 
 Table-driven, in `splitter_test.go`:
 
-- **Even runtimes, 4 examples, 2 workers:** two targets, balanced sums.
+- **Even runtimes, 4 selectors, 2 workers:** two targets, balanced sums.
 - **One heavy example dominates:** the heavy one ends up in its own bin (LPT property). Sum disparity is intentional and asserted.
+- **Duplicate-line examples:** two or more `example.id` entries with the same `LocationRerunArgument` produce exactly one emitted selector, with summed runtime. The same line must never appear in two targets.
+- **Shared examples:** examples whose `FilePath` points at a support file but whose `LocationRerunArgument` points at the owning spec are grouped under the owning spec selector.
 - **Missing runtimes:** examples with `RuntimeSeconds == 0` use the mean fallback; total summed runtime across bins ≈ file runtime within float tolerance.
-- **More workers than examples:** number of bins equals number of examples, not workers.
+- **More workers than selectors:** number of bins equals number of runnable selectors, not workers.
 - **No-split passthrough:** budget exceeds file runtime → single-entry map `{path: file_runtime}`.
 - **Determinism:** call `SplitFile` 100 times with the same cache; result map content is identical each time. (Map iteration order is not checked — only content.)
 - **Stable target strings:** target string for a given bin uses ascending line order, regardless of input order.
@@ -548,9 +569,18 @@ Do not skip this task silently — make the decision explicit.
 
 **Files:** none modified.
 
-**Status:** Not complete. During this status update, `git diff --check` and the targeted `go test -mod=mod ./internal/testruntime` package check passed; the full `bin/rake` verification matrix remains open.
+**Status:** Not complete. Targeted checks have passed for the selector-grouping fix, but the full `bin/rake` verification matrix remains open.
 
-- [ ] `bin/rake test:go` — Go tests green.
+Targeted checks run for the selector-grouping fix:
+- [x] `go test -mod=mod ./internal/testruntime -run TestSplitFile_GroupsExamplesByRerunnableSelector -v`
+- [x] `go test -mod=mod ./internal/testruntime -run TestSplitFile -v`
+- [x] `go test -mod=mod ./internal/testruntime`
+- [x] `go test -mod=mod . -run 'TestExpandRspecSplits|TestCache_ExampleLines|TestShouldExpandSplits'`
+- [x] `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/runtime_tracking_spec.rb:319`
+- [x] `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/runtime_tracking_spec.rb`
+- [x] `bin/rake test:go`
+
+- [x] `bin/rake test:go` — Go tests green.
 - [ ] `bin/rake test` — Ruby integration tests green.
 - [ ] `bin/rake standard:fix` — Ruby lint applied.
 - [x] `git diff --check` — no trailing whitespace or conflict markers.

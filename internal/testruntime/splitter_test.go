@@ -141,6 +141,36 @@ func TestSplitFile_ChunksBoundedByExampleCount(t *testing.T) {
 	assert.Contains(t, got, "spec/slow.rb:10")
 }
 
+func TestSplitFile_GroupsExamplesByRerunnableSelector(t *testing.T) {
+	c := seedFile("spec/generated_spec.rb", 13.0, map[string]*ExampleEntry{
+		"generated-1": {
+			LineNumber:            5,
+			LocationRerunArgument: "./spec/generated_spec.rb:5",
+			RuntimeSeconds:        5.0,
+		},
+		"generated-2": {
+			LineNumber:            5,
+			LocationRerunArgument: "./spec/generated_spec.rb:5",
+			RuntimeSeconds:        3.0,
+		},
+		"unique-1": {
+			LineNumber:            10,
+			LocationRerunArgument: "./spec/generated_spec.rb:10",
+			RuntimeSeconds:        4.0,
+		},
+		"unique-2": {
+			LineNumber:            15,
+			LocationRerunArgument: "./spec/generated_spec.rb:15",
+			RuntimeSeconds:        1.0,
+		},
+	})
+
+	got := c.SplitFile("spec/generated_spec.rb", 3, 1.0)
+
+	assert.Equal(t, 1, targetLineOccurrences(got, 5), "line 5 must be scheduled once even when multiple example IDs rerun from it")
+	assert.InDelta(t, 8.0, runtimeForLine(got, 5), 0.001, "duplicate selector runtime must be summed into one scheduling unit")
+}
+
 func TestSplitFile_TargetLinesAreSortedAscending(t *testing.T) {
 	c := seedFile("spec/slow.rb", 6.0, map[string]*ExampleEntry{
 		"a": {LineNumber: 40, RuntimeSeconds: 1.0},
@@ -156,6 +186,30 @@ func TestSplitFile_TargetLinesAreSortedAscending(t *testing.T) {
 	for target := range got {
 		assertLinesAscending(t, target)
 	}
+}
+
+func targetLineOccurrences(decision SplitDecision, line int) int {
+	count := 0
+	for target := range decision {
+		for _, segment := range splitColons(target)[1:] {
+			if atoiNoTest(segment) == line {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func runtimeForLine(decision SplitDecision, line int) float64 {
+	var runtime float64
+	for target, rt := range decision {
+		for _, segment := range splitColons(target)[1:] {
+			if atoiNoTest(segment) == line {
+				runtime += rt
+			}
+		}
+	}
+	return runtime
 }
 
 // assertLinesAscending parses "file:line:line:..." and asserts the lines are
@@ -194,6 +248,17 @@ func atoi(t *testing.T, s string) int {
 	n := 0
 	for _, c := range s {
 		require.True(t, c >= '0' && c <= '9', "non-numeric segment %q", s)
+		n = n*10 + int(c-'0')
+	}
+	return n
+}
+
+func atoiNoTest(s string) int {
+	n := 0
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return -1
+		}
 		n = n*10 + int(c-'0')
 	}
 	return n

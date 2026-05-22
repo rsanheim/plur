@@ -3,6 +3,7 @@ package testruntime
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -13,9 +14,9 @@ import (
 type SplitDecision map[string]float64
 
 // SplitFile decides how to split a long-running RSpec file across workers by
-// bin-packing its cached examples using longest-processing-time greedy. Any
-// example with RuntimeSeconds <= 0 falls back to the file's mean per-example
-// runtime so unmeasured examples still get a sensible weight.
+// bin-packing its cached rerunnable selectors using longest-processing-time
+// greedy. Any example with RuntimeSeconds <= 0 falls back to the file's mean
+// per-example runtime so unmeasured examples still get a sensible weight.
 //
 // Returns the no-split decision (one entry mapping filePath to file runtime)
 // when workerCount <= 1, the budget is non-positive, the file is unknown to
@@ -42,7 +43,7 @@ func (c *Cache) SplitFile(filePath string, workerCount int, targetPerWorkerRunti
 		return noSplit
 	}
 
-	units := buildUnits(file)
+	units := buildUnits(filePath, file)
 	if len(units) < 2 {
 		return noSplit
 	}
@@ -76,8 +77,9 @@ func (c *Cache) SplitFile(filePath string, workerCount int, targetPerWorkerRunti
 }
 
 type splitUnit struct {
-	line    int
-	runtime float64
+	selector string
+	line     int
+	runtime  float64
 }
 
 type splitBin struct {
@@ -86,10 +88,11 @@ type splitBin struct {
 }
 
 // buildUnits projects a file's recorded examples into deterministic
-// (line, runtime) pairs ordered by descending runtime with ascending line as
-// the deterministic tiebreak. Examples with RuntimeSeconds <= 0 are given
-// the file's mean per-example runtime so they still earn a place in a bin.
-func buildUnits(file *FileEntry) []splitUnit {
+// (rerunnable selector, summed runtime) pairs ordered by descending runtime
+// with ascending selector as the deterministic tiebreak. Multiple example IDs
+// can share one RSpec file:line selector; those must stay together because
+// RSpec executes file:line, not individual example IDs.
+func buildUnits(filePath string, file *FileEntry) []splitUnit {
 	mean := file.RuntimeSeconds / float64(len(file.Examples))
 
 	ids := make([]string, 0, len(file.Examples))
@@ -98,17 +101,27 @@ func buildUnits(file *FileEntry) []splitUnit {
 	}
 	slices.Sort(ids) // map iteration is randomized; sort for deterministic input.
 
-	units := make([]splitUnit, 0, len(ids))
+	bySelector := make(map[string]*splitUnit, len(ids))
 	for _, id := range ids {
 		ex := file.Examples[id]
-		if ex == nil || ex.LineNumber <= 0 {
+		selector, line, ok := selectorForExample(filePath, ex)
+		if !ok {
 			continue
 		}
 		rt := ex.RuntimeSeconds
 		if rt <= 0 {
 			rt = mean
 		}
-		units = append(units, splitUnit{line: ex.LineNumber, runtime: rt})
+		if unit := bySelector[selector]; unit != nil {
+			unit.runtime += rt
+		} else {
+			bySelector[selector] = &splitUnit{selector: selector, line: line, runtime: rt}
+		}
+	}
+
+	units := make([]splitUnit, 0, len(bySelector))
+	for _, unit := range bySelector {
+		units = append(units, *unit)
 	}
 
 	slices.SortFunc(units, func(a, b splitUnit) int {
@@ -118,9 +131,38 @@ func buildUnits(file *FileEntry) []splitUnit {
 			}
 			return 1
 		}
-		return a.line - b.line
+		return strings.Compare(a.selector, b.selector)
 	})
 	return units
+}
+
+func selectorForExample(filePath string, ex *ExampleEntry) (string, int, bool) {
+	if ex == nil {
+		return "", 0, false
+	}
+	if ex.LocationRerunArgument != "" {
+		selector := strings.TrimPrefix(ex.LocationRerunArgument, "./")
+		selectorPath, line, ok := splitSelector(selector)
+		if ok && selectorPath == strings.TrimPrefix(filePath, "./") {
+			return fmt.Sprintf("%s:%d", selectorPath, line), line, true
+		}
+	}
+	if ex.LineNumber <= 0 {
+		return "", 0, false
+	}
+	return fmt.Sprintf("%s:%d", strings.TrimPrefix(filePath, "./"), ex.LineNumber), ex.LineNumber, true
+}
+
+func splitSelector(selector string) (string, int, bool) {
+	i := strings.LastIndex(selector, ":")
+	if i <= 0 {
+		return "", 0, false
+	}
+	line, err := strconv.Atoi(selector[i+1:])
+	if err != nil || line <= 0 {
+		return "", 0, false
+	}
+	return selector[:i], line, true
 }
 
 // formatTarget produces an RSpec file:line:line... target like

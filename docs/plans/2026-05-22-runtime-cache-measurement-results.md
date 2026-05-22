@@ -272,7 +272,7 @@ Notes:
 
 - The v2 cache is ~8.16 MB for RuboCop, versus ~55 KB for the legacy v1 file-level map.
 - The v2 debug run shows 111.710 ms combined load+save. The v2 split debug run shows 114.538 ms combined load+save. Both exceed the 50 ms large-suite threshold.
-- The `v2-split` timings are not safe to treat as a win yet because the example count changes. Baseline v2 ran 31672 examples; split runs observed 31687 and 31694 examples. That is a correctness blocker for `--rspec-split`, likely caused by repeated line targets when multiple examples share a definition line.
+- The `v2-split` timings are not safe to treat as a win yet because the example count changed in this benchmark. Baseline v2 ran 31672 examples; split runs observed 31687 and 31694 examples. That benchmark was captured before the selector-grouping fix that keeps examples sharing one rerunnable selector in the same split unit, so RuboCop needs to be re-measured before using the split timing.
 
 ### Split Planning Notes
 
@@ -288,12 +288,12 @@ Capture `rspec-split applied` count from the `v2-split-debug` and `v2-split-dry-
 
 - Plur: blocked as a full-suite runner benchmark. The benchmark protocol needs a Plur-safe entry point before the numbers are meaningful.
 - RuboCop runtime cache overhead: Phase B is warranted. v2 load+save is ~112 ms on a 31.7K-example cache, above the 50 ms large-suite threshold.
-- RuboCop `--rspec-split`: keep experimental and do not advertise the speedup yet. It is faster in wall time here, but it changes the executed example count.
+- RuboCop `--rspec-split`: keep experimental and do not advertise the speedup from this benchmark yet. It is faster in wall time here, but this pre-fix measurement changed the executed example count. Re-run after the selector-grouping fix.
 
 ## Obstacles and Blockers
 
 Record any setup or suite failures here instead of silently skipping a benchmark.
 
 - **Plur full suite under outer Plur:** not clean. `PLUR_HOME` cache isolation conflicts with a watcher-path expectation, and parallel outer execution exposes Rails fixture DB isolation failures.
-- **RuboCop split correctness:** `--rspec-split` changed example counts from 31672 to 31687/31694 with zero failures. This must be fixed before timing improvements count.
+- **RuboCop split correctness:** this benchmark showed `--rspec-split` changing example counts from 31672 to 31687/31694 with zero failures. The selector-grouping fix is intended to address that; re-run RuboCop before treating the timing as valid.
 - **Cache overhead threshold:** RuboCop v2 cache load/save exceeds the measurement plan's threshold.

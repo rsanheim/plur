@@ -19,8 +19,8 @@ const SchemaVersion = 2
 // See docs/plans/2026-05-12-rspec-split-specs-experimental-plan.md for the
 // shape and lifecycle rules.
 type Cache struct {
-	Meta  CacheMeta      `json:"meta"`
-	Run   CacheRun       `json:"run"`
+	Meta  CacheMeta             `json:"meta"`
+	Run   CacheRun              `json:"run"`
 	Files map[string]*FileEntry `json:"files"`
 }
 

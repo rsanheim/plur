@@ -315,5 +315,40 @@ RSpec.describe "Plur runtime tracking" do
         expect(result.exit_status).to eq(0)
       end
     end
+
+    it "does not duplicate generated examples that share a rerunnable line" do
+      Dir.chdir(project_fixture("rspec-success-simple")) do
+        run_plur("-n", "2", "--no-color", "spec/generated_examples_spec.rb")
+        cache, runtime_file = runtime_cache_data
+
+        entry = cache.fetch("files").fetch("spec/generated_examples_spec.rb")
+        duplicate_selector, duplicate_examples = entry.fetch("examples").values
+          .group_by { |example| example.fetch("location_rerun_argument") }
+          .find { |_selector, examples| examples.size > 1 }
+        expect(duplicate_examples.size).to eq(4)
+
+        entry["runtime_seconds"] = 80.0
+        entry.fetch("examples").each_value do |example|
+          example["runtime_seconds"] = if example.fetch("location_rerun_argument") == duplicate_selector
+            10.0
+          else
+            1.0
+          end
+        end
+        File.write(runtime_file, JSON.pretty_generate(cache))
+
+        dry_run = run_plur("--rspec-split", "--dry-run", "--debug", "-n", "4", "--no-color", "spec/generated_examples_spec.rb")
+        planned_targets = dry_run.err.scan(%r{spec/generated_examples_spec\.rb(?::\d+)+})
+        duplicate_line = duplicate_selector.split(":").last
+        duplicate_line_occurrences = planned_targets.sum do |target|
+          target.split(":").drop(1).count(duplicate_line)
+        end
+        expect(duplicate_line_occurrences).to eq(1)
+
+        result = run_plur("--rspec-split", "-n", "4", "--no-color", "spec/generated_examples_spec.rb")
+        expect(result.exit_status).to eq(0)
+        expect(result.out).to include("8 examples, 0 failures")
+      end
+    end
   end
 end
