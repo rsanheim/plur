@@ -350,5 +350,63 @@ RSpec.describe "Plur runtime tracking" do
         expect(result.out).to include("8 examples, 0 failures")
       end
     end
+
+    it "keeps shared examples grouped under their consumer rerunnable selectors" do
+      Dir.chdir(project_fixture("rspec-success-simple")) do
+        raw_out, _raw_err, raw_status = Open3.capture3(
+          "bundle", "exec", "rspec",
+          "spec/shared_example_consumers_spec.rb",
+          "--format", "progress",
+          "--no-color"
+        )
+        expect(raw_status).to be_success
+        expect(raw_out).to match(/\A\s*Randomized with seed \d+\n\.\.\.\.\./)
+        expect(raw_out).to include("5 examples, 0 failures")
+        expect(raw_out).not_to include("with a small sum")
+
+        warm_run = run_plur("-n", "2", "--no-color", "spec/shared_example_consumers_spec.rb")
+        expect(warm_run.out).to match(/\A\.\.\.\.\./)
+        expect(warm_run.out).to include("5 examples, 0 failures")
+        expect(warm_run.out).not_to include("with a small sum")
+
+        cache, runtime_file = runtime_cache_data
+
+        files = cache.fetch("files")
+        expect(files).to include("spec/shared_example_consumers_spec.rb")
+        expect(files).not_to include("spec/support/shared_examples/arithmetic_examples.rb")
+
+        entry = files.fetch("spec/shared_example_consumers_spec.rb")
+        selectors = entry.fetch("examples").values.map { |example| example.fetch("location_rerun_argument") }
+        shared_selectors = selectors.select { |selector| selector.include?("shared_example_consumers_spec.rb") }
+        expect(shared_selectors.uniq.size).to be >= 2
+        expect(selectors).not_to include(match(%r{spec/support/shared_examples}))
+
+        entry["runtime_seconds"] = 80.0
+        entry.fetch("examples").each_value do |example|
+          example["runtime_seconds"] = if shared_selectors.include?(example.fetch("location_rerun_argument"))
+            10.0
+          else
+            1.0
+          end
+        end
+        File.write(runtime_file, JSON.pretty_generate(cache))
+
+        dry_run = run_plur("--rspec-split", "--dry-run", "--debug", "-n", "4", "--no-color", "spec/shared_example_consumers_spec.rb")
+        planned_targets = dry_run.err.scan(%r{spec/shared_example_consumers_spec\.rb(?::\d+)+})
+        expect(planned_targets).not_to be_empty
+
+        shared_selectors.each do |selector|
+          line = selector.split(":").last
+          occurrences = planned_targets.sum { |target| target.split(":").drop(1).count(line) }
+          expect(occurrences).to eq(1)
+        end
+
+        result = run_plur("--rspec-split", "-n", "4", "--no-color", "spec/shared_example_consumers_spec.rb")
+        expect(result.exit_status).to eq(0)
+        expect(result.out).to match(/\A\.\.\.\.\./)
+        expect(result.out).to include("5 examples, 0 failures")
+        expect(result.out).not_to include("with a small sum")
+      end
+    end
   end
 end
