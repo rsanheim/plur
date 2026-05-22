@@ -171,19 +171,18 @@ func (r *Runner) expandRspecSplits(fileRuntimes map[string]float64) ([]string, m
 			continue
 		}
 
-		lines := cache.ExampleLines(file)
-		decision := testruntime.SplitFile(file, runtime, lines, r.config.WorkerCount, budget)
-		if decision.Chunks <= 1 {
-			logger.Logger.Debug("rspec-split skipped", "file", file, "reason", "under per-worker budget or too few examples", "runtime", runtime, "budget", budget, "examples", len(lines))
+		decision := cache.SplitFile(file, r.config.WorkerCount, budget)
+		if len(decision) <= 1 {
+			logger.Logger.Debug("rspec-split skipped", "file", file, "reason", "under per-worker budget or too few examples", "runtime", runtime, "budget", budget)
 			expandedFiles = append(expandedFiles, file)
 			expandedRuntimes[file] = runtime
 			continue
 		}
 
-		logger.Logger.Debug("rspec-split applied", "file", file, "chunks", decision.Chunks, "chunk_runtime", decision.ChunkRuntimeSeconds)
-		for _, target := range decision.Targets {
+		logger.Logger.Debug("rspec-split applied", "file", file, "chunks", len(decision))
+		for target, chunkRuntime := range decision {
 			expandedFiles = append(expandedFiles, target)
-			expandedRuntimes[target] = decision.ChunkRuntimeSeconds
+			expandedRuntimes[target] = chunkRuntime
 		}
 	}
 

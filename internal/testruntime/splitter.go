@@ -6,88 +6,125 @@ import (
 	"strings"
 )
 
-// SplitDecision describes how a long-running RSpec file was (or was not)
-// expanded into focused file:line targets.
-//
-// When Chunks == 1 the file was passed through unchanged.
-// When Chunks  > 1, Targets holds Chunks file:line:line... strings, and
-// ChunkRuntimeSeconds is the estimated per-chunk runtime to feed back into
-// worker grouping.
-type SplitDecision struct {
-	Targets             []string
-	Chunks              int
-	ChunkRuntimeSeconds float64
-}
+// SplitDecision maps focused-target spec args ("spec/slow_spec.rb:12:38") to
+// their bin-packed per-target runtime in seconds. When the input file is not
+// a split candidate, SplitDecision has exactly one entry: the original file
+// path mapped to its recorded file-level runtime.
+type SplitDecision map[string]float64
 
-// SplitFile decides whether to split a single RSpec file into focused
-// file:line targets. The threshold is intentionally KISS for the experimental
-// rollout: split when the file's historical runtime exceeds the per-worker
-// budget, the worker count is greater than 1, and we have at least two known
-// example lines. Chunk count is bounded by worker count and by the number of
-// known example lines. Chunks are distributed round-robin so each chunk gets
-// a similar mix of early and late examples, which tends to balance under the
-// assumption that examples within a file have comparable runtimes.
+// SplitFile decides how to split a long-running RSpec file across workers by
+// bin-packing its cached examples using longest-processing-time greedy. Any
+// example with RuntimeSeconds <= 0 falls back to the file's mean per-example
+// runtime so unmeasured examples still get a sensible weight.
 //
-// Inputs:
-//   - filePath:               project-relative spec file path
-//   - runtimeSeconds:         historical runtime_seconds for the file
-//   - exampleLines:           known example line numbers (e.g. from the v2 cache)
-//   - workerCount:            total workers
-//   - targetPerWorkerRuntime: per-worker runtime budget the splitter aims for
+// Returns the no-split decision (one entry mapping filePath to file runtime)
+// when workerCount <= 1, the budget is non-positive, the file is unknown to
+// the cache, the file's runtime is at or under budget, or fewer than two
+// recorded examples have usable line numbers.
 //
-// Returns a SplitDecision. Repeated calls with the same inputs produce the
-// same targets in the same order.
-func SplitFile(filePath string, runtimeSeconds float64, exampleLines []int, workerCount int, targetPerWorkerRuntime float64) SplitDecision {
-	noSplit := SplitDecision{
-		Targets:             []string{filePath},
-		Chunks:              1,
-		ChunkRuntimeSeconds: runtimeSeconds,
+// Repeated calls with the same cache state and inputs produce identical
+// results. Map iteration order is randomized, but consumers (the grouper)
+// sort by runtime, so order does not affect downstream grouping.
+func (c *Cache) SplitFile(filePath string, workerCount int, targetPerWorkerRuntime float64) SplitDecision {
+	file := c.Files[filePath]
+	if file == nil {
+		return SplitDecision{filePath: 0}
 	}
+	noSplit := SplitDecision{filePath: file.RuntimeSeconds}
 
 	if workerCount <= 1 || targetPerWorkerRuntime <= 0 {
 		return noSplit
 	}
-	if runtimeSeconds <= targetPerWorkerRuntime {
+	if file.RuntimeSeconds <= targetPerWorkerRuntime {
 		return noSplit
 	}
-	if len(exampleLines) < 2 {
+	if len(file.Examples) < 2 {
 		return noSplit
 	}
 
-	chunks := min(workerCount, len(exampleLines))
+	units := buildUnits(file)
+	if len(units) < 2 {
+		return noSplit
+	}
+
+	chunks := min(workerCount, len(units))
 	if chunks < 2 {
 		return noSplit
 	}
 
-	// Use a defensive sorted copy: callers should pass sorted lines, but we do
-	// not want to mutate their slice and we want deterministic output even if
-	// they don't.
-	lines := slices.Clone(exampleLines)
-	slices.Sort(lines)
-
-	buckets := make([][]int, chunks)
-	for i, line := range lines {
-		bucket := i % chunks
-		buckets[bucket] = append(buckets[bucket], line)
+	bins := make([]splitBin, chunks)
+	for _, u := range units {
+		best := 0
+		for i := 1; i < chunks; i++ {
+			if bins[i].sum < bins[best].sum {
+				best = i
+			}
+		}
+		bins[best].lines = append(bins[best].lines, u.line)
+		bins[best].sum += u.runtime
 	}
 
-	targets := make([]string, 0, chunks)
-	for _, bucket := range buckets {
-		if len(bucket) == 0 {
+	decision := make(SplitDecision, chunks)
+	for _, b := range bins {
+		if len(b.lines) == 0 {
 			continue
 		}
-		targets = append(targets, formatTarget(filePath, bucket))
+		slices.Sort(b.lines)
+		decision[formatTarget(filePath, b.lines)] = b.sum
+	}
+	return decision
+}
+
+type splitUnit struct {
+	line    int
+	runtime float64
+}
+
+type splitBin struct {
+	lines []int
+	sum   float64
+}
+
+// buildUnits projects a file's recorded examples into deterministic
+// (line, runtime) pairs ordered by descending runtime with ascending line as
+// the deterministic tiebreak. Examples with RuntimeSeconds <= 0 are given
+// the file's mean per-example runtime so they still earn a place in a bin.
+func buildUnits(file *FileEntry) []splitUnit {
+	mean := file.RuntimeSeconds / float64(len(file.Examples))
+
+	ids := make([]string, 0, len(file.Examples))
+	for id := range file.Examples {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids) // map iteration is randomized; sort for deterministic input.
+
+	units := make([]splitUnit, 0, len(ids))
+	for _, id := range ids {
+		ex := file.Examples[id]
+		if ex == nil || ex.LineNumber <= 0 {
+			continue
+		}
+		rt := ex.RuntimeSeconds
+		if rt <= 0 {
+			rt = mean
+		}
+		units = append(units, splitUnit{line: ex.LineNumber, runtime: rt})
 	}
 
-	return SplitDecision{
-		Targets:             targets,
-		Chunks:              len(targets),
-		ChunkRuntimeSeconds: runtimeSeconds / float64(len(targets)),
-	}
+	slices.SortFunc(units, func(a, b splitUnit) int {
+		if a.runtime != b.runtime {
+			if a.runtime > b.runtime {
+				return -1
+			}
+			return 1
+		}
+		return a.line - b.line
+	})
+	return units
 }
 
 // formatTarget produces an RSpec file:line:line... target like
-// "spec/slow_spec.rb:12:38:91".
+// "spec/slow_spec.rb:12:38:91". Lines must be passed pre-sorted ascending.
 func formatTarget(filePath string, lines []int) string {
 	parts := make([]string, 0, len(lines)+1)
 	parts = append(parts, filePath)

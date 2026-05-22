@@ -74,6 +74,49 @@ func TestExpandRspecSplits_SplitsLongFile(t *testing.T) {
 	}
 }
 
+// TestExpandRspecSplits_UnevenRuntimesProduceUnevenChunks verifies the
+// per-target runtimes propagating into expandedRuntimes reflect bin-packed
+// weights, not the round-robin total/chunks split.
+func TestExpandRspecSplits_UnevenRuntimesProduceUnevenChunks(t *testing.T) {
+	tempDir := t.TempDir()
+	specPath := filepath.Join(tempDir, "slow_spec.rb")
+	writeFile(t, specPath, "# slow spec\n")
+
+	cfg := &config.GlobalConfig{WorkerCount: 4, RuntimeDir: tempDir, RspecSplit: true}
+	rspecJob := job.Job{Name: "rspec", Framework: "rspec"}
+	runner, err := NewRunner(cfg, []string{specPath}, rspecJob, nil)
+	require.NoError(t, err)
+
+	cache := runner.tracker.Cache()
+	mtime, size, ok := testruntime.SourceFreshness(specPath)
+	require.True(t, ok)
+	// One heavy example dominates; the rest are light. With bin-packing the
+	// heavy one ends up alone in its bin, and one bin's runtime is far above
+	// the rest.
+	cache.MergeAggregateRun(specPath, mtime, size, 7.0, map[string]*testruntime.ExampleEntry{
+		"heavy": {LineNumber: 5, RuntimeSeconds: 5.0},
+		"a":     {LineNumber: 10, RuntimeSeconds: 0.5},
+		"b":     {LineNumber: 15, RuntimeSeconds: 0.5},
+		"c":     {LineNumber: 20, RuntimeSeconds: 0.5},
+		"d":     {LineNumber: 25, RuntimeSeconds: 0.5},
+	})
+
+	_, expandedRuntimes := runner.expandRspecSplits(map[string]float64{specPath: 7.0})
+
+	var maxRT, minRT float64
+	for _, rt := range expandedRuntimes {
+		if rt > maxRT {
+			maxRT = rt
+		}
+		if minRT == 0 || rt < minRT {
+			minRT = rt
+		}
+	}
+	// total/chunks would be 7.0/4 = 1.75 for every target. Bin-packing gives
+	// the heavy bin 5.0 — at least 2x the average.
+	assert.Greater(t, maxRT, 2*1.75, "heaviest target's runtime reflects bin-packing weight, not avg")
+}
+
 func TestExpandRspecSplits_PassesThroughFreshButShortFile(t *testing.T) {
 	tempDir := t.TempDir()
 	fastPath := filepath.Join(tempDir, "fast_spec.rb")
