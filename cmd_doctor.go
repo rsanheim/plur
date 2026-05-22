@@ -14,6 +14,7 @@ import (
 	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -100,7 +101,7 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 
 	// Runtime data
 	var runtimePath string
-	rt, err := NewRuntimeTracker(globalConfig.RuntimeDir)
+	rt, err := testruntime.NewRuntimeTracker(globalConfig.RuntimeDir)
 	if err != nil {
 		runtimePath = fmt.Sprintf("error: %v", err)
 	} else {

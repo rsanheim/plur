@@ -11,6 +11,7 @@ import (
 
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
@@ -30,7 +31,7 @@ type Runner struct {
 	files     []string
 	job       job.Job
 	framework framework.Spec
-	tracker   *RuntimeTracker
+	tracker   *testruntime.RuntimeTracker
 	extraArgs []string
 }
 
@@ -39,7 +40,7 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []
 	if err != nil {
 		return nil, err
 	}
-	tracker, err := NewRuntimeTracker(cfg.RuntimeDir)
+	tracker, err := testruntime.NewRuntimeTracker(cfg.RuntimeDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runtime tracker: %w", err)
 	}
@@ -384,7 +385,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 	}
 }
 
-func (r *Runner) Tracker() *RuntimeTracker {
+func (r *Runner) Tracker() *testruntime.RuntimeTracker {
 	return r.tracker
 }
 

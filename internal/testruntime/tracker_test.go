@@ -1,4 +1,4 @@
-package main
+package testruntime
 
 import (
 	"os"
@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,14 +49,14 @@ func TestRuntimeTracker(t *testing.T) {
 		require.NoError(t, err)
 		rt.AddRuntime(specPath, 1.5)
 
-		require.NoError(t, rt.SaveToFile(testruntime.RunKindAggregate))
+		require.NoError(t, rt.SaveToFile(RunKindAggregate))
 
 		runtimeFile := rt.RuntimeFilePath()
 		_, err = os.Stat(runtimeFile)
 		assert.NoError(t, err)
 
-		reloaded := testruntime.LoadRuntimeCache(runtimeFile)
-		assert.Equal(t, testruntime.RuntimeCacheSchemaVersion, reloaded.Meta.SchemaVersion)
+		reloaded := LoadRuntimeCache(runtimeFile)
+		assert.Equal(t, RuntimeCacheSchemaVersion, reloaded.Meta.SchemaVersion)
 		assert.NotEmpty(t, reloaded.Meta.PlurVersion)
 		assert.NotEmpty(t, reloaded.Run.Cwd)
 		assert.NotEmpty(t, reloaded.Run.LastRunAt)
@@ -76,12 +75,12 @@ func TestRuntimeTracker(t *testing.T) {
 		rt1, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
 		rt1.AddRuntime(specPath, 5.0)
-		require.NoError(t, rt1.SaveToFile(testruntime.RunKindAggregate))
+		require.NoError(t, rt1.SaveToFile(RunKindAggregate))
 
 		rt2, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
 		rt2.AddRuntime(specPath, 0.1) // a focused observation
-		require.NoError(t, rt2.SaveToFile(testruntime.RunKindPartial))
+		require.NoError(t, rt2.SaveToFile(RunKindPartial))
 
 		rt3, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
@@ -107,7 +106,7 @@ func TestRuntimeTracker(t *testing.T) {
 			LineNumber: 10,
 			Duration:   1500 * time.Millisecond,
 		})
-		require.NoError(t, rt1.SaveToFile(testruntime.RunKindAggregate))
+		require.NoError(t, rt1.SaveToFile(RunKindAggregate))
 
 		rt2, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
@@ -124,38 +123,12 @@ func TestRuntimeTracker(t *testing.T) {
 		rt1, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
 		rt1.AddRuntime(specPath, 7.0)
-		require.NoError(t, rt1.SaveToFile(testruntime.RunKindAggregate))
+		require.NoError(t, rt1.SaveToFile(RunKindAggregate))
 
 		rt2, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
 		assert.Equal(t, 7.0, rt2.LoadedData()[specPath])
 	})
-}
-
-func TestClassifyRunKind(t *testing.T) {
-	cases := []struct {
-		name            string
-		patterns        []string
-		tags            []string
-		passthroughArgs []string
-		aborted         bool
-		want            testruntime.RunKind
-	}{
-		{"default run", nil, nil, nil, false, testruntime.RunKindAggregate},
-		{"with patterns no colon", []string{"spec/foo_spec.rb"}, nil, nil, false, testruntime.RunKindAggregate},
-		{"file:line pattern", []string{"spec/foo_spec.rb:42"}, nil, nil, false, testruntime.RunKindPartial},
-		{"with tag", nil, []string{"focus"}, nil, false, testruntime.RunKindPartial},
-		{"with passthrough", nil, nil, []string{"--fail-fast"}, false, testruntime.RunKindPartial},
-		{"aborted", nil, nil, nil, true, testruntime.RunKindPartial},
-		{"with example id pattern", []string{"spec/foo_spec.rb[1:1]"}, nil, nil, false, testruntime.RunKindPartial},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := classifyRunKind(tc.patterns, tc.tags, tc.passthroughArgs, tc.aborted)
-			assert.Equal(t, tc.want, got)
-		})
-	}
 }
 
 func writeFixtureSpec(t *testing.T, dir, name string) string {
