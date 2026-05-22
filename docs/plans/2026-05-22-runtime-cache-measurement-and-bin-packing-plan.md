@@ -109,8 +109,8 @@ Determinism: same cache state → same `SplitDecision` map contents on every cal
 `internal/testruntime/cache.go` — log inside `LoadRuntimeCache` and `SaveRuntimeCache`. No signature changes; no caller plumbing.
 
 ```go
-logger.Logger.Debug("runtimeCache loaded", "duration_ms", ms, "path", path, "files", filesCount, "examples", examplesCount)
-logger.Logger.Debug("runtimeCache saved",  "duration_ms", ms, "path", path, "files", filesCount, "examples", examplesCount)
+logger.Logger.Debug("runtimeCache loaded", "duration", dur, "path", path, "files", filesCount, "examples", examplesCount)
+logger.Logger.Debug("runtimeCache saved",  "duration", dur, "path", path, "files", filesCount, "examples", examplesCount)
 ```
 
 Matches the existing `logger.Logger.Debug(msg, key, value, ...)` slog style already used in [runner.go:122](../../runner.go).
@@ -293,8 +293,8 @@ go test -mod=mod . -run 'TestRunner|TestRspecSplit'
 - [ ] Log via existing `logger.Logger.Debug` with structured keys:
 
 ```go
-logger.Logger.Debug("runtimeCache loaded", "duration_ms", ms, "path", path, "files", filesCount, "examples", examplesCount)
-logger.Logger.Debug("runtimeCache saved",  "duration_ms", ms, "path", path, "files", filesCount, "examples", examplesCount)
+logger.Logger.Debug("runtimeCache loaded", "duration", dur, "path", path, "files", filesCount, "examples", examplesCount)
+logger.Logger.Debug("runtimeCache saved",  "duration", dur, "path", path, "files", filesCount, "examples", examplesCount)
 ```
 
 - [ ] No signature changes. No caller plumbing.

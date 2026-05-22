@@ -350,11 +350,11 @@ bin/rspec spec/integration/spec/runtime_tracking_spec.rb
 Exact log shape (per the spec doc):
 
 ```go
-logger.Logger.Debug("runtimeCache loaded", "duration_ms", durationMs, "path", path, "files", filesCount, "examples", examplesCount)
-logger.Logger.Debug("runtimeCache saved",  "duration_ms", durationMs, "path", path, "files", filesCount, "examples", examplesCount)
+logger.Logger.Debug("runtimeCache loaded", "duration", dur, "path", path, "files", filesCount, "examples", examplesCount)
+logger.Logger.Debug("runtimeCache saved",  "duration", dur, "path", path, "files", filesCount, "examples", examplesCount)
 ```
 
-- `duration_ms` is an integer (milliseconds, rounded). Use `time.Since(start).Milliseconds()`.
+- `duration` is the raw `time.Duration` so slog formats it as `1.056ms`, `7.463ms`, `742µs` etc. — `.Milliseconds()` truncates sub-ms loads to a misleading `0`.
 - `examplesCount` is the sum of `len(entry.Examples)` across all files in the cache.
 - For `LoadCache`: log at the end, after the cache is built. If load fails and a fresh empty cache is returned, log with `files=0, examples=0` and the duration of the failed attempt — this is still useful diagnostic data.
 - For `SaveCache`: log after the atomic rename succeeds.
@@ -452,7 +452,7 @@ Measure on:
 For each project:
 
 - [ ] Warm the cache: run `plur -n 8` once with the new binary so the cache is populated and the format reflects the schema trim.
-- [ ] Take three measurement runs with `PLUR_DEBUG=1 plur -n 8 2>&1 | grep runtimeCache`. Record the `duration_ms` values for both load and save.
+- [ ] Take three measurement runs with `PLUR_DEBUG=1 plur -n 8 2>&1 | grep runtimeCache`. Record the `duration` values for both load and save.
 - [ ] Note the on-disk cache file size and the `examples` count from the doctor output.
 - [ ] Spot-check the cache JSON: grep for `"status"` and `"scoped_id"` — should be absent. Sanity-check that `examples` map entries have exactly the three expected fields.
 
@@ -480,7 +480,7 @@ Decision rule:
 
 Two small additions:
 
-- A sentence in the runtime-tracking section noting that load and save emit structured `runtimeCache loaded` / `runtimeCache saved` debug log lines with `duration_ms`, `path`, `files`, `examples` keys (so power users can grep for them).
+- A sentence in the runtime-tracking section noting that load and save emit structured `runtimeCache loaded` / `runtimeCache saved` debug log lines with `duration`, `path`, `files`, `examples` keys (so power users can grep for them).
 - A line in the `plur doctor` section noting that the `Runtime Data:` block now shows file size, file count, and example count when the cache exists.
 
 Do **not** document Phase B options as user-facing — gate on Task 8.

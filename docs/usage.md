@@ -254,7 +254,7 @@ Behavior:
   location and the rerunnable target are kept per example for
   diagnostics.
 - Each cache load and save emits a structured debug log line
-  (`runtimeCache loaded` / `runtimeCache saved`) with `duration_ms`,
+  (`runtimeCache loaded` / `runtimeCache saved`) with `duration`,
   `path`, `files`, and `examples` keys. Grep for `runtimeCache` under
   `PLUR_DEBUG=1` to inspect cache size and timing across runs.
 

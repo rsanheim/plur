@@ -72,7 +72,7 @@ func LoadCache(path string) (cache *Cache) {
 	start := time.Now()
 	defer func() {
 		logger.Logger.Debug("runtimeCache loaded",
-			"duration_ms", time.Since(start).Milliseconds(),
+			"duration", time.Since(start),
 			"path", path,
 			"files", len(cache.Files),
 			"examples", countExamples(cache),
@@ -147,7 +147,7 @@ func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time)
 	success = true
 
 	logger.Logger.Debug("runtimeCache saved",
-		"duration_ms", time.Since(start).Milliseconds(),
+		"duration", time.Since(start),
 		"path", path,
 		"files", len(cache.Files),
 		"examples", countExamples(cache),
