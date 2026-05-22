@@ -6,6 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRunKind_IsAggregateEligible(t *testing.T) {
+	assert.True(t, RunKindAggregate.IsAggregateEligible())
+	assert.False(t, RunKindPartial.IsAggregateEligible())
+}
+
 func TestClassifyRunKind(t *testing.T) {
 	cases := []struct {
 		name            string

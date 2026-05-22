@@ -2,6 +2,27 @@ package testruntime
 
 import "strings"
 
+// RunKind describes the selection a Plur invocation made. The cache uses this
+// to decide whether to update file-level aggregates and the
+// example_index_complete flag.
+type RunKind int
+
+const (
+	// RunKindAggregate is a default/full-file run. It may rewrite file-level
+	// aggregates and set example_index_complete.
+	RunKindAggregate RunKind = iota
+	// RunKindPartial is any non-aggregate run: focused (file:line), tag
+	// filtered, fail-fast, aborted, or custom-arg. It may merge per-example
+	// observations but must not touch file-level aggregates or the flag.
+	RunKindPartial
+)
+
+// IsAggregateEligible reports whether a run of the given kind may update
+// file-level aggregates and mark example_index_complete.
+func (k RunKind) IsAggregateEligible() bool {
+	return k == RunKindAggregate
+}
+
 // ClassifyRunKind determines whether the current invocation should be treated
 // as aggregate-eligible (full default run) or partial. Partial classification
 // is intentionally inclusive: any signal that the run is selective, filtered,

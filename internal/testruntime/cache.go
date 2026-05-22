@@ -239,27 +239,6 @@ func (c *Cache) IsExamplesFresh(filePath string) bool {
 	return entry.MtimeUnixNano == mtime && entry.SizeBytes == size
 }
 
-// RunKind describes the selection a Plur invocation made. The cache uses this
-// to decide whether to update file-level aggregates and the
-// example_index_complete flag.
-type RunKind int
-
-const (
-	// RunKindAggregate is a default/full-file run. It may rewrite file-level
-	// aggregates and set example_index_complete.
-	RunKindAggregate RunKind = iota
-	// RunKindPartial is any non-aggregate run: focused (file:line), tag
-	// filtered, fail-fast, aborted, or custom-arg. It may merge per-example
-	// observations but must not touch file-level aggregates or the flag.
-	RunKindPartial
-)
-
-// IsAggregateEligible reports whether a run of the given kind may update
-// file-level aggregates and mark example_index_complete.
-func (k RunKind) IsAggregateEligible() bool {
-	return k == RunKindAggregate
-}
-
 // MergeAggregateRun records the result of an aggregate-eligible full-file run.
 // It replaces the file's examples map and runtime aggregate, sets
 // example_index_complete, and records current source freshness. The caller

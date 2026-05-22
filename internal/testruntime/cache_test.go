@@ -265,7 +265,3 @@ func TestCache_IsExamplesFreshFalseWhenIncomplete(t *testing.T) {
 	assert.False(t, cache.IsExamplesFresh(source), "incomplete index must report not-fresh")
 }
 
-func TestCache_RunKindEligibility(t *testing.T) {
-	assert.True(t, RunKindAggregate.IsAggregateEligible())
-	assert.False(t, RunKindPartial.IsAggregateEligible())
-}

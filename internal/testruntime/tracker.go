@@ -15,16 +15,13 @@ import (
 )
 
 // RuntimeTracker accumulates runtime data and persists it to the v2 runtime
-// cache. It is used single-threaded after all workers complete, so no mutex
-// is required.
-//
-// Today's responsibilities cover file-level aggregates. Per-example metadata
-// passes through in Task 3+: examples observed during a run are buffered in
-// pendingExamples until SaveToFile decides (per RunKind) whether to merge them
-// as an aggregate-eligible full run or a partial observation.
+// cache. Used single-threaded after all workers complete, so no mutex is
+// required. Per-example observations are buffered in pendingExamples until
+// SaveToFile decides (per RunKind) whether to merge them as an aggregate-
+// eligible full run or a partial observation.
 type RuntimeTracker struct {
 	cache           *Cache
-	fileRuntimes    map[string]float64                              // collected this run, by project-relative file path
+	fileRuntimes    map[string]float64                  // collected this run, by project-relative file path
 	pendingExamples map[string]map[string]*ExampleEntry // collected this run, file -> example.id -> entry
 	runtimeFile     string
 	cwd             string
@@ -114,7 +111,8 @@ func owningFileAndLine(n types.TestCaseNotification) (string, int) {
 
 // SaveToFile persists the runtime data to the v2 cache file. runKind dictates
 // whether the file-level aggregates are updated (RunKindAggregate) or
-// preserved (RunKindPartial). See runtime_cache.go for the full lifecycle.
+// preserved (RunKindPartial). See MergeAggregateRun and MergeObservations
+// for the lifecycle.
 func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 	for filePath, runtime := range rt.fileRuntimes {
 		mtime, size, ok := SourceFreshness(filePath)
