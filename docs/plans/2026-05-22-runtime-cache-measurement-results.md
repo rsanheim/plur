@@ -299,6 +299,61 @@ Validation:
 - Split cache overhead was 110.991 ms combined load+save, still above the 50 ms large-suite threshold.
 - A matching plain `--debug` diagnostic run loaded the cache in 56.361 ms but was terminated after one RSpec worker hung, so its save timing is not used as evidence.
 
+#### Post Compact-JSON Recheck
+
+After `6db5c48` changed `SaveCache` to stream compact JSON with HTML escaping disabled, the focused Go benchmark and RuboCop dry-run benchmarks were rerun with a current dirty build at `7797ad0`.
+
+Focused Go benchmark:
+
+```bash
+go test -mod=mod ./internal/testruntime -run '^$' -bench 'BenchmarkCache_(Load|Save)LargeRspecCache' -benchmem -count=5
+```
+
+| Benchmark | Result |
+|---|---:|
+| `BenchmarkCache_LoadLargeRspecCache` | 40.49-40.78 ms/op, ~13.39 MB/op, 136,413 allocs/op |
+| `BenchmarkCache_SaveLargeRspecCache` | 20.54-21.40 ms/op, ~1.9-2.2 MB/op, 33,177 allocs/op |
+
+RuboCop dry-run benchmark:
+
+```bash
+hyperfine --warmup 2 --runs 10 --style basic --time-unit millisecond \
+  --command-name rubocop-dry-run \
+  'PLUR_HOME=tmp/bench/runtime-cache/plurhome/rubocop/current tmp/bench/runtime-cache/bin/plur-current -C /Users/rsanheim/src/oss/rubocop -n 8 --no-color --dry-run --debug' \
+  --command-name rubocop-split-dry-run \
+  'PLUR_HOME=tmp/bench/runtime-cache/plurhome/rubocop/current tmp/bench/runtime-cache/bin/plur-current -C /Users/rsanheim/src/oss/rubocop -n 8 --no-color --rspec-split --dry-run --debug'
+```
+
+| Mode | Wall time | Cache load samples | Cache size | Notes |
+|---|---:|---:|---:|---|
+| `rubocop-dry-run` | 62.6 +/- 1.4 ms | 43.887, 45.067, 45.974 ms | 6.1 MB | 745 files, 31,672 examples |
+| `rubocop-split-dry-run` | 69.6 +/- 2.0 ms | 45.547, 45.324, 45.436 ms | 6.1 MB | split applies to 2 files, 16 chunks |
+
+Evidence:
+
+- Hyperfine: `tmp/bench/runtime-cache/results/rubocop-current-dry-run-cache.md`
+- Logs: `tmp/bench/runtime-cache/logs/rubocop/current-dry-run.log`, `tmp/bench/runtime-cache/logs/rubocop/current-split-dry-run.log`
+- Warmup log: `tmp/bench/runtime-cache/logs/rubocop/current-warm.log`
+
+Full RuboCop debug runs:
+
+```bash
+/usr/bin/time -p env PLUR_HOME=tmp/bench/runtime-cache/plurhome/rubocop/current \
+  tmp/bench/runtime-cache/bin/plur-current \
+  -C /Users/rsanheim/src/oss/rubocop -n 8 --no-color --debug
+```
+
+| Run | Status | Wall seconds | RSpec summary | Cache load ms | Cache save ms | Combined ms | Evidence |
+|---|---|---:|---|---:|---:|---:|---|
+| `current-full-debug-1` | pass | 28.79 | 31672 examples, 0 failures, 3 pending | 44.844 | 31.012 | 75.857 | `tmp/bench/runtime-cache/logs/rubocop/current-full-debug-1.log` |
+| `current-full-debug-2` | pass | 28.73 | 31672 examples, 0 failures, 3 pending | 45.820 | 34.863 | 80.684 | `tmp/bench/runtime-cache/logs/rubocop/current-full-debug-2.log` |
+
+Interpretation:
+
+- The compact cache is 6.1 MB, down from the earlier ~8.16 MB pretty-printed cache.
+- Dry-run cache load is now about 45 ms, down from the earlier RuboCop dry-run debug load of ~54 ms.
+- Full RuboCop `--debug` load+save is now about 76-81 ms, down from the earlier ~112 ms combined overhead, but still above the 50 ms large-suite threshold.
+
 ### Split Planning Notes
 
 Capture `rspec-split applied` count from the `v2-split-debug` and `v2-split-dry-run` logs for each project. A zero count means the v2 split path executed but did not find any files above the per-worker runtime budget with fresh examples.
@@ -313,7 +368,7 @@ Capture `rspec-split applied` count from the `v2-split-debug` and `v2-split-dry-
 ### Decision
 
 - Plur: blocked as a full-suite runner benchmark. The benchmark protocol needs a Plur-safe entry point before the numbers are meaningful.
-- RuboCop runtime cache overhead: Phase B is warranted. v2 load+save is ~112 ms on a 31.7K-example cache, above the 50 ms large-suite threshold.
+- RuboCop runtime cache overhead: pre-cleanup v2 load+save was ~112 ms on a 31.7K-example cache. Post compact-JSON full debug runs are ~76-81 ms combined load+save. The cleanup helped materially, but the combined overhead remains above the 50 ms large-suite threshold, so a smaller Phase B follow-up is still justified unless the threshold is relaxed.
 - RuboCop `--rspec-split`: the post selector-grouping rerun is now a valid apples-to-apples comparison. It preserves the baseline example count and is ~1.38x faster on this suite. Keep it experimental until the broader QA matrix is either completed or explicitly narrowed, but the RuboCop correctness blocker from duplicate rerunnable selectors is resolved.
 
 ## Obstacles and Blockers
@@ -322,4 +377,4 @@ Record any setup or suite failures here instead of silently skipping a benchmark
 
 - **Plur full suite under outer Plur:** not clean. `PLUR_HOME` cache isolation conflicts with a watcher-path expectation, and parallel outer execution exposes Rails fixture DB isolation failures.
 - **RuboCop split correctness:** the original benchmark showed `--rspec-split` changing example counts from 31672 to 31687/31694 with zero failures. The selector-grouping fix addressed that in the `81c842a` rerun: baseline and split both report 31672 examples, 0 failures, 3 pending.
-- **Cache overhead threshold:** RuboCop v2 cache load/save exceeds the measurement plan's threshold.
+- **Cache overhead threshold:** RuboCop post-cleanup v2 cache load/save still exceeds the measurement plan's combined threshold, though the gap is smaller than before the compact JSON write cleanup.

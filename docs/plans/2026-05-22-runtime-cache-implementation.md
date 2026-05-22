@@ -6,11 +6,10 @@
 
 **Architecture:** One branch on top of `rspec-split-specs`. Task 1 is a series of small move + rename commits to keep each step reviewable. Tasks 2–9 build on the new layout. Task 10 is a dedicated simplification pass. Task 11 verifies and finalizes.
 
-**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is complete for Plur and RuboCop, including the post selector-grouping RuboCop split rerun, but still needs either RSpec-core/Mastodon/Discourse measurements or an explicit matrix-narrowing decision. Task 11 remains open for the Phase B follow-up/PR-description linkage and any remaining verification before merge.
+**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is complete for Plur and RuboCop, including the post selector-grouping RuboCop split rerun, but still needs either RSpec-core/Mastodon/Discourse measurements or an explicit matrix-narrowing decision. Post-measurement cache cleanup has started: the focused Go cache benchmark exists, `LoadCache` handles JSON `null`, `SaveCache` writes compact JSON without HTML escaping, and debug example counts are lazy via `slog.LogValuer`. Task 11 remains open for the Phase B follow-up/PR-description linkage and any remaining verification before merge.
 
 **Open follow-ups:**
-- `LoadCache` needs a nil/wrong-shape guard after JSON decode. A cache file containing valid JSON `null` can leave the decoded `*Cache` nil and panic before the intended "ignore corrupt/unexpected cache" fallback.
-- RuboCop's v2 debug measurements exceed the large-project runtime-cache overhead threshold, so create/link the Phase B cache-format follow-up.
+- RuboCop's v2 debug measurements still exceed the large-project runtime-cache overhead threshold after compact JSON cleanup: fresh full-debug runs are ~76-81 ms combined load+save, down from ~112 ms pre-cleanup. A smaller Phase B follow-up is still justified unless the threshold is relaxed.
 - Task 8 still needs the RSpec-core, Mastodon, and Discourse measurements, or an explicit decision to narrow the QA matrix.
 - Plur's own suite needs a cleaner benchmark harness before its `plur -n 8` result can be treated as a valid cache comparison.
 
@@ -332,7 +331,7 @@ go test -mod=mod ./internal/testruntime/ -run TestSplitFile -v
 
 **Files:** `runner.go`, `runner_rspec_split_test.go`
 
-**Status:** Implemented. This wiring depends on the Task 4 duplicate-line follow-up before `--rspec-split` is safe for large real suites.
+**Status:** Implemented. This wiring depends on the Task 4 duplicate-line follow-up before `--rspec-split` is safe for large real suites. The pre-run header now labels eligible split runs as `[rspec, split]` so users can see the mode without enabling debug logs.
 
 ### Requirements
 
@@ -358,6 +357,7 @@ logger.Logger.Debug("rspec-split applied", "file", file, "chunks", len(decision)
 - [x] Adapt the existing `rspec-split skipped` log calls — most of those don't need to change since they fire before calling `SplitFile`.
 - [x] Update existing tests in `runner_rspec_split_test.go` to match the new shape. Watch for assertions on `decision.Chunks` or `decision.ChunkRuntimeSeconds`.
 - [x] Add a new test: build a cache with one heavy example (1s) and four light examples (0.1s each), call the split path, and assert the resulting `fileRuntimes` map has uneven values across the generated targets.
+- [x] Show split mode in the pre-run framework label: `Running 2 specs [rspec, split] in parallel using 8 workers`.
 - [x] Verify:
 
 ```bash
@@ -377,7 +377,9 @@ bin/rspec spec/integration/spec/runtime_tracking_spec.rb
 
 **Goal:** Log structured debug lines on cache load and save, using the existing `logger.Logger`. No signature changes.
 
-**Files:** `internal/testruntime/cache.go`
+**Files:** `internal/testruntime/cache.go`, `logger/logger.go`, `logger/logger_test.go`
+
+**Status:** Implemented. The first pass logged the intended fields but computed `examplesCount` eagerly. Follow-up commit `7797ad0` moved the example count behind a `slog.LogValuer`, and the custom logger now resolves `LogValuer` attrs only for enabled records.
 
 ### Requirements
 
@@ -399,6 +401,8 @@ logger.Logger.Debug("runtimeCache saved",  "duration", dur, "path", path, "files
 - [x] In `SaveCache`, capture `start := time.Now()` at the top. After the rename succeeds (success branch only), compute counts and log.
 - [x] No public signature changes.
 - [x] If there's no existing logger import in `cache.go`, add it. Match how `runner.go` imports the logger.
+- [x] Avoid walking every file/example map when debug logging is disabled by passing an `exampleCountValue` that implements `slog.LogValuer`.
+- [x] Update the custom logger handler to resolve `slog.LogValuer` attrs when a record is enabled.
 - [x] Verify by running an integration spec with debug logging enabled and confirming both lines appear:
 
 ```bash
@@ -406,6 +410,7 @@ PLUR_DEBUG=1 bin/rspec spec/integration/spec/runtime_tracking_spec.rb 2>&1 | gre
 ```
 
 - [x] Commit: `Log structured debug lines on runtime cache load/save`
+- [x] Commit: `Defer runtime cache example count logging`
 
 ### Success criteria
 - Debug logs appear with the exact keys above.
@@ -494,6 +499,17 @@ For each project:
 - [x] Re-run RuboCop `--rspec-split` after selector grouping and confirm baseline and split both report `31672 examples, 0 failures, 3 pending`.
 - [ ] Repeat the above for RSpec-core, Mastodon, and Discourse if they remain in scope.
 
+Post-measurement cache cleanup completed so far:
+
+- [x] Add a focused Go benchmark harness around large RuboCop-shaped cache load/save: `BenchmarkCache_LoadLargeRspecCache` and `BenchmarkCache_SaveLargeRspecCache`.
+- [x] Fix `LoadCache` so valid JSON `null` or another decoded nil cache returns a fresh empty cache instead of panicking.
+- [x] Change `SaveCache` to stream compact JSON through `json.Encoder` instead of materializing pretty-printed JSON in memory.
+- [x] Disable HTML escaping in the cache JSON encoder.
+- [x] Add stable tests for compact JSON output, disabled HTML escaping, and null-cache loading.
+- [x] Re-run the focused cache benchmark and RuboCop dry-run debug benchmarks after `6db5c48`. Current large-cache Go benchmark is ~40.6 ms/op load and ~21.0 ms/op save; RuboCop dry-run debug cache loads are ~45 ms against a 6.1 MB cache.
+- [x] Re-run full RuboCop `--debug` after the compact JSON cleanup. Two fresh runs passed at 31,672 examples with cache load/save of 44.844/31.012 ms and 45.820/34.863 ms.
+- [ ] Decide the Phase B scope. The compact JSON cleanup lowered combined RuboCop cache overhead from ~112 ms to ~76-81 ms, but it remains above the 50 ms large-suite threshold.
+
 Aggregate into:
 
 | Project | examples | median load ms | median save ms | threshold met? |
@@ -569,7 +585,7 @@ Do not skip this task silently — make the decision explicit.
 
 **Files:** none modified.
 
-**Status:** Not complete. Targeted checks and the full `bin/rake` build have passed for the selector-grouping/shared-example fixture work, but Phase B follow-up linkage and any final merge-time verification remain open.
+**Status:** Not complete. Targeted checks and the full `bin/rake` build have passed through commit `7797ad0`, but Phase B follow-up linkage and any final merge-time verification remain open. The current uncommitted split-header/doc updates have been covered by `go test -mod=mod ./...` and `git diff --check`; run the full `bin/rake` build before the next commit/push if these changes are included.
 
 Targeted checks run for the selector-grouping fix:
 - [x] `go test -mod=mod ./internal/testruntime -run TestSplitFile_GroupsExamplesByRerunnableSelector -v`
@@ -581,9 +597,11 @@ Targeted checks run for the selector-grouping fix:
 - [x] `bin/rake test:go`
 - [x] `bin/rake` — full build green after the selector-grouping/shared-example fixture work.
 
-- [x] `bin/rake test:go` — Go tests green.
-- [x] `bin/rake test` — Ruby integration tests green via the full `bin/rake` run.
-- [x] Ruby lint — `standard` passed via the full `bin/rake` run; no `bin/rake standard:fix` changes were needed.
+Additional checks after the cache JSON/logging/header follow-ups:
+- [x] `go test -mod=mod ./internal/testruntime -run 'TestCache_IgnoresNullCache|TestCache_SaveDoesNotEscapeHTML|TestCache_SaveWritesCompactJSON' -v`
+- [x] `go test -mod=mod ./logger -run 'TestCustomTextHandler_ResolvesLogValuer|TestCustomTextHandler_DoesNotResolveLogValuerWhenDisabled' -v`
+- [x] `go test -mod=mod ./...` — full Go suite green after the split-header change.
+- [x] `bin/rake` — full build green after `7797ad0` (`Defer runtime cache example count logging`).
 - [x] `git diff --check` — no trailing whitespace or conflict markers.
 - [ ] If anything from Task 8 indicates a threshold breach, create/link the Phase B follow-up plan from the PR description.
 
