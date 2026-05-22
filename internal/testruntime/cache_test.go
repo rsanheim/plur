@@ -67,9 +67,7 @@ func TestCache_SaveAndReload(t *testing.T) {
 		"./spec/foo_spec.rb[1:1]": {
 			LineNumber:            12,
 			LocationRerunArgument: "./spec/foo_spec.rb:12",
-			ScopedID:              "1:1",
 			RuntimeSeconds:        1.0,
-			Status:                "passed",
 		},
 	})
 
@@ -93,8 +91,47 @@ func TestCache_SaveAndReload(t *testing.T) {
 	ex := entry.Examples["./spec/foo_spec.rb[1:1]"]
 	require.NotNil(t, ex)
 	assert.Equal(t, 12, ex.LineNumber)
-	assert.Equal(t, "1:1", ex.ScopedID)
+	assert.Equal(t, "./spec/foo_spec.rb:12", ex.LocationRerunArgument)
 	assert.Equal(t, 1.0, ex.RuntimeSeconds)
+}
+
+// TestCache_IgnoresOldShapeFields ensures that a cache JSON file from before
+// the schema trim (with scoped_id and status keys present) still loads. These
+// extra fields should be silently dropped on the next save.
+func TestCache_IgnoresOldShapeFields(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cache.json")
+
+	oldShape := `{
+  "meta": {"schema_version": 2, "plur_version": "v0"},
+  "run": {"cwd": "/tmp/project", "last_run_at": "2026-05-22T01:02:03Z"},
+  "files": {
+    "spec/foo_spec.rb": {
+      "mtime_unix_nano": 1,
+      "size_bytes": 2,
+      "runtime_seconds": 1.0,
+      "example_index_complete": true,
+      "examples": {
+        "./spec/foo_spec.rb[1:1]": {
+          "line_number": 12,
+          "location_rerun_argument": "./spec/foo_spec.rb:12",
+          "scoped_id": "1:1",
+          "runtime_seconds": 0.5,
+          "status": "passed"
+        }
+      }
+    }
+  }
+}`
+	require.NoError(t, os.WriteFile(path, []byte(oldShape), 0644))
+
+	cache := LoadCache(path)
+	entry := cache.File("spec/foo_spec.rb")
+	require.NotNil(t, entry)
+	ex := entry.Examples["./spec/foo_spec.rb[1:1]"]
+	require.NotNil(t, ex)
+	assert.Equal(t, 12, ex.LineNumber)
+	assert.Equal(t, 0.5, ex.RuntimeSeconds)
 }
 
 func TestCache_SaveWritesHumanReadableHeaderOrder(t *testing.T) {

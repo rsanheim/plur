@@ -52,9 +52,7 @@ type FileEntry struct {
 type ExampleEntry struct {
 	LineNumber            int     `json:"line_number"`
 	LocationRerunArgument string  `json:"location_rerun_argument,omitempty"`
-	ScopedID              string  `json:"scoped_id,omitempty"`
 	RuntimeSeconds        float64 `json:"runtime_seconds"`
-	Status                string  `json:"status,omitempty"`
 }
 
 // NewCache returns an empty v2 cache.

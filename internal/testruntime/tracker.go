@@ -87,9 +87,7 @@ func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotific
 		rt.pendingExamples[notification.FilePath][notification.TestID] = &ExampleEntry{
 			LineNumber:            notification.LineNumber,
 			LocationRerunArgument: notification.LocationRerunArgument,
-			ScopedID:              notification.ScopedID,
 			RuntimeSeconds:        notification.Duration.Seconds(),
-			Status:                notification.Status,
 		}
 	}
 }
