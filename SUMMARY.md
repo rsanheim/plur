@@ -8,7 +8,7 @@
 
 ## What shipped
 
-Two changes, both rolled out behind clear gates:
+Two changes — one default, one opt-in:
 
 1. **Runtime cache v2** (default-on, no flag): The on-disk runtime cache
    moved from `map[string]float64` to a versioned object format that carries
