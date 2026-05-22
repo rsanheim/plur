@@ -18,6 +18,36 @@ import (
 	"github.com/rsanheim/plur/watch"
 )
 
+// runtimeStats reads the runtime cache file at path and returns a one-line
+// summary suitable for the plur doctor "Runtime Data:" block. Falls back to
+// the original "(file exists)" wording if the cache is unreadable or in an
+// unexpected shape, so doctor never crashes on a malformed file.
+func runtimeStats(path string, size int64) string {
+	cache := testruntime.LoadCache(path)
+	if cache == nil || len(cache.Files) == 0 {
+		return "(file exists)"
+	}
+	var examples int
+	for _, f := range cache.Files {
+		if f != nil {
+			examples += len(f.Examples)
+		}
+	}
+	return fmt.Sprintf("%s / %d files / %d examples", humanSize(size), len(cache.Files), examples)
+}
+
+// humanSize formats a byte count as KB/MB rounded to nearest unit for the
+// doctor output. Matches the style of common CLI utilities (du, ls -h).
+func humanSize(n int64) string {
+	switch {
+	case n >= 1<<20:
+		return fmt.Sprintf("%.0fM", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.0fK", float64(n)/(1<<10))
+	}
+	return fmt.Sprintf("%dB", n)
+}
+
 func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) error {
 	fmt.Println("Plur Doctor")
 	fmt.Println("==========")
@@ -109,9 +139,9 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 	}
 	fmt.Printf("Runtime Data:     %s\n", runtimePath)
 
-	// Check if runtime file exists
-	if _, err := os.Stat(runtimePath); err == nil {
-		fmt.Printf("                  (file exists)\n")
+	// Check if runtime file exists; on hit, show size / files / examples.
+	if info, err := os.Stat(runtimePath); err == nil {
+		fmt.Printf("                  %s\n", runtimeStats(runtimePath, info.Size()))
 	} else {
 		fmt.Printf("                  (file does not exist)\n")
 	}
