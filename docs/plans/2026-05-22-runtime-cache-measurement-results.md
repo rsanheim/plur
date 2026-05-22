@@ -3,7 +3,11 @@
 > Output of Task 8 from [2026-05-22-runtime-cache-implementation.md](2026-05-22-runtime-cache-implementation.md). Captured after the bin-packing + schema-trim + debug-logging work landed on `rspec-split-specs`.
 
 
-Use plur (this repo), and ~/src/oss/rubocop as a real-world example for both items below
+Use the latest globally installed plur from this repo, run benchmarks against:
+
+* plur itself
+* rubocop ~/src/oss/rubocop
+* rspec ~/src/oss/rspec
 ---
 
 # Measurement procedures
