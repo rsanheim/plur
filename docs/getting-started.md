@@ -17,35 +17,15 @@ plur watch    # watch for changes and run tests automatically
 
 ### Shell script (macOS / Linux)
 
-```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
-```
+You can use `install.sh` with the following options:
 
-Installs to `~/.local/bin` by default.
-
-Installer options:
-
-* `--help` — show installer usage
 * `--install-path PATH` — installation directory override
 * `--version VERSION` — install a specific release tag
-* `PLUR_INSTALL_PATH` — installation directory (default: `~/.local/bin`)
-
-Override install path
 
 ```bash
+curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
 curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "/usr/local/bin"
-```
-
-Pin a specific version:
-
-```bash
 curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --version v0.5.0
-```
-
-Override install path and pin version:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "/usr/local/bin" --version v0.5.0
 ```
 
 ### Manual binary download
