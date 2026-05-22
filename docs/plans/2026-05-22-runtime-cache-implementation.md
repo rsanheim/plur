@@ -4,7 +4,9 @@
 
 **Goal:** Move the runtime files into `internal/testruntime/`, trim per-example dead-weight fields, attribute shared examples via `location_rerun_argument`, replace round-robin splitting with bin-packing as a method on `*Cache`, add load/save debug logging, amend `plur doctor`, and run real-project QA to decide whether further format work is needed.
 
-**Architecture:** One branch on top of `rspec-split-specs`. Task 1 is a series of pure-move + rename commits structured so they can be cherry-picked back onto `main` independently. Tasks 2–9 build on the new layout. Task 10 is a dedicated simplification pass. Task 11 verifies and finalizes.
+**Architecture:** One branch on top of `rspec-split-specs`. Task 1 is a series of small move + rename commits to keep each step reviewable. Tasks 2–9 build on the new layout. Task 10 is a dedicated simplification pass. Task 11 verifies and finalizes.
+
+> **Note on cherry-picking to main:** an earlier draft of this plan claimed Task 1's commits could be cherry-picked back onto `main` as a standalone PR. That premise was wrong — the source files (`runtime_cache.go`, `runtime_run_kind.go`, `rspec_line_splitter.go`) only exist on `rspec-split-specs`, and even `runtime_tracker.go` on `main` is the v1 `map[string]float64` shape that pre-dates the v2 cache work. The package re-org ships as part of `rspec-split-specs`.
 
 **Tech Stack:** Go (existing toolchain), structured `log/slog` via `logger.Logger`, RSpec JSON rows formatter (unchanged), backspin for doctor integration tests.
 
@@ -35,17 +37,15 @@ Boundaries:
 
 ## Sequencing Notes
 
-Tasks 1.1 through 1.5 are commit-isolated and cherry-pickable to `main`. Once Task 1 lands, the rest of the plan operates on the new package. Tasks 2–4 are the bulk of the schema and logic work. Tasks 5–7 wire the change through and amend the user-visible surfaces. Tasks 8–11 verify, measure, simplify, and finalize.
+Tasks 1.1 through 1.5 are commit-isolated to stay small and reviewable. Once Task 1 lands, the rest of the plan operates on the new package. Tasks 2–4 are the bulk of the schema and logic work. Tasks 5–7 wire the change through and amend the user-visible surfaces. Tasks 8–11 verify, measure, simplify, and finalize.
 
-Order matters for two reasons:
-- **Build always green:** every commit must pass `bin/rake build`. Don't rename types in commit 1 if commit 2 still references the old names.
-- **Cherry-pickability:** Task 1's pure-move commits cannot reference types or symbols defined in Task 2+. Keep moves boring.
+Order matters: **build always green** — every commit must pass `bin/rake build`. Don't rename types in commit 1 if commit 2 still references the old names.
 
 ---
 
-## Task 1: Package re-organization (cherry-pickable)
+## Task 1: Package re-organization
 
-**Goal:** Move all runtime-tracking and splitter source into `internal/testruntime/` in a sequence of pure-mechanical commits.
+**Goal:** Move all runtime-tracking and splitter source into `internal/testruntime/` in a sequence of small, reviewable commits.
 
 **Files affected:** `runtime_cache.go`, `runtime_tracker.go`, `runtime_run_kind.go`, `rspec_line_splitter.go`, all their `_test.go` siblings, plus the import sites in `runner.go`, `cmd_doctor.go`, `main.go`, etc.
 
@@ -109,7 +109,6 @@ SplitDecision, SplitFile — fine
 - [ ] Commit: `Drop redundant Runtime prefix in runtime package`
 
 **Task 1 success criteria:**
-- All five commits apply cleanly onto a fresh branch off `main` via `git cherry-pick`.
 - Build is green after every single commit.
 - No type renames happen before the moves; no logic changes happen at all in Task 1.
 
@@ -529,12 +528,10 @@ Do not skip this task silently — make the decision explicit.
 - [ ] `bin/rake test` — Ruby integration tests green.
 - [ ] `bin/rake standard:fix` — Ruby lint applied.
 - [ ] `git diff --check` — no trailing whitespace or conflict markers.
-- [ ] Confirm cherry-pickability: from a fresh worktree off `main`, attempt `git cherry-pick <Task 1.1 sha>..<Task 1.5 sha>`. Apply clean. Build green. Discard the worktree.
 - [ ] If anything from Task 8 indicates a threshold breach, confirm the Phase B follow-up plan exists and is linked from the PR description.
 
 ### Success criteria
 - All verification commands exit zero.
-- Task 1 commits cherry-pick cleanly to a `main`-based worktree.
 - PR description includes:
   - The Task 8 results table.
   - Either "close the cache size concern" or a link to the Phase B follow-up plan.

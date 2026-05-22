@@ -172,14 +172,15 @@ internal/testruntime/
   splitter_test.go
 ```
 
-**Cherry-pick strategy:** the pure file-rename commits (no content changes other than package declaration and imports) live in their own commits early in the branch so they can be cherry-picked back onto a fresh branch off `main` independently of the bin-packing / schema / shared-example work. Each pure-move commit must contain only:
+**Commit strategy:** the file-rename commits live in their own commits early in the branch to keep each step small and reviewable. Each move commit contains only:
 
 - `git mv` of the file into `internal/testruntime/`
 - `package testruntime` declaration at the top
 - import-path updates in callers
-- nothing else — no field renames, no logic changes, no test changes
+- minimum visibility tweaks required to keep cross-package access working (e.g. exporting a previously package-private helper)
+- nothing else — no field renames, no logic changes
 
-That makes Task 1 cherry-pickable for an early-merge if reviewers want the re-org without the rest of the plan.
+Note: an earlier draft of this section claimed Task 1's commits could be cherry-picked back onto `main` as a standalone PR. That premise was wrong — the source files only exist on `rspec-split-specs` (the v2 cache work that introduced them hasn't merged to main yet). The package re-org ships as part of this branch.
 
 Note: the type names also change to drop the redundant `Runtime` prefix once they are in `package testruntime`. That rename is its own commit, *after* the pure move, so the pure moves stay clean.
 
@@ -213,7 +214,7 @@ Not creating:
 
 **Files:** `runtime_cache.go`, `runtime_tracker.go`, `runtime_run_kind.go`, `rspec_line_splitter.go` and their `_test.go` siblings.
 
-Each move is its own commit so any subset can be cherry-picked back onto `main`.
+Each move is its own commit to keep each step small and reviewable.
 
 - [ ] Commit 1: `git mv runtime_cache.go internal/testruntime/cache.go` and its test. Change `package main` → `package testruntime`. Update import paths in callers. No other changes.
 - [ ] Commit 2: same for `runtime_tracker.go` → `internal/testruntime/tracker.go`.
@@ -359,11 +360,10 @@ bin/rspec spec/integration/plur_doctor/doctor_spec.rb
 - [ ] `bin/rake test`
 - [ ] `bin/rake standard:fix`
 - [ ] `git diff --check`
-- [ ] Confirm cherry-pickability: the Task 1 commits (pure moves + the type-rename) apply cleanly onto a fresh branch off `main` with `git cherry-pick`.
 
 ## Success Criteria
 
-- All runtime / splitter code lives in `internal/testruntime/`. The pure-move commits are cherry-pickable to `main`.
+- All runtime / splitter code lives in `internal/testruntime/`.
 - Per-example records carry three fields, not five.
 - Shared examples are attributed to the rerunnable owning spec file at write time via `location_rerun_argument`, unconditionally.
 - The splitter is a method on `*Cache`, uses cached per-example runtimes for longest-processing-time bin-packing, and returns a `SplitDecision` map (target → runtime) with no projection types in between.
