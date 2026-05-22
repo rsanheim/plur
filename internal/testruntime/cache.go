@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/rsanheim/plur/logger"
 )
 
 // SchemaVersion is the on-disk schema version Plur reads and writes.
@@ -66,13 +68,22 @@ func NewCache() *Cache {
 // LoadCache reads a v2 cache from disk. It returns an empty cache for
 // missing files, v1 caches (map[string]float64), corrupt JSON, and entries
 // with a non-v2 schema_version.
-func LoadCache(path string) *Cache {
+func LoadCache(path string) (cache *Cache) {
+	start := time.Now()
+	defer func() {
+		logger.Logger.Debug("runtimeCache loaded",
+			"duration_ms", time.Since(start).Milliseconds(),
+			"path", path,
+			"files", len(cache.Files),
+			"examples", countExamples(cache),
+		)
+	}()
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return NewCache()
 	}
 
-	var cache Cache
 	if err := json.Unmarshal(data, &cache); err != nil {
 		return NewCache()
 	}
@@ -82,13 +93,15 @@ func LoadCache(path string) *Cache {
 	if cache.Files == nil {
 		cache.Files = make(map[string]*FileEntry)
 	}
-	return &cache
+	return cache
 }
 
 // SaveCache writes the cache atomically: temp file in the same
 // directory + rename into place. The caller supplies the current plur version
 // to record.
 func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time) error {
+	start := time.Now()
+
 	if cache.Meta.SchemaVersion == 0 {
 		cache.Meta.SchemaVersion = SchemaVersion
 	}
@@ -132,7 +145,30 @@ func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time)
 		return err
 	}
 	success = true
+
+	logger.Logger.Debug("runtimeCache saved",
+		"duration_ms", time.Since(start).Milliseconds(),
+		"path", path,
+		"files", len(cache.Files),
+		"examples", countExamples(cache),
+	)
 	return nil
+}
+
+// countExamples sums per-file example counts across the cache. Used for the
+// debug log fields on load and save.
+func countExamples(c *Cache) int {
+	if c == nil {
+		return 0
+	}
+	var n int
+	for _, f := range c.Files {
+		if f == nil {
+			continue
+		}
+		n += len(f.Examples)
+	}
+	return n
 }
 
 // FileRuntimes returns a map of project-relative file paths to total file

@@ -368,7 +368,7 @@ logger.Logger.Debug("runtimeCache saved",  "duration_ms", durationMs, "path", pa
 - [ ] Verify by running an integration spec with debug logging enabled and confirming both lines appear:
 
 ```bash
-PLUR_LOG_LEVEL=debug bin/rspec spec/integration/spec/runtime_tracking_spec.rb 2>&1 | grep runtimeCache
+PLUR_DEBUG=1 bin/rspec spec/integration/spec/runtime_tracking_spec.rb 2>&1 | grep runtimeCache
 ```
 
 - [ ] Commit: `Log structured debug lines on runtime cache load/save`
@@ -452,7 +452,7 @@ Measure on:
 For each project:
 
 - [ ] Warm the cache: run `plur -n 8` once with the new binary so the cache is populated and the format reflects the schema trim.
-- [ ] Take three measurement runs with `PLUR_LOG_LEVEL=debug plur -n 8 2>&1 | grep runtimeCache`. Record the `duration_ms` values for both load and save.
+- [ ] Take three measurement runs with `PLUR_DEBUG=1 plur -n 8 2>&1 | grep runtimeCache`. Record the `duration_ms` values for both load and save.
 - [ ] Note the on-disk cache file size and the `examples` count from the doctor output.
 - [ ] Spot-check the cache JSON: grep for `"status"` and `"scoped_id"` — should be absent. Sanity-check that `examples` map entries have exactly the three expected fields.
 
