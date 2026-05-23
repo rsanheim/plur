@@ -1643,8 +1643,8 @@ After evidence:
 
 ## T48-DEV - Use One Target-Passing Rule In Watch Jobs
 
-Status: verified
-Commit: pending
+Status: committed
+Commit: 2da1ea0eb6b54be142da15743dd586fb7b06391e
 
 Pain point: `watch find` can report that a changed file maps to a target, but
 actual watch execution can drop that target if the selected job command does
