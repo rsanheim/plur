@@ -1748,3 +1748,61 @@ After evidence:
 - `git diff --check` passed.
 - `bin/rake` passed with 377 examples, 0 failures, and 4 existing pending
   examples.
+
+## T50-DEV - Deduplicate Dry-Run JSON Environment Entries
+
+Status: verified
+Commit: pending
+
+Pain point: dry-run JSON is the script-friendly one-shot plan, but a configured
+job can make `workers[].env` ambiguous by repeating an environment key. The
+actual process environment uses the last value for a duplicated key, while the
+JSON plan can currently show both entries.
+
+Change: deduplicate dry-run environment entries by key before rendering JSON or
+the human shell string. Keep the final effective value for each key, matching
+`exec.Cmd.Environ()` semantics.
+
+Diataxis role: update `docs/output-contracts.md` as reference material because
+this tightens the `workers[].env` contract.
+
+Duplication check:
+- `docs/output-contracts.md` owns dry-run JSON fields and shell guidance.
+- `docs/configuration.md` explains job `env` configuration and does not need
+  dry-run rendering details.
+- `utils.go` already centralizes dry-run env extraction for text and JSON, so
+  the change should stay there rather than adding formatter-specific cleanup.
+
+Acceptance criteria:
+- Dry-run JSON `workers[].env` contains at most one entry per key.
+- Duplicate configured job env entries keep the last value.
+- Duplicate configured job env can override managed env keys in the rendered
+  plan, matching execution semantics.
+- Dry-run human `shell` uses the same deduplicated entries.
+- Focused dry-run JSON specs, Go tests, output-contract docs checks, link
+  check, and the full build pass.
+
+Before evidence:
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/dry_run_plan_spec.rb --example "deduplicates worker env"`
+  failed because `workers[].env` contained both `CUSTOM_TOKEN=old` and
+  `CUSTOM_TOKEN=new`.
+- Red: `go test -mod=mod . -run 'TestDryRunString/duplicate_env_vars_keep_final_value' -count=1`
+  failed because dry-run env preserved duplicate `CUSTOM_TOKEN` and
+  `TEST_ENV_NUMBER` entries.
+
+After evidence:
+- `go test -mod=mod . -run 'TestDryRunString/duplicate_env_vars_keep_final_value' -count=1`
+  passed.
+- `bin/rake build` passed and rebuilt `./plur`.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/dry_run_plan_spec.rb --example "deduplicates worker env"`
+  passed.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/dry_run_plan_spec.rb`
+  passed with 5 examples, 0 failures.
+- `bin/rspec spec/docs/output_contracts_doc_spec.rb` passed with 2 examples,
+  0 failures.
+- `go test -mod=mod . -run TestDryRunString -count=1` passed.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `git diff --check` passed.
+- `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
+  examples.

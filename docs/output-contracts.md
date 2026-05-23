@@ -130,7 +130,8 @@ Worker entries include:
 - `argv`: command argv; this is the canonical command field for scripts
 - `env`: environment entries Plur adds or overrides, including configured job
   env; this is the canonical environment field for scripts and intentionally
-  excludes unrelated inherited shell env
+  excludes unrelated inherited shell env. Each environment key appears at most
+  once, and duplicate configured entries keep the final effective value.
 - `shell`: quoted, copyable command string for humans.
 
 Do not parse `shell`; use `argv` and `env` when executing from a script.

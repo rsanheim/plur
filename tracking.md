@@ -96,3 +96,5 @@ ts=2026-05-23-10:41:09 git_ref=prep-goal git_oid=ac8a827 status=start current="T
 ts=2026-05-23-10:47:24 git_ref=prep-goal git_oid=ac8a827 status=done current="T48-DEV" msg="watch jobs append resolved targets consistently"
 ts=2026-05-23-10:48:57 git_ref=prep-goal git_oid=267cb9e status=start current="T49-DEV" msg="begin watch find text no-mapping exit cleanup"
 ts=2026-05-23-10:52:25 git_ref=prep-goal git_oid=267cb9e status=done current="T49-DEV" msg="watch find text no mappings exits 2"
+ts=2026-05-23-10:53:51 git_ref=prep-goal git_oid=ec47f80 status=start current="T50-DEV" msg="begin dry-run json env dedupe"
+ts=2026-05-23-10:58:28 git_ref=prep-goal git_oid=ec47f80 status=done current="T50-DEV" msg="dry-run env plan dedupes by key"

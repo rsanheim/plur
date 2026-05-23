@@ -10,6 +10,7 @@ RSpec.describe "output contract documentation" do
     expect(doc).to include("workers")
     expect(doc).to include("argv`: command argv; this is the canonical command field for scripts")
     expect(compact_doc).to include("env`: environment entries Plur adds or overrides, including configured job env")
+    expect(compact_doc).to include("Each environment key appears at most once, and duplicate configured entries keep the final effective value")
     expect(doc).to include("shell`: quoted, copyable command string for humans")
     expect(doc).to include("[dry-run] Plan:")
     expect(doc).to include("[dry-run] Commands:")

@@ -84,7 +84,7 @@ func dryRunEnv(cmd *exec.Cmd) []string {
 
 	envs := cmd.Env
 	if inherited := os.Environ(); hasInheritedEnvPrefix(envs, inherited) {
-		return withInheritedManagedEnv(validEnvEntries(envs[len(inherited):]), envs)
+		return withInheritedManagedEnv(dedupeEnvByKey(validEnvEntries(envs[len(inherited):])), envs)
 	}
 
 	var extras []string
@@ -93,7 +93,7 @@ func dryRunEnv(cmd *exec.Cmd) []string {
 			extras = append(extras, env)
 		}
 	}
-	return extras
+	return dedupeEnvByKey(extras)
 }
 
 func hasInheritedEnvPrefix(envs, inherited []string) bool {
@@ -112,6 +112,25 @@ func validEnvEntries(envs []string) []string {
 	entries := make([]string, 0, len(envs))
 	for _, env := range envs {
 		if strings.Contains(env, "=") {
+			entries = append(entries, env)
+		}
+	}
+	return entries
+}
+
+func dedupeEnvByKey(envs []string) []string {
+	lastIndex := make(map[string]int, len(envs))
+	for i, env := range envs {
+		key, _, ok := strings.Cut(env, "=")
+		if ok {
+			lastIndex[key] = i
+		}
+	}
+
+	entries := make([]string, 0, len(lastIndex))
+	for i, env := range envs {
+		key, _, ok := strings.Cut(env, "=")
+		if ok && lastIndex[key] == i {
 			entries = append(entries, env)
 		}
 	}

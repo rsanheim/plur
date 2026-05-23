@@ -69,6 +69,40 @@ RSpec.describe "dry-run JSON plan output" do
     end
   end
 
+  it "deduplicates worker env entries with the final value winning" do
+    tmp_root = ROOT_PATH.join("tmp")
+    FileUtils.mkdir_p(tmp_root)
+
+    Dir.mktmpdir("dry-run-json-env-dedupe-", tmp_root.to_s) do |tmpdir|
+      FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+      File.write(File.join(tmpdir, "spec", "env_spec.rb"), "# target placeholder\n")
+      File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
+        use = "custom"
+
+        [job.custom]
+        framework = "rspec"
+        cmd = ["bin/rspec"]
+        env = [
+          "CUSTOM_TOKEN=old",
+          "CUSTOM_TOKEN=new",
+          "TEST_ENV_NUMBER=custom"
+        ]
+        target_pattern = "spec/**/*_spec.rb"
+      TOML
+
+      result = Dir.chdir(tmpdir) do
+        run_plur("--dry-run", "--dry-run-format=json")
+      end
+      worker = JSON.parse(result.out).fetch("workers").first
+      env = worker.fetch("env")
+
+      expect(env.grep(/^CUSTOM_TOKEN=/)).to eq(["CUSTOM_TOKEN=new"])
+      expect(env.grep(/^TEST_ENV_NUMBER=/)).to eq(["TEST_ENV_NUMBER=custom"])
+      expect(worker.fetch("shell")).to include("CUSTOM_TOKEN=new")
+      expect(worker.fetch("shell")).not_to include("CUSTOM_TOKEN=old")
+    end
+  end
+
   it "requires dry-run when requesting JSON dry-run format" do
     chdir(default_ruby_dir) do
       result = run_plur_allowing_errors("--dry-run-format=json", "spec/calculator_spec.rb")
