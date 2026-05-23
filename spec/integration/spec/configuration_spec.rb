@@ -59,6 +59,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
+        expect(error).to include("[dry-run] Selected job: rspec (framework: rspec, reason: explicit name)")
         expect(error).to include("echo 'SPEC:'")
       end
     end

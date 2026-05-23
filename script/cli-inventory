@@ -11,14 +11,18 @@ ROOT = Pathname.new(__dir__).parent.realpath
 TMP_PARENT = ROOT.join("tmp")
 FileUtils.mkdir_p(TMP_PARENT)
 
-TMP_ROOT = Pathname.new(Dir.mktmpdir("cli-inventory-", TMP_PARENT.to_s))
-PROJECT = TMP_ROOT.join("project")
-RUBOCOOP = TMP_ROOT.join("home", "src", "oss", "rubocoop")
 PLUR = ENV.fetch("PLUR_BINARY", ROOT.join("plur").to_s)
 DEMO = ENV["PLUR_DEMO"] == "1"
 
 CommandRun = Struct.new(:argv, :cwd, :env, keyword_init: true)
 InventoryCase = Struct.new(:label, :intent, :runs, keyword_init: true)
+
+def configure_paths(tmp_root)
+  root = Pathname.new(tmp_root)
+  Object.const_set(:TMP_ROOT, root)
+  Object.const_set(:PROJECT, root.join("project"))
+  Object.const_set(:RUBOCOOP, root.join("home", "src", "oss", "rubocoop"))
+end
 
 def write_file(path, content)
   FileUtils.mkdir_p(File.dirname(path))
@@ -186,50 +190,57 @@ def first_signal(result)
   text.lines.map(&:strip).find { |line| !line.empty? } || "(no output)"
 end
 
-prepare_fixture
-results = cases.map do |item|
-  [item, item.runs.map { |command| [command, execute(command)] }]
-end
+def run_inventory
+  prepare_fixture
+  results = cases.map do |item|
+    [item, item.runs.map { |command| [command, execute(command)] }]
+  end
 
-if DEMO
-  puts "CLI inventory demo"
-  puts "fixture=#{PROJECT.relative_path_from(ROOT)}"
-  puts
-  results.each_with_index do |(item, command_results), index|
-    puts "## #{index + 1}. #{item.label}"
-    puts "INTENT: #{item.intent}"
-    command_results.each do |command, result|
-      puts "COMMAND: #{display_command(command.argv)}"
-      puts "CWD: #{Pathname.new(command.cwd).relative_path_from(ROOT)}"
-      puts "STATUS: #{result[:status]}"
-      puts "STDOUT:"
-      puts result[:stdout].strip.empty? ? "(empty)" : result[:stdout].rstrip
-      puts "STDERR:"
-      puts result[:stderr].strip.empty? ? "(empty)" : result[:stderr].rstrip
-    end
+  if DEMO
+    puts "CLI inventory demo"
+    puts "fixture=#{PROJECT.relative_path_from(ROOT)}"
     puts
+    results.each_with_index do |(item, command_results), index|
+      puts "## #{index + 1}. #{item.label}"
+      puts "INTENT: #{item.intent}"
+      command_results.each do |command, result|
+        puts "COMMAND: #{display_command(command.argv)}"
+        puts "CWD: #{Pathname.new(command.cwd).relative_path_from(ROOT)}"
+        puts "STATUS: #{result[:status]}"
+        puts "STDOUT:"
+        puts result[:stdout].strip.empty? ? "(empty)" : result[:stdout].rstrip
+        puts "STDERR:"
+        puts result[:stderr].strip.empty? ? "(empty)" : result[:stderr].rstrip
+      end
+      puts
+    end
+  else
+    puts "CLI inventory (#{results.length} cases)"
+    results.each_with_index do |(item, command_results), index|
+      statuses = command_results.map { |_command, result| result[:status] }
+      status_label = statuses.all?(0) ? "ok" : "nonzero=#{statuses.reject(&:zero?).join(",")}"
+      puts "#{index + 1}. #{item.label}"
+      puts "   intent: #{item.intent}"
+      puts "   command: #{command_results.map { |command, _result| display_command(command.argv) }.join(" ; ")}"
+      puts "   status: #{status_label}"
+      puts "   signal: #{first_signal(command_results.first.last)}"
+    end
   end
-else
-  puts "CLI inventory (#{results.length} cases)"
-  results.each_with_index do |(item, command_results), index|
-    statuses = command_results.map { |_command, result| result[:status] }
-    status_label = statuses.all?(0) ? "ok" : "nonzero=#{statuses.reject(&:zero?).join(",")}"
-    puts "#{index + 1}. #{item.label}"
-    puts "   intent: #{item.intent}"
-    puts "   command: #{command_results.map { |command, _result| display_command(command.argv) }.join(" ; ")}"
-    puts "   status: #{status_label}"
-    puts "   signal: #{first_signal(command_results.first.last)}"
+
+  failed = results.flat_map do |item, command_results|
+    command_results.filter_map do |command, result|
+      [item.label, display_command(command.argv), result[:status]] unless result[:status].zero?
+    end
+  end
+
+  if failed.any?
+    warn "CLI inventory had nonzero cases:"
+    failed.each { |label, command, status| warn "  #{label}: #{command} -> #{status}" }
+    exit 1
   end
 end
 
-failed = results.flat_map do |item, command_results|
-  command_results.filter_map do |command, result|
-    [item.label, display_command(command.argv), result[:status]] unless result[:status].zero?
-  end
-end
-
-if failed.any?
-  warn "CLI inventory had nonzero cases:"
-  failed.each { |label, command, status| warn "  #{label}: #{command} -> #{status}" }
-  exit 1
+Dir.mktmpdir("cli-inventory-", TMP_PARENT.to_s) do |tmp_root|
+  configure_paths(tmp_root)
+  run_inventory
 end

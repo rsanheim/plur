@@ -54,6 +54,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
+	if cfg.DryRun {
+		fmt.Fprintf(os.Stderr, "[dry-run] Selected job: %s (framework: %s, reason: %s)\n",
+			selected.Name, currentJob.Framework, dryRunReasonLabel(selected.Reason))
+	}
+
 	if r.Auto {
 		depManager := NewDependencyManager(cfg.DryRun)
 		if err := depManager.InstallDependencies(); err != nil {
@@ -109,6 +114,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	return nil
+}
+
+func dryRunReasonLabel(reason runtime.ResolveReason) string {
+	return strings.ReplaceAll(string(reason), "_", " ")
 }
 
 func buildTagArgs(tags []string) []string {

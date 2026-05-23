@@ -4,3 +4,5 @@ ts=2026-05-23-04:24:19 git_ref=prep-goal git_oid=42ff6d6 status=start current="T
 ts=2026-05-23-04:29:17 git_ref=prep-goal git_oid=42ff6d6 status=done current="T2-CURR-REVIEW" msg="current design review completed with persona and external tool analysis"
 ts=2026-05-23-04:29:24 git_ref=prep-goal git_oid=42ff6d6 status=start current="T3-SCORE-CARD" msg="begin current design scorecard"
 ts=2026-05-23-04:30:12 git_ref=prep-goal git_oid=42ff6d6 status=done current="T3-SCORE-CARD" msg="current design scorecard completed"
+ts=2026-05-23-04:31:08 git_ref=prep-goal git_oid=0d88239 status=start current="T4-DEV" msg="begin first CLI UX improvement"
+ts=2026-05-23-04:41:44 git_ref=prep-goal git_oid=0d88239 status=done current="T4-DEV" msg="dry-run job selection explanation implemented and verified"
