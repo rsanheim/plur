@@ -17,6 +17,7 @@ vendor/
 
 # GoReleaser
 .goreleaser-notes.md
+.yolobox.toml
 
 # Ruby
 *.gem
