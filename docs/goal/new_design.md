@@ -1885,7 +1885,7 @@ After evidence:
 ## T57-DEV - Lock Live And Find Planning Parity
 
 Status: verified
-Commit: pending
+Commit: 1c11aa0d3fa4bb2d5d2f4c6416f9e35f74287d27
 
 Pain point: after T56, both paths share the same session and planner setup, but
 there is no direct regression test proving that a `watch find` preview and a
