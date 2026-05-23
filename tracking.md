@@ -110,3 +110,5 @@ ts=2026-05-23-11:19:42 git_ref=prep-goal git_oid=29b7d2c status=start current="T
 ts=2026-05-23-11:24:13 git_ref=prep-goal git_oid=29b7d2c status=done current="T55-DEV" msg="watch find renders planner output"
 ts=2026-05-23-11:29:56 git_ref=prep-goal git_oid=304d033 status=start current="T56-DEV" msg="begin shared watch session facade"
 ts=2026-05-23-11:33:09 git_ref=prep-goal git_oid=304d033 status=done current="T56-DEV" msg="shared watch session facade extracted"
+ts=2026-05-23-11:35:24 git_ref=prep-goal git_oid=d558489 status=start current="T57-DEV" msg="begin live find parity coverage"
+ts=2026-05-23-11:37:57 git_ref=prep-goal git_oid=d558489 status=done current="T57-DEV" msg="live and find parity coverage added"

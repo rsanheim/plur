@@ -84,6 +84,52 @@ func TestNewUsesCustomIgnorePatterns(t *testing.T) {
 	assert.Equal(t, "ignored", admission.Reason)
 }
 
+func TestSessionPlanPathMatchesLiveHandlerBatch(t *testing.T) {
+	projectDir := makeSessionTestProject(t)
+	writeSessionTestFile(t, projectDir, "lib/user.rb")
+	writeSessionTestFile(t, projectDir, "spec/user_spec.rb")
+	writeSessionTestFile(t, projectDir, "spec/spec_helper.rb")
+	chdirSessionTestProject(t, projectDir)
+
+	session, err := New(sessionRuntimeConfig(), Options{FilterWatchDirs: true})
+	require.NoError(t, err)
+
+	changedPath := filepath.Join(projectDir, "lib/user.rb")
+	previewPlan := session.PlanPath(changedPath)
+
+	var calls []sessionExecutorCall
+	handler := session.Handler()
+	handler.Executor = func(j job.Job, targets []string, cwd string) error {
+		calls = append(calls, sessionExecutorCall{
+			jobName: j.Name,
+			targets: append([]string{}, targets...),
+			cwd:     cwd,
+		})
+		return nil
+	}
+	liveResult := handler.HandleBatch([]string{session.NormalizePath(changedPath)})
+
+	require.Len(t, previewPlan.JobPlans, 1)
+	require.Len(t, calls, 1)
+	assert.Equal(t, previewPlan.JobPlans[0].JobName, calls[0].jobName)
+	assert.Equal(t, previewPlan.JobPlans[0].Targets, calls[0].targets)
+	assert.Equal(t, session.CWD, calls[0].cwd)
+	assert.Equal(t, []string{previewPlan.JobPlans[0].JobName}, liveResult.ExecutedJobs)
+	assert.Equal(t, previewPlan.ShouldReload, liveResult.ShouldReload)
+	assert.Equal(t, previewPlan.NoRunnableChanges, liveResult.NoRunnableChanges)
+
+	noRulePlan := session.PlanPath("spec/spec_helper.rb")
+	noRuleResult := handler.HandleBatch([]string{"spec/spec_helper.rb"})
+	assert.Equal(t, noRulePlan.ShouldReload, noRuleResult.ShouldReload)
+	assert.Equal(t, noRulePlan.NoRunnableChanges, noRuleResult.NoRunnableChanges)
+}
+
+type sessionExecutorCall struct {
+	jobName string
+	targets []string
+	cwd     string
+}
+
 func sessionRuntimeConfig() *runtime.RuntimeConfig {
 	return &runtime.RuntimeConfig{
 		Use: "rspec",

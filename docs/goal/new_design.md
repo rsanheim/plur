@@ -1882,6 +1882,43 @@ After evidence:
 - `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
   examples.
 
+## T57-DEV - Lock Live And Find Planning Parity
+
+Status: verified
+Commit: pending
+
+Pain point: after T56, both paths share the same session and planner setup, but
+there is no direct regression test proving that a `watch find` preview and a
+live watch batch produce the same runnable target list for the same changed
+file.
+
+Change: add parity coverage at both boundaries. The Go session test compares
+`Session.PlanPath` with the `FileEventHandler` produced by the same session.
+The Ruby integration spec compares `plur watch find --format=json` with the
+target list logged by a live `plur watch` run after changing the same file.
+
+Acceptance criteria:
+- A session-level test proves preview planning and live batch execution use the
+  same job name, targets, cwd, reload flag, and no-runnable feedback.
+- A CLI integration spec proves `watch find --format=json lib/calculator.rb`
+  previews the same target that live watch executes for a `lib/calculator.rb`
+  modification.
+- Focused parity tests, full Go tests, link check, and the full build pass.
+
+Before evidence:
+- No test directly compared `watch find` preview planning with the live watch
+  batch produced from the same changed path.
+
+After evidence:
+- `go test -mod=mod ./internal/watchsession -run TestSessionPlanPathMatchesLiveHandlerBatch -count=1`
+  passed.
+- `bin/rake build && PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_live_parity_spec.rb`
+  passed with 1 example and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 379 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified
