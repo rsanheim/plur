@@ -1810,7 +1810,7 @@ After evidence:
 ## T51-ARCH - Review Watch Find And Live Watch Planning
 
 Status: verified
-Commit: pending
+Commit: 13ebbf1e1113c62396603eba27bb274c8d8d3b96
 
 Pain point: `plur watch find FILE` and live `plur watch` share
 `watch.FindTargetsForFile`, but they do not share the full watch planning path.
