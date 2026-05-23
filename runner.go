@@ -40,7 +40,12 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []
 	if err != nil {
 		return nil, err
 	}
-	tracker, err := testruntime.NewRuntimeTracker(cfg.RuntimeDir)
+	var tracker *testruntime.RuntimeTracker
+	if !cfg.DryRun {
+		tracker, err = testruntime.NewRuntimeTrackerWithTimings(cfg.RuntimeDir)
+	} else {
+		tracker, err = testruntime.NewRuntimeTracker(cfg.RuntimeDir)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runtime tracker: %w", err)
 	}
