@@ -35,6 +35,13 @@ etc...
 
 Continue alternating cycles of multiple TX-DEV phases, followed by a TX-REFLECT phase to assess progress, until the goal is achieved.
 
+For each focused work session, prefer doing as many small, verified TX-DEV
+loops as comfortably fit in the current context window before the next
+TX-REFLECT phase. In practice, that will often be 3-6 small DEV phases when
+the changes are scoped and independent. Keep the phase gates strict: each DEV
+phase still needs its own plan note in `new_design.md`, implementation,
+verification, tracking, and scoped commit before moving on.
+
 
 _Markdown docs_ these are all in current dir: `plur/docs/goal`
 
