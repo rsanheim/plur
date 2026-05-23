@@ -12,8 +12,8 @@ long-running `docs/goal/cli_goal.md` objective is active.
 - Docs-process commit just before T17: `c1e4f4e docs: add documentation review gate`
 - `tracking.md` contains a `T18-REFLECT` start line at git oid `c32e7aa`.
 
-Do not mark the overall goal complete yet. The endpoint remains either T50 or a
-reflection where every scorecard category is 4 or 5 with objective evidence.
+Do not mark the overall goal complete yet. The endpoint remains either T75 or a
+reflection where every scorecard category is 4.5 or 5 with objective evidence.
 
 ## Completed Since T12
 
