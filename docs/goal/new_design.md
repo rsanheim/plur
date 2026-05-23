@@ -1885,7 +1885,7 @@ After evidence:
 ## T55-DEV - Render Watch Find From The Planner
 
 Status: verified
-Commit: pending
+Commit: a43369b81f5724109df0a806988bdb9be8cec876
 
 Pain point: T54 extracted `watch.Planner`, but `watch find` still calls
 `watch.FindTargetsForFile` directly. That leaves the preview command below the
