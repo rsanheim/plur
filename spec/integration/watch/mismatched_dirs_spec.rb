@@ -14,15 +14,11 @@ RSpec.describe "plur watch find with mismatched directory structure" do
       result = e.result
     end
 
-    # Should show checking message in slog format
-    expect(result.out).to include('msg="checking watch" file=lib/example/runner.rb')
+    expect(result.out).to include("[watch] Checking lib/example/runner.rb")
 
-    # Should show matched rules in slog format
-    expect(result.out).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb')
-    expect(result.out).to include("target=spec/{{match}}_spec.rb")
+    expect(result.out).to include("[watch] Matched rule lib-to-spec (source: lib/**/*.rb, jobs: rspec, target: spec/{{match}}_spec.rb)")
 
-    # Should show missing files as warnings
-    expect(result.out).to include('msg="not found" file=spec/example/runner_spec.rb')
+    expect(result.out).to include("[watch] No existing targets for lib/example/runner.rb (missing: spec/example/runner_spec.rb)")
 
     # Should exit with code 2 (no targets found)
     expect(result.exit_status).to eq(2)
@@ -39,14 +35,11 @@ RSpec.describe "plur watch find with mismatched directory structure" do
     cmd = TTY::Command.new(uuid: false, printer: :null)
     result = cmd.run!("#{plur_binary} watch find lib/example.rb", chdir: fixture_dir)
 
-    # Should show checking message in slog format
-    expect(result.out).to include('msg="checking watch" file=lib/example.rb')
+    expect(result.out).to include("[watch] Checking lib/example.rb")
 
-    # Should show matched rules in slog format
-    expect(result.out).to include('msg="found rules" name=lib-to-spec')
+    expect(result.out).to include("[watch] Matched rule lib-to-spec")
 
-    # Should show found files in slog format
-    expect(result.out).to include('msg="found files" files=spec/example_spec.rb')
+    expect(result.out).to include("[watch] Would run job rspec with spec/example_spec.rb")
 
     # Should exit with code 0 (found targets)
     expect(result.exit_status).to eq(0)
@@ -56,8 +49,7 @@ RSpec.describe "plur watch find with mismatched directory structure" do
     cmd = TTY::Command.new(uuid: false, printer: :null)
     result = cmd.run!("#{plur_binary} watch find lib/example.rb", chdir: fixture_dir)
 
-    # Should show found files for rspec (the resolved job)
-    expect(result.out).to include('msg="found files" files=spec/example_spec.rb')
+    expect(result.out).to include("[watch] Would run job rspec with spec/example_spec.rb")
 
     # Should NOT show minitest warnings - we only check the resolved job's watches
     expect(result.out).not_to include("test/example_test.rb")

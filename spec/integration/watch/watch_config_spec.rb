@@ -27,9 +27,9 @@ RSpec.describe "plur watch config edge cases" do
       )
 
       expect(stderr).to eq("")
-      expect(stdout).to include('msg="checking watch" file=lib/calculator.rb')
-      expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb jobs=[rspec] target=spec/{{match}}_spec.rb')
-      expect(stdout).to include('msg="found files" files=spec/calculator_spec.rb')
+      expect(stdout).to include("[watch] Checking lib/calculator.rb")
+      expect(stdout).to include("[watch] Matched rule lib-to-spec (source: lib/**/*.rb, jobs: rspec, target: spec/{{match}}_spec.rb)")
+      expect(stdout).to include("[watch] Would run job rspec with spec/calculator_spec.rb")
       expect(status.exitstatus).to eq(0)
     end
   end
@@ -72,10 +72,10 @@ RSpec.describe "plur watch config edge cases" do
       )
 
       expect(stderr).to eq("")
-      expect(stdout).to include('msg="checking watch" file=lib/calculator.rb')
-      expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb jobs=[rspec] target=spec/{{match}}_spec.rb')
-      expect(stdout).to include('msg="found rules" name=missing-jobs source=lib/**/*.rb jobs=[] target="[source file]"')
-      expect(stdout).to include('msg="found files" files=spec/calculator_spec.rb')
+      expect(stdout).to include("[watch] Checking lib/calculator.rb")
+      expect(stdout).to include("[watch] Matched rule lib-to-spec (source: lib/**/*.rb, jobs: rspec, target: spec/{{match}}_spec.rb)")
+      expect(stdout).to include("[watch] Matched rule missing-jobs (source: lib/**/*.rb, jobs: none, target: [source file])")
+      expect(stdout).to include("[watch] Would run job rspec with spec/calculator_spec.rb")
       expect(status.exitstatus).to eq(0)
     end
   end
@@ -120,9 +120,9 @@ RSpec.describe "plur watch config edge cases" do
       )
 
       expect(stderr).to eq("")
-      expect(stdout).to include('msg="checking watch" file=lib/calculator.rb')
-      expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb')
-      expect(stdout).to include('msg="found files" files=spec/calculator_spec.rb')
+      expect(stdout).to include("[watch] Checking lib/calculator.rb")
+      expect(stdout).to include("[watch] Matched rule lib-to-spec (source: lib/**/*.rb, jobs: rspec, target: spec/{{match}}_spec.rb)")
+      expect(stdout).to include("[watch] Would run job rspec with spec/calculator_spec.rb")
       expect(status.exitstatus).to eq(0)
     end
   end
@@ -145,9 +145,9 @@ RSpec.describe "plur watch config edge cases" do
       )
 
       expect(stderr).to eq("")
-      expect(stdout).to include('msg="checking watch" file=lib/calculator.rb')
-      expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb jobs=[rspec] target=spec/string_utils_spec.rb')
-      expect(stdout).to include('msg="found files" files=spec/string_utils_spec.rb')
+      expect(stdout).to include("[watch] Checking lib/calculator.rb")
+      expect(stdout).to include("[watch] Matched rule lib-to-spec (source: lib/**/*.rb, jobs: rspec, target: spec/string_utils_spec.rb)")
+      expect(stdout).to include("[watch] Would run job rspec with spec/string_utils_spec.rb")
       expect(stdout).not_to include("spec/calculator_spec.rb")
       expect(status.exitstatus).to eq(0)
     end

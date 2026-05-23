@@ -284,3 +284,51 @@ After evidence:
 
 Tradeoff: the command remains permissive. This preserves advanced framework
 behavior while making likely mistakes visible.
+
+## T11-DEV - Humanize Watch Find Output
+
+Pain point: T8 and T6 point users to `plur watch find <changed-file>` as the
+safe watch preview command, but its output is still logger-shaped:
+
+```text
+level=INFO msg="found rules" name=lib-to-spec source=lib/**/*.rb
+```
+
+That is useful to scripts, but weaker for the human workflow now promoted by
+help and docs. It also does not match T9's live watch no-op wording.
+
+Change: print plain watch-preview lines from `watch find`:
+
+```text
+[watch] Checking lib/example.rb
+[watch] Matched rule lib-to-spec (source: lib/**/*.rb, jobs: rspec, target: spec/{{match}}_spec.rb)
+[watch] Would run job rspec with spec/example_spec.rb
+```
+
+For no-op previews, reuse the live-watch language:
+
+```text
+[watch] No matching rule for spec/spec_helper.rb
+[watch] No existing targets for lib/example/runner.rb (missing: spec/example/runner_spec.rb)
+```
+
+Acceptance criteria:
+- `watch find` prints human-readable matched-rule and runnable-target lines.
+- A no-rule result exits 2 and prints `No matching rule`.
+- A matched rule with missing targets exits 2 and prints `No existing targets`.
+- Existing watch-find exit codes remain unchanged.
+- Focused watch-find specs and the full build pass.
+
+Before evidence:
+- T7 scorecard and Curie's review both identified `found rules count=0` and
+  other logger-shaped records as a remaining feedback-quality gap.
+
+After evidence:
+
+```text
+[watch] No matching rule for spec/spec_helper.rb
+```
+
+Tradeoff: `watch find` becomes more human-first. A structured plan format is
+still a separate phase; this phase should not pretend the human text is a
+stable machine API.
