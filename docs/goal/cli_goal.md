@@ -35,12 +35,22 @@ etc...
 
 Continue alternating cycles of multiple TX-DEV phases, followed by a TX-REFLECT phase to assess progress, until the goal is achieved.
 
+The working endpoint is either:
+- reach `T50` with all phase gates, tracking, verification, and commits intact;
+- or stop earlier only when the latest reflection shows a massive objective
+  scorecard upgrade, with all categories at 4 or 5, supported by executable
+  evidence and review from multiple objective sub-agent personas.
+
 For each focused work session, prefer doing as many small, verified TX-DEV
 loops as comfortably fit in the current context window before the next
 TX-REFLECT phase. In practice, that will often be 3-6 small DEV phases when
 the changes are scoped and independent. Keep the phase gates strict: each DEV
 phase still needs its own plan note in `new_design.md`, implementation,
 verification, tracking, and scoped commit before moving on.
+
+On reflection phases and selected high-impact design reviews, mix in fresh
+personas and higher-effort sub-agents, including `high` and `xhigh` reasoning
+where useful, so the scorecard is not just self-assessed by the primary agent.
 
 
 _Markdown docs_ these are all in current dir: `plur/docs/goal`
