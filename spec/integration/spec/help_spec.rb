@@ -10,6 +10,24 @@ RSpec.describe "help output" do
     expect(result.out).to include("Common workflows:")
     expect(result.out).to include("plur spec/calculator_spec.rb")
     expect(result.out).to include("plur watch find spec/calculator_spec.rb")
+    expect(result.out).to include("Daily commands")
+    expect(result.out).to include("Advanced and setup commands")
+    expect(result.out.index("Daily commands")).to be < result.out.index("Advanced and setup commands")
+
+    daily_commands = result.out[/Daily commands.*?(?=Advanced and setup commands)/m]
+    advanced_commands = result.out[/Advanced and setup commands.*/m]
+
+    expect(daily_commands).to include("spec [<patterns> ...]")
+    expect(daily_commands).to include("watch run")
+    expect(daily_commands).to include("watch find <file-path>")
+    expect(daily_commands).not_to include("watch install")
+
+    expect(advanced_commands).to include("watch install")
+    expect(advanced_commands).to include("rails (rake)")
+    expect(advanced_commands).to include("doctor")
+    expect(advanced_commands).to include("config init")
+    expect(advanced_commands).to include("rails:init")
+    expect(advanced_commands).to include("version")
   end
 
   it "leads watch help with default watch mode and watch find preview" do
@@ -24,6 +42,8 @@ RSpec.describe "help output" do
     expect(result.out).to include("--dry-run")
     expect(result.out).to include("One-shot run preview only; watch mode rejects it")
     expect(result.out).to include("One-shot dry-run output format: text or json")
+    expect(result.out.index("Daily commands")).to be < result.out.index("Advanced and setup commands")
+    expect(result.out.index("watch find <file-path>")).to be < result.out.index("watch install")
   end
 
   it "keeps watch find help focused on preview-specific flags" do

@@ -35,9 +35,9 @@ func (w WorkerCount) Validate() error {
 }
 
 type WatchCmd struct {
-	Run     WatchRunCmd     `cmd:"" default:"withargs" help:"Run watch mode"`
-	Install WatchInstallCmd `cmd:"" help:"Install the watcher binary"`
-	Find    WatchFindCmd    `cmd:"" help:"Show what would be executed for a given file change"`
+	Run     WatchRunCmd     `cmd:"" default:"withargs" group:"daily" help:"Run watch mode"`
+	Install WatchInstallCmd `cmd:"" group:"advanced" help:"Install the watcher binary"`
+	Find    WatchFindCmd    `cmd:"" group:"daily" help:"Show what would be executed for a given file change"`
 
 	Ignore []string `help:"Patterns to ignore from watch events (default: .git/**, node_modules/**)" name:"ignore"`
 }
@@ -75,17 +75,17 @@ func (d *DoctorCmd) Run(parent *PlurCLI) error {
 }
 
 type ConfigCmd struct {
-	Init ConfigInitCmd `cmd:"" help:"Generate a starter configuration file"`
+	Init ConfigInitCmd `cmd:"" group:"advanced" help:"Generate a starter configuration file"`
 }
 
 type PlurCLI struct {
-	Spec       SpecCmd        `cmd:"" help:"Run tests" default:"withargs"`
+	Spec       SpecCmd        `cmd:"" group:"daily" help:"Run tests" default:"withargs"`
 	Watch      WatchCmd       `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Rails      RailsCmd       `cmd:"" name:"rails" aliases:"rake" help:"Run a Rails or Rake command once per worker"`
-	Doctor     DoctorCmd      `cmd:"" help:"Diagnose Plur installation and environment"`
+	Rails      RailsCmd       `cmd:"" name:"rails" aliases:"rake" group:"advanced" help:"Run a Rails or Rake command once per worker"`
+	Doctor     DoctorCmd      `cmd:"" group:"advanced" help:"Diagnose Plur installation and environment"`
 	Config     ConfigCmd      `cmd:"" help:"Configuration commands"`
-	RailsInit  RailsInitCmd   `cmd:"" name:"rails:init" help:"Configure a Rails project for parallel testing"`
-	VersionCmd cmd.VersionCmd `cmd:"" name:"version" help:"Show version information"`
+	RailsInit  RailsInitCmd   `cmd:"" name:"rails:init" group:"advanced" help:"Configure a Rails project for parallel testing"`
+	VersionCmd cmd.VersionCmd `cmd:"" name:"version" group:"advanced" help:"Show version information"`
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
@@ -292,6 +292,10 @@ func main() {
 	parser, err := kong.New(&cli,
 		kong.Name("plur"),
 		kong.Description("A fast, parallel test runner and watcher for Ruby/RSpec"),
+		kong.Groups{
+			"daily":    "Daily commands",
+			"advanced": "Advanced and setup commands",
+		},
 		kong.Help(customHelpPrinter),
 		kong.Configuration(kongtoml.Loader, configFiles...))
 

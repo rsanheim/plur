@@ -799,3 +799,50 @@ After evidence:
   - `go test -mod=mod ./...`
   - `git diff --check`
   - `bin/rake`
+
+## T24-DEV - Group Top-Level Help Commands
+
+Pain point: T22 kept Brevity / Surface Area below 4 because `plur --help`
+still gives day-one commands and setup/maintenance commands equal weight.
+`spec`, `watch run`, `watch find`, `watch install`, `rails:init`,
+`config init`, `doctor`, and `version` all appear in one flat command list.
+
+Change: keep all commands discoverable, but group the generated top-level
+command list so daily commands appear first and advanced/setup commands appear
+second. This is a presentation change only; command names, parsing, aliases,
+and behavior stay the same.
+
+Acceptance criteria:
+- `plur --help` includes a `Daily commands` group before advanced/setup
+  commands.
+- Daily commands include `spec`, `watch run`, and `watch find`.
+- Advanced/setup commands include `watch install`, `rails`, `doctor`,
+  `config init`, `rails:init`, and `version`.
+- Existing common workflow help remains at the top.
+- Focused help specs, Go tests, and the full build pass.
+
+Before evidence:
+- `./plur --help` shows one flat `Commands:` list where `watch install` appears
+  between `watch run` and `watch find`, and setup commands are visually equal
+  to daily commands.
+
+Tradeoff: help gains group headings. This adds presentation structure without
+removing commands or adding another help mode.
+
+After evidence:
+- `./plur --help` now lists `Daily commands` first:
+  `spec`, `watch run`, and `watch find`.
+- The same help output then lists `Advanced and setup commands`:
+  `watch install`, `rails`, `doctor`, `config init`, `rails:init`, and
+  `version`.
+- `./plur watch --help` inherits the same useful grouping for watch
+  subcommands: `watch run` and `watch find` before `watch install`.
+- The commands remain visible and unchanged; this is command metadata and help
+  presentation only.
+- Verification passed:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb:3`
+  - `bin/rake build`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb`
+  - `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb`
+  - `go test -mod=mod ./...`
+  - `bin/rake`
