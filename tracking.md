@@ -84,3 +84,5 @@ ts=2026-05-23-09:50:24 git_ref=prep-goal git_oid=0b51a76 status=start current="T
 ts=2026-05-23-09:58:02 git_ref=prep-goal git_oid=0b51a76 status=done current="T42-REFLECT" msg="reflection after stream and output contract cleanup scored with automation gaps"
 ts=2026-05-23-09:58:28 git_ref=prep-goal git_oid=b2e4589 status=start current="T43-DEV" msg="begin worker startup error stderr routing"
 ts=2026-05-23-10:02:18 git_ref=prep-goal git_oid=b2e4589 status=done current="T43-DEV" msg="worker startup errors now route to stderr"
+ts=2026-05-23-10:02:53 git_ref=prep-goal git_oid=1128145 status=start current="T44-DEV" msg="begin dry-run json job env contract"
+ts=2026-05-23-10:11:27 git_ref=prep-goal git_oid=1128145 status=done current="T44-DEV" msg="dry-run json includes configured job env"

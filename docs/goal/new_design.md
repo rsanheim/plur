@@ -1485,3 +1485,43 @@ After evidence:
 - `script/check-links` passed.
 - `bin/rake` passed with 372 examples, 0 failures, and 4 existing pending
   examples.
+
+## T44-DEV - Include Job Env In Dry-Run JSON
+
+Pain point: `docs/output-contracts.md` tells scripts to use `workers[].argv`
+and `workers[].env` as the executable dry-run plan. But `workers[].env`
+currently omits configured job env entries from `.plur.toml`, even though
+`buildEnv()` appends them to the actual command environment.
+
+Change: make `dryRunEnv()` include environment entries Plur adds beyond the
+inherited process environment. That includes `PARALLEL_TEST_GROUPS`,
+`TEST_ENV_NUMBER`, and configured `job.Env`, without dumping the full inherited
+shell environment.
+
+Acceptance criteria:
+- Dry-run JSON for a job with `env = ["CUSTOM_TOKEN=secret"]` includes that
+  entry in `workers[].env`.
+- Dry-run text worker commands include the same configured env entry.
+- Dry-run JSON still does not include unrelated inherited env such as `PATH`.
+- Focused dry-run JSON specs, Go tests, and the full build pass.
+
+After evidence:
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/dry_run_plan_spec.rb`
+  failed because `workers[].env` only had `PARALLEL_TEST_GROUPS` and
+  `TEST_ENV_NUMBER`.
+- Green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/dry_run_plan_spec.rb`
+  passed after `dryRunEnv()` started including Plur-added env entries.
+- `go test -mod=mod ./...` passed.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/dry_run_plan_spec.rb spec/integration/spec/general_integration_spec.rb`
+  passed with 29 examples, 0 failures, and 2 existing pending examples.
+- `bin/rspec spec/docs/output_contracts_doc_spec.rb` passed.
+- `script/check-links` passed.
+- First `bin/rake` attempt caught a Rails/Rake regression: caller-provided
+  `RAILS_ENV=test` disappeared from dry-run and verbose command strings. The
+  fix restores `RAILS_ENV` as an inherited env entry that Plur intentionally
+  displays.
+- Green after regression fix:
+  `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/dry_run_plan_spec.rb spec/integration/spec/rails_rake_spec.rb`
+  passed with 22 examples, 0 failures.
+- `bin/rake` passed with 373 examples, 0 failures, and 4 existing pending
+  examples.

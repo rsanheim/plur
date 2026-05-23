@@ -128,8 +128,9 @@ Worker entries include:
 - `index`: worker index
 - `targets`: targets assigned to the worker
 - `argv`: command argv; this is the canonical command field for scripts
-- `env`: Plur-managed environment entries; this is the canonical environment
-  field for scripts
+- `env`: environment entries Plur adds or overrides, including configured job
+  env; this is the canonical environment field for scripts and intentionally
+  excludes unrelated inherited shell env
 - `shell`: quoted, copyable command string for humans.
 
 Do not parse `shell`; use `argv` and `env` when executing from a script.
