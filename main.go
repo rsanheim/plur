@@ -229,6 +229,74 @@ func splitArgsAtDoubleDash(args []string) ([]string, []string) {
 	return args, nil
 }
 
+func isHelpFlag(arg string) bool {
+	return arg == "--help" || arg == "-h"
+}
+
+func isBareTestTargetHelp(args []string) bool {
+	hasHelp := false
+	for _, arg := range args {
+		if isHelpFlag(arg) {
+			hasHelp = true
+			break
+		}
+	}
+	if !hasHelp {
+		return false
+	}
+
+	target, ok := firstCommandOrTargetArg(args)
+	return ok && target == "test"
+}
+
+func firstCommandOrTargetArg(args []string) (string, bool) {
+	skipNext := false
+	for _, arg := range args {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		if arg == "--" {
+			return "", false
+		}
+		if isHelpFlag(arg) {
+			continue
+		}
+		if flagConsumesNextArg(arg) {
+			skipNext = !strings.Contains(arg, "=")
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		return arg, true
+	}
+	return "", false
+}
+
+func flagConsumesNextArg(arg string) bool {
+	return arg == "-C" ||
+		arg == "--change-dir" ||
+		strings.HasPrefix(arg, "-C=") ||
+		strings.HasPrefix(arg, "--change-dir=") ||
+		arg == "-u" ||
+		arg == "--use" ||
+		strings.HasPrefix(arg, "--use=") ||
+		arg == "--dry-run-format" ||
+		strings.HasPrefix(arg, "--dry-run-format=") ||
+		arg == "--json" ||
+		strings.HasPrefix(arg, "--json=") ||
+		arg == "-n" ||
+		arg == "--workers" ||
+		strings.HasPrefix(arg, "--workers=")
+}
+
+func printBareTestTargetHelpError() {
+	fmt.Fprintln(os.Stderr, "Error: `test` is a target path, not a Plur command.")
+	fmt.Fprintln(os.Stderr, "Use `plur test/calculator_test.rb` to run a Minitest target.")
+	fmt.Fprintln(os.Stderr, "Use `plur --help` to list Plur commands.")
+}
+
 // handleEarlyChangeDir pre-parses command line arguments for the -C flag
 // and changes the working directory before Kong configuration loading.
 // This ensures config files are loaded from the target directory, not the current directory.
@@ -275,6 +343,10 @@ func main() {
 
 	if err := handleChangeDir(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if isBareTestTargetHelp(args) {
+		printBareTestTargetHelpError()
 		os.Exit(1)
 	}
 

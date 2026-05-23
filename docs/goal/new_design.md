@@ -908,3 +908,50 @@ Acceptance criteria:
   `script/docs build`, and `bin/rake`.
 - If not viable yet, decide explicitly whether `script/docs` should set
   `NO_MKDOCS_2_WARNING=1` while staying pinned to MkDocs 1.x.
+
+## T27-DEV - Stop Presenting `plur test` As A Command
+
+Pain point: `plur test` is useful when a project has a `test/` directory, but
+it is not a command. It is a positional target pattern handled by the default
+`spec` command path. Current top-level help shows `plur test` in common
+workflows, which makes `plur test --help` especially confusing: it renders
+`plur spec` help.
+
+Change: make top-level help show an explicit Minitest target path instead of
+bare `plur test`, and intercept `plur test --help` / `plur test -h` with a
+plain explanation that `test` is a target path, not a Plur command. Do not add
+a new `test` command in this phase; the goal is to remove the false command
+signal.
+
+Acceptance criteria:
+- `plur --help` no longer lists bare `plur test`.
+- `plur --help` still shows how to run a Minitest target, for example
+  `plur test/calculator_test.rb`.
+- `plur test --help` exits non-zero with a direct explanation instead of
+  rendering `plur spec` help.
+- Existing target inference for real `test/` paths is unchanged.
+- Focused help/error specs and the full build pass.
+
+Before evidence:
+- `./plur --help` lists `plur test                           Run Minitest
+  targets`.
+- `./plur test --help` prints `Usage: plur spec [<patterns> ...] [flags]`.
+
+Tradeoff: users who already know `plur test` works can still use it in
+projects with a `test/` directory, but new users no longer see a bare target
+path presented like a command.
+
+After evidence:
+- `./plur --help` now lists `plur test/calculator_test.rb        Run one
+  Minitest target`.
+- `./plur test --help` exits 1 with:
+
+```text
+Error: `test` is a target path, not a Plur command.
+Use `plur test/calculator_test.rb` to run a Minitest target.
+Use `plur --help` to list Plur commands.
+```
+
+- `./plur -C fixtures/projects/minitest-success test --dry-run` still selects
+  the `minitest` job by explicit patterns and expands the real `test/`
+  directory.

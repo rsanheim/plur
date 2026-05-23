@@ -114,7 +114,7 @@ func topLevelWorkflowHelp() string {
 	return `Common workflows:
   plur                                Run the detected test suite
   plur spec/calculator_spec.rb        Run one target
-  plur test                           Run Minitest targets
+  plur test/calculator_test.rb        Run one Minitest target
   plur --dry-run                      Preview the one-shot test plan
   plur watch                          Watch files and run matching tests
   plur watch find spec/calculator_spec.rb  Preview a watch file change

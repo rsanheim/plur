@@ -50,3 +50,5 @@ ts=2026-05-23-08:18:52 git_ref=prep-goal git_oid=3fa7a9b status=start current="T
 ts=2026-05-23-08:26:31 git_ref=prep-goal git_oid=3fa7a9b status=done current="T25-DEV" msg="docs front door focused and Zensical follow-up added"
 ts=2026-05-23-08:27:56 git_ref=prep-goal git_oid=4a131a8 status=start current="T26-REFLECT" msg="begin reflection after watch/help/docs cleanup"
 ts=2026-05-23-08:32:38 git_ref=prep-goal git_oid=4a131a8 status=done current="T26-REFLECT" msg="reflection after watch help docs cleanup scored"
+ts=2026-05-23-08:33:35 git_ref=prep-goal git_oid=ea9763e status=start current="T27-DEV" msg="begin plur test ambiguity cleanup"
+ts=2026-05-23-08:39:58 git_ref=prep-goal git_oid=ea9763e status=done current="T27-DEV" msg="plur test help ambiguity removed and verified"
