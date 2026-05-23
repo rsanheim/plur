@@ -17,6 +17,11 @@ type DiscoverResult struct {
 	ExcludeMatches map[string]int
 }
 
+type TargetMismatch struct {
+	Target string
+	Path   string
+}
+
 // Discover returns sorted, deduped, exclude-filtered files for a job.
 // When inputs is empty, framework target patterns drive discovery; otherwise
 // each input is classified as a glob, an existing file (passthrough), or a
@@ -86,6 +91,56 @@ func filePathForExcludeMatch(s string) string {
 		return s[:strings.IndexByte(s, ':')]
 	}
 	return s
+}
+
+func ExplicitTargetMismatches(inputs, targetPatterns []string) ([]TargetMismatch, error) {
+	if len(inputs) == 0 || len(targetPatterns) == 0 {
+		return nil, nil
+	}
+
+	var mismatches []TargetMismatch
+	for _, in := range inputs {
+		targetPath, ok := explicitFileTargetPath(in)
+		if !ok {
+			continue
+		}
+		matched, err := matchesAnyTargetPattern(targetPath, targetPatterns)
+		if err != nil {
+			return nil, err
+		}
+		if !matched {
+			mismatches = append(mismatches, TargetMismatch{Target: in, Path: targetPath})
+		}
+	}
+	return mismatches, nil
+}
+
+func explicitFileTargetPath(input string) (string, bool) {
+	if hasGlobMeta(input) {
+		return "", false
+	}
+	if isFileLineTarget(input) {
+		return filePathForExcludeMatch(input), true
+	}
+	info, err := os.Stat(input)
+	if err != nil || info.IsDir() {
+		return "", false
+	}
+	return input, true
+}
+
+func matchesAnyTargetPattern(path string, targetPatterns []string) (bool, error) {
+	normalized := filepath.ToSlash(path)
+	for _, pattern := range targetPatterns {
+		matched, err := doublestar.Match(filepath.ToSlash(pattern), normalized)
+		if err != nil {
+			return false, fmt.Errorf("invalid target pattern %q: %w", pattern, err)
+		}
+		if matched {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func classifyInputs(j job.Job, inputs []string) ([]string, error) {

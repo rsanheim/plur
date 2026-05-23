@@ -252,3 +252,37 @@ func TestDiscover_DedupsAcrossInputs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"spec/a_spec.rb"}, files)
 }
+
+func TestExplicitTargetMismatches_ReportsExistingFilesOutsideTargetPattern(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t, "spec/a_spec.rb", "spec/helper.rb", "lib/a.rb")
+
+	mismatches, err := ExplicitTargetMismatches([]string{
+		"spec/a_spec.rb",
+		"spec/helper.rb",
+		"lib/a.rb",
+		"spec/*_spec.rb",
+		"spec",
+	}, []string{"spec/**/*_spec.rb"})
+	require.NoError(t, err)
+
+	assert.Equal(t, []TargetMismatch{
+		{Target: "spec/helper.rb", Path: "spec/helper.rb"},
+		{Target: "lib/a.rb", Path: "lib/a.rb"},
+	}, mismatches)
+}
+
+func TestExplicitTargetMismatches_UsesUnderlyingFileForFileLineTargets(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t, "spec/a_spec.rb", "spec/helper.rb")
+
+	mismatches, err := ExplicitTargetMismatches([]string{
+		"spec/a_spec.rb:12",
+		"spec/helper.rb:5",
+	}, []string{"spec/**/*_spec.rb"})
+	require.NoError(t, err)
+
+	assert.Equal(t, []TargetMismatch{
+		{Target: "spec/helper.rb:5", Path: "spec/helper.rb"},
+	}, mismatches)
+}

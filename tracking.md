@@ -16,3 +16,5 @@ ts=2026-05-23-05:02:13 git_ref=prep-goal git_oid=635f743 status=start current="T
 ts=2026-05-23-05:05:52 git_ref=prep-goal git_oid=635f743 status=done current="T8-DEV" msg="help and watch docs aligned with current UX"
 ts=2026-05-23-05:06:26 git_ref=prep-goal git_oid=b82b977 status=start current="T9-DEV" msg="begin live watch no-op feedback"
 ts=2026-05-23-05:09:58 git_ref=prep-goal git_oid=b82b977 status=done current="T9-DEV" msg="live watch no-op feedback implemented and verified"
+ts=2026-05-23-05:12:31 git_ref=prep-goal git_oid=85ae007 status=start current="T10-DEV" msg="begin explicit target mismatch warnings"
+ts=2026-05-23-05:17:48 git_ref=prep-goal git_oid=85ae007 status=done current="T10-DEV" msg="explicit target mismatch warnings implemented and verified"

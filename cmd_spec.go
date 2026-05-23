@@ -56,6 +56,9 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
 	warnUnmatchedCLIExcludes(r.ExcludePatterns, discovery.ExcludeMatches)
+	if err := warnExplicitTargetMismatches(r.Patterns, targetPatterns, currentJob.Name); err != nil {
+		return err
+	}
 
 	if cfg.DryRun {
 		fmt.Fprintf(os.Stderr, "[dry-run] Selected job: %s (framework: %s, reason: %s)\n",
@@ -129,6 +132,20 @@ func warnUnmatchedCLIExcludes(patterns []string, matches map[string]int) {
 			fmt.Fprintf(os.Stderr, "[warn] --exclude-pattern %s matched no selected files\n", shellSingleQuote(pattern))
 		}
 	}
+}
+
+func warnExplicitTargetMismatches(patterns, targetPatterns []string, jobName string) error {
+	mismatches, err := fileset.ExplicitTargetMismatches(patterns, targetPatterns)
+	if err != nil {
+		return err
+	}
+	for _, mismatch := range mismatches {
+		fmt.Fprintf(os.Stderr, "[warn] target %s does not match selected job %s target pattern %s\n",
+			shellSingleQuote(mismatch.Target),
+			shellSingleQuote(jobName),
+			shellSingleQuote(strings.Join(targetPatterns, ", ")))
+	}
+	return nil
 }
 
 func shellSingleQuote(value string) string {

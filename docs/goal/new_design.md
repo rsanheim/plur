@@ -241,3 +241,46 @@ The focused integration check is
 
 Tradeoff: watch mode may print more messages during noisy save bursts. Keep the
 messages per debounced batch, concise, and only for paths that produce no run.
+
+## T10-DEV - Warn When Explicit Targets Do Not Match The Selected Job
+
+Pain point: Plur intentionally passes explicit existing files through to the
+selected framework, but that can make a likely mistake look valid. For example,
+`plur --dry-run lib/calculator.rb` in an RSpec project selects the `rspec` job
+and plans to run `bundle exec rspec lib/calculator.rb`, even though the normal
+target pattern is `spec/**/*_spec.rb`.
+
+Change: after discovery succeeds, warn when a CLI positional argument is an
+explicit existing file target that does not match the selected job's target
+pattern:
+
+```text
+[warn] target 'lib/calculator.rb' does not match selected job 'rspec' target pattern 'spec/**/*_spec.rb'
+```
+
+The warning should not reject the command. RSpec and other jobs may accept
+non-standard explicit files, so the safest UX improvement is visibility rather
+than a hard failure.
+
+Acceptance criteria:
+- A dry-run with an explicit non-matching file exits successfully and prints a
+  warning.
+- A matching explicit spec file does not warn.
+- Glob inputs and directory inputs do not warn per individual expanded file.
+- Focused integration tests, file-set unit tests, and the full build pass.
+
+Before evidence:
+- Earlier inventory and review phases showed explicit non-test files becoming
+  RSpec targets with no hint that they were outside the selected job's normal
+  target pattern.
+
+After evidence:
+
+```text
+[warn] target 'lib/calculator.rb' does not match selected job 'rspec' target pattern 'spec/**/*_spec.rb'
+[dry-run] Selected job: rspec (framework: rspec, reason: autodetect after patterns)
+[dry-run] Running 1 spec [rspec] in parallel using 1 worker
+```
+
+Tradeoff: the command remains permissive. This preserves advanced framework
+behavior while making likely mistakes visible.
