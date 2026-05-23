@@ -1528,8 +1528,8 @@ After evidence:
 
 ## T45-DEV - Keep Empty Watch JSON Structured
 
-Status: verified
-Commit: pending
+Status: committed
+Commit: 334650255e90428929dde0742a7428451c7c5e42
 
 Pain point: `plur watch find --format=json` is the stable machine-readable
 watch preview, but the no-watch-mapping path returned human prose on stdout:
