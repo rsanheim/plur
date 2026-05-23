@@ -1885,7 +1885,7 @@ After evidence:
 ## T54-DEV - Extract A Pure Watch Planner
 
 Status: verified
-Commit: pending
+Commit: 6fdd40d498464af4ae9adee4ab59a989f43788a9
 
 Pain point: `FileEventHandler.HandleBatch` currently plans and executes live
 watch work in one method. That keeps `watch find` from reusing the same batch
