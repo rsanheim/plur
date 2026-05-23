@@ -62,3 +62,5 @@ ts=2026-05-23-08:57:29 git_ref=prep-goal git_oid=2162761 status=start current="T
 ts=2026-05-23-09:01:06 git_ref=prep-goal git_oid=2162761 status=done current="T31-DEV" msg="bare test target feedback implemented and verified"
 ts=2026-05-23-09:01:30 git_ref=prep-goal git_oid=a272210 status=start current="T32-DEV" msg="begin output contract error path clarification"
 ts=2026-05-23-09:04:40 git_ref=prep-goal git_oid=a272210 status=done current="T32-DEV" msg="output contract error paths clarified and verified"
+ts=2026-05-23-09:08:12 git_ref=prep-goal git_oid=fa24dea status=start current="T33-DEV" msg="begin unused json flag removal"
+ts=2026-05-23-09:12:43 git_ref=prep-goal git_oid=fa24dea status=done current="T33-DEV" msg="unused json flag removed and verified"

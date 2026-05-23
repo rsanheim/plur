@@ -48,6 +48,29 @@ RSpec.describe "help output" do
     expect(result.out.index("watch find <file-path>")).to be < result.out.index("watch install")
   end
 
+  it "does not advertise the unused JSON file output flag" do
+    [
+      ["--help"],
+      ["spec", "--help"],
+      ["watch", "--help"],
+      ["watch", "run", "--help"]
+    ].each do |args|
+      result = run_plur(*args)
+
+      expect(result).to be_success
+      expect(result.out).not_to include("--json")
+      expect(result.out).not_to include("Save detailed test results as JSON")
+    end
+  end
+
+  it "rejects the removed JSON file output flag" do
+    result = run_plur_allowing_errors("--json=tmp/results.json", "--dry-run")
+
+    expect(result).not_to be_success
+    expect(result.err).to include("unknown flag")
+    expect(result.err).to include("--json")
+  end
+
   it "keeps watch find help focused on preview-specific flags" do
     result = run_plur("watch", "find", "--help")
 

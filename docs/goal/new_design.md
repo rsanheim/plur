@@ -1109,3 +1109,50 @@ Before evidence:
   failed."
 - `./plur watch find --format=json --use=does-not-exist spec/integration/spec/help_spec.rb`
   exits 1 with empty stdout and a plain stderr `Error: ...` line.
+
+## T33-DEV - Remove Unused `--json` Flag
+
+Pain point: `plur --help`, `plur spec --help`, and watch help still advertise
+`--json="" Save detailed test results as JSON to the specified file`, but the
+flag is not implemented. That creates a third machine-output surface next to
+the real contracts: `--dry-run-format=json` and `watch find --format=json`.
+
+Change: remove the unused global `--json` flag from the CLI and config object.
+This is a clean break: users who try `--json` should get an unknown-flag error
+instead of a silently ignored option. Keep the existing structured APIs as the
+canonical JSON surfaces.
+
+Diataxis / duplication check:
+- This is generated CLI reference/help, not a tutorial or how-to guide.
+- `rg -- "--json|JSON output|Save detailed test results"` shows no active
+  public user docs for the flag; references are in historical goal notes,
+  release tooling `gh --json` calls, tests, and code.
+
+Acceptance criteria:
+- Top-level, `spec`, `watch`, and `watch run` help no longer show `--json`.
+- `plur --json=tmp/results.json --dry-run` exits non-zero as an unknown flag.
+- `watch find` no longer needs a bespoke rejection path for `--json`.
+- Focused help/watch specs, Go tests, and the full build pass.
+
+Before evidence:
+- `./plur --help`, `./plur spec --help`, `./plur watch --help`, and
+  `./plur watch run --help` all list `--json="" Save detailed test results as
+  JSON to the specified file`.
+
+After evidence:
+- Top-level, `spec`, `watch`, and `watch run` help no longer list `--json` or
+  `Save detailed test results as JSON`.
+- Removed `JSON` from `PlurCLI` and `config.GlobalConfig`; `watch find` no
+  longer carries a special `--json` no-op rejection path.
+- `./plur --json=tmp/results.json --dry-run` exits non-zero with:
+
+```text
+plur: error: unknown flag --json, did you mean "--job"?
+```
+
+- Verification:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb`
+  - `go test -mod=mod ./...`
+  - `script/check-links`
+  - `bin/rake`

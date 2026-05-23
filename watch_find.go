@@ -129,7 +129,7 @@ func watchFindNoOpFlagName(flag *kong.Flag) string {
 			return "--no-first-is-1"
 		}
 		return "--first-is-1"
-	case "dry-run", "dry-run-format", "ignore", "json", "rspec-split", "workers":
+	case "dry-run", "dry-run-format", "ignore", "rspec-split", "workers":
 		return "--" + flag.Name
 	default:
 		return ""
@@ -142,8 +142,6 @@ func watchFindNoOpFlagGuidance(flag string) string {
 		return "use `plur watch find --format=json <file>` for a structured watch preview, or `plur --dry-run [patterns...]` for a one-shot test plan"
 	case "--ignore":
 		return "`--ignore` filters live watch events, not watch find previews"
-	case "--json":
-		return "use `--format=json` for watch find JSON output"
 	default:
 		return "watch find previews mappings and does not run test workers"
 	}

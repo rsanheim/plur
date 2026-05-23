@@ -27,7 +27,6 @@ RSpec.describe "plur watch find" do
         ["watch", "find", "--workers=99", "lib/calculator.rb"] => "--workers",
         ["watch", "find", "-n", "2", "lib/calculator.rb"] => "--workers",
         ["watch", "find", "--dry-run-format=json", "lib/calculator.rb"] => "--dry-run-format",
-        ["watch", "find", "--json=tmp/watch-find.json", "lib/calculator.rb"] => "--json",
         ["watch", "find", "--rspec-split", "lib/calculator.rb"] => "--rspec-split",
         ["watch", "find", "--first-is-1", "lib/calculator.rb"] => "--first-is-1",
         ["watch", "find", "--no-first-is-1", "lib/calculator.rb"] => "--no-first-is-1",
@@ -41,6 +40,16 @@ RSpec.describe "plur watch find" do
     end
   end
 
+  it "rejects the removed JSON file output flag as unknown" do
+    chdir(default_ruby_dir) do
+      result = run_plur_allowing_errors("watch", "find", "--json=tmp/watch-find.json", "lib/calculator.rb")
+
+      expect(result).not_to be_success
+      expect(result.err).to include("unknown flag")
+      expect(result.err).to include("--json")
+    end
+  end
+
   it "does not reject config or environment values for run-mode flags" do
     Dir.mktmpdir("watch-find-config-", ROOT_PATH.join("tmp")) do |tmpdir|
       config_path = File.join(tmpdir, "plur.toml")
@@ -48,7 +57,6 @@ RSpec.describe "plur watch find" do
         dry-run = true
         dry-run-format = "json"
         workers = 99
-        json = "tmp/watch-find-results.json"
         first-is-1 = false
         rspec-split = true
       TOML
