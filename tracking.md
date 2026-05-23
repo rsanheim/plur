@@ -90,3 +90,5 @@ ts=2026-05-23-10:11:46 git_ref=prep-goal git_oid=3b51a2e status=start current="T
 ts=2026-05-23-10:21:46 git_ref=prep-goal git_oid=3b51a2e status=done current="T45-DEV" msg="watch find json no-watch-mapping contract verified"
 ts=2026-05-23-10:22:58 git_ref=prep-goal git_oid=68b43b9 status=start current="T46-DEV" msg="begin watch run inherited flag cleanup"
 ts=2026-05-23-10:30:12 git_ref=prep-goal git_oid=68b43b9 status=done current="T46-DEV" msg="watch run help and no-op flags focused"
+ts=2026-05-23-10:31:14 git_ref=prep-goal git_oid=e29f75a status=start current="T47-REFLECT" msg="reflect after output and watch flag cleanup"
+ts=2026-05-23-10:40:23 git_ref=prep-goal git_oid=e29f75a status=done current="T47-REFLECT" msg="scorecard after output and watch flag cleanup"
