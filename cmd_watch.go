@@ -16,6 +16,7 @@ import (
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/watchsession"
 	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
@@ -106,13 +107,17 @@ func printWatchInfo(watchDirs []string) {
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
-	selected, err := runtime.SelectJobFromRuntimeConfig(cli.runtimeConfig, nil)
+	session, err := watchsession.New(cli.runtimeConfig, watchsession.Options{
+		IgnorePatterns:   watchCmd.Ignore,
+		FilterWatchDirs:  true,
+		RequireWatchDirs: true,
+	})
 	if err != nil {
-		return fmt.Errorf("failed to select watch job: %w", err)
+		return err
 	}
+	selected := session.Selected
 	resolvedJob := selected.Job
-	jobs := cli.runtimeConfig.Jobs
-	watches := cli.runtimeConfig.Watches
+	watches := session.Watches
 
 	runtime.LogInheritedFields(selected.Name, selected.Inherited)
 
@@ -128,33 +133,14 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	// Create debouncer and file event handler
 	debouncer := watch.NewDebouncer(debounceDelay)
 
-	var watchDirs []string
-	for _, mapping := range watches {
-		dir := mapping.SourceDir()
-		watchDirs = append(watchDirs, dir)
-	}
-
-	logger.Logger.Debug("Watch directories before filtering", "dirs", watchDirs)
-	watchDirs, err = watch.FilterDirectories(watchDirs)
-	if err != nil {
-		return fmt.Errorf("failed to filter watch directories: %w", err)
-	}
+	watchDirs := session.WatchDirs
+	logger.Logger.Debug("Watch directories before filtering", "dirs", session.RawWatchDirs)
 	logger.Logger.Debug("Watch directories after filtering", "dirs", watchDirs)
 
-	if len(watchDirs) == 0 {
-		return fmt.Errorf("no directories to watch found in watch mappings")
-	}
-
-	globalIgnorePatterns := watchCmd.Ignore
-	if len(globalIgnorePatterns) == 0 {
-		globalIgnorePatterns = watch.DefaultIgnorePatterns
-	}
+	globalIgnorePatterns := session.IgnorePatterns
 	logger.Logger.Debug("Global watch ignore patterns", "patterns", globalIgnorePatterns)
 
-	projectName := "unknown"
-	if cwd, err := os.Getwd(); err == nil {
-		projectName = filepath.Base(cwd)
-	}
+	projectName := filepath.Base(session.CWD)
 
 	logger.Logger.Info("plur configuration info",
 		"project", projectName,
@@ -228,20 +214,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	printHelp()
 	showPrompt()
 
-	cwd, _ := os.Getwd()
-	if resolvedCwd, err := filepath.EvalSymlinks(cwd); err == nil {
-		if resolvedCwd != cwd {
-			logger.Logger.Debug("watch", "cwd_symlink_resolved", true, "original", cwd, "resolved", resolvedCwd)
-		}
-		cwd = resolvedCwd
-	}
-
 	// Create file event handler
-	handler := &watch.FileEventHandler{
-		Jobs:    jobs,
-		Watches: watches,
-		CWD:     cwd,
-	}
+	handler := session.Handler()
 
 	for {
 		select {
@@ -278,7 +252,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			}
 
 		case event := <-manager.Events():
-			admission := watch.AdmitEvent(event, cwd, globalIgnorePatterns)
+			admission := session.AdmitEvent(event)
 			switch admission.Reason {
 			case "watcher":
 				logger.Logger.Debug("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))

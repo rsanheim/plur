@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/watchsession"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -32,30 +32,21 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return fmt.Errorf("--format must be text or json")
 	}
 
-	jobs := globals.runtimeConfig.Jobs
 	watches := globals.runtimeConfig.Watches
 
-	// Get the current working directory
-	cwd, err := os.Getwd()
+	cwd, err := watchsession.CurrentWorkingDirectory()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return err
 	}
-
-	// Normalize the file path to be relative to cwd
-	filePath := cmd.FilePath
-	if filepath.IsAbs(filePath) {
-		if rel, err := filepath.Rel(cwd, filePath); err == nil {
-			filePath = rel
-		}
-	}
+	filePath := watchsession.NormalizePath(cwd, cmd.FilePath)
 
 	if len(watches) == 0 {
 		if globals.runtimeConfig.Use != "" {
-			selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
+			session, err := watchsession.New(globals.runtimeConfig, watchsession.Options{})
 			if err != nil {
-				return fmt.Errorf("failed to select watch job: %w", err)
+				return err
 			}
-			runtime.LogInheritedFields(selected.Name, selected.Inherited)
+			runtime.LogInheritedFields(session.Selected.Name, session.Selected.Inherited)
 		}
 
 		if cmd.Format == "json" {
@@ -71,22 +62,19 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return ExitCode{Code: 2}
 	}
 
-	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
+	session, err := watchsession.New(globals.runtimeConfig, watchsession.Options{})
 	if err != nil {
-		return fmt.Errorf("failed to select watch job: %w", err)
+		return err
 	}
+	selected := session.Selected
 	runtime.LogInheritedFields(selected.Name, selected.Inherited)
+	filePath = session.NormalizePath(cmd.FilePath)
 
 	if cmd.Format == "text" {
 		fmt.Printf("[watch] Checking %s\n", filePath)
 	}
 
-	plan := watch.Planner{
-		Jobs:    jobs,
-		Watches: watches,
-		CWD:     cwd,
-	}
-	findPlan := plan.PlanPath(filePath)
+	findPlan := session.PlanPath(filePath)
 
 	exitCode := watchFindExitCode(findPlan)
 	if cmd.Format == "json" {

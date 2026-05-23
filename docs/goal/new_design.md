@@ -1882,6 +1882,49 @@ After evidence:
 - `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
   examples.
 
+## T56-DEV - Share Watch Session Setup
+
+Status: verified
+Commit: pending
+
+Pain point: T55 made `watch find` render from `watch.Planner`, but live watch
+and watch preview still assembled the session inputs independently. Job
+selection, cwd normalization, global ignore defaults, watch directory
+filtering, planner construction, and live handler construction still lived in
+the outer command paths.
+
+Change: introduce `internal/watchsession` as the command-facing session facade.
+Both `plur watch` and `plur watch find` use it to build the selected job,
+normalized cwd, watch mappings, filtered watch directories, default/custom
+ignore patterns, planner, event admission, and live handler. Output and
+persistence remain at the CLI edges.
+
+Acceptance criteria:
+- `watchsession.New` selects the watch job, normalizes cwd, resolves watch
+  directories, applies default/custom ignore patterns, and builds the shared
+  planner.
+- Live watch uses the session for watch dirs, event admission, and
+  `FileEventHandler` setup.
+- `watch find` uses the session for path normalization and planning when watch
+  mappings exist while preserving the no-watch mapping output contract.
+- Focused session tests, watch package tests, watch find/run integration specs,
+  full Go tests, link check, and the full build pass.
+
+Before evidence:
+- Red: `go test -mod=mod ./internal/watchsession -run TestNew -count=1`
+  failed because `New` and `Options` were undefined.
+
+After evidence:
+- `go test -mod=mod ./internal/watchsession -count=1` passed.
+- `go test -mod=mod ./watch -count=1` passed.
+- `bin/rake build` passed.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_config_spec.rb spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_find_json_spec.rb spec/integration/watch/watch_run_flags_spec.rb`
+  passed with 18 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T55-DEV - Render Watch Find From The Planner
 
 Status: verified
