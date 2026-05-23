@@ -8,6 +8,7 @@ COUNT="${BENCHSTAT_COUNT:-5}"
 FILTER=""
 COMPARE_FILE=""
 LIST_ONLY=false
+PACKAGE="."
 
 show_help() {
     cat <<'HELP'
@@ -19,6 +20,7 @@ Usage:
 Options:
   --count N        Run N iterations (default: 5)
   --filter REGEX   Only run benchmarks matching REGEX
+  --package PKG    Go package to benchmark (default: .)
   --compare FILE   Compare new results against FILE
   --list           List available benchmarks
   -h, --help       Show this help
@@ -27,6 +29,7 @@ Examples:
   script/benchstat                                    # Run all, save timestamped results
   script/benchstat --list                             # List available benchmarks
   script/benchstat --count 5 --filter RSpec           # 5 iterations, RSpec only
+  script/benchstat --package ./internal/testruntime --filter Cache  # Cache benchmarks
   script/benchstat --compare results/benchmarks/baseline.txt  # Compare against baseline
 
 Environment:
@@ -34,7 +37,7 @@ Environment:
 
 Requirements:
   * Go toolchain
-  * benchstat (auto-installed if missing)
+  * benchstat for --compare (auto-installed if missing)
 
 Results are saved to: results/benchmarks/<timestamp>-bench.txt
 HELP
@@ -49,6 +52,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --filter)
             FILTER="$2"
+            shift 2
+            ;;
+        --package)
+            PACKAGE="$2"
             shift 2
             ;;
         --compare)
@@ -70,18 +77,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Ensure benchstat is installed
-if ! command -v benchstat &> /dev/null; then
-    echo "Installing benchstat..."
-    go install golang.org/x/perf/cmd/benchstat@latest
-fi
-
 mkdir -p "$RESULTS_DIR"
 
 # List mode
 if [ "$LIST_ONLY" = true ]; then
-    echo "Available benchmarks:"
-    go test -list 'Benchmark.*' 2>/dev/null | grep -E '^Benchmark' | sort
+    echo "Available benchmarks in $PACKAGE:"
+    go test "$PACKAGE" -list 'Benchmark.*' 2>/dev/null | grep -E '^Benchmark' | sort
     exit 0
 fi
 
@@ -95,18 +96,24 @@ TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 OUTPUT_FILE="$RESULTS_DIR/${TIMESTAMP}-bench.txt"
 
 echo "Running benchmarks..."
+echo "  Package: $PACKAGE"
 echo "  Filter: ${FILTER:-all}"
 echo "  Count:  $COUNT iterations"
 echo ""
 
 # Run benchmarks
-go test -bench="$BENCH_PATTERN" -benchmem -count="$COUNT" -run='^$' 2>&1 | tee "$OUTPUT_FILE"
+go test "$PACKAGE" -bench="$BENCH_PATTERN" -benchmem -count="$COUNT" -run='^$' 2>&1 | tee "$OUTPUT_FILE"
 
 echo ""
 echo "Results saved to: $OUTPUT_FILE"
 
 # If comparison file provided, run benchstat
 if [ -n "$COMPARE_FILE" ]; then
+    if ! command -v benchstat &> /dev/null; then
+        echo "Installing benchstat..."
+        go install golang.org/x/perf/cmd/benchstat@latest
+    fi
+
     echo ""
     echo "Comparing against $COMPARE_FILE..."
     echo ""

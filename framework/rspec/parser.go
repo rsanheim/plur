@@ -167,9 +167,14 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	return notifications, false // Line was not consumed
 }
 
-// parseStreamExample converts a StreamExample to a TestCaseNotification
+// parseStreamExample converts a StreamExample to a TestCaseNotification.
+// Prefers RSpec's canonical example.id as TestID when available so the runtime
+// tracker can key per-example data by a stable identifier.
 func (p *outputParser) parseStreamExample(msgType string, ex *StreamExample) types.TestNotification {
-	testID := ex.Location
+	testID := ex.ID
+	if testID == "" {
+		testID = ex.Location
+	}
 	if testID == "" && ex.FilePath != "" {
 		testID = fmt.Sprintf("%s:%d", ex.FilePath, ex.LineNumber)
 	}
@@ -185,15 +190,18 @@ func (p *outputParser) parseStreamExample(msgType string, ex *StreamExample) typ
 	}
 
 	notification := types.TestCaseNotification{
-		Event:           event,
-		TestID:          testID,
-		Description:     ex.Description,
-		FullDescription: ex.FullDescription,
-		Location:        ex.Location,
-		FilePath:        strings.TrimPrefix(ex.FilePath, "./"),
-		LineNumber:      ex.LineNumber,
-		Status:          ex.Status,
-		Duration:        time.Duration(ex.RunTime * float64(time.Second)),
+		Event:                 event,
+		TestID:                testID,
+		Description:           ex.Description,
+		FullDescription:       ex.FullDescription,
+		Location:              ex.Location,
+		FilePath:              strings.TrimPrefix(ex.FilePath, "./"),
+		AbsoluteFilePath:      ex.AbsoluteFilePath,
+		LineNumber:            ex.LineNumber,
+		LocationRerunArgument: ex.LocationRerunArgument,
+		ScopedID:              ex.ScopedID,
+		Status:                ex.Status,
+		Duration:              time.Duration(ex.RunTime * float64(time.Second)),
 	}
 
 	if msgType == "example_failed" && ex.Exception != nil {

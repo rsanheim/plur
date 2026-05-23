@@ -128,6 +128,21 @@ RSpec.describe "--exclude-pattern" do
         expect(result.err).to include("spec/models/user_spec.rb")
       end
     end
+
+    it "excludes explicit focused file:line targets by the underlying spec file" do
+      chdir(project_fixture("rspec-success-simple")) do
+        result = run_plur_allowing_errors(
+          "--dry-run",
+          "--use=rspec",
+          "spec/simple_spec.rb:2",
+          "--exclude-pattern", "spec/simple_spec.rb"
+        )
+
+        expect(result).not_to be_success
+        expect(result.err).to include("no test files remain after applying exclude patterns")
+        expect(result.err).not_to include("spec/simple_spec.rb:2")
+      end
+    end
   end
 
   describe "TOML config" do

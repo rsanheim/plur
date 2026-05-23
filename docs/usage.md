@@ -95,6 +95,11 @@ plur watch run --debounce 250 --timeout 60 --ignore "vendor/**" --ignore "tmp/**
 plur doctor
 ```
 
+The `Runtime Data:` block reports the cache file path along with its
+size, file count, and example count when the cache exists (e.g.
+`21K / 13 files / 68 examples`), or `(file does not exist)` on a
+fresh project.
+
 ### Rails And Rake Commands
 
 ```bash
@@ -195,6 +200,105 @@ plur doctor
 - Many small tests: More workers
 - Few large tests: Fewer workers
 - I/O heavy tests: More workers than CPU cores
+
+## Runtime Tracking
+
+Plur records per-file runtime data to `$PLUR_HOME/runtime/<project-hash>.json`
+so it can balance subsequent worker assignments using historical timing.
+
+The on-disk format is a versioned runtime cache:
+
+```json
+{
+  "meta": {
+    "schema_version": 4,
+    "plur_version": "0.56.0-dev-abc1234"
+  },
+  "run": {
+    "cwd": "/Users/example/src/my-project",
+    "last_run_at": "2026-05-22T15:04:05Z"
+  },
+  "files": {
+    "spec/slow_spec.rb": {
+      "mtime_unix_nano": 1778610000000000000,
+      "size_bytes": 12345,
+      "runtime_seconds": 12.34,
+      "examples": [
+        {
+          "id": "./spec/slow_spec.rb[1:1]",
+          "line_number": 12,
+          "location_rerun_argument": "./spec/slow_spec.rb:12",
+          "runtime_seconds": 0.40
+        }
+      ]
+    }
+  }
+}
+```
+
+Behavior:
+
+- File aggregates are rewritten only by default/full-file RSpec runs. Focused
+  (`spec/foo_spec.rb:42`), tag-filtered (`--tag=…`), `--fail-fast`, aborted,
+  and `--`-passthrough runs are classified as *partial* and merge
+  per-example observations without overwriting the file aggregate.
+- `--dry-run` never writes the cache.
+- Invalid, corrupt, or unsupported schema files are ignored and replaced on the next
+  successful default run.
+- Old v1 caches (`map[string]float64`) are ignored and regenerated.
+- Shared examples are attributed to their rerunnable owning spec file
+  (the file the focused target points back to), not the support file
+  whose source contains the shared block. The runtime cache stores only
+  the fields needed for future balancing: RSpec `id`, rerunnable target,
+  owner line, and runtime.
+
+### `--rspec-split` (EXPERIMENTAL)
+
+`--rspec-split` is an opt-in, RSpec-only flag that expands long-running
+spec files into focused `file:line:line:line` targets, then lets the
+existing runtime grouper balance them across workers.
+
+```bash
+plur --rspec-split -n 8
+PLUR_RSPEC_SPLIT=1 plur -n 8
+```
+
+How it works:
+
+- Splitting requires `--rspec-split == true`, an RSpec job, and worker
+  count greater than 1.
+- For each file, plur consults the runtime cache. If the recorded
+  `mtime_unix_nano`/`size_bytes` still match the source file, plur considers
+  the example data fresh enough for split planning.
+- A file is split only if its historical `runtime_seconds` exceeds the
+  per-worker budget (`total_runtime / worker_count`). This is the simple
+  experimental rule — no multipliers, no floors.
+- Split chunks are built by bin-packing the file's cached per-example
+  runtimes using longest-processing-time greedy: each example lands in
+  the bin with the smallest current sum, so a single heavy example ends
+  up isolated in its own chunk. Examples with no recorded runtime fall
+  back to the file's mean per-example runtime.
+- Each chunk's summed runtime feeds back into the grouper as the
+  target's runtime weight, so worker balancing reflects the actual
+  bin-pack distribution. The generated `file:line:line:...` targets are
+  not persisted in the cache.
+
+Known pitfalls:
+
+- `before(:all)` / `before(:context)` state may run once per chunk
+  process instead of once per file, which can break suites that rely on
+  shared context fixtures.
+- Suites that define examples dynamically (from environment, time,
+  random data, database state, or metaprogramming) may produce different
+  example sets between cache generation and split execution.
+- Shared examples and custom DSLs can produce surprising source
+  locations. Plur stores `id` and `location_rerun_argument` so
+  divergence can be debugged.
+- Splitting is cache-driven: a cold run (no runtime cache entries yet) falls back
+  to file-level grouping. The next default run populates the cache.
+
+Splitting is intentionally experimental. The semantics may change as
+real-world data is collected; do not rely on stable split behavior yet.
 
 ## Next Steps
 

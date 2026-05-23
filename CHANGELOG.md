@@ -1,6 +1,8 @@
 # plur CHANGELOG
 
-## Unreleased
+## v0.57.0 - 2026-05-22
+* add experimental --rspec-split flag for splitting long-running spec files across workers [#60](https://github.com/rsanheim/plur/pull/60)
+* overhaul runtime tracking to support better runtime-based grouping and splitting
 
 ## v0.56.0 - 2026-05-12
 * Add --exclude patterns for excluding files from plur file discovery before sending to workers [#58](https://github.com/rsanheim/plur/pull/58)

@@ -10,6 +10,7 @@ import (
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/fileset"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -81,18 +82,22 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	// Save runtime data if tests actually ran
 	hasValidRuntimeData := false
+	aborted := false
 	for _, result := range results {
+		if result.State == types.StateError {
+			aborted = true
+		}
 		if result.State != types.StateError && result.ExampleCount > 0 {
 			hasValidRuntimeData = true
-			break
 		}
 	}
 
 	if hasValidRuntimeData {
-		if err := runner.Tracker().SaveToFile(); err != nil {
+		runKind := testruntime.ClassifyRunKind(r.Patterns, r.Tags, parent.passthroughArgs, aborted)
+		if err := runner.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
-			logger.Logger.Debug("Runtime data saved", "runtime_path", runner.Tracker().RuntimeFilePath())
+			logger.Logger.Debug("Runtime data saved", "runtime_path", runner.Tracker().RuntimeFilePath(), "run_kind", runKind)
 		}
 	}
 

@@ -50,6 +50,7 @@ RSpec.describe "plur doctor command" do
       .gsub(/^\s+Platform:\s+.+/, "  Platform:       [WATCHER_PLATFORM]")
       .gsub(/Cache Directory:\s+.+/, "Cache Directory:  [CACHE_DIR]")
       .gsub(/Runtime Data:\s+.+/, "Runtime Data:     [RUNTIME_PATH]")
+      .gsub(/^(\s+)(?:\(file (?:does not )?exists?\)|[\d.]+[BKM] \/ \d+ files \/ \d+ examples)$/, "\\1[RUNTIME_STATS]")
       .gsub(/Ruby Version:\s+.+/, "Ruby Version:   [RUBY_VERSION]")
       .gsub(/Bundler:\s+.+/, "Bundler:        [BUNDLER_VERSION]")
       .gsub(/RSpec:\s+.+/, "RSpec:          [RSPEC_VERSION]")

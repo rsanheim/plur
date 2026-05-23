@@ -42,7 +42,7 @@ func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
 		}
 	}
 	files = slices.DeleteFunc(files, func(f string) bool {
-		s := filepath.ToSlash(f)
+		s := filepath.ToSlash(filePathForExcludeMatch(f))
 		for _, ex := range excludes {
 			if ok, _ := doublestar.PathMatch(ex, s); ok {
 				return true
@@ -58,6 +58,13 @@ func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
 // hasGlobMeta reports whether s contains any doublestar metacharacters.
 func hasGlobMeta(s string) bool { return strings.ContainsAny(s, "*?[{") }
 
+func filePathForExcludeMatch(s string) string {
+	if isFileLineTarget(s) {
+		return s[:strings.IndexByte(s, ':')]
+	}
+	return s
+}
+
 func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 	if len(inputs) == 0 {
 		return framework.TargetPatternsForJob(j)
@@ -70,6 +77,10 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 	var out []string
 	for _, in := range inputs {
 		if hasGlobMeta(in) {
+			out = append(out, in)
+			continue
+		}
+		if isFileLineTarget(in) {
 			out = append(out, in)
 			continue
 		}
@@ -93,4 +104,18 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// isFileLineTarget reports whether s looks like an RSpec focused target:
+// the substring before the first ':' is an existing regular file. We pass the
+// full string through to the framework and let RSpec interpret the suffix
+// (line numbers, scoped IDs, etc.) — plur does not parse what comes after the
+// colon.
+func isFileLineTarget(s string) bool {
+	idx := strings.IndexByte(s, ':')
+	if idx <= 0 {
+		return false
+	}
+	info, err := os.Stat(s[:idx])
+	return err == nil && !info.IsDir()
 }
