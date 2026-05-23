@@ -38,3 +38,5 @@ ts=2026-05-23-07:23:29 git_ref=prep-goal git_oid=caadd0b status=start current="T
 ts=2026-05-23-07:35:07 git_ref=prep-goal git_oid=caadd0b status=done current="T19-DEV" msg="public docs IA cleaned up and verified"
 ts=2026-05-23-07:35:41 git_ref=prep-goal git_oid=901cf80 status=start current="T20-DEV" msg="begin run-mode target template rejection"
 ts=2026-05-23-07:46:47 git_ref=prep-goal git_oid=901cf80 status=done current="T20-DEV" msg="run-mode target templates rejected and verified"
+ts=2026-05-23-07:50:41 git_ref=prep-goal git_oid=7011e2f status=start current="T21-DEV" msg="begin command-specific watch find help cleanup"
+ts=2026-05-23-07:54:53 git_ref=prep-goal git_oid=7011e2f status=done current="T21-DEV" msg="watch find help focused and verified"

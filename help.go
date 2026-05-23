@@ -10,6 +10,9 @@ import (
 
 func customHelpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
 	var buf bytes.Buffer
+	restoreHiddenFlags := hideIrrelevantHelpFlags(ctx.Selected())
+	defer restoreHiddenFlags()
+
 	originalStdout := ctx.Stdout
 	ctx.Stdout = &buf
 	err := kong.DefaultHelpPrinter(options, ctx)
@@ -20,6 +23,54 @@ func customHelpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
 
 	_, err = io.WriteString(ctx.Stdout, customizeHelpOutput(buf.String(), ctx))
 	return err
+}
+
+func hideIrrelevantHelpFlags(selected *kong.Node) func() {
+	if selected == nil {
+		return func() {}
+	}
+
+	hiddenNames := irrelevantHelpFlagNames(selected.FullPath())
+	if len(hiddenNames) == 0 {
+		return func() {}
+	}
+
+	type hiddenState struct {
+		flag   *kong.Flag
+		hidden bool
+	}
+
+	states := []hiddenState{}
+	for _, group := range selected.AllFlags(false) {
+		for _, flag := range group {
+			if hiddenNames[flag.Name] {
+				states = append(states, hiddenState{flag: flag, hidden: flag.Hidden})
+				flag.Hidden = true
+			}
+		}
+	}
+
+	return func() {
+		for _, state := range states {
+			state.flag.Hidden = state.hidden
+		}
+	}
+}
+
+func irrelevantHelpFlagNames(fullPath string) map[string]bool {
+	if fullPath != "plur watch find" {
+		return nil
+	}
+
+	return map[string]bool{
+		"dry-run":        true,
+		"dry-run-format": true,
+		"first-is-1":     true,
+		"ignore":         true,
+		"json":           true,
+		"rspec-split":    true,
+		"workers":        true,
+	}
 }
 
 func customizeHelpOutput(output string, ctx *kong.Context) string {

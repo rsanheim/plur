@@ -681,3 +681,53 @@ Tradeoff: built-in default jobs still carry internal `{{target}}` tokens so the
 same job definitions continue to work in watch mode. The user-facing rule is
 enforced at the selected run-mode command boundary instead of global config
 validation, because global validation would reject valid watch configs.
+
+## T21-DEV - Tighten `watch find` Help
+
+Pain point: `plur watch find --help` is a focused preview command, but Kong's
+inherited global/parent flags make it look like a one-shot runner and live
+watch command too. It lists `--dry-run`, `--dry-run-format`, `--json`,
+`--first-is-1`, `--workers`, `--rspec-split`, and `--ignore` even though
+`watch find` has its own `--format` flag and does not execute tests or filter
+live file events.
+
+Change: keep the existing Kong-backed help shape, but hide command-irrelevant
+inherited flags from `plur watch find --help`. Leave universal/debugging
+controls such as `-C`, `--debug`, `--verbose`, and `--version` visible, and do
+not change parsing behavior in this phase.
+
+Acceptance criteria:
+- `plur watch find --help` still shows usage, `<file-path>`, and `--format`.
+- `plur watch find --help` does not show one-shot run flags:
+  `--dry-run`, `--dry-run-format`, `--json`, `--first-is-1`, `--workers`, or
+  `--rspec-split`.
+- `plur watch find --help` does not show live-watch-only `--ignore`.
+- `plur watch --help` and `plur watch run --help` still show `--ignore`.
+- Focused help specs, Go tests, and the full build pass.
+
+Before evidence:
+- `./plur watch find --help` shows the command-specific `--format` flag, but
+  also shows inherited run/watch-run flags that do not affect the preview.
+- `./plur -C fixtures/projects/default-ruby watch find --ignore='lib/**' lib/calculator.rb`
+  still reports `spec/calculator_spec.rb`, proving `--ignore` is live-watch
+  event filtering rather than `watch find` filtering.
+- Duplication check: existing public docs mention `watch find` in watch-mode
+  and output-contract pages, but this phase changes generated CLI help only.
+
+After evidence:
+- Added a generated-help integration spec for `plur watch find --help`.
+- `./plur watch find --help` shows usage, `<file-path>`, common diagnostic
+  flags, and `--format="text"`, without the inherited run/live-watch-only
+  flags.
+- `./plur watch --help` and `./plur watch run --help` still show `--ignore`.
+- Verification passed:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb`
+  - `bin/rake build`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb`
+  - `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_ignore_spec.rb`
+  - `go test -mod=mod ./...`
+  - `bin/rake`
+
+Tradeoff: this is still a presentation-only cleanup. The hidden inherited
+flags remain accepted by Kong for `watch find`; a future cleanup can reject or
+ignore no-op flag combinations consistently across all non-run commands.

@@ -25,4 +25,20 @@ RSpec.describe "help output" do
     expect(result.out).to include("One-shot run preview only; watch mode rejects it")
     expect(result.out).to include("One-shot dry-run output format: text or json")
   end
+
+  it "keeps watch find help focused on preview-specific flags" do
+    result = run_plur("watch", "find", "--help")
+
+    expect(result).to be_success
+    expect(result.out).to include("Usage: plur watch find <file-path> [flags]")
+    expect(result.out).to include("--format")
+    expect(result.out).to include("Output format: text or json")
+    expect(result.out).not_to include("--dry-run")
+    expect(result.out).not_to include("--dry-run-format")
+    expect(result.out).not_to include("--json")
+    expect(result.out).not_to include("--first-is-1")
+    expect(result.out).not_to include("--workers")
+    expect(result.out).not_to include("--rspec-split")
+    expect(result.out).not_to include("--ignore")
+  end
 end
