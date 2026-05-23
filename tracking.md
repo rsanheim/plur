@@ -102,3 +102,5 @@ ts=2026-05-23-11:03:32 git_ref=prep-goal git_oid=b210c8e status=start current="T
 ts=2026-05-23-11:05:51 git_ref=prep-goal git_oid=b210c8e status=done current="T51-ARCH" msg="watch planning parity review and phase plan recorded"
 ts=2026-05-23-11:07:11 git_ref=prep-goal git_oid=a58bf13 status=start current="T52-DEV" msg="begin watch planning characterization tests"
 ts=2026-05-23-11:09:59 git_ref=prep-goal git_oid=a58bf13 status=done current="T52-DEV" msg="watch planning characterization tests added"
+ts=2026-05-23-11:10:38 git_ref=prep-goal git_oid=c064d85 status=start current="T53-DEV" msg="begin watcher event admission extraction"
+ts=2026-05-23-11:13:57 git_ref=prep-goal git_oid=c064d85 status=done current="T53-DEV" msg="watch event admission extracted"

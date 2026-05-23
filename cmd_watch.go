@@ -278,25 +278,22 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			}
 
 		case event := <-manager.Events():
-			// Early filtering - skip events we don't care about
-			if event.PathType == "watcher" {
+			admission := watch.AdmitEvent(event, cwd, globalIgnorePatterns)
+			switch admission.Reason {
+			case "watcher":
 				logger.Logger.Debug("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
 				continue
-			}
-
-			path, err := filepath.Rel(cwd, event.PathName)
-			if err != nil {
-				logger.Logger.Warn("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "error", fmt.Sprintf("failed to get relative path: %v", err))
+			case "relative_path":
+				logger.Logger.Warn("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "error", "failed to get relative path")
+				continue
+			case "ignored", "effect":
 				continue
 			}
 
-			if watch.IsIgnored(path, globalIgnorePatterns) {
+			if !admission.Admitted {
 				continue
 			}
-
-			if event.EffectType != "modify" && event.EffectType != "create" {
-				continue
-			}
+			path := admission.Path
 
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 

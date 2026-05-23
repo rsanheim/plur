@@ -1881,3 +1881,38 @@ After evidence:
 - `script/check-links` passed.
 - `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
   examples.
+
+## T53-DEV - Extract Live Watch Event Admission
+
+Status: verified
+Commit: pending
+
+Pain point: live watch decides whether a watcher event is meaningful inside
+`cmd_watch.go`: skip watcher lifecycle events, convert absolute paths to
+project-relative paths, apply global ignores, and accept only create/modify.
+`watch find` cannot share that behavior while it is embedded in the live loop.
+
+Change: extract event admission into a pure `watch.AdmitEvent` helper. Live
+watch keeps the same behavior, but the event-to-relative-path decision becomes
+testable and reusable by the later watch session/planner work.
+
+Acceptance criteria:
+- `watch.AdmitEvent` admits create and modify events as cwd-relative paths.
+- It rejects watcher path events, non-create/modify effects, relative-path
+  failures, and paths matching global ignores.
+- `cmd_watch.go` uses the helper instead of carrying the admission checks
+  inline.
+- Focused admission tests, watch package tests, full Go tests, link check, and
+  the full build pass.
+
+Before evidence:
+- Red: `go test -mod=mod ./watch -run TestAdmitEvent -count=1` failed with
+  undefined `AdmissionResult` and `AdmitEvent`.
+
+After evidence:
+- `go test -mod=mod ./watch -run TestAdmitEvent -count=1` passed.
+- `go test -mod=mod ./watch` passed.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
+  examples.
