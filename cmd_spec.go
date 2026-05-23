@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -55,12 +56,15 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
-	warnUnmatchedCLIExcludes(r.ExcludePatterns, discovery.ExcludeMatches)
-	if err := warnExplicitTargetMismatches(r.Patterns, targetPatterns, currentJob.Name); err != nil {
+	warnings := unmatchedCLIExcludeWarnings(r.ExcludePatterns, discovery.ExcludeMatches)
+	targetWarnings, err := explicitTargetMismatchWarnings(r.Patterns, targetPatterns, currentJob.Name)
+	if err != nil {
 		return err
 	}
+	warnings = append(warnings, targetWarnings...)
+	printWarnings(warnings)
 
-	if cfg.DryRun {
+	if cfg.DryRun && cfg.DryRunFormat == "text" {
 		fmt.Fprintf(os.Stderr, "[dry-run] Selected job: %s (framework: %s, reason: %s)\n",
 			selected.Name, currentJob.Framework, dryRunReasonLabel(selected.Reason))
 	}
@@ -82,6 +86,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	if err != nil {
 		return err
 	}
+
+	if cfg.DryRun && cfg.DryRunFormat == "json" {
+		return writeSpecDryRunPlan(runner, selected.Name, currentJob.Framework, selected.Reason, warnings)
+	}
+
 	results, wallTime, err := runner.Run()
 	if err != nil {
 		return err
@@ -126,26 +135,57 @@ func dryRunReasonLabel(reason runtime.ResolveReason) string {
 	return strings.ReplaceAll(string(reason), "_", " ")
 }
 
-func warnUnmatchedCLIExcludes(patterns []string, matches map[string]int) {
+func unmatchedCLIExcludeWarnings(patterns []string, matches map[string]int) []string {
+	var warnings []string
 	for _, pattern := range patterns {
 		if matches[pattern] == 0 {
-			fmt.Fprintf(os.Stderr, "[warn] --exclude-pattern %s matched no selected files\n", shellSingleQuote(pattern))
+			warnings = append(warnings, fmt.Sprintf("--exclude-pattern %s matched no selected files", shellSingleQuote(pattern)))
 		}
+	}
+	return warnings
+}
+
+func explicitTargetMismatchWarnings(patterns, targetPatterns []string, jobName string) ([]string, error) {
+	mismatches, err := fileset.ExplicitTargetMismatches(patterns, targetPatterns)
+	if err != nil {
+		return nil, err
+	}
+	var warnings []string
+	for _, mismatch := range mismatches {
+		warnings = append(warnings, fmt.Sprintf("target %s does not match selected job %s target pattern %s",
+			shellSingleQuote(mismatch.Target),
+			shellSingleQuote(jobName),
+			shellSingleQuote(strings.Join(targetPatterns, ", "))))
+	}
+	return warnings, nil
+}
+
+func printWarnings(warnings []string) {
+	for _, warning := range warnings {
+		fmt.Fprintf(os.Stderr, "[warn] %s\n", warning)
 	}
 }
 
-func warnExplicitTargetMismatches(patterns, targetPatterns []string, jobName string) error {
-	mismatches, err := fileset.ExplicitTargetMismatches(patterns, targetPatterns)
+func writeSpecDryRunPlan(runner *Runner, jobName, frameworkName string, reason runtime.ResolveReason, warnings []string) error {
+	runnerPlan, err := runner.DryRunPlan()
 	if err != nil {
 		return err
 	}
-	for _, mismatch := range mismatches {
-		fmt.Fprintf(os.Stderr, "[warn] target %s does not match selected job %s target pattern %s\n",
-			shellSingleQuote(mismatch.Target),
-			shellSingleQuote(jobName),
-			shellSingleQuote(strings.Join(targetPatterns, ", ")))
+	plan := DryRunPlan{
+		Version: 1,
+		Mode:    "spec",
+		Job: DryRunPlanJob{
+			Name:      jobName,
+			Framework: frameworkName,
+			Reason:    string(reason),
+		},
+		Targets:  runnerPlan.Targets,
+		Warnings: append([]string{}, warnings...),
+		Workers:  runnerPlan.Workers,
 	}
-	return nil
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(plan)
 }
 
 func shellSingleQuote(value string) string {

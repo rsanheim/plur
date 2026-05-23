@@ -332,3 +332,59 @@ After evidence:
 Tradeoff: `watch find` becomes more human-first. A structured plan format is
 still a separate phase; this phase should not pretend the human text is a
 stable machine API.
+
+## T13-DEV - Add Structured Dry-Run Plan Output
+
+Pain point: `plur --dry-run` is copyable and useful for humans, but agents and
+shell scripts still have to parse prose, version banners, warning lines, and
+worker command strings. T12 and the high-reasoning shell review both identified
+this as the main blocker for composability.
+
+Change: add an explicit dry-run format flag:
+
+```bash
+plur --dry-run --dry-run-format=json spec/calculator_spec.rb
+```
+
+The default remains `text`. JSON output should go to stdout and include a small
+stable plan:
+
+```json
+{
+  "version": 1,
+  "mode": "spec",
+  "job": {"name": "rspec", "framework": "rspec", "reason": "explicit_patterns"},
+  "targets": ["spec/calculator_spec.rb"],
+  "warnings": [],
+  "workers": [
+    {"index": 0, "targets": ["spec/calculator_spec.rb"], "argv": ["bundle", "exec", "rspec"], "env": ["PARALLEL_TEST_GROUPS=1"], "shell": "..."}
+  ]
+}
+```
+
+This phase is intentionally one-shot only. `watch find` structured output can
+reuse the same ideas later, but it should not make this first plan format too
+large.
+
+Acceptance criteria:
+- `--dry-run --dry-run-format=json` emits parseable JSON on stdout.
+- The JSON includes selected job, framework, reason, targets, warnings, and
+  worker commands.
+- Text dry-run output remains unchanged by default.
+- `--dry-run-format=json` without `--dry-run` errors clearly.
+- Focused integration tests, Go tests, and the full build pass.
+
+Before evidence:
+- T12 scorecard kept composability at 3 because scripts parse human lines such
+  as `[dry-run] Selected job...` and `[dry-run] Worker 0...`.
+
+After evidence:
+
+```text
+plur --dry-run --dry-run-format=json spec/calculator_spec.rb
+```
+
+produces a JSON plan on stdout with `job`, `targets`, and `workers` keys.
+
+Tradeoff: this introduces a small output contract. Keep it narrow and versioned
+instead of treating existing human text as a stable API.

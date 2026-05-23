@@ -77,6 +77,30 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 	return results, wallTime, nil
 }
 
+func (r *Runner) DryRunPlan() (*RunnerDryRunPlan, error) {
+	groups := r.groupFiles()
+	commands, err := r.buildCommands(groups)
+	if err != nil {
+		return nil, err
+	}
+
+	var targets []string
+	workers := make([]DryRunPlanWorker, 0, len(commands))
+	for i, cmd := range commands {
+		groupTargets := append([]string(nil), groups[i].Files...)
+		targets = append(targets, groupTargets...)
+		workers = append(workers, DryRunPlanWorker{
+			Index:   i,
+			Targets: groupTargets,
+			Argv:    append([]string(nil), cmd.Args...),
+			Env:     dryRunEnv(cmd),
+			Shell:   dryRunString(cmd),
+		})
+	}
+
+	return &RunnerDryRunPlan{Targets: targets, Workers: workers}, nil
+}
+
 func (r *Runner) RunArgsPerWorker(args []string) error {
 	commands, err := r.buildArgsPerWorkerCommands(context.Background(), args)
 	if err != nil {
