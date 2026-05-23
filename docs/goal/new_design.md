@@ -1004,3 +1004,38 @@ Error: failed to select watch job: job 'does-not-exist' not found. Available job
 plur version=v0.56.1-0.20260523134152-3a34c4192f1f+dirty
 Error: file not found: spec/nonexistent_spec.rb
 ```
+
+## T29-DEV - Quote Dry-Run Shell Strings
+
+Pain point: dry-run JSON already exposes `argv` and `env`, but it also includes
+`workers[].shell` as a convenience string. Today that string is built with a
+plain space join, so targets containing spaces or shell metacharacters are not
+copyable and can mislead scripts into parsing the wrong field.
+
+Change: quote command argv when building dry-run shell strings, and update the
+output-contract docs to state that `argv` and `env` are the canonical machine
+contract. Keep `shell` as a copyable human convenience field.
+
+Acceptance criteria:
+- `dryRunString` quotes args with spaces and single quotes.
+- Existing no-special-character dry-run strings remain unchanged.
+- `docs/output-contracts.md` says scripts should prefer `argv` and `env`.
+- Focused Go tests, docs checks, and the full build pass.
+
+Before evidence:
+- `dryRunString(exec.Command("bundle", "exec", "rspec", "spec/my spec_spec.rb"))`
+  produced `bundle exec rspec spec/my spec_spec.rb`, which is not a faithful
+  shell command for the single target path.
+
+After evidence:
+- `dryRunString(exec.Command("bundle", "exec", "rspec", "spec/my spec_spec.rb",
+  "spec/quote's_spec.rb"))` now returns:
+
+```text
+bundle exec rspec 'spec/my spec_spec.rb' 'spec/quote'\''s_spec.rb'
+```
+
+- Existing simple dry-run strings such as `bundle exec rspec spec/foo_spec.rb`
+  remain unchanged.
+- `docs/output-contracts.md` now identifies `argv` and `env` as the canonical
+  script fields and `shell` as a quoted human convenience string.

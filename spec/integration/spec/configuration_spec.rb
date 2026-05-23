@@ -47,7 +47,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(error).to include("echo 'SPEC:'")
+        expect(error).to include(%q(echo ''\''SPEC:'\'''))
       end
 
       it "applies command-specific configuration with --use CLI flag" do
@@ -60,7 +60,7 @@ RSpec.describe "Configuration" do
 
         expect(status).to be_success
         expect(error).to include("[dry-run] Selected job: rspec (framework: rspec, reason: explicit name)")
-        expect(error).to include("echo 'SPEC:'")
+        expect(error).to include(%q(echo ''\''SPEC:'\'''))
       end
     end
   end
@@ -652,8 +652,8 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(error).to include("echo 'SPEC:'")
-        expect(error).not_to include("echo 'WATCH:'")
+        expect(error).to include(%q(echo ''\''SPEC:'\'''))
+        expect(error).not_to include(%q(echo ''\''WATCH:'\'''))
       end
 
       it "loads watch mappings from config for watch runs" do
@@ -683,7 +683,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(error).to include("echo 'GLOBAL:'")
+        expect(error).to include(%q(echo ''\''GLOBAL:'\'''))
       end
     end
   end
@@ -752,7 +752,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(output).to include("echo CUSTOM TASK:")
+        expect(output).to include("echo 'CUSTOM TASK:'")
       end
     end
 

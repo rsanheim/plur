@@ -176,6 +176,14 @@ func TestDryRunString(t *testing.T) {
 				result == "PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=1 bundle exec rspec",
 			"expected env vars before command, got: %s", result)
 	})
+
+	t.Run("quotes command args that are not shell-safe", func(t *testing.T) {
+		cmd := exec.Command("bundle", "exec", "rspec", "spec/my spec_spec.rb", "spec/quote's_spec.rb")
+
+		result := dryRunString(cmd)
+
+		assert.Equal(t, "bundle exec rspec 'spec/my spec_spec.rb' 'spec/quote'\\''s_spec.rb'", result)
+	})
 }
 
 func TestBuildEnv(t *testing.T) {

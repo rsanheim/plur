@@ -33,9 +33,9 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
 
         expect(result.err).to include("[dry-run] Running 2 specs [rspec]")
         worker_line = result.err.lines.find { |line| line.include?("[dry-run] Worker") }
-        expect(worker_line).to include("--tag ~type:system")
+        expect(worker_line).to include("--tag '~type:system'")
         expect(worker_line).to include("spec/models/")
-        expect(worker_line.index("--tag ~type:system")).to be < worker_line.index("spec/models/")
+        expect(worker_line.index("--tag '~type:system'")).to be < worker_line.index("spec/models/")
       end
     end
 
@@ -78,7 +78,7 @@ RSpec.describe "turbo_tests migration: tag filtering with directory args" do
           filter: ->(snapshot) { normalize_turbo_dry_run_snapshot(snapshot) }
         )
 
-        expect(result.actual.stderr).to include("--tag ~type:system")
+        expect(result.actual.stderr).to include("--tag '~type:system'")
         expect(result.actual.stderr).to include("spec/models/")
       end
     end

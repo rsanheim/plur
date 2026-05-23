@@ -61,9 +61,10 @@ Worker entries include:
 
 - `index`: worker index
 - `targets`: targets assigned to the worker
-- `argv`: command argv
-- `env`: Plur-managed environment entries
-- `shell`: copyable command string
+- `argv`: command argv; this is the canonical command field for scripts
+- `env`: Plur-managed environment entries; this is the canonical environment
+  field for scripts
+- `shell`: quoted, copyable command string for humans
 
 ## Watch Find
 

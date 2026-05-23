@@ -54,3 +54,5 @@ ts=2026-05-23-08:33:35 git_ref=prep-goal git_oid=ea9763e status=start current="T
 ts=2026-05-23-08:39:58 git_ref=prep-goal git_oid=ea9763e status=done current="T27-DEV" msg="plur test help ambiguity removed and verified"
 ts=2026-05-23-08:42:02 git_ref=prep-goal git_oid=3a34c41 status=start current="T28-DEV" msg="begin plain user error output cleanup"
 ts=2026-05-23-08:45:13 git_ref=prep-goal git_oid=3a34c41 status=done current="T28-DEV" msg="plain command error output implemented and verified"
+ts=2026-05-23-08:45:31 git_ref=prep-goal git_oid=d8193ca status=start current="T29-DEV" msg="begin dry-run shell contract cleanup"
+ts=2026-05-23-08:52:20 git_ref=prep-goal git_oid=d8193ca status=done current="T29-DEV" msg="dry-run shell strings quoted and contract clarified"

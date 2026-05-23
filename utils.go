@@ -38,12 +38,43 @@ func toStdErr(dryRun bool, format string, args ...any) {
 // dryRunString returns a shell-executable representation of the command,
 // including only the env vars that plur sets (not the full inherited env).
 func dryRunString(cmd *exec.Cmd) string {
-	cmdStr := strings.Join(cmd.Args, " ")
+	cmdStr := strings.Join(shellQuoteArgs(cmd.Args), " ")
 	extras := dryRunEnv(cmd)
 	if len(extras) > 0 {
 		return strings.Join(extras, " ") + " " + cmdStr
 	}
 	return cmdStr
+}
+
+func shellQuoteArgs(args []string) []string {
+	quoted := make([]string, len(args))
+	for i, arg := range args {
+		quoted[i] = shellQuoteArg(arg)
+	}
+	return quoted
+}
+
+func shellQuoteArg(arg string) string {
+	if isShellSafeWord(arg) {
+		return arg
+	}
+	return shellSingleQuote(arg)
+}
+
+func isShellSafeWord(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if (r >= 'a' && r <= 'z') ||
+			(r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') ||
+			strings.ContainsRune("@%_+=:,./-", r) {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func dryRunEnv(cmd *exec.Cmd) []string {

@@ -7,6 +7,8 @@ RSpec.describe "output contract documentation" do
     expect(doc).to include("--dry-run-format=json")
     expect(doc).to include("warnings")
     expect(doc).to include("workers")
+    expect(doc).to include("argv`: command argv; this is the canonical command field for scripts")
+    expect(doc).to include("shell`: quoted, copyable command string for humans")
     expect(doc).to include("watch find")
     expect(doc).to include("Exit code 2")
     expect(doc).to include("not the machine API")
