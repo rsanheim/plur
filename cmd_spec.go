@@ -37,10 +37,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
-	testFiles, err := fileset.Discover(currentJob, r.Patterns, excludes)
+	discovery, err := fileset.DiscoverWithDetails(currentJob, r.Patterns, excludes)
 	if err != nil {
 		return err
 	}
+	testFiles := discovery.Files
 	if len(testFiles) == 0 {
 		switch {
 		case len(excludes) > 0:
@@ -53,6 +54,8 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		return fmt.Errorf("no test files found")
 	}
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
+
+	warnUnmatchedCLIExcludes(r.ExcludePatterns, discovery.ExcludeMatches)
 
 	if cfg.DryRun {
 		fmt.Fprintf(os.Stderr, "[dry-run] Selected job: %s (framework: %s, reason: %s)\n",
@@ -118,6 +121,18 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 func dryRunReasonLabel(reason runtime.ResolveReason) string {
 	return strings.ReplaceAll(string(reason), "_", " ")
+}
+
+func warnUnmatchedCLIExcludes(patterns []string, matches map[string]int) {
+	for _, pattern := range patterns {
+		if matches[pattern] == 0 {
+			fmt.Fprintf(os.Stderr, "[warn] --exclude-pattern %s matched no selected files\n", shellSingleQuote(pattern))
+		}
+	}
+}
+
+func shellSingleQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 func buildTagArgs(tags []string) []string {

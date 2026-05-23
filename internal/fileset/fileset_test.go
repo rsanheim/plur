@@ -132,6 +132,30 @@ func TestDiscover_ExcludesFiltering(t *testing.T) {
 	assert.Equal(t, []string{"spec/models/user_spec.rb"}, files)
 }
 
+func TestDiscoverWithDetails_ReportsExcludeMatchCounts(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t,
+		"spec/system/login_spec.rb",
+		"spec/legacy/old_spec.rb",
+		"spec/models/user_spec.rb",
+	)
+
+	j := job.Job{Name: "rspec", TargetPattern: "spec/**/*_spec.rb"}
+	result, err := DiscoverWithDetails(j, nil, []string{
+		"spec/system/**/*_spec.rb",
+		"*user*/_spec.rb",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"spec/legacy/old_spec.rb",
+		"spec/models/user_spec.rb",
+	}, result.Files)
+	assert.Equal(t, map[string]int{
+		"spec/system/**/*_spec.rb": 1,
+		"*user*/_spec.rb":          0,
+	}, result.ExcludeMatches)
+}
+
 func TestDiscover_InvalidExcludePatternErrors(t *testing.T) {
 	discoverChdir(t)
 	writeStubFiles(t, "spec/foo_spec.rb")

@@ -49,3 +49,49 @@ plur version=v0.56.1-...
 
 Tradeoff: dry-run gains one line of output. That is deliberate for human
 clarity, and the worker command lines remain unchanged and copyable.
+
+## T5-DEV - Warn When CLI Excludes Match Nothing
+
+Pain point: `--exclude-pattern` is powerful but easy to mistype. A plausible
+pattern such as `*user*/_spec.rb` can match no selected files while the command
+still succeeds, so the user thinks a file was excluded when it was not.
+
+Change: when an explicit CLI `--exclude-pattern` matches none of the files in
+the selected test plan, print a compact warning before the run or dry-run
+worker plan:
+
+```text
+[warn] --exclude-pattern '*user*/_spec.rb' matched no selected files
+```
+
+The warning is limited to CLI-provided excludes. Configured job excludes may be
+broad defaults that naturally do not match a focused target, so warning on those
+would make normal focused runs noisy.
+
+Acceptance criteria:
+- A dry-run with a non-matching CLI `--exclude-pattern` exits successfully and
+  prints a warning.
+- A matching CLI `--exclude-pattern` does not warn.
+- Exclude behavior itself is unchanged: matching excludes still remove files,
+  and excluding every candidate still returns the existing error.
+- Focused integration tests, Go tests for file discovery details, Ruby lint,
+  and the full build pass.
+
+Before evidence:
+- T1 transcript `tmp/cli_inventory_demo.txt` showed
+  `plur spec --exclude-pattern '*user*/_spec.rb'` keeping
+  `spec/models/user_spec.rb` with no warning.
+
+After evidence:
+
+```text
+plur version=v0.56.1-...
+[warn] --exclude-pattern '*user*/_spec.rb' matched no selected files
+[dry-run] Selected job: rspec (framework: rspec, reason: autodetect)
+[dry-run] Running 3 specs [rspec] in parallel using 3 workers
+```
+
+The refreshed transcript is available at `tmp/cli_inventory_demo.txt`.
+
+Tradeoff: a successful command can now print a warning to stderr. That is
+intentional for explicit CLI intent; it is not applied to config excludes.

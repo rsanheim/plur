@@ -12,15 +12,28 @@ import (
 	"github.com/rsanheim/plur/job"
 )
 
+type DiscoverResult struct {
+	Files          []string
+	ExcludeMatches map[string]int
+}
+
 // Discover returns sorted, deduped, exclude-filtered files for a job.
 // When inputs is empty, framework target patterns drive discovery; otherwise
 // each input is classified as a glob, an existing file (passthrough), or a
 // directory (joined with framework target tails). Exclude patterns are applied
 // after expansion using doublestar semantics.
 func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
-	patterns, err := classifyInputs(j, inputs)
+	result, err := DiscoverWithDetails(j, inputs, excludes)
 	if err != nil {
 		return nil, err
+	}
+	return result.Files, nil
+}
+
+func DiscoverWithDetails(j job.Job, inputs, excludes []string) (DiscoverResult, error) {
+	patterns, err := classifyInputs(j, inputs)
+	if err != nil {
+		return DiscoverResult{}, err
 	}
 
 	var files []string
@@ -31,28 +44,38 @@ func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
 		}
 		matches, err := doublestar.FilepathGlob(p)
 		if err != nil {
-			return nil, fmt.Errorf("error finding files with pattern %q: %w", p, err)
+			return DiscoverResult{}, fmt.Errorf("error finding files with pattern %q: %w", p, err)
 		}
 		files = append(files, matches...)
 	}
 
 	for _, ex := range excludes {
 		if _, err := doublestar.PathMatch(ex, ""); err != nil {
-			return nil, fmt.Errorf("invalid exclude pattern %q: %w", ex, err)
+			return DiscoverResult{}, fmt.Errorf("invalid exclude pattern %q: %w", ex, err)
 		}
 	}
-	files = slices.DeleteFunc(files, func(f string) bool {
-		s := filepath.ToSlash(filePathForExcludeMatch(f))
-		for _, ex := range excludes {
-			if ok, _ := doublestar.PathMatch(ex, s); ok {
-				return true
-			}
-		}
-		return false
-	})
 
 	slices.Sort(files)
-	return slices.Compact(files), nil
+	files = slices.Compact(files)
+
+	excludeMatches := make(map[string]int, len(excludes))
+	for _, ex := range excludes {
+		excludeMatches[ex] = 0
+	}
+
+	files = slices.DeleteFunc(files, func(f string) bool {
+		s := filepath.ToSlash(filePathForExcludeMatch(f))
+		excluded := false
+		for _, ex := range excludes {
+			if ok, _ := doublestar.PathMatch(ex, s); ok {
+				excludeMatches[ex]++
+				excluded = true
+			}
+		}
+		return excluded
+	})
+
+	return DiscoverResult{Files: files, ExcludeMatches: excludeMatches}, nil
 }
 
 // hasGlobMeta reports whether s contains any doublestar metacharacters.
