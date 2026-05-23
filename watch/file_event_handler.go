@@ -38,6 +38,14 @@ func (h *FileEventHandler) executor() JobExecutor {
 	return ExecuteJob
 }
 
+func (h *FileEventHandler) planner() Planner {
+	return Planner{
+		Jobs:    h.Jobs,
+		Watches: h.Watches,
+		CWD:     h.CWD,
+	}
+}
+
 // HandleResult contains the outcomes of processing file events
 type HandleResult struct {
 	ExecutedJobs      []string // job names that were run
@@ -47,105 +55,35 @@ type HandleResult struct {
 
 // HandleBatch processes multiple file paths, aggregates targets, and executes jobs
 func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
-	if len(h.Watches) == 0 {
-		return HandleResult{}
-	}
-
-	// 1. Aggregate results from all source files
-	allExistingTargets := make(map[string][]string)
-	allMatchedRules := []WatchMapping{}
-	noRunnableChanges := []NoRunnableChange{}
-
-	for _, path := range paths {
-		result, err := FindTargetsForFile(path, h.Jobs, h.Watches, h.CWD)
-		if err != nil {
-			logger.Logger.Warn("Error processing file change", "path", path, "error", err)
-			continue
-		}
-
-		// Always collect matched rules (needed for reload detection)
-		allMatchedRules = append(allMatchedRules, result.MatchedRules...)
-
-		if len(result.MatchedRules) == 0 {
-			noRunnableChanges = append(noRunnableChanges, NoRunnableChange{
-				Path:   path,
-				Reason: NoRunnableNoRule,
-			})
-			continue
-		}
-
-		if !result.HasExistingTargets() {
-			logger.Logger.Debug("No existing targets for file", "path", path)
-			if !hasReloadRule(result.MatchedRules) {
-				noRunnableChanges = append(noRunnableChanges, NoRunnableChange{
-					Path:           path,
-					Reason:         NoRunnableMissingTargets,
-					MissingTargets: missingTargetList(result.MissingTargets),
-				})
-			}
-			continue
-		}
-
-		// Log missing targets
-		for jobName, targets := range result.MissingTargets {
-			for _, target := range targets {
-				logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
-			}
-		}
-
-		// Merge targets per job
-		for jobName, targets := range result.ExistingTargets {
-			allExistingTargets[jobName] = append(allExistingTargets[jobName], targets...)
-		}
-	}
-
-	// Check for reload first (can happen even with no targets)
-	shouldReload := false
-	for _, rule := range allMatchedRules {
-		if rule.Reload {
-			logger.Logger.Info("Watch rule triggered reload", "source", rule.Source)
-			shouldReload = true
-			break
-		}
-	}
-
-	if len(allExistingTargets) == 0 {
-		return HandleResult{ShouldReload: shouldReload, NoRunnableChanges: noRunnableChanges}
-	}
-
-	// 2. Dedupe targets per job
-	for jobName := range allExistingTargets {
-		allExistingTargets[jobName] = Deduplicate(allExistingTargets[jobName])
-	}
-
-	// 3. Execute jobs in matched rule order
+	plan := h.planner().PlanBatch(paths)
 	var executedJobs []string
-	seenJobs := make(map[string]bool)
-	for _, rule := range allMatchedRules {
-		for _, jobName := range rule.Jobs {
-			if seenJobs[jobName] {
-				continue
-			}
-			seenJobs[jobName] = true
 
-			j, exists := h.Jobs[jobName]
-			if !exists {
-				logger.Logger.Warn("Job not found", "job", jobName)
-				continue
+	if plan.ShouldReload {
+		for _, rule := range plan.MatchedRules {
+			if rule.Reload {
+				logger.Logger.Info("Watch rule triggered reload", "source", rule.Source)
+				break
 			}
-
-			targets := allExistingTargets[jobName]
-			if err := h.executor()(j, targets, h.CWD); err != nil {
-				logger.Logger.Warn("Job execution error", "job", jobName, "error", err)
-			}
-			executedJobs = append(executedJobs, jobName)
 		}
+	}
+
+	for jobName, targets := range plan.MissingTargets {
+		for _, target := range targets {
+			logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
+		}
+	}
+
+	for _, jobPlan := range plan.JobPlans {
+		if err := h.executor()(jobPlan.Job, jobPlan.Targets, h.CWD); err != nil {
+			logger.Logger.Warn("Job execution error", "job", jobPlan.JobName, "error", err)
+		}
+		executedJobs = append(executedJobs, jobPlan.JobName)
 	}
 
 	return HandleResult{
 		ExecutedJobs:      executedJobs,
-		ShouldReload:      shouldReload,
-		NoRunnableChanges: noRunnableChanges,
+		ShouldReload:      plan.ShouldReload,
+		NoRunnableChanges: plan.NoRunnableChanges,
 	}
 }
 

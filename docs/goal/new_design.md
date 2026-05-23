@@ -1882,6 +1882,44 @@ After evidence:
 - `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
   examples.
 
+## T54-DEV - Extract A Pure Watch Planner
+
+Status: verified
+Commit: pending
+
+Pain point: `FileEventHandler.HandleBatch` currently plans and executes live
+watch work in one method. That keeps `watch find` from reusing the same batch
+planning result without inheriting live side effects, and it makes the next
+parity steps harder to reason about.
+
+Change: introduce a side-effect-free `watch.Planner` that turns changed paths
+into a `watch.Plan`. The plan owns matched rules, existing/missing targets,
+reload intent, no-runnable feedback, and ordered job plans. `FileEventHandler`
+then executes the job plans.
+
+Acceptance criteria:
+- `Planner.PlanPath` and `Planner.PlanBatch` describe the same planning
+  behavior that `FileEventHandler` used before.
+- `FileEventHandler.HandleBatch` delegates planning to `Planner` and only keeps
+  execution/error handling.
+- Existing live watch behavior is preserved by characterization tests.
+- Focused planner tests, watch package tests, full Go tests, link check, and
+  the full build pass.
+
+Before evidence:
+- Red: `go test -mod=mod ./watch -run TestPlanner -count=1` failed because
+  `Planner` was undefined.
+
+After evidence:
+- `go test -mod=mod ./watch -run TestPlanner -count=1` passed.
+- `go test -mod=mod ./watch -run 'Test(FileEventHandler|FindTargetsForFile|Planner)' -count=1`
+  passed.
+- `go test -mod=mod ./watch` passed.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T53-DEV - Extract Live Watch Event Admission
 
 Status: verified
