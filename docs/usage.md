@@ -206,12 +206,12 @@ plur doctor
 Plur records per-file runtime data to `$PLUR_HOME/runtime/<project-hash>.json`
 so it can balance subsequent worker assignments using historical timing.
 
-The on-disk format is a versioned v2 cache:
+The on-disk format is a versioned runtime cache:
 
 ```json
 {
   "meta": {
-    "schema_version": 2,
+    "schema_version": 3,
     "plur_version": "0.56.0-dev-abc1234"
   },
   "run": {
@@ -223,15 +223,15 @@ The on-disk format is a versioned v2 cache:
       "mtime_unix_nano": 1778610000000000000,
       "size_bytes": 12345,
       "runtime_seconds": 12.34,
-      "example_count": 27,
       "example_index_complete": true,
-      "examples": {
-        "./spec/slow_spec.rb[1:1]": {
+      "examples": [
+        {
+          "id": "./spec/slow_spec.rb[1:1]",
           "line_number": 12,
           "location_rerun_argument": "./spec/slow_spec.rb:12",
           "runtime_seconds": 0.40
         }
-      }
+      ]
     }
   }
 }

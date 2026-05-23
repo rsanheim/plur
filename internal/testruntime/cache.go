@@ -3,9 +3,9 @@ package testruntime
 import (
 	"encoding/json"
 	"log/slog"
-	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/rsanheim/plur/logger"
@@ -14,15 +14,15 @@ import (
 // SchemaVersion is the on-disk schema version Plur reads and writes.
 // Older v1 caches (plain map[string]float64) are ignored and replaced on the
 // next aggregate-eligible run.
-const SchemaVersion = 2
+const SchemaVersion = 3
 
-// Cache is the persisted v2 runtime cache.
+// Cache is the persisted runtime cache.
 // See docs/plans/2026-05-12-rspec-split-specs-experimental-plan.md for the
 // shape and lifecycle rules.
 type Cache struct {
-	Meta  CacheMeta             `json:"meta"`
-	Run   CacheRun              `json:"run"`
-	Files map[string]*FileEntry `json:"files"`
+	Meta  CacheMeta            `json:"meta"`
+	Run   CacheRun             `json:"run"`
+	Files map[string]FileEntry `json:"files"`
 }
 
 // CacheMeta stores cache metadata intended to be readable near the top
@@ -38,37 +38,36 @@ type CacheRun struct {
 	LastRunAt string `json:"last_run_at,omitempty"`
 }
 
-// FileEntry is the per-file record in the v2 cache. RuntimeSeconds is the
+// FileEntry is the per-file record in the runtime cache. RuntimeSeconds is the
 // aggregate runtime from the most recent aggregate-eligible full run. Examples
-// holds per-example metadata (keyed by RSpec example.id) when available.
+// holds per-example metadata when available.
 type FileEntry struct {
-	MtimeUnixNano        int64                    `json:"mtime_unix_nano"`
-	SizeBytes            int64                    `json:"size_bytes"`
-	RuntimeSeconds       float64                  `json:"runtime_seconds"`
-	ExampleCount         int                      `json:"example_count,omitempty"`
-	ExampleIndexComplete bool                     `json:"example_index_complete"`
-	Examples             map[string]*ExampleEntry `json:"examples,omitempty"`
+	MtimeUnixNano        int64          `json:"mtime_unix_nano"`
+	SizeBytes            int64          `json:"size_bytes"`
+	RuntimeSeconds       float64        `json:"runtime_seconds"`
+	ExampleIndexComplete bool           `json:"example_index_complete"`
+	Examples             []ExampleEntry `json:"examples,omitempty"`
 }
 
-// ExampleEntry is the per-example record. Keyed by RSpec's canonical
-// example.id in FileEntry.Examples.
+// ExampleEntry is the per-example record.
 type ExampleEntry struct {
+	ID                    string  `json:"id"`
 	LineNumber            int     `json:"line_number"`
 	LocationRerunArgument string  `json:"location_rerun_argument,omitempty"`
 	RuntimeSeconds        float64 `json:"runtime_seconds"`
 }
 
-// NewCache returns an empty v2 cache.
+// NewCache returns an empty runtime cache.
 func NewCache() *Cache {
 	return &Cache{
 		Meta:  CacheMeta{SchemaVersion: SchemaVersion},
-		Files: make(map[string]*FileEntry),
+		Files: make(map[string]FileEntry),
 	}
 }
 
-// LoadCache reads a v2 cache from disk. It returns an empty cache for
+// LoadCache reads a runtime cache from disk. It returns an empty cache for
 // missing files, v1 caches (map[string]float64), corrupt JSON, and entries
-// with a non-v2 schema_version.
+// with an unsupported schema_version.
 func LoadCache(path string) (cache *Cache) {
 	start := time.Now()
 	defer func() {
@@ -98,7 +97,7 @@ func LoadCache(path string) (cache *Cache) {
 		return NewCache()
 	}
 	if cache.Files == nil {
-		cache.Files = make(map[string]*FileEntry)
+		cache.Files = make(map[string]FileEntry)
 	}
 	return cache
 }
@@ -116,7 +115,7 @@ func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time)
 	cache.Run.Cwd = cwd
 	cache.Run.LastRunAt = lastRunAt.UTC().Format(time.RFC3339)
 	if cache.Files == nil {
-		cache.Files = make(map[string]*FileEntry)
+		cache.Files = make(map[string]FileEntry)
 	}
 
 	dir := filepath.Dir(path)
@@ -175,9 +174,6 @@ func countExamples(c *Cache) int {
 	}
 	var n int
 	for _, f := range c.Files {
-		if f == nil {
-			continue
-		}
 		n += len(f.Examples)
 	}
 	return n
@@ -190,7 +186,7 @@ func countExamples(c *Cache) int {
 func (c *Cache) FileRuntimes() map[string]float64 {
 	out := make(map[string]float64, len(c.Files))
 	for path, entry := range c.Files {
-		if entry == nil || entry.RuntimeSeconds == 0 {
+		if entry.RuntimeSeconds == 0 {
 			continue
 		}
 		out[path] = entry.RuntimeSeconds
@@ -200,7 +196,11 @@ func (c *Cache) FileRuntimes() map[string]float64 {
 
 // File returns the entry for a file path (project-relative), or nil if absent.
 func (c *Cache) File(path string) *FileEntry {
-	return c.Files[path]
+	entry, ok := c.Files[path]
+	if !ok {
+		return nil
+	}
+	return &entry
 }
 
 // SourceFreshness reads mtime and size of a source file. ok is false if the
@@ -218,13 +218,13 @@ func SourceFreshness(path string) (mtimeUnixNano, sizeBytes int64, ok bool) {
 // has no recorded examples.
 func (c *Cache) ExampleLines(filePath string) []int {
 	entry := c.Files[filePath]
-	if entry == nil || len(entry.Examples) == 0 {
+	if len(entry.Examples) == 0 {
 		return nil
 	}
 	out := make([]int, 0, len(entry.Examples))
 	seen := make(map[int]struct{}, len(entry.Examples))
 	for _, ex := range entry.Examples {
-		if ex == nil || ex.LineNumber <= 0 {
+		if ex.LineNumber <= 0 {
 			continue
 		}
 		if _, dup := seen[ex.LineNumber]; dup {
@@ -240,8 +240,8 @@ func (c *Cache) ExampleLines(filePath string) []int {
 // trusted by the splitter: example_index_complete is true AND the recorded
 // mtime/size still match the current source file.
 func (c *Cache) IsExamplesFresh(filePath string) bool {
-	entry := c.Files[filePath]
-	if entry == nil || !entry.ExampleIndexComplete {
+	entry, ok := c.Files[filePath]
+	if !ok || !entry.ExampleIndexComplete {
 		return false
 	}
 	mtime, size, ok := SourceFreshness(filePath)
@@ -252,21 +252,38 @@ func (c *Cache) IsExamplesFresh(filePath string) bool {
 }
 
 // MergeAggregateRun records the result of an aggregate-eligible full-file run.
-// It replaces the file's examples map and runtime aggregate, sets
+// It replaces the file's examples and runtime aggregate, sets
 // example_index_complete, and records current source freshness. The caller
 // must have already verified this is an aggregate-eligible run.
 func (c *Cache) MergeAggregateRun(filePath string, mtimeUnixNano, sizeBytes int64, runtimeSeconds float64, examples map[string]*ExampleEntry) {
-	if examples == nil {
-		examples = make(map[string]*ExampleEntry)
-	}
-	c.Files[filePath] = &FileEntry{
+	c.Files[filePath] = FileEntry{
 		MtimeUnixNano:        mtimeUnixNano,
 		SizeBytes:            sizeBytes,
 		RuntimeSeconds:       runtimeSeconds,
-		ExampleCount:         len(examples),
 		ExampleIndexComplete: true,
-		Examples:             examples,
+		Examples:             exampleSlice(examples),
 	}
+}
+
+func exampleSlice(examples map[string]*ExampleEntry) []ExampleEntry {
+	if len(examples) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(examples))
+	for id, ex := range examples {
+		if ex != nil {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+
+	out := make([]ExampleEntry, 0, len(ids))
+	for _, id := range ids {
+		entry := *examples[id]
+		entry.ID = id
+		out = append(out, entry)
+	}
+	return out
 }
 
 // MergeObservations records per-example observations from a partial run for a
@@ -275,13 +292,33 @@ func (c *Cache) MergeAggregateRun(filePath string, mtimeUnixNano, sizeBytes int6
 // from this run. If the file has no existing entry, nothing is written:
 // partial runs must not create file-level aggregates.
 func (c *Cache) MergeObservations(filePath string, examples map[string]*ExampleEntry) {
-	existing := c.Files[filePath]
-	if existing == nil {
+	existing, ok := c.Files[filePath]
+	if !ok {
 		return
 	}
-	if existing.Examples == nil {
-		existing.Examples = make(map[string]*ExampleEntry)
+	idx := existing.ExampleIndex()
+	for id, ex := range examples {
+		if ex == nil {
+			continue
+		}
+		entry := *ex
+		entry.ID = id
+		if i, ok := idx[id]; ok {
+			existing.Examples[i] = entry
+		} else {
+			idx[id] = len(existing.Examples)
+			existing.Examples = append(existing.Examples, entry)
+		}
 	}
-	maps.Copy(existing.Examples, examples)
-	existing.ExampleCount = len(existing.Examples)
+	c.Files[filePath] = existing
+}
+
+func (f *FileEntry) ExampleIndex() map[string]int {
+	idx := make(map[string]int, len(f.Examples))
+	for i, ex := range f.Examples {
+		if ex.ID != "" {
+			idx[ex.ID] = i
+		}
+	}
+	return idx
 }

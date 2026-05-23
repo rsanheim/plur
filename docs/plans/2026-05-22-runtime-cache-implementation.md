@@ -6,10 +6,10 @@
 
 **Architecture:** One branch on top of `rspec-split-specs`. Task 1 is a series of small move + rename commits to keep each step reviewable. Tasks 2–9 build on the new layout. Task 10 is a dedicated simplification pass. Task 11 verifies and finalizes.
 
-**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is complete for Plur and RuboCop, including the post selector-grouping RuboCop split rerun, but still needs either RSpec-core/Mastodon/Discourse measurements or an explicit matrix-narrowing decision. Post-measurement cache cleanup has started: the focused Go cache benchmark exists, `LoadCache` handles JSON `null`, `SaveCache` writes compact JSON without HTML escaping, and debug example counts are lazy via `slog.LogValuer`. Task 11 remains open for the Phase B follow-up/PR-description linkage and any remaining verification before merge.
+**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is complete for Plur and RuboCop, including the post selector-grouping RuboCop split rerun, but still needs either RSpec-core/Mastodon/Discourse measurements or an explicit matrix-narrowing decision. Post-measurement cache cleanup has continued through the Phase B schema-shape pass: `example_count` is gone, files are stored as value entries, examples serialize as arrays with `id`, `LoadCache` handles JSON `null`, `SaveCache` writes compact JSON without HTML escaping, and debug example counts are lazy via `slog.LogValuer`. Task 11 remains open for the Phase B follow-up/PR-description linkage and any remaining verification before merge.
 
 **Open follow-ups:**
-- RuboCop's v2 debug measurements still exceed the large-project runtime-cache overhead threshold after compact JSON cleanup: fresh full-debug runs are ~76-81 ms combined load+save, down from ~112 ms pre-cleanup. A smaller Phase B follow-up is still justified unless the threshold is relaxed.
+- RuboCop's debug measurements still exceed the large-project runtime-cache overhead threshold after the compact JSON and schema-shape cleanup: fresh full-debug runs are ~70-77 ms combined load+save, down from ~112 ms pre-cleanup. Step 5, candidate-only example retention, remains open unless the threshold is relaxed.
 - Task 8 still needs the RSpec-core, Mastodon, and Discourse measurements, or an explicit decision to narrow the QA matrix.
 - Plur's own suite needs a cleaner benchmark harness before its `plur -n 8` result can be treated as a valid cache comparison.
 
@@ -512,17 +512,17 @@ Post-measurement cache cleanup completed so far:
 
 Phase B revised plan:
 
-1. **Drop `example_count`.**
+1. **Drop `example_count`.** **Status: implemented.**
    - Remove `FileEntry.ExampleCount` and stop serializing `example_count`.
    - Replace any internal diagnostics that need counts with `len(entry.Examples)`.
    - Update tests that currently assert the field exists or is updated.
 
-2. **Change `Files` from `map[string]*FileEntry` to `map[string]FileEntry`.**
+2. **Change `Files` from `map[string]*FileEntry` to `map[string]FileEntry`.** **Status: implemented.**
    - This removes one pointer layer per file and makes the JSON shape/model simpler.
    - Update lookup code to handle value entries explicitly. For methods that mutate entries in place, assign the modified value back into the map.
    - Preserve nil-safety at cache boundaries by treating missing map entries as absent; the map value itself is no longer nil.
 
-3. **Change `Examples` from `map[string]*ExampleEntry` to `[]ExampleEntry`.**
+3. **Change `Examples` from `map[string]*ExampleEntry` to `[]ExampleEntry`.** **Status: implemented.**
    - Add `ID string` to `ExampleEntry` so RSpec `example.id` remains serialized with each entry.
    - Replace map iteration in split planning with slice iteration. The splitter already only needs to iterate examples, group by rerunnable selector, and sum runtimes.
    - For update/merge paths, build an in-memory index only when needed:
@@ -541,7 +541,7 @@ Phase B revised plan:
 
    - Aggregate runs can replace the full slice directly. Partial runs should use the index to update existing examples by ID and append new IDs without pruning examples missing from the partial run.
 
-4. **Full verification and benchmark pass.**
+4. **Full verification and benchmark pass.** **Status: completed for the schema-shape pass.**
    - Run the focused Go cache benchmark with `script/benchstat --package ./internal/testruntime --filter 'BenchmarkCache_(Load|Save)LargeRspecCache' --count 10` and compare against a saved pre-Phase-B baseline.
    - Run targeted Go tests for cache merge/split behavior, then the full Go suite.
    - Run RuboCop dry-run debug and two full RuboCop `--debug` runs with warmed cache.
@@ -550,6 +550,7 @@ Phase B revised plan:
 5. **Assess candidate-only example retention if still needed.**
    - If Phase B steps 1-3 do not bring RuboCop combined load+save under the large-suite threshold, decide whether to persist examples only for true split-candidate files.
    - This requires a separate design conversation because it changes cache semantics: many files would intentionally have file-level runtime data but no complete example index.
+   - Current Phase B schema-shape measurements still exceed the threshold, so this remains the next design decision after the full build/commit checkpoint.
 
 Review notes:
 

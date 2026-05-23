@@ -27,8 +27,8 @@ type SplitDecision map[string]float64
 // results. Map iteration order is randomized, but consumers (the grouper)
 // sort by runtime, so order does not affect downstream grouping.
 func (c *Cache) SplitFile(filePath string, workerCount int, targetPerWorkerRuntime float64) SplitDecision {
-	file := c.Files[filePath]
-	if file == nil {
+	file, ok := c.Files[filePath]
+	if !ok {
 		return SplitDecision{filePath: 0}
 	}
 	noSplit := SplitDecision{filePath: file.RuntimeSeconds}
@@ -43,7 +43,7 @@ func (c *Cache) SplitFile(filePath string, workerCount int, targetPerWorkerRunti
 		return noSplit
 	}
 
-	units := buildUnits(filePath, file)
+	units := buildUnits(filePath, &file)
 	if len(units) < 2 {
 		return noSplit
 	}
@@ -95,15 +95,8 @@ type splitBin struct {
 func buildUnits(filePath string, file *FileEntry) []splitUnit {
 	mean := file.RuntimeSeconds / float64(len(file.Examples))
 
-	ids := make([]string, 0, len(file.Examples))
-	for id := range file.Examples {
-		ids = append(ids, id)
-	}
-	slices.Sort(ids) // map iteration is randomized; sort for deterministic input.
-
-	bySelector := make(map[string]*splitUnit, len(ids))
-	for _, id := range ids {
-		ex := file.Examples[id]
+	bySelector := make(map[string]*splitUnit, len(file.Examples))
+	for _, ex := range file.Examples {
 		selector, line, ok := selectorForExample(filePath, ex)
 		if !ok {
 			continue
@@ -136,10 +129,7 @@ func buildUnits(filePath string, file *FileEntry) []splitUnit {
 	return units
 }
 
-func selectorForExample(filePath string, ex *ExampleEntry) (string, int, bool) {
-	if ex == nil {
-		return "", 0, false
-	}
+func selectorForExample(filePath string, ex ExampleEntry) (string, int, bool) {
 	if ex.LocationRerunArgument != "" {
 		selector := strings.TrimPrefix(ex.LocationRerunArgument, "./")
 		selectorPath, line, ok := splitSelector(selector)

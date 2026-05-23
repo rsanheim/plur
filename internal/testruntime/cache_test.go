@@ -99,48 +99,47 @@ func TestCache_SaveAndReload(t *testing.T) {
 	assert.True(t, entry.ExampleIndexComplete)
 	assert.Len(t, entry.Examples, 1)
 
-	ex := entry.Examples["./spec/foo_spec.rb[1:1]"]
-	require.NotNil(t, ex)
+	ex := requireExample(t, entry, "./spec/foo_spec.rb[1:1]")
 	assert.Equal(t, 12, ex.LineNumber)
 	assert.Equal(t, "./spec/foo_spec.rb:12", ex.LocationRerunArgument)
 	assert.Equal(t, 1.0, ex.RuntimeSeconds)
 }
 
-// TestCache_IgnoresOldShapeFields ensures that a cache JSON file from before
-// the schema trim (with scoped_id and status keys present) still loads. These
-// extra fields should be silently dropped on the next save.
-func TestCache_IgnoresOldShapeFields(t *testing.T) {
+// TestCache_IgnoresUnknownExampleFields ensures that cache JSON with obsolete
+// per-example keys still loads. These extra fields should be silently dropped
+// on the next save.
+func TestCache_IgnoresUnknownExampleFields(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
 	oldShape := `{
-  "meta": {"schema_version": 2, "plur_version": "v0"},
-  "run": {"cwd": "/tmp/project", "last_run_at": "2026-05-22T01:02:03Z"},
-  "files": {
-    "spec/foo_spec.rb": {
-      "mtime_unix_nano": 1,
-      "size_bytes": 2,
-      "runtime_seconds": 1.0,
-      "example_index_complete": true,
-      "examples": {
-        "./spec/foo_spec.rb[1:1]": {
-          "line_number": 12,
-          "location_rerun_argument": "./spec/foo_spec.rb:12",
-          "scoped_id": "1:1",
-          "runtime_seconds": 0.5,
-          "status": "passed"
-        }
-      }
-    }
-  }
-}`
+	  "meta": {"schema_version": 3, "plur_version": "v0"},
+	  "run": {"cwd": "/tmp/project", "last_run_at": "2026-05-22T01:02:03Z"},
+	  "files": {
+	    "spec/foo_spec.rb": {
+	      "mtime_unix_nano": 1,
+	      "size_bytes": 2,
+	      "runtime_seconds": 1.0,
+	      "example_index_complete": true,
+	      "examples": [
+	        {
+	          "id": "./spec/foo_spec.rb[1:1]",
+	          "line_number": 12,
+	          "location_rerun_argument": "./spec/foo_spec.rb:12",
+	          "scoped_id": "1:1",
+	          "runtime_seconds": 0.5,
+	          "status": "passed"
+	        }
+	      ]
+	    }
+	  }
+	}`
 	require.NoError(t, os.WriteFile(path, []byte(oldShape), 0644))
 
 	cache := LoadCache(path)
 	entry := cache.File("spec/foo_spec.rb")
 	require.NotNil(t, entry)
-	ex := entry.Examples["./spec/foo_spec.rb[1:1]"]
-	require.NotNil(t, ex)
+	ex := requireExample(t, entry, "./spec/foo_spec.rb[1:1]")
 	assert.Equal(t, 12, ex.LineNumber)
 	assert.Equal(t, 0.5, ex.RuntimeSeconds)
 }
@@ -157,8 +156,42 @@ func TestCache_SaveWritesCompactJSON(t *testing.T) {
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), "\n  \"", "runtime cache should avoid pretty-print indentation")
-	assert.Contains(t, string(data), `"meta":{"schema_version":2,"plur_version":"plur-test"}`)
+	assert.Contains(t, string(data), `"meta":{"schema_version":3,"plur_version":"plur-test"}`)
 	assert.Contains(t, string(data), `"run":{"cwd":"/tmp/project","last_run_at":"2026-05-22T01:02:03Z"}`)
+}
+
+func TestCache_SaveSerializesExamplesAsArrayWithID(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cache.json")
+
+	cache := NewCache()
+	cache.MergeAggregateRun("spec/foo_spec.rb", 1, 2, 1.0, map[string]*ExampleEntry{
+		"./spec/foo_spec.rb[1:1]": {
+			LineNumber:            12,
+			LocationRerunArgument: "./spec/foo_spec.rb:12",
+			RuntimeSeconds:        1.0,
+		},
+	})
+
+	require.NoError(t, SaveCache(cache, path, "plur-test", "/tmp/project", time.Date(2026, 5, 22, 1, 2, 3, 0, time.UTC)))
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), `"example_count"`)
+
+	var raw struct {
+		Files map[string]struct {
+			Examples any `json:"examples"`
+		} `json:"files"`
+	}
+	require.NoError(t, json.Unmarshal(data, &raw))
+	examples, ok := raw.Files["spec/foo_spec.rb"].Examples.([]any)
+	require.True(t, ok, "examples should serialize as an array, not an object keyed by example ID")
+	require.Len(t, examples, 1)
+	example, ok := examples[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "./spec/foo_spec.rb[1:1]", example["id"])
+	assert.Equal(t, float64(12), example["line_number"])
 }
 
 func TestCache_SaveDoesNotEscapeHTML(t *testing.T) {
@@ -203,7 +236,7 @@ func TestCache_SaveIsAtomic(t *testing.T) {
 func TestCache_FileRuntimesSkipsZero(t *testing.T) {
 	cache := NewCache()
 	cache.MergeAggregateRun("spec/has_runtime.rb", 0, 0, 3.14, nil)
-	cache.Files["spec/no_runtime.rb"] = &FileEntry{ExampleIndexComplete: false}
+	cache.Files["spec/no_runtime.rb"] = FileEntry{ExampleIndexComplete: false}
 
 	rt := cache.FileRuntimes()
 	assert.Equal(t, 3.14, rt["spec/has_runtime.rb"])
@@ -229,6 +262,7 @@ func TestCache_MergeAggregateRunReplacesExamples(t *testing.T) {
 	assert.Equal(t, 2.0, entry.RuntimeSeconds)
 	assert.True(t, entry.ExampleIndexComplete)
 	assert.Len(t, entry.Examples, 1, "aggregate run prunes examples missing from the run")
+	assert.Equal(t, "./spec/x_spec.rb[1:1]", entry.Examples[0].ID)
 }
 
 func TestCache_MergeObservationsPreservesAggregate(t *testing.T) {
@@ -248,8 +282,8 @@ func TestCache_MergeObservationsPreservesAggregate(t *testing.T) {
 	assert.Equal(t, 5.0, entry.RuntimeSeconds, "partial run must not touch file-level runtime")
 	assert.True(t, entry.ExampleIndexComplete, "partial run must not flip the flag")
 	assert.Len(t, entry.Examples, 2, "partial run must not prune missing examples")
-	assert.Equal(t, 1.5, entry.Examples["./spec/x_spec.rb[1:1]"].RuntimeSeconds)
-	assert.Equal(t, 4.0, entry.Examples["./spec/x_spec.rb[1:2]"].RuntimeSeconds)
+	assert.Equal(t, 1.5, requireExample(t, entry, "./spec/x_spec.rb[1:1]").RuntimeSeconds)
+	assert.Equal(t, 4.0, requireExample(t, entry, "./spec/x_spec.rb[1:2]").RuntimeSeconds)
 }
 
 func TestCache_MergeObservationsSkipsUnseenFiles(t *testing.T) {
@@ -290,13 +324,21 @@ func TestCache_IsExamplesFreshFalseWhenIncomplete(t *testing.T) {
 	cache := NewCache()
 	mtime, size, ok := SourceFreshness(source)
 	require.True(t, ok)
-	cache.Files[source] = &FileEntry{
+	cache.Files[source] = FileEntry{
 		MtimeUnixNano:        mtime,
 		SizeBytes:            size,
 		RuntimeSeconds:       1.0,
 		ExampleIndexComplete: false,
-		Examples:             map[string]*ExampleEntry{"id": {LineNumber: 1}},
+		Examples:             []ExampleEntry{{ID: "id", LineNumber: 1}},
 	}
 
 	assert.False(t, cache.IsExamplesFresh(source), "incomplete index must report not-fresh")
+}
+
+func requireExample(t *testing.T, entry *FileEntry, id string) ExampleEntry {
+	t.Helper()
+	idx := entry.ExampleIndex()
+	i, ok := idx[id]
+	require.True(t, ok, "expected example %s", id)
+	return entry.Examples[i]
 }

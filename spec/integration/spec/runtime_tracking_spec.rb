@@ -25,15 +25,15 @@ RSpec.describe "Plur runtime tracking" do
     end
   end
 
-  context "runtime data collection (v2 schema)" do
+  context "runtime data collection (versioned schema)" do
     around_with_tmp_plur_home
 
-    it "writes a v2 cache with meta, run metadata, file aggregates, and example index" do
+    it "writes a cache with meta, run metadata, file aggregates, and example index" do
       Dir.chdir(default_ruby_dir) do
         run_plur("-n", "2")
 
         data, runtime_file = runtime_cache_data
-        expect(data["meta"]["schema_version"]).to eq(2)
+        expect(data["meta"]["schema_version"]).to eq(3)
         expect(data["meta"]["plur_version"]).to be_a(String).and(satisfy { |v| !v.empty? })
         expect(data["run"]["cwd"]).to eq(default_ruby_dir.to_s)
         expect(Time.iso8601(data["run"]["last_run_at"]).utc.iso8601).to eq(data["run"]["last_run_at"])
@@ -49,9 +49,10 @@ RSpec.describe "Plur runtime tracking" do
         expect(entry["example_index_complete"]).to be true
 
         examples = entry["examples"]
-        expect(examples).to be_a(Hash)
+        expect(examples).to be_a(Array)
         expect(examples).not_to be_empty
-        sample_id, sample = examples.first
+        sample = examples.first
+        sample_id = sample["id"]
         expect(sample_id).to include("calculator_spec.rb")
         expect(sample["line_number"]).to be > 0
         expect(sample["runtime_seconds"]).to be >= 0
@@ -70,7 +71,7 @@ RSpec.describe "Plur runtime tracking" do
       end
     end
 
-    it "ignores corrupt v2 cache files and replaces them with valid v2 JSON" do
+    it "ignores corrupt cache files and replaces them with valid JSON" do
       Dir.chdir(default_ruby_dir) do
         runtime_dir = File.join(tmp_plur_home, "runtime")
         FileUtils.mkdir_p(runtime_dir)
@@ -82,7 +83,7 @@ RSpec.describe "Plur runtime tracking" do
         run_plur("-n", "2")
 
         data = JSON.parse(File.read(cache_path))
-        expect(data["meta"]["schema_version"]).to eq(2)
+        expect(data["meta"]["schema_version"]).to eq(3)
         expect(data["files"]).to include("spec/calculator_spec.rb")
       end
     end
@@ -98,7 +99,7 @@ RSpec.describe "Plur runtime tracking" do
     end
   end
 
-  context "runtime-based grouping from v2 aggregates" do
+  context "runtime-based grouping from cache aggregates" do
     around_with_tmp_plur_home
 
     it "distributes files based on stored runtime_seconds" do
@@ -123,7 +124,7 @@ RSpec.describe "Plur runtime tracking" do
 
         cache = {
           "meta" => {
-            "schema_version" => 2,
+            "schema_version" => 3,
             "plur_version" => "fixture"
           },
           "run" => {
@@ -169,7 +170,7 @@ RSpec.describe "Plur runtime tracking" do
         expect(original["runtime_seconds"]).to be > 0
 
         original_example_count = original["examples"].size
-        focused_line = original["examples"].values.first["line_number"]
+        focused_line = original["examples"].first["line_number"]
 
         run_plur("-n", "1", "spec/calculator_spec.rb:#{focused_line}")
 
@@ -187,14 +188,15 @@ RSpec.describe "Plur runtime tracking" do
         initial, _ = runtime_cache_data
         examples = initial["files"]["spec/calculator_spec.rb"]["examples"]
         original_example_count = examples.size
-        first_id, first_entry = examples.first
+        first_entry = examples.first
+        first_id = first_entry.fetch("id")
 
         run_plur("-n", "1", "spec/calculator_spec.rb:#{first_entry["line_number"]}")
 
         updated, _ = runtime_cache_data
         merged_examples = updated["files"]["spec/calculator_spec.rb"]["examples"]
         expect(merged_examples.size).to eq(original_example_count)
-        expect(merged_examples).to include(first_id)
+        expect(merged_examples.map { |example| example.fetch("id") }).to include(first_id)
       end
     end
 
@@ -322,13 +324,13 @@ RSpec.describe "Plur runtime tracking" do
         cache, runtime_file = runtime_cache_data
 
         entry = cache.fetch("files").fetch("spec/generated_examples_spec.rb")
-        duplicate_selector, duplicate_examples = entry.fetch("examples").values
+        duplicate_selector, duplicate_examples = entry.fetch("examples")
           .group_by { |example| example.fetch("location_rerun_argument") }
           .find { |_selector, examples| examples.size > 1 }
         expect(duplicate_examples.size).to eq(4)
 
         entry["runtime_seconds"] = 80.0
-        entry.fetch("examples").each_value do |example|
+        entry.fetch("examples").each do |example|
           example["runtime_seconds"] = if example.fetch("location_rerun_argument") == duplicate_selector
             10.0
           else
@@ -376,13 +378,13 @@ RSpec.describe "Plur runtime tracking" do
         expect(files).not_to include("spec/support/shared_examples/arithmetic_examples.rb")
 
         entry = files.fetch("spec/shared_example_consumers_spec.rb")
-        selectors = entry.fetch("examples").values.map { |example| example.fetch("location_rerun_argument") }
+        selectors = entry.fetch("examples").map { |example| example.fetch("location_rerun_argument") }
         shared_selectors = selectors.select { |selector| selector.include?("shared_example_consumers_spec.rb") }
         expect(shared_selectors.uniq.size).to be >= 2
         expect(selectors).not_to include(match(%r{spec/support/shared_examples}))
 
         entry["runtime_seconds"] = 80.0
-        entry.fetch("examples").each_value do |example|
+        entry.fetch("examples").each do |example|
           example["runtime_seconds"] = if shared_selectors.include?(example.fetch("location_rerun_argument"))
             10.0
           else

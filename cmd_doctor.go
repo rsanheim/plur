@@ -29,9 +29,7 @@ func runtimeStats(path string, size int64) string {
 	}
 	var examples int
 	for _, f := range cache.Files {
-		if f != nil {
-			examples += len(f.Examples)
-		}
+		examples += len(f.Examples)
 	}
 	return fmt.Sprintf("%s / %d files / %d examples", humanSize(size), len(cache.Files), examples)
 }

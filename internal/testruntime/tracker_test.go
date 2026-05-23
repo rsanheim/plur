@@ -113,7 +113,7 @@ func TestRuntimeTracker(t *testing.T) {
 		entry := rt2.Cache().File(specPath)
 		require.NotNil(t, entry)
 		assert.Len(t, entry.Examples, 2)
-		assert.Equal(t, 5, entry.Examples["./"+specPath+"[1:1]"].LineNumber)
+		assert.Equal(t, 5, requireExample(t, entry, "./"+specPath+"[1:1]").LineNumber)
 	})
 
 	t.Run("LoadedData reflects loaded v2 cache", func(t *testing.T) {
