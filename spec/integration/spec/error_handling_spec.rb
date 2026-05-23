@@ -75,9 +75,31 @@ RSpec.describe "Plur error handling" do
           result = run_plur_allowing_errors
 
           # Should handle gracefully and show appropriate message
-          expect(result.out + result.err).to match(/ERROR.*no default spec\/test files found/)
+          expect(result.err).to include("Error: no default spec/test files found")
+          expect(result.err).not_to include("ERROR - Command failed")
         end
       end
     end
+  end
+
+  it "prints command selection errors as plain user-facing errors" do
+    result = run_plur_allowing_errors(
+      "watch", "find", "--format=json", "--use=does-not-exist", "spec/integration/spec/help_spec.rb"
+    )
+
+    expect(result.exit_status).to eq(1)
+    expect(result.out).to eq("")
+    expect(result.err).to include("Error: failed to select watch job: job 'does-not-exist' not found")
+    expect(result.err).not_to include("ERROR - Command failed")
+    expect(result.err).not_to match(/^\d{2}:\d{2}:\d{2} - ERROR/)
+  end
+
+  it "prints missing target errors as plain user-facing errors" do
+    result = run_plur_allowing_errors("--dry-run", "spec/nonexistent_spec.rb")
+
+    expect(result.exit_status).to eq(1)
+    expect(result.err).to include("Error: file not found: spec/nonexistent_spec.rb")
+    expect(result.err).not_to include("ERROR - Command failed")
+    expect(result.err).not_to match(/^\d{2}:\d{2}:\d{2} - ERROR/)
   end
 end

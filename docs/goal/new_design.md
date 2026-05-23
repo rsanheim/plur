@@ -955,3 +955,52 @@ Use `plur --help` to list Plur commands.
 - `./plur -C fixtures/projects/minitest-success test --dry-run` still selects
   the `minitest` job by explicit patterns and expands the real `test/`
   directory.
+
+## T28-DEV - Print Expected Command Errors Plainly
+
+Pain point: several expected user errors still look like internal logs:
+
+```text
+08:31:48 - ERROR - Command failed error=failed to select watch job: job 'does-not-exist' not found. Available jobs: ...
+```
+
+That shape is noisy for humans and brittle for automation. It also conflicts
+with newer parser errors that already use direct `plur: error:` or `Error:`
+messages.
+
+Change: when a command returns a normal error from `ctx.Run`, print a plain
+stderr line:
+
+```text
+Error: failed to select watch job: job 'does-not-exist' not found. Available jobs: ...
+```
+
+Keep custom `ExitCode` behavior unchanged, because those paths already print
+their own output or intentionally exit silently.
+
+Acceptance criteria:
+- Invalid `watch find --use=...` exits 1 with `Error: ...`, not timestamped
+  `ERROR - Command failed ...`.
+- Missing explicit targets exit 1 with `Error: file not found: ...`, not
+  timestamped log output.
+- Test failure execution behavior is unchanged.
+- Focused error specs, Go tests, and the full build pass.
+
+Before evidence:
+- `./plur watch find --format=json --use=does-not-exist spec/integration/spec/help_spec.rb`
+  exits 1 with a timestamped `ERROR - Command failed` stderr line.
+
+After evidence:
+- Invalid watch job selection now exits 1 with no stdout and plain stderr:
+
+```text
+Error: failed to select watch job: job 'does-not-exist' not found. Available jobs: build, go-test, minitest, plur, rails, rake, rspec
+```
+
+- Missing explicit targets still print the version banner first, then a plain
+  error:
+
+```text
+plur version=v0.56.1-0.20260523134152-3a34c4192f1f+dirty
+Error: file not found: spec/nonexistent_spec.rb
+```
