@@ -58,18 +58,27 @@ func hideIrrelevantHelpFlags(selected *kong.Node) func() {
 }
 
 func irrelevantHelpFlagNames(fullPath string) map[string]bool {
-	if fullPath != "plur watch find" {
+	switch fullPath {
+	case "plur watch find":
+		return map[string]bool{
+			"dry-run":        true,
+			"dry-run-format": true,
+			"first-is-1":     true,
+			"ignore":         true,
+			"json":           true,
+			"rspec-split":    true,
+			"workers":        true,
+		}
+	case "plur watch", "plur watch run":
+		return map[string]bool{
+			"dry-run":        true,
+			"dry-run-format": true,
+			"first-is-1":     true,
+			"rspec-split":    true,
+			"workers":        true,
+		}
+	default:
 		return nil
-	}
-
-	return map[string]bool{
-		"dry-run":        true,
-		"dry-run-format": true,
-		"first-is-1":     true,
-		"ignore":         true,
-		"json":           true,
-		"rspec-split":    true,
-		"workers":        true,
 	}
 }
 

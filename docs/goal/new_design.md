@@ -1584,3 +1584,59 @@ After evidence:
 - `script/check-links` passed.
 - `bin/rake` passed with 376 examples, 0 failures, and 4 existing pending
   examples.
+
+## T46-DEV - Focus `watch run` Flags On Live Watching
+
+Status: verified
+Commit: pending
+
+Pain point: `plur watch run --help` still advertises inherited one-shot run
+flags such as `--workers`, `--first-is-1`, and `--rspec-split`, even though
+live watch execution currently runs configured watch jobs directly and does not
+use Plur's parallel one-shot runner. That makes the watch surface look more
+powerful than it is and invites no-op flags.
+
+Change: keep live-watch controls visible (`--ignore`, `--timeout`,
+`--debounce`, `--use`, `-C`, debug/verbose), but hide one-shot runner controls
+from watch help and reject explicit no-op runner flags on `watch run`.
+`--dry-run` keeps the existing watch-preview guidance.
+
+Diataxis role: this is generated CLI help and behavior. Public docs should link
+to existing watch and output-contract references rather than duplicate a new
+flag matrix.
+
+Duplication check:
+- `spec/integration/spec/help_spec.rb` owns generated help expectations.
+- `spec/integration/watch/watch_find_spec.rb` already rejects no-op flags for
+  `watch find`.
+- `docs/features/watch-mode.md` owns watch usage and already points previews to
+  `watch find`.
+
+Acceptance criteria:
+- `plur watch --help` and `plur watch run --help` do not show flag rows for
+  `--workers`, `--first-is-1`, `--rspec-split`, `--dry-run`, or
+  `--dry-run-format`.
+- `plur watch --help` may still mention `plur --dry-run [patterns...]` as a
+  separate one-shot workflow.
+- `plur watch run --workers=99`, `-n 2`, `--rspec-split`,
+  `--first-is-1`, `--no-first-is-1`, and `--dry-run-format=json` exit before
+  starting watch mode with direct guidance.
+- `plur watch --dry-run` still exits with the existing preview guidance.
+- Focused help/watch specs, Go tests, and the full build pass.
+
+After evidence:
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_run_flags_spec.rb`
+  failed because watch help still showed inherited one-shot flags and
+  `watch run --workers=99 --timeout 1` started watch mode.
+- Green focused checks:
+  `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_run_flags_spec.rb spec/integration/watch/watch_dry_run_spec.rb spec/integration/watch/watch_ignore_spec.rb`
+  passed with 15 examples, 0 failures.
+- `go test -mod=mod ./...` initially failed once in
+  `TestTestCollectorComplexity` and then passed on rerun, confirming the
+  repeated full-gate failure was timing noise in the smallest baseline. The
+  complexity helper now skips scaling-ratio checks when the previous size ran
+  below 500 microseconds.
+- `go test -mod=mod ./...` passed after that stabilization.
+- `script/check-links` passed.
+- `bin/rake` passed with 377 examples, 0 failures, and 4 existing pending
+  examples.

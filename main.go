@@ -47,6 +47,13 @@ type WatchRunCmd struct {
 	Debounce int `help:"Debounce delay in milliseconds" default:"30"`
 }
 
+func (w *WatchRunCmd) BeforeApply(ctx *kong.Context) error {
+	if err := rejectWatchRunNoOpFlags(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	config := globals.globalConfig
 
@@ -60,6 +67,46 @@ func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	}
 
 	return runWatchWithConfig(config, w, parent, globals)
+}
+
+func rejectWatchRunNoOpFlags(ctx *kong.Context) error {
+	if ctx == nil {
+		return nil
+	}
+
+	for _, path := range ctx.Path {
+		if path.Flag == nil || path.Resolved {
+			continue
+		}
+		flag := watchRunNoOpFlagName(path.Flag)
+		if flag == "" {
+			continue
+		}
+		return fmt.Errorf("%s does not apply to plur watch run; %s", flag, watchRunNoOpFlagGuidance(flag))
+	}
+
+	return nil
+}
+
+func watchRunNoOpFlagName(flag *kong.Flag) string {
+	switch flag.Name {
+	case "first-is-1":
+		if flag.Negated {
+			return "--no-first-is-1"
+		}
+		return "--first-is-1"
+	case "dry-run-format", "rspec-split", "workers":
+		return "--" + flag.Name
+	default:
+		return ""
+	}
+}
+
+func watchRunNoOpFlagGuidance(flag string) string {
+	if flag == "--dry-run-format" {
+		return "use `plur watch find --format=json <file>` for a structured watch preview, or `plur --dry-run --dry-run-format=json [patterns...]` for a one-shot plan"
+	}
+	return "watch run executes configured watch jobs directly and does not use one-shot parallel runner flags"
 }
 
 type WatchInstallCmd struct{}

@@ -88,3 +88,5 @@ ts=2026-05-23-10:02:53 git_ref=prep-goal git_oid=1128145 status=start current="T
 ts=2026-05-23-10:11:27 git_ref=prep-goal git_oid=1128145 status=done current="T44-DEV" msg="dry-run json includes configured job env"
 ts=2026-05-23-10:11:46 git_ref=prep-goal git_oid=3b51a2e status=start current="T45-DEV" msg="begin watch find json no mappings contract"
 ts=2026-05-23-10:21:46 git_ref=prep-goal git_oid=3b51a2e status=done current="T45-DEV" msg="watch find json no-watch-mapping contract verified"
+ts=2026-05-23-10:22:58 git_ref=prep-goal git_oid=68b43b9 status=start current="T46-DEV" msg="begin watch run inherited flag cleanup"
+ts=2026-05-23-10:30:12 git_ref=prep-goal git_oid=68b43b9 status=done current="T46-DEV" msg="watch run help and no-op flags focused"
