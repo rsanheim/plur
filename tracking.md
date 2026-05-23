@@ -68,3 +68,5 @@ ts=2026-05-23-09:13:02 git_ref=prep-goal git_oid=a5deb8f status=start current="T
 ts=2026-05-23-09:18:08 git_ref=prep-goal git_oid=a5deb8f status=done current="T34-REFLECT" msg="reflection after json cleanup scored with reviewer feedback"
 ts=2026-05-23-09:18:37 git_ref=prep-goal git_oid=b784572 status=start current="T35-DEV" msg="begin removed json flag guidance"
 ts=2026-05-23-09:20:55 git_ref=prep-goal git_oid=b784572 status=done current="T35-DEV" msg="removed json flag guidance implemented and verified"
+ts=2026-05-23-09:21:40 git_ref=prep-goal git_oid=5b38c4b status=start current="T36-DEV" msg="begin watch run help dry-run wording"
+ts=2026-05-23-09:24:36 git_ref=prep-goal git_oid=5b38c4b status=done current="T36-DEV" msg="watch run dry-run help aligned and verified"

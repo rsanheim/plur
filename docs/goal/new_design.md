@@ -1208,3 +1208,56 @@ Use `plur watch find --format=json <file>` for a structured watch preview.
   - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb spec/integration/spec/rspec_args_spec.rb`
   - `script/check-links`
   - `bin/rake`
+
+## T36-DEV - Align `watch run` Dry-Run Help
+
+Pain point: `plur watch --help` already explains that `--dry-run` is a
+one-shot preview flag and watch mode rejects it. But `plur watch run --help`
+still inherits the generic run wording:
+
+```text
+--dry-run                  Print what would be executed without running
+--dry-run-format="text"    Dry-run output format: text or json
+```
+
+That creates a small but real mismatch: the command-specific help for the
+actual watch runner is less accurate than the parent watch help.
+
+Change: apply the same dry-run help wording to `plur watch run --help`:
+
+```text
+--dry-run                  One-shot run preview only; watch mode rejects it
+--dry-run-format="text"    One-shot dry-run output format: text or json
+```
+
+Acceptance criteria:
+- `plur watch run --help` shows the watch-specific dry-run wording.
+- `plur watch --help` keeps the same wording.
+- `plur spec --help` keeps generic one-shot dry-run wording.
+- Focused help specs, watch ignore help specs, and the full build pass.
+
+Before evidence:
+- `./plur watch run --help` shows generic `--dry-run` help even though
+  `plur watch run --dry-run` exits with watch dry-run guidance.
+
+After evidence:
+- `./plur watch run --help` now shows:
+
+```text
+--dry-run                  One-shot run preview only; watch mode rejects it
+--dry-run-format="text"    One-shot dry-run output format: text or json
+```
+
+- `./plur spec --help` still keeps one-shot run wording:
+
+```text
+--dry-run                  Print what would be executed without running
+--dry-run-format="text"    Dry-run output format: text or json
+```
+
+- Verification:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_ignore_spec.rb`
+  - `go test -mod=mod ./...`
+  - `script/check-links`
+  - `bin/rake`

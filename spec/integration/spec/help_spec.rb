@@ -48,6 +48,25 @@ RSpec.describe "help output" do
     expect(result.out.index("watch find <file-path>")).to be < result.out.index("watch install")
   end
 
+  it "explains dry-run flags accurately in watch run help" do
+    result = run_plur("watch", "run", "--help")
+
+    expect(result).to be_success
+    expect(result.out).to include("--dry-run")
+    expect(result.out).to include("One-shot run preview only; watch mode rejects it")
+    expect(result.out).to include("One-shot dry-run output format: text or json")
+    expect(result.out).not_to include("Print what would be executed without running")
+  end
+
+  it "keeps spec dry-run help generic for one-shot runs" do
+    result = run_plur("spec", "--help")
+
+    expect(result).to be_success
+    expect(result.out).to include("--dry-run")
+    expect(result.out).to include("Print what would be executed without running")
+    expect(result.out).to include("Dry-run output format: text or json")
+  end
+
   it "does not advertise the unused JSON file output flag" do
     [
       ["--help"],

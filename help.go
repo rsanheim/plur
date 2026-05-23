@@ -88,17 +88,26 @@ func customizeHelpOutput(output string, ctx *kong.Context) string {
 			"Usage: plur watch <command> [flags]",
 			"Usage: plur watch [flags]\n       plur watch find <changed-file> [flags]\n       plur watch <command> [flags]",
 			1)
-		output = strings.Replace(output,
-			"--dry-run                  Print what would be executed without running",
-			"--dry-run                  One-shot run preview only; watch mode rejects it",
-			1)
-		output = strings.Replace(output,
-			"--dry-run-format=\"text\"    Dry-run output format: text or json",
-			"--dry-run-format=\"text\"    One-shot dry-run output format: text or json",
-			1)
+		output = customizeWatchDryRunHelp(output)
 		return insertAfterDescription(output, watchWorkflowHelp())
 	}
 
+	if selected.FullPath() == "plur watch run" {
+		return customizeWatchDryRunHelp(output)
+	}
+
+	return output
+}
+
+func customizeWatchDryRunHelp(output string) string {
+	output = strings.Replace(output,
+		"--dry-run                  Print what would be executed without running",
+		"--dry-run                  One-shot run preview only; watch mode rejects it",
+		1)
+	output = strings.Replace(output,
+		"--dry-run-format=\"text\"    Dry-run output format: text or json",
+		"--dry-run-format=\"text\"    One-shot dry-run output format: text or json",
+		1)
 	return output
 }
 
