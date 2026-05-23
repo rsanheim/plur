@@ -10,6 +10,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -32,21 +33,8 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return fmt.Errorf("--format must be text or json")
 	}
 
-	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
-	if err != nil {
-		return fmt.Errorf("failed to select watch job: %w", err)
-	}
-
 	jobs := globals.runtimeConfig.Jobs
 	watches := globals.runtimeConfig.Watches
-	runtime.LogInheritedFields(selected.Name, selected.Inherited)
-
-	if len(watches) == 0 {
-		fmt.Println("No watch mappings configured.")
-		fmt.Println("Either add job/watch configuration to .plur.toml or ensure your project structure")
-		fmt.Println("matches a supported framework (Ruby with Gemfile, Go with go.mod).")
-		return nil
-	}
 
 	// Get the current working directory
 	cwd, err := os.Getwd()
@@ -61,6 +49,34 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 			filePath = rel
 		}
 	}
+
+	if len(watches) == 0 {
+		if globals.runtimeConfig.Use != "" {
+			selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
+			if err != nil {
+				return fmt.Errorf("failed to select watch job: %w", err)
+			}
+			runtime.LogInheritedFields(selected.Name, selected.Inherited)
+		}
+
+		if cmd.Format == "json" {
+			if err := writeWatchFindPlan(filePath, emptyWatchFindResult(filePath, jobs), 2); err != nil {
+				return err
+			}
+			return ExitCode{Code: 2}
+		}
+
+		fmt.Println("No watch mappings configured.")
+		fmt.Println("Either add job/watch configuration to .plur.toml or ensure your project structure")
+		fmt.Println("matches a supported framework (Ruby with Gemfile, Go with go.mod).")
+		return nil
+	}
+
+	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
+	if err != nil {
+		return fmt.Errorf("failed to select watch job: %w", err)
+	}
+	runtime.LogInheritedFields(selected.Name, selected.Inherited)
 
 	if cmd.Format == "text" {
 		fmt.Printf("[watch] Checking %s\n", filePath)
@@ -169,6 +185,16 @@ func watchFindExitCode(result *watch.FindResult) int {
 		return 0
 	}
 	return 2
+}
+
+func emptyWatchFindResult(filePath string, jobs map[string]job.Job) *watch.FindResult {
+	return &watch.FindResult{
+		FilePath:        filePath,
+		MatchedRules:    []watch.WatchMapping{},
+		ExistingTargets: map[string][]string{},
+		MissingTargets:  map[string][]string{},
+		Jobs:            jobs,
+	}
 }
 
 func writeWatchFindPlan(filePath string, result *watch.FindResult, exitCode int) error {

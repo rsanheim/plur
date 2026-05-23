@@ -18,6 +18,7 @@ RSpec.describe "output contract documentation" do
     expect(compact_doc).to include("Do not parse `shell`; use `argv` and `env` when executing from a script")
     expect(compact_doc).to include("Command and configuration errors in JSON modes still write plain text to stderr")
     expect(compact_doc).to include("Plur uses exit code 1 for failed work and many planning/runtime errors")
+    expect(compact_doc).to include("No configured watch mappings use the same empty JSON shape and exit code 2 in JSON mode")
     expect(doc).to include("watch find")
     expect(doc).to include("Exit code 2")
     expect(doc).to include("\"exit_code\": 2")

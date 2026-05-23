@@ -133,6 +133,8 @@ Then provide
 
 Plan one small concrete removal, consolidation, change, or fix, starting from the **user-facing experience** of using plur, using plain language. In doc `new_design.md` describe the change with less than 1000 words, including:
 
+* status field for the phase note, updated as a point-in-time record
+* commit ref field, set to `pending` until the scoped phase commit exists
 * a pain point or job to be done
 * brief overview/spec of proposed change
 * acceptance criteria 

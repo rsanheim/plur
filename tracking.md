@@ -86,3 +86,5 @@ ts=2026-05-23-09:58:28 git_ref=prep-goal git_oid=b2e4589 status=start current="T
 ts=2026-05-23-10:02:18 git_ref=prep-goal git_oid=b2e4589 status=done current="T43-DEV" msg="worker startup errors now route to stderr"
 ts=2026-05-23-10:02:53 git_ref=prep-goal git_oid=1128145 status=start current="T44-DEV" msg="begin dry-run json job env contract"
 ts=2026-05-23-10:11:27 git_ref=prep-goal git_oid=1128145 status=done current="T44-DEV" msg="dry-run json includes configured job env"
+ts=2026-05-23-10:11:46 git_ref=prep-goal git_oid=3b51a2e status=start current="T45-DEV" msg="begin watch find json no mappings contract"
+ts=2026-05-23-10:21:46 git_ref=prep-goal git_oid=3b51a2e status=done current="T45-DEV" msg="watch find json no-watch-mapping contract verified"

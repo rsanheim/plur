@@ -52,6 +52,32 @@ RSpec.describe "plur watch find" do
     end
   end
 
+  it "keeps human guidance when no watch mappings are configured" do
+    tmp_root = ROOT_PATH.join("tmp")
+    FileUtils.mkdir_p(tmp_root)
+
+    Dir.mktmpdir("watch-find-empty-", tmp_root.to_s) do |tmpdir|
+      FileUtils.mkdir_p(File.join(tmpdir, "lib"))
+      File.write(File.join(tmpdir, "lib", "thing.rb"), "# source\n")
+      File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
+        use = "custom"
+
+        [job.custom]
+        framework = "passthrough"
+        cmd = ["echo", "RUN"]
+        target_pattern = "lib/**/*.rb"
+      TOML
+
+      result = Dir.chdir(tmpdir) do
+        run_plur("watch", "find", "lib/thing.rb")
+      end
+
+      expect(result.out).to include("No watch mappings configured.")
+      expect(result.out).to include("Either add job/watch configuration to .plur.toml")
+      expect(result.err).to eq("")
+    end
+  end
+
   it "does not reject config or environment values for run-mode flags" do
     Dir.mktmpdir("watch-find-config-", ROOT_PATH.join("tmp")) do |tmpdir|
       config_path = File.join(tmpdir, "plur.toml")

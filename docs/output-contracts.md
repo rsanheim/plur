@@ -157,7 +157,8 @@ plur watch find --format=json spec/spec_helper.rb
 Command and configuration errors in JSON modes still write plain text to stderr
 and may leave stdout empty.
 
-No matching watch target is still structured output:
+No matching watch target is still structured output. No configured watch
+mappings use the same empty JSON shape and exit code 2 in JSON mode:
 
 ```text
 exit=2

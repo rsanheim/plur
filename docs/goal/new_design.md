@@ -1525,3 +1525,62 @@ After evidence:
   passed with 22 examples, 0 failures.
 - `bin/rake` passed with 373 examples, 0 failures, and 4 existing pending
   examples.
+
+## T45-DEV - Keep Empty Watch JSON Structured
+
+Status: verified
+Commit: pending
+
+Pain point: `plur watch find --format=json` is the stable machine-readable
+watch preview, but the no-watch-mapping path returned human prose on stdout:
+
+```text
+No watch mappings configured.
+Either add job/watch configuration to .plur.toml or ensure your project structure
+matches a supported framework (Ruby with Gemfile, Go with go.mod).
+```
+
+That breaks scripts and agents that choose JSON mode before they know whether a
+project has watch mappings.
+
+Change: after normalizing the changed file path, handle an empty watch mapping
+set inside the same JSON formatter used by other `watch find` no-op previews.
+JSON mode emits an empty `watch_find` plan and exits 2. Text mode keeps the
+existing human guidance.
+
+Diataxis role: this updates `docs/output-contracts.md` as reference material,
+not a tutorial or how-to guide.
+
+Duplication check:
+- `docs/output-contracts.md` owns the stable JSON fields and exit codes.
+- `docs/features/watch-mode.md` owns human watch-mode usage examples.
+- `docs/usage.md` only points to `watch find` as a workflow.
+
+Acceptance criteria:
+- A project with a selected job but no configured watch mappings prints valid
+  JSON for `watch find --format=json FILE`.
+- The JSON shape matches the existing empty no-rule preview:
+  `matched_rules: []`, `existing_targets: {}`, `missing_targets: {}`,
+  `exit_code: 2`.
+- Stdout contains no human prose in JSON mode.
+- Text mode with no watch mappings still prints the existing guidance.
+- Focused watch JSON specs, output-contract docs spec, Go tests, link check,
+  and the full build pass.
+
+After evidence:
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_json_spec.rb`
+  failed because JSON mode tried to parse stdout beginning with
+  `No watch mappings configured.`
+- A sidecar reviewer caught a precedence risk: moving job selection after the
+  empty-watch branch could mask an explicit invalid `--use`. Added a regression
+  for `--use=missing` in a project with no watch mappings; it failed with exit
+  2 before the fix.
+- Green focused checks:
+  `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_json_spec.rb spec/integration/watch/watch_find_spec.rb`
+  passed with 10 examples, 0 failures.
+- `bin/rspec spec/docs/output_contracts_doc_spec.rb` passed with 2 examples,
+  0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 376 examples, 0 failures, and 4 existing pending
+  examples.
