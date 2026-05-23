@@ -552,3 +552,75 @@ Use Diátaxis to classify `docs/getting-started.md`, `docs/usage.md`,
 `docs/configuration.md`, `docs/output-contracts.md`, and feature docs; then
 trim duplicated command explanations and move detailed facts to canonical
 reference pages.
+
+## T19-DEV - Clean Up Public Docs IA
+
+Pain point: T18 showed that the executable CLI is clearer than the public docs
+surface. The docs index links to missing overview pages, `.pages` still allows
+internal planning/WIP material into public navigation, `docs/usage.md` mixes
+common workflow how-to material with runtime-cache and experimental split
+explanations, and `docs/features/watch-mode.md` mixes user how-to content with
+architecture and decision-log details.
+
+Change: do a scoped Diataxis cleanup of the public docs:
+
+- make docs navigation explicit so user docs do not automatically include
+  `docs/goal/`, `docs/plans/`, `docs/wip/`, or superpowers material
+- fix broken overview links without adding future-plan placeholders
+- keep `docs/usage.md` focused on common workflows and link to canonical
+  references for output contracts, configuration, and feature explanations
+- move advanced parallel/runtime/split explanation to the parallel execution
+  feature page
+- trim watch mode to user-facing how-to/troubleshooting and link architecture
+  details to the architecture page
+
+Acceptance criteria:
+- `docs/index.md` and `docs/overview/index.md` no longer link to missing pages.
+- `docs/.pages` explicitly lists public sections and does not rely on `...`
+  to include internal planning directories.
+- `docs/usage.md` is a concise how-to page for common workflows.
+- `docs/features/watch-mode.md` no longer contains architecture diagrams,
+  implementation details, or decision-log sections.
+- Advanced runtime-cache and RSpec split explanation still exists in a more
+  appropriate feature/explanation page.
+- Focused docs checks and a suitable build gate pass.
+
+Before evidence:
+- `docs/index.md` links to missing `overview/project-status.md` and
+  `overview/roadmap.md`.
+- `docs/overview/index.md` repeats the same missing links.
+- `docs/.pages` ends with `...`, which lets internal docs appear in generated
+  navigation.
+- `docs/usage.md` has an `Output Formats` section about internal dual
+  formatters even though `docs/output-contracts.md` is now the canonical
+  reference.
+- `docs/features/watch-mode.md` includes architecture, implementation details,
+  known output limitations, and technical decision-log content in the user
+  feature page.
+
+After evidence:
+- `docs/index.md` and `docs/overview/index.md` link only to existing public
+  pages.
+- `docs/.pages` lists explicit public pages/sections, and `mkdocs.yml` excludes
+  `README.md`, `configuration-test-cases.md`, `goal/**`, `plans/**`,
+  `superpowers/**`, and `wip/**` from the generated public site.
+- `docs/generate_pages_list.py` uses the same skip policy for generated docs
+  listings.
+- `docs/usage.md` is now a common-workflows how-to that links to
+  `docs/configuration.md`, `docs/output-contracts.md`,
+  `docs/features/watch-mode.md`, and `docs/features/parallel-execution.md`
+  instead of duplicating reference details.
+- `docs/features/watch-mode.md` is now a user-facing watch how-to and links to
+  `docs/architecture/plur-watch-architecture.md` for implementation details.
+- Runtime-cache and experimental RSpec split explanation moved to
+  `docs/features/parallel-execution.md`.
+- Verification passed:
+  - `script/docs build`
+  - `script/check-links`
+  - `bin/rake`
+
+Tradeoff: public navigation now hides internal planning/WIP docs from the
+generated site, but the source files remain in the repo. MkDocs revision-date
+parallel processing is disabled because the plugin hit a git-object memory
+failure in this container; serial processing is slower but reliable for this
+docs size.

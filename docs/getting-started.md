@@ -82,6 +82,6 @@ use = "minitest"
 
 ## Next Steps
 
-* [Usage](usage.md) — full command reference
-* [Configuration](configuration.md) — `.plur.toml` options and examples
-* [Watch Mode](features/watch-mode.md) — auto-run tests on file changes
+* [Usage](usage.md) - common workflows
+* [Configuration](configuration.md) - `.plur.toml` options and examples
+* [Watch Mode](features/watch-mode.md) - auto-run tests on file changes

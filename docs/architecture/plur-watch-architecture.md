@@ -24,7 +24,7 @@ The `plur watch` command provides automatic test execution when files change, us
 
 - Maps source files to their corresponding test files
 - Supports Rails conventions (app/models → spec/models)
-- Handles special cases (spec_helper.rb runs all specs)
+- Reports no runnable target when helper files do not match a configured rule
 
 ### 4. Debouncer (`watch/debouncer.go`)
 
@@ -169,9 +169,10 @@ The downloaded binaries are stored in `embedded/watcher/` and embedded into the 
 1. **Direct spec mapping**: `lib/foo.rb` → `spec/foo_spec.rb`
 2. **Rails conventions**: `app/models/user.rb` → `spec/models/user_spec.rb`
 3. **Nested files**: `lib/foo/bar.rb` → `spec/foo/bar_spec.rb`
-4. **Special cases**:
-   - `spec_helper.rb` → runs all specs in `spec/`
-   - `rails_helper.rb` → runs all specs in `spec/`
+4. **Helper files**:
+   - `spec_helper.rb` and `rails_helper.rb` run tests only when a watch rule
+     maps them to existing targets.
+   - Use `plur watch find <helper-file>` to inspect the current project rules.
 
 ## Signal Handling
 

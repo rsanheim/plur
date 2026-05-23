@@ -287,12 +287,8 @@ jobs = ["go-test"]
 ignore = ["vendor/**", "**/testdata/**"]
 ```
 
-### Using Watch Mode
-
-```bash
-plur watch                    # Watch with auto-detected job
-plur watch --use=custom-job   # Watch with specific job
-```
+For watch command examples and troubleshooting, see
+[Watch Mode](features/watch-mode.md).
 
 ## Worker Configuration
 
@@ -318,14 +314,11 @@ export PARALLEL_TEST_PROCESSORS=8
 plur
 ```
 
-## Output Configuration
+## Diagnostic Output
 
-### Formatters
-
-Plur always uses dual formatters:
-
-* Progress formatter (for visual feedback)
-* JSON formatter (for result parsing)
+Stable output formats, stream roles, and exit codes are documented in
+[Output Contracts](output-contracts.md). Use verbosity only for local
+diagnostics; debug output is not a stable machine interface.
 
 ### Verbosity
 
