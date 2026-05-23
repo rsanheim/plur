@@ -1806,3 +1806,45 @@ After evidence:
 - `git diff --check` passed.
 - `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
   examples.
+
+## T51-ARCH - Review Watch Find And Live Watch Planning
+
+Status: verified
+Commit: pending
+
+Pain point: `plur watch find FILE` and live `plur watch` share
+`watch.FindTargetsForFile`, but they do not share the full watch planning path.
+The result is structural drift around selected job lookup, watch directory
+planning, global ignores, event admission, reload behavior, cwd normalization,
+and final command planning.
+
+Change: pause edge-case patching and record the architecture review for a
+multi-phase refactor. The target shape is one shared core path from runtime
+config/session setup through file-event planning. `watch find` presents the
+plan; live watch executes the plan and remains persistent.
+
+Advisor review:
+- Herschel traced live watch from CLI/config through watcher event processing
+  and execution.
+- Hubble traced `watch find` and classified output-only differences versus
+  semantic drift.
+- Locke proposed the implementation approach: extract a pure `watch.Planner`,
+  then add a shared watch session facade.
+
+Decision:
+- T52 starts with characterization tests.
+- Then extract event admission, pure planning, `watch find` rendering from the
+  same plan, and shared session setup in separate DEV phases.
+- Avoid a big-bang event-pipeline rewrite.
+
+Artifacts:
+- Review note: `docs/goal/t51_watch_planning_review.md`
+- Implementation plan:
+  `docs/superpowers/plans/2026-05-23-watch-plan-parity.md`
+
+After evidence:
+- Local flow map reviewed `cmd_watch.go`, `watch_find.go`,
+  `watch/file_event_handler.go`, `watch/find.go`, `watch/processor.go`, and
+  `watch/watcher.go`.
+- Three sub-agent reviewers independently agreed that `FindTargetsForFile` is
+  shared but below the correct abstraction boundary.

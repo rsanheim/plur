@@ -98,3 +98,5 @@ ts=2026-05-23-10:48:57 git_ref=prep-goal git_oid=267cb9e status=start current="T
 ts=2026-05-23-10:52:25 git_ref=prep-goal git_oid=267cb9e status=done current="T49-DEV" msg="watch find text no mappings exits 2"
 ts=2026-05-23-10:53:51 git_ref=prep-goal git_oid=ec47f80 status=start current="T50-DEV" msg="begin dry-run json env dedupe"
 ts=2026-05-23-10:58:28 git_ref=prep-goal git_oid=ec47f80 status=done current="T50-DEV" msg="dry-run env plan dedupes by key"
+ts=2026-05-23-11:03:32 git_ref=prep-goal git_oid=b210c8e status=start current="T51-ARCH" msg="review shared watch planning architecture"
+ts=2026-05-23-11:05:51 git_ref=prep-goal git_oid=b210c8e status=done current="T51-ARCH" msg="watch planning parity review and phase plan recorded"
