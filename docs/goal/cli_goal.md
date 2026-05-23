@@ -20,6 +20,17 @@ After a phase reaches its SUCCESS GATE and is tracked as `done`, make a scoped
 git commit for that phase before starting the next phase. Keep unrelated local
 changes out of that commit.
 
+When a phase touches public help or docs, use the
+[Diátaxis four-quadrant model](https://diataxis.fr/start-here/) as a gate:
+decide whether the change is tutorial, how-to guide, reference, or explanation
+before editing. Keep each doc in one primary role, and prefer linking to the
+canonical doc over duplicating the same knowledge in multiple places. Before
+adding or expanding a help doc, search existing docs for overlapping commands,
+concepts, and output contracts; record the duplication check in the phase note.
+Do not add specs that only lock markdown prose or help-doc wording unless the
+test is protecting generated CLI output, tricky shell output, or a specific
+contract that would otherwise regress silently.
+
 You must NOT move past a phase until the SUCCESS GATE is met. If you are truly blocked, make a note of in your current phase block, and try a different approach.
 
 _Phase Sequencing_
