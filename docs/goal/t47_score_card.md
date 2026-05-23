@@ -1,7 +1,7 @@
 # T47 Score Card - After Output And Watch Flag Cleanup
 
-Status: verified
-Commit: pending
+Status: committed
+Commit: 7f2c7de37b0c881dec7322ee724ce0d0a004f314
 
 ## Context
 
