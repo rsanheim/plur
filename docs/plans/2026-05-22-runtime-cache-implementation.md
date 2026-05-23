@@ -508,7 +508,55 @@ Post-measurement cache cleanup completed so far:
 - [x] Add stable tests for compact JSON output, disabled HTML escaping, and null-cache loading.
 - [x] Re-run the focused cache benchmark and RuboCop dry-run debug benchmarks after `6db5c48`. Current large-cache Go benchmark is ~40.6 ms/op load and ~21.0 ms/op save; RuboCop dry-run debug cache loads are ~45 ms against a 6.1 MB cache.
 - [x] Re-run full RuboCop `--debug` after the compact JSON cleanup. Two fresh runs passed at 31,672 examples with cache load/save of 44.844/31.012 ms and 45.820/34.863 ms.
-- [ ] Decide the Phase B scope. The compact JSON cleanup lowered combined RuboCop cache overhead from ~112 ms to ~76-81 ms, but it remains above the 50 ms large-suite threshold.
+- [x] Decide the Phase B scope. The compact JSON cleanup lowered combined RuboCop cache overhead from ~112 ms to ~76-81 ms, but it remains above the 50 ms large-suite threshold.
+
+Phase B revised plan:
+
+1. **Drop `example_count`.**
+   - Remove `FileEntry.ExampleCount` and stop serializing `example_count`.
+   - Replace any internal diagnostics that need counts with `len(entry.Examples)`.
+   - Update tests that currently assert the field exists or is updated.
+
+2. **Change `Files` from `map[string]*FileEntry` to `map[string]FileEntry`.**
+   - This removes one pointer layer per file and makes the JSON shape/model simpler.
+   - Update lookup code to handle value entries explicitly. For methods that mutate entries in place, assign the modified value back into the map.
+   - Preserve nil-safety at cache boundaries by treating missing map entries as absent; the map value itself is no longer nil.
+
+3. **Change `Examples` from `map[string]*ExampleEntry` to `[]ExampleEntry`.**
+   - Add `ID string` to `ExampleEntry` so RSpec `example.id` remains serialized with each entry.
+   - Replace map iteration in split planning with slice iteration. The splitter already only needs to iterate examples, group by rerunnable selector, and sum runtimes.
+   - For update/merge paths, build an in-memory index only when needed:
+
+     ```go
+     func (f *FileEntry) ExampleIndex() map[string]int {
+         idx := make(map[string]int, len(f.Examples))
+         for i, ex := range f.Examples {
+             if ex.ID != "" {
+                 idx[ex.ID] = i
+             }
+         }
+         return idx
+     }
+     ```
+
+   - Aggregate runs can replace the full slice directly. Partial runs should use the index to update existing examples by ID and append new IDs without pruning examples missing from the partial run.
+
+4. **Full verification and benchmark pass.**
+   - Run the focused Go cache benchmark with `script/benchstat --package ./internal/testruntime --filter 'BenchmarkCache_(Load|Save)LargeRspecCache' --count 10` and compare against a saved pre-Phase-B baseline.
+   - Run targeted Go tests for cache merge/split behavior, then the full Go suite.
+   - Run RuboCop dry-run debug and two full RuboCop `--debug` runs with warmed cache.
+   - Run the full `bin/rake` build before commit/push.
+
+5. **Assess candidate-only example retention if still needed.**
+   - If Phase B steps 1-3 do not bring RuboCop combined load+save under the large-suite threshold, decide whether to persist examples only for true split-candidate files.
+   - This requires a separate design conversation because it changes cache semantics: many files would intentionally have file-level runtime data but no complete example index.
+
+Review notes:
+
+- The revised plan attacks structural overhead before changing retention policy, which is the right order. It should reduce JSON size and allocation churn without changing which files are eligible for splitting.
+- The highest-risk step is map-to-slice for examples. The current map key is the merge identity for partial observations; moving `example.id` into `ExampleEntry.ID` plus a transient `ExampleIndex` preserves that behavior without keeping the serialized map shape.
+- Changing `Files` to a value map is mostly mechanical, but mutation sites need care because `entry := c.Files[path]` returns a copy. Any mutation helper must write the value back.
+- Candidate-only retention should stay Step 5. It is likely the biggest remaining win, but it is also a behavior/policy decision rather than a pure schema cleanup.
 
 Aggregate into:
 
