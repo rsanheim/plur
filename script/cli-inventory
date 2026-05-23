@@ -55,7 +55,7 @@ def prepare_fixture
   write_file(TMP_ROOT.join("custom-job.toml"), <<~TOML)
     [job.custom-job]
     framework = "rspec"
-    cmd = ["bundle", "exec", "rspec", "{{target}}"]
+    cmd = ["bundle", "exec", "rspec"]
     target_pattern = "spec/**/*_spec.rb"
   TOML
 end

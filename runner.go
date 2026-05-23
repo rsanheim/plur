@@ -236,10 +236,6 @@ func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
-		if r.job.UsesTargets() && logger.IsDebugEnabled() {
-			logger.Logger.Debug("ignoring {{target}} tokens in run mode", "job", r.job.Name)
-		}
-
 		args, err := framework.BuildRunArgs(r.job, group.Files, r.config, r.extraArgs)
 		if err != nil {
 			return nil, err

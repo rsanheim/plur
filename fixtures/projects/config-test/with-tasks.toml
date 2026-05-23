@@ -3,15 +3,15 @@ workers = 2
 color = false
 
 [job.rspec]
-cmd = ["bin/rspec", "--format", "documentation", "{{target}}"]
+cmd = ["bin/rspec", "--format", "documentation"]
 target_pattern = "spec/**/*_spec.rb"
 
 [job.minitest]
-cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
+cmd = ["bundle", "exec", "ruby", "-Itest"]
 target_pattern = "test/**/*_test.rb"
 
 [job.custom]
 framework = "passthrough"
-cmd = ["echo", "CUSTOM TASK:", "{{target}}"]
+cmd = ["echo", "CUSTOM TASK:"]
 target_pattern = "spec/**/*_spec.rb"
 # Minimal job definition with required target_pattern for plur spec

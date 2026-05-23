@@ -1,5 +1,5 @@
 use = "minitest"
 
 [job.minitest]
-cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
+cmd = ["bundle", "exec", "ruby", "-Itest"]
 target_pattern = "test/**/*_test.rb"

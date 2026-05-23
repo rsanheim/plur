@@ -91,8 +91,9 @@ Jobs are selected in the following priority order:
 
 In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
 its fixed flags. Plur appends discovered targets automatically (or expands
-Minitest targets into `-e` requires), so public job command examples should not
-include `{{target}}`.
+Minitest targets into `-e` requires), so user job commands must not include
+`{{target}}`. Run mode rejects user job commands that contain `{{target}}` with
+a configuration error.
 
 ### Framework Default File Patterns
 

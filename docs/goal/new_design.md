@@ -624,3 +624,60 @@ generated site, but the source files remain in the repo. MkDocs revision-date
 parallel processing is disabled because the plugin hit a git-object memory
 failure in this container; serial processing is slower but reliable for this
 docs size.
+
+## T20-DEV - Reject Run-Mode `{{target}}` Job Commands
+
+Pain point: T16 made the public docs teach a cleaner rule: one-shot run mode
+appends discovered targets automatically, while `{{target}}` is a watch-mode
+job command template. Runtime still accepts `{{target}}` in run-mode job
+commands and silently strips it, so a config can violate the public model and
+appear to work.
+
+Change: when `plur` / `plur spec` selects a job whose `cmd` contains
+`{{target}}`, fail before planning or running tests with a direct error:
+
+```text
+job "custom" command uses {{target}}, but run mode appends targets automatically; remove {{target}} from job cmd
+```
+
+Watch mode keeps accepting `{{target}}` in job commands. This phase should not
+change `job.BuildJobCmd` or watch execution semantics.
+
+Acceptance criteria:
+- Run mode rejects the selected job when `cmd` contains `{{target}}`.
+- The error explains that run mode appends targets automatically and tells the
+  user to remove `{{target}}`.
+- Watch mode still supports `{{target}}` in job commands.
+- Existing tests that used run-mode `{{target}}` fixtures are updated to the
+  documented config shape.
+- Focused configuration/watch tests and the full build pass.
+
+Before evidence:
+- `runner.go` currently logs `ignoring {{target}} tokens in run mode`.
+- `framework/run_args.go` strips `{{target}}` and appends targets.
+- Integration fixtures and specs still contain run-mode job commands such as
+  `cmd = ["bundle", "exec", "rspec", "--fail-fast", "{{target}}"]`.
+
+After evidence:
+- Added an outside-in integration spec proving run mode rejects a selected
+  user job whose `cmd` contains `{{target}}`.
+- Run mode still works with inherited built-in jobs that internally share
+  `{{target}}` commands with watch mode:
+  `./plur -C fixtures/projects/default-ruby --dry-run spec/models/user_spec.rb`
+  succeeds and appends the target once.
+- Watch mode still supports `{{target}}`: `./plur -C fixtures/projects/default-ruby watch find --format=json lib/calculator.rb`
+  exits 0 with `existing_targets.rspec = ["spec/calculator_spec.rb"]`.
+- Updated old run-mode fixtures and docs to omit `{{target}}` from user job
+  commands.
+- Verification passed:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/configuration_spec.rb:352`
+  - green: same focused spec after implementation
+  - `PLUR_BINARY=$PWD/plur bin/rspec spec/docs/configuration_target_doc_spec.rb spec/integration/spec/configuration_spec.rb spec/integration/spec/framework_output_spec.rb spec/integration/spec/change_dir_config_spec.rb`
+  - `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_find_json_spec.rb spec/integration/watch/watch_config_spec.rb`
+  - `go test -mod=mod ./...`
+  - `bin/rake`
+
+Tradeoff: built-in default jobs still carry internal `{{target}}` tokens so the
+same job definitions continue to work in watch mode. The user-facing rule is
+enforced at the selected run-mode command boundary instead of global config
+validation, because global validation would reject valid watch configs.
