@@ -4,6 +4,7 @@ go = "1.25.8"
 python = "3.14.0"
 goreleaser = "2"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+shellcheck = "0.11.0"
 
 [settings]
 python.uv_venv_auto = true
