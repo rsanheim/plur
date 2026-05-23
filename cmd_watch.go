@@ -303,10 +303,11 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			// Debounce and process
 			debouncer.Debounce([]string{path}, func(paths []string) {
 				result := handler.HandleBatch(paths)
+				printNoRunnableChanges(result.NoRunnableChanges)
 				if result.ShouldReload {
 					triggerReload()
 				}
-				if len(result.ExecutedJobs) > 0 {
+				if len(result.ExecutedJobs) > 0 || len(result.NoRunnableChanges) > 0 {
 					fmt.Println()
 					showPrompt()
 				}
@@ -351,6 +352,21 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				logger.Logger.Error("Failed to reload", "error", err)
 				fmt.Println("Failed to reload:", err)
 				showPrompt()
+			}
+		}
+	}
+}
+
+func printNoRunnableChanges(changes []watch.NoRunnableChange) {
+	for _, change := range changes {
+		switch change.Reason {
+		case watch.NoRunnableNoRule:
+			fmt.Printf("[watch] No matching rule for %s\n", change.Path)
+		case watch.NoRunnableMissingTargets:
+			if len(change.MissingTargets) > 0 {
+				fmt.Printf("[watch] No existing targets for %s (missing: %s)\n", change.Path, strings.Join(change.MissingTargets, ", "))
+			} else {
+				fmt.Printf("[watch] No existing targets for %s\n", change.Path)
 			}
 		}
 	}

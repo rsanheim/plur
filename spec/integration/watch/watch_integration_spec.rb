@@ -78,13 +78,12 @@ RSpec.describe "plur watch integration" do
       spec_helper = project_dir.join("spec/spec_helper.rb")
       original_content = spec_helper.read
 
-      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "No existing targets") do
+      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "No matching rule") do
         spec_helper.write(original_content + "\n# Modified by test")
       end
 
       expect_file_change_logged(result.err, "spec/spec_helper.rb")
-      # spec_helper.rb changes are detected but don't trigger jobs (no matching targets)
-      expect(result.err).to include("No existing targets for file")
+      expect(result.out).to include("[watch] No matching rule for spec/spec_helper.rb")
     end
   end
 

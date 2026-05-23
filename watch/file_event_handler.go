@@ -8,6 +8,19 @@ import (
 // JobExecutor is a function that executes a job with target files
 type JobExecutor func(j job.Job, targets []string, cwd string) error
 
+type NoRunnableReason string
+
+const (
+	NoRunnableNoRule         NoRunnableReason = "no_matching_rule"
+	NoRunnableMissingTargets NoRunnableReason = "missing_targets"
+)
+
+type NoRunnableChange struct {
+	Path           string
+	Reason         NoRunnableReason
+	MissingTargets []string
+}
+
 // FileEventHandler processes file change events and executes jobs
 type FileEventHandler struct {
 	Jobs    map[string]job.Job
@@ -27,8 +40,9 @@ func (h *FileEventHandler) executor() JobExecutor {
 
 // HandleResult contains the outcomes of processing file events
 type HandleResult struct {
-	ExecutedJobs []string // job names that were run
-	ShouldReload bool     // true if any matched rule has Reload: true
+	ExecutedJobs      []string // job names that were run
+	ShouldReload      bool     // true if any matched rule has Reload: true
+	NoRunnableChanges []NoRunnableChange
 }
 
 // HandleBatch processes multiple file paths, aggregates targets, and executes jobs
@@ -40,6 +54,7 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 	// 1. Aggregate results from all source files
 	allExistingTargets := make(map[string][]string)
 	allMatchedRules := []WatchMapping{}
+	noRunnableChanges := []NoRunnableChange{}
 
 	for _, path := range paths {
 		result, err := FindTargetsForFile(path, h.Jobs, h.Watches, h.CWD)
@@ -51,8 +66,23 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 		// Always collect matched rules (needed for reload detection)
 		allMatchedRules = append(allMatchedRules, result.MatchedRules...)
 
+		if len(result.MatchedRules) == 0 {
+			noRunnableChanges = append(noRunnableChanges, NoRunnableChange{
+				Path:   path,
+				Reason: NoRunnableNoRule,
+			})
+			continue
+		}
+
 		if !result.HasExistingTargets() {
 			logger.Logger.Debug("No existing targets for file", "path", path)
+			if !hasReloadRule(result.MatchedRules) {
+				noRunnableChanges = append(noRunnableChanges, NoRunnableChange{
+					Path:           path,
+					Reason:         NoRunnableMissingTargets,
+					MissingTargets: missingTargetList(result.MissingTargets),
+				})
+			}
 			continue
 		}
 
@@ -80,7 +110,7 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 	}
 
 	if len(allExistingTargets) == 0 {
-		return HandleResult{ShouldReload: shouldReload}
+		return HandleResult{ShouldReload: shouldReload, NoRunnableChanges: noRunnableChanges}
 	}
 
 	// 2. Dedupe targets per job
@@ -113,7 +143,25 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 	}
 
 	return HandleResult{
-		ExecutedJobs: executedJobs,
-		ShouldReload: shouldReload,
+		ExecutedJobs:      executedJobs,
+		ShouldReload:      shouldReload,
+		NoRunnableChanges: noRunnableChanges,
 	}
+}
+
+func hasReloadRule(rules []WatchMapping) bool {
+	for _, rule := range rules {
+		if rule.Reload {
+			return true
+		}
+	}
+	return false
+}
+
+func missingTargetList(targetsByJob map[string][]string) []string {
+	var targets []string
+	for _, jobTargets := range targetsByJob {
+		targets = append(targets, jobTargets...)
+	}
+	return Deduplicate(targets)
 }

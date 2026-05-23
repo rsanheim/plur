@@ -198,3 +198,46 @@ Usage: plur watch [flags]
 
 Tradeoff: help gets a thin custom layer over Kong output. The detailed flags
 and command lists still come from Kong so drift stays limited.
+
+## T9-DEV - Surface Live Watch No-Op Feedback
+
+Pain point: watch mode can observe a file change and then appear to do nothing.
+For example, `spec/spec_helper.rb` is under a watched directory, but the
+built-in spec rule does not map it to a runnable target. Today that is only
+visible in debug logs or via a separate `watch find` command.
+
+Change: after a debounced live watch batch, print concise normal-output
+messages when a changed path has no runnable result:
+
+```text
+[watch] No matching rule for spec/spec_helper.rb
+[watch] No existing targets for lib/missing.rb (missing: spec/missing_spec.rb)
+```
+
+The event handler should return no-op details rather than printing directly,
+so watch mode remains responsible for user-facing output and tests can inspect
+the planning result.
+
+Acceptance criteria:
+- A live watched change with no matching rule prints a normal-output no-op
+  message.
+- A matched watch rule with only missing targets prints the changed path and
+  missing target names.
+- Changes that run jobs do not print no-op messages.
+- Focused watch tests and the full build pass.
+
+Before evidence:
+- `plur watch find spec/spec_helper.rb` reported `found rules count=0`, but
+  live watch did not give the user a normal-output explanation for that no-op.
+
+After evidence:
+
+```text
+[watch] No matching rule for spec/spec_helper.rb
+```
+
+The focused integration check is
+`PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_integration_spec.rb:75`.
+
+Tradeoff: watch mode may print more messages during noisy save bursts. Keep the
+messages per debounced batch, concise, and only for paths that produce no run.

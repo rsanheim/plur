@@ -243,5 +243,37 @@ func TestFileEventHandler_HandleBatch_NoMatchingTargets(t *testing.T) {
 	result := handler.HandleBatch([]string{"lib/user.rb"})
 
 	assert.Empty(t, result.ExecutedJobs, "No jobs should run when target doesn't exist")
+	assert.Equal(t, []NoRunnableChange{
+		{
+			Path:           "lib/user.rb",
+			Reason:         NoRunnableMissingTargets,
+			MissingTargets: []string{"spec/user_spec.rb"},
+		},
+	}, result.NoRunnableChanges)
 	assert.Len(t, mock.calls, 0)
+}
+
+func TestFileEventHandler_HandleBatch_NoMatchingRule(t *testing.T) {
+	tmpDir := t.TempDir()
+	handler := &FileEventHandler{
+		Jobs: map[string]job.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"rspec", "{{target}}"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:    "spec-files",
+				Source:  "spec/**/*_spec.rb",
+				Targets: []string{"[source file]"},
+				Jobs:    []string{"rspec"},
+			},
+		},
+		CWD: tmpDir,
+	}
+
+	result := handler.HandleBatch([]string{"spec/spec_helper.rb"})
+
+	assert.Empty(t, result.ExecutedJobs)
+	assert.Equal(t, []NoRunnableChange{
+		{Path: "spec/spec_helper.rb", Reason: NoRunnableNoRule},
+	}, result.NoRunnableChanges)
 }
