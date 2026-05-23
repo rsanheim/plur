@@ -89,7 +89,10 @@ Jobs are selected in the following priority order:
 | `exclude_patterns` | string[] | Glob patterns to exclude from discovered test files | No | `[]` |
 | `env` | string[] | Environment variables (e.g., `["VAR=value"]`) | No | `[]` |
 
-**Note**: In run mode (`plur` / `plur spec`), any `{{target}}` tokens in `cmd` are ignored and targets are always appended (or expanded into Minitest `-e` requires). In watch mode, `{{target}}` is honored.
+In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
+its fixed flags. Plur appends discovered targets automatically (or expands
+Minitest targets into `-e` requires), so public job command examples should not
+include `{{target}}`.
 
 ### Framework Default File Patterns
 
@@ -253,6 +256,11 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 
 * `{{match}}` - The matched portion of the source path (e.g., `lib/foo.rb` → `foo`)
 * `{{dir_relative}}` - The relative directory of the matched file
+
+Watch mode can also use `{{target}}` inside a job command. In watch mode only,
+Plur replaces `{{target}}` with the targets resolved by the matching watch
+rule. If a watch job command has no `{{target}}`, Plur runs that job once
+without target arguments.
 
 ### Watch Configuration Examples
 

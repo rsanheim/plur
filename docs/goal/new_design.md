@@ -458,3 +458,40 @@ After evidence:
 
 Tradeoff: this is documentation, not a new guarantee for every human line.
 Keep the machine contract limited to JSON plan keys and documented exit codes.
+
+## T16-DEV - Make `{{target}}` A Watch-Only Public Concept
+
+Pain point: The implementation still has a split: one-shot run mode builds
+framework-aware commands and appends discovered targets, while watch mode
+honors `{{target}}` in job commands. The old configuration docs described that
+split but still made `{{target}}` feel like something users should reason
+about in run-mode job commands.
+
+Change: tighten the public configuration docs:
+
+- describe run mode as appending discovered targets automatically
+- tell users not to put `{{target}}` in run-mode job commands
+- describe `{{target}}` as a watch-mode job command template only
+- keep `{{match}}` and `{{dir_relative}}` as watch target templates
+
+This is a documentation/coherence phase, not an execution change. The runtime
+still tolerates old configs, but public docs should teach the cleaner model.
+
+Acceptance criteria:
+- `docs/configuration.md` says run-mode `cmd` should omit `{{target}}`.
+- `docs/configuration.md` labels `{{target}}` as watch-mode job-command
+  behavior.
+- Public config examples continue to omit `{{target}}` from job commands.
+- Focused doc specs and the full build pass.
+
+Before evidence:
+- T12 kept conceptual coherence at 3 because `{{target}}` behavior differed
+  across run and watch and remained hard to explain.
+
+After evidence:
+- The configuration docs present one simple run-mode rule: targets are appended
+  automatically.
+
+Tradeoff: this does not remove the internal compatibility path yet. A later
+phase can reject or migrate unsupported `{{target}}` usage once the public docs
+have stopped teaching it.
