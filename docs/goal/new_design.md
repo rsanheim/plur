@@ -495,3 +495,60 @@ After evidence:
 Tradeoff: this does not remove the internal compatibility path yet. A later
 phase can reject or migrate unsupported `{{target}}` usage once the public docs
 have stopped teaching it.
+
+## T17-DEV - Add Structured `watch find` Output
+
+Pain point: T11 made `watch find` much better for humans, but T12 and Darwin's
+review correctly kept composability at 3 because scripts still have to parse
+watch prose and exit codes. T13 added one-shot JSON; watch previews should have
+the same escape hatch.
+
+Change: add a command-local format flag:
+
+```bash
+plur watch find --format=json spec/spec_helper.rb
+```
+
+The JSON should go to stdout and include:
+
+- output `version`
+- `mode = "watch_find"`
+- changed `file`
+- matched rules
+- existing targets by job
+- missing targets by job
+- the exit code Plur will use
+
+Human `watch find` output stays the default. Exit code 2 still means no
+runnable target.
+
+Acceptance criteria:
+- `watch find --format=json` emits parseable JSON on stdout.
+- No-rule and missing-target cases still exit 2 and include structured details.
+- Text `watch find` output remains unchanged by default.
+- Output contract docs mention the structured watch format.
+- Public docs change is treated as reference material, with an overlap check
+  against existing user-facing docs before adding new prose.
+- Focused integration tests, Go tests, and the full build pass.
+
+Before evidence:
+- `docs/output-contracts.md` explicitly said watch-find human text was not yet
+  a machine API.
+
+After evidence:
+- `watch find --format=json` provides a stable machine-readable watch preview.
+- Documentation check: the only public-doc change is in
+  `docs/output-contracts.md`, which is the canonical reference for streams,
+  exit codes, and machine formats. `docs/features/watch-mode.md` and
+  `docs/usage.md` remain how-to oriented and still link users to `watch find`
+  without duplicating JSON key lists.
+
+Tradeoff: this creates a second structured output contract. Keep it aligned
+with the dry-run plan shape where practical and do not add a full shared plan
+abstraction yet.
+
+Follow-up candidate: run a dedicated user-facing documentation audit phase.
+Use Diátaxis to classify `docs/getting-started.md`, `docs/usage.md`,
+`docs/configuration.md`, `docs/output-contracts.md`, and feature docs; then
+trim duplicated command explanations and move detailed facts to canonical
+reference pages.

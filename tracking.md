@@ -30,3 +30,5 @@ ts=2026-05-23-05:33:53 git_ref=prep-goal git_oid=282f11e status=start current="T
 ts=2026-05-23-05:35:52 git_ref=prep-goal git_oid=282f11e status=done current="T15-DEV" msg="output contracts documented and verified"
 ts=2026-05-23-05:36:12 git_ref=prep-goal git_oid=b03395e status=start current="T16-DEV" msg="begin target template semantics cleanup"
 ts=2026-05-23-05:38:42 git_ref=prep-goal git_oid=b03395e status=done current="T16-DEV" msg="target template public semantics clarified"
+ts=2026-05-23-05:39:13 git_ref=prep-goal git_oid=7acaaf0 status=start current="T17-DEV" msg="begin structured watch find output"
+ts=2026-05-23-05:42:37 git_ref=prep-goal git_oid=7acaaf0 status=done current="T17-DEV" msg="structured watch find output implemented and verified"

@@ -78,8 +78,23 @@ Exit code 0 means at least one existing target would run. Exit code 2 means no
 runnable target exists for that changed file. Exit code 1 is reserved for
 errors such as invalid configuration.
 
-`watch find` human text is not yet a machine API. Prefer the dry-run JSON plan
-for one-shot automation until watch gets structured output.
+Use JSON when a script or agent needs a stable watch preview:
+
+```bash
+plur watch find --format=json spec/spec_helper.rb
+```
+
+Stable top-level keys:
+
+- `version`: output contract version
+- `mode`: `watch_find`
+- `file`: changed file path
+- `matched_rules`: watch rules that matched the file
+- `existing_targets`: targets that exist, grouped by job
+- `missing_targets`: targets that do not exist, grouped by job
+- `exit_code`: the exit code Plur will use for this preview
+
+Human `watch find` text remains terminal-oriented and is not the machine API.
 
 ## Debug Output
 

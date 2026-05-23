@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,9 +16,14 @@ import (
 // Shows what would be executed for a given file change
 type WatchFindCmd struct {
 	FilePath string `arg:"" help:"File path to check for watch mappings" required:"true"`
+	Format   string `help:"Output format: text or json" default:"text" enum:"text,json"`
 }
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
+	if cmd.Format != "text" && cmd.Format != "json" {
+		return fmt.Errorf("--format must be text or json")
+	}
+
 	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
 	if err != nil {
 		return fmt.Errorf("failed to select watch job: %w", err)
@@ -48,7 +54,9 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		}
 	}
 
-	fmt.Printf("[watch] Checking %s\n", filePath)
+	if cmd.Format == "text" {
+		fmt.Printf("[watch] Checking %s\n", filePath)
+	}
 
 	// Use shared find logic
 	findResult, err := watch.FindTargetsForFile(filePath, jobs, watches, cwd)
@@ -56,7 +64,17 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return fmt.Errorf("error processing file: %w", err)
 	}
 
-	// Show matched rules
+	exitCode := watchFindExitCode(findResult)
+	if cmd.Format == "json" {
+		if err := writeWatchFindPlan(filePath, findResult, exitCode); err != nil {
+			return err
+		}
+		if exitCode != 0 {
+			return ExitCode{Code: exitCode}
+		}
+		return nil
+	}
+
 	if len(findResult.MatchedRules) == 0 {
 		fmt.Printf("[watch] No matching rule for %s\n", filePath)
 		return ExitCode{Code: 2}
@@ -75,6 +93,61 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	}
 
 	return nil
+}
+
+type WatchFindPlan struct {
+	Version         int                 `json:"version"`
+	Mode            string              `json:"mode"`
+	File            string              `json:"file"`
+	MatchedRules    []WatchFindPlanRule `json:"matched_rules"`
+	ExistingTargets map[string][]string `json:"existing_targets"`
+	MissingTargets  map[string][]string `json:"missing_targets"`
+	ExitCode        int                 `json:"exit_code"`
+}
+
+type WatchFindPlanRule struct {
+	Name   string   `json:"name"`
+	Source string   `json:"source"`
+	Jobs   []string `json:"jobs"`
+	Target string   `json:"target"`
+}
+
+func watchFindExitCode(result *watch.FindResult) int {
+	if result.HasExistingTargets() {
+		return 0
+	}
+	return 2
+}
+
+func writeWatchFindPlan(filePath string, result *watch.FindResult, exitCode int) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(buildWatchFindPlan(filePath, result, exitCode))
+}
+
+func buildWatchFindPlan(filePath string, result *watch.FindResult, exitCode int) WatchFindPlan {
+	return WatchFindPlan{
+		Version:         1,
+		Mode:            "watch_find",
+		File:            filePath,
+		MatchedRules:    watchFindPlanRules(result.MatchedRules),
+		ExistingTargets: cloneTargetMap(result.ExistingTargets),
+		MissingTargets:  cloneTargetMap(result.MissingTargets),
+		ExitCode:        exitCode,
+	}
+}
+
+func watchFindPlanRules(rules []watch.WatchMapping) []WatchFindPlanRule {
+	planRules := make([]WatchFindPlanRule, 0, len(rules))
+	for _, rule := range rules {
+		planRules = append(planRules, WatchFindPlanRule{
+			Name:   rule.Name,
+			Source: rule.Source,
+			Jobs:   append([]string{}, rule.Jobs...),
+			Target: formatWatchFindTargets(rule.Targets),
+		})
+	}
+	return planRules
 }
 
 func printWatchFindRules(rules []watch.WatchMapping) {
@@ -141,4 +214,14 @@ func flattenTargetMap(values map[string][]string) []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+func cloneTargetMap(values map[string][]string) map[string][]string {
+	cloned := make(map[string][]string, len(values))
+	for _, key := range sortedMapKeys(values) {
+		targets := append([]string{}, values[key]...)
+		slices.Sort(targets)
+		cloned[key] = targets
+	}
+	return cloned
 }
