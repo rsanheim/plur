@@ -1081,3 +1081,31 @@ Error: file not found: test; `test` is a target path, not a Plur command. Create
 - In `fixtures/projects/minitest-success`, `./plur -C fixtures/projects/minitest-success test --dry-run`
   still selects `minitest` by explicit patterns and expands `test/` to the two
   fixture test files.
+
+## T32-DEV - Clarify Output Error Contracts
+
+Pain point: the output contract docs still implied that exit code 1 only means
+selected work ran and failed. Recent CLI cleanup made command errors plain and
+less log-like, but those errors still exit 1 and may happen before JSON output
+exists. That made the docs overpromise for automation.
+
+Change: clarify that exit code 1 can mean either selected work failed or Plur
+could not plan/run the command. Document that JSON modes emit structured stdout
+only after Plur successfully builds a dry-run/watch plan; command and
+configuration errors remain plain stderr. Also state directly that scripts
+should execute from `argv` and `env`, not by parsing the human `shell` string.
+
+Acceptance criteria:
+- `docs/output-contracts.md` says exit code 1 can cover failed selected work or
+  planning/running errors.
+- Dry-run JSON and watch-find JSON sections document stderr-only command/config
+  errors.
+- The dry-run worker schema says `shell` is for humans and scripts should use
+  `argv` and `env`.
+- Focused docs spec, link check, and full build pass.
+
+Before evidence:
+- `docs/output-contracts.md` said: "Exit code 1 means selected work ran and
+  failed."
+- `./plur watch find --format=json --use=does-not-exist spec/integration/spec/help_spec.rb`
+  exits 1 with empty stdout and a plain stderr `Error: ...` line.

@@ -24,8 +24,10 @@ exit 0 while printing a warning:
 [warn] --exclude-pattern '*user*/_spec.rb' matched no selected files
 ```
 
-Exit code 0 means all selected work passed. Exit code 1 means selected work ran
-and failed. Other non-zero exit codes are command or configuration errors.
+Exit code 0 means all selected work passed or the requested plan/preview was
+produced. Exit code 1 can mean selected work failed or Plur could not plan/run
+the command because of user input, configuration, or environment.
+Command-specific non-zero codes are documented below.
 
 ## Dry-Run Text
 
@@ -46,7 +48,9 @@ plur --dry-run --dry-run-format=json spec/calculator_spec.rb
 ```
 
 The JSON plan is written to stdout. Human status, version, and warnings remain
-on stderr.
+on stderr. Structured JSON is emitted only after Plur successfully builds the
+plan. Command and configuration errors in JSON modes still write plain text to
+stderr and may leave stdout empty.
 
 Stable top-level keys:
 
@@ -64,7 +68,9 @@ Worker entries include:
 - `argv`: command argv; this is the canonical command field for scripts
 - `env`: Plur-managed environment entries; this is the canonical environment
   field for scripts
-- `shell`: quoted, copyable command string for humans
+- `shell`: quoted, copyable command string for humans.
+
+Do not parse `shell`; use `argv` and `env` when executing from a script.
 
 ## Watch Find
 
@@ -84,6 +90,9 @@ Use JSON when a script or agent needs a stable watch preview:
 ```bash
 plur watch find --format=json spec/spec_helper.rb
 ```
+
+Command and configuration errors in JSON modes still write plain text to stderr
+and may leave stdout empty.
 
 Stable top-level keys:
 
