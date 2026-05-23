@@ -1,12 +1,12 @@
 package testruntime
 
 import (
-	"fmt"
-	json "github.com/goccy/go-json"
 	"os"
 	"path/filepath"
 	"slices"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 // SchemaVersion is the on-disk schema version Plur reads and writes.
@@ -66,17 +66,9 @@ func NewCache() *Cache {
 // missing files, v1 caches (map[string]float64), corrupt JSON, and entries
 // with an unsupported schema_version.
 func LoadCache(path string) (cache *Cache) {
-	return loadCache(path, false)
-}
-
-func loadCache(path string, printTiming bool) (cache *Cache) {
-	start := time.Now()
 	defer func() {
 		if cache == nil {
 			cache = NewCache()
-		}
-		if printTiming {
-			printCacheTiming("loaded", start, path, cache)
 		}
 	}()
 
@@ -104,12 +96,6 @@ func loadCache(path string, printTiming bool) (cache *Cache) {
 // directory + rename into place. The caller supplies the current plur version
 // to record.
 func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time) error {
-	return saveCache(cache, path, plurVersion, cwd, lastRunAt, false)
-}
-
-func saveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time, printTiming bool) error {
-	start := time.Now()
-
 	if cache.Meta.SchemaVersion == 0 {
 		cache.Meta.SchemaVersion = SchemaVersion
 	}
@@ -151,33 +137,7 @@ func saveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time,
 	}
 	success = true
 
-	if printTiming {
-		printCacheTiming("saved", start, path, cache)
-	}
 	return nil
-}
-
-func printCacheTiming(event string, start time.Time, path string, cache *Cache) {
-	fmt.Fprintf(os.Stderr, "runtimeCache %s duration=%s path=%q files=%d examples=%d\n",
-		event,
-		time.Since(start),
-		path,
-		len(cache.Files),
-		countExamples(cache),
-	)
-}
-
-// countExamples sums per-file example counts across the cache. Used for the
-// timing output fields on load and save.
-func countExamples(c *Cache) int {
-	if c == nil {
-		return 0
-	}
-	var n int
-	for _, f := range c.Files {
-		n += len(f.Examples)
-	}
-	return n
 }
 
 // FileRuntimes returns a map of project-relative file paths to total file

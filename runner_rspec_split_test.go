@@ -54,7 +54,7 @@ func TestExpandRspecSplits_SplitsLongFile(t *testing.T) {
 	runner, err := NewRunner(cfg, []string{specPath}, rspecJob, nil)
 	require.NoError(t, err)
 
-	// Seed v2 cache with a long-running file and 4 example lines.
+	// Seed the runtime cache with a long-running file and 4 example lines.
 	cache := runner.tracker.Cache()
 	mtime, size, ok := testruntime.SourceFreshness(specPath)
 	require.True(t, ok)

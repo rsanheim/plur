@@ -190,6 +190,16 @@ func TestDiscover_FileLinePassthrough(t *testing.T) {
 	assert.Equal(t, []string{"spec/foo_spec.rb:12"}, files)
 }
 
+func TestDiscover_ExcludePatternMatchesUnderlyingFileForFileLineTarget(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t, "spec/foo_spec.rb")
+
+	j := job.Job{Name: "rspec", Framework: "rspec"}
+	files, err := Discover(j, []string{"spec/foo_spec.rb:12"}, []string{"spec/foo_spec.rb"})
+	require.NoError(t, err)
+	assert.Empty(t, files)
+}
+
 func TestDiscover_MultiFileLinePassthrough(t *testing.T) {
 	discoverChdir(t)
 	writeStubFiles(t, "spec/slow_spec.rb")

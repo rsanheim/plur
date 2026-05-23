@@ -25,30 +25,18 @@ type RuntimeTracker struct {
 	pendingExamples map[string]map[string]*ExampleEntry // collected this run, file -> example.id -> entry
 	runtimeFile     string
 	cwd             string
-	printTimings    bool
 }
 
 // NewRuntimeTracker creates a tracker, computing the project-specific cache
 // file path and loading any existing runtime data. Missing, v1, or corrupt cache
 // files are silently replaced by an empty cache.
 func NewRuntimeTracker(runtimeDir string) (*RuntimeTracker, error) {
-	return newRuntimeTracker(runtimeDir, false)
-}
-
-// NewRuntimeTrackerWithTimings creates a tracker that reports cache load/save
-// timings to stderr. Use this for real user-facing runs, not dry-run or
-// diagnostic paths.
-func NewRuntimeTrackerWithTimings(runtimeDir string) (*RuntimeTracker, error) {
-	return newRuntimeTracker(runtimeDir, true)
-}
-
-func newRuntimeTracker(runtimeDir string, printTimings bool) (*RuntimeTracker, error) {
 	runtimeFile, cwd, err := computeRuntimeFilePath(runtimeDir)
 	if err != nil {
 		return nil, err
 	}
 
-	cache := loadCache(runtimeFile, printTimings)
+	cache := LoadCache(runtimeFile)
 
 	return &RuntimeTracker{
 		cache:           cache,
@@ -56,7 +44,6 @@ func newRuntimeTracker(runtimeDir string, printTimings bool) (*RuntimeTracker, e
 		pendingExamples: make(map[string]map[string]*ExampleEntry),
 		runtimeFile:     runtimeFile,
 		cwd:             cwd,
-		printTimings:    printTimings,
 	}, nil
 }
 
@@ -149,7 +136,7 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 		rt.cache.MergeObservations(filePath, examples)
 	}
 
-	return saveCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC(), rt.printTimings)
+	return SaveCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
 }
 
 // PendingFileRuntimes returns a copy of the file-runtime observations

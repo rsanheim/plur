@@ -40,12 +40,7 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []
 	if err != nil {
 		return nil, err
 	}
-	var tracker *testruntime.RuntimeTracker
-	if !cfg.DryRun {
-		tracker, err = testruntime.NewRuntimeTrackerWithTimings(cfg.RuntimeDir)
-	} else {
-		tracker, err = testruntime.NewRuntimeTracker(cfg.RuntimeDir)
-	}
+	tracker, err := testruntime.NewRuntimeTracker(cfg.RuntimeDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runtime tracker: %w", err)
 	}
@@ -149,7 +144,7 @@ func (r *Runner) shouldExpandSplits() bool {
 }
 
 // expandRspecSplits walks the file list and replaces long-pole files with
-// focused file:line targets when the v2 cache has fresh example lines for
+// focused file:line targets when the runtime cache has fresh example lines for
 // them. Files that cannot be split (no fresh cache, too few examples, under
 // the per-worker budget) pass through unchanged.
 //
