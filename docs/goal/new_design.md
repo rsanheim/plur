@@ -1751,8 +1751,8 @@ After evidence:
 
 ## T50-DEV - Deduplicate Dry-Run JSON Environment Entries
 
-Status: verified
-Commit: pending
+Status: committed
+Commit: aab8066118cf0839ec1bb00cb4081270a1698660
 
 Pain point: dry-run JSON is the script-friendly one-shot plan, but a configured
 job can make `workers[].env` ambiguous by repeating an environment key. The
