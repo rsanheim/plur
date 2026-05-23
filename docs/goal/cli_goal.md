@@ -16,6 +16,10 @@ For each significant status (i.e start|done on a phase) you **must** annotate vi
 script/track-goal --current TX-FOO -s done >> tracking.md
 ```
 
+After a phase reaches its SUCCESS GATE and is tracked as `done`, make a scoped
+git commit for that phase before starting the next phase. Keep unrelated local
+changes out of that commit.
+
 You must NOT move past a phase until the SUCCESS GATE is met. If you are truly blocked, make a note of in your current phase block, and try a different approach.
 
 _Phase Sequencing_

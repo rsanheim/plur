@@ -1,0 +1,235 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "open3"
+require "shellwords"
+require "timeout"
+require "tmpdir"
+
+ROOT = Pathname.new(__dir__).parent.realpath
+TMP_PARENT = ROOT.join("tmp")
+FileUtils.mkdir_p(TMP_PARENT)
+
+TMP_ROOT = Pathname.new(Dir.mktmpdir("cli-inventory-", TMP_PARENT.to_s))
+PROJECT = TMP_ROOT.join("project")
+RUBOCOOP = TMP_ROOT.join("home", "src", "oss", "rubocoop")
+PLUR = ENV.fetch("PLUR_BINARY", ROOT.join("plur").to_s)
+DEMO = ENV["PLUR_DEMO"] == "1"
+
+CommandRun = Struct.new(:argv, :cwd, :env, keyword_init: true)
+InventoryCase = Struct.new(:label, :intent, :runs, keyword_init: true)
+
+def write_file(path, content)
+  FileUtils.mkdir_p(File.dirname(path))
+  File.write(path, content)
+end
+
+def prepare_fixture
+  FileUtils.mkdir_p([PROJECT, RUBOCOOP, TMP_ROOT.join("home"), TMP_ROOT.join("plur-home")])
+
+  {
+    "spec/calculator_spec.rb" => "RSpec.describe('calculator') { it('adds') { expect(1 + 1).to eq(2) } }\n",
+    "spec/models/user_spec.rb" => "RSpec.describe('user') { it('has a name') { expect('Ada').to be_a(String) } }\n",
+    "spec/services/email_service_spec.rb" => "RSpec.describe('email') { it('formats') { expect('a@b.test').to include('@') } }\n",
+    "test/calculator_test.rb" => "require 'minitest/autorun'\nclass CalculatorTest < Minitest::Test; def test_adds; assert_equal 2, 1 + 1; end; end\n",
+    "foo/baz/other-file.go" => "package example\n",
+    "foo/baz/other_test.rs" => "#[test]\nfn works() { assert!(true); }\n",
+    "foo_spec.rb" => "RSpec.describe('root foo') { it('passes') { expect(true).to eq(true) } }\n",
+    "bar_spec.rb" => "RSpec.describe('root bar') { it('passes') { expect(true).to eq(true) } }\n",
+    "foo/1_spec.rb" => "RSpec.describe('one') { it('passes') { expect(true).to eq(true) } }\n",
+    "foo/2_spec.rb" => "RSpec.describe('two') { it('passes') { expect(true).to eq(true) } }\n",
+    "foo/3_spec.rb" => "RSpec.describe('three') { it('passes') { expect(true).to eq(true) } }\n",
+    "foo/a_spec.rb" => "RSpec.describe('nested foo') { it('passes') { expect(true).to eq(true) } }\n",
+    "other/b_spec.rb" => "RSpec.describe('other') { it('passes') { expect(true).to eq(true) } }\n"
+  }.each do |relative, content|
+    write_file(PROJECT.join(relative), content)
+  end
+
+  write_file(RUBOCOOP.join("spec/project_spec.rb"), "RSpec.describe('rubocoop') { it('passes') { expect(true).to eq(true) } }\n")
+
+  write_file(TMP_ROOT.join("custom-job.toml"), <<~TOML)
+    [job.custom-job]
+    framework = "rspec"
+    cmd = ["bundle", "exec", "rspec", "{{target}}"]
+    target_pattern = "spec/**/*_spec.rb"
+  TOML
+end
+
+def plur(*args)
+  [PLUR, *args]
+end
+
+def run(argv, cwd: PROJECT, env: {})
+  CommandRun.new(argv: argv, cwd: cwd, env: env)
+end
+
+def cases
+  custom_config = TMP_ROOT.join("custom-job.toml").to_s
+  [
+    InventoryCase.new(
+      label: "plur",
+      intent: "Default invocation should autodetect the primary framework and all runnable targets.",
+      runs: [run(plur("--dry-run"))]
+    ),
+    InventoryCase.new(
+      label: "plur spec",
+      intent: "Explicit spec command should be equivalent to the default RSpec run.",
+      runs: [run(plur("spec", "--dry-run"))]
+    ),
+    InventoryCase.new(
+      label: "plur spec foo_spec.rb",
+      intent: "A single explicit spec file should narrow the run to that target.",
+      runs: [run(plur("spec", "--dry-run", "spec/calculator_spec.rb"))]
+    ),
+    InventoryCase.new(
+      label: "plur test",
+      intent: "A test directory should select the Minitest-style job instead of RSpec.",
+      runs: [run(plur("--dry-run", "test"))]
+    ),
+    InventoryCase.new(
+      label: "plur test foo_test.rb",
+      intent: "A single explicit test file should run through the Minitest-style job.",
+      runs: [run(plur("--dry-run", "test/calculator_test.rb"))]
+    ),
+    InventoryCase.new(
+      label: "plur spec/**/*.rb",
+      intent: "A recursive quoted glob should be expanded by Plur, not by the shell.",
+      runs: [run(plur("--dry-run", "spec/**/*.rb"))]
+    ),
+    InventoryCase.new(
+      label: "plur --use custom-job",
+      intent: "An explicit configured job should override autodetection.",
+      runs: [run(plur("--dry-run", "--use", "custom-job"), env: {"PLUR_CONFIG_FILE" => custom_config})]
+    ),
+    InventoryCase.new(
+      label: "plur foo/baz/other-file.go",
+      intent: "A non-test Go file shows how explicit unknown-looking files are classified.",
+      runs: [run(plur("--dry-run", "foo/baz/other-file.go"))]
+    ),
+    InventoryCase.new(
+      label: "plur foo/baz/other_test.rs",
+      intent: "A Rust-looking test path shows whether target selection is language-aware or passthrough.",
+      runs: [run(plur("--dry-run", "foo/baz/other_test.rs"))]
+    ),
+    InventoryCase.new(
+      label: "plur foo_spec.rb bar_spec.rb",
+      intent: "Multiple explicit spec files should stay in one RSpec run split across workers.",
+      runs: [run(plur("--dry-run", "foo_spec.rb", "bar_spec.rb"))]
+    ),
+    InventoryCase.new(
+      label: "plur -C ~/src/oss/rubocoop spec",
+      intent: "-C should change project context before config and target discovery; this demo uses an isolated fixture at the equivalent path.",
+      runs: [run(plur("-C", RUBOCOOP.to_s, "spec", "--dry-run"), cwd: ROOT)]
+    ),
+    InventoryCase.new(
+      label: "plur spec --exclude-pattern '*user*/_spec.rb'",
+      intent: "A command-level exclude pattern should show which files remain and whether the pattern shape is easy to get right.",
+      runs: [run(plur("spec", "--dry-run", "--exclude-pattern", "*user*/_spec.rb"))]
+    ),
+    InventoryCase.new(
+      label: "plur foo/**/*_spec.rb other/**/*_spec.rb",
+      intent: "Multiple recursive globs should combine, sort, and dedupe discovered targets.",
+      runs: [run(plur("--dry-run", "foo/**/*_spec.rb", "other/**/*_spec.rb"))]
+    ),
+    InventoryCase.new(
+      label: "plur --help",
+      intent: "Top-level help should make the command model and most important flags obvious.",
+      runs: [run(plur("--help"), cwd: ROOT)]
+    ),
+    InventoryCase.new(
+      label: "plur help spec",
+      intent: "Help-as-command should expose spec-specific arguments and flags.",
+      runs: [run(plur("help", "spec"), cwd: ROOT)]
+    ),
+    InventoryCase.new(
+      label: "plur \"foo/(1|2|3|)_spec.rb\"",
+      intent: "Regex-like user intent is approximated with Plur's supported doublestar brace glob syntax.",
+      runs: [run(plur("--dry-run", "foo/{1,2,3,}_spec.rb"))]
+    ),
+    InventoryCase.new(
+      label: "plur watch",
+      intent: "Watch is persistent, so this inventories its help shape and uses watch find as a safe preview of what a change would run.",
+      runs: [
+        run(plur("watch", "--help"), cwd: ROOT),
+        run(plur("watch", "find", "spec/calculator_spec.rb"))
+      ]
+    )
+  ]
+end
+
+def base_env
+  {
+    "HOME" => TMP_ROOT.join("home").to_s,
+    "PLUR_HOME" => TMP_ROOT.join("plur-home").to_s,
+    "PLUR_CONFIG_FILE" => nil
+  }
+end
+
+def display_command(argv)
+  pretty = argv.dup
+  pretty[0] = "plur" if pretty[0] == PLUR
+  Shellwords.join(pretty)
+end
+
+def execute(run)
+  Timeout.timeout(15) do
+    stdout, stderr, status = Open3.capture3(base_env.merge(run.env), *run.argv, chdir: run.cwd.to_s)
+    {stdout: stdout, stderr: stderr, status: status.exitstatus}
+  end
+rescue Timeout::Error
+  {stdout: "", stderr: "timed out after 15 seconds\n", status: 124}
+end
+
+def first_signal(result)
+  text = [result[:stderr], result[:stdout]].join("\n")
+  text.lines.map(&:strip).find { |line| !line.empty? } || "(no output)"
+end
+
+prepare_fixture
+results = cases.map do |item|
+  [item, item.runs.map { |command| [command, execute(command)] }]
+end
+
+if DEMO
+  puts "CLI inventory demo"
+  puts "fixture=#{PROJECT.relative_path_from(ROOT)}"
+  puts
+  results.each_with_index do |(item, command_results), index|
+    puts "## #{index + 1}. #{item.label}"
+    puts "INTENT: #{item.intent}"
+    command_results.each do |command, result|
+      puts "COMMAND: #{display_command(command.argv)}"
+      puts "CWD: #{Pathname.new(command.cwd).relative_path_from(ROOT)}"
+      puts "STATUS: #{result[:status]}"
+      puts "STDOUT:"
+      puts result[:stdout].strip.empty? ? "(empty)" : result[:stdout].rstrip
+      puts "STDERR:"
+      puts result[:stderr].strip.empty? ? "(empty)" : result[:stderr].rstrip
+    end
+    puts
+  end
+else
+  puts "CLI inventory (#{results.length} cases)"
+  results.each_with_index do |(item, command_results), index|
+    statuses = command_results.map { |_command, result| result[:status] }
+    status_label = statuses.all?(0) ? "ok" : "nonzero=#{statuses.reject(&:zero?).join(",")}"
+    puts "#{index + 1}. #{item.label}"
+    puts "   intent: #{item.intent}"
+    puts "   command: #{command_results.map { |command, _result| display_command(command.argv) }.join(" ; ")}"
+    puts "   status: #{status_label}"
+    puts "   signal: #{first_signal(command_results.first.last)}"
+  end
+end
+
+failed = results.flat_map do |item, command_results|
+  command_results.filter_map do |command, result|
+    [item.label, display_command(command.argv), result[:status]] unless result[:status].zero?
+  end
+end
+
+if failed.any?
+  warn "CLI inventory had nonzero cases:"
+  failed.each { |label, command, status| warn "  #{label}: #{command} -> #{status}" }
+  exit 1
+end
