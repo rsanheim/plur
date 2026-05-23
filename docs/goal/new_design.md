@@ -425,3 +425,36 @@ After evidence:
 
 Tradeoff: this is still a custom help overlay. It is lower risk than trying to
 hide global Kong flags only for one subcommand.
+
+## T15-DEV - Document Output Contracts
+
+Pain point: Plur now has clearer human output and a JSON dry-run plan, but the
+contract is implicit. Shell users and agents need to know which streams,
+formats, and exit codes are stable, and which output is meant for humans only.
+
+Change: add `docs/output-contracts.md` and link it from the docs index. The
+doc should define:
+
+- one-shot run stdout/stderr roles
+- dry-run text versus `--dry-run-format=json`
+- warning behavior with exit 0
+- `watch find` stdout and exit code 2 for no runnable target
+- debug output as unstable diagnostic text
+
+Acceptance criteria:
+- The docs index links to output contracts.
+- The output contract doc names `--dry-run-format=json`, `warnings`,
+  `workers`, `watch find`, and exit code 2.
+- The doc clearly says human text is not the machine API.
+- Focused doc specs and the full build pass.
+
+Before evidence:
+- T12/Darwin kept composability at 3 partly because stdout/stderr, warnings,
+  exit codes, and stable versus unstable output were not documented.
+
+After evidence:
+- `docs/output-contracts.md` documents the current behavior and the JSON plan
+  contract.
+
+Tradeoff: this is documentation, not a new guarantee for every human line.
+Keep the machine contract limited to JSON plan keys and documented exit codes.
