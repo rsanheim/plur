@@ -247,14 +247,10 @@ Behavior:
   successful default run.
 - Old v1 caches (`map[string]float64`) are ignored and regenerated.
 - Shared examples are attributed to their rerunnable owning spec file
-  (the file the focused-target points back to), not the support file
-  whose source contains the shared block. Both the support file's
-  location and the rerunnable target are kept per example for
-  diagnostics.
-- Each real spec run emits compact stderr timing lines for cache load/save
-  (`runtimeCache loaded` / `runtimeCache saved`) with `duration`,
-  `path`, `files`, and `examples` fields. Grep for `runtimeCache`
-  to inspect cache size and timing across runs.
+  (the file the focused target points back to), not the support file
+  whose source contains the shared block. The runtime cache stores only
+  the fields needed for future balancing: RSpec `id`, rerunnable target,
+  owner line, and runtime.
 
 ### `--rspec-split` (EXPERIMENTAL)
 
@@ -298,7 +294,7 @@ Known pitfalls:
 - Shared examples and custom DSLs can produce surprising source
   locations. Plur stores `id` and `location_rerun_argument` so
   divergence can be debugged.
-- Splitting is cache-driven: a cold run (no v2 entries yet) falls back
+- Splitting is cache-driven: a cold run (no runtime cache entries yet) falls back
   to file-level grouping. The next default run populates the cache.
 
 Splitting is intentionally experimental. The semantics may change as

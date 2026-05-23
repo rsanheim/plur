@@ -7,8 +7,8 @@
 Measure the runtime-tracking overhead and full-suite behavior of:
 
 - **Legacy v1 tracker:** `main`, plain `map[string]float64` runtime file, no `--rspec-split`.
-- **v2 runtime cache:** `rspec-split-specs`, versioned runtime cache with per-example entries.
-- **v2 runtime cache + rspec-split:** same branch, `--rspec-split` enabled so long files can be expanded into focused `file:line:line` chunks.
+- **Versioned runtime cache:** `rspec-split-specs`, runtime cache with per-example entries.
+- **Versioned runtime cache + rspec-split:** same branch, `--rspec-split` enabled so long files can be expanded into focused `file:line:line` chunks.
 
 Projects in this pass:
 
@@ -35,6 +35,8 @@ For debug runs, compute combined runtime-cache overhead as:
 ```text
 runtime_cache_overhead_ms = runtimeCache_loaded_duration_ms + runtimeCache_saved_duration_ms
 ```
+
+Those `runtimeCache ...` stderr lines were temporary instrumentation for this measurement pass. They are not part of the current default user-facing output.
 
 Dry runs only load the cache. They must not save or modify the runtime file.
 
@@ -98,7 +100,7 @@ Evidence:
 
 Notes:
 
-- The v2 cache is ~8.16 MB for RuboCop, versus ~55 KB for the legacy v1 file-level map.
+- The versioned cache at this point was ~8.16 MB for RuboCop, versus ~55 KB for the legacy v1 file-level map.
 - The v2 debug run shows 111.710 ms combined load+save. The v2 split debug run shows 114.538 ms combined load+save. Both exceed the 50 ms large-suite threshold.
 - The original `v2-split` rows above are retained as historical pre-fix evidence. They are not valid speedup evidence because baseline v2 ran 31672 examples while the split runs observed 31687 and 31694 examples.
 
@@ -268,7 +270,7 @@ Previous real-RuboCop debug loads were ~9% slower than the Go benchmark (~45 ms 
 ### Tradeoffs
 
 - **`unsafe` internals.** go-json uses unsafe pointer arithmetic for field writes. Stable in practice; the library tests against each new Go release.
-- **External dependency.** Adds ~250 KB to the binary. `encoding/json/v2` (expected Go 1.27–1.28) will incorporate the same techniques, making this dependency temporary with a trivial migration path.
+- **External dependency.** Adds ~250 KB to the binary. If future stdlib JSON work closes this performance gap, migration back to the standard library should be straightforward because the cache package uses the familiar encoder/decoder API surface.
 - **Edge-case divergence.** go-json has minor behavioral differences from stdlib for unusual JSON inputs (NaN/Inf, duplicate keys). Not a concern for a self-written cache with a fixed schema.
 
 ### Decision
