@@ -1885,7 +1885,7 @@ After evidence:
 ## T53-DEV - Extract Live Watch Event Admission
 
 Status: verified
-Commit: pending
+Commit: 3d0505017ff32b03a17a522917ced30ddff0567b
 
 Pain point: live watch decides whether a watcher event is meaningful inside
 `cmd_watch.go`: skip watcher lifecycle events, convert absolute paths to
