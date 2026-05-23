@@ -258,10 +258,10 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 * `{{match}}` - The matched portion of the source path (e.g., `lib/foo.rb` → `foo`)
 * `{{dir_relative}}` - The relative directory of the matched file
 
-Watch mode can also use `{{target}}` inside a job command. In watch mode only,
-Plur replaces `{{target}}` with the targets resolved by the matching watch
-rule. If a watch job command has no `{{target}}`, Plur runs that job once
-without target arguments.
+Watch mode can also use `{{target}}` inside a job command to customize where
+resolved targets are placed. If a watch job command has no `{{target}}`, Plur
+appends the resolved targets at the end of the command, matching one-shot run
+mode.
 
 ### Watch Configuration Examples
 

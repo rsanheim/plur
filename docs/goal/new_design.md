@@ -1640,3 +1640,62 @@ After evidence:
 - `script/check-links` passed.
 - `bin/rake` passed with 377 examples, 0 failures, and 4 existing pending
   examples.
+
+## T48-DEV - Use One Target-Passing Rule In Watch Jobs
+
+Status: verified
+Commit: pending
+
+Pain point: `watch find` can report that a changed file maps to a target, but
+actual watch execution can drop that target if the selected job command does
+not contain `{{target}}`. That is especially bad because generated config
+templates define watch jobs like:
+
+```toml
+[job.rspec]
+cmd = ["bundle", "exec", "rspec"]
+```
+
+In one-shot run mode, Plur appends targets to that command automatically. In
+watch mode, the same command currently runs without targets.
+
+Change: make watch execution use the same target command builder as one-shot
+execution for changed targets. If `cmd` contains `{{target}}`, Plur uses that
+placement. If it does not, Plur appends the resolved targets to the command.
+Running all tests from the interactive watch prompt still uses the no-target
+command path.
+
+Diataxis role: update `docs/configuration.md` as reference material; do not add
+a broad tutorial.
+
+Duplication check:
+- `docs/configuration.md` owns the public `cmd` and `{{target}}` semantics.
+- `docs/architecture/runner-jobs-framework.md` has a short architecture note
+  that should match current command building.
+- `job.BuildJobCmd` already documents the intended target appending behavior.
+
+Acceptance criteria:
+- Watch execution appends targets when the job command has no `{{target}}`.
+- Watch execution still honors `{{target}}` placement when present.
+- Watch execution with no targets still does not run a target command.
+- Interactive watch "run all tests" remains a no-target command.
+- Configuration docs no longer say watch jobs without `{{target}}` run without
+  targets.
+- Focused watch/job tests, configuration docs spec, Go tests, link check, and
+  the full build pass.
+
+Before evidence:
+- `go test -mod=mod ./watch -run TestExecuteJob_WithoutTargetPlaceholder -count=1`
+  failed because `$@` was empty: expected `"file1.rb file2.rb\n"`, actual
+  `"\n"`. That showed watch execution dropped targets when `cmd` had no
+  `{{target}}`.
+
+After evidence:
+- `go test -mod=mod ./watch -run 'TestExecuteJob_(WithoutTargetPlaceholder|BatchesMultipleTargets|NoTargets|SingleTarget)' -count=1`
+  passed.
+- `go test -mod=mod ./watch` passed.
+- `bin/rspec spec/docs/configuration_target_doc_spec.rb` passed.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 377 examples, 0 failures, and 4 existing pending
+  examples.

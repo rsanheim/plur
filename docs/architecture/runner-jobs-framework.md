@@ -80,10 +80,10 @@ Notes:
 - These are appended before target files.
 
 ## Watch mode command building
-- Keep existing behavior:
-  - If job uses `{{target}}`, expand via BuildJobCmd.
-  - Otherwise run without targets.
-- Watch remains responsible for guard-like path substitutions.
+- Watch execution uses `BuildJobCmd` for matched targets:
+  - If job uses `{{target}}`, expand it at that position.
+  - Otherwise append matched targets at the end.
+- Running all tests from the interactive watch prompt uses `BuildJobAllCmd`.
 
 ## Default jobs vs user jobs
 - Built-in defaults are merged with user jobs of the same name (field-by-field overrides).

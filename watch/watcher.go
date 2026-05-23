@@ -226,29 +226,10 @@ func RunCommand(args []string) {
 	}
 }
 
-// ExecuteJob runs a job with the given target files
-// If the job doesn't use targets (no {{target}} in cmd), it runs once without targets
+// ExecuteJob runs a job with the given target files.
 func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
 	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
 
-	// Jobs without {{target}} placeholder run once without targets
-	if !j.UsesTargets() {
-		cmd := j.Cmd
-		fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
-
-		execCmd := exec.Command(cmd[0], cmd[1:]...)
-		execCmd.Dir = cwd
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
-		execCmd.Env = append(os.Environ(), j.Env...)
-
-		if err := execCmd.Run(); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	// Jobs with {{target}} run once with all target files batched together
 	if len(targetFiles) == 0 {
 		return nil
 	}

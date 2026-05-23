@@ -92,3 +92,5 @@ ts=2026-05-23-10:22:58 git_ref=prep-goal git_oid=68b43b9 status=start current="T
 ts=2026-05-23-10:30:12 git_ref=prep-goal git_oid=68b43b9 status=done current="T46-DEV" msg="watch run help and no-op flags focused"
 ts=2026-05-23-10:31:14 git_ref=prep-goal git_oid=e29f75a status=start current="T47-REFLECT" msg="reflect after output and watch flag cleanup"
 ts=2026-05-23-10:40:23 git_ref=prep-goal git_oid=e29f75a status=done current="T47-REFLECT" msg="scorecard after output and watch flag cleanup"
+ts=2026-05-23-10:41:09 git_ref=prep-goal git_oid=ac8a827 status=start current="T48-DEV" msg="begin watch run target semantics cleanup"
+ts=2026-05-23-10:47:24 git_ref=prep-goal git_oid=ac8a827 status=done current="T48-DEV" msg="watch jobs append resolved targets consistently"
