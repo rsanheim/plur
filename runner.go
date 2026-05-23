@@ -67,6 +67,7 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 
 	// executing...
 	if r.config.DryRun {
+		r.printDryRunPlanSummary(len(commands))
 		for i, cmd := range commands {
 			printDryRunWorker(r.config.DryRun, i, cmd)
 		}
@@ -289,6 +290,13 @@ func (r *Runner) printSummary(workerCount int) {
 	label := r.testLabel()
 	toStdErr(r.config.DryRun, "Running %d %s [%s] %s\n",
 		len(r.files), label, r.frameworkLabel(), workerCountPhrase(r.config, workerCount))
+}
+
+func (r *Runner) printDryRunPlanSummary(workerCount int) {
+	toStdErr(true, "Plan: %d %s across %d %s; no tests will run\n",
+		len(r.files), pluralize(len(r.files), "target", "targets"),
+		workerCount, pluralize(workerCount, "worker", "workers"))
+	toStdErr(true, "Commands:\n")
 }
 
 func (r *Runner) testLabel() string {

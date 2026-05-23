@@ -1261,3 +1261,51 @@ After evidence:
   - `go test -mod=mod ./...`
   - `script/check-links`
   - `bin/rake`
+
+## T37-DEV - Add A Skimmable Dry-Run Summary
+
+Pain point: human dry-run starts well with selected job and run count, then
+immediately prints long worker commands. For larger suites, the user's first
+skim has to parse command strings to understand the plan shape.
+
+Change: keep the copyable worker commands, but add a compact human-only summary
+and a divider before them:
+
+```text
+[dry-run] Plan: 13 targets across 4 workers; no tests will run
+[dry-run] Commands:
+```
+
+JSON dry-run is unchanged; scripts already use `targets` and `workers`.
+
+Acceptance criteria:
+- Text dry-run prints the plan summary before worker commands.
+- Text dry-run prints a `Commands:` divider before the first worker.
+- Dry-run JSON output still does not include human worker-command lines on
+  stderr.
+- Focused dry-run specs, Go tests, and the full build pass.
+
+Before evidence:
+- `./plur --dry-run spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb`
+  jumps from `Running 2 specs ...` directly to `[dry-run] Worker 0: ...`.
+
+After evidence:
+- `./plur --dry-run spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb`
+  now prints:
+
+```text
+[dry-run] Running 2 specs [rspec] in parallel using 2 workers
+[dry-run] Plan: 2 targets across 2 workers; no tests will run
+[dry-run] Commands:
+[dry-run] Worker 0: PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=1 bin/rspec ...
+```
+
+- `./plur --dry-run --dry-run-format=json spec/integration/spec/help_spec.rb`
+  still prints only the version line to stderr and keeps the plan on stdout.
+- Verification:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/general_integration_spec.rb spec/integration/spec/dry_run_plan_spec.rb`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/general_integration_spec.rb spec/integration/spec/dry_run_plan_spec.rb`
+  - green after snapshot updates: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/general_integration_spec.rb spec/integration/spec/runtime_tracking_spec.rb spec/integration/spec/turbo_tests_migration_spec.rb spec/integration/spec/rspec_args_spec.rb spec/integration/spec/framework_output_spec.rb spec/integration/spec/dry_run_plan_spec.rb`
+  - `go test -mod=mod ./...`
+  - `script/check-links`
+  - `bin/rake`
