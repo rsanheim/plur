@@ -66,9 +66,11 @@ RSpec.describe "help output" do
   it "rejects the removed JSON file output flag" do
     result = run_plur_allowing_errors("--json=tmp/results.json", "--dry-run")
 
-    expect(result).not_to be_success
-    expect(result.err).to include("unknown flag")
-    expect(result.err).to include("--json")
+    expect(result.exit_status).to eq(1)
+    expect(result.err).to include("Error: --json is not a Plur flag.")
+    expect(result.err).to include("plur --dry-run --dry-run-format=json [patterns...]")
+    expect(result.err).to include("plur watch find --format=json <file>")
+    expect(result.err).not_to include("did you mean")
   end
 
   it "keeps watch find help focused on preview-specific flags" do

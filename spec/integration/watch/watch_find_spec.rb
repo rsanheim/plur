@@ -44,9 +44,11 @@ RSpec.describe "plur watch find" do
     chdir(default_ruby_dir) do
       result = run_plur_allowing_errors("watch", "find", "--json=tmp/watch-find.json", "lib/calculator.rb")
 
-      expect(result).not_to be_success
-      expect(result.err).to include("unknown flag")
-      expect(result.err).to include("--json")
+      expect(result.exit_status).to eq(1)
+      expect(result.err).to include("Error: --json is not a Plur flag.")
+      expect(result.err).to include("plur --dry-run --dry-run-format=json [patterns...]")
+      expect(result.err).to include("plur watch find --format=json <file>")
+      expect(result.err).not_to include("did you mean")
     end
   end
 

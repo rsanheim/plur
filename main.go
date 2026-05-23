@@ -231,6 +231,25 @@ func isHelpFlag(arg string) bool {
 	return arg == "--help" || arg == "-h"
 }
 
+func isRemovedJSONFlag(arg string) bool {
+	return arg == "--json" || strings.HasPrefix(arg, "--json=")
+}
+
+func hasRemovedJSONFlag(args []string) bool {
+	for _, arg := range args {
+		if isRemovedJSONFlag(arg) {
+			return true
+		}
+	}
+	return false
+}
+
+func printRemovedJSONFlagError() {
+	fmt.Fprintln(os.Stderr, "Error: --json is not a Plur flag.")
+	fmt.Fprintln(os.Stderr, "Use `plur --dry-run --dry-run-format=json [patterns...]` for a structured one-shot plan.")
+	fmt.Fprintln(os.Stderr, "Use `plur watch find --format=json <file>` for a structured watch preview.")
+}
+
 func isBareTestTargetHelp(args []string) bool {
 	hasHelp := false
 	for _, arg := range args {
@@ -336,6 +355,10 @@ func main() {
 	args := handleHelpCommand(os.Args[1:])
 	args, cli.passthroughArgs = splitArgsAtDoubleDash(args)
 	logger.InitFromArgs(args)
+	if hasRemovedJSONFlag(args) {
+		printRemovedJSONFlagError()
+		os.Exit(1)
+	}
 
 	if err := handleChangeDir(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

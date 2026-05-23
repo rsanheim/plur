@@ -1156,3 +1156,55 @@ plur: error: unknown flag --json, did you mean "--job"?
   - `go test -mod=mod ./...`
   - `script/check-links`
   - `bin/rake`
+
+## T35-DEV - Explain Removed `--json`
+
+Pain point: T33 removed the unused global `--json` file-output flag, but the
+raw Kong parser error now says:
+
+```text
+plur: error: unknown flag --json, did you mean "--job"?
+```
+
+That is technically correct but unhelpful: the closest useful alternatives are
+the two real structured preview APIs, not `--job`.
+
+Change: pre-parse `--json` and `--json=...` before Kong, and print direct
+guidance:
+
+```text
+Error: --json is not a Plur flag.
+Use `plur --dry-run --dry-run-format=json [patterns...]` for a structured one-shot plan.
+Use `plur watch find --format=json <file>` for a structured watch preview.
+```
+
+Acceptance criteria:
+- `plur --json=tmp/results.json --dry-run` exits 1 with the direct guidance.
+- `plur watch find --json=tmp/watch-find.json FILE` exits 1 with the same
+  guidance, not a generic unknown-flag suggestion.
+- `--json` after a passthrough `--` remains passthrough input for commands that
+  support passthrough args.
+- Focused help/watch specs, Go tests, and the full build pass.
+
+Before evidence:
+- `./plur --json=tmp/results.json --dry-run` exits 80 with
+  `unknown flag --json, did you mean "--job"?`.
+
+After evidence:
+- `./plur --json=tmp/results.json --dry-run` and
+  `./plur watch find --json=tmp/watch-find.json spec/spec_helper.rb` both exit
+  1 with:
+
+```text
+Error: --json is not a Plur flag.
+Use `plur --dry-run --dry-run-format=json [patterns...]` for a structured one-shot plan.
+Use `plur watch find --format=json <file>` for a structured watch preview.
+```
+
+- `./plur -C fixtures/projects/default-ruby --dry-run spec/calculator_spec.rb -- --json`
+  still treats `--json` as an RSpec passthrough arg after `--`.
+- Verification:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb spec/integration/spec/rspec_args_spec.rb`
+  - `script/check-links`
+  - `bin/rake`
