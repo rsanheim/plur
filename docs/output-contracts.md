@@ -11,7 +11,9 @@ when a script needs stable fields.
 ## One-Shot Runs
 
 Normal test runs write Plur status lines to stderr and framework test output to
-stdout. For example, the run summary appears on stderr:
+stdout. Worker stderr is streamed to stderr; it is not replayed on stdout when
+a worker exits before producing test events. For example, the run summary
+appears on stderr:
 
 ```text
 Running 13 specs [rspec] in parallel using 4 workers
@@ -25,18 +27,24 @@ exit 0 while printing a warning:
 ```
 
 Exit code 0 means all selected work passed or the requested plan/preview was
-produced. Exit code 1 can mean selected work failed or Plur could not plan/run
-the command because of user input, configuration, or environment.
-Command-specific non-zero codes are documented below.
+produced. Non-zero means selected work failed, Plur could not plan or run the
+command, or a command-specific condition occurred. Plur uses exit code 1 for
+failed work and many planning/runtime errors. Parser validation can return its
+own non-zero code before a command runs. Command-specific non-zero codes are
+documented below.
 
 ## Dry-Run Text
 
 `plur --dry-run` writes a human preview to stderr and does not execute tests.
-The text preview is intentionally copyable, but it is not the machine API.
+The text preview is intentionally copyable and skimmable, but it is not the
+machine API.
 
 ```text
-[dry-run] Selected job: rspec (framework: rspec, reason: autodetect)
-[dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bundle exec rspec ...
+[dry-run] Selected job: rspec (framework: rspec, reason: explicit patterns)
+[dry-run] Running 1 spec [rspec] in parallel using 1 worker
+[dry-run] Plan: 1 target across 1 worker; no tests will run
+[dry-run] Commands:
+[dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bin/rspec ...
 ```
 
 ## Dry-Run JSON
@@ -51,6 +59,60 @@ The JSON plan is written to stdout. Human status, version, and warnings remain
 on stderr. Structured JSON is emitted only after Plur successfully builds the
 plan. Command and configuration errors in JSON modes still write plain text to
 stderr and may leave stdout empty.
+
+Successful JSON preview:
+
+```text
+exit=0
+stdout:
+{
+  "version": 1,
+  "mode": "spec",
+  "job": {
+    "name": "rspec",
+    "framework": "rspec",
+    "reason": "explicit_patterns"
+  },
+  "targets": [
+    "spec/integration/spec/help_spec.rb"
+  ],
+  "warnings": [],
+  "workers": [
+    {
+      "index": 0,
+      "targets": [
+        "spec/integration/spec/help_spec.rb"
+      ],
+      "argv": [
+        "bin/rspec",
+        "-r",
+        ".../json_rows_formatter.rb",
+        "--format",
+        "Plur::JsonRowsFormatter",
+        "--force-color",
+        "spec/integration/spec/help_spec.rb"
+      ],
+      "env": [
+        "PARALLEL_TEST_GROUPS=1",
+        "TEST_ENV_NUMBER=1"
+      ],
+      "shell": "PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bin/rspec ..."
+    }
+  ]
+}
+stderr:
+plur version=...
+```
+
+JSON-mode parser error:
+
+```text
+exit=80
+stdout:
+
+stderr:
+plur: error: --dry-run-format requires --dry-run
+```
 
 Stable top-level keys:
 
@@ -93,6 +155,23 @@ plur watch find --format=json spec/spec_helper.rb
 
 Command and configuration errors in JSON modes still write plain text to stderr
 and may leave stdout empty.
+
+No matching watch target is still structured output:
+
+```text
+exit=2
+stdout:
+{
+  "version": 1,
+  "mode": "watch_find",
+  "file": "spec/spec_helper.rb",
+  "matched_rules": [],
+  "existing_targets": {},
+  "missing_targets": {},
+  "exit_code": 2
+}
+stderr:
+```
 
 Stable top-level keys:
 

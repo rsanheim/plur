@@ -76,3 +76,5 @@ ts=2026-05-23-09:31:31 git_ref=prep-goal git_oid=7401c59 status=start current="T
 ts=2026-05-23-09:37:25 git_ref=prep-goal git_oid=7401c59 status=done current="T38-REFLECT" msg="reflection after dry-run summary scored with reviewer feedback"
 ts=2026-05-23-09:39:43 git_ref=prep-goal git_oid=3bfcf99 status=start current="T39-DEV" msg="begin worker error stdout stderr routing fix"
 ts=2026-05-23-09:43:33 git_ref=prep-goal git_oid=3bfcf99 status=done current="T39-DEV" msg="worker command stderr no longer replays on stdout"
+ts=2026-05-23-09:43:56 git_ref=prep-goal git_oid=029c788 status=start current="T40-DEV" msg="begin output contracts docs refresh"
+ts=2026-05-23-09:47:17 git_ref=prep-goal git_oid=029c788 status=done current="T40-DEV" msg="output contracts docs refreshed and verified"

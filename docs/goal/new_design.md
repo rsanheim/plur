@@ -1368,3 +1368,43 @@ WORKER_STDERR_MARKER
   - `go test -mod=mod ./...`
   - `script/check-links`
   - `bin/rake`
+
+## T40-DEV - Refresh Output Contracts Reference
+
+Pain point: `docs/output-contracts.md` is the right public reference for
+scripts and agents, but it still shows old dry-run text that jumps straight
+from selected job to worker commands. It also does not show concrete
+stdout/stderr examples for JSON previews, JSON-mode errors, or watch-find
+no-op previews.
+
+Diátaxis role: reference. Keep this page focused on stable contracts and
+examples, not a tutorial or workflow guide.
+
+Duplication check: `README.md`, `docs/features/watch-mode.md`, and
+`docs/usage.md` mention dry-run or `watch find`, but none are the canonical
+stdout/stderr contract. Goal docs and specs contain historical examples only.
+
+Change: update `docs/output-contracts.md` so it names the current dry-run text
+shape, explains stdout/stderr roles after T39, and includes concise command
+examples for:
+- text dry-run stderr
+- JSON dry-run stdout plus version stderr
+- JSON-mode parser error with empty stdout
+- `watch find --format=json` no-op exit code 2
+
+Acceptance criteria:
+- Output contracts show the new `Plan` and `Commands` lines.
+- JSON sections clearly state that successful machine JSON goes to stdout.
+- Error examples show that parser/config errors can write plain stderr and no
+  stdout.
+- Link checks and the full build pass.
+
+After evidence:
+- `docs/output-contracts.md` now documents worker stderr streaming, the text
+  dry-run `Plan` and `Commands` lines, JSON dry-run stdout/stderr separation,
+  parser error `exit=80` with empty stdout, and watch-find JSON `exit=2`.
+- Verification:
+  - `script/check-links`
+  - red/green docs contract spec:
+    `bin/rspec spec/docs/output_contracts_doc_spec.rb`
+  - `bin/rake`
