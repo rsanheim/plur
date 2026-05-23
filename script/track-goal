@@ -82,7 +82,7 @@ rescue OptionParser::InvalidArgument, OptionParser::MissingArgument => e
   puts e
   puts
   puts parser
-  abort 
+  abort
 end
 
 def quote(value)
