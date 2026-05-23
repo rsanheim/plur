@@ -284,6 +284,7 @@ func main() {
 	parser, err := kong.New(&cli,
 		kong.Name("plur"),
 		kong.Description("A fast, parallel test runner and watcher for Ruby/RSpec"),
+		kong.Help(customHelpPrinter),
 		kong.Configuration(kongtoml.Loader, configFiles...))
 
 	if err != nil {

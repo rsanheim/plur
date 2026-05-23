@@ -133,3 +133,68 @@ Use `plur --dry-run [patterns...]` to preview a one-shot test run.
 
 Tradeoff: this does not implement a full watch plan. It chooses honest
 guidance over a misleading partial dry-run.
+
+## T8-DEV - Make Help And Watch Docs Match The Real Happy Paths
+
+Pain point: `plur --help` still says `Usage: plur <command> [flags]`, even
+though commandless `plur [patterns...]` is the daily run command. `plur watch
+--help` likewise presents `watch <command>` first, and public watch docs still
+recommend `plur watch --dry-run` even though T6 now rejects it.
+
+Change: customize help output just enough to lead with real workflows:
+
+```text
+Usage: plur [patterns...] [flags]
+       plur <command> [flags]
+
+Common workflows:
+  plur
+  plur spec/calculator_spec.rb
+  plur --dry-run
+  plur watch
+  plur watch find spec/calculator_spec.rb
+```
+
+For watch help, lead with `plur watch [flags]`, `plur watch find
+<changed-file>`, and only then the subcommand form. Update
+`docs/features/watch-mode.md` to remove `watch --dry-run` and point users to
+`watch find`.
+
+Acceptance criteria:
+- `plur --help` shows commandless usage first and includes common workflow
+  examples.
+- `plur watch --help` shows `plur watch [flags]` and `plur watch find
+  <changed-file>` before subcommand details.
+- Watch docs no longer recommend `plur watch --dry-run`.
+- Focused help/doc tests and the full build pass.
+
+Before evidence:
+- `plur --help` printed `Usage: plur <command> [flags]`.
+- `plur watch --help` printed `Usage: plur watch <command> [flags]`.
+- `docs/features/watch-mode.md` recommended `plur watch --dry-run`.
+
+After evidence:
+
+```text
+Usage: plur [patterns...] [flags]
+       plur <command> [flags]
+
+Common workflows:
+  plur
+  plur spec/calculator_spec.rb
+  plur test
+  plur --dry-run
+  plur watch
+  plur watch find spec/calculator_spec.rb
+```
+
+```text
+Usage: plur watch [flags]
+       plur watch find <changed-file> [flags]
+       plur watch <command> [flags]
+```
+
+`docs/features/watch-mode.md` now uses `plur watch find` for preview examples.
+
+Tradeoff: help gets a thin custom layer over Kong output. The detailed flags
+and command lists still come from Kong so drift stays limited.

@@ -25,8 +25,8 @@ plur watch
 ### Command Options
 
 ```bash
-# Dry run to see what would be watched
-plur watch --dry-run
+# Preview what a changed file would run
+plur watch find spec/models/user_spec.rb
 
 # Set custom debounce delay (milliseconds)
 plur watch --debounce 250
@@ -44,10 +44,9 @@ By default, plur watch monitors:
 - `lib/**/*.rb` - Library files (runs corresponding spec)
 - `app/**/*.rb` - Rails app files (runs corresponding spec)
 
-Special files:
-
-- `spec/spec_helper.rb` - Triggers all specs
-- `spec/rails_helper.rb` - Triggers all specs
+Shared helper files only trigger tests when a watch rule maps them to existing
+targets. Use `plur watch find spec/spec_helper.rb` to check what a change would
+run in the current project.
 
 ### File Mapping Examples
 
@@ -216,8 +215,8 @@ plur doctor
 # See file system events
 plur --debug watch
 
-# See what files would be watched
-plur watch --dry-run
+# Preview what a changed file would run
+plur watch find spec/models/user_spec.rb
 
 # Verbose output for debugging
 plur watch --verbose
