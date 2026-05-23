@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/watch"
 )
@@ -17,6 +18,13 @@ import (
 type WatchFindCmd struct {
 	FilePath string `arg:"" help:"File path to check for watch mappings" required:"true"`
 	Format   string `help:"Output format: text or json" default:"text" enum:"text,json"`
+}
+
+func (cmd *WatchFindCmd) BeforeApply(ctx *kong.Context) error {
+	if err := rejectWatchFindNoOpFlags(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
@@ -93,6 +101,52 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	}
 
 	return nil
+}
+
+func rejectWatchFindNoOpFlags(ctx *kong.Context) error {
+	if ctx == nil {
+		return nil
+	}
+
+	for _, path := range ctx.Path {
+		if path.Flag == nil || path.Resolved {
+			continue
+		}
+		flag := watchFindNoOpFlagName(path.Flag)
+		if flag == "" {
+			continue
+		}
+		return fmt.Errorf("%s does not apply to plur watch find; %s", flag, watchFindNoOpFlagGuidance(flag))
+	}
+
+	return nil
+}
+
+func watchFindNoOpFlagName(flag *kong.Flag) string {
+	switch flag.Name {
+	case "first-is-1":
+		if flag.Negated {
+			return "--no-first-is-1"
+		}
+		return "--first-is-1"
+	case "dry-run", "dry-run-format", "ignore", "json", "rspec-split", "workers":
+		return "--" + flag.Name
+	default:
+		return ""
+	}
+}
+
+func watchFindNoOpFlagGuidance(flag string) string {
+	switch flag {
+	case "--dry-run", "--dry-run-format":
+		return "use `plur watch find --format=json <file>` for a structured watch preview, or `plur --dry-run [patterns...]` for a one-shot test plan"
+	case "--ignore":
+		return "`--ignore` filters live watch events, not watch find previews"
+	case "--json":
+		return "use `--format=json` for watch find JSON output"
+	default:
+		return "watch find previews mappings and does not run test workers"
+	}
 }
 
 type WatchFindPlan struct {

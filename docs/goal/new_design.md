@@ -731,3 +731,71 @@ After evidence:
 Tradeoff: this is still a presentation-only cleanup. The hidden inherited
 flags remain accepted by Kong for `watch find`; a future cleanup can reject or
 ignore no-op flag combinations consistently across all non-run commands.
+
+## T23-DEV - Reject No-Op `watch find` Flags
+
+Pain point: T21 made `plur watch find --help` focused, but the parser still
+accepts the inherited flags hidden from help. For example, `plur watch find
+--dry-run lib/calculator.rb`, `--workers=99`, and `--ignore='lib/**'` all exit
+successfully while producing the same preview. That makes the command look
+cleaner than it behaves.
+
+Change: when `watch find` is invoked with command-irrelevant CLI flags, fail
+before calculating targets with a contextual error. This phase only rejects
+explicit CLI flags; it should not reject default global values or configuration
+loaded for other commands.
+
+Reject these `watch find` flags:
+
+- `--dry-run`
+- `--dry-run-format` when paired with `--dry-run`
+- `--json`
+- `--first-is-1` / `--no-first-is-1`
+- `--workers` / `-n`
+- `--rspec-split`
+- `--ignore`
+
+Acceptance criteria:
+- `plur watch find --dry-run FILE` exits non-zero and points to
+  `watch find --format=json` for structured watch preview and `plur --dry-run`
+  for one-shot run preview.
+- `plur watch find --workers=99 FILE`, `-n 2`, `--json=FILE`,
+  `--rspec-split`, `--no-first-is-1`, and `--ignore=PATTERN` exit non-zero
+  with a message that the flag does not apply to `plur watch find`.
+- Valid `watch find` text and JSON output still work.
+- Focused watch-find specs, Go tests, and the full build pass.
+
+Before evidence:
+- `./plur -C fixtures/projects/default-ruby watch find --dry-run lib/calculator.rb`
+  exits 0 and previews `spec/calculator_spec.rb`.
+- `./plur -C fixtures/projects/default-ruby watch find --dry-run --dry-run-format=json lib/calculator.rb`
+  exits 0 and still prints human text.
+- `./plur -C fixtures/projects/default-ruby watch find --workers=99 lib/calculator.rb`
+  exits 0 and previews the same target.
+
+Tradeoff: this turns previously harmless no-op flags into errors. That is a
+clean break in service of making command-specific help and behavior match.
+
+After evidence:
+- Added integration coverage that proves `watch find` rejects explicit no-op
+  flags hidden from its help: `--dry-run`, `--dry-run-format`, `--json`,
+  `--first-is-1`, `--no-first-is-1`, `--workers`, `-n`, `--rspec-split`, and
+  `--ignore`.
+- The guard uses Kong's parsed path and ignores config/env-resolved values, so
+  `.plur.toml` or environment settings for run-mode flags do not break a plain
+  `watch find`.
+- `./plur -C fixtures/projects/default-ruby watch find --dry-run-format=json lib/calculator.rb`
+  now exits 1 with guidance to use `watch find --format=json` for structured
+  watch previews or `plur --dry-run` for one-shot test plans.
+- `./plur -C fixtures/projects/default-ruby watch find --workers=99 lib/calculator.rb`
+  now exits 1 with `--workers does not apply to plur watch find`.
+- `./plur -C fixtures/projects/default-ruby watch find --format=json lib/calculator.rb`
+  still emits the stable watch-find JSON plan.
+- Verification passed:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb`
+  - `bin/rake build`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb`
+  - `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_find_json_spec.rb spec/integration/spec/help_spec.rb`
+  - `go test -mod=mod ./...`
+  - `git diff --check`
+  - `bin/rake`
