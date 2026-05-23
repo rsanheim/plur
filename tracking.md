@@ -58,3 +58,5 @@ ts=2026-05-23-08:45:31 git_ref=prep-goal git_oid=d8193ca status=start current="T
 ts=2026-05-23-08:52:20 git_ref=prep-goal git_oid=d8193ca status=done current="T29-DEV" msg="dry-run shell strings quoted and contract clarified"
 ts=2026-05-23-08:52:43 git_ref=prep-goal git_oid=ce842ca status=start current="T30-REFLECT" msg="begin reflection after minitest error dry-run cleanup"
 ts=2026-05-23-08:56:58 git_ref=prep-goal git_oid=ce842ca status=done current="T30-REFLECT" msg="reflection after minitest error dry-run cleanup scored"
+ts=2026-05-23-08:57:29 git_ref=prep-goal git_oid=2162761 status=start current="T31-DEV" msg="begin bare test target feedback cleanup"
+ts=2026-05-23-09:01:06 git_ref=prep-goal git_oid=2162761 status=done current="T31-DEV" msg="bare test target feedback implemented and verified"

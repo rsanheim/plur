@@ -65,6 +65,16 @@ func TestDiscover_PlainFileMissingErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "file not found")
 }
 
+func TestDiscover_MissingBareTestTargetExplainsTargetPath(t *testing.T) {
+	discoverChdir(t)
+	j := job.Job{Name: "rspec", Framework: "rspec"}
+
+	_, err := Discover(j, []string{"test"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "`test` is a target path, not a Plur command")
+	assert.Contains(t, err.Error(), "test/calculator_test.rb")
+}
+
 func TestDiscover_DirectoryExpansion(t *testing.T) {
 	discoverChdir(t)
 	writeStubFiles(t,

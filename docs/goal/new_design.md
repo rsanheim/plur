@@ -1039,3 +1039,45 @@ bundle exec rspec 'spec/my spec_spec.rb' 'spec/quote'\''s_spec.rb'
   remain unchanged.
 - `docs/output-contracts.md` now identifies `argv` and `env` as the canonical
   script fields and `shell` as a quoted human convenience string.
+
+## T31-DEV - Explain Missing Bare `test` Targets
+
+Pain point: T27 made `plur test --help` explain that `test` is a target path,
+not a Plur command, but the more likely mistake still falls through:
+
+```text
+plur test --dry-run
+Error: file not found: test
+```
+
+That is technically correct in a repo without a `test/` directory, but it does
+not connect the failure to the target-path mental model.
+
+Change: keep target discovery behavior unchanged, but specialize the missing
+bare `test` target error:
+
+```text
+Error: file not found: test; `test` is a target path, not a Plur command. Create a test/ directory or pass a Minitest target like test/calculator_test.rb
+```
+
+Acceptance criteria:
+- `plur test --dry-run` in a repo without `test/` exits 1 with the explanatory
+  target-path message.
+- Other missing target errors remain unchanged.
+- A real `test/` directory still selects the Minitest job by explicit patterns.
+- Focused error specs, Go tests, and the full build pass.
+
+Before evidence:
+- `./plur test --dry-run` exits 1 with `Error: file not found: test`.
+
+After evidence:
+- In this repo, which has no top-level `test/` directory,
+  `./plur test --dry-run` exits 1 with:
+
+```text
+Error: file not found: test; `test` is a target path, not a Plur command. Create a test/ directory or pass a Minitest target like test/calculator_test.rb
+```
+
+- In `fixtures/projects/minitest-success`, `./plur -C fixtures/projects/minitest-success test --dry-run`
+  still selects `minitest` by explicit patterns and expands `test/` to the two
+  fixture test files.

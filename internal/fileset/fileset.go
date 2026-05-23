@@ -164,6 +164,9 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 		}
 		info, err := os.Stat(in)
 		if err != nil {
+			if in == "test" {
+				return nil, fmt.Errorf("file not found: test; `test` is a target path, not a Plur command. Create a test/ directory or pass a Minitest target like test/calculator_test.rb")
+			}
 			return nil, fmt.Errorf("file not found: %s", in)
 		}
 		if !info.IsDir() {

@@ -102,4 +102,12 @@ RSpec.describe "Plur error handling" do
     expect(result.err).not_to include("ERROR - Command failed")
     expect(result.err).not_to match(/^\d{2}:\d{2}:\d{2} - ERROR/)
   end
+
+  it "explains missing bare test targets as target paths, not commands" do
+    result = run_plur_allowing_errors("test", "--dry-run")
+
+    expect(result.exit_status).to eq(1)
+    expect(result.err).to include("Error: file not found: test; `test` is a target path, not a Plur command.")
+    expect(result.err).to include("Create a test/ directory or pass a Minitest target like test/calculator_test.rb")
+  end
 end
