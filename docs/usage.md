@@ -211,7 +211,7 @@ The on-disk format is a versioned runtime cache:
 ```json
 {
   "meta": {
-    "schema_version": 3,
+    "schema_version": 4,
     "plur_version": "0.56.0-dev-abc1234"
   },
   "run": {
@@ -223,7 +223,6 @@ The on-disk format is a versioned runtime cache:
       "mtime_unix_nano": 1778610000000000000,
       "size_bytes": 12345,
       "runtime_seconds": 12.34,
-      "example_index_complete": true,
       "examples": [
         {
           "id": "./spec/slow_spec.rb[1:1]",
@@ -242,10 +241,9 @@ Behavior:
 - File aggregates are rewritten only by default/full-file RSpec runs. Focused
   (`spec/foo_spec.rb:42`), tag-filtered (`--tag=…`), `--fail-fast`, aborted,
   and `--`-passthrough runs are classified as *partial* and merge
-  per-example observations without overwriting the file aggregate or
-  flipping `example_index_complete`.
+  per-example observations without overwriting the file aggregate.
 - `--dry-run` never writes the cache.
-- Invalid or corrupt v2 files are ignored and replaced on the next
+- Invalid, corrupt, or unsupported schema files are ignored and replaced on the next
   successful default run.
 - Old v1 caches (`map[string]float64`) are ignored and regenerated.
 - Shared examples are attributed to their rerunnable owning spec file
@@ -253,10 +251,10 @@ Behavior:
   whose source contains the shared block. Both the support file's
   location and the rerunnable target are kept per example for
   diagnostics.
-- Each cache load and save emits a structured debug log line
+- Each real spec run emits compact stderr timing lines for cache load/save
   (`runtimeCache loaded` / `runtimeCache saved`) with `duration`,
-  `path`, `files`, and `examples` keys. Grep for `runtimeCache` under
-  `PLUR_DEBUG=1` to inspect cache size and timing across runs.
+  `path`, `files`, and `examples` fields. Grep for `runtimeCache`
+  to inspect cache size and timing across runs.
 
 ### `--rspec-split` (EXPERIMENTAL)
 
@@ -273,9 +271,9 @@ How it works:
 
 - Splitting requires `--rspec-split == true`, an RSpec job, and worker
   count greater than 1.
-- For each file, plur consults the v2 cache. If `example_index_complete`
-  is true AND the recorded `mtime_unix_nano`/`size_bytes` still match the
-  source file, plur considers the example index trustworthy.
+- For each file, plur consults the runtime cache. If the recorded
+  `mtime_unix_nano`/`size_bytes` still match the source file, plur considers
+  the example data fresh enough for split planning.
 - A file is split only if its historical `runtime_seconds` exceeds the
   per-worker budget (`total_runtime / worker_count`). This is the simple
   experimental rule — no multipliers, no floors.
