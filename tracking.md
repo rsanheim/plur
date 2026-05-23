@@ -78,3 +78,5 @@ ts=2026-05-23-09:39:43 git_ref=prep-goal git_oid=3bfcf99 status=start current="T
 ts=2026-05-23-09:43:33 git_ref=prep-goal git_oid=3bfcf99 status=done current="T39-DEV" msg="worker command stderr no longer replays on stdout"
 ts=2026-05-23-09:43:56 git_ref=prep-goal git_oid=029c788 status=start current="T40-DEV" msg="begin output contracts docs refresh"
 ts=2026-05-23-09:47:17 git_ref=prep-goal git_oid=029c788 status=done current="T40-DEV" msg="output contracts docs refreshed and verified"
+ts=2026-05-23-09:47:37 git_ref=prep-goal git_oid=ea3672f status=start current="T41-DEV" msg="begin dry-run no commands wording"
+ts=2026-05-23-09:50:03 git_ref=prep-goal git_oid=ea3672f status=done current="T41-DEV" msg="dry-run summary now says no commands will run"

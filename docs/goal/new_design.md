@@ -1408,3 +1408,41 @@ After evidence:
   - red/green docs contract spec:
     `bin/rspec spec/docs/output_contracts_doc_spec.rb`
   - `bin/rake`
+
+## T41-DEV - Make Dry-Run Summary Job-Neutral
+
+Pain point: T37 added a useful plan summary, but it says `no tests will run`.
+That is clear for RSpec and Minitest, but Plur jobs can also run linters,
+custom checks, Rails/Rake tasks, or other commands. The dry-run guarantee is
+that Plur will not execute commands.
+
+Change: update the human dry-run summary from:
+
+```text
+[dry-run] Plan: 1 target across 1 worker; no tests will run
+```
+
+to:
+
+```text
+[dry-run] Plan: 1 target across 1 worker; no commands will run
+```
+
+Acceptance criteria:
+- Text dry-run uses `no commands will run`.
+- Text dry-run no longer emits `no tests will run`.
+- Backspin dry-run snapshots and output contract docs match the new wording.
+- Focused specs, link checks, and the full build pass.
+
+After evidence:
+- `./plur --dry-run ...` now prints
+  `[dry-run] Plan: ...; no commands will run`.
+- Current user-facing docs and dry-run Backspin snapshots use the new wording.
+- Historical T37 notes still show the old wording as phase history; T41 records
+  the replacement.
+- Verification:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/general_integration_spec.rb`
+  - green: `bin/rake build`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/general_integration_spec.rb spec/integration/spec/framework_output_spec.rb spec/integration/spec/rspec_args_spec.rb spec/integration/spec/turbo_tests_migration_spec.rb spec/docs/output_contracts_doc_spec.rb`
+  - `script/check-links`
+  - `bin/rake`

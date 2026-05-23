@@ -67,7 +67,8 @@ RSpec.describe "Plur general integration" do
       result = run_plur("-C", default_ruby_dir, "--dry-run")
 
       expect(result.err).to include("[dry-run] Running #{expected_spec_files} specs [rspec]")
-      expect(result.err).to include("[dry-run] Plan: #{expected_spec_files} targets across 4 workers; no tests will run")
+      expect(result.err).to include("[dry-run] Plan: #{expected_spec_files} targets across 4 workers; no commands will run")
+      expect(result.err).not_to include("no tests will run")
       expect(result.err).to include("[dry-run] Commands:")
       expect(result.err.index("[dry-run] Plan:")).to be < result.err.index("[dry-run] Worker 0:")
       expect(result.err.index("[dry-run] Commands:")).to be < result.err.index("[dry-run] Worker 0:")

@@ -17,7 +17,7 @@ snapshot:
     plur version=[VERSION]
     [dry-run] Selected job: rspec (framework: rspec, reason: explicit patterns)
     [dry-run] Running 2 specs [rspec] in parallel using 2 workers
-    [dry-run] Plan: 2 targets across 2 workers; no tests will run
+    [dry-run] Plan: 2 targets across 2 workers; no commands will run
     [dry-run] Commands:
     [dry-run] Worker [N]: PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=[N] bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --tag '~type:system' spec/models/system_spec.rb
     [dry-run] Worker [N]: PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=[N] bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --tag '~type:system' spec/models/user_spec.rb

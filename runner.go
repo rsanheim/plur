@@ -293,7 +293,7 @@ func (r *Runner) printSummary(workerCount int) {
 }
 
 func (r *Runner) printDryRunPlanSummary(workerCount int) {
-	toStdErr(true, "Plan: %d %s across %d %s; no tests will run\n",
+	toStdErr(true, "Plan: %d %s across %d %s; no commands will run\n",
 		len(r.files), pluralize(len(r.files), "target", "targets"),
 		workerCount, pluralize(workerCount, "worker", "workers"))
 	toStdErr(true, "Commands:\n")

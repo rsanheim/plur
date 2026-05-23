@@ -42,7 +42,7 @@ machine API.
 ```text
 [dry-run] Selected job: rspec (framework: rspec, reason: explicit patterns)
 [dry-run] Running 1 spec [rspec] in parallel using 1 worker
-[dry-run] Plan: 1 target across 1 worker; no tests will run
+[dry-run] Plan: 1 target across 1 worker; no commands will run
 [dry-run] Commands:
 [dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bin/rspec ...
 ```
