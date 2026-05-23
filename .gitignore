@@ -71,3 +71,4 @@ docs/.cache/
 __pycache__/
 *.pyc
 uv.lock
+results/
