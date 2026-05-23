@@ -95,3 +95,41 @@ The refreshed transcript is available at `tmp/cli_inventory_demo.txt`.
 
 Tradeoff: a successful command can now print a warning to stderr. That is
 intentional for explicit CLI intent; it is not applied to config excludes.
+
+## T6-DEV - Reject Dry-Run Watch With Guidance
+
+Pain point: `plur --dry-run watch` currently starts watch mode. That is
+surprising because dry-run means "show what would happen without doing it" for
+normal test runs, while watch mode attaches a watcher and waits for input.
+
+Change: when global `--dry-run` is combined with `watch run` or the default
+`watch` command, exit quickly with a focused message:
+
+```text
+Error: plur watch does not support --dry-run yet.
+Use `plur watch find <changed-file>` to preview which tests a file change would run.
+Use `plur --dry-run [patterns...]` to preview a one-shot test run.
+```
+
+Acceptance criteria:
+- `plur --dry-run watch` exits non-zero without installing or starting the
+  watcher.
+- The message points to `plur watch find <changed-file>` for watch previews.
+- Normal `plur watch --timeout 1` behavior is unchanged.
+- Focused watch dry-run tests and the full build pass.
+
+Before evidence:
+- `plur --dry-run watch --timeout 1` printed `ready and watching ...` and
+  exited 0 after the timeout, so it did real watch setup despite the dry-run
+  flag.
+
+After evidence:
+
+```text
+Error: plur watch does not support --dry-run yet.
+Use `plur watch find <changed-file>` to preview which tests a file change would run.
+Use `plur --dry-run [patterns...]` to preview a one-shot test run.
+```
+
+Tradeoff: this does not implement a full watch plan. It chooses honest
+guidance over a misleading partial dry-run.

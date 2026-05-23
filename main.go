@@ -50,6 +50,11 @@ type WatchRunCmd struct {
 func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	config := globals.globalConfig
 
+	if config.DryRun {
+		printWatchDryRunGuidance()
+		return ExitCode{Code: 2}
+	}
+
 	if err := runWatchInstall(false); err != nil {
 		return err
 	}
