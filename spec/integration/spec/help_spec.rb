@@ -21,5 +21,8 @@ RSpec.describe "help output" do
     expect(result.out).to include("Common workflows:")
     expect(result.out).to include("plur watch")
     expect(result.out).to include("plur watch find spec/calculator_spec.rb")
+    expect(result.out).to include("--dry-run")
+    expect(result.out).to include("One-shot run preview only; watch mode rejects it")
+    expect(result.out).to include("One-shot dry-run output format: text or json")
   end
 end

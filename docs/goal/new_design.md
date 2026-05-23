@@ -388,3 +388,40 @@ produces a JSON plan on stdout with `job`, `targets`, and `workers` keys.
 
 Tradeoff: this introduces a small output contract. Keep it narrow and versioned
 instead of treating existing human text as a stable API.
+
+## T14-DEV - Clarify Watch Help For Dry-Run Flags
+
+Pain point: `plur watch --dry-run` correctly exits with guidance, but
+`plur watch --help` still lists the global `--dry-run` and
+`--dry-run-format` flags without any watch-specific warning. That makes help
+and runtime behavior contradict each other.
+
+Change: keep the global flags visible, but annotate them in watch help:
+
+```text
+--dry-run                  One-shot run preview only; watch mode rejects it
+--dry-run-format="text"    One-shot dry-run output format: text or json
+```
+
+The common workflow block already points to `plur watch find <file>` for watch
+previews, so this phase should only close the remaining flag-list ambiguity.
+
+Acceptance criteria:
+- `plur watch --help` explains that `--dry-run` is a one-shot run preview flag,
+  not a live-watch preview flag.
+- `plur watch --help` keeps pointing to `plur watch find` for watch previews.
+- Top-level help remains unchanged except for any necessary formatting.
+- Focused help specs and the full build pass.
+
+Before evidence:
+- Darwin's T12 review noted that `plur watch --help` listed `--dry-run` even
+  though live watch rejects it.
+
+After evidence:
+
+```text
+--dry-run                  One-shot run preview only; watch mode rejects it
+```
+
+Tradeoff: this is still a custom help overlay. It is lower risk than trying to
+hide global Kong flags only for one subcommand.
