@@ -1852,7 +1852,7 @@ After evidence:
 ## T52-DEV - Characterize Watch Planning Before Extraction
 
 Status: verified
-Commit: pending
+Commit: b14da74d071f6eb0c58dd9fc3ad19e8199f2ff29
 
 Pain point: the watch parity refactor needs to move planning responsibilities
 out of `FileEventHandler` and `watch_find.go`, but the current behavior is only
