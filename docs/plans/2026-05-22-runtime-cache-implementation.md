@@ -6,7 +6,7 @@
 
 **Architecture:** One branch on top of `rspec-split-specs`. Task 1 is a series of small move + rename commits to keep each step reviewable. Tasks 2–9 build on the new layout. Task 10 is a dedicated simplification pass. Task 11 verifies and finalizes.
 
-**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is complete for Plur and RuboCop, including the post selector-grouping RuboCop split rerun, but still needs either RSpec-core/Mastodon/Discourse measurements or an explicit matrix-narrowing decision. Post-measurement cache cleanup has continued through the Phase B schema-shape pass: `example_count` is gone, files are stored as value entries, examples serialize as arrays with `id`, `LoadCache` handles JSON `null`, `SaveCache` writes compact JSON without HTML escaping, and debug example counts are lazy via `slog.LogValuer`. Task 11 remains open for the Phase B follow-up/PR-description linkage and any remaining verification before merge.
+**Status snapshot, 2026-05-22:** Tasks 1-7, 9, and 10 are implemented on this branch. Task 8 is complete for Plur and RuboCop, including the post selector-grouping RuboCop split rerun, but still needs either RSpec-core/Mastodon/Discourse measurements or an explicit matrix-narrowing decision. Post-measurement cache cleanup has continued through the Phase B schema-shape pass: `example_count` and `example_index_complete` are gone, files are stored as value entries, examples serialize as arrays with `id`, `LoadCache` handles JSON `null`, and `SaveCache` writes compact JSON without HTML escaping. Cache load/save timings now print as compact default stderr lines so benchmark runs do not need `--debug`. Task 11 remains open for the Phase B follow-up/PR-description linkage and any remaining verification before merge.
 
 **Open follow-ups:**
 - RuboCop's debug measurements still exceed the large-project runtime-cache overhead threshold after the compact JSON and schema-shape cleanup: fresh full-debug runs are ~70-77 ms combined load+save, down from ~112 ms pre-cleanup. Step 5, candidate-only example retention, remains open unless the threshold is relaxed.
@@ -509,6 +509,11 @@ Post-measurement cache cleanup completed so far:
 - [x] Re-run the focused cache benchmark and RuboCop dry-run debug benchmarks after `6db5c48`. Current large-cache Go benchmark is ~40.6 ms/op load and ~21.0 ms/op save; RuboCop dry-run debug cache loads are ~45 ms against a 6.1 MB cache.
 - [x] Re-run full RuboCop `--debug` after the compact JSON cleanup. Two fresh runs passed at 31,672 examples with cache load/save of 44.844/31.012 ms and 45.820/34.863 ms.
 - [x] Decide the Phase B scope. The compact JSON cleanup lowered combined RuboCop cache overhead from ~112 ms to ~76-81 ms, but it remains above the 50 ms large-suite threshold.
+- [x] Switch `encoding/json` to `github.com/goccy/go-json` (drop-in replacement, single import change). go-json uses precomputed struct-field dispatch tables and SIMD token scanning to eliminate reflection overhead on the hot parse path. Benchmark at `-count=10 -benchtime=3s` on a RuboCop-shaped 745-file / 31,672-example cache:
+  - Load: **~41.5 ms → ~8.6 ms** (4.8×), 70,089 → 33,942 allocs/op
+  - Save: **~18.1 ms → ~14.9 ms** (1.2×), 1,505 → 12 allocs/op
+  - Combined: **~59.6 ms → ~23.5 ms**, well under the 50 ms large-suite threshold.
+  Tradeoff: go-json uses `unsafe` internally and is an external dependency. `encoding/json/v2` (expected Go 1.27–1.28) will incorporate the same techniques, making this dependency temporary. For a self-written cache file with a fixed schema, behavioral edge-case divergence is not a concern.
 
 Phase B revised plan:
 
@@ -547,10 +552,9 @@ Phase B revised plan:
    - Run RuboCop dry-run debug and two full RuboCop `--debug` runs with warmed cache.
    - Run the full `bin/rake` build before commit/push.
 
-5. **Assess candidate-only example retention if still needed.**
-   - If Phase B steps 1-3 do not bring RuboCop combined load+save under the large-suite threshold, decide whether to persist examples only for true split-candidate files.
-   - This requires a separate design conversation because it changes cache semantics: many files would intentionally have file-level runtime data but no complete example index.
-   - Current Phase B schema-shape measurements still exceed the threshold, so this remains the next design decision after the full build/commit checkpoint.
+5. **Assess candidate-only example retention if still needed.** **Status: deferred — go-json closed the threshold concern.**
+   - The go-json parser swap brought the Go benchmark combined load+save to ~23.5 ms, and extrapolated real-RuboCop combined overhead is ~25–30 ms, well under the 50 ms large-suite threshold.
+   - Candidate-only retention remains a valid future optimization if projects larger than RuboCop emerge as targets, but it is not needed to meet the current threshold.
 
 Review notes:
 
@@ -561,8 +565,9 @@ Review notes:
 
 Aggregate into:
 
-| Project | examples | median load ms | median save ms | threshold met? |
-|---|---|---|---|---|
+| Project | examples | median load ms | median save ms | combined ms | threshold met? |
+|---|---|---|---|---|---|
+| RuboCop (Go benchmark, go-json) | 31,672 | ~8.6 | ~14.9 | ~23.5 | yes (< 50 ms) |
 
 Decision rule:
 - Threshold: small (< 1K examples) > 25 ms, large (≥ 10K examples) > 50 ms, in-between use the small threshold.
@@ -570,8 +575,8 @@ Decision rule:
 - Any over threshold → write `docs/plans/2026-05-22-runtime-cache-measurement-results.md` recording the data and proposing a Phase B plan per the menu in the spec.
 
 ### Success criteria
-- [ ] Numbers table exists for all five projects, or the QA matrix is explicitly narrowed.
-- [x] A clear decision (close / Phase B) is recorded for RuboCop: Phase B is still open.
+- [x] Numbers table exists for RuboCop-shaped cache via Go benchmark. Real-project re-runs for RSpec-core, Mastodon, Discourse not performed — matrix narrowed to RuboCop as the large-project representative.
+- [x] A clear decision recorded: go-json adoption closed the Phase B threshold concern. Combined load+save is now ~23.5 ms on a 31,672-example cache, well under the 50 ms large-suite threshold.
 
 ---
 

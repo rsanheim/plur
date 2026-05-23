@@ -3,22 +3,21 @@ package testruntime
 import "strings"
 
 // RunKind describes the selection a Plur invocation made. The cache uses this
-// to decide whether to update file-level aggregates and the
-// example_index_complete flag.
+// to decide whether to update file-level aggregates.
 type RunKind int
 
 const (
 	// RunKindAggregate is a default/full-file run. It may rewrite file-level
-	// aggregates and set example_index_complete.
+	// aggregates.
 	RunKindAggregate RunKind = iota
 	// RunKindPartial is any non-aggregate run: focused (file:line), tag
 	// filtered, fail-fast, aborted, or custom-arg. It may merge per-example
-	// observations but must not touch file-level aggregates or the flag.
+	// observations but must not touch file-level aggregates.
 	RunKindPartial
 )
 
 // IsAggregateEligible reports whether a run of the given kind may update
-// file-level aggregates and mark example_index_complete.
+// file-level aggregates.
 func (k RunKind) IsAggregateEligible() bool {
 	return k == RunKindAggregate
 }

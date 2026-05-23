@@ -41,7 +41,7 @@ func TestRuntimeTracker(t *testing.T) {
 		assert.InDelta(t, 0.123, rt.PendingFileRuntimes()["spec/test_spec.rb"], 0.001)
 	})
 
-	t.Run("SaveToFile creates v2 runtime file under returned path", func(t *testing.T) {
+	t.Run("SaveToFile creates runtime file under returned path", func(t *testing.T) {
 		tempDir := t.TempDir()
 		specPath := writeFixtureSpec(t, tempDir, "foo_spec.rb")
 
@@ -65,7 +65,6 @@ func TestRuntimeTracker(t *testing.T) {
 		entry := reloaded.File(specPath)
 		require.NotNil(t, entry)
 		assert.Equal(t, 1.5, entry.RuntimeSeconds)
-		assert.True(t, entry.ExampleIndexComplete)
 	})
 
 	t.Run("Aggregate-eligible runs overwrite file-level runtime; partial runs preserve it", func(t *testing.T) {
@@ -116,7 +115,7 @@ func TestRuntimeTracker(t *testing.T) {
 		assert.Equal(t, 5, requireExample(t, entry, "./"+specPath+"[1:1]").LineNumber)
 	})
 
-	t.Run("LoadedData reflects loaded v2 cache", func(t *testing.T) {
+	t.Run("LoadedData reflects loaded cache", func(t *testing.T) {
 		tempDir := t.TempDir()
 		specPath := writeFixtureSpec(t, tempDir, "foo_spec.rb")
 

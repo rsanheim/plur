@@ -96,7 +96,6 @@ func TestCache_SaveAndReload(t *testing.T) {
 	assert.Equal(t, int64(123), entry.MtimeUnixNano)
 	assert.Equal(t, int64(456), entry.SizeBytes)
 	assert.Equal(t, 2.5, entry.RuntimeSeconds)
-	assert.True(t, entry.ExampleIndexComplete)
 	assert.Len(t, entry.Examples, 1)
 
 	ex := requireExample(t, entry, "./spec/foo_spec.rb[1:1]")
@@ -113,14 +112,13 @@ func TestCache_IgnoresUnknownExampleFields(t *testing.T) {
 	path := filepath.Join(dir, "cache.json")
 
 	oldShape := `{
-	  "meta": {"schema_version": 3, "plur_version": "v0"},
+	  "meta": {"schema_version": 4, "plur_version": "v0"},
 	  "run": {"cwd": "/tmp/project", "last_run_at": "2026-05-22T01:02:03Z"},
 	  "files": {
 	    "spec/foo_spec.rb": {
 	      "mtime_unix_nano": 1,
 	      "size_bytes": 2,
 	      "runtime_seconds": 1.0,
-	      "example_index_complete": true,
 	      "examples": [
 	        {
 	          "id": "./spec/foo_spec.rb[1:1]",
@@ -156,7 +154,7 @@ func TestCache_SaveWritesCompactJSON(t *testing.T) {
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), "\n  \"", "runtime cache should avoid pretty-print indentation")
-	assert.Contains(t, string(data), `"meta":{"schema_version":3,"plur_version":"plur-test"}`)
+	assert.Contains(t, string(data), `"meta":{"schema_version":4,"plur_version":"plur-test"}`)
 	assert.Contains(t, string(data), `"run":{"cwd":"/tmp/project","last_run_at":"2026-05-22T01:02:03Z"}`)
 }
 
@@ -178,6 +176,7 @@ func TestCache_SaveSerializesExamplesAsArrayWithID(t *testing.T) {
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), `"example_count"`)
+	assert.NotContains(t, string(data), `"example_index_complete"`)
 
 	var raw struct {
 		Files map[string]struct {
@@ -236,7 +235,7 @@ func TestCache_SaveIsAtomic(t *testing.T) {
 func TestCache_FileRuntimesSkipsZero(t *testing.T) {
 	cache := NewCache()
 	cache.MergeAggregateRun("spec/has_runtime.rb", 0, 0, 3.14, nil)
-	cache.Files["spec/no_runtime.rb"] = FileEntry{ExampleIndexComplete: false}
+	cache.Files["spec/no_runtime.rb"] = FileEntry{}
 
 	rt := cache.FileRuntimes()
 	assert.Equal(t, 3.14, rt["spec/has_runtime.rb"])
@@ -260,7 +259,6 @@ func TestCache_MergeAggregateRunReplacesExamples(t *testing.T) {
 	require.NotNil(t, entry)
 	assert.Equal(t, int64(3), entry.MtimeUnixNano)
 	assert.Equal(t, 2.0, entry.RuntimeSeconds)
-	assert.True(t, entry.ExampleIndexComplete)
 	assert.Len(t, entry.Examples, 1, "aggregate run prunes examples missing from the run")
 	assert.Equal(t, "./spec/x_spec.rb[1:1]", entry.Examples[0].ID)
 }
@@ -280,7 +278,6 @@ func TestCache_MergeObservationsPreservesAggregate(t *testing.T) {
 	entry := cache.File("spec/x_spec.rb")
 	require.NotNil(t, entry)
 	assert.Equal(t, 5.0, entry.RuntimeSeconds, "partial run must not touch file-level runtime")
-	assert.True(t, entry.ExampleIndexComplete, "partial run must not flip the flag")
 	assert.Len(t, entry.Examples, 2, "partial run must not prune missing examples")
 	assert.Equal(t, 1.5, requireExample(t, entry, "./spec/x_spec.rb[1:1]").RuntimeSeconds)
 	assert.Equal(t, 4.0, requireExample(t, entry, "./spec/x_spec.rb[1:2]").RuntimeSeconds)
@@ -316,7 +313,7 @@ func TestCache_IsExamplesFresh(t *testing.T) {
 	assert.False(t, cache.IsExamplesFresh(source), "modified source should report stale")
 }
 
-func TestCache_IsExamplesFreshFalseWhenIncomplete(t *testing.T) {
+func TestCache_IsExamplesFreshUsesSourceFreshnessOnly(t *testing.T) {
 	dir := t.TempDir()
 	source := filepath.Join(dir, "foo_spec.rb")
 	require.NoError(t, os.WriteFile(source, []byte("# spec\n"), 0644))
@@ -325,14 +322,12 @@ func TestCache_IsExamplesFreshFalseWhenIncomplete(t *testing.T) {
 	mtime, size, ok := SourceFreshness(source)
 	require.True(t, ok)
 	cache.Files[source] = FileEntry{
-		MtimeUnixNano:        mtime,
-		SizeBytes:            size,
-		RuntimeSeconds:       1.0,
-		ExampleIndexComplete: false,
-		Examples:             []ExampleEntry{{ID: "id", LineNumber: 1}},
+		MtimeUnixNano:  mtime,
+		SizeBytes:      size,
+		RuntimeSeconds: 1.0,
 	}
 
-	assert.False(t, cache.IsExamplesFresh(source), "incomplete index must report not-fresh")
+	assert.True(t, cache.IsExamplesFresh(source), "freshness is derived from source metadata")
 }
 
 func requireExample(t *testing.T, entry *FileEntry, id string) ExampleEntry {

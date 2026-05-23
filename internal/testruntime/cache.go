@@ -1,20 +1,18 @@
 package testruntime
 
 import (
-	"encoding/json"
-	"log/slog"
+	"fmt"
+	json "github.com/goccy/go-json"
 	"os"
 	"path/filepath"
 	"slices"
 	"time"
-
-	"github.com/rsanheim/plur/logger"
 )
 
 // SchemaVersion is the on-disk schema version Plur reads and writes.
-// Older v1 caches (plain map[string]float64) are ignored and replaced on the
-// next aggregate-eligible run.
-const SchemaVersion = 3
+// Older caches with an unsupported schema_version are ignored and replaced on
+// the next aggregate-eligible run.
+const SchemaVersion = 4
 
 // Cache is the persisted runtime cache.
 // See docs/plans/2026-05-12-rspec-split-specs-experimental-plan.md for the
@@ -42,11 +40,10 @@ type CacheRun struct {
 // aggregate runtime from the most recent aggregate-eligible full run. Examples
 // holds per-example metadata when available.
 type FileEntry struct {
-	MtimeUnixNano        int64          `json:"mtime_unix_nano"`
-	SizeBytes            int64          `json:"size_bytes"`
-	RuntimeSeconds       float64        `json:"runtime_seconds"`
-	ExampleIndexComplete bool           `json:"example_index_complete"`
-	Examples             []ExampleEntry `json:"examples,omitempty"`
+	MtimeUnixNano  int64          `json:"mtime_unix_nano"`
+	SizeBytes      int64          `json:"size_bytes"`
+	RuntimeSeconds float64        `json:"runtime_seconds"`
+	Examples       []ExampleEntry `json:"examples,omitempty"`
 }
 
 // ExampleEntry is the per-example record.
@@ -69,17 +66,18 @@ func NewCache() *Cache {
 // missing files, v1 caches (map[string]float64), corrupt JSON, and entries
 // with an unsupported schema_version.
 func LoadCache(path string) (cache *Cache) {
+	return loadCache(path, false)
+}
+
+func loadCache(path string, printTiming bool) (cache *Cache) {
 	start := time.Now()
 	defer func() {
 		if cache == nil {
 			cache = NewCache()
 		}
-		logger.Logger.Debug("runtimeCache loaded",
-			"duration", time.Since(start),
-			"path", path,
-			"files", len(cache.Files),
-			"examples", exampleCountValue{cache: cache},
-		)
+		if printTiming {
+			printCacheTiming("loaded", start, path, cache)
+		}
 	}()
 
 	data, err := os.ReadFile(path)
@@ -106,6 +104,10 @@ func LoadCache(path string) (cache *Cache) {
 // directory + rename into place. The caller supplies the current plur version
 // to record.
 func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time) error {
+	return saveCache(cache, path, plurVersion, cwd, lastRunAt, false)
+}
+
+func saveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time, printTiming bool) error {
 	start := time.Now()
 
 	if cache.Meta.SchemaVersion == 0 {
@@ -149,25 +151,24 @@ func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time)
 	}
 	success = true
 
-	logger.Logger.Debug("runtimeCache saved",
-		"duration", time.Since(start),
-		"path", path,
-		"files", len(cache.Files),
-		"examples", exampleCountValue{cache: cache},
-	)
+	if printTiming {
+		printCacheTiming("saved", start, path, cache)
+	}
 	return nil
 }
 
-type exampleCountValue struct {
-	cache *Cache
-}
-
-func (v exampleCountValue) LogValue() slog.Value {
-	return slog.IntValue(countExamples(v.cache))
+func printCacheTiming(event string, start time.Time, path string, cache *Cache) {
+	fmt.Fprintf(os.Stderr, "runtimeCache %s duration=%s path=%q files=%d examples=%d\n",
+		event,
+		time.Since(start),
+		path,
+		len(cache.Files),
+		countExamples(cache),
+	)
 }
 
 // countExamples sums per-file example counts across the cache. Used for the
-// debug log fields on load and save.
+// timing output fields on load and save.
 func countExamples(c *Cache) int {
 	if c == nil {
 		return 0
@@ -236,12 +237,11 @@ func (c *Cache) ExampleLines(filePath string) []int {
 	return out
 }
 
-// IsExamplesFresh reports whether the cached examples for a file can be
-// trusted by the splitter: example_index_complete is true AND the recorded
-// mtime/size still match the current source file.
+// IsExamplesFresh reports whether cached examples for a file match the
+// current source file's mtime/size.
 func (c *Cache) IsExamplesFresh(filePath string) bool {
 	entry, ok := c.Files[filePath]
-	if !ok || !entry.ExampleIndexComplete {
+	if !ok {
 		return false
 	}
 	mtime, size, ok := SourceFreshness(filePath)
@@ -252,16 +252,15 @@ func (c *Cache) IsExamplesFresh(filePath string) bool {
 }
 
 // MergeAggregateRun records the result of an aggregate-eligible full-file run.
-// It replaces the file's examples and runtime aggregate, sets
-// example_index_complete, and records current source freshness. The caller
-// must have already verified this is an aggregate-eligible run.
+// It replaces the file's examples and runtime aggregate, and records current
+// source freshness. The caller must have already verified this is an
+// aggregate-eligible run.
 func (c *Cache) MergeAggregateRun(filePath string, mtimeUnixNano, sizeBytes int64, runtimeSeconds float64, examples map[string]*ExampleEntry) {
 	c.Files[filePath] = FileEntry{
-		MtimeUnixNano:        mtimeUnixNano,
-		SizeBytes:            sizeBytes,
-		RuntimeSeconds:       runtimeSeconds,
-		ExampleIndexComplete: true,
-		Examples:             exampleSlice(examples),
+		MtimeUnixNano:  mtimeUnixNano,
+		SizeBytes:      sizeBytes,
+		RuntimeSeconds: runtimeSeconds,
+		Examples:       exampleSlice(examples),
 	}
 }
 
@@ -287,9 +286,8 @@ func exampleSlice(examples map[string]*ExampleEntry) []ExampleEntry {
 }
 
 // MergeObservations records per-example observations from a partial run for a
-// single file. It never modifies RuntimeSeconds, never flips
-// ExampleIndexComplete from false to true, and never prunes examples missing
-// from this run. If the file has no existing entry, nothing is written:
+// single file. It never modifies RuntimeSeconds and never prunes examples
+// missing from this run. If the file has no existing entry, nothing is written:
 // partial runs must not create file-level aggregates.
 func (c *Cache) MergeObservations(filePath string, examples map[string]*ExampleEntry) {
 	existing, ok := c.Files[filePath]

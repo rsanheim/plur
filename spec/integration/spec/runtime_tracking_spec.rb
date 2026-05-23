@@ -33,7 +33,7 @@ RSpec.describe "Plur runtime tracking" do
         run_plur("-n", "2")
 
         data, runtime_file = runtime_cache_data
-        expect(data["meta"]["schema_version"]).to eq(3)
+        expect(data["meta"]["schema_version"]).to eq(4)
         expect(data["meta"]["plur_version"]).to be_a(String).and(satisfy { |v| !v.empty? })
         expect(data["run"]["cwd"]).to eq(default_ruby_dir.to_s)
         expect(Time.iso8601(data["run"]["last_run_at"]).utc.iso8601).to eq(data["run"]["last_run_at"])
@@ -46,7 +46,7 @@ RSpec.describe "Plur runtime tracking" do
         expect(entry["runtime_seconds"]).to be > 0
         expect(entry["mtime_unix_nano"]).to be > 0
         expect(entry["size_bytes"]).to be > 0
-        expect(entry["example_index_complete"]).to be true
+        expect(entry).not_to include("example_index_complete")
 
         examples = entry["examples"]
         expect(examples).to be_a(Array)
@@ -83,7 +83,7 @@ RSpec.describe "Plur runtime tracking" do
         run_plur("-n", "2")
 
         data = JSON.parse(File.read(cache_path))
-        expect(data["meta"]["schema_version"]).to eq(3)
+        expect(data["meta"]["schema_version"]).to eq(4)
         expect(data["files"]).to include("spec/calculator_spec.rb")
       end
     end
@@ -124,7 +124,7 @@ RSpec.describe "Plur runtime tracking" do
 
         cache = {
           "meta" => {
-            "schema_version" => 3,
+            "schema_version" => 4,
             "plur_version" => "fixture"
           },
           "run" => {
@@ -132,8 +132,7 @@ RSpec.describe "Plur runtime tracking" do
             "last_run_at" => "2026-05-22T00:00:00Z"
           },
           "files" => files.transform_values { |rt|
-            {"mtime_unix_nano" => 0, "size_bytes" => 0, "runtime_seconds" => rt,
-             "example_index_complete" => false}
+            {"mtime_unix_nano" => 0, "size_bytes" => 0, "runtime_seconds" => rt}
           }
         }
 
@@ -177,7 +176,7 @@ RSpec.describe "Plur runtime tracking" do
         updated, _ = runtime_cache_data
         entry = updated["files"]["spec/calculator_spec.rb"]
         expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"])
-        expect(entry["example_index_complete"]).to be true
+        expect(entry).not_to include("example_index_complete")
         expect(entry["examples"].size).to eq(original_example_count)
       end
     end
@@ -287,7 +286,7 @@ RSpec.describe "Plur runtime tracking" do
 
     it "splits long-running files into focused file:line targets after the cache is warmed" do
       Dir.chdir(default_ruby_dir) do
-        # Warm the v2 cache with a real run.
+        # Warm the runtime cache with a real run.
         run_plur("-n", "2")
         cache, runtime_file = runtime_cache_data
 

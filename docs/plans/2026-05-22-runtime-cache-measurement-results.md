@@ -408,6 +408,46 @@ Capture `rspec-split applied` count from the `v2-split-debug` and `v2-split-dry-
 - RuboCop runtime cache overhead: pre-cleanup v2 load+save was ~112 ms on a 31.7K-example cache. Post compact-JSON full debug runs are ~76-81 ms combined load+save. The cleanup helped materially, but the combined overhead remains above the 50 ms large-suite threshold, so a smaller Phase B follow-up is still justified unless the threshold is relaxed.
 - RuboCop `--rspec-split`: the post selector-grouping rerun is now a valid apples-to-apples comparison. It preserves the baseline example count and is ~1.38x faster on this suite. Keep it experimental until the broader QA matrix is either completed or explicitly narrowed, but the RuboCop correctness blocker from duplicate rerunnable selectors is resolved.
 
+## go-json Parser Adoption
+
+After the Phase B schema-shape pass, load time remained at ~41–45 ms and was the dominant contributor to the combined threshold breach. The bottleneck was `encoding/json`'s reflection-based field dispatch and per-string heap allocation, not file size or JSON structure.
+
+Replacing `encoding/json` with `github.com/goccy/go-json` (a drop-in API replacement) in `loadCache`/`saveCache` resolves this. go-json precomputes struct-field dispatch tables on first use and uses SIMD token scanning on ARM64. It requires one import change with no schema or format modification.
+
+### Benchmark
+
+Command used:
+
+```bash
+go test -mod=mod ./internal/testruntime/ \
+  -bench='BenchmarkCache_(Load|Save)LargeRspecCache' \
+  -benchmem -count=10 -benchtime=3s
+```
+
+Synthetic cache: 745 files, 31,672 examples (RuboCop-shaped), compact JSON, schema v4.
+
+| Benchmark | encoding/json (Phase B baseline) | go-json | Change |
+|---|---:|---:|---|
+| `LoadLargeRspecCache` | ~41.5 ms/op, 70,089 allocs/op | **~8.6 ms/op, 33,942 allocs/op** | 4.8× faster, 51% fewer allocs |
+| `SaveLargeRspecCache` | ~18.1 ms/op, 1,505 allocs/op | **~14.9 ms/op, 12 allocs/op** | 1.2× faster, 99% fewer allocs |
+| Combined | ~59.6 ms | **~23.5 ms** | 2.5× faster |
+
+The save dropping to 12 allocations total is go-json's zero-allocation encoding path for well-known struct layouts. The load allocation reduction (70K → 34K) reflects go-json's more efficient string batching.
+
+### Extrapolated Real-Project Estimate
+
+Previous real-RuboCop debug loads were ~9% slower than the Go benchmark (~45 ms vs ~41.5 ms). Applying the same factor to the go-json result: **~9–10 ms load, ~16–18 ms save, ~25–28 ms combined** — well under the 50 ms large-suite threshold.
+
+### Tradeoffs
+
+- **`unsafe` internals.** go-json uses unsafe pointer arithmetic for field writes. Stable in practice; the library tests against each new Go release.
+- **External dependency.** Adds ~250 KB to the binary. `encoding/json/v2` (expected Go 1.27–1.28) will incorporate the same techniques, making this dependency temporary with a trivial migration path.
+- **Edge-case divergence.** go-json has minor behavioral differences from stdlib for unusual JSON inputs (NaN/Inf, duplicate keys). Not a concern for a self-written cache with a fixed schema.
+
+### Decision
+
+Phase B threshold concern **closed** by go-json adoption. The combined large-suite cache overhead is now ~23.5 ms against the benchmark and an estimated ~25–28 ms against real RuboCop, both well under the 50 ms threshold. Candidate-only example retention (Phase B Step 5) is deferred; it remains a valid future optimization for caches significantly larger than RuboCop's 31,672 examples.
+
 ## Obstacles and Blockers
 
 Record any setup or suite failures here instead of silently skipping a benchmark.
