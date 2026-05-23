@@ -1,0 +1,105 @@
+#!/usr/bin/env ruby
+
+require "optparse"
+
+STATUSES = %w[start wip review done blocked paused skipped note].freeze
+
+options = {}
+
+parser = OptionParser.new do |opts|
+  opts.banner = <<~TEXT
+    Emits a single-line, standardized progress annotation for agent/review-loop work.
+
+    The output is intentionally logfmt-ish so it is easy to paste into Markdown,
+    grep later, or have agents parse/update during iterative review loops.
+
+    Example usage:
+
+      track-goal -c CLI-SURFACE -s start -m "beginning CLI/config review"
+      => ts=2026-05-23-01:45:00 git_ref=main git_oid=123456 status=start current="CLI-SURFACE" msg="beginning CLI/config review"
+
+  TEXT
+  opts.separator ""
+  opts.separator "Required:"
+
+  opts.on("-c", "--current PHASE", String, "Current phase/task name. Required.") do |value|
+    options[:current] = value
+  end
+  opts.on("-s", "--status STATUS", STATUSES, "Progress status (#{STATUSES.join("|")}). Required.") do |value|
+    options[:status] = value
+  end
+  opts.separator ""
+  opts.separator "Optional:"
+
+  opts.on("-n", "--next PHASE", String, "Next phase/task name") do |value|
+    options[:next] = value
+  end
+  opts.on("-m", "--msg MSG", "Free-form progress note/message.") do |value|
+    options[:msg] = value
+  end
+
+  opts.on("-h", "--help", "Show this help text.") do
+    puts opts
+    puts <<~TEXT
+
+      Status values:
+        #{STATUSES.join(", ")}
+
+      Agent usage notes:
+        - Use status=start when beginning a new review loop.
+        - Use status=wip while actively changing or evaluating something.
+        - Use status=review when another agent should inspect the work.
+        - Use status=done when current phase is complete.
+        - Use status=note for observations that should not imply progress.
+        - Use status=blocked when progress depends on missing context or a decision.
+
+      Phase naming:
+        current is required and should name current phase or unit of work
+        next is optional and should name the likely next phase or unit of work.
+
+      Message guidance:
+        Keep msg short, concrete, and useful to future agents and humans.
+
+        Good: "config surface still has duplicate runtime/cache concepts"
+
+        Less useful: "working on stuff"
+
+      Examples:
+        track-goal -c CLI-SURFACE -s start -m "beginning CLI/config review"
+    TEXT
+    exit
+  end
+end
+
+REQUIRED = [:current, :status]
+begin
+  parser.parse!
+  missing = REQUIRED.select { |required| options[required].nil? }
+  if missing.any?
+    raise OptionParser::MissingArgument.new(missing.join(", ").to_s)
+  end
+rescue OptionParser::InvalidArgument, OptionParser::MissingArgument => e
+  puts e
+  puts
+  puts parser
+  abort 
+end
+
+def quote(value)
+  escaped = value.to_s.gsub("\\", "\\\\\\").gsub('"', '\"').gsub("\n", "\\n")
+
+  %("#{escaped}")
+end
+
+ts = `date +"%Y-%m-%d-%H:%M:%S"`.strip
+
+fields = []
+fields << "ts=#{ts}"
+fields << "git_ref=#{`git rev-parse --abbrev-ref HEAD`.strip}"
+fields << "git_oid=#{`git rev-parse HEAD`.strip[0..6]}"
+fields << "status=#{options[:status]}"
+fields << "current=#{quote(options[:current])}"
+fields << "next=#{quote(options[:next])}" if options[:next]
+fields << "msg=#{quote(options[:msg])}" if options[:msg]
+
+puts fields.join(" ")
