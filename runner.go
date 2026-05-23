@@ -481,14 +481,8 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 }
 
 func errorResult(err error, start time.Time) WorkerResult {
-	errorOutput := ""
-	if err != nil {
-		errorOutput = fmt.Sprintf("Error: %v\n", err)
-	}
-
 	return WorkerResult{
 		State:    types.StateError,
-		Output:   errorOutput,
 		Error:    err,
 		Duration: time.Since(start),
 	}

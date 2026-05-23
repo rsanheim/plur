@@ -1446,3 +1446,42 @@ After evidence:
   - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/general_integration_spec.rb spec/integration/spec/framework_output_spec.rb spec/integration/spec/rspec_args_spec.rb spec/integration/spec/turbo_tests_migration_spec.rb spec/docs/output_contracts_doc_spec.rb`
   - `script/check-links`
   - `bin/rake`
+
+## T43-DEV - Route Worker Startup Errors To Stderr
+
+Pain point: T39 stopped subprocess stderr from replaying on stdout, but a
+worker command that cannot start still puts Plur's own runtime error on stdout:
+
+```text
+Finished in 0.00021 seconds (files took 0 seconds to load)
+0 examples, 0 failures
+Error: failed to start command: exec: "definitely-not-a-real-plur-command": executable file not found in $PATH
+```
+
+That breaks the output contract for scripts. Framework test output and summaries
+belong on stdout; Plur runtime/startup errors belong on stderr.
+
+Root cause: `errorResult()` stores startup errors in `WorkerResult.Output`.
+`PrintResults()` prints errored worker output with stdout-oriented `fmt.Print`.
+
+Change: keep framework errored output on stdout, but do not use
+`WorkerResult.Output` for Plur startup errors. If an errored worker has no
+captured output and carries a non-exit runtime error, print that error to
+stderr.
+
+Acceptance criteria:
+- A missing worker executable exits 1.
+- `failed to start command` appears on stderr.
+- `failed to start command` does not appear on stdout.
+- Existing RSpec syntax/error-output behavior remains on stdout.
+- Focused output/error specs and the full build pass.
+
+After evidence:
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/output_spec.rb`
+  failed because stderr did not include `failed to start command`.
+- Green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/output_spec.rb spec/integration/spec/error_handling_spec.rb`
+  passed with 13 examples, 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 372 examples, 0 failures, and 4 existing pending
+  examples.

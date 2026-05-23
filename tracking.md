@@ -82,3 +82,5 @@ ts=2026-05-23-09:47:37 git_ref=prep-goal git_oid=ea3672f status=start current="T
 ts=2026-05-23-09:50:03 git_ref=prep-goal git_oid=ea3672f status=done current="T41-DEV" msg="dry-run summary now says no commands will run"
 ts=2026-05-23-09:50:24 git_ref=prep-goal git_oid=0b51a76 status=start current="T42-REFLECT" msg="begin reflection after stream and output contract cleanup"
 ts=2026-05-23-09:58:02 git_ref=prep-goal git_oid=0b51a76 status=done current="T42-REFLECT" msg="reflection after stream and output contract cleanup scored with automation gaps"
+ts=2026-05-23-09:58:28 git_ref=prep-goal git_oid=b2e4589 status=start current="T43-DEV" msg="begin worker startup error stderr routing"
+ts=2026-05-23-10:02:18 git_ref=prep-goal git_oid=b2e4589 status=done current="T43-DEV" msg="worker startup errors now route to stderr"

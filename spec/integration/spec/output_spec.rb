@@ -94,5 +94,33 @@ RSpec.describe "plur spec output handling" do
         expect(stdout).to include("0 examples, 0 failures")
       end
     end
+
+    it "prints worker startup errors to stderr instead of stdout" do
+      tmp_root = ROOT_PATH.join("tmp")
+      FileUtils.mkdir_p(tmp_root)
+
+      Dir.mktmpdir("worker-startup-error-", tmp_root.to_s) do |tmpdir|
+        FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+        File.write(File.join(tmpdir, "spec", "boom_spec.rb"), "# target placeholder\n")
+        File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
+          use = "missing"
+          color = false
+
+          [job.missing]
+          framework = "rspec"
+          cmd = ["definitely-not-a-real-plur-command"]
+          target_pattern = "spec/**/*_spec.rb"
+        TOML
+
+        stdout, stderr, status = Dir.chdir(tmpdir) do
+          Open3.capture3(plur_binary, "-n", "1")
+        end
+
+        expect(status.exitstatus).to eq(1)
+        expect(stderr).to include("failed to start command")
+        expect(stdout).not_to include("failed to start command")
+        expect(stdout).to include("0 examples, 0 failures")
+      end
+    end
   end
 end
