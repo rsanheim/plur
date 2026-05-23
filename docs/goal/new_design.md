@@ -1587,8 +1587,8 @@ After evidence:
 
 ## T46-DEV - Focus `watch run` Flags On Live Watching
 
-Status: verified
-Commit: pending
+Status: committed
+Commit: 02fd8b80fcc6d06bc29bb18a96be8388c59c30c0
 
 Pain point: `plur watch run --help` still advertises inherited one-shot run
 flags such as `--workers`, `--first-is-1`, and `--rspec-split`, even though
