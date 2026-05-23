@@ -1848,3 +1848,36 @@ After evidence:
   `watch/watcher.go`.
 - Three sub-agent reviewers independently agreed that `FindTargetsForFile` is
   shared but below the correct abstraction boundary.
+
+## T52-DEV - Characterize Watch Planning Before Extraction
+
+Status: verified
+Commit: pending
+
+Pain point: the watch parity refactor needs to move planning responsibilities
+out of `FileEventHandler` and `watch_find.go`, but the current behavior is only
+partly described by focused tests. Moving code without better characterization
+would make it easy to change reload, no-runnable, missing-target, or job-order
+semantics accidentally.
+
+Change: add behavior-preserving Go tests around the current watch planning
+surface. Cover `FindTargetsForFile` as the existing single-path preview helper
+and `FileEventHandler.HandleBatch` as the existing live-watch planning plus
+execution wrapper.
+
+Acceptance criteria:
+- `FindTargetsForFile` tests cover runnable targets, no matching rule, missing
+  targets, per-watch ignore, no-target source-file behavior, and multiple jobs.
+- `FileEventHandler.HandleBatch` tests cover reload-only mappings and mixed
+  runnable/no-rule batches.
+- No production behavior changes are required in this phase.
+- Focused watch tests, full Go tests, and the full build pass.
+
+After evidence:
+- `go test -mod=mod ./watch -run 'Test(FindTargetsForFile_CurrentPlanningCases|FileEventHandler_HandleBatch_(ShouldReload|MixedRunnableAndNoRule))' -count=1`
+  passed.
+- `go test -mod=mod ./watch` passed.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
+  examples.
