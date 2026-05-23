@@ -1699,3 +1699,52 @@ After evidence:
 - `script/check-links` passed.
 - `bin/rake` passed with 377 examples, 0 failures, and 4 existing pending
   examples.
+
+## T49-DEV - Normalize Empty Watch-Find Text Exit Code
+
+Status: verified
+Commit: pending
+
+Pain point: `plur watch find --format=json FILE` exits 2 when no watch mappings
+are configured, but text mode prints the same no-mapping condition and exits 0.
+That makes the preview less predictable for shells and agents: exit 2 should
+mean "the command ran, but nothing would run for this file".
+
+Change: keep the existing human guidance text, but return exit code 2 for text
+mode when no watch mappings are configured. Invalid explicit job selection keeps
+exiting 1 before the no-mapping preview.
+
+Diataxis role: update `docs/output-contracts.md` as reference material because
+this is an exit-code contract, not a tutorial.
+
+Duplication check:
+- `docs/output-contracts.md` owns stable streams, formats, and exit codes.
+- `docs/features/watch-mode.md` and `docs/usage.md` mention `watch find` as
+  workflow docs and do not need the low-level no-mapping exit detail.
+- `watch_find_json_spec.rb` already covers the JSON no-mapping contract.
+
+Acceptance criteria:
+- Text `watch find` with no configured watch mappings exits 2.
+- The human guidance text for no configured watch mappings remains unchanged.
+- JSON no-mapping output still emits structured JSON and exits 2.
+- Invalid explicit `--use` with no watch mappings still exits 1.
+- Focused watch specs, output-contract docs checks, Go tests, link check, and
+  the full build pass.
+
+Before evidence:
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb --example "keeps human guidance"`
+  failed with expected exit status 2 and actual 0.
+
+After evidence:
+- `bin/rake build` passed and rebuilt `./plur`.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb --example "keeps human guidance"`
+  passed.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_find_json_spec.rb`
+  passed with 10 examples, 0 failures.
+- `bin/rspec spec/docs/output_contracts_doc_spec.rb` passed with 2 examples,
+  0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `git diff --check` passed.
+- `bin/rake` passed with 377 examples, 0 failures, and 4 existing pending
+  examples.

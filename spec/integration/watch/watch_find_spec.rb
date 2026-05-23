@@ -69,9 +69,10 @@ RSpec.describe "plur watch find" do
       TOML
 
       result = Dir.chdir(tmpdir) do
-        run_plur("watch", "find", "lib/thing.rb")
+        run_plur_allowing_errors("watch", "find", "lib/thing.rb")
       end
 
+      expect(result.exit_status).to eq(2)
       expect(result.out).to include("No watch mappings configured.")
       expect(result.out).to include("Either add job/watch configuration to .plur.toml")
       expect(result.err).to eq("")

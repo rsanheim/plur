@@ -69,7 +69,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		fmt.Println("No watch mappings configured.")
 		fmt.Println("Either add job/watch configuration to .plur.toml or ensure your project structure")
 		fmt.Println("matches a supported framework (Ruby with Gemfile, Go with go.mod).")
-		return nil
+		return ExitCode{Code: 2}
 	}
 
 	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)

@@ -145,8 +145,9 @@ Do not parse `shell`; use `argv` and `env` when executing from a script.
 ```
 
 Exit code 0 means at least one existing target would run. Exit code 2 means no
-runnable target exists for that changed file. Exit code 1 is reserved for
-errors such as invalid configuration.
+runnable target exists for that changed file, including when no watch mappings
+are configured. Exit code 1 is reserved for errors such as invalid
+configuration.
 
 Use JSON when a script or agent needs a stable watch preview:
 
@@ -157,8 +158,8 @@ plur watch find --format=json spec/spec_helper.rb
 Command and configuration errors in JSON modes still write plain text to stderr
 and may leave stdout empty.
 
-No matching watch target is still structured output. No configured watch
-mappings use the same empty JSON shape and exit code 2 in JSON mode:
+No matching watch target is still structured output. In JSON mode, no
+configured watch mappings use the same empty JSON shape and exit code 2:
 
 ```text
 exit=2
