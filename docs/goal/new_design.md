@@ -1702,8 +1702,8 @@ After evidence:
 
 ## T49-DEV - Normalize Empty Watch-Find Text Exit Code
 
-Status: verified
-Commit: pending
+Status: committed
+Commit: 0652eebccf70b969a5e7a402662d570b28cc6875
 
 Pain point: `plur watch find --format=json FILE` exits 2 when no watch mappings
 are configured, but text mode prints the same no-mapping condition and exits 0.
