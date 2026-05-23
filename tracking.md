@@ -46,3 +46,5 @@ ts=2026-05-23-08:02:21 git_ref=prep-goal git_oid=9ffa61e status=start current="T
 ts=2026-05-23-08:10:52 git_ref=prep-goal git_oid=9ffa61e status=done current="T23-DEV" msg="watch find no-op flags rejected and verified"
 ts=2026-05-23-08:11:41 git_ref=prep-goal git_oid=081c240 status=start current="T24-DEV" msg="begin top-level help command grouping"
 ts=2026-05-23-08:18:10 git_ref=prep-goal git_oid=081c240 status=done current="T24-DEV" msg="top-level help commands grouped and verified"
+ts=2026-05-23-08:18:52 git_ref=prep-goal git_oid=3fa7a9b status=start current="T25-DEV" msg="begin docs front-door surface cleanup"
+ts=2026-05-23-08:26:31 git_ref=prep-goal git_oid=3fa7a9b status=done current="T25-DEV" msg="docs front door focused and Zensical follow-up added"

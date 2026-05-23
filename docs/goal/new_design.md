@@ -846,3 +846,65 @@ After evidence:
   - `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/help_spec.rb spec/integration/watch/watch_find_spec.rb`
   - `go test -mod=mod ./...`
   - `bin/rake`
+
+## T25-DEV - Focus The Docs Front Door
+
+Pain point: T22's docs reviewer kept the public docs below 5/5 because
+`docs/index.md` still promotes architecture and development material as large
+first-page sections. Those pages are useful, but ordinary users landing on the
+docs need the fast path: install, run, configure, watch, and understand output.
+
+Change: rewrite the docs landing page as a user-oriented guide page. Keep
+architecture, development, overview, and benchmark material discoverable, but
+demote it to a short "Deeper material" section after the user-facing path.
+Do not change generated nav in this phase.
+
+Diataxis role: `docs/index.md` is a map/orientation page. It should point to
+tutorial/how-to/reference pages without duplicating their details.
+
+Duplication check:
+- `docs/getting-started.md` owns installation and first run.
+- `docs/usage.md` owns common workflows.
+- `docs/configuration.md` owns TOML reference.
+- `docs/output-contracts.md` owns stable machine output.
+- `docs/features/watch-mode.md` owns watch how-to/troubleshooting.
+
+Acceptance criteria:
+- `docs/index.md` starts with a clear heading and user-focused next steps.
+- Architecture/development links are still present but no longer large
+  first-page sections.
+- No new markdown prose specs are added.
+- `script/check-links`, `script/docs build`, and the full build pass.
+
+Before evidence:
+- `docs/index.md` has large `Architecture` and `Development` sections with
+  detailed contributor links directly after the feature list.
+
+Tradeoff: contributors have one less prominent landing-page list, but the nav
+and deeper links still expose architecture and development material.
+
+## Follow-Up - Evaluate Zensical Docs Migration
+
+Source: Material for MkDocs 9.7.6 now prints an upstream MkDocs 2.0 warning
+during `script/docs build`. The local environment is still pinned to MkDocs
+1.6.1 and Material 9.7.6, and Material itself requires `mkdocs<2`, but the
+warning is a real long-term docs tooling signal.
+
+References:
+- [Material for MkDocs: What MkDocs 2.0 means for your documentation projects](https://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/)
+- [Material for MkDocs changelog for 9.7.2-9.7.6](https://squidfunk.github.io/mkdocs-material/changelog/)
+
+Follow-up item: evaluate migrating the docs build from MkDocs to
+[Zensical](https://zensical.org/) once the CLI UX loop is complete or when a
+docs-tooling phase is selected.
+
+Acceptance criteria:
+- Inventory the current docs stack: Material theme options, `social`,
+  `awesome-pages`, `git-revision-date-localized`, and `panzoom` plugins.
+- Spike a Zensical build against this repo without changing public docs
+  content.
+- Record unsupported plugin/theme behavior and the migration path.
+- If viable, update docs tooling and verify `script/check-links`,
+  `script/docs build`, and `bin/rake`.
+- If not viable yet, decide explicitly whether `script/docs` should set
+  `NO_MKDOCS_2_WARNING=1` while staying pinned to MkDocs 1.x.
