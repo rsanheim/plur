@@ -1885,7 +1885,7 @@ After evidence:
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified
-Commit: pending
+Commit: 7afbd8c447d1dcc062ba7847e774b47511ac67f5
 
 Pain point: T55 made `watch find` render from `watch.Planner`, but live watch
 and watch preview still assembled the session inputs independently. Job
