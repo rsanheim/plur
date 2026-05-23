@@ -1309,3 +1309,62 @@ After evidence:
   - `go test -mod=mod ./...`
   - `script/check-links`
   - `bin/rake`
+
+## T39-DEV - Keep Worker Command Errors Off Stdout
+
+Pain point: agent and CI workflows need stdout/stderr separation to be
+predictable. A worker command that writes stderr and exits before producing test
+events currently prints the same stderr twice: once on stderr while the worker
+runs, then again on stdout when Plur renders errored worker output.
+
+Root cause: `runCommand` appends captured stderr into `WorkerResult.Output`.
+`PrintResults` later prints errored `WorkerResult.Output` with `fmt.Print`, so
+command-level stderr is replayed on stdout for `StateError` results.
+
+Change: preserve live stderr streaming, but do not replay captured stderr as
+stdout for worker command errors. Normal test stdout, progress, summaries, and
+test failure details should keep their current streams.
+
+Acceptance criteria:
+- A custom job that writes `WORKER_STDERR_MARKER` to stderr and exits non-zero
+  includes that marker on stderr.
+- The same marker does not appear on stdout.
+- The command still exits 1 and prints the usual Plur summary on stdout.
+- Focused output specs, Go tests, and the full build pass.
+
+Before evidence:
+
+```text
+status=1
+--- stdout ---
+
+Finished in 0.00030 seconds (files took 0 seconds to load)
+0 examples, 0 failures
+WORKER_STDERR_MARKER
+--- stderr ---
+plur version=v0.56.1-0.20260523143117-7401c595d485+dirty
+Running 1 spec [rspec] serially
+WORKER_STDERR_MARKER
+```
+
+After evidence:
+
+```text
+status=1
+--- stdout ---
+
+Finished in 0.00054 seconds (files took 0 seconds to load)
+0 examples, 0 failures
+--- stderr ---
+plur version=v0.56.1-0.20260523143740-3bfcf99080ae+dirty
+Running 1 spec [rspec] serially
+WORKER_STDERR_MARKER
+```
+
+- Verification:
+  - red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/output_spec.rb`
+  - green: `bin/rake build`
+  - green: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/output_spec.rb`
+  - `go test -mod=mod ./...`
+  - `script/check-links`
+  - `bin/rake`
