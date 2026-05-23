@@ -1882,6 +1882,41 @@ After evidence:
 - `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
   examples.
 
+## T55-DEV - Render Watch Find From The Planner
+
+Status: verified
+Commit: pending
+
+Pain point: T54 extracted `watch.Planner`, but `watch find` still calls
+`watch.FindTargetsForFile` directly. That leaves the preview command below the
+new shared planning boundary.
+
+Change: make `watch find` build a single-path `watch.Plan` and render text/JSON
+from that plan. Keep the existing output contract stable in this phase.
+
+Acceptance criteria:
+- `watch find` text output is unchanged for runnable, no-rule, missing-target,
+  and no-watch-mapping cases.
+- `watch find --format=json` keeps the same stable JSON shape and exit codes.
+- `watch_find.go` no longer calls `watch.FindTargetsForFile` directly.
+- Focused watch find specs, watch package tests, full Go tests, link check, and
+  the full build pass.
+
+Before evidence:
+- `watch_find.go` called `watch.FindTargetsForFile` directly, so preview
+  rendering bypassed the new `watch.Planner` boundary.
+
+After evidence:
+- `rg -n "FindTargetsForFile" watch_find.go` returned no matches.
+- `bin/rake build` passed.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_find_json_spec.rb`
+  passed with 10 examples and 0 failures.
+- `go test -mod=mod ./watch` passed.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 378 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T54-DEV - Extract A Pure Watch Planner
 
 Status: verified
