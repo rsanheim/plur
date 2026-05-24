@@ -2135,7 +2135,7 @@ After evidence:
 ## T65-DEV - Show Successful Watch Find JSON Contract
 
 Status: verified
-Commit: pending
+Commit: 710ead53f93870d53bb7ab240cf9aebcfefebfe7
 
 Pain point: `watch find --format=json` now exposes `job_plans`, but the output
 contract reference only shows the no-runnable exit 2 JSON shape. Users and
