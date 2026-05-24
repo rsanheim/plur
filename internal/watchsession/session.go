@@ -113,6 +113,18 @@ func (s *Session) AdmitEvent(event watch.Event) watch.AdmissionResult {
 	return watch.AdmitEvent(event, s.CWD, s.IgnorePatterns)
 }
 
+func (s *Session) AdmitPathForPreview(filePath string) watch.AdmissionResult {
+	pathName := filePath
+	if !filepath.IsAbs(pathName) {
+		pathName = filepath.Join(s.CWD, pathName)
+	}
+	return s.AdmitEvent(watch.Event{
+		PathType:   "file",
+		PathName:   pathName,
+		EffectType: "modify",
+	})
+}
+
 func (s *Session) Handler() *watch.FileEventHandler {
 	return &watch.FileEventHandler{
 		Jobs:    s.Jobs,

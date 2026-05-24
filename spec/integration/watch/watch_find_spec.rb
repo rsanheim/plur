@@ -40,8 +40,7 @@ RSpec.describe "plur watch find" do
         ["watch", "find", "--dry-run-format=json", "lib/calculator.rb"] => "--dry-run-format",
         ["watch", "find", "--rspec-split", "lib/calculator.rb"] => "--rspec-split",
         ["watch", "find", "--first-is-1", "lib/calculator.rb"] => "--first-is-1",
-        ["watch", "find", "--no-first-is-1", "lib/calculator.rb"] => "--no-first-is-1",
-        ["watch", "find", "--ignore=lib/**", "lib/calculator.rb"] => "--ignore"
+        ["watch", "find", "--no-first-is-1", "lib/calculator.rb"] => "--no-first-is-1"
       }.each do |args, flag|
         result = run_plur_allowing_errors(*args)
 

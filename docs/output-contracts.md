@@ -226,11 +226,37 @@ stdout:
 stderr:
 ```
 
+Ignored watch changes also exit 2 before planning and include the admission
+result:
+
+```text
+exit=2
+stdout:
+{
+  "version": 1,
+  "mode": "watch_find",
+  "file": "lib/calculator.rb",
+  "admission": {
+    "path": "lib/calculator.rb",
+    "admitted": false,
+    "reason": "ignored"
+  },
+  "matched_rules": [],
+  "existing_targets": {},
+  "missing_targets": {},
+  "job_plans": [],
+  "exit_code": 2
+}
+stderr:
+```
+
 Stable top-level keys:
 
 - `version`: output contract version
 - `mode`: `watch_find`
 - `file`: changed file path
+- `admission`: live watch admission result, present when a preview is rejected
+  before planning
 - `matched_rules`: watch rules that matched the file
 - `existing_targets`: targets that exist, grouped by job
 - `missing_targets`: targets that do not exist, grouped by job

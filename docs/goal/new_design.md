@@ -2225,6 +2225,56 @@ After evidence:
 - `bin/rake` passed with 384 examples, 0 failures, and 4 existing pending
   examples.
 
+## T68-DEV - Share Watch Find Event Admission
+
+Status: verified
+Commit: pending
+
+Pain point: T56 made `watch find` and live watch share session setup and
+planning, but `watch find` still jumped directly to `PlanPath`. Live watch
+first runs file events through `session.AdmitEvent`, which applies default and
+custom ignore patterns before planning. That meant a path ignored by live watch
+could still produce a runnable `watch find` preview.
+
+Change: add a session preview-admission helper that synthesizes the same
+file-modify admission live watch receives from the watcher. `watch find` uses
+that helper before planning, accepts the watch-level `--ignore` flag, and
+renders ignored previews as exit 2 with an optional JSON `admission` object.
+
+Acceptance criteria:
+- `watch find` uses the same event-admission function as live watch before
+  planning.
+- `plur watch --ignore=... find --format=json FILE` exits 2 with no runnable
+  plan when the preview path is ignored.
+- `watch find --help` shows `--ignore` because it now affects previews.
+- Output contract docs describe the optional ignored-preview `admission`
+  object.
+- Focused Go tests, focused Ruby/docs specs, full Go tests, link check, and
+  full build pass.
+
+Before evidence:
+- Red: `go test -mod=mod ./internal/watchsession -run TestSessionAdmitPathForPreviewUsesLiveAdmission -count=1`
+  failed because `Session.AdmitPathForPreview` did not exist.
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_json_spec.rb spec/integration/watch/watch_find_spec.rb spec/integration/spec/help_spec.rb --example 'ignore'`
+  failed because `watch find --ignore` was still rejected and produced no JSON
+  preview.
+
+After evidence:
+- `Session.AdmitPathForPreview` now synthesizes the same file-modify event
+  admission that live watch uses.
+- `watch find` applies default/custom watch ignore patterns before planning.
+- `plur watch --ignore=lib/** find --format=json lib/calculator.rb` exits 2
+  with no runnable plan and includes `admission.reason = "ignored"`.
+- `watch find --help` now includes `--ignore`.
+- `go test -mod=mod ./internal/watchsession . -run 'TestSessionAdmitPathForPreviewUsesLiveAdmission|TestWatchFind' -count=1`
+  passed.
+- `PLUR_BINARY=$PWD/tmp/plur-t68 bin/rspec spec/integration/watch/watch_find_json_spec.rb spec/integration/watch/watch_find_spec.rb spec/integration/spec/help_spec.rb spec/docs/output_contracts_doc_spec.rb`
+  passed with 22 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 385 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified

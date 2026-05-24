@@ -84,6 +84,27 @@ func TestNewUsesCustomIgnorePatterns(t *testing.T) {
 	assert.Equal(t, "ignored", admission.Reason)
 }
 
+func TestSessionAdmitPathForPreviewUsesLiveAdmission(t *testing.T) {
+	projectDir := makeSessionTestProject(t)
+	writeSessionTestFile(t, projectDir, "lib/user.rb")
+	writeSessionTestFile(t, projectDir, "tmp/cache.rb")
+	chdirSessionTestProject(t, projectDir)
+
+	session, err := New(sessionRuntimeConfig(), Options{
+		IgnorePatterns: []string{"tmp/**"},
+	})
+	require.NoError(t, err)
+
+	admitted := session.AdmitPathForPreview(filepath.Join(projectDir, "lib/user.rb"))
+	assert.True(t, admitted.Admitted)
+	assert.Equal(t, filepath.Join("lib", "user.rb"), admitted.Path)
+
+	ignored := session.AdmitPathForPreview("tmp/cache.rb")
+	assert.False(t, ignored.Admitted)
+	assert.Equal(t, filepath.Join("tmp", "cache.rb"), ignored.Path)
+	assert.Equal(t, "ignored", ignored.Reason)
+}
+
 func TestSessionPlanPathMatchesLiveHandlerBatch(t *testing.T) {
 	projectDir := makeSessionTestProject(t)
 	writeSessionTestFile(t, projectDir, "lib/user.rb")

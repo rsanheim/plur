@@ -53,6 +53,31 @@ RSpec.describe "plur watch find JSON output" do
     end
   end
 
+  it "applies live watch ignore patterns before planning" do
+    chdir(default_ruby_dir) do
+      result = run_plur_allowing_errors("watch", "--ignore=lib/**", "find", "--format=json", "lib/calculator.rb")
+      plan = JSON.parse(result.out)
+
+      expect(result.exit_status).to eq(2)
+      expect(result.err).to eq("")
+      expect(plan).to include(
+        "version" => 1,
+        "mode" => "watch_find",
+        "file" => "lib/calculator.rb",
+        "exit_code" => 2
+      )
+      expect(plan["admission"]).to include(
+        "path" => "lib/calculator.rb",
+        "admitted" => false,
+        "reason" => "ignored"
+      )
+      expect(plan["matched_rules"]).to eq([])
+      expect(plan["existing_targets"]).to eq({})
+      expect(plan["missing_targets"]).to eq({})
+      expect(plan["job_plans"]).to eq([])
+    end
+  end
+
   it "prints structured no-watch-mapping details with exit 2" do
     tmp_root = ROOT_PATH.join("tmp")
     FileUtils.mkdir_p(tmp_root)

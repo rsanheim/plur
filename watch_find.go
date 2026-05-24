@@ -63,16 +63,33 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return ExitCode{Code: 2}
 	}
 
-	session, err := watchsession.New(globals.runtimeConfig, watchsession.Options{})
+	session, err := watchsession.New(globals.runtimeConfig, watchsession.Options{
+		IgnorePatterns: parent.Ignore,
+	})
 	if err != nil {
 		return err
 	}
 	selected := session.Selected
 	runtime.LogInheritedFields(selected.Name, selected.Inherited)
-	filePath = session.NormalizePath(cmd.FilePath)
+	admission := session.AdmitPathForPreview(cmd.FilePath)
+	filePath = admission.Path
+	if filePath == "" {
+		filePath = session.NormalizePath(cmd.FilePath)
+	}
 
 	if cmd.Format == "text" {
 		fmt.Printf("[watch] Checking %s\n", filePath)
+	}
+
+	if !admission.Admitted {
+		if cmd.Format == "json" {
+			if err := writeWatchFindPlanWithAdmission(filePath, emptyWatchFindPlan(filePath), session.CWD, 2, &admission); err != nil {
+				return err
+			}
+			return ExitCode{Code: 2}
+		}
+		printWatchFindAdmissionRejection(admission)
+		return ExitCode{Code: 2}
 	}
 
 	findPlan := session.PlanPath(filePath)
@@ -140,7 +157,7 @@ func watchFindNoOpFlagName(flag *kong.Flag) string {
 			return "--no-first-is-1"
 		}
 		return "--first-is-1"
-	case "dry-run", "dry-run-format", "ignore", "rspec-split", "workers":
+	case "dry-run", "dry-run-format", "rspec-split", "workers":
 		return "--" + flag.Name
 	default:
 		return ""
@@ -162,6 +179,7 @@ type WatchFindPlan struct {
 	Version         int                  `json:"version"`
 	Mode            string               `json:"mode"`
 	File            string               `json:"file"`
+	Admission       *WatchFindAdmission  `json:"admission,omitempty"`
 	MatchedRules    []WatchFindPlanRule  `json:"matched_rules"`
 	ExistingTargets map[string][]string  `json:"existing_targets"`
 	MissingTargets  map[string][]string  `json:"missing_targets"`
@@ -184,6 +202,12 @@ type WatchFindPlanRule struct {
 	Source string   `json:"source"`
 	Jobs   []string `json:"jobs"`
 	Target string   `json:"target"`
+}
+
+type WatchFindAdmission struct {
+	Path     string `json:"path"`
+	Admitted bool   `json:"admitted"`
+	Reason   string `json:"reason,omitempty"`
 }
 
 type WatchFindPlanError struct {
@@ -211,22 +235,42 @@ func emptyWatchFindPlan(filePath string) watch.Plan {
 }
 
 func writeWatchFindPlan(filePath string, plan watch.Plan, cwd string, exitCode int) error {
+	return writeWatchFindPlanWithAdmission(filePath, plan, cwd, exitCode, nil)
+}
+
+func writeWatchFindPlanWithAdmission(filePath string, plan watch.Plan, cwd string, exitCode int, admission *watch.AdmissionResult) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(buildWatchFindPlan(filePath, plan, cwd, exitCode))
+	return encoder.Encode(buildWatchFindPlanWithAdmission(filePath, plan, cwd, exitCode, admission))
 }
 
 func buildWatchFindPlan(filePath string, plan watch.Plan, cwd string, exitCode int) WatchFindPlan {
+	return buildWatchFindPlanWithAdmission(filePath, plan, cwd, exitCode, nil)
+}
+
+func buildWatchFindPlanWithAdmission(filePath string, plan watch.Plan, cwd string, exitCode int, admission *watch.AdmissionResult) WatchFindPlan {
 	return WatchFindPlan{
 		Version:         1,
 		Mode:            "watch_find",
 		File:            filePath,
+		Admission:       watchFindAdmission(admission),
 		MatchedRules:    watchFindPlanRules(plan.MatchedRules),
 		ExistingTargets: cloneTargetMap(plan.ExistingTargets),
 		MissingTargets:  cloneTargetMap(plan.MissingTargets),
 		JobPlans:        watchFindJobPlans(plan.JobPlans, cwd),
 		Errors:          watchFindPlanErrors(plan.Errors),
 		ExitCode:        exitCode,
+	}
+}
+
+func watchFindAdmission(admission *watch.AdmissionResult) *WatchFindAdmission {
+	if admission == nil {
+		return nil
+	}
+	return &WatchFindAdmission{
+		Path:     admission.Path,
+		Admitted: admission.Admitted,
+		Reason:   admission.Reason,
 	}
 }
 
@@ -307,6 +351,19 @@ func printWatchFindErrors(errors []watch.PlanError) {
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "[watch] Error planning %s: %v\n", err.Path, err.Err)
+	}
+}
+
+func printWatchFindAdmissionRejection(admission watch.AdmissionResult) {
+	path := admission.Path
+	if path == "" {
+		path = "(unknown path)"
+	}
+	switch admission.Reason {
+	case "ignored":
+		fmt.Printf("[watch] Ignored %s\n", path)
+	default:
+		fmt.Printf("[watch] Ignored %s (reason: %s)\n", path, admission.Reason)
 	}
 }
 

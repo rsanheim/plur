@@ -113,7 +113,8 @@ RSpec.describe "help output" do
     expect(result.out).not_to include("--first-is-1")
     expect(result.out).not_to include("--workers")
     expect(result.out).not_to include("--rspec-split")
-    expect(result.out).not_to include("--ignore")
+    expect(result.out).to include("--ignore")
+    expect(result.out).to include("Patterns to ignore from watch events")
   end
 
   it "does not show spec command help for a target named test" do

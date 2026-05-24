@@ -64,7 +64,6 @@ func irrelevantHelpFlagNames(fullPath string) map[string]bool {
 			"dry-run":        true,
 			"dry-run-format": true,
 			"first-is-1":     true,
-			"ignore":         true,
 			"json":           true,
 			"rspec-split":    true,
 			"workers":        true,
