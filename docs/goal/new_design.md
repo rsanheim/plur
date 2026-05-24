@@ -2042,6 +2042,49 @@ After evidence:
 - `bin/rake` passed with 381 examples, 0 failures, and 4 existing pending
   examples.
 
+## T62-DEV - Reject Persisted Dry-Run Config
+
+Status: verified
+Commit: pending
+
+Pain point: `dry-run = true` and `dry-run-format = "json"` are preview
+controls, but TOML currently accepts them as persistent project configuration.
+That can make ordinary `plur` invocations silently stop executing tests or force
+machine-output mode outside the command where the user intended it.
+
+Change: reject `dry-run` and `dry-run-format` in config files with a
+configuration error that says those keys are CLI-only. Keep normal persistent
+settings such as `workers`, `color`, `verbose`, and `use` valid.
+
+Acceptance criteria:
+- Config files containing `dry-run` or `dry-run-format` fail before command
+  execution.
+- The error names the config file and CLI-only key paths.
+- CLI `--dry-run` and `--dry-run-format=json` behavior remains unchanged.
+- Focused config/watch-find specs, Go tests, link check, and full build pass.
+
+Before evidence:
+- `go test -mod=mod ./internal/kongtoml` failed because
+  `TestValidateRejectsCLIOnlyConfigKeys` still received nil.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/configuration_spec.rb spec/integration/watch/watch_find_spec.rb`
+  failed the new persisted dry-run config case because TOML `dry-run` still
+  executed.
+
+After evidence:
+- Config files with `dry-run` or `dry-run-format` now fail with
+  `Configuration error:` and name those keys as CLI-only.
+- `script/cli-inventory` now keeps the default `plur` binary as a PATH lookup
+  instead of expanding it to a potentially stale checkout binary.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/configuration_spec.rb spec/integration/watch/watch_find_spec.rb spec/docs/configuration_target_doc_spec.rb`
+  passed with 48 examples and 0 failures.
+- `bin/rspec spec/integration/spec/cli_inventory_spec.rb` and
+  `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/cli_inventory_spec.rb`
+  both passed with 3 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 382 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified

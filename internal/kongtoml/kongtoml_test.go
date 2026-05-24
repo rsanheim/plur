@@ -286,6 +286,27 @@ func TestValidateRejectsUnknownKeys(t *testing.T) {
 	assert.Contains(t, err.Error(), "wokers")
 }
 
+func TestValidateRejectsCLIOnlyConfigKeys(t *testing.T) {
+	input := "dry-run = true\ndry-run-format = \"json\"\n"
+	r := &namedReader{Reader: strings.NewReader(input), name: ".plur.toml"}
+	resolver, err := Loader(r)
+	require.NoError(t, err)
+
+	var cli struct {
+		DryRun       bool
+		DryRunFormat string `name:"dry-run-format"`
+	}
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+
+	err = resolver.(*Resolver).Validate(parser.Model)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), ".plur.toml")
+	assert.Contains(t, err.Error(), "CLI-only config keys")
+	assert.Contains(t, err.Error(), "dry-run")
+	assert.Contains(t, err.Error(), "dry-run-format")
+}
+
 func TestKeyResolutionEdgeCases(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -336,6 +336,30 @@ RSpec.describe "Configuration" do
         expect(error).to include("watch.soruce")
       end
     end
+
+    it "rejects dry-run preview controls in config files" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "dry-run-config.toml")
+        File.write(config_path, <<~TOML)
+          dry-run = true
+          dry-run-format = "json"
+        TOML
+
+        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "spec"
+          )
+        end
+
+        expect(status).not_to be_success
+        expect(error).to include("Configuration error:")
+        expect(error).to include(config_path)
+        expect(error).to include("CLI-only config keys")
+        expect(error).to include("dry-run")
+        expect(error).to include("dry-run-format")
+      end
+    end
   end
 
   describe "job validation" do

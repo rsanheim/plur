@@ -90,12 +90,10 @@ RSpec.describe "plur watch find" do
     end
   end
 
-  it "does not reject config or environment values for run-mode flags" do
+  it "does not reject config or environment values for persistent run settings" do
     Dir.mktmpdir("watch-find-config-", ROOT_PATH.join("tmp")) do |tmpdir|
       config_path = File.join(tmpdir, "plur.toml")
       File.write(config_path, <<~TOML)
-        dry-run = true
-        dry-run-format = "json"
         workers = 99
         first-is-1 = false
         rspec-split = true

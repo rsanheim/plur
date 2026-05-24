@@ -86,7 +86,21 @@ func (r *Resolver) Validate(app *kong.Application) error {
 
 	unknown := unknownLeafKeys(r.meta, app)
 	if len(unknown) == 0 {
-		return nil
+		cliOnly := cliOnlyConfigKeys(r.meta)
+		if len(cliOnly) == 0 {
+			return nil
+		}
+
+		slog.Debug("cli-only config keys",
+			"file", configName(r.filename),
+			"keys", cliOnly,
+		)
+
+		label := "CLI-only config key"
+		if len(cliOnly) > 1 {
+			label = "CLI-only config keys"
+		}
+		return fmt.Errorf("Configuration error: %s contains %s: %s; pass these as command-line flags instead", configName(r.filename), label, strings.Join(cliOnly, ", "))
 	}
 
 	slog.Debug("unknown config keys",
@@ -99,6 +113,26 @@ func (r *Resolver) Validate(app *kong.Application) error {
 		label = "unknown config keys"
 	}
 	return fmt.Errorf("Configuration error: %s contains %s: %s", configName(r.filename), label, strings.Join(unknown, ", "))
+}
+
+func cliOnlyConfigKeys(md toml.MetaData) []string {
+	cliOnly := map[string]struct{}{
+		"dry-run":        {},
+		"dry-run-format": {},
+	}
+	set := make(map[string]struct{})
+	for _, key := range md.Keys() {
+		keyStr := key.String()
+		if _, ok := cliOnly[keyStr]; ok {
+			set[keyStr] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(set))
+	for key := range set {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func configName(filename string) string {

@@ -4,8 +4,11 @@ RSpec.describe "CLI inventory harness" do
   let(:script) { ROOT_PATH.join("script", "cli-inventory") }
 
   def run_inventory(env = {})
+    binary = plur_binary
+    binary = File.expand_path(binary) if binary.include?(File::SEPARATOR)
+
     Open3.capture3(
-      env.merge("PLUR_BINARY" => File.expand_path(plur_binary)),
+      env.merge("PLUR_BINARY" => binary),
       script.to_s,
       chdir: ROOT_PATH.to_s
     )

@@ -22,6 +22,10 @@ Configuration keys are strict. Plur fails fast when a config file contains an
 unknown key such as `wokers`, `job.rspec.cmdd`, or `watch.soruce`, so typos do
 not silently fall back to defaults.
 
+Preview controls are CLI-only. Use `plur --dry-run` and
+`plur --dry-run --dry-run-format=json` for a single invocation; do not persist
+`dry-run` or `dry-run-format` in TOML.
+
 ### Basic Example
 
 ```toml
