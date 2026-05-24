@@ -2278,7 +2278,7 @@ After evidence:
 ## T69-DEV - Share Watch Execution Plans
 
 Status: verified
-Commit: pending
+Commit: 9dcda42a53909f94a9e4da5e7e10ccb5bc518f6c
 
 Pain point: T59/T65 made `watch find` print `argv`, `env`, `cwd`, and shell
 commands, but that rendering still rebuilt the command shape in `watch_find.go`.
