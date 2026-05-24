@@ -1,0 +1,4 @@
+[watch] Checking lib/calculator.rb
+[watch] Matched rule lib-to-spec (source: lib/**/*.rb, jobs: rspec, target: spec/{{match}}_spec.rb)
+[watch] Would run job rspec with spec/calculator_spec.rb
+[watch] Command: bundle exec rspec spec/calculator_spec.rb

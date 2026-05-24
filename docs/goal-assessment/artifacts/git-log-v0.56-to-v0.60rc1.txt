@@ -1,0 +1,174 @@
+d39385cd (tag: v0.60.0-rc.1) Rename original goal to CLI-UX for clarity; prep for assessment
+fc7b55dd docs: record t75 phase commit
+8a35d020 docs: close watch parity review
+97d88241 docs: record t74 phase commit
+02c2f011 watch: validate ignore patterns
+db028037 docs: record t73 phase commit
+c14aa0ac docs: reflect after watch parity review
+3ccd8efc docs: record t72 phase commit
+2b2b4842 watch: preserve execution plan job keys
+d4bc837c docs: record t70 phase commit
+6e3e45c1 test: cover watch parity edge cases
+bb04c8fa docs: record t69 phase commit
+9dcda42a watch: share execution plans
+b63d8ac1 docs: record t68 phase commit
+cb15ed8f watch: share preview event admission
+99c645e7 docs: record t67 phase commit
+cb9b511a docs: reflect after planning error surfacing
+7a499ef5 docs: record t66 phase commit
+cdc24145 watch: surface planning errors
+02fb1d36 docs: record t65 phase commit
+710ead53 docs: show watch find json command plans
+c793b4e8 docs: record t64 phase commit
+19e1fd5c config: use durable toml schema
+0cfb7480 docs: record t63 phase commit
+22015d45 docs: reflect after config cleanup
+3eb85950 docs: record t62 phase commit
+c069a720 config: reject persisted dry-run controls
+e2f610d4 docs: record t61 phase commit
+a4a75148 config: reject unknown toml keys
+dde68f1c docs: record t60 phase commit
+779f04b1 watch: hint on helper no-rule changes
+f9ab18e2 docs: record t59 phase commit
+b519569d watch: show find command plans
+f5dad5fb docs: record t58 phase commit
+d1ad78ac docs: reflect after watch planning parity
+f9bfed0b docs: record t57 phase commit
+1c11aa0d watch: cover find and live parity
+d5584893 docs: record t56 phase commit
+7afbd8c4 watch: share session setup
+304d033b docs: record t55 phase commit
+a43369b8 watch: render find from planner
+29b7d2c5 docs: record t54 phase commit
+6fdd40d4 watch: add shared planner
+570b70e3 docs: record t53 phase commit
+3d050501 watch: extract event admission
+c064d854 docs: record t52 phase commit
+b14da74d watch: characterize planning parity
+a58bf13c docs: record t51 phase commit
+13ebbf1e docs: plan watch parity refactor
+b210c8e7 docs: record t50 phase commit
+aab80661 dry-run: dedupe env plan entries
+ec47f806 docs: record t49 phase commit
+0652eebc watch: return empty find exit code
+267cb9e9 docs: record t48 phase commit
+2da1ea0e watch: append targets in watch jobs
+ac8a8275 docs: record t47 phase commit
+7f2c7de3 docs: reflect after watch flag cleanup
+e29f75ac docs: record t46 phase commit
+02fd8b80 watch: focus run flags
+68b43b9a docs: record t45 phase commit
+33465025 watch: structure empty find json
+3b51a2ec dry-run: include configured env in json plan
+1128145a cli: route worker startup errors to stderr
+b2e4589f docs: reflect after output contract cleanup
+0b51a766 dry-run: use job-neutral summary wording
+ea3672fb docs: refresh output contracts
+029c7881 cli: keep worker stderr off stdout
+3bfcf990 docs: reflect after dry-run summary
+7401c595 dry-run: summarize human plan
+6adebdd1 help: align watch run dry-run text
+5b38c4b6 cli: explain removed json flag
+b784572c docs: reflect after json cleanup
+a5deb8f8 cli: remove unused json flag
+fa24dea8 docs: clarify output error contracts
+a2722108 cli: explain missing test target
+21627618 docs: reflect after sixth cli ux cycle
+ce842cae dry-run: quote shell plan strings
+d8193caf cli: print command errors plainly
+3a34c419 help: clarify minitest target workflow
+ea9763e0 docs: reflect after fifth cli ux cycle
+4a131a8e docs: focus docs front door
+3fa7a9b3 help: group top-level commands
+081c240d watch: reject find no-op flags
+9ffa61ef docs: reflect after fourth cli ux cycle
+ca130006 help: focus watch find flags
+7011e2fa config: reject run target templates
+901cf802 docs: clean up public docs navigation
+caadd0bf docs: reflect on third cli ux cycle
+37b54c3f (origin/prep-goal) plan
+8394c445 shellcheck
+ea9772e1 docs: record cli goal restart state
+c32e7aa8 watch: add find json output
+c1e4f4e9 docs: add documentation review gate
+7acaaf02 docs: clarify target template semantics
+b03395eb docs: define output contracts
+282f11e5 cli: clarify watch dry-run help
+1016b965 cli: add dry-run json plan
+d8c46b5c docs: reflect on second cli ux cycle
+dc9d8bd3 watch: humanize find output
+beb170ba cli: warn on explicit target mismatches
+85ae0070 watch: explain no-op file changes
+b82b9770 cli: lead help with common workflows
+635f743a docs: clarify cli goal endpoint
+f91c08ed docs: clarify cli goal dev loop cadence
+4eefe49a docs: reflect on first cli ux cycle
+a989adb9 watch: reject dry-run with guidance
+0186cce5 cli: warn on unmatched exclude patterns
+bb3f8ea0 cli: explain dry-run job selection
+0d88239b docs: inventory cli goal current design
+42ff6d64 lint
+41e6a57c ignore
+bded83cc docs
+802bdcc4 track-goal script
+763e023c (rspec-split-specs) changelog
+aa16ed95 patch rspec + exclude pattern case; remove printTimings from runtime tracker
+d9e0e79c ignore
+d9663e6f cleanup
+141fe0f3 update runtime cache docs
+54794776 Consolidate runtime cache docs into single results record
+b4dddc85 Update usage docs for schema v4 and timing behavior
+37a308ef Print cache timings on real runs; silence on dry-run
+3780f0d7 Drop example_index_complete from runtime cache schema
+51ea33bb Simplify runtime cache schema shape
+4e362c0f Document runtime cache Phase B plan
+01550560 show if we are in split mode
+1dddb7c7 update docs for latest status
+7797ad0a Defer runtime cache example count logging
+6db5c48f Optimize runtime cache JSON writes
+d2964900 Document post-fix RuboCop runtime benchmark
+81c842a1 Add shared example split coverage
+6f166991 Group rspec split targets by rerunnable selector
+72c0ad09 Update runtime cache benchmark plans
+29c8031a docs
+a1c73fd2 notes
+5951fe7d results
+e281a6b5 Task 8 results: full Plur and RuboCop suites measured
+f5631012 Task 8 results: RuboCop exceeds large-project threshold by ~10ms
+97090e8a Use time.Duration for runtimeCache load/save log so sub-ms loads aren't 0
+ec7e9cc3 Consolidate RunKind into run_kind.go; trim stale comments
+896b4dc2 Document v2 cache trim, shared-example attribution, doctor stats, debug logs
+7f344f2c Show cache stats in plur doctor Runtime Data block
+3e1ec956 Log runtimeCache load/save with structured slog fields
+7174b081 Remove cherry-pick assumption from plan docs
+8a277af1 Bin-pack splits using cached per-example runtimes
+b13e5c7b Attribute examples via location_rerun_argument at write time
+598a247a Trim ScopedID and Status from ExampleEntry
+a9b81e37 Drop Runtime prefix from cache types
+fdcec939 Move RSpec line splitter into internal/testruntime
+6c881dda Move classifyRunKind into internal/testruntime
+ecbb3600 Move runtime tracker into internal/testruntime
+0b7c19c7 Move runtime cache into internal/testruntime
+01d72f54 Add runtime cache implementation plan; switch target package to testruntime
+6fae41b3 Fix self-contradicting gate language in SUMMARY
+bf45af5d Add runtime cache measurement and bin-packing plan
+f3086424 Track runtime cache meta and run metadata
+61f75f47 more concise getting-started
+0fb17b38 Task 10: final verification + SUMMARY.md
+8348a78d Task 9: document v2 runtime cache + experimental --rspec-split
+3eed5878 Task 8: integration coverage for partial-run classification and --rspec-split
+1b6c7dd3 Task 7: wire splitter into the runtime grouper
+ee283ee3 Task 6: pure RSpec line splitter
+8db7f700 Task 5: add --rspec-split EXPERIMENTAL flag
+7ac052c0 Task 4: v2 runtime cache writes end-to-end + file:line CLI support
+de13c82d Task 3: parser populates new RSpec identity fields
+b6996485 Task 2: enrich RSpec formatter output with identity metadata
+bca1660b Task 1: runtime cache v2
+cbf4c438 Tighten RSpec split plan: KISS threshold, lifecycle, hyperfine QA
+80a829a7 Simplify runtime cache plan
+97bd650d Use RSpec example IDs in split plan
+94768b66 Add runtime cache producer metadata to plan
+7844076d Address RSpec split plan review
+a1d2b9b0 Revise RSpec split plan around runtime cache v2
+62e9b930 Simplify RSpec split plan
+59c2cc26 Plan alpha RSpec line splitting

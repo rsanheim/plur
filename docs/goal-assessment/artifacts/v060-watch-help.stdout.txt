@@ -1,0 +1,34 @@
+Usage: plur watch [flags]
+       plur watch find <changed-file> [flags]
+       plur watch <command> [flags]
+
+Watch for file changes and run tests automatically
+
+Common workflows:
+  plur watch                          Watch files and run matching tests
+  plur watch find spec/calculator_spec.rb  Preview which tests a change runs
+  plur --dry-run [patterns...]        Preview a one-shot test run
+
+Flags:
+  -h, --help                 Show context-sensitive help.
+  -C, --change-dir=""        Change to directory before running (like git -C)
+      --[no-]color           Force colorized output (auto-detected by default)
+  -d, --debug                Enable debug output (includes verbose)
+                             ($PLUR_DEBUG)
+  -u, --use=""               Job to use (overrides autodetection)
+  -v, --verbose              Enable verbose output for debugging
+      --version              Show version information
+
+      --ignore=IGNORE,...    Patterns to ignore from watch events (default:
+                             .git/**, node_modules/**)
+
+Daily commands
+  watch run [flags]
+    Run watch mode
+
+  watch find <file-path> [flags]
+    Show what would be executed for a given file change
+
+Advanced and setup commands
+  watch install [flags]
+    Install the watcher binary

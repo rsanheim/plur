@@ -1,0 +1,63 @@
+Usage: plur [patterns...] [flags]
+       plur <command> [flags]
+
+A fast, parallel test runner and watcher for Ruby/RSpec
+
+Common workflows:
+  plur                                Run the detected test suite
+  plur spec/calculator_spec.rb        Run one target
+  plur test/calculator_test.rb        Run one Minitest target
+  plur --dry-run                      Preview the one-shot test plan
+  plur watch                          Watch files and run matching tests
+  plur watch find spec/calculator_spec.rb  Preview a watch file change
+
+Flags:
+  -h, --help                     Show context-sensitive help.
+  -C, --change-dir=""            Change to directory before running (like git
+                                 -C)
+      --[no-]color               Force colorized output (auto-detected by
+                                 default)
+  -d, --debug                    Enable debug output (includes verbose)
+                                 ($PLUR_DEBUG)
+      --dry-run                  Print what would be executed without running
+      --dry-run-format="text"    Dry-run output format: text or json
+      --[no-]first-is-1          Start TEST_ENV_NUMBER at 1 instead of empty
+                                 string (default: true)
+  -u, --use=""                   Job to use (overrides autodetection)
+  -v, --verbose                  Enable verbose output for debugging
+      --version                  Show version information
+  -n, --workers=4                Number of parallel workers
+                                 ($PARALLEL_TEST_PROCESSORS)
+      --rspec-split              EXPERIMENTAL: split long-running RSpec files
+                                 into focused file:line runs ($PLUR_RSPEC_SPLIT)
+
+Daily commands
+  spec [<patterns> ...] [flags]
+    Run tests
+
+  watch run [flags]
+    Run watch mode
+
+  watch find <file-path> [flags]
+    Show what would be executed for a given file change
+
+Advanced and setup commands
+  watch install [flags]
+    Install the watcher binary
+
+  rails (rake) [<args> ...] [flags]
+    Run a Rails or Rake command once per worker
+
+  doctor [flags]
+    Diagnose Plur installation and environment
+
+  config init [flags]
+    Generate a starter configuration file
+
+  rails:init [flags]
+    Configure a Rails project for parallel testing
+
+  version [flags]
+    Show version information
+
+Run "plur <command> --help" for more information on a command.

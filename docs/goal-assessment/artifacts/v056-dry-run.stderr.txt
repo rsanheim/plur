@@ -1,0 +1,6 @@
+plur version=v0.56.0
+[dry-run] Running 13 specs [rspec] in parallel using 4 workers
+[dry-run] Worker 0: PARALLEL_TEST_GROUPS=4 TEST_ENV_NUMBER=1 bundle exec rspec -r /home/yolo/.plur/formatter/json_rows_formatter.rb --format Plur::JsonRowsFormatter --force-color spec/validator_spec.rb spec/date_formatter_spec.rb spec/plur_ruby_spec.rb spec/models/system_spec.rb
+[dry-run] Worker 1: PARALLEL_TEST_GROUPS=4 TEST_ENV_NUMBER=2 bundle exec rspec -r /home/yolo/.plur/formatter/json_rows_formatter.rb --format Plur::JsonRowsFormatter --force-color spec/counter_spec.rb spec/array_helpers_spec.rb spec/env_test_spec.rb
+[dry-run] Worker 2: PARALLEL_TEST_GROUPS=4 TEST_ENV_NUMBER=3 bundle exec rspec -r /home/yolo/.plur/formatter/json_rows_formatter.rb --format Plur::JsonRowsFormatter --force-color spec/services/email_service_spec.rb spec/string_utils_spec.rb spec/models/user_spec.rb
+[dry-run] Worker 3: PARALLEL_TEST_GROUPS=4 TEST_ENV_NUMBER=4 bundle exec rspec -r /home/yolo/.plur/formatter/json_rows_formatter.rb --format Plur::JsonRowsFormatter --force-color spec/example_scenarios_spec.rb spec/failing_examples_spec.rb spec/calculator_spec.rb
