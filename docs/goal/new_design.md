@@ -1922,7 +1922,7 @@ After evidence:
 ## T59-DEV - Show Watch Find Command Plans
 
 Status: verified
-Commit: pending
+Commit: b519569d6017c01f456a2cd4465ee6d57ac51840
 
 Pain point: T57 proves `watch find` and live watch agree on targets, but the
 preview still exposes only rules and target lists. For custom jobs, users and
