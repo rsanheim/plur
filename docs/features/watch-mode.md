@@ -42,7 +42,8 @@ By default, Plur watches common Ruby/Rails paths when they exist:
 
 Shared helper files only trigger tests when a watch rule maps them to existing
 targets. Use `plur watch find spec/spec_helper.rb` to check what a change would
-run in the current project.
+run in the current project. When no rule matches a shared helper, Plur prints a
+hint to add a `[[watch]]` mapping if that change should run tests.
 
 ## File Mapping Examples
 

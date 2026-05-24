@@ -84,6 +84,7 @@ RSpec.describe "plur watch integration" do
 
       expect_file_change_logged(result.err, "spec/spec_helper.rb")
       expect(result.out).to include("[watch] No matching rule for spec/spec_helper.rb")
+      expect(result.out).to include("[watch] Hint: add a [[watch]] mapping for shared files if this change should run tests.")
     end
   end
 

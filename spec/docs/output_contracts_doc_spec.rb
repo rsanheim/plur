@@ -25,6 +25,7 @@ RSpec.describe "output contract documentation" do
     expect(compact_doc).to include("job_plans[].argv` and `job_plans[].env` are the canonical command fields for scripts")
     expect(doc).to include("watch find")
     expect(doc).to include("[watch] Command:")
+    expect(doc).to include("[watch] Hint: add a [[watch]] mapping")
     expect(doc).to include("Exit code 2")
     expect(doc).to include("\"exit_code\": 2")
     expect(doc).to include("not the machine API")

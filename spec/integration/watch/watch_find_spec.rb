@@ -7,7 +7,18 @@ RSpec.describe "plur watch find" do
     expect(result.exit_status).to eq(2)
     expect(result.out).to include("[watch] Checking spec/spec_helper.rb")
     expect(result.out).to include("[watch] No matching rule for spec/spec_helper.rb")
+    expect(result.out).to include("[watch] Hint: add a [[watch]] mapping for shared files if this change should run tests.")
     expect(result.out).not_to include('msg="found rules"')
+  end
+
+  it "keeps unrelated no-rule changes terse" do
+    chdir(default_ruby_dir) do
+      result = run_plur_allowing_errors("watch", "find", "README.md")
+
+      expect(result.exit_status).to eq(2)
+      expect(result.out).to include("[watch] No matching rule for README.md")
+      expect(result.out).not_to include("[watch] Hint:")
+    end
   end
 
   it "rejects one-shot dry-run flags with preview guidance" do

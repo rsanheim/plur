@@ -89,7 +89,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	}
 
 	if len(findPlan.MatchedRules) == 0 {
-		fmt.Printf("[watch] No matching rule for %s\n", filePath)
+		printWatchNoRule(filePath)
 		return ExitCode{Code: 2}
 	}
 

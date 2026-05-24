@@ -116,3 +116,5 @@ ts=2026-05-23-11:41:18 git_ref=prep-goal git_oid=f9bfed0 status=start current="T
 ts=2026-05-23-20:54:41 git_ref=prep-goal git_oid=f9bfed0 status=done current="T58-REFLECT" msg="scorecard after watch planning parity"
 ts=2026-05-23-20:56:04 git_ref=prep-goal git_oid=f5dad5f status=start current="T59-DEV" msg="begin watch find command plan output"
 ts=2026-05-23-21:00:20 git_ref=prep-goal git_oid=f5dad5f status=done current="T59-DEV" msg="watch find shows command plans"
+ts=2026-05-23-21:01:45 git_ref=prep-goal git_oid=f9ab18e status=start current="T60-DEV" msg="begin helper no-rule watch guidance"
+ts=2026-05-23-21:07:59 git_ref=prep-goal git_oid=f9ab18e status=done current="T60-DEV" msg="helper no-rule watch guidance"

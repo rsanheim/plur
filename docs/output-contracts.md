@@ -143,6 +143,7 @@ Do not parse `shell`; use `argv` and `env` when executing from a script.
 ```text
 [watch] Checking spec/spec_helper.rb
 [watch] No matching rule for spec/spec_helper.rb
+[watch] Hint: add a [[watch]] mapping for shared files if this change should run tests.
 ```
 
 For runnable changes, text output also includes the command that live watch

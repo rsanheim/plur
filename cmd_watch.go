@@ -332,7 +332,7 @@ func printNoRunnableChanges(changes []watch.NoRunnableChange) {
 	for _, change := range changes {
 		switch change.Reason {
 		case watch.NoRunnableNoRule:
-			fmt.Printf("[watch] No matching rule for %s\n", change.Path)
+			printWatchNoRule(change.Path)
 		case watch.NoRunnableMissingTargets:
 			if len(change.MissingTargets) > 0 {
 				fmt.Printf("[watch] No existing targets for %s (missing: %s)\n", change.Path, strings.Join(change.MissingTargets, ", "))

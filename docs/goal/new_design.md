@@ -1960,6 +1960,45 @@ After evidence:
 - `bin/rake` passed with 379 examples, 0 failures, and 4 existing pending
   examples.
 
+## T60-DEV - Hint On Shared Helper Watch No-Rules
+
+Status: verified
+Commit: pending
+
+Pain point: `spec/spec_helper.rb`, `spec/support/*.rb`, and similar shared test
+helper files often matter, but the built-in watch rules intentionally do not
+guess which tests to run for them. Today the user only sees `No matching rule`,
+which is accurate but not actionable.
+
+Change: when a Ruby shared helper-style path under `spec/` or `test/` has no
+matching watch rule, add one concise hint: add a `[[watch]]` mapping for shared
+files if that change should run tests. Keep generic no-rule files terse to
+avoid noisy watch output.
+
+Acceptance criteria:
+- `plur watch find spec/spec_helper.rb` still exits 2 and prints the no-rule
+  line plus a helper-file hint.
+- Live watch prints the same helper-file hint for `spec/spec_helper.rb`.
+- Unrelated no-rule files keep the existing terse output.
+- Focused watch specs, link check, and the full build pass.
+
+Before evidence:
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_integration_spec.rb`
+  failed with the expected missing helper-hint assertions for both `watch find`
+  and live watch.
+
+After evidence:
+- `./plur -C fixtures/projects/default-ruby watch find spec/spec_helper.rb`
+  exits 2 and prints the no-rule line plus the helper-file hint.
+- `./plur -C fixtures/projects/default-ruby watch find README.md` exits 2 and
+  stays terse with no hint.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_integration_spec.rb spec/docs/output_contracts_doc_spec.rb`
+  passed with 17 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 380 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified
