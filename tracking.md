@@ -141,3 +141,6 @@ ts=2026-05-23-22:43:51 git_ref=prep-goal git_oid=bb04c8f status=done current="T7
 ts=2026-05-23-22:44:55 git_ref=prep-goal git_oid=d4bc837 status=start current="T71-REFLECT" msg="begin reflection after watch parity edge cases"
 ts=2026-05-23-22:48:21 git_ref=prep-goal git_oid=d4bc837 status=start current="T72-DEV" msg="begin preserving execution plan job keys"
 ts=2026-05-23-22:50:46 git_ref=prep-goal git_oid=d4bc837 status=done current="T72-DEV" msg="preserve execution plan job keys"
+ts=2026-05-23-22:51:18 git_ref=prep-goal git_oid=3ccd8ef status=start current="T73-REFLECT" msg="begin reflection after watch parity review"
+ts=2026-05-23-22:52:16 git_ref=prep-goal git_oid=3ccd8ef status=done current="T73-REFLECT" msg="reflect after watch parity review"
+ts=2026-05-23-22:52:38 git_ref=prep-goal git_oid=3ccd8ef status=done current="T71-REFLECT" msg="superseded by review follow-up and T73 reflection"
