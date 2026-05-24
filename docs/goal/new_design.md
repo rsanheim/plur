@@ -2402,7 +2402,7 @@ After evidence:
 ## T74-DEV - Validate Watch Ignore Flags
 
 Status: verified
-Commit: pending
+Commit: 02c2f0119f3a73cb0fcab712929affe031573464
 
 Pain point: T68 made `--ignore` affect both live watch and `watch find`, but
 invalid CLI ignore glob patterns were still silently accepted and simply never
