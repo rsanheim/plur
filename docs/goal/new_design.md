@@ -2085,6 +2085,53 @@ After evidence:
 - `bin/rake` passed with 382 examples, 0 failures, and 4 existing pending
   examples.
 
+## T64-DEV - Use A Durable TOML Config Schema
+
+Status: verified
+Commit: pending
+
+Pain point: T61/T62 made TOML strict, but the key allowlist was still derived
+from the full Kong CLI tree. That meant adding a transient CLI flag could
+silently make it a valid persistent config key, even when it was only meant for
+one invocation or one watch session.
+
+Change: validate TOML against a small config schema owned by the config loader:
+global persistent keys, `[job.<name>]` fields from the job config type, and
+`[[watch]]` fields from the watch mapping type. Keep `dry-run` and
+`dry-run-format` recognized only so they can produce the clearer CLI-only
+error. Everything else from the CLI surface is rejected as an unknown config
+key.
+
+Acceptance criteria:
+- Config validation no longer walks the Kong application tree to decide which
+  keys are accepted.
+- Persistent keys such as `workers`, `color`, `verbose`, `use`, `[job.*]`, and
+  `[[watch]]` remain valid.
+- Transient/session controls such as `debug`, `auto`, `first-is-1`,
+  `rspec-split`, `watch-ignore`, and `watch-run-timeout` fail before command
+  execution.
+- Configuration docs say TOML accepts only documented persistent settings and
+  that operational controls belong on the CLI or in environment variables.
+- Focused config specs, Go tests, link check, and full build pass.
+
+Before evidence:
+- `allowedConfigKeys` walked Kong command and flag nodes, so flags such as
+  `debug`, `rspec-split`, `watch-run-timeout`, and `config-init-force` were
+  treated as known TOML keys.
+- The T64 unit/integration tests failed before the schema change because those
+  CLI/session controls were accepted as config.
+
+After evidence:
+- The config schema now comes from persistent global keys plus `job.Job` and
+  `watch.WatchMapping` TOML fields, not the Kong application tree.
+- `go test -mod=mod ./internal/kongtoml -count=1` passed.
+- `PLUR_BINARY=$PWD/tmp/plur-t64 bin/rspec spec/integration/spec/configuration_spec.rb spec/integration/watch/watch_find_spec.rb spec/docs/configuration_target_doc_spec.rb`
+  passed with 49 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 383 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified

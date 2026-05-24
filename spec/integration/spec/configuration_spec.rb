@@ -360,6 +360,48 @@ RSpec.describe "Configuration" do
         expect(error).to include("dry-run-format")
       end
     end
+
+    it "rejects CLI and session controls outside the persistent config schema" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "cli-controls.toml")
+        File.write(config_path, <<~TOML)
+          auto = true
+          change-dir = "fixtures"
+          debug = true
+          exclude-pattern = ["spec/system/**"]
+          first-is-1 = false
+          rspec-split = true
+          rspec-trace = true
+          watch-ignore = ["tmp/**"]
+          watch-run-debounce = 250
+          watch-run-timeout = 5
+          config-init-force = true
+        TOML
+
+        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "doctor"
+          )
+        end
+
+        expect(status).not_to be_success
+        expect(error).to include("Configuration error:")
+        expect(error).to include(config_path)
+        expect(error).to include("unknown config keys")
+        expect(error).to include("auto")
+        expect(error).to include("change-dir")
+        expect(error).to include("debug")
+        expect(error).to include("exclude-pattern")
+        expect(error).to include("first-is-1")
+        expect(error).to include("rspec-split")
+        expect(error).to include("rspec-trace")
+        expect(error).to include("watch-ignore")
+        expect(error).to include("watch-run-debounce")
+        expect(error).to include("watch-run-timeout")
+        expect(error).to include("config-init-force")
+      end
+    end
   end
 
   describe "job validation" do

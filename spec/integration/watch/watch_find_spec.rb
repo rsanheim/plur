@@ -90,13 +90,12 @@ RSpec.describe "plur watch find" do
     end
   end
 
-  it "does not reject config or environment values for persistent run settings" do
+  it "accepts persistent config and environment values that do not affect the preview" do
     Dir.mktmpdir("watch-find-config-", ROOT_PATH.join("tmp")) do |tmpdir|
       config_path = File.join(tmpdir, "plur.toml")
       File.write(config_path, <<~TOML)
         workers = 99
-        first-is-1 = false
-        rspec-split = true
+        use = "rspec"
       TOML
 
       chdir(default_ruby_dir) do

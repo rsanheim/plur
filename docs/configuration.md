@@ -18,13 +18,19 @@ Plur automatically loads configuration from TOML files using the following order
 2. `.plur.toml` in the current directory (project-specific)
 3. `PLUR_CONFIG_FILE` (if set)
 
-Configuration keys are strict. Plur fails fast when a config file contains an
-unknown key such as `wokers`, `job.rspec.cmdd`, or `watch.soruce`, so typos do
-not silently fall back to defaults.
+Configuration keys are strict. TOML files may only contain the documented
+persistent settings, `[job.<name>]` fields, and `[[watch]]` fields listed on
+this page. Plur fails fast when a config file contains an unknown key such as
+`wokers`, `job.rspec.cmdd`, or `watch.soruce`, so typos do not silently fall
+back to defaults.
 
 Preview controls are CLI-only. Use `plur --dry-run` and
 `plur --dry-run --dry-run-format=json` for a single invocation; do not persist
 `dry-run` or `dry-run-format` in TOML.
+
+Operational controls are not persisted in TOML. Use CLI flags or environment
+variables for per-session behavior such as `--debug`, `--first-is-1`, or
+`--rspec-split`.
 
 ### Basic Example
 
