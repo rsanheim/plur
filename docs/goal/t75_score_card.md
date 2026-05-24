@@ -1,7 +1,7 @@
 # T75 Score Card - Watch Find / Live Watch Parity Closure
 
 Status: verified
-Commit: pending
+Commit: 8a35d02069a1da5dfcd4e49907a75793e6f3265e
 
 ## Context
 
