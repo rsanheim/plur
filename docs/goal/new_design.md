@@ -2088,7 +2088,7 @@ After evidence:
 ## T64-DEV - Use A Durable TOML Config Schema
 
 Status: verified
-Commit: pending
+Commit: 19e1fd5ce49abdcc80783e3acb5d1d1b4b3a6284
 
 Pain point: T61/T62 made TOML strict, but the key allowlist was still derived
 from the full Kong CLI tree. That meant adding a transient CLI flag could
