@@ -1,7 +1,7 @@
 # T67 Score Card - After Planning Error Surfacing
 
 Status: verified
-Commit: pending
+Commit: cb9b511af9962a956cdf8eb4f78e74da55277266
 
 ## Context
 
