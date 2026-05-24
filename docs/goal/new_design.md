@@ -2002,7 +2002,7 @@ After evidence:
 ## T61-DEV - Reject Unknown Config Keys
 
 Status: verified
-Commit: pending
+Commit: a4a75148df253effbce5f663f56a7ce968420c5f
 
 Pain point: `.plur.toml` typos are currently only debug-logged. A misspelled
 key like `wokers` or `job.rspec.cmdd` can make Plur ignore the user's intended
