@@ -8,12 +8,18 @@ type JobPlan struct {
 	Targets []string
 }
 
+type PlanError struct {
+	Path string
+	Err  error
+}
+
 type Plan struct {
 	Paths             []string
 	MatchedRules      []WatchMapping
 	ExistingTargets   map[string][]string
 	MissingTargets    map[string][]string
 	JobPlans          []JobPlan
+	Errors            []PlanError
 	ShouldReload      bool
 	NoRunnableChanges []NoRunnableChange
 }
@@ -45,6 +51,7 @@ func (p Planner) PlanBatch(paths []string) Plan {
 	for _, path := range paths {
 		result, err := FindTargetsForFile(path, p.Jobs, p.Watches, p.CWD)
 		if err != nil {
+			plan.Errors = append(plan.Errors, PlanError{Path: path, Err: err})
 			continue
 		}
 

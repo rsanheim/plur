@@ -27,6 +27,7 @@ RSpec.describe "output contract documentation" do
     expect(doc).to include("\"shell\": \"bundle exec rspec spec/calculator_spec.rb\"")
     expect(compact_doc).to include("job_plans`: runnable command plans, one per job")
     expect(compact_doc).to include("job_plans[].argv` and `job_plans[].env` are the canonical command fields for scripts")
+    expect(compact_doc).to include("errors`: planning errors, present only when a watch preview fails while building a plan")
     expect(doc).to include("watch find")
     expect(doc).to include("[watch] Command:")
     expect(doc).to include("[watch] Hint: add a [[watch]] mapping")

@@ -236,6 +236,8 @@ Stable top-level keys:
 - `missing_targets`: targets that do not exist, grouped by job
 - `job_plans`: runnable command plans, one per job, each with `job`,
   `targets`, `argv`, `env`, `cwd`, and `shell`
+- `errors`: planning errors, present only when a watch preview fails while
+  building a plan
 - `exit_code`: the exit code Plur will use for this preview
 
 `job_plans[].argv` and `job_plans[].env` are the canonical command fields for

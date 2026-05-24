@@ -611,6 +611,53 @@ RSpec.describe "Configuration" do
         expect(error).to include("unclosed")
       end
     end
+
+    it "rejects invalid watch glob patterns" do
+      cases = [
+        [
+          <<~TOML,
+            use = "rspec"
+
+            [job.rspec]
+            cmd = ["bin/rspec"]
+
+            [[watch]]
+            name = "bad-source"
+            source = "["
+            jobs = ["rspec"]
+          TOML
+          /configuration error in \[[^\]]+\]: watch "bad-source" has invalid source pattern "\[": invalid glob pattern "\["/
+        ],
+        [
+          <<~TOML,
+            use = "rspec"
+
+            [job.rspec]
+            cmd = ["bin/rspec"]
+
+            [[watch]]
+            name = "bad-ignore"
+            source = "lib/**/*.rb"
+            ignore = ["["]
+            jobs = ["rspec"]
+          TOML
+          /configuration error in \[[^\]]+\]: watch "bad-ignore" has invalid ignore pattern "\[": invalid glob pattern "\["/
+        ]
+      ]
+
+      cases.each do |config, error_pattern|
+        Dir.mktmpdir do |tmpdir|
+          File.write(File.join(tmpdir, ".plur.toml"), config)
+          FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+          File.write(File.join(tmpdir, "spec", "example_spec.rb"), "RSpec.describe('x'){ it('works'){} }")
+
+          _, error, status = Dir.chdir(tmpdir) { Open3.capture3(plur_binary, "doctor") }
+
+          expect(status).not_to be_success
+          expect(error).to match(error_pattern)
+        end
+      end
+    end
   end
 
   describe "resolver edge cases" do

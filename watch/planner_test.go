@@ -93,6 +93,24 @@ func TestPlanner_PlanPath(t *testing.T) {
 	})
 }
 
+func TestPlanner_PlanPathRecordsPlanningErrors(t *testing.T) {
+	planner := Planner{
+		Jobs: map[string]job.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
+		},
+		Watches: []WatchMapping{
+			{Name: "bad-source", Source: "[", Jobs: []string{"rspec"}},
+		},
+	}
+
+	plan := planner.PlanPath("lib/user.rb")
+
+	require.Len(t, plan.Errors, 1)
+	assert.Equal(t, "lib/user.rb", plan.Errors[0].Path)
+	assert.Contains(t, plan.Errors[0].Err.Error(), "bad-source")
+	assert.Empty(t, plan.JobPlans)
+}
+
 func TestPlanner_PlanBatch(t *testing.T) {
 	tmpDir := makeWatchTestProject(t)
 	writeWatchTestFile(t, tmpDir, "lib/user.rb")

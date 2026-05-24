@@ -2176,6 +2176,55 @@ After evidence:
 - `bin/rake` passed with 383 examples, 0 failures, and 4 existing pending
   examples.
 
+## T66-DEV - Surface Watch Planning Errors
+
+Status: verified
+Commit: pending
+
+Pain point: `watch.Planner` called `FindTargetsForFile` for each changed path
+and silently skipped any returned error. That made invalid watch source globs,
+ignore globs, or future target-resolution failures indistinguishable from "no
+runnable change" at the shared planning layer.
+
+Change: make planning errors first-class. The runtime config validator rejects
+invalid watch source and ignore glob patterns before commands run. The shared
+planner records per-path planning errors instead of dropping them. Live watch
+logs those errors, and `watch find --format=json` can include planning errors
+with `exit_code` 1 when a plan cannot be built.
+
+Acceptance criteria:
+- Invalid `[[watch]].source` and `[[watch]].ignore` glob patterns fail during
+  config validation with the watch name and pattern kind.
+- `watch.Planner` records planning errors on the returned plan instead of
+  silently continuing.
+- `watch find` treats planning errors as exit code 1 and includes them in its
+  JSON plan shape.
+- Focused Go tests, focused config/docs specs, full Go tests, link check, and
+  full build pass.
+
+Before evidence:
+- Red: `go test -mod=mod ./watch ./internal/runtime -run 'TestPlanner_PlanPathRecordsPlanningErrors|TestValidateRuntimeConfigRejectsInvalidWatchGlobPatterns' -count=1`
+  failed because `watch.Plan` had no `Errors` field and invalid watch glob
+  patterns were accepted.
+
+After evidence:
+- Invalid user watch `source` and `ignore` glob patterns now fail config
+  validation with the watch name and pattern kind.
+- `watch.Planner` returns per-path planning errors instead of silently dropping
+  them.
+- `watch find` exits 1 for planning errors and includes `errors` in the JSON
+  plan shape when planning fails.
+- `go test -mod=mod ./watch ./internal/runtime -run 'TestPlanner_PlanPathRecordsPlanningErrors|TestValidateRuntimeConfigRejectsInvalidWatchGlobPatterns' -count=1`
+  passed.
+- `go test -mod=mod . -run 'TestWatchFind(ExitCodeReportsPlanningErrors|BuildWatchFindPlanIncludesPlanningErrors)' -count=1`
+  passed.
+- `PLUR_BINARY=$PWD/tmp/plur-t66 bin/rspec spec/integration/watch/watch_config_spec.rb spec/integration/spec/configuration_spec.rb spec/docs/output_contracts_doc_spec.rb`
+  passed with 51 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 384 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified

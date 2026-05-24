@@ -88,6 +88,11 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return nil
 	}
 
+	if len(findPlan.Errors) > 0 {
+		printWatchFindErrors(findPlan.Errors)
+		return ExitCode{Code: 1}
+	}
+
 	if len(findPlan.MatchedRules) == 0 {
 		printWatchNoRule(filePath)
 		return ExitCode{Code: 2}
@@ -154,14 +159,15 @@ func watchFindNoOpFlagGuidance(flag string) string {
 }
 
 type WatchFindPlan struct {
-	Version         int                 `json:"version"`
-	Mode            string              `json:"mode"`
-	File            string              `json:"file"`
-	MatchedRules    []WatchFindPlanRule `json:"matched_rules"`
-	ExistingTargets map[string][]string `json:"existing_targets"`
-	MissingTargets  map[string][]string `json:"missing_targets"`
-	JobPlans        []WatchFindJobPlan  `json:"job_plans"`
-	ExitCode        int                 `json:"exit_code"`
+	Version         int                  `json:"version"`
+	Mode            string               `json:"mode"`
+	File            string               `json:"file"`
+	MatchedRules    []WatchFindPlanRule  `json:"matched_rules"`
+	ExistingTargets map[string][]string  `json:"existing_targets"`
+	MissingTargets  map[string][]string  `json:"missing_targets"`
+	JobPlans        []WatchFindJobPlan   `json:"job_plans"`
+	Errors          []WatchFindPlanError `json:"errors,omitempty"`
+	ExitCode        int                  `json:"exit_code"`
 }
 
 type WatchFindJobPlan struct {
@@ -180,7 +186,15 @@ type WatchFindPlanRule struct {
 	Target string   `json:"target"`
 }
 
+type WatchFindPlanError struct {
+	Path  string `json:"path"`
+	Error string `json:"error"`
+}
+
 func watchFindExitCode(plan watch.Plan) int {
+	if len(plan.Errors) > 0 {
+		return 1
+	}
 	if hasWatchFindTargets(plan.ExistingTargets) {
 		return 0
 	}
@@ -211,6 +225,7 @@ func buildWatchFindPlan(filePath string, plan watch.Plan, cwd string, exitCode i
 		ExistingTargets: cloneTargetMap(plan.ExistingTargets),
 		MissingTargets:  cloneTargetMap(plan.MissingTargets),
 		JobPlans:        watchFindJobPlans(plan.JobPlans, cwd),
+		Errors:          watchFindPlanErrors(plan.Errors),
 		ExitCode:        exitCode,
 	}
 }
@@ -230,6 +245,20 @@ func watchFindJobPlans(jobPlans []watch.JobPlan, cwd string) []WatchFindJobPlan 
 		})
 	}
 	return plans
+}
+
+func watchFindPlanErrors(errors []watch.PlanError) []WatchFindPlanError {
+	planErrors := make([]WatchFindPlanError, 0, len(errors))
+	for _, err := range errors {
+		if err.Err == nil {
+			continue
+		}
+		planErrors = append(planErrors, WatchFindPlanError{
+			Path:  err.Path,
+			Error: err.Err.Error(),
+		})
+	}
+	return planErrors
 }
 
 func watchFindPlanRules(rules []watch.WatchMapping) []WatchFindPlanRule {
@@ -269,6 +298,15 @@ func printWatchFindJobPlans(jobPlans []watch.JobPlan) {
 		argv := job.BuildJobCmd(jobPlan.Job, jobPlan.Targets)
 		env := dedupeEnvByKey(validEnvEntries(jobPlan.Job.Env))
 		fmt.Printf("[watch] Command: %s\n", watchFindShell(env, argv))
+	}
+}
+
+func printWatchFindErrors(errors []watch.PlanError) {
+	for _, err := range errors {
+		if err.Err == nil {
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "[watch] Error planning %s: %v\n", err.Path, err.Err)
 	}
 }
 

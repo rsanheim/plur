@@ -41,7 +41,7 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 		// Check if path matches the source pattern
 		matched, err := doublestar.Match(filepath.ToSlash(watch.Source), normalizedPath)
 		if err != nil {
-			return nil, fmt.Errorf("error matching pattern %q: %w", watch.Source, err)
+			return nil, fmt.Errorf("error matching source pattern %q for watch %q: %w", watch.Source, watch.Name, err)
 		}
 
 		if !matched {

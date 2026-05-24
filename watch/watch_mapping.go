@@ -1,7 +1,10 @@
 package watch
 
 import (
+	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -14,6 +17,16 @@ type WatchMapping struct {
 	Jobs    []string `toml:"jobs" json:"jobs"`
 	Ignore  []string `toml:"ignore,omitempty" json:"ignore,omitempty"`
 	Reload  bool     `toml:"reload,omitempty" json:"reload,omitempty"` // Reload plur after jobs complete
+}
+
+func ValidateGlobPattern(pattern string) error {
+	if strings.TrimSpace(pattern) == "" {
+		return errors.New("must not be empty")
+	}
+	if !doublestar.ValidatePattern(filepath.ToSlash(pattern)) {
+		return fmt.Errorf("invalid glob pattern %q", pattern)
+	}
+	return nil
 }
 
 // SourceDir returns the directory part of the source pattern

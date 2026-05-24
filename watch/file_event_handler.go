@@ -50,6 +50,7 @@ func (h *FileEventHandler) planner() Planner {
 type HandleResult struct {
 	ExecutedJobs      []string // job names that were run
 	ShouldReload      bool     // true if any matched rule has Reload: true
+	PlanningErrors    []PlanError
 	NoRunnableChanges []NoRunnableChange
 }
 
@@ -72,6 +73,11 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 			logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
 		}
 	}
+	for _, err := range plan.Errors {
+		if err.Err != nil {
+			logger.Logger.Warn("Watch planning error", "path", err.Path, "error", err.Err)
+		}
+	}
 
 	for _, jobPlan := range plan.JobPlans {
 		if err := h.executor()(jobPlan.Job, jobPlan.Targets, h.CWD); err != nil {
@@ -83,6 +89,7 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 	return HandleResult{
 		ExecutedJobs:      executedJobs,
 		ShouldReload:      plan.ShouldReload,
+		PlanningErrors:    plan.Errors,
 		NoRunnableChanges: plan.NoRunnableChanges,
 	}
 }
