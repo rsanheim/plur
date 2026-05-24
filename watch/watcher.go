@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 )
 
@@ -226,22 +225,21 @@ func RunCommand(args []string) {
 	}
 }
 
-// ExecuteJob runs a job with the given target files.
-func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
-	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
+// ExecuteJob runs a planned watch job.
+func ExecuteJob(plan ExecutionPlan) error {
+	logger.Logger.Info("Executing job", "job", plan.JobName, "targets", fmt.Sprintf("%+v", plan.Targets))
 
-	if len(targetFiles) == 0 {
+	if len(plan.Targets) == 0 {
 		return nil
 	}
 
-	cmd := job.BuildJobCmd(j, targetFiles)
-	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
+	fmt.Printf("\n[plur] %s\n", strings.Join(plan.Argv, " "))
 
-	execCmd := exec.Command(cmd[0], cmd[1:]...)
-	execCmd.Dir = cwd
+	execCmd := exec.Command(plan.Argv[0], plan.Argv[1:]...)
+	execCmd.Dir = plan.CWD
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
-	execCmd.Env = append(os.Environ(), j.Env...)
+	execCmd.Env = append(os.Environ(), plan.Env...)
 
 	if err := execCmd.Run(); err != nil {
 		return err

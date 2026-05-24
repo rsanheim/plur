@@ -2275,6 +2275,53 @@ After evidence:
 - `bin/rake` passed with 385 examples, 0 failures, and 4 existing pending
   examples.
 
+## T69-DEV - Share Watch Execution Plans
+
+Status: verified
+Commit: pending
+
+Pain point: T59/T65 made `watch find` print `argv`, `env`, `cwd`, and shell
+commands, but that rendering still rebuilt the command shape in `watch_find.go`.
+Live watch passed only job/targets/cwd to its executor, so preview command
+plans and executed command inputs could drift even though target selection was
+shared.
+
+Change: add a `watch.ExecutionPlan` type built from planner job plans and cwd.
+The live file-event handler now builds those execution plans before calling the
+executor, and `watch find` renders JSON/text command previews from the same
+builder.
+
+Acceptance criteria:
+- Session parity tests compare preview execution plans with live handler
+  `ExecutedPlans`.
+- `watch find` command JSON/text output is built from `watch.ExecutionPlan`,
+  not a separate command-plan reconstruction.
+- Live watch execution uses the same argv/env/cwd fields carried by
+  `watch.ExecutionPlan`.
+- Focused Go tests, focused watch JSON/parity specs, full Go tests, link
+  check, and full build pass.
+
+Before evidence:
+- Red: `go test -mod=mod ./internal/watchsession -run TestSessionPlanPathMatchesLiveHandlerBatch -count=1`
+  failed because `watch.BuildExecutionPlans`, `watch.ExecutionPlan`, and
+  `HandleResult.ExecutedPlans` did not exist.
+
+After evidence:
+- `watch.ExecutionPlan` now carries job name, job, targets, argv, normalized
+  env, cwd, and is built from planner job plans.
+- Live watch handler results now include `ExecutedPlans`, and executors receive
+  `ExecutionPlan` directly.
+- `watch find` renders text/JSON command previews from `watch.ExecutionPlan`
+  instead of rebuilding argv/env in `watch_find.go`.
+- `go test -mod=mod ./internal/watchsession ./watch -run 'TestSessionPlanPathMatchesLiveHandlerBatch|TestFileEventHandler|TestExecuteJob' -count=1`
+  passed.
+- `PLUR_BINARY=$PWD/tmp/plur-t69 bin/rspec spec/integration/watch/watch_find_json_spec.rb spec/integration/watch/watch_find_live_parity_spec.rb spec/docs/output_contracts_doc_spec.rb`
+  passed with 8 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 385 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified

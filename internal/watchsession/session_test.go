@@ -114,27 +114,34 @@ func TestSessionPlanPathMatchesLiveHandlerBatch(t *testing.T) {
 
 	session, err := New(sessionRuntimeConfig(), Options{FilterWatchDirs: true})
 	require.NoError(t, err)
+	session.Jobs["rspec"] = job.Job{
+		Name:          "rspec",
+		Framework:     "rspec",
+		Cmd:           []string{"bundle", "exec", "rspec", "{{target}}"},
+		Env:           []string{"A=old", "NO_EQUALS", "A=new", "B=1"},
+		TargetPattern: "spec/**/*_spec.rb",
+	}
+	session.Planner.Jobs = session.Jobs
 
 	changedPath := filepath.Join(projectDir, "lib/user.rb")
 	previewPlan := session.PlanPath(changedPath)
+	previewExecutionPlans := watch.BuildExecutionPlans(previewPlan.JobPlans, session.CWD)
 
 	var calls []sessionExecutorCall
 	handler := session.Handler()
-	handler.Executor = func(j job.Job, targets []string, cwd string) error {
-		calls = append(calls, sessionExecutorCall{
-			jobName: j.Name,
-			targets: append([]string{}, targets...),
-			cwd:     cwd,
-		})
+	handler.Executor = func(plan watch.ExecutionPlan) error {
+		calls = append(calls, sessionExecutorCall{plan: plan})
 		return nil
 	}
 	liveResult := handler.HandleBatch([]string{session.NormalizePath(changedPath)})
 
 	require.Len(t, previewPlan.JobPlans, 1)
 	require.Len(t, calls, 1)
-	assert.Equal(t, previewPlan.JobPlans[0].JobName, calls[0].jobName)
-	assert.Equal(t, previewPlan.JobPlans[0].Targets, calls[0].targets)
-	assert.Equal(t, session.CWD, calls[0].cwd)
+	assert.Equal(t, previewExecutionPlans, liveResult.ExecutedPlans)
+	assert.Equal(t, previewExecutionPlans[0], calls[0].plan)
+	assert.Equal(t, []string{"bundle", "exec", "rspec", "spec/user_spec.rb"}, liveResult.ExecutedPlans[0].Argv)
+	assert.Equal(t, []string{"A=new", "B=1"}, liveResult.ExecutedPlans[0].Env)
+	assert.Equal(t, session.CWD, liveResult.ExecutedPlans[0].CWD)
 	assert.Equal(t, []string{previewPlan.JobPlans[0].JobName}, liveResult.ExecutedJobs)
 	assert.Equal(t, previewPlan.ShouldReload, liveResult.ShouldReload)
 	assert.Equal(t, previewPlan.NoRunnableChanges, liveResult.NoRunnableChanges)
@@ -146,9 +153,7 @@ func TestSessionPlanPathMatchesLiveHandlerBatch(t *testing.T) {
 }
 
 type sessionExecutorCall struct {
-	jobName string
-	targets []string
-	cwd     string
+	plan watch.ExecutionPlan
 }
 
 func sessionRuntimeConfig() *runtime.RuntimeConfig {

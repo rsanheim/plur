@@ -18,10 +18,15 @@ type mockExecutor struct {
 type executorCall struct {
 	jobName string
 	targets []string
+	cwd     string
 }
 
-func (m *mockExecutor) execute(j job.Job, targets []string, cwd string) error {
-	m.calls = append(m.calls, executorCall{jobName: j.Name, targets: targets})
+func (m *mockExecutor) execute(plan ExecutionPlan) error {
+	m.calls = append(m.calls, executorCall{
+		jobName: plan.JobName,
+		targets: plan.Targets,
+		cwd:     plan.CWD,
+	})
 	return nil
 }
 

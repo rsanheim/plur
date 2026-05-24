@@ -177,7 +177,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
 	}
 
-	err := ExecuteJob(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir)
+	err := ExecuteJob(BuildExecutionPlan(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir))
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)
@@ -199,7 +199,7 @@ func TestExecuteJob_SingleTarget(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
 	}
 
-	err := ExecuteJob(j, []string{"only_file.rb"}, tmpDir)
+	err := ExecuteJob(BuildExecutionPlan(j, []string{"only_file.rb"}, tmpDir))
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)
@@ -234,7 +234,7 @@ func TestExecuteJob_NoTargets(t *testing.T) {
 				Cmd:  tt.cmd,
 			}
 
-			err := ExecuteJob(j, []string{}, tmpDir)
+			err := ExecuteJob(BuildExecutionPlan(j, []string{}, tmpDir))
 			require.NoError(t, err)
 
 			_, err = os.ReadFile(outputFile)
@@ -252,7 +252,7 @@ func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--"},
 	}
 
-	err := ExecuteJob(j, []string{"file1.rb", "file2.rb"}, tmpDir)
+	err := ExecuteJob(BuildExecutionPlan(j, []string{"file1.rb", "file2.rb"}, tmpDir))
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)

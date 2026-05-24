@@ -10,7 +10,6 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/watchsession"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -117,7 +116,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 	printWatchFindRules(findPlan.MatchedRules)
 	printWatchFindExistingTargets(findPlan.ExistingTargets)
-	printWatchFindJobPlans(findPlan.JobPlans)
+	printWatchFindJobPlans(findPlan.JobPlans, session.CWD)
 	printWatchFindMissingTargets(filePath, findPlan)
 
 	// Exit code 2 if nothing would actually run
@@ -257,7 +256,7 @@ func buildWatchFindPlanWithAdmission(filePath string, plan watch.Plan, cwd strin
 		MatchedRules:    watchFindPlanRules(plan.MatchedRules),
 		ExistingTargets: cloneTargetMap(plan.ExistingTargets),
 		MissingTargets:  cloneTargetMap(plan.MissingTargets),
-		JobPlans:        watchFindJobPlans(plan.JobPlans, cwd),
+		JobPlans:        watchFindJobPlans(watch.BuildExecutionPlans(plan.JobPlans, cwd)),
 		Errors:          watchFindPlanErrors(plan.Errors),
 		ExitCode:        exitCode,
 	}
@@ -274,18 +273,16 @@ func watchFindAdmission(admission *watch.AdmissionResult) *WatchFindAdmission {
 	}
 }
 
-func watchFindJobPlans(jobPlans []watch.JobPlan, cwd string) []WatchFindJobPlan {
-	plans := make([]WatchFindJobPlan, 0, len(jobPlans))
-	for _, jobPlan := range jobPlans {
-		argv := job.BuildJobCmd(jobPlan.Job, jobPlan.Targets)
-		env := dedupeEnvByKey(validEnvEntries(jobPlan.Job.Env))
+func watchFindJobPlans(executionPlans []watch.ExecutionPlan) []WatchFindJobPlan {
+	plans := make([]WatchFindJobPlan, 0, len(executionPlans))
+	for _, executionPlan := range executionPlans {
 		plans = append(plans, WatchFindJobPlan{
-			Job:     jobPlan.JobName,
-			Targets: slices.Clone(jobPlan.Targets),
-			Argv:    argv,
-			Env:     env,
-			CWD:     cwd,
-			Shell:   watchFindShell(env, argv),
+			Job:     executionPlan.JobName,
+			Targets: slices.Clone(executionPlan.Targets),
+			Argv:    slices.Clone(executionPlan.Argv),
+			Env:     slices.Clone(executionPlan.Env),
+			CWD:     executionPlan.CWD,
+			Shell:   watchFindShell(executionPlan.Env, executionPlan.Argv),
 		})
 	}
 	return plans
@@ -337,11 +334,9 @@ func printWatchFindExistingTargets(existingTargets map[string][]string) {
 	}
 }
 
-func printWatchFindJobPlans(jobPlans []watch.JobPlan) {
-	for _, jobPlan := range jobPlans {
-		argv := job.BuildJobCmd(jobPlan.Job, jobPlan.Targets)
-		env := dedupeEnvByKey(validEnvEntries(jobPlan.Job.Env))
-		fmt.Printf("[watch] Command: %s\n", watchFindShell(env, argv))
+func printWatchFindJobPlans(jobPlans []watch.JobPlan, cwd string) {
+	for _, executionPlan := range watch.BuildExecutionPlans(jobPlans, cwd) {
+		fmt.Printf("[watch] Command: %s\n", watchFindShell(executionPlan.Env, executionPlan.Argv))
 	}
 }
 

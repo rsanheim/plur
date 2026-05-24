@@ -5,8 +5,8 @@ import (
 	"github.com/rsanheim/plur/logger"
 )
 
-// JobExecutor is a function that executes a job with target files
-type JobExecutor func(j job.Job, targets []string, cwd string) error
+// JobExecutor is a function that executes a planned watch job.
+type JobExecutor func(plan ExecutionPlan) error
 
 type NoRunnableReason string
 
@@ -49,7 +49,8 @@ func (h *FileEventHandler) planner() Planner {
 // HandleResult contains the outcomes of processing file events
 type HandleResult struct {
 	ExecutedJobs      []string // job names that were run
-	ShouldReload      bool     // true if any matched rule has Reload: true
+	ExecutedPlans     []ExecutionPlan
+	ShouldReload      bool // true if any matched rule has Reload: true
 	PlanningErrors    []PlanError
 	NoRunnableChanges []NoRunnableChange
 }
@@ -79,15 +80,17 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 		}
 	}
 
-	for _, jobPlan := range plan.JobPlans {
-		if err := h.executor()(jobPlan.Job, jobPlan.Targets, h.CWD); err != nil {
-			logger.Logger.Warn("Job execution error", "job", jobPlan.JobName, "error", err)
+	executionPlans := BuildExecutionPlans(plan.JobPlans, h.CWD)
+	for _, executionPlan := range executionPlans {
+		if err := h.executor()(executionPlan); err != nil {
+			logger.Logger.Warn("Job execution error", "job", executionPlan.JobName, "error", err)
 		}
-		executedJobs = append(executedJobs, jobPlan.JobName)
+		executedJobs = append(executedJobs, executionPlan.JobName)
 	}
 
 	return HandleResult{
 		ExecutedJobs:      executedJobs,
+		ExecutedPlans:     executionPlans,
 		ShouldReload:      plan.ShouldReload,
 		PlanningErrors:    plan.Errors,
 		NoRunnableChanges: plan.NoRunnableChanges,
