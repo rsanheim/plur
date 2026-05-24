@@ -1963,7 +1963,7 @@ After evidence:
 ## T60-DEV - Hint On Shared Helper Watch No-Rules
 
 Status: verified
-Commit: pending
+Commit: 779f04b19e093f66cb72285b22f01df25885e420
 
 Pain point: `spec/spec_helper.rb`, `spec/support/*.rb`, and similar shared test
 helper files often matter, but the built-in watch rules intentionally do not
