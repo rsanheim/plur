@@ -167,8 +167,6 @@ func watchFindNoOpFlagGuidance(flag string) string {
 	switch flag {
 	case "--dry-run", "--dry-run-format":
 		return "use `plur watch find --format=json <file>` for a structured watch preview, or `plur --dry-run [patterns...]` for a one-shot test plan"
-	case "--ignore":
-		return "`--ignore` filters live watch events, not watch find previews"
 	default:
 		return "watch find previews mappings and does not run test workers"
 	}

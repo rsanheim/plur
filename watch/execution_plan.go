@@ -19,15 +19,19 @@ type ExecutionPlan struct {
 func BuildExecutionPlans(jobPlans []JobPlan, cwd string) []ExecutionPlan {
 	plans := make([]ExecutionPlan, 0, len(jobPlans))
 	for _, plan := range jobPlans {
-		plans = append(plans, BuildExecutionPlan(plan.Job, plan.Targets, cwd))
+		plans = append(plans, buildExecutionPlan(plan.JobName, plan.Job, plan.Targets, cwd))
 	}
 	return plans
 }
 
 func BuildExecutionPlan(j job.Job, targets []string, cwd string) ExecutionPlan {
+	return buildExecutionPlan(j.Name, j, targets, cwd)
+}
+
+func buildExecutionPlan(jobName string, j job.Job, targets []string, cwd string) ExecutionPlan {
 	targets = slices.Clone(targets)
 	return ExecutionPlan{
-		JobName: j.Name,
+		JobName: jobName,
 		Job:     j,
 		Targets: targets,
 		Argv:    job.BuildJobCmd(j, targets),

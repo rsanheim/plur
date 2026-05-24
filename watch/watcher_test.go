@@ -190,6 +190,20 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 	assert.Contains(t, output, "file3.rb")
 }
 
+func TestBuildExecutionPlansUsesPlannerJobName(t *testing.T) {
+	plans := BuildExecutionPlans([]JobPlan{
+		{
+			JobName: "rspec",
+			Job:     job.Job{Name: "", Cmd: []string{"rspec", "{{target}}"}},
+			Targets: []string{"spec/user_spec.rb"},
+		},
+	}, "/project")
+
+	require.Len(t, plans, 1)
+	assert.Equal(t, "rspec", plans[0].JobName)
+	assert.Equal(t, []string{"rspec", "spec/user_spec.rb"}, plans[0].Argv)
+}
+
 func TestExecuteJob_SingleTarget(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "args.txt")

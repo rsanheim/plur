@@ -2362,6 +2362,43 @@ After evidence:
 - `bin/rake` passed with 385 examples, 0 failures, and 4 existing pending
   examples.
 
+## T72-DEV - Preserve Resolved Watch Job Keys
+
+Status: verified
+Commit: pending
+
+Pain point: T69 introduced `watch.ExecutionPlan`, but its builder used
+`job.Job.Name` as the displayed/executed job name. The planner already carries
+the authoritative resolved map key in `JobPlan.JobName`; direct planner/handler
+callers can have a blank or stale `job.Job.Name`.
+
+Change: make `BuildExecutionPlans` preserve `JobPlan.JobName` when constructing
+execution plans, while keeping `BuildExecutionPlan` for direct job callers.
+Remove the stale `--ignore` no-op guidance branch from `watch_find.go` now that
+`--ignore` affects previews.
+
+Acceptance criteria:
+- Execution plans built from planner job plans use the planner-resolved job key.
+- A job with an empty `job.Job.Name` but `JobPlan.JobName = "rspec"` produces
+  an execution plan with `JobName = "rspec"`.
+- Full Go tests and full build pass.
+
+Before evidence:
+- Red: `go test -mod=mod ./watch -run TestBuildExecutionPlansUsesPlannerJobName -count=1`
+  failed with `expected: "rspec", actual: ""`.
+
+After evidence:
+- `BuildExecutionPlans` now preserves `JobPlan.JobName` as the canonical
+  resolved watch job key.
+- The focused guardrail covers a blank `job.Job.Name` with
+  `JobPlan.JobName = "rspec"`.
+- Removed the stale `--ignore` no-op guidance branch from `watch_find.go`.
+- `go test -mod=mod ./watch -run 'TestBuildExecutionPlansUsesPlannerJobName|TestExecuteJob' -count=1`
+  passed.
+- `go test -mod=mod ./...` passed.
+- `bin/rake` passed with 385 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified
