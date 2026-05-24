@@ -2322,6 +2322,46 @@ After evidence:
 - `bin/rake` passed with 385 examples, 0 failures, and 4 existing pending
   examples.
 
+## T70-DEV - Cover Watch Parity Edge Cases
+
+Status: verified
+Commit: pending
+
+Pain point: T57/T69 covered the main runnable and no-rule parity path, but the
+session boundary still lacked explicit coverage for the cases most likely to
+drift later: missing targets, reload-only mappings, multiple jobs, and planning
+errors.
+
+Change: add session-level parity coverage that compares `Session.PlanPath`
+against the live `FileEventHandler` result for those edge cases. This is a
+guardrail phase; no production behavior change was needed when the tests were
+added.
+
+Acceptance criteria:
+- Missing-target preview and live handler results expose the same
+  `NoRunnableChanges`.
+- Reload-only mappings agree on `ShouldReload` and do not execute jobs.
+- Multiple-job mappings produce live `ExecutedPlans` equal to preview
+  execution plans.
+- Planning errors appear in live `PlanningErrors` and execute no jobs.
+- Focused Go tests, full Go tests, link check, and full build pass.
+
+Before evidence:
+- Advisor review after T66 identified missing-target, reload-only, multiple-job,
+  and planning-error paths as uncovered parity drift zones.
+
+After evidence:
+- Added session edge-case parity coverage for missing targets, reload-only
+  mappings, multiple jobs, and planning errors.
+- No production behavior change was needed; the new tests pass against the
+  shared session/planner/handler path.
+- `go test -mod=mod ./internal/watchsession -run 'TestSessionPlanPathMatchesLiveHandler(Batch|EdgeCases)' -count=1`
+  passed.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 385 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified

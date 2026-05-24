@@ -136,3 +136,5 @@ ts=2026-05-23-22:27:31 git_ref=prep-goal git_oid=99c645e status=start current="T
 ts=2026-05-23-22:33:49 git_ref=prep-goal git_oid=99c645e status=done current="T68-DEV" msg="share watch find event admission"
 ts=2026-05-23-22:34:45 git_ref=prep-goal git_oid=b63d8ac status=start current="T69-DEV" msg="begin shared watch execution plans"
 ts=2026-05-23-22:40:23 git_ref=prep-goal git_oid=b63d8ac status=done current="T69-DEV" msg="share watch execution plans"
+ts=2026-05-23-22:41:34 git_ref=prep-goal git_oid=bb04c8f status=start current="T70-DEV" msg="begin watch parity edge-case coverage"
+ts=2026-05-23-22:43:51 git_ref=prep-goal git_oid=bb04c8f status=done current="T70-DEV" msg="cover watch parity edge cases"

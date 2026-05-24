@@ -152,6 +152,98 @@ func TestSessionPlanPathMatchesLiveHandlerBatch(t *testing.T) {
 	assert.Equal(t, noRulePlan.NoRunnableChanges, noRuleResult.NoRunnableChanges)
 }
 
+func TestSessionPlanPathMatchesLiveHandlerEdgeCases(t *testing.T) {
+	t.Run("missing targets", func(t *testing.T) {
+		projectDir := makeSessionTestProject(t)
+		writeSessionTestFile(t, projectDir, "lib/missing.rb")
+		chdirSessionTestProject(t, projectDir)
+
+		session, err := New(sessionRuntimeConfig(), Options{FilterWatchDirs: true})
+		require.NoError(t, err)
+
+		plan, result := planAndHandleSessionPath(t, session, "lib/missing.rb")
+
+		assert.Equal(t, plan.MissingTargets, map[string][]string{"rspec": []string{"spec/missing_spec.rb"}})
+		assert.Equal(t, plan.NoRunnableChanges, result.NoRunnableChanges)
+		assert.Empty(t, result.ExecutedPlans)
+	})
+
+	t.Run("reload only", func(t *testing.T) {
+		projectDir := makeSessionTestProject(t)
+		writeSessionTestFile(t, projectDir, "config/settings.yml")
+		chdirSessionTestProject(t, projectDir)
+
+		rc := sessionRuntimeConfig()
+		rc.Watches = []watch.WatchMapping{{
+			Name:   "reload-config",
+			Source: "config/**/*.yml",
+			Reload: true,
+		}}
+		session, err := New(rc, Options{FilterWatchDirs: true})
+		require.NoError(t, err)
+
+		plan, result := planAndHandleSessionPath(t, session, "config/settings.yml")
+
+		assert.True(t, plan.ShouldReload)
+		assert.Equal(t, plan.ShouldReload, result.ShouldReload)
+		assert.Equal(t, plan.NoRunnableChanges, result.NoRunnableChanges)
+		assert.Empty(t, result.ExecutedPlans)
+	})
+
+	t.Run("multiple jobs", func(t *testing.T) {
+		projectDir := makeSessionTestProject(t)
+		writeSessionTestFile(t, projectDir, "lib/user.rb")
+		writeSessionTestFile(t, projectDir, "spec/user_spec.rb")
+		chdirSessionTestProject(t, projectDir)
+
+		rc := sessionRuntimeConfig()
+		rc.Jobs["rubocop"] = job.Job{Name: "rubocop", Cmd: []string{"rubocop", "{{target}}"}}
+		rc.Watches = []watch.WatchMapping{{
+			Name:    "lib-to-tools",
+			Source:  "lib/**/*.rb",
+			Targets: []string{"spec/{{match}}_spec.rb"},
+			Jobs:    []string{"rspec", "rubocop"},
+		}}
+		session, err := New(rc, Options{FilterWatchDirs: true})
+		require.NoError(t, err)
+
+		plan, result := planAndHandleSessionPath(t, session, "lib/user.rb")
+
+		assert.Equal(t, watch.BuildExecutionPlans(plan.JobPlans, session.CWD), result.ExecutedPlans)
+		assert.Equal(t, []string{"rspec", "rubocop"}, result.ExecutedJobs)
+	})
+
+	t.Run("planning errors", func(t *testing.T) {
+		projectDir := makeSessionTestProject(t)
+		writeSessionTestFile(t, projectDir, "lib/user.rb")
+		chdirSessionTestProject(t, projectDir)
+
+		rc := sessionRuntimeConfig()
+		rc.Watches = []watch.WatchMapping{{
+			Name:   "bad-source",
+			Source: "[",
+			Jobs:   []string{"rspec"},
+		}}
+		session, err := New(rc, Options{})
+		require.NoError(t, err)
+
+		plan, result := planAndHandleSessionPath(t, session, "lib/user.rb")
+
+		require.Len(t, plan.Errors, 1)
+		assert.Equal(t, plan.Errors, result.PlanningErrors)
+		assert.Empty(t, result.ExecutedPlans)
+	})
+}
+
+func planAndHandleSessionPath(t *testing.T, session *Session, path string) (watch.Plan, watch.HandleResult) {
+	t.Helper()
+
+	plan := session.PlanPath(path)
+	handler := session.Handler()
+	handler.Executor = func(plan watch.ExecutionPlan) error { return nil }
+	return plan, handler.HandleBatch([]string{session.NormalizePath(path)})
+}
+
 type sessionExecutorCall struct {
 	plan watch.ExecutionPlan
 }
