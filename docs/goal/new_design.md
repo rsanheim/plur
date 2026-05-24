@@ -1919,6 +1919,47 @@ After evidence:
 - `bin/rake` passed with 379 examples, 0 failures, and 4 existing pending
   examples.
 
+## T59-DEV - Show Watch Find Command Plans
+
+Status: verified
+Commit: pending
+
+Pain point: T57 proves `watch find` and live watch agree on targets, but the
+preview still exposes only rules and target lists. For custom jobs, users and
+agents cannot see the final argv/env/cwd that live watch will execute.
+
+Change: render `watch.Plan.JobPlans` in `watch find` output. Text mode should
+keep the existing target line and add a copyable command line per runnable job.
+JSON mode should add a stable `job_plans` array containing job name, targets,
+argv, env, cwd, and shell string. Keep no-rule and no-watch-mapping output
+unchanged except for an empty `job_plans` array.
+
+Acceptance criteria:
+- `plur watch find lib/calculator.rb` shows the final command that would run.
+- `plur watch find --format=json lib/calculator.rb` includes `job_plans` with
+  command argv, env, cwd, shell, and targets.
+- Existing no-rule and no-watch JSON contracts remain structured and exit 2.
+- Output contract docs describe the new field.
+- Focused watch find specs, docs link check, and the full build pass.
+
+Before evidence:
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_find_json_spec.rb`
+  failed because text output had no `[watch] Command:` line and JSON had no
+  `job_plans` field.
+
+After evidence:
+- `plur -C fixtures/projects/default-ruby watch find lib/calculator.rb` exits 0
+  and includes `[watch] Command: bundle exec rspec spec/calculator_spec.rb`.
+- `plur -C fixtures/projects/default-ruby watch find --format=json lib/calculator.rb`
+  exits 0 and includes `job_plans[0].argv`, `job_plans[0].env`,
+  `job_plans[0].cwd`, `job_plans[0].shell`, and targets.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_find_json_spec.rb spec/docs/output_contracts_doc_spec.rb`
+  passed with 12 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 379 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified

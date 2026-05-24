@@ -145,6 +145,16 @@ Do not parse `shell`; use `argv` and `env` when executing from a script.
 [watch] No matching rule for spec/spec_helper.rb
 ```
 
+For runnable changes, text output also includes the command that live watch
+would execute:
+
+```text
+[watch] Checking lib/calculator.rb
+[watch] Matched rule lib-to-spec (source: lib/**/*.rb, jobs: rspec, target: spec/{{match}}_spec.rb)
+[watch] Would run job rspec with spec/calculator_spec.rb
+[watch] Command: bundle exec rspec spec/calculator_spec.rb
+```
+
 Exit code 0 means at least one existing target would run. Exit code 2 means no
 runnable target exists for that changed file, including when no watch mappings
 are configured. Exit code 1 is reserved for errors such as invalid
@@ -172,6 +182,7 @@ stdout:
   "matched_rules": [],
   "existing_targets": {},
   "missing_targets": {},
+  "job_plans": [],
   "exit_code": 2
 }
 stderr:
@@ -185,7 +196,13 @@ Stable top-level keys:
 - `matched_rules`: watch rules that matched the file
 - `existing_targets`: targets that exist, grouped by job
 - `missing_targets`: targets that do not exist, grouped by job
+- `job_plans`: runnable command plans, one per job, each with `job`,
+  `targets`, `argv`, `env`, `cwd`, and `shell`
 - `exit_code`: the exit code Plur will use for this preview
+
+`job_plans[].argv` and `job_plans[].env` are the canonical command fields for
+scripts. `job_plans[].shell` is a quoted, copyable string for humans; do not
+parse it.
 
 Human `watch find` text remains terminal-oriented and is not the machine API.
 

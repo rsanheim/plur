@@ -21,6 +21,16 @@ RSpec.describe "plur watch find JSON output" do
       )
       expect(plan["existing_targets"]).to include("rspec" => ["spec/calculator_spec.rb"])
       expect(plan["missing_targets"]).to eq({})
+      expect(plan["job_plans"]).to contain_exactly(
+        include(
+          "job" => "rspec",
+          "targets" => ["spec/calculator_spec.rb"],
+          "argv" => ["bundle", "exec", "rspec", "spec/calculator_spec.rb"],
+          "env" => [],
+          "cwd" => default_ruby_dir.to_s,
+          "shell" => "bundle exec rspec spec/calculator_spec.rb"
+        )
+      )
     end
   end
 
@@ -39,6 +49,7 @@ RSpec.describe "plur watch find JSON output" do
       expect(plan["matched_rules"]).to eq([])
       expect(plan["existing_targets"]).to eq({})
       expect(plan["missing_targets"]).to eq({})
+      expect(plan["job_plans"]).to eq([])
     end
   end
 
@@ -74,6 +85,7 @@ RSpec.describe "plur watch find JSON output" do
       expect(plan["matched_rules"]).to eq([])
       expect(plan["existing_targets"]).to eq({})
       expect(plan["missing_targets"]).to eq({})
+      expect(plan["job_plans"]).to eq([])
     end
   end
 

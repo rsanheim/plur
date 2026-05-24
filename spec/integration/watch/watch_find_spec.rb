@@ -102,6 +102,7 @@ RSpec.describe "plur watch find" do
 
         expect(result).to be_success
         expect(result.out).to include("[watch] Would run job rspec with spec/calculator_spec.rb")
+        expect(result.out).to include("[watch] Command: bundle exec rspec spec/calculator_spec.rb")
       end
     end
   end

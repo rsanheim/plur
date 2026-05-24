@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/watchsession"
+	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -50,7 +51,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		}
 
 		if cmd.Format == "json" {
-			if err := writeWatchFindPlan(filePath, emptyWatchFindPlan(filePath), 2); err != nil {
+			if err := writeWatchFindPlan(filePath, emptyWatchFindPlan(filePath), cwd, 2); err != nil {
 				return err
 			}
 			return ExitCode{Code: 2}
@@ -78,7 +79,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 	exitCode := watchFindExitCode(findPlan)
 	if cmd.Format == "json" {
-		if err := writeWatchFindPlan(filePath, findPlan, exitCode); err != nil {
+		if err := writeWatchFindPlan(filePath, findPlan, session.CWD, exitCode); err != nil {
 			return err
 		}
 		if exitCode != 0 {
@@ -94,6 +95,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 	printWatchFindRules(findPlan.MatchedRules)
 	printWatchFindExistingTargets(findPlan.ExistingTargets)
+	printWatchFindJobPlans(findPlan.JobPlans)
 	printWatchFindMissingTargets(filePath, findPlan)
 
 	// Exit code 2 if nothing would actually run
@@ -158,7 +160,17 @@ type WatchFindPlan struct {
 	MatchedRules    []WatchFindPlanRule `json:"matched_rules"`
 	ExistingTargets map[string][]string `json:"existing_targets"`
 	MissingTargets  map[string][]string `json:"missing_targets"`
+	JobPlans        []WatchFindJobPlan  `json:"job_plans"`
 	ExitCode        int                 `json:"exit_code"`
+}
+
+type WatchFindJobPlan struct {
+	Job     string   `json:"job"`
+	Targets []string `json:"targets"`
+	Argv    []string `json:"argv"`
+	Env     []string `json:"env"`
+	CWD     string   `json:"cwd"`
+	Shell   string   `json:"shell"`
 }
 
 type WatchFindPlanRule struct {
@@ -184,13 +196,13 @@ func emptyWatchFindPlan(filePath string) watch.Plan {
 	}
 }
 
-func writeWatchFindPlan(filePath string, plan watch.Plan, exitCode int) error {
+func writeWatchFindPlan(filePath string, plan watch.Plan, cwd string, exitCode int) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(buildWatchFindPlan(filePath, plan, exitCode))
+	return encoder.Encode(buildWatchFindPlan(filePath, plan, cwd, exitCode))
 }
 
-func buildWatchFindPlan(filePath string, plan watch.Plan, exitCode int) WatchFindPlan {
+func buildWatchFindPlan(filePath string, plan watch.Plan, cwd string, exitCode int) WatchFindPlan {
 	return WatchFindPlan{
 		Version:         1,
 		Mode:            "watch_find",
@@ -198,8 +210,26 @@ func buildWatchFindPlan(filePath string, plan watch.Plan, exitCode int) WatchFin
 		MatchedRules:    watchFindPlanRules(plan.MatchedRules),
 		ExistingTargets: cloneTargetMap(plan.ExistingTargets),
 		MissingTargets:  cloneTargetMap(plan.MissingTargets),
+		JobPlans:        watchFindJobPlans(plan.JobPlans, cwd),
 		ExitCode:        exitCode,
 	}
+}
+
+func watchFindJobPlans(jobPlans []watch.JobPlan, cwd string) []WatchFindJobPlan {
+	plans := make([]WatchFindJobPlan, 0, len(jobPlans))
+	for _, jobPlan := range jobPlans {
+		argv := job.BuildJobCmd(jobPlan.Job, jobPlan.Targets)
+		env := dedupeEnvByKey(validEnvEntries(jobPlan.Job.Env))
+		plans = append(plans, WatchFindJobPlan{
+			Job:     jobPlan.JobName,
+			Targets: slices.Clone(jobPlan.Targets),
+			Argv:    argv,
+			Env:     env,
+			CWD:     cwd,
+			Shell:   watchFindShell(env, argv),
+		})
+	}
+	return plans
 }
 
 func watchFindPlanRules(rules []watch.WatchMapping) []WatchFindPlanRule {
@@ -234,6 +264,14 @@ func printWatchFindExistingTargets(existingTargets map[string][]string) {
 	}
 }
 
+func printWatchFindJobPlans(jobPlans []watch.JobPlan) {
+	for _, jobPlan := range jobPlans {
+		argv := job.BuildJobCmd(jobPlan.Job, jobPlan.Targets)
+		env := dedupeEnvByKey(validEnvEntries(jobPlan.Job.Env))
+		fmt.Printf("[watch] Command: %s\n", watchFindShell(env, argv))
+	}
+}
+
 func printWatchFindMissingTargets(filePath string, plan watch.Plan) {
 	if !hasWatchFindTargets(plan.MissingTargets) {
 		return
@@ -259,6 +297,13 @@ func formatWatchFindList(values []string) string {
 		return "none"
 	}
 	return strings.Join(values, ", ")
+}
+
+func watchFindShell(env []string, argv []string) string {
+	parts := make([]string, 0, len(env)+len(argv))
+	parts = append(parts, env...)
+	parts = append(parts, argv...)
+	return strings.Join(shellQuoteArgs(parts), " ")
 }
 
 func sortedMapKeys(values map[string][]string) []string {
