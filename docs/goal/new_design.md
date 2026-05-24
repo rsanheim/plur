@@ -2365,7 +2365,7 @@ After evidence:
 ## T72-DEV - Preserve Resolved Watch Job Keys
 
 Status: verified
-Commit: pending
+Commit: 2b2b4842d9d88a5e5793d52d78d12ce4e4e59473
 
 Pain point: T69 introduced `watch.ExecutionPlan`, but its builder used
 `job.Job.Name` as the displayed/executed job name. The planner already carries
