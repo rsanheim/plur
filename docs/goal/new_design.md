@@ -2228,7 +2228,7 @@ After evidence:
 ## T68-DEV - Share Watch Find Event Admission
 
 Status: verified
-Commit: pending
+Commit: cb15ed8f592602ecd9c6f1e1321b51f13473cc8d
 
 Pain point: T56 made `watch find` and live watch share session setup and
 planning, but `watch find` still jumped directly to `PlanPath`. Live watch
