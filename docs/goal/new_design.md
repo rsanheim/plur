@@ -2045,7 +2045,7 @@ After evidence:
 ## T62-DEV - Reject Persisted Dry-Run Config
 
 Status: verified
-Commit: pending
+Commit: c069a720034c37672afa94540e313a98e35affd2
 
 Pain point: `dry-run = true` and `dry-run-format = "json"` are preview
 controls, but TOML currently accepts them as persistent project configuration.
