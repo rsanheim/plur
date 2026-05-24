@@ -126,3 +126,5 @@ ts=2026-05-23-21:32:35 git_ref=prep-goal git_oid=3eb8595 status=start current="T
 ts=2026-05-23-21:40:59 git_ref=prep-goal git_oid=3eb8595 status=done current="T63-REFLECT" msg="reflect after config cleanup"
 ts=2026-05-23-21:51:19 git_ref=prep-goal git_oid=0cfb748 status=start current="T64-DEV" msg="begin durable TOML config schema"
 ts=2026-05-23-21:58:31 git_ref=prep-goal git_oid=0cfb748 status=done current="T64-DEV" msg="durable TOML config schema"
+ts=2026-05-23-22:02:04 git_ref=prep-goal git_oid=c793b4e status=start current="T65-DEV" msg="begin watch find json command plan example"
+ts=2026-05-23-22:04:22 git_ref=prep-goal git_oid=c793b4e status=done current="T65-DEV" msg="watch find json command plan example"

@@ -167,6 +167,43 @@ Use JSON when a script or agent needs a stable watch preview:
 plur watch find --format=json spec/spec_helper.rb
 ```
 
+Runnable changes include the matched rule, existing target, and final command
+plan:
+
+```text
+exit=0
+stdout:
+{
+  "version": 1,
+  "mode": "watch_find",
+  "file": "lib/calculator.rb",
+  "matched_rules": [
+    {
+      "name": "lib-to-spec",
+      "source": "lib/**/*.rb",
+      "jobs": ["rspec"],
+      "target": "spec/{{match}}_spec.rb"
+    }
+  ],
+  "existing_targets": {
+    "rspec": ["spec/calculator_spec.rb"]
+  },
+  "missing_targets": {},
+  "job_plans": [
+    {
+      "job": "rspec",
+      "targets": ["spec/calculator_spec.rb"],
+      "argv": ["bundle", "exec", "rspec", "spec/calculator_spec.rb"],
+      "env": [],
+      "cwd": "/path/to/project",
+      "shell": "bundle exec rspec spec/calculator_spec.rb"
+    }
+  ],
+  "exit_code": 0
+}
+stderr:
+```
+
 Command and configuration errors in JSON modes still write plain text to stderr
 and may leave stdout empty.
 

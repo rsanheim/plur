@@ -2132,6 +2132,50 @@ After evidence:
 - `bin/rake` passed with 383 examples, 0 failures, and 4 existing pending
   examples.
 
+## T65-DEV - Show Successful Watch Find JSON Contract
+
+Status: verified
+Commit: pending
+
+Pain point: `watch find --format=json` now exposes `job_plans`, but the output
+contract reference only shows the no-runnable exit 2 JSON shape. Users and
+agents still have to infer the successful `exit_code: 0` shape from the field
+list or tests.
+
+Change: add a successful runnable `watch find --format=json lib/calculator.rb`
+example to `docs/output-contracts.md`, showing matched rule, existing target,
+`job_plans`, argv/env/cwd/shell, and empty stderr. Keep this in the output
+contract reference instead of duplicating it in watch-mode how-to docs.
+
+Acceptance criteria:
+- `docs/output-contracts.md` includes a successful `watch_find` JSON example
+  with `exit_code` 0.
+- The example includes `job_plans[].argv`, `job_plans[].env`,
+  `job_plans[].cwd`, and `job_plans[].shell`.
+- The docs spec protects the machine-contract fields without pinning unrelated
+  prose.
+- Docs check and focused docs spec pass.
+
+Duplication check:
+- `docs/output-contracts.md` already owns stable dry-run and watch-find output
+  shapes.
+- `docs/features/watch-mode.md` and `docs/usage.md` are workflow/how-to docs
+  that should link to the output contract rather than duplicating JSON shape
+  examples.
+
+Before evidence:
+- The watch-find JSON section documented `job_plans` in the field list and
+  showed only the no-runnable `exit_code: 2` shape.
+
+After evidence:
+- `docs/output-contracts.md` now shows a successful `watch_find` JSON example
+  with `exit_code` 0 and a runnable `job_plans` entry.
+- `bin/rspec spec/docs/output_contracts_doc_spec.rb` passed with 2 examples
+  and 0 failures.
+- `script/check-links` passed.
+- `bin/rake` passed with 383 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified
