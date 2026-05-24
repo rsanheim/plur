@@ -1,7 +1,7 @@
 # T73 Score Card - After Watch Parity Review
 
 Status: verified
-Commit: pending
+Commit: c14aa0ac300261c1879ac2d11509154f8f7fb723
 
 ## Context
 
