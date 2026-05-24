@@ -1999,6 +1999,49 @@ After evidence:
 - `bin/rake` passed with 380 examples, 0 failures, and 4 existing pending
   examples.
 
+## T61-DEV - Reject Unknown Config Keys
+
+Status: verified
+Commit: pending
+
+Pain point: `.plur.toml` typos are currently only debug-logged. A misspelled
+key like `wokers` or `job.rspec.cmdd` can make Plur ignore the user's intended
+configuration while continuing with defaults or inherited job settings.
+
+Change: make TOML config keys strict. If any loaded config contains unknown
+leaf keys, fail during configuration loading with a direct error that names the
+config file and the unknown keys. Keep valid top-level, job, and watch keys
+accepted.
+
+Acceptance criteria:
+- Unknown top-level config keys fail before command execution.
+- Unknown nested `job.*` and `watch.*` keys fail before command execution.
+- The error names the config file and unknown key path.
+- Valid config files and TOML 1.1 compatibility cases still pass.
+- Focused config specs, Go tests, link check, and the full build pass.
+
+Before evidence:
+- `go test -mod=mod ./internal/kongtoml` failed because
+  `TestValidateRejectsUnknownKeys` still received nil.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/configuration_spec.rb`
+  failed the new unknown-key cases because configs with `wokers`,
+  `job.rspec.cmdd`, and `watch.soruce` still executed.
+
+After evidence:
+- Unknown config keys now fail with `Configuration error:` plus the config path
+  and unknown key paths.
+- `plur config init` skips loading the existing project config, so it can report
+  or replace an invalid existing `.plur.toml`.
+- `fixtures/projects/default-ruby/.plur.toml` now uses a valid comment-only
+  config so strict validation still exercises config loading without changing
+  built-in detection.
+- `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/spec/configuration_spec.rb spec/integration/init/config_init_spec.rb spec/integration/spec/dry_run_plan_spec.rb spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_find_json_spec.rb spec/integration/watch/watch_spec.rb spec/docs/configuration_target_doc_spec.rb`
+  passed with 71 examples and 0 failures.
+- `go test -mod=mod ./...` passed.
+- `script/check-links` passed.
+- `bin/rake` passed with 381 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified

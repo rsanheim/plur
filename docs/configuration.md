@@ -18,6 +18,10 @@ Plur automatically loads configuration from TOML files using the following order
 2. `.plur.toml` in the current directory (project-specific)
 3. `PLUR_CONFIG_FILE` (if set)
 
+Configuration keys are strict. Plur fails fast when a config file contains an
+unknown key such as `wokers`, `job.rspec.cmdd`, or `watch.soruce`, so typos do
+not silently fall back to defaults.
+
 ### Basic Example
 
 ```toml

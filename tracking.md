@@ -118,3 +118,5 @@ ts=2026-05-23-20:56:04 git_ref=prep-goal git_oid=f5dad5f status=start current="T
 ts=2026-05-23-21:00:20 git_ref=prep-goal git_oid=f5dad5f status=done current="T59-DEV" msg="watch find shows command plans"
 ts=2026-05-23-21:01:45 git_ref=prep-goal git_oid=f9ab18e status=start current="T60-DEV" msg="begin helper no-rule watch guidance"
 ts=2026-05-23-21:07:59 git_ref=prep-goal git_oid=f9ab18e status=done current="T60-DEV" msg="helper no-rule watch guidance"
+ts=2026-05-23-21:09:40 git_ref=prep-goal git_oid=dde68f1 status=start current="T61-DEV" msg="begin strict unknown config key validation"
+ts=2026-05-23-21:21:14 git_ref=prep-goal git_oid=dde68f1 status=done current="T61-DEV" msg="strict unknown config key validation"

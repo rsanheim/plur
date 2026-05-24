@@ -9,6 +9,8 @@ RSpec.describe "configuration target template documentation" do
     expect(doc).to include("user job commands must not include")
     expect(doc).to include("Run mode rejects user job commands")
     expect(doc).to include("Watch mode can also use `{{target}}` inside a job command")
+    expect(doc).to include("Configuration keys are strict")
+    expect(doc).to include("job.rspec.cmdd")
     expect(compact_doc).to include("customize where resolved targets are placed")
     expect(compact_doc).to include("matching one-shot run mode")
   end

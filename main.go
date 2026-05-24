@@ -416,13 +416,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	configFiles := []string{"~/.plur.toml", ".plur.toml"}
-	if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
-		if _, err := os.Stat(configFile); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
-			os.Exit(1)
+	var configFiles []string
+	if shouldLoadConfigFiles(args) {
+		configFiles = []string{"~/.plur.toml", ".plur.toml"}
+		if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
+			if _, err := os.Stat(configFile); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: Config file specified in PLUR_CONFIG_FILE does not exist or is not readable: %s\n", configFile)
+				os.Exit(1)
+			}
+			configFiles = append(configFiles, configFile)
 		}
-		configFiles = append(configFiles, configFile)
 	}
 
 	cli.configFiles = configFiles
@@ -464,6 +467,11 @@ func main() {
 
 func commandSupportsPassthrough(command string) bool {
 	return strings.HasPrefix(command, "spec") || strings.HasPrefix(command, "rails")
+}
+
+func shouldLoadConfigFiles(args []string) bool {
+	command, ok := firstCommandOrTargetArg(args)
+	return !ok || command != "config"
 }
 
 type ExitCode struct {

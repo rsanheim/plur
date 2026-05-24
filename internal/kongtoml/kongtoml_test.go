@@ -268,6 +268,24 @@ func TestValidateReturnsNil(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestValidateRejectsUnknownKeys(t *testing.T) {
+	input := `wokers = 4`
+	r := &namedReader{Reader: strings.NewReader(input), name: ".plur.toml"}
+	resolver, err := Loader(r)
+	require.NoError(t, err)
+
+	var cli struct {
+		Workers int
+	}
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+
+	err = resolver.(*Resolver).Validate(parser.Model)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), ".plur.toml")
+	assert.Contains(t, err.Error(), "wokers")
+}
+
 func TestKeyResolutionEdgeCases(t *testing.T) {
 	tests := []struct {
 		name       string

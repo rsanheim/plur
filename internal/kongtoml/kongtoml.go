@@ -4,6 +4,7 @@
 package kongtoml
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"reflect"
@@ -79,14 +80,25 @@ func (r *Resolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Fla
 }
 
 func (r *Resolver) Validate(app *kong.Application) error {
-	unknown := unknownLeafKeys(r.meta, app)
-	if len(unknown) > 0 {
-		slog.Debug("unknown config keys",
-			"file", configName(r.filename),
-			"keys", unknown,
-		)
+	if app == nil {
+		return nil
 	}
-	return nil
+
+	unknown := unknownLeafKeys(r.meta, app)
+	if len(unknown) == 0 {
+		return nil
+	}
+
+	slog.Debug("unknown config keys",
+		"file", configName(r.filename),
+		"keys", unknown,
+	)
+
+	label := "unknown config key"
+	if len(unknown) > 1 {
+		label = "unknown config keys"
+	}
+	return fmt.Errorf("Configuration error: %s contains %s: %s", configName(r.filename), label, strings.Join(unknown, ", "))
 }
 
 func configName(filename string) string {

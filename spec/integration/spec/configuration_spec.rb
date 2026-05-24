@@ -300,6 +300,42 @@ RSpec.describe "Configuration" do
         expect(error).to match(/already been defined|duplicated tables|defined twice/)
       end
     end
+
+    it "rejects unknown top-level, job, and watch keys" do
+      Dir.mktmpdir do |tmpdir|
+        config_path = File.join(tmpdir, "unknown-keys.toml")
+        File.write(config_path, <<~TOML)
+          wokers = 2
+          use = "custom"
+
+          [job.custom]
+          framework = "passthrough"
+          cmd = ["echo", "RUN"]
+          cmdd = ["echo", "TYPO"]
+          target_pattern = "spec/**/*_spec.rb"
+
+          [[watch]]
+          source = "spec/**/*_spec.rb"
+          soruce = "spec/**/*_spec.rb"
+          jobs = ["custom"]
+        TOML
+
+        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "doctor"
+          )
+        end
+
+        expect(status).not_to be_success
+        expect(error).to include("Configuration error:")
+        expect(error).to include(config_path)
+        expect(error).to include("unknown config keys")
+        expect(error).to include("wokers")
+        expect(error).to include("job.custom.cmdd")
+        expect(error).to include("watch.soruce")
+      end
+    end
   end
 
   describe "job validation" do
@@ -512,7 +548,7 @@ RSpec.describe "Configuration" do
   end
 
   describe "resolver edge cases" do
-    it "still applies a hyphenated key when a scalar prefix key exists" do
+    it "rejects a scalar prefix typo even when a valid hyphenated key exists" do
       Dir.mktmpdir do |tmpdir|
         FileUtils.mkdir_p(File.join(tmpdir, "spec"))
         File.write(File.join(tmpdir, "spec", "test_spec.rb"), "describe('test') { it('works') { expect(1).to eq(1) } }")
@@ -536,13 +572,15 @@ RSpec.describe "Configuration" do
           )
         end
 
-        expect(status).to be_success
-        expect(error).to include("[dry-run] Worker 0:")
-        expect(error).to include("echo RUN spec/test_spec.rb")
+        expect(status).not_to be_success
+        expect(error).to include("Configuration error:")
+        expect(error).to include(config_path)
+        expect(error).to include("unknown config key")
+        expect(error).to include("dry")
       end
     end
 
-    it "logs unknown nested job keys in debug output" do
+    it "rejects unknown nested job keys before command execution" do
       Dir.mktmpdir do |tmpdir|
         config_path = File.join(tmpdir, "unknown-job-key.toml")
         File.write(config_path, <<~TOML)
@@ -556,12 +594,14 @@ RSpec.describe "Configuration" do
         _, error, status = Dir.chdir(tmpdir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => config_path},
-            plur_binary, "--debug", "doctor"
+            plur_binary, "doctor"
           )
         end
 
-        expect(status).to be_success
-        expect(error).to include("unknown config keys")
+        expect(status).not_to be_success
+        expect(error).to include("Configuration error:")
+        expect(error).to include(config_path)
+        expect(error).to include("unknown config key")
         expect(error).to include("job.rspec.cmdd")
       end
     end
