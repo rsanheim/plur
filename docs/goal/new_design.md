@@ -2179,7 +2179,7 @@ After evidence:
 ## T66-DEV - Surface Watch Planning Errors
 
 Status: verified
-Commit: pending
+Commit: cdc241456f86b33dae823ed468fb49cabc2ad47c
 
 Pain point: `watch.Planner` called `FindTargetsForFile` for each changed path
 and silently skipped any returned error. That made invalid watch source globs,
