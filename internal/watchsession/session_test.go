@@ -84,6 +84,18 @@ func TestNewUsesCustomIgnorePatterns(t *testing.T) {
 	assert.Equal(t, "ignored", admission.Reason)
 }
 
+func TestNewRejectsInvalidIgnorePatterns(t *testing.T) {
+	projectDir := makeSessionTestProject(t)
+	chdirSessionTestProject(t, projectDir)
+
+	_, err := New(sessionRuntimeConfig(), Options{
+		IgnorePatterns: []string{"["},
+	})
+
+	require.Error(t, err)
+	assert.EqualError(t, err, `invalid watch ignore pattern "[": invalid glob pattern "["`)
+}
+
 func TestSessionAdmitPathForPreviewUsesLiveAdmission(t *testing.T) {
 	projectDir := makeSessionTestProject(t)
 	writeSessionTestFile(t, projectDir, "lib/user.rb")

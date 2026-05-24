@@ -55,6 +55,11 @@ func New(rc *runtime.RuntimeConfig, opts Options) (*Session, error) {
 	if len(ignorePatterns) == 0 {
 		ignorePatterns = slices.Clone(watch.DefaultIgnorePatterns)
 	}
+	for _, pattern := range ignorePatterns {
+		if err := watch.ValidateGlobPattern(pattern); err != nil {
+			return nil, fmt.Errorf("invalid watch ignore pattern %q: %w", pattern, err)
+		}
+	}
 
 	session := &Session{
 		Selected:       selected,

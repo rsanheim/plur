@@ -62,6 +62,16 @@ RSpec.describe "plur watch find" do
     end
   end
 
+  it "rejects invalid watch ignore patterns before previewing" do
+    chdir(default_ruby_dir) do
+      result = run_plur_allowing_errors("watch", "--ignore=[", "find", "--format=json", "lib/calculator.rb")
+
+      expect(result.exit_status).to eq(1)
+      expect(result.out).to eq("")
+      expect(result.err).to match(/Error: invalid watch ignore pattern "\[": invalid glob pattern "\["/)
+    end
+  end
+
   it "keeps human guidance when no watch mappings are configured" do
     tmp_root = ROOT_PATH.join("tmp")
     FileUtils.mkdir_p(tmp_root)

@@ -2399,6 +2399,47 @@ After evidence:
 - `bin/rake` passed with 385 examples, 0 failures, and 4 existing pending
   examples.
 
+## T74-DEV - Validate Watch Ignore Flags
+
+Status: verified
+Commit: pending
+
+Pain point: T68 made `--ignore` affect both live watch and `watch find`, but
+invalid CLI ignore glob patterns were still silently accepted and simply never
+matched. That could undermine the now-shared admission path with a typo.
+
+Change: validate watch-session ignore patterns with the same glob validator
+used by persistent watch config. Because validation lives in
+`watchsession.New`, live watch and `watch find` reject the same invalid
+patterns before planning or starting the watcher.
+
+Acceptance criteria:
+- Invalid watch-session ignore patterns fail in `watchsession.New`.
+- `plur watch --ignore=[ find --format=json FILE` exits 1 with no stdout and a
+  specific invalid ignore pattern error.
+- Focused Go and integration tests, full Go tests, link check, and full build
+  pass.
+
+Before evidence:
+- Red: `go test -mod=mod ./internal/watchsession -run TestNewRejectsInvalidIgnorePatterns -count=1`
+  failed because invalid ignore patterns were accepted.
+- Red: `PLUR_BINARY=$PWD/plur bin/rspec spec/integration/watch/watch_find_spec.rb --example 'invalid watch ignore'`
+  failed because `watch find` exited 0 instead of rejecting `--ignore=[`.
+
+After evidence:
+- `watchsession.New` now validates default/custom session ignore patterns with
+  `watch.ValidateGlobPattern`.
+- `plur watch --ignore=[ find --format=json lib/calculator.rb` exits 1 with
+  empty stdout and `invalid watch ignore pattern "["`.
+- `go test -mod=mod ./internal/watchsession -run 'TestNew(UsesCustomIgnorePatterns|RejectsInvalidIgnorePatterns)' -count=1`
+  passed.
+- `PLUR_BINARY=$PWD/tmp/plur-t74 bin/rspec spec/integration/watch/watch_find_spec.rb spec/integration/watch/watch_ignore_spec.rb --example 'ignore'`
+  passed with 6 examples and 0 failures.
+- `script/check-links` passed.
+- `go test -mod=mod ./...` passed.
+- `bin/rake` passed with 386 examples, 0 failures, and 4 existing pending
+  examples.
+
 ## T56-DEV - Share Watch Session Setup
 
 Status: verified
