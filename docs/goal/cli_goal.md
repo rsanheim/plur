@@ -1,4 +1,4 @@
-# plur goal
+# CLI-UX - Plur UX Overhaul - Goal and Workflow
 
  /goal Improve Plur’s CLI, configuration api, and overall UI/UX so every day usage for parallel specs and watch feels satisfying, consistent, obvious, and hard to misuse. 
 
