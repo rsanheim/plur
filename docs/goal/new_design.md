@@ -2325,7 +2325,7 @@ After evidence:
 ## T70-DEV - Cover Watch Parity Edge Cases
 
 Status: verified
-Commit: pending
+Commit: 6e3e45c1533f7082481d23c5145afa0cb7f21a1a
 
 Pain point: T57/T69 covered the main runnable and no-rule parity path, but the
 session boundary still lacked explicit coverage for the cases most likely to
