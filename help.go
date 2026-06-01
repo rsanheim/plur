@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/alecthomas/kong"
 )
@@ -15,7 +17,25 @@ func customHelpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
 		options.NoAppSummary = true
 	}
 
-	return kong.DefaultHelpPrinter(options, ctx)
+	stdout := ctx.Stdout
+	var output bytes.Buffer
+	ctx.Stdout = &output
+	defer func() {
+		ctx.Stdout = stdout
+	}()
+
+	if err := kong.DefaultHelpPrinter(options, ctx); err != nil {
+		return err
+	}
+
+	_, err := fmt.Fprint(stdout, normalizeHelpSpacing(output.String()))
+	return err
+}
+
+func normalizeHelpSpacing(help string) string {
+	// Kong formats Detail/HelpProvider text through go/doc, which inserts a
+	// blank line between an "Examples:" heading and the indented example block.
+	return strings.ReplaceAll(help, "Examples:\n\n", "Examples:\n")
 }
 
 func customUsage(ctx *kong.Context) (string, bool) {

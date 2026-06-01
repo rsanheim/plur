@@ -1,7 +1,7 @@
 require "spec_helper"
 
 RSpec.describe "help output" do
-  it "leads top-level help with commandless usage and common workflows" do
+  it "leads top-level help with commandless usage and examples" do
     result = run_plur("--help")
 
     expect(result).to be_success
@@ -9,6 +9,7 @@ RSpec.describe "help output" do
     expect(result.out).to include("plur <command> [flags]")
     expect(result.out).to include("A fast, parallel test runner and watcher for Ruby/RSpec")
     expect(result.out).to include("Examples:")
+    expect(result.out).to include("Examples:\n    plur")
     expect(result.out).to include("plur spec/calculator_spec.rb")
     expect(result.out).to include("plur --dry-run")
     expect(result.out).to include("plur watch find spec/calculator_spec.rb")
@@ -39,6 +40,7 @@ RSpec.describe "help output" do
     expect(result.out).to include("Usage: plur watch [flags]")
     expect(result.out).to include("plur watch find <changed-file> [flags]")
     expect(result.out).to include("Examples:")
+    expect(result.out).to include("Examples:\n    plur watch")
     expect(result.out).to include("plur watch")
     expect(result.out).to include("plur watch find spec/calculator_spec.rb")
     expect(result.out).to include("Daily commands")
