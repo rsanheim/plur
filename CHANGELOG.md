@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## v0.60.0 - 2026-06-06
+* Improve help text: add examples, group commands, and hide irrelevant flags [#63](https://github.com/rsanheim/plur/pull/63)
+
 ## v0.57.0 - 2026-05-22
 * add experimental --rspec-split flag for splitting long-running spec files across workers [#60](https://github.com/rsanheim/plur/pull/60)
 * overhaul runtime tracking to support better runtime-based grouping and splitting
