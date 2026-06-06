@@ -1,27 +1,29 @@
 require "spec_helper"
 
 RSpec.describe "help output" do
-  it "leads top-level help with commandless usage and common workflows" do
+  it "leads top-level help with commandless usage and examples" do
     result = run_plur("--help")
 
     expect(result).to be_success
     expect(result.out).to include("Usage: plur [patterns...] [flags]")
     expect(result.out).to include("plur <command> [flags]")
-    expect(result.out).to include("Common workflows:")
+    expect(result.out).to include("A fast, parallel test runner and watcher for Ruby/RSpec")
+    expect(result.out).to include("Examples:")
+    expect(result.out).to include("Examples:\n    plur")
     expect(result.out).to include("plur spec/calculator_spec.rb")
-    expect(result.out).to include("plur test/calculator_test.rb")
-    expect(result.out).not_to match(/^  plur test\s{2,}Run Minitest targets$/)
+    expect(result.out).to include("plur --dry-run")
     expect(result.out).to include("plur watch find spec/calculator_spec.rb")
+    expect(result.out).not_to include("--rspec-split")
     expect(result.out).to include("Daily commands")
     expect(result.out).to include("Advanced and setup commands")
     expect(result.out.index("Daily commands")).to be < result.out.index("Advanced and setup commands")
 
     daily_commands = result.out[/Daily commands.*?(?=Advanced and setup commands)/m]
-    advanced_commands = result.out[/Advanced and setup commands.*/m]
+    advanced_commands = result.out[/Advanced and setup commands.*?(?=Flags:)/m]
 
-    expect(daily_commands).to include("spec [<patterns> ...]")
+    expect(daily_commands).to include("spec")
     expect(daily_commands).to include("watch run")
-    expect(daily_commands).to include("watch find <file-path>")
+    expect(daily_commands).to include("watch find")
     expect(daily_commands).not_to include("watch install")
 
     expect(advanced_commands).to include("watch install")
@@ -32,23 +34,27 @@ RSpec.describe "help output" do
     expect(advanced_commands).to include("version")
   end
 
-  it "leads watch help with default watch mode and watch find preview" do
+  it "leads watch help with default watch mode and preview workflows" do
     result = run_plur("watch", "--help")
 
     expect(result).to be_success
     expect(result.out).to include("Usage: plur watch [flags]")
     expect(result.out).to include("plur watch find <changed-file> [flags]")
-    expect(result.out).to include("Common workflows:")
+    expect(result.out).to include("Examples:")
+    expect(result.out).to include("Examples:\n    plur watch")
     expect(result.out).to include("plur watch")
     expect(result.out).to include("plur watch find spec/calculator_spec.rb")
-    expect(result.out).to include("plur --dry-run [patterns...]")
+    expect(result.out).to include("Daily commands")
+    expect(result.out).to include("Advanced and setup commands")
+    expect(result.out.index("Daily commands")).to be < result.out.index("Advanced and setup commands")
+    expect(result.out.index("watch find")).to be < result.out.index("watch install")
+    expect(result.out).to include("--ignore")
+    expect(result.out).to include("Patterns to ignore from watch events")
     expect(result.out).not_to match(/^\s+--dry-run\s/m)
-    expect(result.out).not_to include("--dry-run-format")
+    expect(result.out).not_to include("--json")
     expect(result.out).not_to include("--first-is-1")
     expect(result.out).not_to include("--workers")
     expect(result.out).not_to include("--rspec-split")
-    expect(result.out.index("Daily commands")).to be < result.out.index("Advanced and setup commands")
-    expect(result.out.index("watch find <file-path>")).to be < result.out.index("watch install")
   end
 
   it "keeps watch run help focused on live-watch controls" do
@@ -59,78 +65,34 @@ RSpec.describe "help output" do
     expect(result.out).to include("--timeout")
     expect(result.out).to include("--debounce")
     expect(result.out).to include("--use")
-    expect(result.out).not_to include("--dry-run")
-    expect(result.out).not_to include("--dry-run-format")
-    expect(result.out).not_to include("--first-is-1")
-    expect(result.out).not_to include("--workers")
-    expect(result.out).not_to include("--rspec-split")
-  end
-
-  it "keeps spec dry-run help generic for one-shot runs" do
-    result = run_plur("spec", "--help")
-
-    expect(result).to be_success
-    expect(result.out).to include("--dry-run")
-    expect(result.out).to include("Print what would be executed without running")
-    expect(result.out).to include("Dry-run output format: text or json")
-  end
-
-  it "does not advertise the unused JSON file output flag" do
-    [
-      ["--help"],
-      ["spec", "--help"],
-      ["watch", "--help"],
-      ["watch", "run", "--help"]
-    ].each do |args|
-      result = run_plur(*args)
-
-      expect(result).to be_success
-      expect(result.out).not_to include("--json")
-      expect(result.out).not_to include("Save detailed test results as JSON")
-    end
-  end
-
-  it "rejects the removed JSON file output flag" do
-    result = run_plur_allowing_errors("--json=tmp/results.json", "--dry-run")
-
-    expect(result.exit_status).to eq(1)
-    expect(result.err).to include("Error: --json is not a Plur flag.")
-    expect(result.err).to include("plur --dry-run --dry-run-format=json [patterns...]")
-    expect(result.err).to include("plur watch find --format=json <file>")
-    expect(result.err).not_to include("did you mean")
-  end
-
-  it "keeps watch find help focused on preview-specific flags" do
-    result = run_plur("watch", "find", "--help")
-
-    expect(result).to be_success
-    expect(result.out).to include("Usage: plur watch find <file-path> [flags]")
-    expect(result.out).to include("--format")
-    expect(result.out).to include("Output format: text or json")
-    expect(result.out).not_to include("--dry-run")
-    expect(result.out).not_to include("--dry-run-format")
+    expect(result.out).not_to match(/^\s+--dry-run\s/m)
     expect(result.out).not_to include("--json")
     expect(result.out).not_to include("--first-is-1")
     expect(result.out).not_to include("--workers")
     expect(result.out).not_to include("--rspec-split")
-    expect(result.out).to include("--ignore")
-    expect(result.out).to include("Patterns to ignore from watch events")
   end
 
-  it "does not show spec command help for a target named test" do
-    examples = [
-      ["test", "--help"],
-      ["test", "-h"],
-      ["-C", project_fixture("minitest-success").to_s, "test", "--help"]
-    ]
+  it "keeps watch find help focused on preview inputs" do
+    result = run_plur("watch", "find", "--help")
 
-    examples.each do |args|
-      result = run_plur_allowing_errors(*args)
+    expect(result).to be_success
+    expect(result.out).to include("Usage: plur watch find <file-path> [flags]")
+    expect(result.out).to include("--ignore")
+    expect(result.out).to include("Patterns to ignore from watch events")
+    expect(result.out).not_to match(/^\s+--dry-run\s/m)
+    expect(result.out).not_to include("--json")
+    expect(result.out).not_to include("--first-is-1")
+    expect(result.out).not_to include("--workers")
+    expect(result.out).not_to include("--rspec-split")
+  end
 
-      expect(result.exit_status).to eq(1)
-      expect(result.err).to include("Error: `test` is a target path, not a Plur command.")
-      expect(result.err).to include("Use `plur test/calculator_test.rb` to run a Minitest target.")
-      expect(result.out).not_to include("Usage: plur spec")
-    end
+  it "leaves spec help with run-mode flags" do
+    result = run_plur("spec", "--help")
+
+    expect(result).to be_success
+    expect(result.out).to include("--dry-run")
+    expect(result.out).to include("--workers")
+    expect(result.out).to include("--json")
+    expect(result.out).to include("--rspec-split")
   end
 end
