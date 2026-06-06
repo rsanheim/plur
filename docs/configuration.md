@@ -18,6 +18,20 @@ Plur automatically loads configuration from TOML files using the following order
 2. `.plur.toml` in the current directory (project-specific)
 3. `PLUR_CONFIG_FILE` (if set)
 
+Configuration keys are strict. TOML files may only contain the documented
+persistent settings, `[job.<name>]` fields, and `[[watch]]` fields listed on
+this page. Plur fails fast when a config file contains an unknown key such as
+`wokers`, `job.rspec.cmdd`, or `watch.soruce`, so typos do not silently fall
+back to defaults.
+
+Preview controls are CLI-only. Use `plur --dry-run` and
+`plur --dry-run --dry-run-format=json` for a single invocation; do not persist
+`dry-run` or `dry-run-format` in TOML.
+
+Operational controls are not persisted in TOML. Use CLI flags or environment
+variables for per-session behavior such as `--debug`, `--first-is-1`, or
+`--rspec-split`.
+
 ### Basic Example
 
 ```toml
@@ -89,7 +103,11 @@ Jobs are selected in the following priority order:
 | `exclude_patterns` | string[] | Glob patterns to exclude from discovered test files | No | `[]` |
 | `env` | string[] | Environment variables (e.g., `["VAR=value"]`) | No | `[]` |
 
-**Note**: In run mode (`plur` / `plur spec`), any `{{target}}` tokens in `cmd` are ignored and targets are always appended (or expanded into Minitest `-e` requires). In watch mode, `{{target}}` is honored.
+In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
+its fixed flags. Plur appends discovered targets automatically (or expands
+Minitest targets into `-e` requires), so user job commands must not include
+`{{target}}`. Run mode rejects user job commands that contain `{{target}}` with
+a configuration error.
 
 ### Framework Default File Patterns
 
@@ -254,6 +272,11 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 * `{{match}}` - The matched portion of the source path (e.g., `lib/foo.rb` → `foo`)
 * `{{dir_relative}}` - The relative directory of the matched file
 
+Watch mode can also use `{{target}}` inside a job command to customize where
+resolved targets are placed. If a watch job command has no `{{target}}`, Plur
+appends the resolved targets at the end of the command, matching one-shot run
+mode.
+
 ### Watch Configuration Examples
 
 ```toml
@@ -279,12 +302,8 @@ jobs = ["go-test"]
 ignore = ["vendor/**", "**/testdata/**"]
 ```
 
-### Using Watch Mode
-
-```bash
-plur watch                    # Watch with auto-detected job
-plur watch --use=custom-job   # Watch with specific job
-```
+For watch command examples and troubleshooting, see
+[Watch Mode](features/watch-mode.md).
 
 ## Worker Configuration
 
@@ -310,14 +329,11 @@ export PARALLEL_TEST_PROCESSORS=8
 plur
 ```
 
-## Output Configuration
+## Diagnostic Output
 
-### Formatters
-
-Plur always uses dual formatters:
-
-* Progress formatter (for visual feedback)
-* JSON formatter (for result parsing)
+Stable output formats, stream roles, and exit codes are documented in
+[Output Contracts](output-contracts.md). Use verbosity only for local
+diagnostics; debug output is not a stable machine interface.
 
 ### Verbosity
 

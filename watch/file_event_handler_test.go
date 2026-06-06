@@ -18,10 +18,15 @@ type mockExecutor struct {
 type executorCall struct {
 	jobName string
 	targets []string
+	cwd     string
 }
 
-func (m *mockExecutor) execute(j job.Job, targets []string, cwd string) error {
-	m.calls = append(m.calls, executorCall{jobName: j.Name, targets: targets})
+func (m *mockExecutor) execute(plan ExecutionPlan) error {
+	m.calls = append(m.calls, executorCall{
+		jobName: plan.JobName,
+		targets: plan.Targets,
+		cwd:     plan.CWD,
+	})
 	return nil
 }
 
@@ -177,6 +182,9 @@ func TestFileEventHandler_HandleBatch_ShouldReload(t *testing.T) {
 	result := handler.HandleBatch([]string{"config/settings.yml"})
 
 	assert.True(t, result.ShouldReload)
+	assert.Empty(t, result.NoRunnableChanges)
+	assert.Empty(t, result.ExecutedJobs)
+	assert.Empty(t, mock.calls)
 }
 
 func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
@@ -243,5 +251,72 @@ func TestFileEventHandler_HandleBatch_NoMatchingTargets(t *testing.T) {
 	result := handler.HandleBatch([]string{"lib/user.rb"})
 
 	assert.Empty(t, result.ExecutedJobs, "No jobs should run when target doesn't exist")
+	assert.Equal(t, []NoRunnableChange{
+		{
+			Path:           "lib/user.rb",
+			Reason:         NoRunnableMissingTargets,
+			MissingTargets: []string{"spec/user_spec.rb"},
+		},
+	}, result.NoRunnableChanges)
 	assert.Len(t, mock.calls, 0)
+}
+
+func TestFileEventHandler_HandleBatch_NoMatchingRule(t *testing.T) {
+	tmpDir := t.TempDir()
+	handler := &FileEventHandler{
+		Jobs: map[string]job.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"rspec", "{{target}}"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:    "spec-files",
+				Source:  "spec/**/*_spec.rb",
+				Targets: []string{"[source file]"},
+				Jobs:    []string{"rspec"},
+			},
+		},
+		CWD: tmpDir,
+	}
+
+	result := handler.HandleBatch([]string{"spec/spec_helper.rb"})
+
+	assert.Empty(t, result.ExecutedJobs)
+	assert.Equal(t, []NoRunnableChange{
+		{Path: "spec/spec_helper.rb", Reason: NoRunnableNoRule},
+	}, result.NoRunnableChanges)
+}
+
+func TestFileEventHandler_HandleBatch_MixedRunnableAndNoRule(t *testing.T) {
+	tmpDir := makeWatchTestProject(t)
+	writeWatchTestFile(t, tmpDir, "lib/user.rb")
+	writeWatchTestFile(t, tmpDir, "spec/user_spec.rb")
+	writeWatchTestFile(t, tmpDir, "spec/spec_helper.rb")
+
+	mock := &mockExecutor{}
+	handler := &FileEventHandler{
+		Jobs: map[string]job.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"rspec", "{{target}}"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:    "lib-to-spec",
+				Source:  "lib/**/*.rb",
+				Targets: []string{"spec/{{match}}_spec.rb"},
+				Jobs:    []string{"rspec"},
+			},
+		},
+		CWD:      tmpDir,
+		Executor: mock.execute,
+	}
+
+	result := handler.HandleBatch([]string{"lib/user.rb", "spec/spec_helper.rb"})
+
+	assert.Equal(t, []string{"rspec"}, result.ExecutedJobs)
+	assert.False(t, result.ShouldReload)
+	assert.Equal(t, []NoRunnableChange{
+		{Path: "spec/spec_helper.rb", Reason: NoRunnableNoRule},
+	}, result.NoRunnableChanges)
+	require.Len(t, mock.calls, 1)
+	assert.Equal(t, "rspec", mock.calls[0].jobName)
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, mock.calls[0].targets)
 }

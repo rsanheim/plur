@@ -19,7 +19,8 @@ spec derived from the runner-jobs RFC:
 ## Job schema changes
 - Add `framework` to job definitions (string, optional for user jobs).
   - Examples: `framework = "rspec"`, `framework = "minitest"`, `framework = "passthrough"`.
-- In run mode, `{{target}}` tokens are ignored for framework jobs.
+- In run mode, user job commands must omit `{{target}}`; Plur appends targets
+  automatically.
 - In watch mode, `{{target}}` continues to work as today.
 
 ## Framework configurability
@@ -50,7 +51,9 @@ No other fields are required in the framework spec.
 ## Run mode command building
 Given: job, framework, files, config.
 
-1) Base args = job.Cmd with any elements containing `{{target}}` removed.
+1) Base args = job.Cmd. User-supplied run-mode commands containing `{{target}}`
+   are rejected before this step. Built-in inherited commands may still carry
+   internal target tokens and the helper strips them.
 2) Append framework.DefaultArgs(cfg) if any.
 3) Append targets according to framework.TargetMode:
    - append: args = append(args, files...)
@@ -77,10 +80,10 @@ Notes:
 - These are appended before target files.
 
 ## Watch mode command building
-- Keep existing behavior:
-  - If job uses `{{target}}`, expand via BuildJobCmd.
-  - Otherwise run without targets.
-- Watch remains responsible for guard-like path substitutions.
+- Watch execution uses `BuildJobCmd` for matched targets:
+  - If job uses `{{target}}`, expand it at that position.
+  - Otherwise append matched targets at the end.
+- Running all tests from the interactive watch prompt uses `BuildJobAllCmd`.
 
 ## Default jobs vs user jobs
 - Built-in defaults are merged with user jobs of the same name (field-by-field overrides).
@@ -97,10 +100,11 @@ Notes:
 - Dry-run output should make the framework visible and easy to verify:
   - a one-line summary includes framework (e.g., "Running 12 specs [rspec] in parallel…")
   - per-worker lines show the exact command (with framework default args applied)
-  - any ignored `{{target}}` in run mode should be noted in debug logs
 
 ## Validation rules
-- In run mode, if job.Cmd contains `{{target}}`, ignore tokens and warn in debug.
+- In run mode, if a user-supplied selected job command contains `{{target}}`,
+  reject it with guidance to remove the token because targets are appended
+  automatically.
 - In watch mode, validate `{{target}}` usage as today.
 - Missing `framework` defaults as described above; unknown values error during config load.
 
@@ -121,12 +125,13 @@ Previous behavior (before refactor):
 
 ## Implementation status (current)
 - Framework registry implemented in `framework` package with TargetMode, DefaultArgs, Parser, and StreamStdout.
-- Run mode uses `BuildRunArgs`: strips `{{target}}`, appends framework defaults, then adds targets.
+- Run mode rejects user-supplied `{{target}}` job commands before planning,
+  then uses `BuildRunArgs` to append framework defaults and targets.
 - Minitest uses ruby `-e` require list for multi-file runs (single file appends directly).
 - Jobs default framework by name (built-ins) or `passthrough` for custom jobs when omitted.
 - Dry-run summary includes `[framework]`; verbose logs include `framework="..."`.
 - Job.Env now applies in run mode (aligns with watch mode).
-- `plur init` output updated to include `framework` and `{{target}}` examples.
+- `plur init` output uses run-mode commands without `{{target}}`.
 
 ## Test notes
 - `bin/rspec spec/integration/plur_spec/framework_output_spec.rb` (passes after `bin/rake install`).

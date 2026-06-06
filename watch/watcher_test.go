@@ -177,7 +177,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
 	}
 
-	err := ExecuteJob(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir)
+	err := ExecuteJob(BuildExecutionPlan(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir))
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)
@@ -190,6 +190,20 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 	assert.Contains(t, output, "file3.rb")
 }
 
+func TestBuildExecutionPlansUsesPlannerJobName(t *testing.T) {
+	plans := BuildExecutionPlans([]JobPlan{
+		{
+			JobName: "rspec",
+			Job:     job.Job{Name: "", Cmd: []string{"rspec", "{{target}}"}},
+			Targets: []string{"spec/user_spec.rb"},
+		},
+	}, "/project")
+
+	require.Len(t, plans, 1)
+	assert.Equal(t, "rspec", plans[0].JobName)
+	assert.Equal(t, []string{"rspec", "spec/user_spec.rb"}, plans[0].Argv)
+}
+
 func TestExecuteJob_SingleTarget(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "args.txt")
@@ -199,7 +213,7 @@ func TestExecuteJob_SingleTarget(t *testing.T) {
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
 	}
 
-	err := ExecuteJob(j, []string{"only_file.rb"}, tmpDir)
+	err := ExecuteJob(BuildExecutionPlan(j, []string{"only_file.rb"}, tmpDir))
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)
@@ -209,37 +223,55 @@ func TestExecuteJob_SingleTarget(t *testing.T) {
 
 func TestExecuteJob_NoTargets(t *testing.T) {
 	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "args.txt")
 
-	j := job.Job{
-		Name: "test-empty",
-		Cmd:  []string{"sh", "-c", "echo ran > " + outputFile, "--", "{{target}}"},
+	tests := []struct {
+		name string
+		cmd  []string
+	}{
+		{
+			name: "with target placeholder",
+			cmd:  []string{"sh", "-c", "echo ran > args.txt", "--", "{{target}}"},
+		},
+		{
+			name: "without target placeholder",
+			cmd:  []string{"sh", "-c", "echo ran > args.txt", "--"},
+		},
 	}
 
-	err := ExecuteJob(j, []string{}, tmpDir)
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputFile := filepath.Join(tmpDir, "args.txt")
+			_ = os.Remove(outputFile)
 
-	// Command should not run at all with empty targets
-	_, err = os.ReadFile(outputFile)
-	assert.True(t, os.IsNotExist(err), "Command should not execute with no targets")
+			j := job.Job{
+				Name: "test-empty",
+				Cmd:  tt.cmd,
+			}
+
+			err := ExecuteJob(BuildExecutionPlan(j, []string{}, tmpDir))
+			require.NoError(t, err)
+
+			_, err = os.ReadFile(outputFile)
+			assert.True(t, os.IsNotExist(err), "Command should not execute with no targets")
+		})
+	}
 }
 
 func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {
 	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "ran.txt")
+	outputFile := filepath.Join(tmpDir, "args.txt")
 
-	// Job without {{target}} runs once regardless of targets
 	j := job.Job{
 		Name: "test-no-placeholder",
-		Cmd:  []string{"sh", "-c", "echo executed > " + outputFile},
+		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--"},
 	}
 
-	err := ExecuteJob(j, []string{"ignored1.rb", "ignored2.rb"}, tmpDir)
+	err := ExecuteJob(BuildExecutionPlan(j, []string{"file1.rb", "file2.rb"}, tmpDir))
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
-	assert.Equal(t, "executed\n", string(content))
+	assert.Equal(t, "file1.rb file2.rb\n", string(content))
 }
 
 // Channel safety tests

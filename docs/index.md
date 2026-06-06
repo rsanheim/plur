@@ -1,10 +1,11 @@
-Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
+# Plur Documentation
 
-## Getting Started
+Plur is a fast, friendly test runner and watcher for Ruby.
+
+## Start Here
 
 * [Getting Started](getting-started.md) - Installation and quick introduction
-* [Usage](usage.md) - Detailed command documentation
-* [Configuration](configuration.md) - Customization options
+* [Usage](usage.md) - Common workflows
 
 ## Features
 
@@ -12,26 +13,14 @@ Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
 * [Watch Mode](features/watch-mode.md) - Auto-run tests on file changes
 * [Doctor Command](features/doctor-command.md) - Debug installation issues
 
-## Architecture
-
-Technical implementation details:
-
-* [Test Processing Flow](architecture/test-processing-flow.md) - How tests are distributed
-* [Concurrency Review](architecture/go-concurrency-and-data-structures-review.md) - Goroutine lifecycle and data structures audit
-* [Watch Architecture](architecture/plur-watch-architecture.md) - Watch mode internals
-
-## Development
-
-Guides for contributors:
-
-* [Contributing](development/contributing.md) - How to contribute
-* [Testing](development/testing.md) - Testing guidelines
-* [Release Process](development/release-process.md) - How releases work
-* [Kong CLI Patterns](development/kong-cli-patterns.md) - CLI implementation notes
-
 ## Reference
 
-* [Overview](overview/index.md) - Project overview
-* [Project Status](overview/project-status.md) - Current status and performance
-* [Roadmap](overview/roadmap.md) - Future plans
-* [Benchmarks](benchmarks/oss-benchmarks.md) - Performance benchmarks
+* [Configuration](configuration.md) - TOML configuration reference
+* [Output Contracts](output-contracts.md) - Stable output, streams, and exit codes
+* [Benchmarks](benchmarks/oss-benchmarks.md) - Performance evidence
+
+## Deeper Material
+
+* [Project Overview](overview/index.md) - Documentation map and project context
+* [Architecture](architecture/index.md) - Implementation details
+* [Development](development/index.md) - Contributor guide

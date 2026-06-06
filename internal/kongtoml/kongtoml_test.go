@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/alecthomas/kong"
-	"github.com/rsanheim/plur/job"
-	"github.com/rsanheim/plur/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -219,16 +217,7 @@ cmd = ["bin/rspec"]
 	require.NoError(t, err)
 	r := resolver.(*Resolver)
 
-	var cli struct {
-		Workers int
-		Use     string
-		Job     map[string]job.Job
-		Watch   []watch.WatchMapping `name:"watch" toml:"watch"`
-	}
-	parser, err := kong.New(&cli)
-	require.NoError(t, err)
-
-	assert.Equal(t, []string{"wokers"}, unknownLeafKeys(r.meta, parser.Model))
+	assert.Equal(t, []string{"wokers"}, unknownLeafKeys(r.meta))
 }
 
 func TestUnknownLeafKeysIncludesNestedJobAndWatchTypos(t *testing.T) {
@@ -248,15 +237,48 @@ jobs = ["rspec"]
 	require.NoError(t, err)
 	r := resolver.(*Resolver)
 
-	var cli struct {
-		Use   string
-		Job   map[string]job.Job
-		Watch []watch.WatchMapping `name:"watch" toml:"watch"`
-	}
-	parser, err := kong.New(&cli)
-	require.NoError(t, err)
+	assert.Equal(t, []string{"job.rspec.cmdd", "watch.soruce"}, unknownLeafKeys(r.meta))
+}
 
-	assert.Equal(t, []string{"job.rspec.cmdd", "watch.soruce"}, unknownLeafKeys(r.meta, parser.Model))
+func TestUnknownLeafKeysRejectsCLIFlagsOutsidePersistentConfigSchema(t *testing.T) {
+	input := `
+workers = 2
+auto = true
+change-dir = "fixtures"
+debug = true
+exclude-pattern = ["spec/system/**"]
+first-is-1 = false
+rspec-split = true
+rspec-trace = true
+watch-ignore = ["tmp/**"]
+watch-run-debounce = 250
+watch-run-timeout = 5
+config-init-force = true
+
+[job.rspec]
+cmd = ["bin/rspec"]
+
+[[watch]]
+source = "spec/**/*_spec.rb"
+jobs = ["rspec"]
+`
+	resolver, err := Loader(strings.NewReader(input))
+	require.NoError(t, err)
+	r := resolver.(*Resolver)
+
+	assert.Equal(t, []string{
+		"auto",
+		"change-dir",
+		"config-init-force",
+		"debug",
+		"exclude-pattern",
+		"first-is-1",
+		"rspec-split",
+		"rspec-trace",
+		"watch-ignore",
+		"watch-run-debounce",
+		"watch-run-timeout",
+	}, unknownLeafKeys(r.meta))
 }
 
 func TestValidateReturnsNil(t *testing.T) {
@@ -266,6 +288,44 @@ func TestValidateReturnsNil(t *testing.T) {
 
 	err = resolver.(*Resolver).Validate(nil)
 	assert.NoError(t, err)
+}
+
+func TestValidateRejectsUnknownKeys(t *testing.T) {
+	input := `wokers = 4`
+	r := &namedReader{Reader: strings.NewReader(input), name: ".plur.toml"}
+	resolver, err := Loader(r)
+	require.NoError(t, err)
+
+	err = resolver.(*Resolver).Validate(nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), ".plur.toml")
+	assert.Contains(t, err.Error(), "wokers")
+}
+
+func TestValidateUsesConfigSchemaWithoutKongApplication(t *testing.T) {
+	input := `debug = true`
+	r := &namedReader{Reader: strings.NewReader(input), name: ".plur.toml"}
+	resolver, err := Loader(r)
+	require.NoError(t, err)
+
+	err = resolver.(*Resolver).Validate(nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), ".plur.toml")
+	assert.Contains(t, err.Error(), "debug")
+}
+
+func TestValidateRejectsCLIOnlyConfigKeys(t *testing.T) {
+	input := "dry-run = true\ndry-run-format = \"json\"\n"
+	r := &namedReader{Reader: strings.NewReader(input), name: ".plur.toml"}
+	resolver, err := Loader(r)
+	require.NoError(t, err)
+
+	err = resolver.(*Resolver).Validate(nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), ".plur.toml")
+	assert.Contains(t, err.Error(), "CLI-only config keys")
+	assert.Contains(t, err.Error(), "dry-run")
+	assert.Contains(t, err.Error(), "dry-run-format")
 }
 
 func TestKeyResolutionEdgeCases(t *testing.T) {

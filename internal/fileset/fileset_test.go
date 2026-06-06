@@ -65,6 +65,16 @@ func TestDiscover_PlainFileMissingErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "file not found")
 }
 
+func TestDiscover_MissingBareTestTargetExplainsTargetPath(t *testing.T) {
+	discoverChdir(t)
+	j := job.Job{Name: "rspec", Framework: "rspec"}
+
+	_, err := Discover(j, []string{"test"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "`test` is a target path, not a Plur command")
+	assert.Contains(t, err.Error(), "test/calculator_test.rb")
+}
+
 func TestDiscover_DirectoryExpansion(t *testing.T) {
 	discoverChdir(t)
 	writeStubFiles(t,
@@ -130,6 +140,30 @@ func TestDiscover_ExcludesFiltering(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"spec/models/user_spec.rb"}, files)
+}
+
+func TestDiscoverWithDetails_ReportsExcludeMatchCounts(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t,
+		"spec/system/login_spec.rb",
+		"spec/legacy/old_spec.rb",
+		"spec/models/user_spec.rb",
+	)
+
+	j := job.Job{Name: "rspec", TargetPattern: "spec/**/*_spec.rb"}
+	result, err := DiscoverWithDetails(j, nil, []string{
+		"spec/system/**/*_spec.rb",
+		"*user*/_spec.rb",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"spec/legacy/old_spec.rb",
+		"spec/models/user_spec.rb",
+	}, result.Files)
+	assert.Equal(t, map[string]int{
+		"spec/system/**/*_spec.rb": 1,
+		"*user*/_spec.rb":          0,
+	}, result.ExcludeMatches)
 }
 
 func TestDiscover_InvalidExcludePatternErrors(t *testing.T) {
@@ -227,4 +261,38 @@ func TestDiscover_DedupsAcrossInputs(t *testing.T) {
 	files, err := Discover(j, []string{"spec/a_spec.rb", "spec/a_spec.rb", "spec/*_spec.rb"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"spec/a_spec.rb"}, files)
+}
+
+func TestExplicitTargetMismatches_ReportsExistingFilesOutsideTargetPattern(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t, "spec/a_spec.rb", "spec/helper.rb", "lib/a.rb")
+
+	mismatches, err := ExplicitTargetMismatches([]string{
+		"spec/a_spec.rb",
+		"spec/helper.rb",
+		"lib/a.rb",
+		"spec/*_spec.rb",
+		"spec",
+	}, []string{"spec/**/*_spec.rb"})
+	require.NoError(t, err)
+
+	assert.Equal(t, []TargetMismatch{
+		{Target: "spec/helper.rb", Path: "spec/helper.rb"},
+		{Target: "lib/a.rb", Path: "lib/a.rb"},
+	}, mismatches)
+}
+
+func TestExplicitTargetMismatches_UsesUnderlyingFileForFileLineTargets(t *testing.T) {
+	discoverChdir(t)
+	writeStubFiles(t, "spec/a_spec.rb", "spec/helper.rb")
+
+	mismatches, err := ExplicitTargetMismatches([]string{
+		"spec/a_spec.rb:12",
+		"spec/helper.rb:5",
+	}, []string{"spec/**/*_spec.rb"})
+	require.NoError(t, err)
+
+	assert.Equal(t, []TargetMismatch{
+		{Target: "spec/helper.rb:5", Path: "spec/helper.rb"},
+	}, mismatches)
 }

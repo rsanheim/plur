@@ -1,106 +1,123 @@
 # Usage
 
-## Basic Commands
+This page covers common command workflows. For the full configuration surface,
+see [Configuration](configuration.md). For stable machine output, streams, and
+exit codes, see [Output Contracts](output-contracts.md).
 
-### Running Tests
+## Run Tests
 
 ```bash
-# Run all specs with the default worker count
+# Run the detected test suite with the default worker count
 plur
 
-# Explicit "spec" command (same as default)
-plur spec
+# Run one target
+plur spec/models/user_spec.rb
 
-# Specify number of workers
+# Run targets matching a shell-safe glob
+plur 'spec/models/**/*_spec.rb'
+
+# Set the worker count
 plur -n 4
 plur --workers 8
 
-# Dry run - see what would be executed
-plur --dry-run
-
-# Run from another directory (like git -C)
+# Run from another directory
 plur -C path/to/project
 ```
 
-### Selecting Test Framework
-
-Plur auto-detects your test framework (RSpec or Minitest) based on directory structure, but you can override this:
+`plur spec` is the explicit form of the default test runner:
 
 ```bash
-# Run RSpec tests explicitly
+plur spec
+plur spec spec/models/user_spec.rb
+```
+
+## Preview A Run
+
+Use dry-run before changing filters, worker counts, or custom jobs:
+
+```bash
+plur --dry-run
+plur --dry-run spec/models/user_spec.rb
+```
+
+The text preview is for people. Scripts and agents should use JSON:
+
+```bash
+plur --dry-run --dry-run-format=json spec/models/user_spec.rb
+```
+
+See [Output Contracts](output-contracts.md#dry-run-json) for the stable JSON
+shape.
+
+## Select A Job
+
+Plur auto-detects common Ruby test layouts. A project with `spec/` uses RSpec,
+and a project with `test/` uses Minitest. If both directories exist, Plur
+defaults to RSpec.
+
+```bash
 plur --use=rspec
-
-# Run Minitest tests
 plur --use=minitest
-
-# Set default in config file
-echo 'use = "rspec"' > .plur.toml
-plur  # Now runs RSpec by default
 ```
 
-**Projects with both spec/ and test/ directories**:
-
-When both exist, plur defaults to RSpec. Use the `--use` flag to select:
-
-```bash
-plur                    # Runs RSpec tests (default)
-plur --use=rspec        # Explicitly run RSpec tests
-plur --use=minitest     # Run Minitest tests
-```
-
-Or set a permanent default in `.plur.toml`:
+Set a project default in `.plur.toml`:
 
 ```toml
-use = "minitest"  # Override default to use Minitest
+use = "minitest"
 ```
 
-### Excluding Tests From Discovery
+See [Configuration](configuration.md#job-selection-priority) for job selection
+details.
 
-Use `--exclude-pattern` (repeatable) to drop matching files from the test plan
-before workers run. Patterns use doublestar semantics.
+## Exclude Targets
+
+Use `--exclude-pattern` to drop files from the discovered test plan. Patterns
+use doublestar semantics.
 
 ```bash
-# Skip a single file
+# Skip one file
 plur --exclude-pattern 'spec/legacy/old_spec.rb'
 
-# Skip all system specs
+# Skip a directory of specs
 plur --exclude-pattern 'spec/system/**/*_spec.rb'
 
-# Multiple patterns OR together
+# Combine exclusions
 plur --exclude-pattern 'spec/system/**/*_spec.rb' \
      --exclude-pattern 'spec/legacy/**/*_spec.rb'
 ```
 
-Excludes can also be configured per-job in `.plur.toml`. CLI excludes are
-*additive on top of* configured excludes — they do not replace them. See
-[Configuration](configuration.md) for details.
+CLI excludes are additive on top of configured job excludes. See
+[Configuration](configuration.md#exclude-patterns).
 
-### Watch Mode
+## Watch Files
 
 ```bash
-# Watch for changes and re-run tests
+# Watch files and run matching tests
 plur watch
 
-# Install the watcher binary if needed
-plur watch install
+# Preview what a changed file would run
+plur watch find spec/models/user_spec.rb
 
-# Customize debounce/timeout and ignore patterns
-plur watch run --debounce 250 --timeout 60 --ignore "vendor/**" --ignore "tmp/**"
+# Use JSON for scripts
+plur watch find --format=json spec/models/user_spec.rb
+
+# Customize debounce, timeout, and ignored paths
+plur watch --debounce 250 --timeout 60 --ignore "vendor/**" --ignore "tmp/**"
 ```
 
-### Doctor Command
+See [Watch Mode](features/watch-mode.md) for file mapping and troubleshooting.
+
+## Diagnose Problems
 
 ```bash
-# Run diagnostics and troubleshooting
 plur doctor
+plur --debug
 ```
 
-The `Runtime Data:` block reports the cache file path along with its
-size, file count, and example count when the cache exists (e.g.
-`21K / 13 files / 68 examples`), or `(file does not exist)` on a
-fresh project.
+`plur doctor` checks installation and environment details. `--debug` is for
+interactive troubleshooting; debug output is not stable for scripts.
 
-### Rails And Rake Commands
+## Rails And Rake
 
 ```bash
 plur rails db:prepare -n 4
@@ -111,197 +128,27 @@ plur rake db:create db:migrate -n 4
 plur rake -n 1 -- --tasks
 ```
 
-These commands run the configured job once per worker, with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set. Arguments are appended literally — they're not treated as test file patterns. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake.
+Rails and Rake commands run once per worker with `PARALLEL_TEST_GROUPS` and
+`TEST_ENV_NUMBER` set. Arguments are appended literally; they are not treated
+as test file patterns. Put Plur flags like `-n` before `--`; arguments after
+`--` pass through to Rails or Rake.
 
-## Command Line Options
+## Tune Workers
 
-### Global Options
-
-* `-n, --workers NUMBER` - Number of parallel workers (default: 4)
-* `--dry-run` - Show what would run without executing
-* `-h, --help` - Show help
-* `-v, --verbose` - Enable verbose logging
-* `--version` - Show version
-
-### Environment Variables
-
-* `PARALLEL_TEST_PROCESSORS` - Override number of workers
-* `PLUR_DEBUG` - Enable debug logging
-* `PLUR_CONFIG_FILE` - Load a specific config file
-* `PLUR_HOME` - Override Plur's home directory (`~/.plur`)
-
-## Parallelism
-
-### Default Behavior
-
-Plur uses 4 workers by default:
-- Override with `-n` or `--workers`
-- Respects `PARALLEL_TEST_PROCESSORS` if set
-- Project config can set a different default
-
-### Manual Control
+Plur uses 4 workers by default and respects `PARALLEL_TEST_PROCESSORS`.
 
 ```bash
-# Use all cores
-plur -n $(nproc)
-
-# Conservative - half the cores
-plur -n $(( $(nproc) / 2 ))
-
-# CI environments often benefit from more workers
-plur -n $(( $(nproc) + 2 ))
+plur -n 4
+PARALLEL_TEST_PROCESSORS=8 plur
 ```
 
-## Output Formats
-
-### Progress Output (Default)
-
-Shows dots for test progress:
-```
-....F...*...
-```
-- `.` - Passing test
-- `F` - Failing test
-- `*` - Pending test
-
-### JSON Output
-
-Plur uses dual formatters internally:
-- Progress formatter for visual feedback
-- JSON formatter for parsing results
-
-## Performance Monitoring
-
-### Basic Timing
-
-RSpec output includes timing details, for example:
-```
-Finished in 0.35 seconds (files took 0.12 seconds to load)
-```
-
-### Debugging Test Failures
-
-```bash
-# Run with debug output
-plur --debug
-
-# Check which files would run
-plur --dry-run | grep "file_spec.rb"
-
-# Run doctor for diagnostics
-plur doctor
-```
-
-### Performance Tuning
-
-1. **Start with the default**: Try `4` workers first
-2. **Measure and adjust**: Experiment with different worker counts
-3. **Consider test characteristics**:
-- Many small tests: More workers
-- Few large tests: Fewer workers
-- I/O heavy tests: More workers than CPU cores
-
-## Runtime Tracking
-
-Plur records per-file runtime data to `$PLUR_HOME/runtime/<project-hash>.json`
-so it can balance subsequent worker assignments using historical timing.
-
-The on-disk format is a versioned runtime cache:
-
-```json
-{
-  "meta": {
-    "schema_version": 4,
-    "plur_version": "0.56.0-dev-abc1234"
-  },
-  "run": {
-    "cwd": "/Users/example/src/my-project",
-    "last_run_at": "2026-05-22T15:04:05Z"
-  },
-  "files": {
-    "spec/slow_spec.rb": {
-      "mtime_unix_nano": 1778610000000000000,
-      "size_bytes": 12345,
-      "runtime_seconds": 12.34,
-      "examples": [
-        {
-          "id": "./spec/slow_spec.rb[1:1]",
-          "line_number": 12,
-          "location_rerun_argument": "./spec/slow_spec.rb:12",
-          "runtime_seconds": 0.40
-        }
-      ]
-    }
-  }
-}
-```
-
-Behavior:
-
-- File aggregates are rewritten only by default/full-file RSpec runs. Focused
-  (`spec/foo_spec.rb:42`), tag-filtered (`--tag=…`), `--fail-fast`, aborted,
-  and `--`-passthrough runs are classified as *partial* and merge
-  per-example observations without overwriting the file aggregate.
-- `--dry-run` never writes the cache.
-- Invalid, corrupt, or unsupported schema files are ignored and replaced on the next
-  successful default run.
-- Old v1 caches (`map[string]float64`) are ignored and regenerated.
-- Shared examples are attributed to their rerunnable owning spec file
-  (the file the focused target points back to), not the support file
-  whose source contains the shared block. The runtime cache stores only
-  the fields needed for future balancing: RSpec `id`, rerunnable target,
-  owner line, and runtime.
-
-### `--rspec-split` (EXPERIMENTAL)
-
-`--rspec-split` is an opt-in, RSpec-only flag that expands long-running
-spec files into focused `file:line:line:line` targets, then lets the
-existing runtime grouper balance them across workers.
-
-```bash
-plur --rspec-split -n 8
-PLUR_RSPEC_SPLIT=1 plur -n 8
-```
-
-How it works:
-
-- Splitting requires `--rspec-split == true`, an RSpec job, and worker
-  count greater than 1.
-- For each file, plur consults the runtime cache. If the recorded
-  `mtime_unix_nano`/`size_bytes` still match the source file, plur considers
-  the example data fresh enough for split planning.
-- A file is split only if its historical `runtime_seconds` exceeds the
-  per-worker budget (`total_runtime / worker_count`). This is the simple
-  experimental rule — no multipliers, no floors.
-- Split chunks are built by bin-packing the file's cached per-example
-  runtimes using longest-processing-time greedy: each example lands in
-  the bin with the smallest current sum, so a single heavy example ends
-  up isolated in its own chunk. Examples with no recorded runtime fall
-  back to the file's mean per-example runtime.
-- Each chunk's summed runtime feeds back into the grouper as the
-  target's runtime weight, so worker balancing reflects the actual
-  bin-pack distribution. The generated `file:line:line:...` targets are
-  not persisted in the cache.
-
-Known pitfalls:
-
-- `before(:all)` / `before(:context)` state may run once per chunk
-  process instead of once per file, which can break suites that rely on
-  shared context fixtures.
-- Suites that define examples dynamically (from environment, time,
-  random data, database state, or metaprogramming) may produce different
-  example sets between cache generation and split execution.
-- Shared examples and custom DSLs can produce surprising source
-  locations. Plur stores `id` and `location_rerun_argument` so
-  divergence can be debugged.
-- Splitting is cache-driven: a cold run (no runtime cache entries yet) falls back
-  to file-level grouping. The next default run populates the cache.
-
-Splitting is intentionally experimental. The semantics may change as
-real-world data is collected; do not rely on stable split behavior yet.
+Runtime data is collected automatically so future full runs can balance files
+across workers. See [Parallel Execution](features/parallel-execution.md) for
+the runtime cache and advanced RSpec split behavior.
 
 ## Next Steps
 
-- See [Configuration](configuration.md) for customization
-- See [Architecture](architecture/index.md) for technical details
-- See [Features](features/index.md) for detailed feature documentation
+- [Configuration](configuration.md) for `.plur.toml`
+- [Output Contracts](output-contracts.md) for stable script and agent output
+- [Watch Mode](features/watch-mode.md) for file-change workflows
+- [Parallel Execution](features/parallel-execution.md) for balancing behavior

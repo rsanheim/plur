@@ -36,6 +36,17 @@ RSpec.describe "RSpec CLI args" do
         expect(worker_line.index("--seed 1234")).to be < worker_line.index("spec/calculator_spec.rb")
       end
     end
+
+    it "allows --json after the passthrough delimiter" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", "spec/calculator_spec.rb", "--", "--json")
+
+        expect(result).to be_success
+        worker_line = result.err.lines.find { |line| line.include?("[dry-run] Worker 0:") }
+        expect(worker_line).to include("--json")
+        expect(result.err).not_to include("Error: --json is not a Plur flag.")
+      end
+    end
   end
 
   context "with passthrough format options" do

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -207,8 +210,20 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 
 	// Print errored files
 	for _, result := range summary.ErroredFiles {
-		if result.State == types.StateError && result.Output != "" {
+		if result.State != types.StateError {
+			continue
+		}
+		if result.Output != "" {
 			fmt.Print(result.Output)
+			continue
+		}
+		if result.Error != nil && !isProcessExitError(result.Error) {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
 		}
 	}
+}
+
+func isProcessExitError(err error) bool {
+	var exitErr *exec.ExitError
+	return errors.As(err, &exitErr)
 }

@@ -38,23 +38,127 @@ func toStdErr(dryRun bool, format string, args ...any) {
 // dryRunString returns a shell-executable representation of the command,
 // including only the env vars that plur sets (not the full inherited env).
 func dryRunString(cmd *exec.Cmd) string {
-	var envs []string
-	if cmd.Env != nil {
-		envs = cmd.Environ()
-	}
-	var extras []string
-	for _, env := range envs {
-		if strings.HasPrefix(env, EnvTestEnvNumber+"=") ||
-			strings.HasPrefix(env, EnvParallelTestGroups+"=") ||
-			strings.HasPrefix(env, "RAILS_ENV=") {
-			extras = append(extras, env)
-		}
-	}
-	cmdStr := strings.Join(cmd.Args, " ")
+	cmdStr := strings.Join(shellQuoteArgs(cmd.Args), " ")
+	extras := dryRunEnv(cmd)
 	if len(extras) > 0 {
 		return strings.Join(extras, " ") + " " + cmdStr
 	}
 	return cmdStr
+}
+
+func shellQuoteArgs(args []string) []string {
+	quoted := make([]string, len(args))
+	for i, arg := range args {
+		quoted[i] = shellQuoteArg(arg)
+	}
+	return quoted
+}
+
+func shellQuoteArg(arg string) string {
+	if isShellSafeWord(arg) {
+		return arg
+	}
+	return shellSingleQuote(arg)
+}
+
+func isShellSafeWord(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if (r >= 'a' && r <= 'z') ||
+			(r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') ||
+			strings.ContainsRune("@%_+=:,./-", r) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func dryRunEnv(cmd *exec.Cmd) []string {
+	if cmd.Env == nil {
+		return nil
+	}
+
+	envs := cmd.Env
+	if inherited := os.Environ(); hasInheritedEnvPrefix(envs, inherited) {
+		return withInheritedManagedEnv(dedupeEnvByKey(validEnvEntries(envs[len(inherited):])), envs)
+	}
+
+	var extras []string
+	for _, env := range cmd.Environ() {
+		if isManagedDryRunEnvEntry(env) {
+			extras = append(extras, env)
+		}
+	}
+	return dedupeEnvByKey(extras)
+}
+
+func hasInheritedEnvPrefix(envs, inherited []string) bool {
+	if len(envs) < len(inherited) {
+		return false
+	}
+	for i, env := range inherited {
+		if envs[i] != env {
+			return false
+		}
+	}
+	return true
+}
+
+func validEnvEntries(envs []string) []string {
+	entries := make([]string, 0, len(envs))
+	for _, env := range envs {
+		if strings.Contains(env, "=") {
+			entries = append(entries, env)
+		}
+	}
+	return entries
+}
+
+func dedupeEnvByKey(envs []string) []string {
+	lastIndex := make(map[string]int, len(envs))
+	for i, env := range envs {
+		key, _, ok := strings.Cut(env, "=")
+		if ok {
+			lastIndex[key] = i
+		}
+	}
+
+	entries := make([]string, 0, len(lastIndex))
+	for i, env := range envs {
+		key, _, ok := strings.Cut(env, "=")
+		if ok && lastIndex[key] == i {
+			entries = append(entries, env)
+		}
+	}
+	return entries
+}
+
+func withInheritedManagedEnv(extras, envs []string) []string {
+	seen := make(map[string]struct{}, len(extras))
+	for _, env := range extras {
+		if key, _, ok := strings.Cut(env, "="); ok {
+			seen[key] = struct{}{}
+		}
+	}
+	for _, env := range envs {
+		key, _, ok := strings.Cut(env, "=")
+		if !ok || key != "RAILS_ENV" {
+			continue
+		}
+		if _, exists := seen[key]; !exists {
+			return append([]string{env}, extras...)
+		}
+	}
+	return extras
+}
+
+func isManagedDryRunEnvEntry(env string) bool {
+	key, _, ok := strings.Cut(env, "=")
+	return ok && (key == EnvTestEnvNumber || key == EnvParallelTestGroups || key == "RAILS_ENV")
 }
 
 func printDryRunCommand(dryRun bool, cmd *exec.Cmd) {

@@ -12,15 +12,33 @@ import (
 	"github.com/rsanheim/plur/job"
 )
 
+type DiscoverResult struct {
+	Files          []string
+	ExcludeMatches map[string]int
+}
+
+type TargetMismatch struct {
+	Target string
+	Path   string
+}
+
 // Discover returns sorted, deduped, exclude-filtered files for a job.
 // When inputs is empty, framework target patterns drive discovery; otherwise
 // each input is classified as a glob, an existing file (passthrough), or a
 // directory (joined with framework target tails). Exclude patterns are applied
 // after expansion using doublestar semantics.
 func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
-	patterns, err := classifyInputs(j, inputs)
+	result, err := DiscoverWithDetails(j, inputs, excludes)
 	if err != nil {
 		return nil, err
+	}
+	return result.Files, nil
+}
+
+func DiscoverWithDetails(j job.Job, inputs, excludes []string) (DiscoverResult, error) {
+	patterns, err := classifyInputs(j, inputs)
+	if err != nil {
+		return DiscoverResult{}, err
 	}
 
 	var files []string
@@ -31,28 +49,38 @@ func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
 		}
 		matches, err := doublestar.FilepathGlob(p)
 		if err != nil {
-			return nil, fmt.Errorf("error finding files with pattern %q: %w", p, err)
+			return DiscoverResult{}, fmt.Errorf("error finding files with pattern %q: %w", p, err)
 		}
 		files = append(files, matches...)
 	}
 
 	for _, ex := range excludes {
 		if _, err := doublestar.PathMatch(ex, ""); err != nil {
-			return nil, fmt.Errorf("invalid exclude pattern %q: %w", ex, err)
+			return DiscoverResult{}, fmt.Errorf("invalid exclude pattern %q: %w", ex, err)
 		}
 	}
-	files = slices.DeleteFunc(files, func(f string) bool {
-		s := filepath.ToSlash(filePathForExcludeMatch(f))
-		for _, ex := range excludes {
-			if ok, _ := doublestar.PathMatch(ex, s); ok {
-				return true
-			}
-		}
-		return false
-	})
 
 	slices.Sort(files)
-	return slices.Compact(files), nil
+	files = slices.Compact(files)
+
+	excludeMatches := make(map[string]int, len(excludes))
+	for _, ex := range excludes {
+		excludeMatches[ex] = 0
+	}
+
+	files = slices.DeleteFunc(files, func(f string) bool {
+		s := filepath.ToSlash(filePathForExcludeMatch(f))
+		excluded := false
+		for _, ex := range excludes {
+			if ok, _ := doublestar.PathMatch(ex, s); ok {
+				excludeMatches[ex]++
+				excluded = true
+			}
+		}
+		return excluded
+	})
+
+	return DiscoverResult{Files: files, ExcludeMatches: excludeMatches}, nil
 }
 
 // hasGlobMeta reports whether s contains any doublestar metacharacters.
@@ -63,6 +91,56 @@ func filePathForExcludeMatch(s string) string {
 		return s[:strings.IndexByte(s, ':')]
 	}
 	return s
+}
+
+func ExplicitTargetMismatches(inputs, targetPatterns []string) ([]TargetMismatch, error) {
+	if len(inputs) == 0 || len(targetPatterns) == 0 {
+		return nil, nil
+	}
+
+	var mismatches []TargetMismatch
+	for _, in := range inputs {
+		targetPath, ok := explicitFileTargetPath(in)
+		if !ok {
+			continue
+		}
+		matched, err := matchesAnyTargetPattern(targetPath, targetPatterns)
+		if err != nil {
+			return nil, err
+		}
+		if !matched {
+			mismatches = append(mismatches, TargetMismatch{Target: in, Path: targetPath})
+		}
+	}
+	return mismatches, nil
+}
+
+func explicitFileTargetPath(input string) (string, bool) {
+	if hasGlobMeta(input) {
+		return "", false
+	}
+	if isFileLineTarget(input) {
+		return filePathForExcludeMatch(input), true
+	}
+	info, err := os.Stat(input)
+	if err != nil || info.IsDir() {
+		return "", false
+	}
+	return input, true
+}
+
+func matchesAnyTargetPattern(path string, targetPatterns []string) (bool, error) {
+	normalized := filepath.ToSlash(path)
+	for _, pattern := range targetPatterns {
+		matched, err := doublestar.Match(filepath.ToSlash(pattern), normalized)
+		if err != nil {
+			return false, fmt.Errorf("invalid target pattern %q: %w", pattern, err)
+		}
+		if matched {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func classifyInputs(j job.Job, inputs []string) ([]string, error) {
@@ -86,6 +164,9 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 		}
 		info, err := os.Stat(in)
 		if err != nil {
+			if in == "test" {
+				return nil, fmt.Errorf("file not found: test; `test` is a target path, not a Plur command. Create a test/ directory or pass a Minitest target like test/calculator_test.rb")
+			}
 			return nil, fmt.Errorf("file not found: %s", in)
 		}
 		if !info.IsDir() {

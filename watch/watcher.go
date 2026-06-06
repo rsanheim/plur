@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 )
 
@@ -226,41 +225,21 @@ func RunCommand(args []string) {
 	}
 }
 
-// ExecuteJob runs a job with the given target files
-// If the job doesn't use targets (no {{target}} in cmd), it runs once without targets
-func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
-	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
+// ExecuteJob runs a planned watch job.
+func ExecuteJob(plan ExecutionPlan) error {
+	logger.Logger.Info("Executing job", "job", plan.JobName, "targets", fmt.Sprintf("%+v", plan.Targets))
 
-	// Jobs without {{target}} placeholder run once without targets
-	if !j.UsesTargets() {
-		cmd := j.Cmd
-		fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
-
-		execCmd := exec.Command(cmd[0], cmd[1:]...)
-		execCmd.Dir = cwd
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
-		execCmd.Env = append(os.Environ(), j.Env...)
-
-		if err := execCmd.Run(); err != nil {
-			return err
-		}
+	if len(plan.Targets) == 0 {
 		return nil
 	}
 
-	// Jobs with {{target}} run once with all target files batched together
-	if len(targetFiles) == 0 {
-		return nil
-	}
+	fmt.Printf("\n[plur] %s\n", strings.Join(plan.Argv, " "))
 
-	cmd := job.BuildJobCmd(j, targetFiles)
-	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
-
-	execCmd := exec.Command(cmd[0], cmd[1:]...)
-	execCmd.Dir = cwd
+	execCmd := exec.Command(plan.Argv[0], plan.Argv[1:]...)
+	execCmd.Dir = plan.CWD
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
-	execCmd.Env = append(os.Environ(), j.Env...)
+	execCmd.Env = append(os.Environ(), plan.Env...)
 
 	if err := execCmd.Run(); err != nil {
 		return err

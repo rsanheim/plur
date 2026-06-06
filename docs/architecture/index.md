@@ -6,3 +6,4 @@ Technical architecture documentation for Plur, covering design decisions and imp
 
 - [Go Concurrency and Data Structures Review](go-concurrency-and-data-structures-review.md) - Worker pools, goroutine lifecycle, and cleanup recommendations
 - [Test Processing Flow](test-processing-flow.md) - Complete flow of test execution, parsing, and output
+- [Watch Architecture](plur-watch-architecture.md) - Watcher processes, event flow, and file mapping

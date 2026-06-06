@@ -117,6 +117,49 @@ func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
 	assert.Contains(t, err.Error(), "missing")
 }
 
+func TestValidateRuntimeConfigRejectsInvalidWatchGlobPatterns(t *testing.T) {
+	tests := []struct {
+		name      string
+		watch     watch.WatchMapping
+		wantParts []string
+	}{
+		{
+			name:      "source",
+			watch:     watch.WatchMapping{Name: "bad-source", Source: "[", Jobs: []string{"rspec"}},
+			wantParts: []string{"bad-source", "source pattern"},
+		},
+		{
+			name:      "ignore",
+			watch:     watch.WatchMapping{Name: "bad-ignore", Source: "lib/**/*.rb", Jobs: []string{"rspec"}, Ignore: []string{"["}},
+			wantParts: []string{"bad-ignore", "ignore pattern"},
+		},
+		{
+			name:      "empty source",
+			watch:     watch.WatchMapping{Name: "empty-source", Jobs: []string{"rspec"}},
+			wantParts: []string{"empty-source", "source pattern"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rc := &RuntimeConfig{
+				Use: "rspec",
+				Jobs: map[string]job.Job{
+					"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, Framework: "rspec"},
+				},
+				Watches: []watch.WatchMapping{tt.watch},
+				Sources: []string{".plur.toml"},
+			}
+
+			err := validateRuntimeConfig(rc)
+			require.Error(t, err)
+			for _, part := range tt.wantParts {
+				assert.Contains(t, err.Error(), part)
+			}
+		})
+	}
+}
+
 func TestValidateRuntimeConfigRejectsJobWithoutCommand(t *testing.T) {
 	rc := &RuntimeConfig{
 		Jobs: map[string]job.Job{

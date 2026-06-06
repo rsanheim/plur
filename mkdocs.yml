@@ -59,6 +59,12 @@ markdown_extensions:
   - md_in_html
 
 # Navigation handled by awesome-pages plugin
+exclude_docs: |
+  README.md
+  configuration-test-cases.md
+  plans/**
+  superpowers/**
+  wip/**
 
 plugins:
   - search
@@ -70,6 +76,7 @@ plugins:
       timezone: America/Chicago
       locale: en
       fallback_to_build_date: false
+      enable_parallel_processing: false
       exclude:
         - index.md
         - README.md

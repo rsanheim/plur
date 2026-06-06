@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -175,6 +176,37 @@ func TestDryRunString(t *testing.T) {
 			result == "TEST_ENV_NUMBER=1 PARALLEL_TEST_GROUPS=2 bundle exec rspec" ||
 				result == "PARALLEL_TEST_GROUPS=2 TEST_ENV_NUMBER=1 bundle exec rspec",
 			"expected env vars before command, got: %s", result)
+	})
+
+	t.Run("duplicate env vars keep final value", func(t *testing.T) {
+		cmd := exec.Command("bundle", "exec", "rspec")
+		cmd.Env = append(os.Environ(),
+			"PARALLEL_TEST_GROUPS=2",
+			"TEST_ENV_NUMBER=1",
+			"CUSTOM_TOKEN=old",
+			"CUSTOM_TOKEN=new",
+			"TEST_ENV_NUMBER=custom",
+		)
+
+		env := dryRunEnv(cmd)
+		result := dryRunString(cmd)
+
+		assert.Equal(t, []string{
+			"PARALLEL_TEST_GROUPS=2",
+			"CUSTOM_TOKEN=new",
+			"TEST_ENV_NUMBER=custom",
+		}, env)
+		assert.Contains(t, result, "CUSTOM_TOKEN=new")
+		assert.NotContains(t, result, "CUSTOM_TOKEN=old")
+		assert.NotContains(t, result, "TEST_ENV_NUMBER=1")
+	})
+
+	t.Run("quotes command args that are not shell-safe", func(t *testing.T) {
+		cmd := exec.Command("bundle", "exec", "rspec", "spec/my spec_spec.rb", "spec/quote's_spec.rb")
+
+		result := dryRunString(cmd)
+
+		assert.Equal(t, "bundle exec rspec 'spec/my spec_spec.rb' 'spec/quote'\\''s_spec.rb'", result)
 	})
 }
 

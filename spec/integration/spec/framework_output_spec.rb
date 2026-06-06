@@ -22,7 +22,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
 
         [job.fast]
         framework = "rspec"
-        cmd = ["bundle", "exec", "rspec", "--fail-fast", "{{target}}"]
+        cmd = ["bundle", "exec", "rspec", "--fail-fast"]
         target_pattern = "spec/**/*_spec.rb"
       TOML
 
@@ -71,6 +71,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
         )
 
         expect(result.actual.stderr).to include("--fail-fast")
+        expect(result.actual.stderr).to include("[dry-run] Selected job: fast (framework: rspec, reason: explicit name)")
         expect(result.actual.stderr).to include("[dry-run] Running 1 spec [rspec] serially")
       end
     end

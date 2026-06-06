@@ -67,6 +67,7 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 
 	// executing...
 	if r.config.DryRun {
+		r.printDryRunPlanSummary(len(commands))
 		for i, cmd := range commands {
 			printDryRunWorker(r.config.DryRun, i, cmd)
 		}
@@ -75,6 +76,30 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 
 	results, wallTime := r.executeWorkers(commands)
 	return results, wallTime, nil
+}
+
+func (r *Runner) DryRunPlan() (*RunnerDryRunPlan, error) {
+	groups := r.groupFiles()
+	commands, err := r.buildCommands(groups)
+	if err != nil {
+		return nil, err
+	}
+
+	var targets []string
+	workers := make([]DryRunPlanWorker, 0, len(commands))
+	for i, cmd := range commands {
+		groupTargets := append([]string(nil), groups[i].Files...)
+		targets = append(targets, groupTargets...)
+		workers = append(workers, DryRunPlanWorker{
+			Index:   i,
+			Targets: groupTargets,
+			Argv:    append([]string(nil), cmd.Args...),
+			Env:     dryRunEnv(cmd),
+			Shell:   dryRunString(cmd),
+		})
+	}
+
+	return &RunnerDryRunPlan{Targets: targets, Workers: workers}, nil
 }
 
 func (r *Runner) RunArgsPerWorker(args []string) error {
@@ -212,10 +237,6 @@ func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
-		if r.job.UsesTargets() && logger.IsDebugEnabled() {
-			logger.Logger.Debug("ignoring {{target}} tokens in run mode", "job", r.job.Name)
-		}
-
 		args, err := framework.BuildRunArgs(r.job, group.Files, r.config, r.extraArgs)
 		if err != nil {
 			return nil, err
@@ -269,6 +290,13 @@ func (r *Runner) printSummary(workerCount int) {
 	label := r.testLabel()
 	toStdErr(r.config.DryRun, "Running %d %s [%s] %s\n",
 		len(r.files), label, r.frameworkLabel(), workerCountPhrase(r.config, workerCount))
+}
+
+func (r *Runner) printDryRunPlanSummary(workerCount int) {
+	toStdErr(true, "Plan: %d %s across %d %s; no commands will run\n",
+		len(r.files), pluralize(len(r.files), "target", "targets"),
+		workerCount, pluralize(workerCount, "worker", "workers"))
+	toStdErr(true, "Commands:\n")
 }
 
 func (r *Runner) testLabel() string {
@@ -353,7 +381,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 	collector := NewTestCollector()
 	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
 	streamStdout := !framework.IsMinitest(r.framework.Name)
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
+	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
 
@@ -365,7 +393,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 	}
 	success := exitCode == 0
 	state := types.StateSuccess
-	output := result.Output + stderrOutput
+	output := result.Output
 
 	if err != nil && result.ExampleCount == 0 {
 		state = types.StateError
@@ -453,14 +481,8 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 }
 
 func errorResult(err error, start time.Time) WorkerResult {
-	errorOutput := ""
-	if err != nil {
-		errorOutput = fmt.Sprintf("Error: %v\n", err)
-	}
-
 	return WorkerResult{
 		State:    types.StateError,
-		Output:   errorOutput,
 		Error:    err,
 		Duration: time.Since(start),
 	}

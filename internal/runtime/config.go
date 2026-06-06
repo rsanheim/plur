@@ -75,6 +75,14 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 	}
 
 	for _, w := range rc.Watches {
+		if err := watch.ValidateGlobPattern(w.Source); err != nil {
+			return fmt.Errorf("configuration error in %v: watch %q has invalid source pattern %q: %w", rc.Sources, w.Name, w.Source, err)
+		}
+		for _, ignore := range w.Ignore {
+			if err := watch.ValidateGlobPattern(ignore); err != nil {
+				return fmt.Errorf("configuration error in %v: watch %q has invalid ignore pattern %q: %w", rc.Sources, w.Name, ignore, err)
+			}
+		}
 		for _, jobName := range w.Jobs {
 			if _, ok := rc.Jobs[jobName]; !ok {
 				return fmt.Errorf("configuration error in %v: watch %q references undefined job %q", rc.Sources, w.Name, jobName)

@@ -1,9 +1,12 @@
 // Package kongtoml provides a Kong configuration resolver for TOML files.
 //
 // It parses TOML configuration files and resolves their values as Kong CLI flags.
+// Validation is intentionally narrower than the full CLI model: only documented
+// persistent config keys are accepted from TOML.
 package kongtoml
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"reflect"
@@ -12,6 +15,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/alecthomas/kong"
+	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/watch"
 )
 
 // Loader is a kong.ConfigurationLoader that reads TOML configuration.
@@ -78,15 +83,68 @@ func (r *Resolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Fla
 	return value, nil
 }
 
-func (r *Resolver) Validate(app *kong.Application) error {
-	unknown := unknownLeafKeys(r.meta, app)
-	if len(unknown) > 0 {
-		slog.Debug("unknown config keys",
+func (r *Resolver) Validate(_ *kong.Application) error {
+	unknown := unknownLeafKeys(r.meta)
+	if len(unknown) == 0 {
+		cliOnly := cliOnlyConfigKeys(r.meta)
+		if len(cliOnly) == 0 {
+			return nil
+		}
+
+		slog.Debug("cli-only config keys",
 			"file", configName(r.filename),
-			"keys", unknown,
+			"keys", cliOnly,
 		)
+
+		label := "CLI-only config key"
+		if len(cliOnly) > 1 {
+			label = "CLI-only config keys"
+		}
+		return fmt.Errorf("Configuration error: %s contains %s: %s; pass these as command-line flags instead", configName(r.filename), label, strings.Join(cliOnly, ", "))
 	}
-	return nil
+
+	slog.Debug("unknown config keys",
+		"file", configName(r.filename),
+		"keys", unknown,
+	)
+
+	label := "unknown config key"
+	if len(unknown) > 1 {
+		label = "unknown config keys"
+	}
+	return fmt.Errorf("Configuration error: %s contains %s: %s", configName(r.filename), label, strings.Join(unknown, ", "))
+}
+
+var persistentFlatConfigKeys = []string{
+	"workers",
+	"color",
+	"verbose",
+	"use",
+}
+
+var cliOnlyFlatConfigKeys = []string{
+	"dry-run",
+	"dry-run-format",
+}
+
+func cliOnlyConfigKeys(md toml.MetaData) []string {
+	cliOnly := make(map[string]struct{}, len(cliOnlyFlatConfigKeys))
+	for _, key := range cliOnlyFlatConfigKeys {
+		cliOnly[key] = struct{}{}
+	}
+	set := make(map[string]struct{})
+	for _, key := range md.Keys() {
+		keyStr := key.String()
+		if _, ok := cliOnly[keyStr]; ok {
+			set[keyStr] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(set))
+	for key := range set {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func configName(filename string) string {
@@ -112,8 +170,8 @@ func topLevelKeys(md toml.MetaData) []string {
 	return out
 }
 
-func unknownLeafKeys(md toml.MetaData, app *kong.Application) []string {
-	allowed := allowedConfigKeys(app)
+func unknownLeafKeys(md toml.MetaData) []string {
+	allowed := recognizedConfigKeys()
 	set := make(map[string]struct{})
 	for _, key := range md.Keys() {
 		keyStr := key.String()
@@ -177,61 +235,32 @@ func (s nestedKeySpec) matches(parts []string) bool {
 	return ok
 }
 
-func allowedConfigKeys(app *kong.Application) configKeySet {
+func recognizedConfigKeys() configKeySet {
+	allowed := persistentConfigKeys()
+	for _, key := range cliOnlyFlatConfigKeys {
+		allowed.flat[key] = struct{}{}
+	}
+	return allowed
+}
+
+func persistentConfigKeys() configKeySet {
 	allowed := configKeySet{
 		flat:   make(map[string]struct{}),
 		nested: make(map[string]nestedKeySpec),
 	}
-	if app == nil || app.Node == nil {
-		return allowed
+
+	for _, key := range persistentFlatConfigKeys {
+		allowed.flat[key] = struct{}{}
 	}
 
-	var walk func(node *kong.Node)
-	walk = func(node *kong.Node) {
-		path := strings.ReplaceAll(node.Path(), " ", "-")
-		for _, flag := range node.Flags {
-			allowed.flat[flag.Name] = struct{}{}
-			if path != "" {
-				allowed.flat[path+"-"+flag.Name] = struct{}{}
-			}
-			if spec, ok := nestedConfigSpecForFlag(flag); ok {
-				allowed.nested[flag.Name] = spec
-			}
-		}
-		for _, child := range node.Children {
-			walk(child)
-		}
+	allowed.nested["job"] = nestedKeySpec{
+		dynamicName: true,
+		allowed:     structFieldKeys(reflect.TypeOf(job.Job{})),
 	}
-
-	walk(app.Node)
+	allowed.nested["watch"] = nestedKeySpec{
+		allowed: structFieldKeys(reflect.TypeOf(watch.WatchMapping{})),
+	}
 	return allowed
-}
-
-func nestedConfigSpecForFlag(flag *kong.Flag) (nestedKeySpec, bool) {
-	if flag == nil || flag.Target.Kind() == reflect.Invalid {
-		return nestedKeySpec{}, false
-	}
-
-	typ := flag.Target.Type()
-	switch typ.Kind() {
-	case reflect.Map:
-		if typ.Key().Kind() != reflect.String {
-			return nestedKeySpec{}, false
-		}
-		allowed := structFieldKeys(typ.Elem())
-		if len(allowed) == 0 {
-			return nestedKeySpec{}, false
-		}
-		return nestedKeySpec{dynamicName: true, allowed: allowed}, true
-	case reflect.Slice:
-		allowed := structFieldKeys(typ.Elem())
-		if len(allowed) == 0 {
-			return nestedKeySpec{}, false
-		}
-		return nestedKeySpec{allowed: allowed}, true
-	default:
-		return nestedKeySpec{}, false
-	}
 }
 
 func structFieldKeys(typ reflect.Type) map[string]struct{} {

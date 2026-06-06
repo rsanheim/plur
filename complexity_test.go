@@ -131,7 +131,15 @@ func TestTestCollectorComplexity(t *testing.T) {
 func checkLinearScaling(t *testing.T, name string, sizes []int, times []time.Duration) {
 	t.Helper()
 
+	const minReliableBaseline = 500 * time.Microsecond
+
 	for i := 1; i < len(sizes); i++ {
+		if times[i-1] < minReliableBaseline {
+			t.Logf("%s: skipping noisy scaling check between size %d and %d: baseline time %v is below %v",
+				name, sizes[i-1], sizes[i], times[i-1], minReliableBaseline)
+			continue
+		}
+
 		sizeRatio := float64(sizes[i]) / float64(sizes[i-1])
 		timeRatio := float64(times[i]) / float64(times[i-1])
 

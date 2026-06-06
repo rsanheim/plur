@@ -188,7 +188,7 @@ Manual verification checklist for plur configuration behavior. Each case specifi
 * [x] **User-defined watch mapping loaded**
   * *Input:* `[[watch]]` with `source = "lib/**/*.rb"`, `targets = ["spec/{{match}}_spec.rb"]`, `jobs = ["rspec"]`
   * *Expected:* `plur watch find lib/models/user.rb` shows the user mapping and resolved target
-  * *Actual:* Shows `found rules name=lib-to-spec` and `found files files=spec/models/user_spec.rb`
+  * *Actual:* Shows `[watch] Matched rule lib-to-spec ...` and `[watch] Would run job rspec with spec/models/user_spec.rb`
 
 * [x] **Multiple watch mappings** — all loaded
   * *Input:* Two `[[watch]]` entries (lib-watch and app-watch)
@@ -198,12 +198,12 @@ Manual verification checklist for plur configuration behavior. Each case specifi
 * [x] **Watch with name field** — name appears in output
   * *Input:* `[[watch]]` with `name = "lib-watch"`
   * *Expected:* Output includes the name
-  * *Actual:* `found rules name=lib-watch`
+  * *Actual:* `[watch] Matched rule lib-watch ...`
 
 * [x] **Watch with ignore patterns** — ignored files don't trigger
   * *Input:* `[[watch]]` with `source = "**/*.rb"`, `ignore = ["vendor/**"]`
   * *Expected:* `plur watch find vendor/bar.rb` shows 0 rules
-  * *Actual:* `found rules count=0` (exit 2)
+  * *Actual:* `[watch] No matching rule for vendor/bar.rb` (exit 2)
 
 * [x] **Watch with reload flag** — parses without error
   * *Input:* `[[watch]]` with `reload = true`
@@ -215,7 +215,7 @@ Manual verification checklist for plur configuration behavior. Each case specifi
 * [x] **No user watches, rspec detected** — builtin rspec watches used
   * *Input:* `.plur.toml` with `use = "rspec"` and `[job.rspec]` but no `[[watch]]`
   * *Expected:* `plur watch find lib/foo.rb` maps to `spec/foo_spec.rb` via builtin `lib-to-spec`
-  * *Actual:* Shows `found rules name=lib-to-spec` and `found files files=spec/foo_spec.rb`
+  * *Actual:* Shows `[watch] Matched rule lib-to-spec ...` and `[watch] Would run job rspec with spec/foo_spec.rb`
 
 * [!] **No user watches, no detectable framework** — errors instead of gracefully showing no watches
   * *Input:* Empty project, no spec/test dirs, no config
@@ -244,12 +244,12 @@ Manual verification checklist for plur configuration behavior. Each case specifi
 * [x] **Watch with empty jobs array** — valid but triggers nothing
   * *Input:* `[[watch]]` with `jobs = []`
   * *Expected:* `plur watch find` shows mapping with `jobs=[]` but exit 2 (nothing to run)
-  * *Actual:* `found rules name=empty-jobs source=lib/**/*.rb jobs=[] target="[source file]"` — exit 2
+  * *Actual:* `[watch] Matched rule empty-jobs (source: lib/**/*.rb, jobs: none, target: [source file])` — exit 2
 
 * [x] **Watch without targets** — source file itself is the target
   * *Input:* `[[watch]]` with `source = "spec/**/*_spec.rb"`, `jobs = ["rspec"]`, no `targets`
   * *Expected:* `plur watch find spec/foo_spec.rb` shows the source file as target
-  * *Actual:* `found rules name=self-target ... target="[source file]"`, `found files files=spec/foo_spec.rb`
+  * *Actual:* `[watch] Matched rule self-target ... target: [source file]`, `[watch] Would run job rspec with spec/foo_spec.rb`
 
 ---
 

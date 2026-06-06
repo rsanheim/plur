@@ -3,8 +3,9 @@ nav:
   - getting-started.md
   - usage.md
   - configuration.md
+  - output-contracts.md
   - overview
-  - architecture
   - features
+  - benchmarks
+  - architecture
   - development
-  - ...
