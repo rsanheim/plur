@@ -138,16 +138,16 @@ type PlurCLI struct {
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
-	ChangeDir string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Color     bool        `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
-	Debug     bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
-	DryRun    bool        `help:"Print what would be executed without running" default:"false"`
-	FirstIs1  bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
-	JSON      string      `help:"Save detailed test results as JSON to the specified file" default:""`
-	Use       string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
-	Verbose   bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
-	Version   bool        `help:"Show version information"`
-	Workers   WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
+	ChangeDir    string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
+	Color        bool        `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
+	Debug        bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
+	DryRun       bool        `help:"Print what would be executed without running" default:"false"`
+	DryRunFormat string      `help:"Dry-run output format: text or json" default:"text" name:"dry-run-format"`
+	FirstIs1     bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
+	Use          string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Verbose      bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
+	Version      bool        `help:"Show version information"`
+	Workers      WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
 
 	// Job and watch configuration
 	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`

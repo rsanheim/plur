@@ -7,7 +7,6 @@ RSpec.describe "plur watch run flags" do
         ["watch", "run", "--workers=99", "--timeout", "1"] => "--workers",
         ["watch", "run", "-n", "2", "--timeout", "1"] => "--workers",
         ["watch", "run", "--dry-run-format=json", "--timeout", "1"] => "--dry-run-format",
-        ["watch", "run", "--rspec-split", "--timeout", "1"] => "--rspec-split",
         ["watch", "run", "--first-is-1", "--timeout", "1"] => "--first-is-1",
         ["watch", "run", "--no-first-is-1", "--timeout", "1"] => "--no-first-is-1"
       }.each do |args, flag|

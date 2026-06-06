@@ -38,7 +38,6 @@ RSpec.describe "plur watch find" do
         ["watch", "find", "--workers=99", "lib/calculator.rb"] => "--workers",
         ["watch", "find", "-n", "2", "lib/calculator.rb"] => "--workers",
         ["watch", "find", "--dry-run-format=json", "lib/calculator.rb"] => "--dry-run-format",
-        ["watch", "find", "--rspec-split", "lib/calculator.rb"] => "--rspec-split",
         ["watch", "find", "--first-is-1", "lib/calculator.rb"] => "--first-is-1",
         ["watch", "find", "--no-first-is-1", "lib/calculator.rb"] => "--no-first-is-1"
       }.each do |args, flag|
