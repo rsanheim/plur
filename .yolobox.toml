@@ -1,0 +1,2 @@
+mounts = ["../../oss:/Users/rsanheim/src/oss:rw"]
+packages = ["sqlite3"]
