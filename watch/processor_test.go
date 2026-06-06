@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEventProcessorBasicMapping(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -76,7 +76,7 @@ func TestEventProcessorBasicMapping(t *testing.T) {
 }
 
 func TestEventProcessorNoTargets(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -103,7 +103,7 @@ func TestEventProcessorNoTargets(t *testing.T) {
 }
 
 func TestEventProcessorMultipleJobs(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -135,7 +135,7 @@ func TestEventProcessorMultipleJobs(t *testing.T) {
 }
 
 func TestEventProcessorMultipleTargets(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -164,7 +164,7 @@ func TestEventProcessorMultipleTargets(t *testing.T) {
 }
 
 func TestEventProcessorIgnorePatterns(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -220,7 +220,7 @@ func TestEventProcessorIgnorePatterns(t *testing.T) {
 }
 
 func TestEventProcessorMultipleWatches(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -284,7 +284,7 @@ func TestEventProcessorMultipleWatches(t *testing.T) {
 }
 
 func TestEventProcessorMergedWatches(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -348,7 +348,7 @@ func TestEventProcessorMergedWatches(t *testing.T) {
 }
 
 func TestEventProcessorDeduplication(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -374,7 +374,7 @@ func TestEventProcessorDeduplication(t *testing.T) {
 }
 
 func TestEventProcessorUndefinedJob(t *testing.T) {
-	jobs := map[string]job.Job{
+	jobs := map[string]framework.Job{
 		"rspec": {
 			Name: "rspec",
 			Cmd:  []string{"bundle", "exec", "rspec"},
@@ -410,7 +410,7 @@ func TestEventProcessorComplexity(t *testing.T) {
 
 	for idx, size := range sizes {
 		watches := generateWatchMappings(size)
-		jobs := map[string]job.Job{"rspec": {Name: "rspec"}}
+		jobs := map[string]framework.Job{"rspec": {Name: "rspec"}}
 		processor := NewEventProcessor(jobs, watches)
 
 		// Use a path that won't match any rules to test full iteration

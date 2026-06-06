@@ -4,12 +4,11 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/job"
 )
 
 // BuildRunArgs builds command arguments for run mode (plur spec).
 // extraArgs are inserted after framework defaults and before target files.
-func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
+func BuildRunArgs(j Job, files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
 	fw, err := Get(j.FrameworkName)
 	if err != nil {
 		return nil, err

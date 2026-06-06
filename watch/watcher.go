@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 )
 
@@ -227,14 +227,14 @@ func RunCommand(args []string) {
 }
 
 // ExecuteJob runs a job with the given target files.
-func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
+func ExecuteJob(j framework.Job, targetFiles []string, cwd string) error {
 	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
 
 	if len(targetFiles) == 0 {
 		return nil
 	}
 
-	cmd := job.BuildJobCmd(j, targetFiles)
+	cmd := framework.BuildJobCmd(j, targetFiles)
 	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
 
 	execCmd := exec.Command(cmd[0], cmd[1:]...)

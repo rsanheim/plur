@@ -1,4 +1,4 @@
-package job
+package framework
 
 // Job represents a command to run with optional environment variables
 // Used by both parallel execution (plur spec) and watch mode (plur watch)

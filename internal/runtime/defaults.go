@@ -10,9 +10,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/fsutil"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -21,7 +20,7 @@ var defaultsFile []byte
 
 type defaultsConfig struct {
 	Defaults struct {
-		Jobs    map[string]job.Job   `toml:"job"`
+		Jobs    map[string]framework.Job   `toml:"job"`
 		Watches []watch.WatchMapping `toml:"watch"`
 	} `toml:"defaults"`
 }
@@ -45,7 +44,7 @@ type InheritedFields struct {
 
 // autodetectJobName runs autodetection against the given resolved jobs and returns the
 // name of the best-matching job based on file system presence.
-func autodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
+func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 	priority := []string{"rspec", "minitest", "go-test"}
 	for _, name := range priority {
 		j, exists := resolvedJobs[name]
@@ -71,8 +70,8 @@ func autodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
 
 // buildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
 // It applies framework and target pattern defaulting and normalizes frameworks.
-func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[string]InheritedFields, error) {
-	resolved := make(map[string]job.Job)
+func buildResolvedJobs(userJobs map[string]framework.Job) (map[string]framework.Job, map[string]InheritedFields, error) {
+	resolved := make(map[string]framework.Job)
 	inherited := make(map[string]InheritedFields)
 
 	names := make(map[string]struct{})
@@ -85,13 +84,13 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 
 	for name := range names {
 		builtin, hasBuiltin := builtinDefaults.Defaults.Jobs[name]
-		user, hasUser := job.Job{}, false
+		user, hasUser := framework.Job{}, false
 		if userJobs != nil {
 			user, hasUser = userJobs[name]
 		}
 
 		inherit := InheritedFields{}
-		resolvedJob := job.Job{}
+		resolvedJob := framework.Job{}
 
 		// Start with builtin if present
 		if hasBuiltin {

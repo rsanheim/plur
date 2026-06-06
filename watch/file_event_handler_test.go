@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,14 +20,14 @@ type executorCall struct {
 	targets []string
 }
 
-func (m *mockExecutor) execute(j job.Job, targets []string, cwd string) error {
+func (m *mockExecutor) execute(j framework.Job, targets []string, cwd string) error {
 	m.calls = append(m.calls, executorCall{jobName: j.Name, targets: targets})
 	return nil
 }
 
 func TestFileEventHandler_HandleBatch_EmptyWatches(t *testing.T) {
 	handler := &FileEventHandler{
-		Jobs:    map[string]job.Job{},
+		Jobs:    map[string]framework.Job{},
 		Watches: []WatchMapping{},
 		CWD:     "/tmp",
 	}
@@ -54,7 +54,7 @@ func TestFileEventHandler_HandleBatch_SingleFile(t *testing.T) {
 
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
 		},
 		Watches: []WatchMapping{
@@ -95,7 +95,7 @@ func TestFileEventHandler_HandleBatch_MultipleFiles(t *testing.T) {
 
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
 		},
 		Watches: []WatchMapping{
@@ -128,7 +128,7 @@ func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
 		},
 		Watches: []WatchMapping{
@@ -161,7 +161,7 @@ func TestFileEventHandler_HandleBatch_ShouldReload(t *testing.T) {
 
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
-		Jobs: map[string]job.Job{},
+		Jobs: map[string]framework.Job{},
 		Watches: []WatchMapping{
 			{
 				Name:   "config-reload",
@@ -193,7 +193,7 @@ func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
 
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec":   {Name: "rspec", Cmd: []string{"rspec"}},
 			"rubocop": {Name: "rubocop", Cmd: []string{"rubocop"}},
 		},
@@ -225,7 +225,7 @@ func TestFileEventHandler_HandleBatch_NoMatchingTargets(t *testing.T) {
 
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
 		},
 		Watches: []WatchMapping{

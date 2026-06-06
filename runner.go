@@ -10,9 +10,8 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/testruntime"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -29,13 +28,13 @@ const (
 type Runner struct {
 	config    *config.GlobalConfig
 	files     []string
-	job       job.Job
+	job       framework.Job
 	framework framework.Framework
 	tracker   *testruntime.RuntimeTracker
 	extraArgs []string
 }
 
-func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []string) (*Runner, error) {
+func NewRunner(cfg *config.GlobalConfig, files []string, j framework.Job, extraArgs []string) (*Runner, error) {
 	fw, err := framework.Get(j.FrameworkName)
 	if err != nil {
 		return nil, err

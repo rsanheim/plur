@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/framework/rspec"
+	"github.com/rsanheim/plur/internal/framework/rspec"
 	"github.com/rsanheim/plur/types"
 )
 

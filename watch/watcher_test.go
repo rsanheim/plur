@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -172,7 +172,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 	outputFile := filepath.Join(tmpDir, "args.txt")
 
 	// Job that writes all arguments to a file - verifies batching behavior
-	j := job.Job{
+	j := framework.Job{
 		Name: "test-batch",
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--"},
 	}
@@ -194,7 +194,7 @@ func TestExecuteJob_SingleTarget(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "args.txt")
 
-	j := job.Job{
+	j := framework.Job{
 		Name: "test-single",
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--"},
 	}
@@ -211,7 +211,7 @@ func TestExecuteJob_NoTargets(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	outputFile := filepath.Join(tmpDir, "args.txt")
-	j := job.Job{
+	j := framework.Job{
 		Name: "test-empty",
 		Cmd:  []string{"sh", "-c", "echo ran > args.txt", "--"},
 	}
@@ -227,7 +227,7 @@ func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "args.txt")
 
-	j := job.Job{
+	j := framework.Job{
 		Name: "test-no-placeholder",
 		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--"},
 	}

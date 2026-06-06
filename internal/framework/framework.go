@@ -5,10 +5,9 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/framework/minitest"
-	"github.com/rsanheim/plur/framework/passthrough"
-	"github.com/rsanheim/plur/framework/rspec"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework/minitest"
+	"github.com/rsanheim/plur/internal/framework/passthrough"
+	"github.com/rsanheim/plur/internal/framework/rspec"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -82,7 +81,7 @@ func IsMinitest(name string) bool {
 // TargetPatternsForJob returns the glob patterns used to discover test files for a job.
 // If the job has an explicit TargetPattern, that is returned. Otherwise, the framework's
 // DetectPatterns are used.
-func TargetPatternsForJob(j job.Job) ([]string, error) {
+func TargetPatternsForJob(j Job) ([]string, error) {
 	fw, err := Get(j.FrameworkName)
 	if err != nil {
 		// If we have an explicit pattern, we don't strictly need a known framework
@@ -96,7 +95,7 @@ func TargetPatternsForJob(j job.Job) ([]string, error) {
 
 // TargetPatternsForJobWithFramework is like TargetPatternsForJob but accepts a pre-resolved Framework,
 // avoiding a redundant Get call when the caller already has one.
-func TargetPatternsForJobWithFramework(j job.Job, fw Framework) ([]string, error) {
+func TargetPatternsForJobWithFramework(j Job, fw Framework) ([]string, error) {
 	if j.TargetPattern != "" {
 		return []string{j.TargetPattern}, nil
 	}

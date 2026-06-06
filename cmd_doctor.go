@@ -11,7 +11,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/testruntime"

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +13,7 @@ import (
 func TestBuildRuntimeConfig_MergesBuiltinAndUserWatches(t *testing.T) {
 	cli := &CLIInput{
 		Use: "rspec",
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Cmd: []string{"custom-rspec"}, FrameworkName: "rspec"},
 		},
 		WatchMappings: []watch.WatchMapping{{Name: "custom-watch", Source: "config/**/*.yml", Jobs: []string{"rspec"}}},
@@ -59,7 +59,7 @@ func TestBuildRuntimeConfigMarksBuiltinDefaultsAsInherited(t *testing.T) {
 func TestBuildRuntimeConfig_UserWatchOverridesBuiltinByName(t *testing.T) {
 	cli := &CLIInput{
 		Use: "rspec",
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
 		},
 		WatchMappings: []watch.WatchMapping{
@@ -92,7 +92,7 @@ func TestBuildRuntimeConfig_UserWatchOverridesBuiltinByName(t *testing.T) {
 func TestBuildRuntimeConfig_PreservesUserExcludePatterns(t *testing.T) {
 	cli := &CLIInput{
 		Use: "rspec",
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {
 				Cmd:             []string{"bin/rspec"},
 				FrameworkName:   "rspec",
@@ -111,7 +111,7 @@ func TestBuildRuntimeConfig_PreservesUserExcludePatterns(t *testing.T) {
 func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
 	rc := &RuntimeConfig{
 		Use: "rspec",
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
 		},
 		Watches: []watch.WatchMapping{
@@ -128,7 +128,7 @@ func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
 
 func TestValidateRuntimeConfigRejectsJobWithoutCommand(t *testing.T) {
 	rc := &RuntimeConfig{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"custom": {Name: "custom", FrameworkName: "passthrough"},
 		},
 		Sources: []string{".plur.toml"},
@@ -157,7 +157,7 @@ func TestValidateRuntimeConfigRejectsTemplateTokensInJobCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rc := &RuntimeConfig{
-				Jobs: map[string]job.Job{
+				Jobs: map[string]framework.Job{
 					"custom": {Name: "custom", Cmd: tt.cmd, FrameworkName: "rspec"},
 				},
 				Sources: []string{".plur.toml"},
@@ -173,7 +173,7 @@ func TestValidateRuntimeConfigRejectsTemplateTokensInJobCommand(t *testing.T) {
 func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {
 	rc := &RuntimeConfig{
 		Use: "custom",
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"custom": {Name: "custom", Cmd: []string{"custom-runner"}, FrameworkName: "passthrough"},
 		},
 		Inherited: map[string]InheritedFields{},
@@ -193,7 +193,7 @@ func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 	require.NoError(t, os.WriteFile("spec/example_spec.rb", []byte(""), 0o644))
 
 	rc := &RuntimeConfig{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec", TargetPattern: "spec/**/*_spec.rb"},
 		},
 		Inherited: map[string]InheritedFields{},
@@ -213,7 +213,7 @@ func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
 	require.NoError(t, os.WriteFile("spec/example_spec.rb", []byte(""), 0o644))
 
 	rc := &RuntimeConfig{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec", TargetPattern: "spec/**/*_spec.rb"},
 		},
 		Inherited: map[string]InheritedFields{
@@ -246,7 +246,7 @@ func TestBuildRuntimeConfigIncludesRailsAndRakeJobs(t *testing.T) {
 
 func TestBuildRuntimeConfigRailsJobOverrides(t *testing.T) {
 	rc, err := BuildRuntimeConfig(&CLIInput{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rails": {
 				Cmd: []string{"bundle", "exec", "rails"},
 				Env: []string{"CUSTOM_ENV=value"},
@@ -265,7 +265,7 @@ func TestBuildRuntimeConfigRailsJobOverrides(t *testing.T) {
 
 func TestBuildRuntimeConfigRailsJobEnvOnlyOverrideInheritsCommand(t *testing.T) {
 	rc, err := BuildRuntimeConfig(&CLIInput{
-		Jobs: map[string]job.Job{
+		Jobs: map[string]framework.Job{
 			"rails": {Env: []string{"CUSTOM_ENV=value"}},
 		},
 	})

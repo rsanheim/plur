@@ -8,21 +8,21 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
 
 type CLIInput struct {
 	Use           string
-	Jobs          map[string]job.Job
+	Jobs          map[string]framework.Job
 	WatchMappings []watch.WatchMapping
 	ConfigFiles   []string
 }
 
 type RuntimeConfig struct {
 	Use       string
-	Jobs      map[string]job.Job
+	Jobs      map[string]framework.Job
 	Watches   []watch.WatchMapping
 	Inherited map[string]InheritedFields
 	Sources   []string
@@ -108,7 +108,7 @@ const (
 
 type SelectedJob struct {
 	Name      string
-	Job       job.Job
+	Job       framework.Job
 	Reason    ResolveReason
 	Inherited InheritedFields
 }

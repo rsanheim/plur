@@ -9,8 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rsanheim/plur/framework"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -70,7 +69,7 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob job.Job) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob framework.Job) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
@@ -146,7 +145,7 @@ func renumberSummaryOutput(output string) string {
 }
 
 // PrintResults displays a test summary
-func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
+func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Job) {
 	fw, err := framework.Get(currentJob.FrameworkName)
 	if err != nil {
 		// Fallback to basic output

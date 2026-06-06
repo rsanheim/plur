@@ -1,16 +1,16 @@
 package watch
 
 import (
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 )
 
 // JobExecutor is a function that executes a job with target files
-type JobExecutor func(j job.Job, targets []string, cwd string) error
+type JobExecutor func(j framework.Job, targets []string, cwd string) error
 
 // FileEventHandler processes file change events and executes jobs
 type FileEventHandler struct {
-	Jobs    map[string]job.Job
+	Jobs    map[string]framework.Job
 	Watches []WatchMapping
 	CWD     string
 

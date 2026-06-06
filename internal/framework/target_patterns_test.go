@@ -3,13 +3,12 @@ package framework
 import (
 	"testing"
 
-	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTargetPatternsForJob_ExplicitTargetPattern(t *testing.T) {
-	j := job.Job{
+	j := Job{
 		Name:          "custom",
 		FrameworkName: "rspec",
 		TargetPattern: "app/spec/**/*_spec.rb",
@@ -21,7 +20,7 @@ func TestTargetPatternsForJob_ExplicitTargetPattern(t *testing.T) {
 }
 
 func TestTargetPatternsForJob_RSpecFramework(t *testing.T) {
-	j := job.Job{
+	j := Job{
 		Name:          "rspec",
 		FrameworkName: "rspec",
 	}
@@ -32,7 +31,7 @@ func TestTargetPatternsForJob_RSpecFramework(t *testing.T) {
 }
 
 func TestTargetPatternsForJob_MinitestFramework(t *testing.T) {
-	j := job.Job{
+	j := Job{
 		Name:          "minitest",
 		FrameworkName: "minitest",
 	}
@@ -43,7 +42,7 @@ func TestTargetPatternsForJob_MinitestFramework(t *testing.T) {
 }
 
 func TestTargetPatternsForJob_PassthroughNoDetectPatterns(t *testing.T) {
-	j := job.Job{
+	j := Job{
 		Name:          "lint",
 		FrameworkName: "passthrough",
 	}
@@ -55,7 +54,7 @@ func TestTargetPatternsForJob_PassthroughNoDetectPatterns(t *testing.T) {
 }
 
 func TestTargetPatternsForJob_UnknownFramework(t *testing.T) {
-	j := job.Job{
+	j := Job{
 		Name:          "bad",
 		FrameworkName: "nope",
 	}
@@ -66,7 +65,7 @@ func TestTargetPatternsForJob_UnknownFramework(t *testing.T) {
 }
 
 func TestTargetPatternsForJob_PassthroughWithExplicitPattern(t *testing.T) {
-	j := job.Job{
+	j := Job{
 		Name:          "lint",
 		FrameworkName: "passthrough",
 		TargetPattern: "app/**/*.rb",
@@ -92,7 +91,7 @@ func TestIsKnown(t *testing.T) {
 }
 
 func TestTargetPatternsForJobWithFramework_MultipleDetectPatterns(t *testing.T) {
-	j := job.Job{Name: "test-job"}
+	j := Job{Name: "test-job"}
 	fw := Framework{
 		Name:           "custom",
 		DetectPatterns: []string{"**/*_test.go", "**/*_spec.go"},
@@ -104,7 +103,7 @@ func TestTargetPatternsForJobWithFramework_MultipleDetectPatterns(t *testing.T) 
 }
 
 func TestTargetPatternsForJobWithFramework_ExplicitTargetPatternTakesPrecedence(t *testing.T) {
-	j := job.Job{
+	j := Job{
 		Name:          "test-job",
 		TargetPattern: "my/**/*.rb",
 	}
@@ -119,7 +118,7 @@ func TestTargetPatternsForJobWithFramework_ExplicitTargetPatternTakesPrecedence(
 }
 
 func TestTargetPatternsForJobWithFramework_EmptyDetectPatternsReturnsError(t *testing.T) {
-	j := job.Job{
+	j := Job{
 		Name: "lint",
 	}
 	fw := Framework{

@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/fileset"
 	"github.com/rsanheim/plur/internal/runtime"

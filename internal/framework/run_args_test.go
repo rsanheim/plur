@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +17,7 @@ func TestBuildRunArgsRSpecDefaults(t *testing.T) {
 		ConfigPaths: config.InitConfigPaths(),
 	}
 
-	j := job.Job{
+	j := Job{
 		FrameworkName: "rspec",
 		Cmd:           []string{"bundle", "exec", "rspec", "--fail-fast"},
 	}
@@ -38,7 +37,7 @@ func TestBuildRunArgsRSpecDefaults(t *testing.T) {
 
 func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
 	cfg := &config.GlobalConfig{}
-	j := job.Job{
+	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
@@ -55,7 +54,7 @@ func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
 
 func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
 	cfg := &config.GlobalConfig{}
-	j := job.Job{
+	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
@@ -69,7 +68,7 @@ func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
 
 func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 	cfg := &config.GlobalConfig{}
-	j := job.Job{
+	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
@@ -83,7 +82,7 @@ func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 
 func TestBuildRunArgsMinitestRubyRequireWithExtraArgs(t *testing.T) {
 	cfg := &config.GlobalConfig{}
-	j := job.Job{
+	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
@@ -107,7 +106,7 @@ func TestBuildRunArgsRSpecWithExtraArgs(t *testing.T) {
 		ConfigPaths: config.InitConfigPaths(),
 	}
 
-	j := job.Job{
+	j := Job{
 		FrameworkName: "rspec",
 		Cmd:           []string{"bundle", "exec", "rspec"},
 	}

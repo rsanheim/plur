@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/framework"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -260,7 +259,7 @@ func TestRunner_DryRunReturnsNil(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	// Use a custom job to avoid needing ConfigPaths for RSpec formatter
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo", "test"},
 		FrameworkName: "passthrough",
@@ -284,7 +283,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 			FirstIs1:    true,
 			RuntimeDir:  t.TempDir(),
 		}
-		testJob := job.Job{
+		testJob := framework.Job{
 			Name:          "custom",
 			Cmd:           []string{"echo"},
 			FrameworkName: "passthrough",
@@ -309,7 +308,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 			FirstIs1:    true,
 			RuntimeDir:  t.TempDir(),
 		}
-		testJob := job.Job{
+		testJob := framework.Job{
 			Name:          "custom",
 			Cmd:           []string{"echo"},
 			FrameworkName: "passthrough",
@@ -332,7 +331,7 @@ func TestRunner_EmptyFiles(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo"},
 		FrameworkName: "passthrough",
@@ -356,7 +355,7 @@ func TestRunner_TrackerInitialized(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{Name: "custom", FrameworkName: "passthrough"}
+	testJob := framework.Job{Name: "custom", FrameworkName: "passthrough"}
 
 	runner, err := NewRunner(cfg, []string{"a_test.rb"}, testJob, nil)
 	require.NoError(t, err)
@@ -401,7 +400,7 @@ func TestRunner_SingleFileStillSetsTestEnvNumber(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo"},
 		FrameworkName: "passthrough",
@@ -426,7 +425,7 @@ func TestRunner_SerialModeNoTestEnvNumber(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo"},
 		FrameworkName: "passthrough",
@@ -449,7 +448,7 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo"},
 		FrameworkName: "passthrough",
@@ -471,7 +470,7 @@ func TestRunnerBuildArgsPerWorkerCommands(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "rails",
 		Cmd:           []string{"bin/rails"},
 		FrameworkName: "passthrough",
@@ -501,7 +500,7 @@ func TestRunnerBuildArgsPerWorkerCommandsSerialMode(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "rails",
 		Cmd:           []string{"bin/rails"},
 		FrameworkName: "passthrough",
@@ -527,7 +526,7 @@ func TestRunnerRunArgsPerWorkerDryRunDoesNotExecute(t *testing.T) {
 		DryRun:      true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "rails",
 		Cmd:           []string{"definitely-not-a-real-command"},
 		FrameworkName: "passthrough",
@@ -547,7 +546,7 @@ func TestRunnerRunArgsPerWorkerReturnsErrorWhenWorkerFails(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{
+	testJob := framework.Job{
 		Name:          "rails",
 		Cmd:           []string{"sh", "-c", "echo broken >&2; exit 7"},
 		FrameworkName: "passthrough",

@@ -8,8 +8,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/framework"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 )
 
 type DiscoverResult struct {
@@ -22,7 +21,7 @@ type DiscoverResult struct {
 // each input is classified as a glob, an existing file (passthrough), or a
 // directory (joined with framework target tails). Exclude patterns are applied
 // after expansion using doublestar semantics.
-func Discover(j job.Job, inputs, excludes []string) (DiscoverResult, error) {
+func Discover(j framework.Job, inputs, excludes []string) (DiscoverResult, error) {
 	patterns, err := classifyInputs(j, inputs)
 	if err != nil {
 		return DiscoverResult{}, err
@@ -130,7 +129,7 @@ func matchesAnyTargetPattern(path string, targetPatterns []string) (bool, error)
 	return false, nil
 }
 
-func classifyInputs(j job.Job, inputs []string) ([]string, error) {
+func classifyInputs(j framework.Job, inputs []string) ([]string, error) {
 	if len(inputs) == 0 {
 		return framework.TargetPatternsForJob(j)
 	}

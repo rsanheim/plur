@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 )
 
@@ -15,7 +15,7 @@ type FindResult struct {
 	MatchedRules    []WatchMapping      // Watch rules that matched the file
 	ExistingTargets map[string][]string // jobName -> target files that exist
 	MissingTargets  map[string][]string // jobName -> target files that don't exist
-	Jobs            map[string]job.Job  // All jobs referenced
+	Jobs            map[string]framework.Job  // All jobs referenced
 }
 
 // HasExistingTargets returns true if any targets exist
@@ -41,7 +41,7 @@ func (r *FindResult) HasMissingTargets() bool {
 // FindTargetsForFile determines what would be executed for a given file change.
 // The cwd parameter is used to resolve relative target paths for existence checks.
 // It returns all matched rules and separates existing vs missing target files.
-func FindTargetsForFile(filePath string, jobs map[string]job.Job, watches []WatchMapping, cwd string) (*FindResult, error) {
+func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches []WatchMapping, cwd string) (*FindResult, error) {
 	processor := NewEventProcessor(jobs, watches)
 
 	// Get candidate targets from event processor

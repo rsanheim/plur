@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 )
 
@@ -13,12 +13,12 @@ import (
 // It does NOT watch files (that's WatcherManager's job)
 // It only determines: "given a file changed, what jobs should run and with what targets?"
 type EventProcessor struct {
-	jobs    map[string]job.Job
+	jobs    map[string]framework.Job
 	watches []WatchMapping
 }
 
 // NewEventProcessor creates a new EventProcessor with the given jobs and watch mappings
-func NewEventProcessor(jobs map[string]job.Job, watches []WatchMapping) *EventProcessor {
+func NewEventProcessor(jobs map[string]framework.Job, watches []WatchMapping) *EventProcessor {
 	return &EventProcessor{
 		jobs:    jobs,
 		watches: watches,
