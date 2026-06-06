@@ -36,14 +36,14 @@ func TestDiscover_NoInputsUsesFrameworkPatterns(t *testing.T) {
 	)
 
 	j := job.Job{Name: "rspec", TargetPattern: "spec/**/*_spec.rb"}
-	files, err := Discover(j, nil, nil)
+	discovery, err := Discover(j, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, []string{
 		"spec/a_spec.rb",
 		"spec/m_spec.rb",
 		"spec/sub/x_spec.rb",
 		"spec/z_spec.rb",
-	}, files, "no inputs => framework patterns drive discovery, sorted")
+	}, discovery.Files, "no inputs => framework patterns drive discovery, sorted")
 }
 
 func TestDiscover_PlainFilePassthrough(t *testing.T) {
@@ -51,9 +51,9 @@ func TestDiscover_PlainFilePassthrough(t *testing.T) {
 	writeStubFiles(t, "spec/foo_spec.rb")
 	j := job.Job{Name: "rspec", Framework: "rspec"}
 
-	files, err := Discover(j, []string{"spec/foo_spec.rb"}, nil)
+	discovery, err := Discover(j, []string{"spec/foo_spec.rb"}, nil)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/foo_spec.rb"}, files)
+	assert.Equal(t, []string{"spec/foo_spec.rb"}, discovery.Files)
 }
 
 func TestDiscover_PlainFileMissingErrors(t *testing.T) {
@@ -74,12 +74,12 @@ func TestDiscover_DirectoryExpansion(t *testing.T) {
 	)
 
 	j := job.Job{Name: "rspec", Framework: "rspec"}
-	files, err := Discover(j, []string{"spec/models"}, nil)
+	discovery, err := Discover(j, []string{"spec/models"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, []string{
 		"spec/models/post_spec.rb",
 		"spec/models/user_spec.rb",
-	}, files)
+	}, discovery.Files)
 }
 
 func TestDiscover_GlobPassthrough(t *testing.T) {
@@ -91,9 +91,9 @@ func TestDiscover_GlobPassthrough(t *testing.T) {
 	)
 
 	j := job.Job{Name: "rspec", Framework: "rspec"}
-	files, err := Discover(j, []string{"spec/*_spec.rb"}, nil)
+	discovery, err := Discover(j, []string{"spec/*_spec.rb"}, nil)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/a_spec.rb", "spec/b_spec.rb"}, files)
+	assert.Equal(t, []string{"spec/a_spec.rb", "spec/b_spec.rb"}, discovery.Files)
 }
 
 func TestDiscover_MixedInputs(t *testing.T) {
@@ -105,13 +105,13 @@ func TestDiscover_MixedInputs(t *testing.T) {
 	)
 
 	j := job.Job{Name: "rspec", Framework: "rspec"}
-	files, err := Discover(j, []string{"spec/a_spec.rb", "spec/models", "spec/sub/*_spec.rb"}, nil)
+	discovery, err := Discover(j, []string{"spec/a_spec.rb", "spec/models", "spec/sub/*_spec.rb"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, []string{
 		"spec/a_spec.rb",
 		"spec/models/user_spec.rb",
 		"spec/sub/d_spec.rb",
-	}, files)
+	}, discovery.Files)
 }
 
 func TestDiscover_ExcludesFiltering(t *testing.T) {
@@ -124,12 +124,16 @@ func TestDiscover_ExcludesFiltering(t *testing.T) {
 	)
 
 	j := job.Job{Name: "rspec", TargetPattern: "spec/**/*_spec.rb"}
-	files, err := Discover(j, nil, []string{
+	discovery, err := Discover(j, nil, []string{
 		"spec/system/**/*_spec.rb",
 		"spec/legacy/**/*_spec.rb",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/models/user_spec.rb"}, files)
+	assert.Equal(t, []string{"spec/models/user_spec.rb"}, discovery.Files)
+	assert.Equal(t, map[string]int{
+		"spec/system/**/*_spec.rb": 2,
+		"spec/legacy/**/*_spec.rb": 1,
+	}, discovery.ExcludeMatches)
 }
 
 func TestDiscover_InvalidExcludePatternErrors(t *testing.T) {
@@ -162,9 +166,9 @@ func TestDiscover_EmptyResultIsOk(t *testing.T) {
 	discoverChdir(t)
 
 	j := job.Job{Name: "rspec", TargetPattern: "spec/**/*_spec.rb"}
-	files, err := Discover(j, nil, nil)
+	discovery, err := Discover(j, nil, nil)
 	require.NoError(t, err)
-	assert.Empty(t, files)
+	assert.Empty(t, discovery.Files)
 }
 
 func TestDiscover_PassthroughJobWithExplicitFile(t *testing.T) {
@@ -175,9 +179,9 @@ func TestDiscover_PassthroughJobWithExplicitFile(t *testing.T) {
 	writeStubFiles(t, "spec/calculator_spec.rb")
 
 	j := job.Job{Name: "lint", Framework: "passthrough"}
-	files, err := Discover(j, []string{"spec/calculator_spec.rb"}, nil)
+	discovery, err := Discover(j, []string{"spec/calculator_spec.rb"}, nil)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/calculator_spec.rb"}, files)
+	assert.Equal(t, []string{"spec/calculator_spec.rb"}, discovery.Files)
 }
 
 func TestDiscover_FileLinePassthrough(t *testing.T) {
@@ -185,9 +189,9 @@ func TestDiscover_FileLinePassthrough(t *testing.T) {
 	writeStubFiles(t, "spec/foo_spec.rb")
 
 	j := job.Job{Name: "rspec", Framework: "rspec"}
-	files, err := Discover(j, []string{"spec/foo_spec.rb:12"}, nil)
+	discovery, err := Discover(j, []string{"spec/foo_spec.rb:12"}, nil)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/foo_spec.rb:12"}, files)
+	assert.Equal(t, []string{"spec/foo_spec.rb:12"}, discovery.Files)
 }
 
 func TestDiscover_ExcludePatternMatchesUnderlyingFileForFileLineTarget(t *testing.T) {
@@ -195,9 +199,9 @@ func TestDiscover_ExcludePatternMatchesUnderlyingFileForFileLineTarget(t *testin
 	writeStubFiles(t, "spec/foo_spec.rb")
 
 	j := job.Job{Name: "rspec", Framework: "rspec"}
-	files, err := Discover(j, []string{"spec/foo_spec.rb:12"}, []string{"spec/foo_spec.rb"})
+	discovery, err := Discover(j, []string{"spec/foo_spec.rb:12"}, []string{"spec/foo_spec.rb"})
 	require.NoError(t, err)
-	assert.Empty(t, files)
+	assert.Empty(t, discovery.Files)
 }
 
 func TestDiscover_MultiFileLinePassthrough(t *testing.T) {
@@ -205,9 +209,9 @@ func TestDiscover_MultiFileLinePassthrough(t *testing.T) {
 	writeStubFiles(t, "spec/slow_spec.rb")
 
 	j := job.Job{Name: "rspec", Framework: "rspec"}
-	files, err := Discover(j, []string{"spec/slow_spec.rb:12:38:91"}, nil)
+	discovery, err := Discover(j, []string{"spec/slow_spec.rb:12:38:91"}, nil)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/slow_spec.rb:12:38:91"}, files)
+	assert.Equal(t, []string{"spec/slow_spec.rb:12:38:91"}, discovery.Files)
 }
 
 func TestDiscover_FileLineNonExistentFileErrors(t *testing.T) {
@@ -224,7 +228,7 @@ func TestDiscover_DedupsAcrossInputs(t *testing.T) {
 	writeStubFiles(t, "spec/a_spec.rb")
 
 	j := job.Job{Name: "rspec", Framework: "rspec"}
-	files, err := Discover(j, []string{"spec/a_spec.rb", "spec/a_spec.rb", "spec/*_spec.rb"}, nil)
+	discovery, err := Discover(j, []string{"spec/a_spec.rb", "spec/a_spec.rb", "spec/*_spec.rb"}, nil)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/a_spec.rb"}, files)
+	assert.Equal(t, []string{"spec/a_spec.rb"}, discovery.Files)
 }

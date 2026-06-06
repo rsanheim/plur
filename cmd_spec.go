@@ -37,7 +37,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
-	discovery, err := fileset.DiscoverWithDetails(currentJob, r.Patterns, excludes)
+	discovery, err := fileset.Discover(currentJob, r.Patterns, excludes)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func explicitTargetMismatchWarnings(patterns, targetPatterns []string, jobName s
 	var warnings []string
 	for _, mismatch := range mismatches {
 		warnings = append(warnings, fmt.Sprintf("target %s does not match selected job %s target pattern %s",
-			shellSingleQuote(mismatch.Target),
+			shellSingleQuote(mismatch),
 			shellSingleQuote(jobName),
 			shellSingleQuote(strings.Join(targetPatterns, ", "))))
 	}

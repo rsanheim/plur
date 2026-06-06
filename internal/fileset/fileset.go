@@ -17,25 +17,12 @@ type DiscoverResult struct {
 	ExcludeMatches map[string]int
 }
 
-type TargetMismatch struct {
-	Target string
-	Path   string
-}
-
 // Discover returns sorted, deduped, exclude-filtered files for a job.
 // When inputs is empty, framework target patterns drive discovery; otherwise
 // each input is classified as a glob, an existing file (passthrough), or a
 // directory (joined with framework target tails). Exclude patterns are applied
 // after expansion using doublestar semantics.
-func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
-	result, err := DiscoverWithDetails(j, inputs, excludes)
-	if err != nil {
-		return nil, err
-	}
-	return result.Files, nil
-}
-
-func DiscoverWithDetails(j job.Job, inputs, excludes []string) (DiscoverResult, error) {
+func Discover(j job.Job, inputs, excludes []string) (DiscoverResult, error) {
 	patterns, err := classifyInputs(j, inputs)
 	if err != nil {
 		return DiscoverResult{}, err
@@ -93,12 +80,12 @@ func filePathForExcludeMatch(s string) string {
 	return s
 }
 
-func ExplicitTargetMismatches(inputs, targetPatterns []string) ([]TargetMismatch, error) {
+func ExplicitTargetMismatches(inputs, targetPatterns []string) ([]string, error) {
 	if len(inputs) == 0 || len(targetPatterns) == 0 {
 		return nil, nil
 	}
 
-	var mismatches []TargetMismatch
+	var mismatches []string
 	for _, in := range inputs {
 		targetPath, ok := explicitFileTargetPath(in)
 		if !ok {
@@ -109,7 +96,7 @@ func ExplicitTargetMismatches(inputs, targetPatterns []string) ([]TargetMismatch
 			return nil, err
 		}
 		if !matched {
-			mismatches = append(mismatches, TargetMismatch{Target: in, Path: targetPath})
+			mismatches = append(mismatches, in)
 		}
 	}
 	return mismatches, nil
