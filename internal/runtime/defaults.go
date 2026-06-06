@@ -96,6 +96,13 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 		// Start with builtin if present
 		if hasBuiltin {
 			resolvedJob = builtin
+			if !hasUser {
+				inherit.Cmd = len(builtin.Cmd) > 0
+				inherit.Env = len(builtin.Env) > 0
+				inherit.Framework = builtin.Framework != ""
+				inherit.TargetPattern = builtin.TargetPattern != ""
+				inherit.ExcludePatterns = len(builtin.ExcludePatterns) > 0
+			}
 		}
 
 		// Overlay user fields, tracking inheritance at decision point

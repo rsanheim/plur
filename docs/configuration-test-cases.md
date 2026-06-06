@@ -392,7 +392,7 @@ Manual verification checklist for plur configuration behavior. Each case specifi
   * *Actual:* Confirmed
 
 * [x] **Trailing commas in arrays** — supported
-  * *Input:* `cmd = ["rspec", "{{target}}",]` (trailing comma)
+  * *Input:* `cmd = ["rspec", "--fail-fast",]` (trailing comma)
   * *Expected:* Parses correctly
   * *Actual:* Confirmed
 

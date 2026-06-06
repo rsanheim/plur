@@ -47,6 +47,15 @@ func TestBuildRuntimeConfig_FallsBackToSelectedBuiltinWatches(t *testing.T) {
 	}
 }
 
+func TestBuildRuntimeConfigMarksBuiltinDefaultsAsInherited(t *testing.T) {
+	rc, err := BuildRuntimeConfig(&CLIInput{Use: "rspec"})
+
+	require.NoError(t, err)
+	assert.True(t, rc.Inherited["rspec"].Cmd)
+	assert.True(t, rc.Inherited["rspec"].Framework)
+	assert.True(t, rc.Inherited["rspec"].TargetPattern)
+}
+
 func TestBuildRuntimeConfig_UserWatchOverridesBuiltinByName(t *testing.T) {
 	cli := &CLIInput{
 		Use: "rspec",

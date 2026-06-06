@@ -348,6 +348,35 @@ RSpec.describe "Configuration" do
       end
     end
 
+    it "rejects target templates in run-mode job commands" do
+      Dir.mktmpdir do |tmpdir|
+        FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+        File.write(File.join(tmpdir, "spec", "example_spec.rb"), "RSpec.describe('x'){ it('works'){} }")
+
+        config_path = File.join(tmpdir, "run-target-template.toml")
+        File.write(config_path, <<~TOML)
+          use = "custom"
+
+          [job.custom]
+          framework = "rspec"
+          cmd = ["bin/rspec", "{{target}}"]
+          target_pattern = "spec/**/*_spec.rb"
+        TOML
+
+        _, error, status = Dir.chdir(tmpdir) do
+          Open3.capture3(
+            {"PLUR_CONFIG_FILE" => config_path},
+            plur_binary, "--dry-run"
+          )
+        end
+
+        expect(status).not_to be_success
+        expect(error).to include('job "custom" command uses {{target}}')
+        expect(error).to include("run mode appends targets automatically")
+        expect(error).to include("remove {{target}}")
+      end
+    end
+
     it "validates all jobs, not just the selected one" do
       Dir.mktmpdir do |tmpdir|
         config_path = File.join(tmpdir, "all-validated.toml")
@@ -495,7 +524,7 @@ RSpec.describe "Configuration" do
 
           [job.custom]
           framework = "passthrough"
-          cmd = ["echo", "RUN", "{{target}}"]
+          cmd = ["echo", "RUN"]
           target_pattern = "spec/**/*_spec.rb"
         TOML
 
@@ -545,7 +574,7 @@ RSpec.describe "Configuration" do
           use = "rspec"
           job = {
             rspec = {
-              cmd = ["echo", "MULTILINE", "{{target}}"],
+              cmd = ["echo", "MULTILINE"],
               framework = "rspec"
             }
           }
@@ -568,7 +597,7 @@ RSpec.describe "Configuration" do
         config_path = File.join(tmpdir, "toml11-inline-trailing-comma.toml")
         File.write(config_path, <<~TOML)
           use = "rspec"
-          job = { rspec = { cmd = ["echo", "TRAILING", "{{target}}"], framework = "rspec", }, }
+          job = { rspec = { cmd = ["echo", "TRAILING"], framework = "rspec", }, }
         TOML
 
         _, error, status = Dir.chdir(project_fixture("default-ruby")) do
