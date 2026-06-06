@@ -50,11 +50,29 @@ RSpec.describe "--exclude-pattern" do
         end
 
         expect(result).to be_success
+        expect(result.err).not_to include("matched no selected files")
         expect(result.err).not_to include("spec/system/login_spec.rb")
         expect(result.err).not_to include("spec/system/checkout_spec.rb")
         expect(result.err).to include("spec/models/user_spec.rb")
         expect(result.err).to include("spec/models/post_spec.rb")
         expect(result.err).to include("spec/legacy/old_spec.rb")
+      end
+    end
+
+    it "warns when a CLI exclude pattern matches no selected files" do
+      Dir.mktmpdir do |dir|
+        setup_rspec_fixture(dir)
+        result = Dir.chdir(dir) do
+          run_plur_allowing_errors(
+            "--dry-run",
+            "--use=rspec",
+            "--exclude-pattern", "*user*/_spec.rb"
+          )
+        end
+
+        expect(result).to be_success
+        expect(result.err).to include("[warn] --exclude-pattern '*user*/_spec.rb' matched no selected files")
+        expect(result.err).to include("spec/models/user_spec.rb")
       end
     end
 
@@ -161,6 +179,24 @@ RSpec.describe "--exclude-pattern" do
         expect(result).to be_success
         expect(result.err).not_to include("spec/system/")
         expect(result.err).to include("spec/legacy/old_spec.rb")
+        expect(result.err).to include("spec/models/user_spec.rb")
+      end
+    end
+
+    it "does not warn when a config exclude pattern matches no selected files" do
+      Dir.mktmpdir do |dir|
+        setup_rspec_fixture(dir)
+        write_config(dir, <<~TOML)
+          [job.rspec]
+          exclude_patterns = ["spec/nope/**/*_spec.rb"]
+        TOML
+
+        result = Dir.chdir(dir) do
+          run_plur_allowing_errors("--dry-run", "--use=rspec")
+        end
+
+        expect(result).to be_success
+        expect(result.err).not_to include("matched no selected files")
         expect(result.err).to include("spec/models/user_spec.rb")
       end
     end

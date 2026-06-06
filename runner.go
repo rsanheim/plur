@@ -346,14 +346,14 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		return errorResult(fmt.Errorf("failed to create stderr pipe: %w", err), start)
 	}
 	if err := cmd.Start(); err != nil {
-		return errorResult(fmt.Errorf("failed to start command: %w", err), start)
+		return errorResult(err, start)
 	}
 
 	parser := r.framework.Parser()
 	collector := NewTestCollector()
 	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
 	streamStdout := !framework.IsMinitest(r.framework.Name)
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
+	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
 
@@ -365,7 +365,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 	}
 	success := exitCode == 0
 	state := types.StateSuccess
-	output := result.Output + stderrOutput
+	output := result.Output
 
 	if err != nil && result.ExampleCount == 0 {
 		state = types.StateError
@@ -453,14 +453,8 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 }
 
 func errorResult(err error, start time.Time) WorkerResult {
-	errorOutput := ""
-	if err != nil {
-		errorOutput = fmt.Sprintf("Error: %v\n", err)
-	}
-
 	return WorkerResult{
 		State:    types.StateError,
-		Output:   errorOutput,
 		Error:    err,
 		Duration: time.Since(start),
 	}
