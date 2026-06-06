@@ -65,7 +65,7 @@ def main():
         path_str = str(rel_path)
 
         # Skip internal/archival docs and files that should not be public pages.
-        skip_prefixes = ("goal/", "plans/", "superpowers/", "wip/", "overrides/")
+        skip_prefixes = ("plans/", "superpowers/", "wip/", "overrides/")
         skip_files = {"README.md", "recent-pages.md", "configuration-test-cases.md"}
         if path_str.startswith(skip_prefixes) or md_file.name in skip_files:
             continue

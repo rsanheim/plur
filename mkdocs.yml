@@ -62,7 +62,6 @@ markdown_extensions:
 exclude_docs: |
   README.md
   configuration-test-cases.md
-  goal/**
   plans/**
   superpowers/**
   wip/**

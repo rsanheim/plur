@@ -1,1 +1,0 @@
-plur: error: unknown flag --format

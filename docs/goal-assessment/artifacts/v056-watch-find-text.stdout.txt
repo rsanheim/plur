@@ -1,3 +1,0 @@
-time=2026-05-24T17:48:00.414-05:00 level=INFO msg="checking watch" file=lib/calculator.rb
-time=2026-05-24T17:48:00.414-05:00 level=INFO msg="found rules" name=lib-to-spec source=lib/**/*.rb jobs=[rspec] target=spec/{{match}}_spec.rb
-time=2026-05-24T17:48:00.414-05:00 level=INFO msg="found files" files=spec/calculator_spec.rb
