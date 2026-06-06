@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/cmd"
 	"github.com/rsanheim/plur/config"
+	clihelp "github.com/rsanheim/plur/internal/cli"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/job"
@@ -23,6 +24,7 @@ type SpecCmd struct {
 	ExcludePatterns []string `help:"Exclude test files matching glob (repeatable)" name:"exclude-pattern"`
 	Auto            bool     `help:"Automatically run bundle install before tests" default:"false"`
 	RspecTrace      bool     `help:"Prefix stdout/stderr with source file path (RSpec only)" default:"false" name:"rspec-trace"`
+	RspecSplit      bool     `help:"EXPERIMENTAL: split long-running RSpec files into focused file:line runs" name:"rspec-split" env:"PLUR_RSPEC_SPLIT" default:"false"`
 }
 
 type WorkerCount int
@@ -84,17 +86,16 @@ type PlurCLI struct {
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
-	ChangeDir  string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Color      bool        `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
-	Debug      bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
-	DryRun     bool        `help:"Print what would be executed without running" default:"false"`
-	FirstIs1   bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
-	JSON       string      `help:"Save detailed test results as JSON to the specified file" default:""`
-	Use        string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
-	Verbose    bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
-	Version    bool        `help:"Show version information"`
-	Workers    WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
-	RspecSplit bool        `help:"EXPERIMENTAL: split long-running RSpec files into focused file:line runs" name:"rspec-split" env:"PLUR_RSPEC_SPLIT" default:"false"`
+	ChangeDir string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
+	Color     bool        `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
+	Debug     bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
+	DryRun    bool        `help:"Print what would be executed without running" default:"false"`
+	FirstIs1  bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
+	JSON      string      `help:"Save detailed test results as JSON to the specified file" default:""`
+	Use       string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Verbose   bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
+	Version   bool        `help:"Show version information"`
+	Workers   WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
 
 	// Job and watch configuration
 	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
@@ -156,7 +157,7 @@ func (cli *PlurCLI) AfterApply() error {
 		RuntimeDir:    configPaths.RuntimeDir,
 		JSON:          cli.JSON,
 		FirstIs1:      cli.FirstIs1,
-		RspecSplit:    cli.RspecSplit,
+		RspecSplit:    cli.Spec.RspecSplit,
 		LoadedConfigs: loadedConfigs,
 	}
 
@@ -284,8 +285,8 @@ func main() {
 			{Key: "advanced", Title: "Advanced and setup commands"},
 		}),
 		kong.ConfigureHelp(kong.HelpOptions{Compact: true, FlagsLast: true}),
-		configureHelpDetails(),
-		kong.Help(customHelpPrinter),
+		clihelp.ConfigureHelpDetails(),
+		kong.Help(clihelp.HelpPrinter),
 		kong.Configuration(kongtoml.Loader, configFiles...))
 
 	if err != nil {

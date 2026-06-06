@@ -13,6 +13,7 @@ RSpec.describe "help output" do
     expect(result.out).to include("plur spec/calculator_spec.rb")
     expect(result.out).to include("plur --dry-run")
     expect(result.out).to include("plur watch find spec/calculator_spec.rb")
+    expect(result.out).not_to include("--rspec-split")
     expect(result.out).to include("Daily commands")
     expect(result.out).to include("Advanced and setup commands")
     expect(result.out.index("Daily commands")).to be < result.out.index("Advanced and setup commands")

@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"github.com/alecthomas/kong"
 )
 
-func customHelpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
+func HelpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
 	restoreHiddenFlags := hideIrrelevantHelpFlags(ctx.Selected())
 	defer restoreHiddenFlags()
 
@@ -87,26 +87,33 @@ func irrelevantHelpFlagNames(fullPath string) map[string]bool {
 	switch fullPath {
 	case "plur watch", "plur watch run", "plur watch find":
 		return map[string]bool{
-			"dry-run":     true,
-			"first-is-1":  true,
-			"json":        true,
-			"rspec-split": true,
-			"workers":     true,
+			"dry-run":    true,
+			"first-is-1": true,
+			"json":       true,
+			"workers":    true,
 		}
 	default:
 		return nil
 	}
 }
 
-func configureHelpDetails() kong.Option {
+func ConfigureHelpDetails() kong.Option {
 	return kong.PostBuild(func(k *kong.Kong) error {
 		k.Model.Detail = topLevelWorkflowHelp()
+		if watch := childCommand(k.Model.Node, "watch"); watch != nil {
+			watch.Detail = watchWorkflowHelp()
+		}
 		return nil
 	})
 }
 
-func (w *WatchCmd) Help() string {
-	return watchWorkflowHelp()
+func childCommand(parent *kong.Node, name string) *kong.Node {
+	for _, child := range parent.Children {
+		if child.Type == kong.CommandNode && child.Name == name {
+			return child
+		}
+	}
+	return nil
 }
 
 func topLevelWorkflowHelp() string {
