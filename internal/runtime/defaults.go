@@ -99,7 +99,7 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 			if !hasUser {
 				inherit.Cmd = len(builtin.Cmd) > 0
 				inherit.Env = len(builtin.Env) > 0
-				inherit.Framework = builtin.Framework != ""
+				inherit.Framework = builtin.FrameworkName != ""
 				inherit.TargetPattern = builtin.TargetPattern != ""
 				inherit.ExcludePatterns = len(builtin.ExcludePatterns) > 0
 			}
@@ -119,9 +119,9 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 				inherit.Env = true
 			}
 
-			if user.Framework != "" {
-				resolvedJob.Framework = user.Framework
-			} else if resolvedJob.Framework != "" {
+			if user.FrameworkName != "" {
+				resolvedJob.FrameworkName = user.FrameworkName
+			} else if resolvedJob.FrameworkName != "" {
 				inherit.Framework = true
 			}
 
@@ -141,16 +141,16 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 		resolvedJob.Name = name
 
 		// Framework defaulting (only affects pure user jobs without builtin)
-		if resolvedJob.Framework == "" {
-			resolvedJob.Framework = "passthrough"
+		if resolvedJob.FrameworkName == "" {
+			resolvedJob.FrameworkName = "passthrough"
 		}
 
 		// Validate framework
-		normalizedFramework := framework.Normalize(resolvedJob.Framework)
+		normalizedFramework := framework.Normalize(resolvedJob.FrameworkName)
 		if !framework.IsKnown(normalizedFramework) {
-			return nil, nil, fmt.Errorf("job %q has unknown framework %q", name, resolvedJob.Framework)
+			return nil, nil, fmt.Errorf("job %q has unknown framework %q", name, resolvedJob.FrameworkName)
 		}
-		resolvedJob.Framework = normalizedFramework
+		resolvedJob.FrameworkName = normalizedFramework
 
 		resolved[name] = resolvedJob
 		inherited[name] = inherit
@@ -205,14 +205,14 @@ func inferFrameworkFromPatterns(patterns []string) (string, error) {
 func frameworksMatchingPattern(pattern string, candidates []string) (map[string]struct{}, error) {
 	matched := make(map[string]struct{})
 	for _, name := range candidates {
-		spec, err := framework.Get(name)
+		fw, err := framework.Get(name)
 		if err != nil {
 			return nil, err
 		}
-		if len(spec.DetectPatterns) == 0 {
+		if len(fw.DetectPatterns) == 0 {
 			continue
 		}
-		ok, err := patternMatchesFramework(pattern, spec.DetectPatterns)
+		ok, err := patternMatchesFramework(pattern, fw.DetectPatterns)
 		if err != nil {
 			return nil, err
 		}

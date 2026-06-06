@@ -129,8 +129,8 @@ For large file lists this becomes disproportionately expensive.
 
 Recommended cleanup:
 
-* Have `BuildJobCmd` also return the file-start index (or ensure file args are always appended at the end for frameworks where we control the command shape).
-* Or detect file-start by known structure (e.g., `{{target}}` placement) rather than nested scanning.
+* Have `BuildJobCmd` also return the file-start index, or keep file args appended
+  at the end for frameworks where we control the command shape.
 
 ## Go 1.25-Specific Notes / Opportunities
 

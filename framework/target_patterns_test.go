@@ -11,7 +11,7 @@ import (
 func TestTargetPatternsForJob_ExplicitTargetPattern(t *testing.T) {
 	j := job.Job{
 		Name:          "custom",
-		Framework:     "rspec",
+		FrameworkName: "rspec",
 		TargetPattern: "app/spec/**/*_spec.rb",
 	}
 
@@ -22,8 +22,8 @@ func TestTargetPatternsForJob_ExplicitTargetPattern(t *testing.T) {
 
 func TestTargetPatternsForJob_RSpecFramework(t *testing.T) {
 	j := job.Job{
-		Name:      "rspec",
-		Framework: "rspec",
+		Name:          "rspec",
+		FrameworkName: "rspec",
 	}
 
 	patterns, err := TargetPatternsForJob(j)
@@ -33,8 +33,8 @@ func TestTargetPatternsForJob_RSpecFramework(t *testing.T) {
 
 func TestTargetPatternsForJob_MinitestFramework(t *testing.T) {
 	j := job.Job{
-		Name:      "minitest",
-		Framework: "minitest",
+		Name:          "minitest",
+		FrameworkName: "minitest",
 	}
 
 	patterns, err := TargetPatternsForJob(j)
@@ -44,8 +44,8 @@ func TestTargetPatternsForJob_MinitestFramework(t *testing.T) {
 
 func TestTargetPatternsForJob_PassthroughNoDetectPatterns(t *testing.T) {
 	j := job.Job{
-		Name:      "lint",
-		Framework: "passthrough",
+		Name:          "lint",
+		FrameworkName: "passthrough",
 	}
 
 	_, err := TargetPatternsForJob(j)
@@ -56,8 +56,8 @@ func TestTargetPatternsForJob_PassthroughNoDetectPatterns(t *testing.T) {
 
 func TestTargetPatternsForJob_UnknownFramework(t *testing.T) {
 	j := job.Job{
-		Name:      "bad",
-		Framework: "nope",
+		Name:          "bad",
+		FrameworkName: "nope",
 	}
 
 	_, err := TargetPatternsForJob(j)
@@ -68,7 +68,7 @@ func TestTargetPatternsForJob_UnknownFramework(t *testing.T) {
 func TestTargetPatternsForJob_PassthroughWithExplicitPattern(t *testing.T) {
 	j := job.Job{
 		Name:          "lint",
-		Framework:     "passthrough",
+		FrameworkName: "passthrough",
 		TargetPattern: "app/**/*.rb",
 	}
 
@@ -91,43 +91,43 @@ func TestIsKnown(t *testing.T) {
 	assert.False(t, IsKnown("unknown"))
 }
 
-func TestTargetPatternsForJobWithSpec_MultipleDetectPatterns(t *testing.T) {
+func TestTargetPatternsForJobWithFramework_MultipleDetectPatterns(t *testing.T) {
 	j := job.Job{Name: "test-job"}
-	spec := Spec{
+	fw := Framework{
 		Name:           "custom",
 		DetectPatterns: []string{"**/*_test.go", "**/*_spec.go"},
 	}
 
-	patterns, err := TargetPatternsForJobWithSpec(j, spec)
+	patterns, err := TargetPatternsForJobWithFramework(j, fw)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"**/*_test.go", "**/*_spec.go"}, patterns)
 }
 
-func TestTargetPatternsForJobWithSpec_ExplicitTargetPatternTakesPrecedence(t *testing.T) {
+func TestTargetPatternsForJobWithFramework_ExplicitTargetPatternTakesPrecedence(t *testing.T) {
 	j := job.Job{
 		Name:          "test-job",
 		TargetPattern: "my/**/*.rb",
 	}
-	spec := Spec{
+	fw := Framework{
 		Name:           "rspec",
 		DetectPatterns: []string{"**/*_spec.rb"},
 	}
 
-	patterns, err := TargetPatternsForJobWithSpec(j, spec)
+	patterns, err := TargetPatternsForJobWithFramework(j, fw)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"my/**/*.rb"}, patterns)
 }
 
-func TestTargetPatternsForJobWithSpec_EmptyDetectPatternsReturnsError(t *testing.T) {
+func TestTargetPatternsForJobWithFramework_EmptyDetectPatternsReturnsError(t *testing.T) {
 	j := job.Job{
 		Name: "lint",
 	}
-	spec := Spec{
+	fw := Framework{
 		Name:           "passthrough",
 		DetectPatterns: nil,
 	}
 
-	_, err := TargetPatternsForJobWithSpec(j, spec)
+	_, err := TargetPatternsForJobWithFramework(j, fw)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `job "lint"`)
 	assert.Contains(t, err.Error(), `framework "passthrough"`)

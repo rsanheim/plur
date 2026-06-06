@@ -244,7 +244,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			switch input {
 			case "":
 				fmt.Println("Running all tests...")
-				cmd := job.BuildJobAllCmd(resolvedJob)
+				cmd := job.BuildJobCmd(resolvedJob, nil)
 				watch.RunCommand(cmd)
 				fmt.Println()
 				showPrompt()

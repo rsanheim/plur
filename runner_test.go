@@ -263,7 +263,7 @@ func TestRunner_DryRunReturnsNil(t *testing.T) {
 	testJob := job.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo", "test"},
-		Framework:     "passthrough",
+		FrameworkName: "passthrough",
 		TargetPattern: "**/*_test.rb",
 	}
 
@@ -287,7 +287,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		testJob := job.Job{
 			Name:          "custom",
 			Cmd:           []string{"echo"},
-			Framework:     "passthrough",
+			FrameworkName: "passthrough",
 			TargetPattern: "**/*_test.rb",
 		}
 
@@ -312,7 +312,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		testJob := job.Job{
 			Name:          "custom",
 			Cmd:           []string{"echo"},
-			Framework:     "passthrough",
+			FrameworkName: "passthrough",
 			TargetPattern: "**/*_test.rb",
 		}
 
@@ -335,7 +335,7 @@ func TestRunner_EmptyFiles(t *testing.T) {
 	testJob := job.Job{
 		Name:          "custom",
 		Cmd:           []string{"echo"},
-		Framework:     "passthrough",
+		FrameworkName: "passthrough",
 		TargetPattern: "**/*_test.rb",
 	}
 
@@ -356,7 +356,7 @@ func TestRunner_TrackerInitialized(t *testing.T) {
 		FirstIs1:    true,
 		RuntimeDir:  t.TempDir(),
 	}
-	testJob := job.Job{Name: "custom", Framework: "passthrough"}
+	testJob := job.Job{Name: "custom", FrameworkName: "passthrough"}
 
 	runner, err := NewRunner(cfg, []string{"a_test.rb"}, testJob, nil)
 	require.NoError(t, err)
@@ -366,7 +366,7 @@ func TestRunner_TrackerInitialized(t *testing.T) {
 
 func TestRunner_RunCommandPreservesSuiteCounts(t *testing.T) {
 	runner := &Runner{
-		framework: framework.Spec{
+		framework: framework.Framework{
 			Name: "fake",
 			Parser: func() types.TestOutputParser {
 				return &suiteCountParser{}
@@ -402,9 +402,9 @@ func TestRunner_SingleFileStillSetsTestEnvNumber(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name:      "custom",
-		Cmd:       []string{"echo"},
-		Framework: "passthrough",
+		Name:          "custom",
+		Cmd:           []string{"echo"},
+		FrameworkName: "passthrough",
 	}
 
 	runner, err := NewRunner(cfg, []string{"single_test.rb"}, testJob, nil)
@@ -427,9 +427,9 @@ func TestRunner_SerialModeNoTestEnvNumber(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name:      "custom",
-		Cmd:       []string{"echo"},
-		Framework: "passthrough",
+		Name:          "custom",
+		Cmd:           []string{"echo"},
+		FrameworkName: "passthrough",
 	}
 
 	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb", "c_test.rb"}, testJob, nil)
@@ -450,9 +450,9 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name:      "custom",
-		Cmd:       []string{"echo"},
-		Framework: "passthrough",
+		Name:          "custom",
+		Cmd:           []string{"echo"},
+		FrameworkName: "passthrough",
 	}
 
 	files := []string{"a.rb", "b.rb", "c.rb"} // Only 3 files
@@ -472,10 +472,10 @@ func TestRunnerBuildArgsPerWorkerCommands(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name:      "rails",
-		Cmd:       []string{"bin/rails"},
-		Framework: "passthrough",
-		Env:       []string{"RAILS_ENV=test"},
+		Name:          "rails",
+		Cmd:           []string{"bin/rails"},
+		FrameworkName: "passthrough",
+		Env:           []string{"RAILS_ENV=test"},
 	}
 
 	runner, err := NewRunner(cfg, nil, testJob, nil)
@@ -502,9 +502,9 @@ func TestRunnerBuildArgsPerWorkerCommandsSerialMode(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name:      "rails",
-		Cmd:       []string{"bin/rails"},
-		Framework: "passthrough",
+		Name:          "rails",
+		Cmd:           []string{"bin/rails"},
+		FrameworkName: "passthrough",
 	}
 
 	runner, err := NewRunner(cfg, nil, testJob, nil)
@@ -528,9 +528,9 @@ func TestRunnerRunArgsPerWorkerDryRunDoesNotExecute(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name:      "rails",
-		Cmd:       []string{"definitely-not-a-real-command"},
-		Framework: "passthrough",
+		Name:          "rails",
+		Cmd:           []string{"definitely-not-a-real-command"},
+		FrameworkName: "passthrough",
 	}
 
 	runner, err := NewRunner(cfg, nil, testJob, nil)
@@ -548,9 +548,9 @@ func TestRunnerRunArgsPerWorkerReturnsErrorWhenWorkerFails(t *testing.T) {
 		RuntimeDir:  t.TempDir(),
 	}
 	testJob := job.Job{
-		Name:      "rails",
-		Cmd:       []string{"sh", "-c", "echo broken >&2; exit 7"},
-		Framework: "passthrough",
+		Name:          "rails",
+		Cmd:           []string{"sh", "-c", "echo broken >&2; exit 7"},
+		FrameworkName: "passthrough",
 	}
 
 	runner, err := NewRunner(cfg, nil, testJob, nil)

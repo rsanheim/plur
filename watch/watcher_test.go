@@ -174,7 +174,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 	// Job that writes all arguments to a file - verifies batching behavior
 	j := job.Job{
 		Name: "test-batch",
-		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
+		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--"},
 	}
 
 	err := ExecuteJob(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir)
@@ -196,7 +196,7 @@ func TestExecuteJob_SingleTarget(t *testing.T) {
 
 	j := job.Job{
 		Name: "test-single",
-		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
+		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--"},
 	}
 
 	err := ExecuteJob(j, []string{"only_file.rb"}, tmpDir)
@@ -210,37 +210,17 @@ func TestExecuteJob_SingleTarget(t *testing.T) {
 func TestExecuteJob_NoTargets(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	tests := []struct {
-		name string
-		cmd  []string
-	}{
-		{
-			name: "with target placeholder",
-			cmd:  []string{"sh", "-c", "echo ran > args.txt", "--", "{{target}}"},
-		},
-		{
-			name: "without target placeholder",
-			cmd:  []string{"sh", "-c", "echo ran > args.txt", "--"},
-		},
+	outputFile := filepath.Join(tmpDir, "args.txt")
+	j := job.Job{
+		Name: "test-empty",
+		Cmd:  []string{"sh", "-c", "echo ran > args.txt", "--"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			outputFile := filepath.Join(tmpDir, "args.txt")
-			_ = os.Remove(outputFile)
+	err := ExecuteJob(j, []string{}, tmpDir)
+	require.NoError(t, err)
 
-			j := job.Job{
-				Name: "test-empty",
-				Cmd:  tt.cmd,
-			}
-
-			err := ExecuteJob(j, []string{}, tmpDir)
-			require.NoError(t, err)
-
-			_, err = os.ReadFile(outputFile)
-			assert.True(t, os.IsNotExist(err), "Command should not execute with no targets")
-		})
-	}
+	_, err = os.ReadFile(outputFile)
+	assert.True(t, os.IsNotExist(err), "Command should not execute with no targets")
 }
 
 func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {

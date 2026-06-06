@@ -243,15 +243,15 @@ explicitly overridden. Keep this in sync with `autodetect/defaults.toml`.
 
 - `rspec`
   - framework: `rspec`
-  - cmd: `["bundle", "exec", "rspec", "{{target}}"]`
+  - cmd: `["bundle", "exec", "rspec"]`
   - target_pattern: `spec/**/*_spec.rb`
 - `minitest`
   - framework: `minitest`
-  - cmd: `["bundle", "exec", "ruby", "-Itest", "{{target}}"]`
+  - cmd: `["bundle", "exec", "ruby", "-Itest"]`
   - target_pattern: `test/**/*_test.rb`
 - `go-test`
   - framework: `go-test`
-  - cmd: `["go", "test", "{{target}}"]`
+  - cmd: `["go", "test"]`
   - target_pattern: `**/*_test.go`
 
 ## Compatibility / impact

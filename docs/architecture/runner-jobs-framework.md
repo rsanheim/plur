@@ -5,7 +5,7 @@ This document defines how framework-aware commands are built for run mode
 spec derived from the runner-jobs RFC:
 
 ## Goals
-- Remove {{target}} dependence from run mode.
+- Remove command placeholder dependence from run mode.
 - Keep watch mode flexible for guard-like mappings.
 - Centralize framework-specific behavior (parser + default args) in one place.
 - Preserve minitest multi-file execution via ruby -e require list.
@@ -19,10 +19,9 @@ spec derived from the runner-jobs RFC:
 ## Job schema changes
 - Add `framework` to job definitions (string, optional for user jobs).
   - Examples: `framework = "rspec"`, `framework = "minitest"`, `framework = "passthrough"`.
-- In run mode, user job commands must not include `{{target}}`; Plur appends
-  targets automatically.
-- In watch mode, `{{target}}` controls target placement; jobs without it append
-  resolved targets.
+- Job commands are static executable-plus-fixed-args arrays.
+- Run mode and watch mode append resolved targets automatically.
+- Watch target mappings, not job commands, own path template expansion.
 
 ## Framework configurability
 - Frameworks are **not user-definable** via config. The registry is code-defined.
@@ -52,10 +51,9 @@ No other fields are required in the framework spec.
 ## Run mode command building
 Given: job, framework, files, config.
 
-1) Reject user job commands that contain `{{target}}`.
-2) Base args = job.Cmd with inherited built-in `{{target}}` tokens removed.
-3) Append framework.DefaultArgs(cfg) if any.
-4) Append targets according to framework.TargetMode:
+1) Base args = job.Cmd.
+2) Append framework.DefaultArgs(cfg) if any.
+3) Append targets according to framework.TargetMode:
    - append: args = append(args, files...)
    - ruby-require: args = buildMinitestRequireList(args, files)
 
@@ -80,8 +78,7 @@ Notes:
 - These are appended before target files.
 
 ## Watch mode command building
-- If job uses `{{target}}`, expand via BuildJobCmd.
-- Otherwise append resolved targets at the end of the command.
+- Append resolved targets at the end of the command.
 - Watch remains responsible for guard-like path substitutions.
 
 ## Default jobs vs user jobs
@@ -99,14 +96,10 @@ Notes:
 - Dry-run output should make the framework visible and easy to verify:
   - a one-line summary includes framework (e.g., "Running 12 specs [rspec] in parallel…")
   - per-worker lines show the exact command (with framework default args applied)
-  - any rejected user `{{target}}` in run mode should produce a clear error
 
 ## Validation rules
-- In run mode, if a user job command contains `{{target}}`, reject it.
-- Inherited built-in commands may contain `{{target}}`; run mode strips those
-  placeholders before appending targets.
-- In watch mode, validate `{{target}}` usage as today and append targets when a
-  job omits `{{target}}`.
+- Reject template tokens in job commands.
+- Validate watch target templates during config load.
 - Missing `framework` defaults as described above; unknown values error during config load.
 
 ## Cross references
@@ -126,14 +119,12 @@ Previous behavior (before refactor):
 
 ## Implementation status (current)
 - Framework registry implemented in `framework` package with TargetMode, DefaultArgs, Parser, and StreamStdout.
-- Run mode rejects user `{{target}}` commands, strips inherited built-in
-  placeholders, appends framework defaults, then adds targets.
+- Run mode starts from `job.cmd`, appends framework defaults, then adds targets.
 - Minitest uses ruby `-e` require list for multi-file runs (single file appends directly).
 - Jobs default framework by name (built-ins) or `passthrough` for custom jobs when omitted.
 - Dry-run summary includes `[framework]`; verbose logs include `framework="..."`.
 - Job.Env now applies in run mode (aligns with watch mode).
-- `plur init` output updated to include `framework` examples without run-mode
-  `{{target}}` placeholders.
+- `plur init` output uses static job command examples.
 
 ## Test notes
 - `bin/rspec spec/integration/plur_spec/framework_output_spec.rb` (passes after `bin/rake install`).

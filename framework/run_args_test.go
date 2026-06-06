@@ -19,8 +19,8 @@ func TestBuildRunArgsRSpecDefaults(t *testing.T) {
 	}
 
 	j := job.Job{
-		Framework: "rspec",
-		Cmd:       []string{"bundle", "exec", "rspec", "--fail-fast", "{{target}}"},
+		FrameworkName: "rspec",
+		Cmd:           []string{"bundle", "exec", "rspec", "--fail-fast"},
 	}
 
 	args, err := BuildRunArgs(j, []string{"spec/example_spec.rb"}, cfg, nil)
@@ -39,8 +39,8 @@ func TestBuildRunArgsRSpecDefaults(t *testing.T) {
 func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
 	cfg := &config.GlobalConfig{}
 	j := job.Job{
-		Framework: "minitest",
-		Cmd:       []string{"bundle", "exec", "ruby", "-Itest", "{{target}}"},
+		FrameworkName: "minitest",
+		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
 
 	args, err := BuildRunArgs(j, []string{"test/foo_test.rb", "test/bar_test.rb"}, cfg, nil)
@@ -56,8 +56,8 @@ func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
 func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
 	cfg := &config.GlobalConfig{}
 	j := job.Job{
-		Framework: "minitest",
-		Cmd:       []string{"bundle", "exec", "ruby", "-Itest", "{{target}}"},
+		FrameworkName: "minitest",
+		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
 
 	args, err := BuildRunArgs(j, []string{"test/foo_test.rb"}, cfg, nil)
@@ -70,8 +70,8 @@ func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
 func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 	cfg := &config.GlobalConfig{}
 	j := job.Job{
-		Framework: "minitest",
-		Cmd:       []string{"bundle", "exec", "ruby", "-Itest", "{{target}}"},
+		FrameworkName: "minitest",
+		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
 
 	args, err := BuildRunArgs(j, []string{"test/foo_test.rb"}, cfg, []string{"--seed", "1234"})
@@ -84,8 +84,8 @@ func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 func TestBuildRunArgsMinitestRubyRequireWithExtraArgs(t *testing.T) {
 	cfg := &config.GlobalConfig{}
 	j := job.Job{
-		Framework: "minitest",
-		Cmd:       []string{"bundle", "exec", "ruby", "-Itest", "{{target}}"},
+		FrameworkName: "minitest",
+		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
 
 	args, err := BuildRunArgs(j, []string{"test/foo_test.rb", "test/bar_test.rb"}, cfg, []string{"--seed", "1234"})
@@ -108,8 +108,8 @@ func TestBuildRunArgsRSpecWithExtraArgs(t *testing.T) {
 	}
 
 	j := job.Job{
-		Framework: "rspec",
-		Cmd:       []string{"bundle", "exec", "rspec", "{{target}}"},
+		FrameworkName: "rspec",
+		Cmd:           []string{"bundle", "exec", "rspec"},
 	}
 
 	args, err := BuildRunArgs(j, []string{"spec/example_spec.rb"}, cfg, []string{"--tag", "slow"})

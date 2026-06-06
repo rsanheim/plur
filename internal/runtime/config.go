@@ -72,6 +72,11 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 		if len(j.Cmd) == 0 {
 			return fmt.Errorf("configuration error in %v: job %q must define a command", rc.Sources, name)
 		}
+		for _, arg := range j.Cmd {
+			if strings.Contains(arg, "{{") || strings.Contains(arg, "}}") {
+				return fmt.Errorf("configuration error in %v: job %q command must not contain template tokens", rc.Sources, name)
+			}
+		}
 	}
 
 	for _, w := range rc.Watches {

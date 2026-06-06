@@ -91,9 +91,8 @@ Jobs are selected in the following priority order:
 
 In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
 its fixed flags. Plur appends discovered targets automatically (or expands
-Minitest targets into `-e` requires), so user job commands must not include
-`{{target}}`. Run mode rejects user job commands that contain `{{target}}` with
-a configuration error.
+Minitest targets into `-e` requires). Job commands must not contain template
+tokens; templates are only supported in watch target mappings.
 
 ### Framework Default File Patterns
 
@@ -258,10 +257,8 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 * `{{match}}` - The matched portion of the source path (e.g., `lib/foo.rb` → `foo`)
 * `{{dir_relative}}` - The relative directory of the matched file
 
-Watch mode can also use `{{target}}` inside a job command to customize where
-resolved targets are placed. If a watch job command has no `{{target}}`, Plur
-appends the resolved targets at the end of the command, matching one-shot run
-mode.
+Watch mode resolves target templates first, then appends those targets to the
+job command.
 
 ### Watch Configuration Examples
 

@@ -14,7 +14,7 @@ func TestBuildRuntimeConfig_MergesBuiltinAndUserWatches(t *testing.T) {
 	cli := &CLIInput{
 		Use: "rspec",
 		Jobs: map[string]job.Job{
-			"rspec": {Cmd: []string{"custom-rspec"}, Framework: "rspec"},
+			"rspec": {Cmd: []string{"custom-rspec"}, FrameworkName: "rspec"},
 		},
 		WatchMappings: []watch.WatchMapping{{Name: "custom-watch", Source: "config/**/*.yml", Jobs: []string{"rspec"}}},
 		ConfigFiles:   []string{"~/.plur.toml", ".plur.toml"},
@@ -60,7 +60,7 @@ func TestBuildRuntimeConfig_UserWatchOverridesBuiltinByName(t *testing.T) {
 	cli := &CLIInput{
 		Use: "rspec",
 		Jobs: map[string]job.Job{
-			"rspec": {Cmd: []string{"bin/rspec"}, Framework: "rspec"},
+			"rspec": {Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
 		},
 		WatchMappings: []watch.WatchMapping{
 			{
@@ -95,7 +95,7 @@ func TestBuildRuntimeConfig_PreservesUserExcludePatterns(t *testing.T) {
 		Jobs: map[string]job.Job{
 			"rspec": {
 				Cmd:             []string{"bin/rspec"},
-				Framework:       "rspec",
+				FrameworkName:   "rspec",
 				ExcludePatterns: []string{"spec/system/**/*_spec.rb"},
 			},
 		},
@@ -112,7 +112,7 @@ func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
 	rc := &RuntimeConfig{
 		Use: "rspec",
 		Jobs: map[string]job.Job{
-			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, Framework: "rspec"},
+			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
 		},
 		Watches: []watch.WatchMapping{
 			{Name: "bad-watch", Source: "spec/**/*_spec.rb", Jobs: []string{"missing"}},
@@ -129,7 +129,7 @@ func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
 func TestValidateRuntimeConfigRejectsJobWithoutCommand(t *testing.T) {
 	rc := &RuntimeConfig{
 		Jobs: map[string]job.Job{
-			"custom": {Name: "custom", Framework: "passthrough"},
+			"custom": {Name: "custom", FrameworkName: "passthrough"},
 		},
 		Sources: []string{".plur.toml"},
 	}
@@ -139,11 +139,42 @@ func TestValidateRuntimeConfigRejectsJobWithoutCommand(t *testing.T) {
 	assert.Contains(t, err.Error(), "job \"custom\" must define a command")
 }
 
+func TestValidateRuntimeConfigRejectsTemplateTokensInJobCommand(t *testing.T) {
+	tests := []struct {
+		name string
+		cmd  []string
+	}{
+		{
+			name: "standalone template argument",
+			cmd:  []string{"bin/rspec", "{{match}}"},
+		},
+		{
+			name: "embedded template argument",
+			cmd:  []string{"bin/rspec", "--file={{match}}"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rc := &RuntimeConfig{
+				Jobs: map[string]job.Job{
+					"custom": {Name: "custom", Cmd: tt.cmd, FrameworkName: "rspec"},
+				},
+				Sources: []string{".plur.toml"},
+			}
+
+			err := validateRuntimeConfig(rc)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "job \"custom\" command must not contain template tokens")
+		})
+	}
+}
+
 func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {
 	rc := &RuntimeConfig{
 		Use: "custom",
 		Jobs: map[string]job.Job{
-			"custom": {Name: "custom", Cmd: []string{"custom-runner"}, Framework: "passthrough"},
+			"custom": {Name: "custom", Cmd: []string{"custom-runner"}, FrameworkName: "passthrough"},
 		},
 		Inherited: map[string]InheritedFields{},
 	}
@@ -163,7 +194,7 @@ func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 
 	rc := &RuntimeConfig{
 		Jobs: map[string]job.Job{
-			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, Framework: "rspec", TargetPattern: "spec/**/*_spec.rb"},
+			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec", TargetPattern: "spec/**/*_spec.rb"},
 		},
 		Inherited: map[string]InheritedFields{},
 	}
@@ -183,7 +214,7 @@ func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
 
 	rc := &RuntimeConfig{
 		Jobs: map[string]job.Job{
-			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, Framework: "rspec", TargetPattern: "spec/**/*_spec.rb"},
+			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec", TargetPattern: "spec/**/*_spec.rb"},
 		},
 		Inherited: map[string]InheritedFields{
 			"rspec": {Framework: true, TargetPattern: true},
@@ -205,11 +236,11 @@ func TestBuildRuntimeConfigIncludesRailsAndRakeJobs(t *testing.T) {
 	require.Contains(t, rc.Jobs, "rake")
 
 	assert.Equal(t, []string{"bin/rails"}, rc.Jobs["rails"].Cmd)
-	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework)
+	assert.Equal(t, "passthrough", rc.Jobs["rails"].FrameworkName)
 	assert.Empty(t, rc.Jobs["rails"].Env)
 
 	assert.Equal(t, []string{"bundle", "exec", "rake"}, rc.Jobs["rake"].Cmd)
-	assert.Equal(t, "passthrough", rc.Jobs["rake"].Framework)
+	assert.Equal(t, "passthrough", rc.Jobs["rake"].FrameworkName)
 	assert.Empty(t, rc.Jobs["rake"].Env)
 }
 
@@ -226,7 +257,7 @@ func TestBuildRuntimeConfigRailsJobOverrides(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, rc.Jobs, "rails")
 	assert.Equal(t, []string{"bundle", "exec", "rails"}, rc.Jobs["rails"].Cmd)
-	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework)
+	assert.Equal(t, "passthrough", rc.Jobs["rails"].FrameworkName)
 	assert.Equal(t, []string{"CUSTOM_ENV=value"}, rc.Jobs["rails"].Env)
 	assert.True(t, rc.Inherited["rails"].Framework)
 	assert.False(t, rc.Inherited["rails"].Env)
@@ -242,7 +273,7 @@ func TestBuildRuntimeConfigRailsJobEnvOnlyOverrideInheritsCommand(t *testing.T) 
 	require.NoError(t, err)
 	require.Contains(t, rc.Jobs, "rails")
 	assert.Equal(t, []string{"bin/rails"}, rc.Jobs["rails"].Cmd)
-	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework)
+	assert.Equal(t, "passthrough", rc.Jobs["rails"].FrameworkName)
 	assert.Equal(t, []string{"CUSTOM_ENV=value"}, rc.Jobs["rails"].Env)
 	assert.True(t, rc.Inherited["rails"].Cmd)
 	assert.True(t, rc.Inherited["rails"].Framework)

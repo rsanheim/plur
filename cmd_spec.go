@@ -29,16 +29,12 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	runtime.LogInheritedFields(currentJob.Name, selected.Inherited)
 
-	if err := rejectRunModeTargetTemplate(currentJob.Name, currentJob.UsesTargets(), selected.Inherited.Cmd); err != nil {
-		return err
-	}
-
-	if len(r.Tags) > 0 && currentJob.Framework != "rspec" {
-		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)
+	if len(r.Tags) > 0 && currentJob.FrameworkName != "rspec" {
+		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.FrameworkName)
 	}
 
 	targetPatterns, _ := framework.TargetPatternsForJob(currentJob)
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.FrameworkName, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
 	discovery, err := fileset.Discover(currentJob, r.Patterns, excludes)
@@ -122,13 +118,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	return nil
-}
-
-func rejectRunModeTargetTemplate(jobName string, usesTargets, inheritedCmd bool) error {
-	if !usesTargets || inheritedCmd {
-		return nil
-	}
-	return fmt.Errorf("job %q command uses {{target}}, but run mode appends targets automatically; remove {{target}} from job cmd", jobName)
 }
 
 func unmatchedCLIExcludeWarnings(patterns []string, matches map[string]int) []string {

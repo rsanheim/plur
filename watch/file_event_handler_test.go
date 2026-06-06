@@ -55,7 +55,7 @@ func TestFileEventHandler_HandleBatch_SingleFile(t *testing.T) {
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
 		Jobs: map[string]job.Job{
-			"rspec": {Name: "rspec", Cmd: []string{"rspec", "{{target}}"}},
+			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
 		},
 		Watches: []WatchMapping{
 			{
@@ -96,7 +96,7 @@ func TestFileEventHandler_HandleBatch_MultipleFiles(t *testing.T) {
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
 		Jobs: map[string]job.Job{
-			"rspec": {Name: "rspec", Cmd: []string{"rspec", "{{target}}"}},
+			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
 		},
 		Watches: []WatchMapping{
 			{
@@ -129,7 +129,7 @@ func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
 		Jobs: map[string]job.Job{
-			"rspec": {Name: "rspec", Cmd: []string{"rspec", "{{target}}"}},
+			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
 		},
 		Watches: []WatchMapping{
 			{
@@ -194,8 +194,8 @@ func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
 		Jobs: map[string]job.Job{
-			"rspec":   {Name: "rspec", Cmd: []string{"rspec", "{{target}}"}},
-			"rubocop": {Name: "rubocop", Cmd: []string{"rubocop", "{{target}}"}},
+			"rspec":   {Name: "rspec", Cmd: []string{"rspec"}},
+			"rubocop": {Name: "rubocop", Cmd: []string{"rubocop"}},
 		},
 		Watches: []WatchMapping{
 			{
@@ -226,7 +226,7 @@ func TestFileEventHandler_HandleBatch_NoMatchingTargets(t *testing.T) {
 	mock := &mockExecutor{}
 	handler := &FileEventHandler{
 		Jobs: map[string]job.Job{
-			"rspec": {Name: "rspec", Cmd: []string{"rspec", "{{target}}"}},
+			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
 		},
 		Watches: []WatchMapping{
 			{

@@ -134,7 +134,7 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 	if len(inputs) == 0 {
 		return framework.TargetPatternsForJob(j)
 	}
-	spec, err := framework.Get(j.Framework)
+	fw, err := framework.Get(j.FrameworkName)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 			continue
 		}
 		if targets == nil {
-			targets, err = framework.TargetPatternsForJobWithSpec(j, spec)
+			targets, err = framework.TargetPatternsForJobWithFramework(j, fw)
 			if err != nil {
 				return nil, err
 			}

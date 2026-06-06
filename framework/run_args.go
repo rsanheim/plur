@@ -8,26 +8,24 @@ import (
 )
 
 // BuildRunArgs builds command arguments for run mode (plur spec).
-// User-supplied {{target}} tokens are rejected by the CLI before this helper.
-// The strip step remains for inherited built-in commands shared with watch mode.
 // extraArgs are inserted after framework defaults and before target files.
 func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
-	spec, err := Get(j.Framework)
+	fw, err := Get(j.FrameworkName)
 	if err != nil {
 		return nil, err
 	}
 
-	args := stripTargetTokens(j.Cmd)
+	args := append([]string{}, j.Cmd...)
 
-	if spec.DefaultArgs != nil {
-		defaultArgs, err := spec.DefaultArgs(cfg)
+	if fw.DefaultArgs != nil {
+		defaultArgs, err := fw.DefaultArgs(cfg)
 		if err != nil {
 			return nil, err
 		}
 		args = append(args, defaultArgs...)
 	}
 
-	switch spec.TargetMode {
+	switch fw.TargetMode {
 	case TargetModeRubyRequire:
 		args = appendMinitestRequireArgs(args, files)
 		if len(extraArgs) > 0 {
@@ -41,17 +39,6 @@ func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig, extraArgs
 	}
 
 	return args, nil
-}
-
-func stripTargetTokens(args []string) []string {
-	filtered := make([]string, 0, len(args))
-	for _, arg := range args {
-		if strings.Contains(arg, "{{target}}") {
-			continue
-		}
-		filtered = append(filtered, arg)
-	}
-	return filtered
 }
 
 func appendMinitestRequireArgs(args []string, files []string) []string {

@@ -348,32 +348,30 @@ RSpec.describe "Configuration" do
       end
     end
 
-    it "rejects target templates in run-mode job commands" do
+    it "rejects template tokens in job commands" do
       Dir.mktmpdir do |tmpdir|
         FileUtils.mkdir_p(File.join(tmpdir, "spec"))
         File.write(File.join(tmpdir, "spec", "example_spec.rb"), "RSpec.describe('x'){ it('works'){} }")
 
-        config_path = File.join(tmpdir, "run-target-template.toml")
+        config_path = File.join(tmpdir, "job-command-template.toml")
         File.write(config_path, <<~TOML)
           use = "custom"
 
           [job.custom]
           framework = "rspec"
-          cmd = ["bin/rspec", "{{target}}"]
+          cmd = ["bin/rspec", "--file={{match}}"]
           target_pattern = "spec/**/*_spec.rb"
         TOML
 
         _, error, status = Dir.chdir(tmpdir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => config_path},
-            plur_binary, "--dry-run"
+            plur_binary, "doctor"
           )
         end
 
         expect(status).not_to be_success
-        expect(error).to include('job "custom" command uses {{target}}')
-        expect(error).to include("run mode appends targets automatically")
-        expect(error).to include("remove {{target}}")
+        expect(error).to include('job "custom" command must not contain template tokens')
       end
     end
 

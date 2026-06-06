@@ -30,13 +30,13 @@ type Runner struct {
 	config    *config.GlobalConfig
 	files     []string
 	job       job.Job
-	framework framework.Spec
+	framework framework.Framework
 	tracker   *testruntime.RuntimeTracker
 	extraArgs []string
 }
 
 func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []string) (*Runner, error) {
-	spec, err := framework.Get(j.Framework)
+	fw, err := framework.Get(j.FrameworkName)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []
 		config:    cfg,
 		files:     files,
 		job:       j,
-		framework: spec,
+		framework: fw,
 		tracker:   tracker,
 		extraArgs: extraArgs,
 	}, nil
@@ -212,10 +212,6 @@ func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
-		if r.job.UsesTargets() && logger.IsDebugEnabled() {
-			logger.Logger.Debug("ignoring {{target}} tokens in run mode", "job", r.job.Name)
-		}
-
 		args, err := framework.BuildRunArgs(r.job, group.Files, r.config, r.extraArgs)
 		if err != nil {
 			return nil, err

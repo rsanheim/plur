@@ -19,7 +19,7 @@ const (
 	TargetModeRubyRequire
 )
 
-type Spec struct {
+type Framework struct {
 	Name           string
 	Parser         func() types.TestOutputParser
 	DefaultArgs    func(*config.GlobalConfig) ([]string, error)
@@ -27,7 +27,7 @@ type Spec struct {
 	TargetMode     TargetMode
 }
 
-var registry = map[string]Spec{
+var registry = map[string]Framework{
 	"rspec": {
 		Name:           "rspec",
 		Parser:         rspec.NewOutputParser,
@@ -54,15 +54,15 @@ var registry = map[string]Spec{
 	},
 }
 
-func Get(name string) (Spec, error) {
+func Get(name string) (Framework, error) {
 	normalized := Normalize(name)
 	if normalized == "" {
-		return Spec{}, fmt.Errorf("framework is required")
+		return Framework{}, fmt.Errorf("framework is required")
 	}
-	if spec, ok := registry[normalized]; ok {
-		return spec, nil
+	if fw, ok := registry[normalized]; ok {
+		return fw, nil
 	}
-	return Spec{}, fmt.Errorf("unknown framework %q", name)
+	return Framework{}, fmt.Errorf("unknown framework %q", name)
 }
 
 func IsKnown(name string) bool {
@@ -83,7 +83,7 @@ func IsMinitest(name string) bool {
 // If the job has an explicit TargetPattern, that is returned. Otherwise, the framework's
 // DetectPatterns are used.
 func TargetPatternsForJob(j job.Job) ([]string, error) {
-	spec, err := Get(j.Framework)
+	fw, err := Get(j.FrameworkName)
 	if err != nil {
 		// If we have an explicit pattern, we don't strictly need a known framework
 		if j.TargetPattern != "" {
@@ -91,19 +91,19 @@ func TargetPatternsForJob(j job.Job) ([]string, error) {
 		}
 		return nil, err
 	}
-	return TargetPatternsForJobWithSpec(j, spec)
+	return TargetPatternsForJobWithFramework(j, fw)
 }
 
-// TargetPatternsForJobWithSpec is like TargetPatternsForJob but accepts a pre-resolved Spec,
+// TargetPatternsForJobWithFramework is like TargetPatternsForJob but accepts a pre-resolved Framework,
 // avoiding a redundant Get call when the caller already has one.
-func TargetPatternsForJobWithSpec(j job.Job, spec Spec) ([]string, error) {
+func TargetPatternsForJobWithFramework(j job.Job, fw Framework) ([]string, error) {
 	if j.TargetPattern != "" {
 		return []string{j.TargetPattern}, nil
 	}
-	if len(spec.DetectPatterns) == 0 {
-		return nil, fmt.Errorf("job %q has no target_pattern and framework %q has no detect patterns", j.Name, spec.Name)
+	if len(fw.DetectPatterns) == 0 {
+		return nil, fmt.Errorf("job %q has no target_pattern and framework %q has no detect patterns", j.Name, fw.Name)
 	}
-	return spec.DetectPatterns, nil
+	return fw.DetectPatterns, nil
 }
 
 func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
