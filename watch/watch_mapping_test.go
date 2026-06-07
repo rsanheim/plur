@@ -85,7 +85,17 @@ func TestMergeKey(t *testing.T) {
 				Ignore:  []string{"config/credentials/**"},
 				Reload:  true,
 			},
-			expected: "source:config/**/*.yml|targets:[spec/config_spec.rb]|jobs:[rspec]|ignore:[config/credentials/**]|reload:true",
+			expected: "source:config/**/*.yml|targets:[spec/config_spec.rb]|no_targets:false|jobs:[rspec]|ignore:[config/credentials/**]|reload:true",
+		},
+		{
+			name: "unnamed no-target watch uses composite fields",
+			watch: WatchMapping{
+				Source:    "**/*.go",
+				NoTargets: true,
+				Jobs:      []string{"build"},
+				Reload:    true,
+			},
+			expected: "source:**/*.go|targets:[]|no_targets:true|jobs:[build]|ignore:[]|reload:true",
 		},
 	}
 

@@ -63,6 +63,10 @@ framework = "rspec"
 cmd = ["bin/rspec", "--tag", "integration"]
 target_pattern = "spec/integration/**/*_spec.rb"
 
+# Custom no-arg build job
+[job.build]
+cmd = ["bin/rake", "install"]
+
 # =============================================================================
 # WATCH MODE CONFIGURATION
 # Settings for 'plur watch' - maps source files to tests
@@ -81,6 +85,14 @@ jobs = ["rspec"]
 name = "spec-files"
 source = "spec/**/*_spec.rb"
 jobs = ["rspec"]
+
+# Watch source files and run a no-arg build command
+[[watch]]
+name = "go-build"
+source = "**/*.go"
+no_targets = true
+jobs = ["build"]
+reload = true
 
 # Watch app files (Rails) and run corresponding specs
 [[watch]]

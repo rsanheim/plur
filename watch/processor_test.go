@@ -102,6 +102,33 @@ func TestEventProcessorNoTargets(t *testing.T) {
 	assert.Equal(t, []string{filepath.FromSlash("spec/models/user_spec.rb")}, result["rspec"])
 }
 
+func TestEventProcessorNoTargetsDisabled(t *testing.T) {
+	jobs := map[string]framework.Job{
+		"build": {
+			Name: "build",
+			Cmd:  []string{"bin/rake", "install"},
+		},
+	}
+
+	watches := []WatchMapping{
+		{
+			Name:      "go-build",
+			Source:    "**/*.go",
+			NoTargets: true,
+			Jobs:      []string{"build"},
+		},
+	}
+
+	processor := NewEventProcessor(jobs, watches)
+
+	result, err := processor.ProcessPath("runner.go")
+	require.NoError(t, err)
+
+	targets, ok := result["build"]
+	assert.True(t, ok, "matched no-target jobs should be present")
+	assert.Empty(t, targets)
+}
+
 func TestEventProcessorMultipleJobs(t *testing.T) {
 	jobs := map[string]framework.Job{
 		"rspec": {

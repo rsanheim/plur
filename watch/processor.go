@@ -27,7 +27,8 @@ func NewEventProcessor(jobs map[string]framework.Job, watches []WatchMapping) *E
 
 // ProcessPath maps a file path to target files per job
 // Returns a map of jobName -> []targetFiles
-// If a watch mapping has no targets configured, the source file itself is used
+// If a watch mapping has no targets configured, the source file itself is used.
+// If no_targets is true, the job is still returned with an empty target list.
 func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) {
 	results := make(map[string][]string)
 
@@ -76,8 +77,13 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 }
 
 // renderTargets renders the target templates for a watch mapping
-// If no targets are specified (empty slice), returns the source path
+// If no_targets is true, returns an empty target list. If no targets are
+// specified, returns the source path.
 func (ep *EventProcessor) renderTargets(watch WatchMapping, path string) ([]string, error) {
+	if watch.NoTargets {
+		return nil, nil
+	}
+
 	// If no targets specified, use the source file itself
 	if len(watch.Targets) == 0 {
 		return []string{filepath.FromSlash(path)}, nil

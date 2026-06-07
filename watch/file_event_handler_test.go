@@ -179,6 +179,67 @@ func TestFileEventHandler_HandleBatch_ShouldReload(t *testing.T) {
 	assert.True(t, result.ShouldReload)
 }
 
+func TestFileEventHandler_HandleBatch_NoTargetsExecutesJob(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mock := &mockExecutor{}
+	handler := &FileEventHandler{
+		Jobs: map[string]framework.Job{
+			"build": {Name: "build", Cmd: []string{"bin/rake", "install"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:      "go-build",
+				Source:    "**/*.go",
+				NoTargets: true,
+				Jobs:      []string{"build"},
+			},
+		},
+		CWD:      tmpDir,
+		Executor: mock.execute,
+	}
+
+	result := handler.HandleBatch([]string{"runner.go"})
+
+	assert.Equal(t, []string{"build"}, result.ExecutedJobs)
+	require.Len(t, mock.calls, 1)
+	assert.Equal(t, "build", mock.calls[0].jobName)
+	assert.Empty(t, mock.calls[0].targets)
+}
+
+func TestFileEventHandler_HandleBatch_NoTargetsExecutesWhenOtherTargetsAreMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mock := &mockExecutor{}
+	handler := &FileEventHandler{
+		Jobs: map[string]framework.Job{
+			"build": {Name: "build", Cmd: []string{"bin/rake", "install"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:      "go-build",
+				Source:    "**/*.go",
+				NoTargets: true,
+				Jobs:      []string{"build"},
+			},
+			{
+				Name:    "generated-target",
+				Source:  "**/*.go",
+				Targets: []string{"generated/missing.txt"},
+				Jobs:    []string{"build"},
+			},
+		},
+		CWD:      tmpDir,
+		Executor: mock.execute,
+	}
+
+	result := handler.HandleBatch([]string{"runner.go"})
+
+	assert.Equal(t, []string{"build"}, result.ExecutedJobs)
+	require.Len(t, mock.calls, 1)
+	assert.Empty(t, mock.calls[0].targets)
+}
+
 func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
 	tmpDir := t.TempDir()
 

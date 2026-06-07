@@ -83,6 +83,8 @@ Notes:
 
 ## Watch mode command building
 - Append resolved targets at the end of the command.
+- If a watch mapping sets `no_targets = true`, run the job command without
+  appending file arguments.
 - Watch remains responsible for guard-like path substitutions.
 
 ## Default jobs vs user jobs

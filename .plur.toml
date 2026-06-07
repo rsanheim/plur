@@ -11,6 +11,7 @@ cmd = ["bin/rspec"]
 [[watch]]
 source = "**/*.go"
 jobs = ["build"]
+no_targets = true
 reload = true
 ignore = [".git/**", "**/*_test.go", "**/vendor/**"]
 

@@ -126,6 +126,29 @@ func TestValidateRuntimeConfigRejectsUndefinedWatchJob(t *testing.T) {
 	assert.Contains(t, err.Error(), "missing")
 }
 
+func TestValidateRuntimeConfigRejectsNoTargetsWithTargets(t *testing.T) {
+	rc := &RuntimeConfig{
+		Jobs: map[string]framework.Job{
+			"build": {Name: "build", Cmd: []string{"bin/rake", "install"}, FrameworkName: "passthrough"},
+		},
+		Watches: []watch.WatchMapping{
+			{
+				Name:      "bad-watch",
+				Source:    "**/*.go",
+				Targets:   []string{"{{path}}"},
+				NoTargets: true,
+				Jobs:      []string{"build"},
+			},
+		},
+		Sources: []string{".plur.toml"},
+	}
+
+	err := validateRuntimeConfig(rc)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "bad-watch")
+	assert.Contains(t, err.Error(), "must not define targets when no_targets is true")
+}
+
 func TestValidateRuntimeConfigRejectsJobWithoutCommand(t *testing.T) {
 	rc := &RuntimeConfig{
 		Jobs: map[string]framework.Job{

@@ -219,8 +219,9 @@ func TestExecuteJob_NoTargets(t *testing.T) {
 	err := ExecuteJob(j, []string{}, tmpDir)
 	require.NoError(t, err)
 
-	_, err = os.ReadFile(outputFile)
-	assert.True(t, os.IsNotExist(err), "Command should not execute with no targets")
+	content, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+	assert.Equal(t, "ran\n", string(content))
 }
 
 func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {

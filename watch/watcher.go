@@ -230,8 +230,8 @@ func RunCommand(args []string) {
 func ExecuteJob(j framework.Job, targetFiles []string, cwd string) error {
 	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
 
-	if len(targetFiles) == 0 {
-		return nil
+	if len(j.Cmd) == 0 {
+		return fmt.Errorf("job %q must define a command", j.Name)
 	}
 
 	cmd := append([]string{}, j.Cmd...)

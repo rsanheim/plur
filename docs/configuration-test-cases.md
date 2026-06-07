@@ -251,6 +251,11 @@ Manual verification checklist for plur configuration behavior. Each case specifi
   * *Expected:* `plur watch find spec/foo_spec.rb` shows the source file as target
   * *Actual:* `found rules name=self-target ... target="[source file]"`, `found files files=spec/foo_spec.rb`
 
+* [x] **Watch with no_targets** — matched job runs without file args
+  * *Input:* `[[watch]]` with `source = "**/*.go"`, `no_targets = true`, `jobs = ["build"]`
+  * *Expected:* `plur watch find runner.go` shows `target="[no targets]"` and exits 0
+  * *Actual:* `found rules name=go-build source=**/*.go jobs=[build] target="[no targets]"`
+
 ---
 
 ## 4. Runtime Config Validation

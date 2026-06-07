@@ -85,6 +85,9 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 				return fmt.Errorf("configuration error in %v: watch %q references undefined job %q", rc.Sources, w.Name, jobName)
 			}
 		}
+		if w.NoTargets && len(w.Targets) > 0 {
+			return fmt.Errorf("configuration error in %v: watch %q must not define targets when no_targets is true", rc.Sources, w.Name)
+		}
 		for _, target := range w.Targets {
 			if err := watch.ValidateTemplate(target); err != nil {
 				return fmt.Errorf("configuration error in %v: watch %q has invalid target template %q: %w", rc.Sources, w.Name, target, err)

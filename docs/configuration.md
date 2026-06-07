@@ -244,7 +244,8 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 |-------|------|-------------|----------|
 | `name` | string | Optional identifier for the rule. If set, it must be unique across user-defined `[[watch]]` entries. A named user watch can override a built-in watch with the same name. | No |
 | `source` | string | Glob pattern for files to watch | Yes |
-| `targets` | string[] | Target patterns with placeholders | No |
+| `targets` | string[] | Target patterns with placeholders. If omitted, the changed source file is used as the target. | No |
+| `no_targets` | bool | Run matching jobs without appending any target args. Must not be combined with `targets`. | No |
 | `jobs` | string[] | Jobs to trigger when source matches | Yes |
 | `ignore` | string[] | Patterns to ignore from watching | No |
 | `reload` | bool | Reload plur after jobs complete | No |
@@ -259,7 +260,8 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 * `{{dir_relative}}` - The relative directory of the matched file
 
 Watch mode resolves target templates first, then appends those targets to the
-job command.
+job command. If `targets` is omitted, plur passes the changed source file. Use
+`no_targets = true` for jobs that should run without file arguments.
 
 ### Watch Configuration Examples
 
@@ -276,6 +278,17 @@ jobs = ["rspec"]
 name = "spec-files"
 source = "spec/**/*_spec.rb"
 jobs = ["rspec"]
+
+# Rebuild without passing the changed file as an argument
+[job.build]
+cmd = ["bin/rake", "install"]
+
+[[watch]]
+name = "build"
+source = "**/*.go"
+no_targets = true
+jobs = ["build"]
+reload = true
 
 # Go: source files trigger package tests
 [[watch]]

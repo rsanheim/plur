@@ -80,6 +80,36 @@ RSpec.describe "plur watch config edge cases" do
     end
   end
 
+  it "runs no-target watch jobs without passing the changed file" do
+    with_temp_watch_config(<<~TOML) do |config_path, tmpdir|
+      use = "build"
+
+      [job.build]
+      cmd = ["echo", "build"]
+
+      [[watch]]
+      name = "go-build"
+      source = "**/*.go"
+      no_targets = true
+      jobs = ["build"]
+    TOML
+
+      File.write(File.join(tmpdir, "runner.go"), "package main\n")
+
+      stdout, stderr, status = Open3.capture3(
+        {"PLUR_CONFIG_FILE" => config_path},
+        plur_binary, "watch", "find", "runner.go",
+        chdir: tmpdir
+      )
+
+      expect(stderr).to eq("")
+      expect(stdout).to include('msg="checking watch" file=runner.go')
+      expect(stdout).to include('msg="found rules" name=go-build source=**/*.go jobs=[build] target="[no targets]"')
+      expect(stdout).not_to include("files=runner.go")
+      expect(status.exitstatus).to eq(0)
+    end
+  end
+
   it "uses the same loaded watch config in watch run and merges built-in watch directories when jobs is missing", :skip_if_ci do
     with_temp_watch_config(<<~TOML) do |config_path, tmpdir|
       use = "rspec"

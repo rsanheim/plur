@@ -18,14 +18,10 @@ type FindResult struct {
 	Jobs            map[string]framework.Job // All jobs referenced
 }
 
-// HasExistingTargets returns true if any targets exist
+// HasExistingTargets returns true if any job has executable targets, including
+// a matched no-target job represented by a present key with an empty slice.
 func (r *FindResult) HasExistingTargets() bool {
-	for _, targets := range r.ExistingTargets {
-		if len(targets) > 0 {
-			return true
-		}
-	}
-	return false
+	return len(r.ExistingTargets) > 0
 }
 
 // HasMissingTargets returns true if any targets are missing
@@ -62,11 +58,20 @@ func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches 
 	for _, w := range watches {
 		if matchesWatch(filePath, w) {
 			result.MatchedRules = append(result.MatchedRules, w)
+			if w.NoTargets {
+				for _, jobName := range w.Jobs {
+					result.ExistingTargets[jobName] = nil
+				}
+			}
 		}
 	}
 
 	// Filter targets by existence (resolve relative paths against cwd)
 	for jobName, targets := range candidateTargets {
+		if len(targets) == 0 {
+			result.ExistingTargets[jobName] = nil
+			continue
+		}
 		for _, target := range targets {
 			targetPath := target
 			if cwd != "" && !filepath.IsAbs(target) {

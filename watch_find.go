@@ -71,7 +71,9 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 			name = "(unnamed)"
 		}
 		targetTemplate := "[source file]"
-		if len(rule.Targets) > 0 {
+		if rule.NoTargets {
+			targetTemplate = "[no targets]"
+		} else if len(rule.Targets) > 0 {
 			targetTemplate = rule.Targets[0]
 		}
 		out.Info("found rules",
@@ -87,7 +89,9 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		for _, targets := range findResult.ExistingTargets {
 			allFiles = append(allFiles, targets...)
 		}
-		out.Info("found files", "files", strings.Join(allFiles, ", "))
+		if len(allFiles) > 0 {
+			out.Info("found files", "files", strings.Join(allFiles, ", "))
+		}
 	}
 
 	// Show missing files
