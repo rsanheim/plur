@@ -77,19 +77,19 @@ func buildResolvedJobs(userJobs map[string]framework.Job) (map[string]framework.
 	resolved := make(map[string]framework.Job)
 	inherited := make(map[string]InheritedFields)
 
-	names := make(map[string]struct{})
+	jobNames := make(map[string]struct{})
 	for name := range builtinDefaults.Defaults.Jobs {
-		names[name] = struct{}{}
+		jobNames[name] = struct{}{}
 	}
 	for name := range userJobs {
-		names[name] = struct{}{}
+		jobNames[name] = struct{}{}
 	}
 
-	for name := range names {
-		builtin, hasBuiltin := builtinDefaults.Defaults.Jobs[name]
+	for jobName := range jobNames {
+		builtin, hasBuiltin := builtinDefaults.Defaults.Jobs[jobName]
 		user, hasUser := framework.Job{}, false
 		if userJobs != nil {
-			user, hasUser = userJobs[name]
+			user, hasUser = userJobs[jobName]
 		}
 
 		inherit := InheritedFields{}
@@ -140,7 +140,7 @@ func buildResolvedJobs(userJobs map[string]framework.Job) (map[string]framework.
 			}
 		}
 
-		resolvedJob.Name = name
+		resolvedJob.Name = jobName
 
 		// Framework defaulting (only affects pure user jobs without builtin)
 		if resolvedJob.FrameworkName == "" {
@@ -150,12 +150,12 @@ func buildResolvedJobs(userJobs map[string]framework.Job) (map[string]framework.
 		// Validate framework
 		normalizedFramework := framework.Normalize(resolvedJob.FrameworkName)
 		if !framework.IsKnown(normalizedFramework) {
-			return nil, nil, fmt.Errorf("job %q has unknown framework %q", name, resolvedJob.FrameworkName)
+			return nil, nil, fmt.Errorf("job %q has unknown framework %q", jobName, resolvedJob.FrameworkName)
 		}
 		resolvedJob.FrameworkName = normalizedFramework
 
-		resolved[name] = resolvedJob
-		inherited[name] = inherit
+		resolved[jobName] = resolvedJob
+		inherited[jobName] = inherit
 	}
 
 	return resolved, inherited, nil
