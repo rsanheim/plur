@@ -4,9 +4,7 @@ This directory contains active development documentation.
 
 ## Active Items
 
-| Document | Purpose |
-|----------|---------|
-| [open-pr-triage.md](open-pr-triage.md) | Rolling triage for open PRs, stale branches, and next PR recommendation |
+No active public WIP notes.
 
 ## Status
 
