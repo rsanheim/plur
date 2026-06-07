@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -19,7 +20,9 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	fmt.Fprintf(os.Stderr, "plur version=%s\n", buildinfo.GetVersionInfo())
 	logger.Logger.Debug("running plur", "command", "spec", "args", os.Args[1:])
 
-	selected, err := runtime.SelectJobFromRuntimeConfig(parent.runtimeConfig, r.Patterns)
+	patterns := normalizeSpecPatterns(r.Patterns)
+
+	selected, err := runtime.SelectJobFromRuntimeConfig(parent.runtimeConfig, patterns)
 	if err != nil {
 		return err
 	}
@@ -33,10 +36,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	targetPatterns, _ := currentJob.TargetPatterns()
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.FrameworkName, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.FrameworkName, "patterns", patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
-	discovery, err := fileset.Discover(currentJob, r.Patterns, excludes)
+	discovery, err := fileset.Discover(currentJob, patterns, excludes)
 	if err != nil {
 		return err
 	}
@@ -45,7 +48,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		switch {
 		case len(excludes) > 0:
 			return fmt.Errorf("no test files remain after applying exclude patterns")
-		case len(r.Patterns) > 0:
+		case len(patterns) > 0:
 			return fmt.Errorf("no test files found matching provided patterns")
 		case len(targetPatterns) > 0:
 			return fmt.Errorf("no test files found (looking for %s)", strings.Join(targetPatterns, ", "))
@@ -55,7 +58,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
 	warnings := unmatchedCLIExcludeWarnings(r.ExcludePatterns, discovery.ExcludeMatches)
-	targetWarnings, err := explicitTargetMismatchWarnings(r.Patterns, targetPatterns, currentJob.Name)
+	targetWarnings, err := explicitTargetMismatchWarnings(patterns, targetPatterns, currentJob.Name)
 	if err != nil {
 		return err
 	}
@@ -101,7 +104,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	if hasValidRuntimeData {
-		runKind := testruntime.ClassifyRunKind(r.Patterns, r.Tags, parent.passthroughArgs, aborted)
+		runKind := testruntime.ClassifyRunKind(patterns, r.Tags, parent.passthroughArgs, aborted)
 		if err := runner.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
@@ -119,11 +122,19 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	return nil
 }
 
+func normalizeSpecPatterns(patterns []string) []string {
+	normalized := make([]string, len(patterns))
+	for i, pattern := range patterns {
+		normalized[i] = filepath.ToSlash(filepath.Clean(pattern))
+	}
+	return normalized
+}
+
 func unmatchedCLIExcludeWarnings(patterns []string, matches map[string]int) []string {
 	var warnings []string
 	for _, pattern := range patterns {
 		if matches[pattern] == 0 {
-			warnings = append(warnings, fmt.Sprintf("--exclude-pattern %s matched no selected files", shellSingleQuote(pattern)))
+			warnings = append(warnings, fmt.Sprintf("--exclude-pattern %q matched no selected files", pattern))
 		}
 	}
 	return warnings
@@ -136,10 +147,10 @@ func explicitTargetMismatchWarnings(patterns, targetPatterns []string, jobName s
 	}
 	var warnings []string
 	for _, mismatch := range mismatches {
-		warnings = append(warnings, fmt.Sprintf("target %s does not match selected job %s target pattern %s",
-			shellSingleQuote(mismatch),
-			shellSingleQuote(jobName),
-			shellSingleQuote(strings.Join(targetPatterns, ", "))))
+		warnings = append(warnings, fmt.Sprintf("target %q does not match selected job %q target pattern %q",
+			mismatch,
+			jobName,
+			strings.Join(targetPatterns, ", ")))
 	}
 	return warnings, nil
 }
@@ -148,10 +159,6 @@ func printWarnings(warnings []string) {
 	for _, warning := range warnings {
 		fmt.Fprintf(os.Stderr, "[warn] %s\n", warning)
 	}
-}
-
-func shellSingleQuote(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 func buildTagArgs(tags []string) []string {

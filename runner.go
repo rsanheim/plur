@@ -131,13 +131,7 @@ func (r *Runner) groupFiles() []FileGroup {
 // shouldExpandSplits reports whether the runner should expand long-running
 // RSpec files into focused file:line targets before grouping.
 func (r *Runner) shouldExpandSplits() bool {
-	if !r.config.RspecSplit {
-		return false
-	}
-	if r.job.Framework.Name != "rspec" {
-		return false
-	}
-	if r.config.WorkerCount <= 1 {
+	if r.job.Framework.Name != "rspec" || r.config.WorkerCount <= 1 || !r.config.RspecSplit {
 		return false
 	}
 	return true

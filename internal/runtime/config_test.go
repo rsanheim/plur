@@ -146,11 +146,11 @@ func TestValidateRuntimeConfigRejectsTemplateTokensInJobCommand(t *testing.T) {
 	}{
 		{
 			name: "standalone template argument",
-			cmd:  []string{"bin/rspec", "{{match}}"},
+			cmd:  []string{"bin/rspec", "{{target}}"},
 		},
 		{
 			name: "embedded template argument",
-			cmd:  []string{"bin/rspec", "--file={{match}}"},
+			cmd:  []string{"bin/rspec", "--file={{target}}"},
 		},
 	}
 
@@ -165,7 +165,7 @@ func TestValidateRuntimeConfigRejectsTemplateTokensInJobCommand(t *testing.T) {
 
 			err := validateRuntimeConfig(rc)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job \"custom\" command must not contain template tokens")
+			assert.Contains(t, err.Error(), "job \"custom\" command must not contain {{target}} tokens")
 		})
 	}
 }

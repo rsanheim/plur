@@ -116,9 +116,8 @@ func explicitFileTargetPath(input string) (string, bool) {
 }
 
 func matchesAnyTargetPattern(path string, targetPatterns []string) (bool, error) {
-	normalized := filepath.ToSlash(path)
 	for _, pattern := range targetPatterns {
-		matched, err := doublestar.Match(filepath.ToSlash(pattern), normalized)
+		matched, err := doublestar.Match(pattern, path)
 		if err != nil {
 			return false, fmt.Errorf("invalid target pattern %q: %w", pattern, err)
 		}

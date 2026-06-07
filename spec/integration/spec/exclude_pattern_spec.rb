@@ -71,7 +71,7 @@ RSpec.describe "--exclude-pattern" do
         end
 
         expect(result).to be_success
-        expect(result.err).to include("[warn] --exclude-pattern '*user*/_spec.rb' matched no selected files")
+        expect(result.err).to include('[warn] --exclude-pattern "*user*/_spec.rb" matched no selected files')
         expect(result.err).to include("spec/models/user_spec.rb")
       end
     end

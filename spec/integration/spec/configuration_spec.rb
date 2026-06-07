@@ -359,7 +359,7 @@ RSpec.describe "Configuration" do
 
           [job.custom]
           framework = "rspec"
-          cmd = ["bin/rspec", "--file={{match}}"]
+          cmd = ["bin/rspec", "{{target}}"]
           target_pattern = "spec/**/*_spec.rb"
         TOML
 
@@ -371,7 +371,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).not_to be_success
-        expect(error).to include('job "custom" command must not contain template tokens')
+        expect(error).to include('job "custom" command must not contain {{target}} tokens')
       end
     end
 
