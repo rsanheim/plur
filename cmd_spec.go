@@ -57,14 +57,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
-	warnings := unmatchedCLIExcludeWarnings(r.ExcludePatterns, discovery.ExcludeMatches)
-	targetWarnings, err := explicitTargetMismatchWarnings(patterns, targetPatterns, currentJob.Name)
-	if err != nil {
-		return err
-	}
-	warnings = append(warnings, targetWarnings...)
-	printWarnings(warnings)
-
 	if r.Auto {
 		depManager := NewDependencyManager(cfg.DryRun)
 		if err := depManager.InstallDependencies(); err != nil {
@@ -128,37 +120,6 @@ func normalizeSpecPatterns(patterns []string) []string {
 		normalized[i] = filepath.ToSlash(filepath.Clean(pattern))
 	}
 	return normalized
-}
-
-func unmatchedCLIExcludeWarnings(patterns []string, matches map[string]int) []string {
-	var warnings []string
-	for _, pattern := range patterns {
-		if matches[pattern] == 0 {
-			warnings = append(warnings, fmt.Sprintf("--exclude-pattern %q matched no selected files", pattern))
-		}
-	}
-	return warnings
-}
-
-func explicitTargetMismatchWarnings(patterns, targetPatterns []string, jobName string) ([]string, error) {
-	mismatches, err := fileset.ExplicitTargetMismatches(patterns, targetPatterns)
-	if err != nil {
-		return nil, err
-	}
-	var warnings []string
-	for _, mismatch := range mismatches {
-		warnings = append(warnings, fmt.Sprintf("target %q does not match selected job %q target pattern %q",
-			mismatch,
-			jobName,
-			strings.Join(targetPatterns, ", ")))
-	}
-	return warnings, nil
-}
-
-func printWarnings(warnings []string) {
-	for _, warning := range warnings {
-		fmt.Fprintf(os.Stderr, "[warn] %s\n", warning)
-	}
 }
 
 func buildTagArgs(tags []string) []string {

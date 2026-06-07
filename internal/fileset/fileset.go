@@ -12,8 +12,7 @@ import (
 )
 
 type DiscoverResult struct {
-	Files          []string
-	ExcludeMatches map[string]int
+	Files []string
 }
 
 // Discover returns sorted, deduped, exclude-filtered files for a job.
@@ -49,24 +48,17 @@ func Discover(j framework.Job, inputs, excludes []string) (DiscoverResult, error
 	slices.Sort(files)
 	files = slices.Compact(files)
 
-	excludeMatches := make(map[string]int, len(excludes))
-	for _, ex := range excludes {
-		excludeMatches[ex] = 0
-	}
-
 	files = slices.DeleteFunc(files, func(f string) bool {
 		s := filepath.ToSlash(filePathForExcludeMatch(f))
-		excluded := false
 		for _, ex := range excludes {
 			if ok, _ := doublestar.PathMatch(ex, s); ok {
-				excludeMatches[ex]++
-				excluded = true
+				return true
 			}
 		}
-		return excluded
+		return false
 	})
 
-	return DiscoverResult{Files: files, ExcludeMatches: excludeMatches}, nil
+	return DiscoverResult{Files: files}, nil
 }
 
 // hasGlobMeta reports whether s contains any doublestar metacharacters.
@@ -77,55 +69,6 @@ func filePathForExcludeMatch(s string) string {
 		return s[:strings.IndexByte(s, ':')]
 	}
 	return s
-}
-
-func ExplicitTargetMismatches(inputs, targetPatterns []string) ([]string, error) {
-	if len(inputs) == 0 || len(targetPatterns) == 0 {
-		return nil, nil
-	}
-
-	var mismatches []string
-	for _, in := range inputs {
-		targetPath, ok := explicitFileTargetPath(in)
-		if !ok {
-			continue
-		}
-		matched, err := matchesAnyTargetPattern(targetPath, targetPatterns)
-		if err != nil {
-			return nil, err
-		}
-		if !matched {
-			mismatches = append(mismatches, in)
-		}
-	}
-	return mismatches, nil
-}
-
-func explicitFileTargetPath(input string) (string, bool) {
-	if hasGlobMeta(input) {
-		return "", false
-	}
-	if isFileLineTarget(input) {
-		return filePathForExcludeMatch(input), true
-	}
-	info, err := os.Stat(input)
-	if err != nil || info.IsDir() {
-		return "", false
-	}
-	return input, true
-}
-
-func matchesAnyTargetPattern(path string, targetPatterns []string) (bool, error) {
-	for _, pattern := range targetPatterns {
-		matched, err := doublestar.Match(pattern, path)
-		if err != nil {
-			return false, fmt.Errorf("invalid target pattern %q: %w", pattern, err)
-		}
-		if matched {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func classifyInputs(j framework.Job, inputs []string) ([]string, error) {

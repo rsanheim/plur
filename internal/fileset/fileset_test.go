@@ -137,10 +137,6 @@ func TestDiscover_ExcludesFiltering(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"spec/models/user_spec.rb"}, discovery.Files)
-	assert.Equal(t, map[string]int{
-		"spec/system/**/*_spec.rb": 2,
-		"spec/legacy/**/*_spec.rb": 1,
-	}, discovery.ExcludeMatches)
 }
 
 func TestDiscover_InvalidExcludePatternErrors(t *testing.T) {

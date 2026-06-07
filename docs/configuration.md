@@ -131,7 +131,8 @@ target_pattern = "spec/api/**/*_spec.rb"
 ### Exclude Patterns
 
 Use `exclude_patterns` to drop matching files from discovery. Patterns use
-doublestar semantics. Multiple entries are OR'd together.
+doublestar semantics. Multiple entries are OR'd together. Patterns that match no
+selected files are ignored.
 
 ```toml
 [job.rspec]
@@ -361,7 +362,7 @@ plur spec/models/                  # Expands to spec/models/**/*_spec.rb
 
 # Single files (passed through even if not *_spec.rb)
 plur spec/user_spec.rb             # Specific file
-plur spec/spec_helper.rb           # Warning shown but runs
+plur spec/spec_helper.rb           # Runs as an explicit file
 ```
 
 ### RSpec Compatibility
@@ -369,8 +370,8 @@ plur spec/spec_helper.rb           # Warning shown but runs
 Plur matches RSpec's behavior:
 
 * **Directories**: Automatically append `**/*_spec.rb` pattern
-* **Single files**: Pass through with warning if not matching test suffix
-* **Glob patterns**: Filter results to only test files
+* **Single files**: Pass through even if not matching test suffix
+* **Glob patterns**: Expand matching files directly
 
 ## Environment Variables
 

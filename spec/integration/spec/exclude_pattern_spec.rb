@@ -59,7 +59,7 @@ RSpec.describe "--exclude-pattern" do
       end
     end
 
-    it "warns when a CLI exclude pattern matches no selected files" do
+    it "ignores CLI exclude patterns that match no selected files" do
       Dir.mktmpdir do |dir|
         setup_rspec_fixture(dir)
         result = Dir.chdir(dir) do
@@ -71,7 +71,7 @@ RSpec.describe "--exclude-pattern" do
         end
 
         expect(result).to be_success
-        expect(result.err).to include('[warn] --exclude-pattern "*user*/_spec.rb" matched no selected files')
+        expect(result.err).not_to include("[warn]")
         expect(result.err).to include("spec/models/user_spec.rb")
       end
     end
