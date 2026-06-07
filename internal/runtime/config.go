@@ -144,9 +144,13 @@ func buildSelectedJob(rc *RuntimeConfig, name string, reason ResolveReason) (*Se
 		available := slices.Sorted(maps.Keys(rc.Jobs))
 		return nil, fmt.Errorf("job '%s' not found. Available jobs: %s", name, strings.Join(available, ", "))
 	}
+	resolved, err := j.ResolveFramework()
+	if err != nil {
+		return nil, err
+	}
 	return &SelectedJob{
 		Name:      name,
-		Job:       j,
+		Job:       resolved,
 		Reason:    reason,
 		Inherited: rc.Inherited[name],
 	}, nil

@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/rsanheim/plur/config"
@@ -8,10 +9,10 @@ import (
 
 // BuildRunArgs builds command arguments for run mode (plur spec).
 // extraArgs are inserted after framework defaults and before target files.
-func BuildRunArgs(j Job, files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
-	fw, err := Get(j.FrameworkName)
-	if err != nil {
-		return nil, err
+func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
+	fw := j.Framework
+	if fw.Name == "" {
+		return nil, fmt.Errorf("job %q has no resolved framework", j.Name)
 	}
 
 	args := append([]string{}, j.Cmd...)

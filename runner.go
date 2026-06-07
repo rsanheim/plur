@@ -29,15 +29,17 @@ type Runner struct {
 	config    *config.GlobalConfig
 	files     []string
 	job       framework.Job
-	framework framework.Framework
 	tracker   *testruntime.RuntimeTracker
 	extraArgs []string
 }
 
 func NewRunner(cfg *config.GlobalConfig, files []string, j framework.Job, extraArgs []string) (*Runner, error) {
-	fw, err := framework.Get(j.FrameworkName)
-	if err != nil {
-		return nil, err
+	if j.Framework.Name == "" {
+		var err error
+		j, err = j.ResolveFramework()
+		if err != nil {
+			return nil, err
+		}
 	}
 	tracker, err := testruntime.NewRuntimeTracker(cfg.RuntimeDir)
 	if err != nil {
@@ -47,7 +49,6 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j framework.Job, extraA
 		config:    cfg,
 		files:     files,
 		job:       j,
-		framework: fw,
 		tracker:   tracker,
 		extraArgs: extraArgs,
 	}, nil
@@ -133,7 +134,7 @@ func (r *Runner) shouldExpandSplits() bool {
 	if !r.config.RspecSplit {
 		return false
 	}
-	if r.framework.Name != "rspec" {
+	if r.job.Framework.Name != "rspec" {
 		return false
 	}
 	if r.config.WorkerCount <= 1 {
@@ -211,7 +212,7 @@ func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
-		args, err := framework.BuildRunArgs(r.job, group.Files, r.config, r.extraArgs)
+		args, err := r.job.BuildRunArgs(group.Files, r.config, r.extraArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -267,7 +268,7 @@ func (r *Runner) printSummary(workerCount int) {
 }
 
 func (r *Runner) testLabel() string {
-	if r.framework.Name == "rspec" {
+	if r.job.Framework.Name == "rspec" {
 		return pluralize(len(r.files), "spec", "specs")
 	}
 	return pluralize(len(r.files), "test", "tests")
@@ -275,9 +276,9 @@ func (r *Runner) testLabel() string {
 
 func (r *Runner) frameworkLabel() string {
 	if r.shouldExpandSplits() {
-		return r.framework.Name + ", split"
+		return r.job.Framework.Name + ", split"
 	}
-	return r.framework.Name
+	return r.job.Framework.Name
 }
 
 func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
@@ -344,11 +345,10 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		return errorResult(err, start)
 	}
 
-	parser := r.framework.Parser()
+	parser := r.job.Framework.Parser()
 	collector := NewTestCollector()
 	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
-	streamStdout := !framework.IsMinitest(r.framework.Name)
-	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
+	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, r.job.Framework.Name != "minitest")
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
 

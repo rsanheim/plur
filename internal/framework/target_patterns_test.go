@@ -7,71 +7,76 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTargetPatternsForJob_ExplicitTargetPattern(t *testing.T) {
+func TestJobTargetPatterns_ExplicitTargetPattern(t *testing.T) {
 	j := Job{
 		Name:          "custom",
 		FrameworkName: "rspec",
 		TargetPattern: "app/spec/**/*_spec.rb",
 	}
+	j = mustResolveJob(t, j)
 
-	patterns, err := TargetPatternsForJob(j)
+	patterns, err := j.TargetPatterns()
 	require.NoError(t, err)
 	assert.Equal(t, []string{"app/spec/**/*_spec.rb"}, patterns)
 }
 
-func TestTargetPatternsForJob_RSpecFramework(t *testing.T) {
+func TestJobTargetPatterns_RSpecFramework(t *testing.T) {
 	j := Job{
 		Name:          "rspec",
 		FrameworkName: "rspec",
 	}
+	j = mustResolveJob(t, j)
 
-	patterns, err := TargetPatternsForJob(j)
+	patterns, err := j.TargetPatterns()
 	require.NoError(t, err)
 	assert.Equal(t, []string{"**/*_spec.rb"}, patterns)
 }
 
-func TestTargetPatternsForJob_MinitestFramework(t *testing.T) {
+func TestJobTargetPatterns_MinitestFramework(t *testing.T) {
 	j := Job{
 		Name:          "minitest",
 		FrameworkName: "minitest",
 	}
+	j = mustResolveJob(t, j)
 
-	patterns, err := TargetPatternsForJob(j)
+	patterns, err := j.TargetPatterns()
 	require.NoError(t, err)
 	assert.Equal(t, []string{"**/*_test.rb"}, patterns)
 }
 
-func TestTargetPatternsForJob_PassthroughNoDetectPatterns(t *testing.T) {
+func TestJobTargetPatterns_PassthroughNoDetectPatterns(t *testing.T) {
 	j := Job{
 		Name:          "lint",
 		FrameworkName: "passthrough",
 	}
+	j = mustResolveJob(t, j)
 
-	_, err := TargetPatternsForJob(j)
+	_, err := j.TargetPatterns()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no target_pattern")
 	assert.Contains(t, err.Error(), "no detect patterns")
 }
 
-func TestTargetPatternsForJob_UnknownFramework(t *testing.T) {
+func TestResolveFramework_UnknownFramework(t *testing.T) {
 	j := Job{
 		Name:          "bad",
 		FrameworkName: "nope",
 	}
 
-	_, err := TargetPatternsForJob(j)
+	_, err := j.ResolveFramework()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown framework")
 }
 
-func TestTargetPatternsForJob_PassthroughWithExplicitPattern(t *testing.T) {
+func TestJobTargetPatterns_PassthroughWithExplicitPattern(t *testing.T) {
 	j := Job{
 		Name:          "lint",
 		FrameworkName: "passthrough",
 		TargetPattern: "app/**/*.rb",
 	}
+	j = mustResolveJob(t, j)
 
-	patterns, err := TargetPatternsForJob(j)
+	patterns, err := j.TargetPatterns()
 	require.NoError(t, err)
 	assert.Equal(t, []string{"app/**/*.rb"}, patterns)
 }
@@ -90,44 +95,19 @@ func TestIsKnown(t *testing.T) {
 	assert.False(t, IsKnown("unknown"))
 }
 
-func TestTargetPatternsForJobWithFramework_MultipleDetectPatterns(t *testing.T) {
-	j := Job{Name: "test-job"}
-	fw := Framework{
-		Name:           "custom",
-		DetectPatterns: []string{"**/*_test.go", "**/*_spec.go"},
-	}
-
-	patterns, err := TargetPatternsForJobWithFramework(j, fw)
+func mustResolveJob(t *testing.T, j Job) Job {
+	t.Helper()
+	resolved, err := j.ResolveFramework()
 	require.NoError(t, err)
-	assert.Equal(t, []string{"**/*_test.go", "**/*_spec.go"}, patterns)
+	return resolved
 }
 
-func TestTargetPatternsForJobWithFramework_ExplicitTargetPatternTakesPrecedence(t *testing.T) {
+func TestJobTargetPatterns_UnresolvedFrameworkReturnsError(t *testing.T) {
 	j := Job{
-		Name:          "test-job",
-		TargetPattern: "my/**/*.rb",
-	}
-	fw := Framework{
-		Name:           "rspec",
-		DetectPatterns: []string{"**/*_spec.rb"},
+		Name: "test-job",
 	}
 
-	patterns, err := TargetPatternsForJobWithFramework(j, fw)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"my/**/*.rb"}, patterns)
-}
-
-func TestTargetPatternsForJobWithFramework_EmptyDetectPatternsReturnsError(t *testing.T) {
-	j := Job{
-		Name: "lint",
-	}
-	fw := Framework{
-		Name:           "passthrough",
-		DetectPatterns: nil,
-	}
-
-	_, err := TargetPatternsForJobWithFramework(j, fw)
+	_, err := j.TargetPatterns()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `job "lint"`)
-	assert.Contains(t, err.Error(), `framework "passthrough"`)
+	assert.Contains(t, err.Error(), "has no resolved framework")
 }

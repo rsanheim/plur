@@ -11,9 +11,9 @@ import (
 	"github.com/rsanheim/plur/cmd"
 	"github.com/rsanheim/plur/config"
 	clihelp "github.com/rsanheim/plur/internal/cli"
+	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/runtime"
-	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -98,8 +98,8 @@ type PlurCLI struct {
 	Workers   WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
 
 	// Job and watch configuration
-	Job           map[string]framework.Job   `help:"Job configurations (config file only)" hidden:""`
-	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
+	Job           map[string]framework.Job `help:"Job configurations (config file only)" hidden:""`
+	WatchMappings []watch.WatchMapping     `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
 	// Store the built global config
 	globalConfig  *config.GlobalConfig   `kong:"-"`

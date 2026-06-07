@@ -16,7 +16,6 @@ import (
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
-	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -244,8 +243,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			switch input {
 			case "":
 				fmt.Println("Running all tests...")
-				cmd := framework.BuildJobCmd(resolvedJob, nil)
-				watch.RunCommand(cmd)
+				watch.RunCommand(append([]string{}, resolvedJob.Cmd...))
 				fmt.Println()
 				showPrompt()
 			case "help":

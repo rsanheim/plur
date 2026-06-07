@@ -11,7 +11,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/testruntime"
@@ -211,7 +210,7 @@ func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtim
 	} else {
 		fmt.Printf("    Active Job:      %s\n", selected.Name)
 		fmt.Printf("    Command:         %v\n", selected.Job.Cmd)
-		patterns, _ := framework.TargetPatternsForJob(selected.Job)
+		patterns, _ := selected.Job.TargetPatterns()
 		fmt.Printf("    Target Patterns: %s\n", strings.Join(patterns, ", "))
 	}
 

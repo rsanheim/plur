@@ -74,35 +74,12 @@ func Normalize(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
-func IsMinitest(name string) bool {
-	return Normalize(name) == "minitest"
-}
-
-// TargetPatternsForJob returns the glob patterns used to discover test files for a job.
-// If the job has an explicit TargetPattern, that is returned. Otherwise, the framework's
-// DetectPatterns are used.
-func TargetPatternsForJob(j Job) ([]string, error) {
-	fw, err := Get(j.FrameworkName)
-	if err != nil {
-		// If we have an explicit pattern, we don't strictly need a known framework
-		if j.TargetPattern != "" {
-			return []string{j.TargetPattern}, nil
-		}
-		return nil, err
+func DetectPatterns(name string) []string {
+	fw, ok := registry[Normalize(name)]
+	if !ok {
+		return nil
 	}
-	return TargetPatternsForJobWithFramework(j, fw)
-}
-
-// TargetPatternsForJobWithFramework is like TargetPatternsForJob but accepts a pre-resolved Framework,
-// avoiding a redundant Get call when the caller already has one.
-func TargetPatternsForJobWithFramework(j Job, fw Framework) ([]string, error) {
-	if j.TargetPattern != "" {
-		return []string{j.TargetPattern}, nil
-	}
-	if len(fw.DetectPatterns) == 0 {
-		return nil, fmt.Errorf("job %q has no target_pattern and framework %q has no detect patterns", j.Name, fw.Name)
-	}
-	return fw.DetectPatterns, nil
+	return fw.DetectPatterns
 }
 
 func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {

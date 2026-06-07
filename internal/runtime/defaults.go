@@ -20,8 +20,8 @@ var defaultsFile []byte
 
 type defaultsConfig struct {
 	Defaults struct {
-		Jobs    map[string]framework.Job   `toml:"job"`
-		Watches []watch.WatchMapping `toml:"watch"`
+		Jobs    map[string]framework.Job `toml:"job"`
+		Watches []watch.WatchMapping     `toml:"watch"`
 	} `toml:"defaults"`
 }
 
@@ -51,8 +51,11 @@ func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 		if !exists {
 			continue
 		}
-		patterns, err := framework.TargetPatternsForJob(j)
-		if err != nil || len(patterns) == 0 {
+		patterns := []string{j.TargetPattern}
+		if j.TargetPattern == "" {
+			patterns = framework.DetectPatterns(j.FrameworkName)
+		}
+		if len(patterns) == 0 {
 			continue
 		}
 		for _, pattern := range patterns {
@@ -204,14 +207,11 @@ func inferFrameworkFromPatterns(patterns []string) (string, error) {
 func frameworksMatchingPattern(pattern string, candidates []string) (map[string]struct{}, error) {
 	matched := make(map[string]struct{})
 	for _, name := range candidates {
-		fw, err := framework.Get(name)
-		if err != nil {
-			return nil, err
-		}
-		if len(fw.DetectPatterns) == 0 {
+		detectPatterns := framework.DetectPatterns(name)
+		if len(detectPatterns) == 0 {
 			continue
 		}
-		ok, err := patternMatchesFramework(pattern, fw.DetectPatterns)
+		ok, err := patternMatchesFramework(pattern, detectPatterns)
 		if err != nil {
 			return nil, err
 		}

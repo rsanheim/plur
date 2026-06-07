@@ -21,8 +21,9 @@ func TestBuildRunArgsRSpecDefaults(t *testing.T) {
 		FrameworkName: "rspec",
 		Cmd:           []string{"bundle", "exec", "rspec", "--fail-fast"},
 	}
+	j = mustResolveJob(t, j)
 
-	args, err := BuildRunArgs(j, []string{"spec/example_spec.rb"}, cfg, nil)
+	args, err := j.BuildRunArgs([]string{"spec/example_spec.rb"}, cfg, nil)
 	require.NoError(t, err)
 
 	formatterPath := filepath.Join(cfg.ConfigPaths.FormatterDir, "json_rows_formatter.rb")
@@ -41,8 +42,9 @@ func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
+	j = mustResolveJob(t, j)
 
-	args, err := BuildRunArgs(j, []string{"test/foo_test.rb", "test/bar_test.rb"}, cfg, nil)
+	args, err := j.BuildRunArgs([]string{"test/foo_test.rb", "test/bar_test.rb"}, cfg, nil)
 	require.NoError(t, err)
 
 	expected := []string{
@@ -58,8 +60,9 @@ func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
+	j = mustResolveJob(t, j)
 
-	args, err := BuildRunArgs(j, []string{"test/foo_test.rb"}, cfg, nil)
+	args, err := j.BuildRunArgs([]string{"test/foo_test.rb"}, cfg, nil)
 	require.NoError(t, err)
 
 	expected := []string{"bundle", "exec", "ruby", "-Itest", "test/foo_test.rb"}
@@ -72,8 +75,9 @@ func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
+	j = mustResolveJob(t, j)
 
-	args, err := BuildRunArgs(j, []string{"test/foo_test.rb"}, cfg, []string{"--seed", "1234"})
+	args, err := j.BuildRunArgs([]string{"test/foo_test.rb"}, cfg, []string{"--seed", "1234"})
 	require.NoError(t, err)
 
 	expected := []string{"bundle", "exec", "ruby", "-Itest", "test/foo_test.rb", "--seed", "1234"}
@@ -86,8 +90,9 @@ func TestBuildRunArgsMinitestRubyRequireWithExtraArgs(t *testing.T) {
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
 	}
+	j = mustResolveJob(t, j)
 
-	args, err := BuildRunArgs(j, []string{"test/foo_test.rb", "test/bar_test.rb"}, cfg, []string{"--seed", "1234"})
+	args, err := j.BuildRunArgs([]string{"test/foo_test.rb", "test/bar_test.rb"}, cfg, []string{"--seed", "1234"})
 	require.NoError(t, err)
 
 	expected := []string{
@@ -110,8 +115,9 @@ func TestBuildRunArgsRSpecWithExtraArgs(t *testing.T) {
 		FrameworkName: "rspec",
 		Cmd:           []string{"bundle", "exec", "rspec"},
 	}
+	j = mustResolveJob(t, j)
 
-	args, err := BuildRunArgs(j, []string{"spec/example_spec.rb"}, cfg, []string{"--tag", "slow"})
+	args, err := j.BuildRunArgs([]string{"spec/example_spec.rb"}, cfg, []string{"--tag", "slow"})
 	require.NoError(t, err)
 
 	formatterPath := filepath.Join(cfg.ConfigPaths.FormatterDir, "json_rows_formatter.rb")

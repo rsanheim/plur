@@ -131,11 +131,7 @@ func matchesAnyTargetPattern(path string, targetPatterns []string) (bool, error)
 
 func classifyInputs(j framework.Job, inputs []string) ([]string, error) {
 	if len(inputs) == 0 {
-		return framework.TargetPatternsForJob(j)
-	}
-	fw, err := framework.Get(j.FrameworkName)
-	if err != nil {
-		return nil, err
+		return j.TargetPatterns()
 	}
 	var targets []string
 	var out []string
@@ -157,7 +153,8 @@ func classifyInputs(j framework.Job, inputs []string) ([]string, error) {
 			continue
 		}
 		if targets == nil {
-			targets, err = framework.TargetPatternsForJobWithFramework(j, fw)
+			var err error
+			targets, err = j.TargetPatterns()
 			if err != nil {
 				return nil, err
 			}

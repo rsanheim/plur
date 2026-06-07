@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/fileset"
 	"github.com/rsanheim/plur/internal/runtime"
@@ -29,11 +28,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	runtime.LogInheritedFields(currentJob.Name, selected.Inherited)
 
-	if len(r.Tags) > 0 && currentJob.FrameworkName != "rspec" {
+	if len(r.Tags) > 0 && currentJob.Framework.Name != "rspec" {
 		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.FrameworkName)
 	}
 
-	targetPatterns, _ := framework.TargetPatternsForJob(currentJob)
+	targetPatterns, _ := currentJob.TargetPatterns()
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.FrameworkName, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)

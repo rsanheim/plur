@@ -265,7 +265,6 @@ func TestRunner_DryRunReturnsNil(t *testing.T) {
 		FrameworkName: "passthrough",
 		TargetPattern: "**/*_test.rb",
 	}
-
 	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb"}, testJob, nil)
 	require.NoError(t, err)
 	results, wallTime, err := runner.Run()
@@ -289,7 +288,6 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 			FrameworkName: "passthrough",
 			TargetPattern: "**/*_test.rb",
 		}
-
 		files := []string{"a_test.rb", "b_test.rb"} // Only 2 files
 		runner, err := NewRunner(cfg, files, testJob, nil)
 		require.NoError(t, err)
@@ -314,7 +312,6 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 			FrameworkName: "passthrough",
 			TargetPattern: "**/*_test.rb",
 		}
-
 		files := []string{"only_test.rb"}
 		runner, err := NewRunner(cfg, files, testJob, nil)
 		require.NoError(t, err)
@@ -337,7 +334,6 @@ func TestRunner_EmptyFiles(t *testing.T) {
 		FrameworkName: "passthrough",
 		TargetPattern: "**/*_test.rb",
 	}
-
 	runner, err := NewRunner(cfg, []string{}, testJob, nil)
 	require.NoError(t, err)
 	results, wallTime, err := runner.Run()
@@ -365,10 +361,12 @@ func TestRunner_TrackerInitialized(t *testing.T) {
 
 func TestRunner_RunCommandPreservesSuiteCounts(t *testing.T) {
 	runner := &Runner{
-		framework: framework.Framework{
-			Name: "fake",
-			Parser: func() types.TestOutputParser {
-				return &suiteCountParser{}
+		job: framework.Job{
+			Framework: framework.Framework{
+				Name: "fake",
+				Parser: func() types.TestOutputParser {
+					return &suiteCountParser{}
+				},
 			},
 		},
 	}
@@ -405,7 +403,6 @@ func TestRunner_SingleFileStillSetsTestEnvNumber(t *testing.T) {
 		Cmd:           []string{"echo"},
 		FrameworkName: "passthrough",
 	}
-
 	runner, err := NewRunner(cfg, []string{"single_test.rb"}, testJob, nil)
 	require.NoError(t, err)
 	_, _, err = runner.Run()
@@ -430,7 +427,6 @@ func TestRunner_SerialModeNoTestEnvNumber(t *testing.T) {
 		Cmd:           []string{"echo"},
 		FrameworkName: "passthrough",
 	}
-
 	runner, err := NewRunner(cfg, []string{"a_test.rb", "b_test.rb", "c_test.rb"}, testJob, nil)
 	require.NoError(t, err)
 
@@ -453,7 +449,6 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 		Cmd:           []string{"echo"},
 		FrameworkName: "passthrough",
 	}
-
 	files := []string{"a.rb", "b.rb", "c.rb"} // Only 3 files
 	runner, err := NewRunner(cfg, files, testJob, nil)
 	require.NoError(t, err)
@@ -476,7 +471,6 @@ func TestRunnerBuildArgsPerWorkerCommands(t *testing.T) {
 		FrameworkName: "passthrough",
 		Env:           []string{"RAILS_ENV=test"},
 	}
-
 	runner, err := NewRunner(cfg, nil, testJob, nil)
 	require.NoError(t, err)
 
@@ -505,7 +499,6 @@ func TestRunnerBuildArgsPerWorkerCommandsSerialMode(t *testing.T) {
 		Cmd:           []string{"bin/rails"},
 		FrameworkName: "passthrough",
 	}
-
 	runner, err := NewRunner(cfg, nil, testJob, nil)
 	require.NoError(t, err)
 
@@ -531,7 +524,6 @@ func TestRunnerRunArgsPerWorkerDryRunDoesNotExecute(t *testing.T) {
 		Cmd:           []string{"definitely-not-a-real-command"},
 		FrameworkName: "passthrough",
 	}
-
 	runner, err := NewRunner(cfg, nil, testJob, nil)
 	require.NoError(t, err)
 
@@ -551,7 +543,6 @@ func TestRunnerRunArgsPerWorkerReturnsErrorWhenWorkerFails(t *testing.T) {
 		Cmd:           []string{"sh", "-c", "echo broken >&2; exit 7"},
 		FrameworkName: "passthrough",
 	}
-
 	runner, err := NewRunner(cfg, nil, testJob, nil)
 	require.NoError(t, err)
 

@@ -234,7 +234,8 @@ func ExecuteJob(j framework.Job, targetFiles []string, cwd string) error {
 		return nil
 	}
 
-	cmd := framework.BuildJobCmd(j, targetFiles)
+	cmd := append([]string{}, j.Cmd...)
+	cmd = append(cmd, targetFiles...)
 	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
 
 	execCmd := exec.Command(cmd[0], cmd[1:]...)
