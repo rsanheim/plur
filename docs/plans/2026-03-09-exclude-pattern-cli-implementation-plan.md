@@ -71,8 +71,8 @@ Expected: FAIL because the discovery functions do not accept exclude patterns ye
 In `glob.go`, extend the existing discovery flow instead of adding a new abstraction:
 
 ```go
-func FindFilesFromJob(j job.Job, excludePatterns []string) ([]string, error) {
-	patterns, err := framework.TargetPatternsForJob(j)
+func FindFilesFromJob(j framework.Job, excludePatterns []string) ([]string, error) {
+	patterns, err := j.TargetPatterns()
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,6 @@ git commit -m "Log exclude filtering through discovery logger"
 **Files:**
 - Modify: `spec/integration/shared/plur_integration_spec.rb`
 - Modify: `docs/usage.md`
-- Modify: `docs/overview/project-status.md`
 - Test: `spec/integration/shared/plur_integration_spec.rb`
 
 **Step 1: Write the failing test**
@@ -368,8 +367,7 @@ Expected: FAIL because the help text does not mention the new flag yet.
 
 **Step 3: Write minimal implementation**
 
-Update the `main.go` flag help text and document the new flag in `docs/usage.md`
-and `docs/overview/project-status.md`.
+Update the `main.go` flag help text and document the new flag in `docs/usage.md`.
 
 Example docs snippet:
 
@@ -394,7 +392,7 @@ Expected: PASS with updated CLI help output.
 **Step 5: Commit**
 
 ```bash
-git add main.go spec/integration/shared/plur_integration_spec.rb docs/usage.md docs/overview/project-status.md
+git add main.go spec/integration/shared/plur_integration_spec.rb docs/usage.md
 git commit -m "Document exclude-pattern CLI flag"
 ```
 

@@ -32,6 +32,4 @@ Guides for contributors:
 ## Reference
 
 * [Overview](overview/index.md) - Project overview
-* [Project Status](overview/project-status.md) - Current status and performance
-* [Roadmap](overview/roadmap.md) - Future plans
 * [Benchmarks](benchmarks/oss-benchmarks.md) - Performance benchmarks

@@ -121,16 +121,17 @@ Current patterns use `map[string]bool` in several places:
 
 Using `struct{}` avoids storing an extra boolean per entry and communicates intent.
 
-### 6) RSpec command building is potentially O(args * files) per insertion
+### 6) Keep framework command building append-based
 
-`insertBeforeFiles` scans `args` and for each arg scans all `files` to find the file-arg boundary (`runner.go:353-377`), and is called multiple times by `buildRSpecCommand` (`runner.go:380-397`).
-
-For large file lists this becomes disproportionately expensive.
+Run-mode command building now keeps file targets appended at the end of the
+command shape controlled by `framework.Job.BuildRunArgs`. That avoids the old
+file-argument boundary scan that was previously used when inserting framework
+args.
 
 Recommended cleanup:
 
-* Have `BuildJobCmd` also return the file-start index, or keep file args appended
-  at the end for frameworks where we control the command shape.
+* Keep future framework-specific args before targets so command construction
+  remains linear and easy to inspect.
 
 ## Go 1.25-Specific Notes / Opportunities
 
@@ -142,7 +143,7 @@ Recommended cleanup:
 
 * [ ] Make logging handler concurrency-safe (`logger/logger.go`).
 * [ ] Collapse duplicated watch matching logic (`watch/find.go`, `watch/processor.go`) and simplify notification types (`types/notifications.go`).
-* [ ] Address structural cleanups (`FileGroup.TotalSize`, `insertBeforeFiles`).
+* [ ] Address structural cleanups (`FileGroup.TotalSize`).
 
 ## Validation Recommendations
 

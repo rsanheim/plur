@@ -55,14 +55,11 @@ That design is a better replacement target than simply rebasing the old append-o
 
 ### The old watch branches target outdated file layout
 
-The watch branches modify files from the older runtime layout, including:
-
-- `autodetect/defaults.go`
-- `spec/integration/plur_watch/watch_integration_spec.rb`
-
-Current `main` has moved this logic into:
+The watch branches modify files from an older runtime and integration-spec
+layout. Current `main` has moved this logic into:
 
 - `internal/runtime/config.go`
+- `internal/runtime/defaults.go`
 - `spec/integration/watch/...`
 
 That is the main reason the watch PRs are stale even when their original CI runs were green.

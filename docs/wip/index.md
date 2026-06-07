@@ -6,7 +6,6 @@ This directory contains active development documentation.
 
 | Document | Purpose |
 |----------|---------|
-| [better-summary-output.md](better-summary-output.md) | Show job source in summary output |
 | [open-pr-triage.md](open-pr-triage.md) | Rolling triage for open PRs, stale branches, and next PR recommendation |
 
 ## Status
