@@ -289,9 +289,7 @@ func FilterDirectories(dirs []string) ([]string, error) {
 	for _, dir := range dirs {
 		info, err := root.Stat(dir)
 		if err != nil {
-			// Path escapes root or doesn't exist - skip with warning
-			logger.Logger.Warn("Skipping watch directory (escapes project root or doesn't exist)",
-				"dir", dir, "error", err)
+			logger.Logger.Warn("Skipping watch path", "path", dir, "error", err)
 			continue
 		}
 		if !info.IsDir() {
@@ -311,8 +309,7 @@ func FilterDirectories(dirs []string) ([]string, error) {
 		isDupe := false
 		for _, existing := range deduped {
 			if os.SameFile(v.info, existing.info) {
-				logger.Logger.Debug("Filtering duplicate watch directory",
-					"dir", v.path, "same_as", existing.path)
+				logger.Logger.Debug("Filtering duplicate watch directory", "dir", v.path, "same_as", existing.path)
 				isDupe = true
 				break
 			}

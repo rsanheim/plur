@@ -29,29 +29,27 @@ func NewEventProcessor(jobs map[string]framework.Job, watches []WatchMapping) *E
 // Returns a map of jobName -> []targetFiles
 // If a watch mapping has no targets configured, the source file itself is used.
 // If no_targets is true, the job is still returned with an empty target list.
-func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) {
+func (processor *EventProcessor) ProcessPath(path string) (map[string][]string, error) {
 	results := make(map[string][]string)
 
 	normalizedPath := filepath.ToSlash(path)
 
-	for _, watch := range ep.watches {
-		if ep.isIgnored(normalizedPath, watch.Ignore) {
+	for _, watch := range processor.watches {
+		if processor.isIgnored(normalizedPath, watch.Ignore) {
 			continue
 		}
 
-		// Check if path matches the source pattern
 		matched, err := doublestar.Match(filepath.ToSlash(watch.Source), normalizedPath)
 		if err != nil {
 			return nil, fmt.Errorf("error matching pattern %q: %w", watch.Source, err)
 		}
 
 		if !matched {
-			// trace: logger.Logger.Debug("path does not match", "watch", watch.Source, "normalizedPath", normalizedPath)
 			continue
 		}
 
 		// Determine target files
-		targets, err := ep.renderTargets(watch, normalizedPath)
+		targets, err := processor.renderTargets(watch, normalizedPath)
 		logger.Logger.Debug("renderTargets result", "normalizedPath", normalizedPath, "watch", watch.Source, "targets", targets)
 		if err != nil {
 			return nil, fmt.Errorf("error rendering targets for watch %q: %w", watch.Name, err)
@@ -60,7 +58,7 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 		// Add targets to each job specified in this watch
 		for _, jobName := range watch.Jobs {
 			// Validate job exists
-			if _, exists := ep.jobs[jobName]; !exists {
+			if _, exists := processor.jobs[jobName]; !exists {
 				return nil, fmt.Errorf("watch %q references undefined job %q", watch.Name, jobName)
 			}
 
@@ -70,7 +68,7 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 
 	// Deduplicate targets per job
 	for jobName := range results {
-		results[jobName] = Deduplicate(results[jobName])
+		results[jobName] = deduplicate(results[jobName])
 	}
 
 	return results, nil
@@ -79,7 +77,7 @@ func (ep *EventProcessor) ProcessPath(path string) (map[string][]string, error) 
 // renderTargets renders the target templates for a watch mapping
 // If no_targets is true, returns an empty target list. If no targets are
 // specified, returns the source path.
-func (ep *EventProcessor) renderTargets(watch WatchMapping, path string) ([]string, error) {
+func (processor *EventProcessor) renderTargets(watch WatchMapping, path string) ([]string, error) {
 	if watch.NoTargets {
 		return nil, nil
 	}
@@ -107,7 +105,7 @@ func (ep *EventProcessor) renderTargets(watch WatchMapping, path string) ([]stri
 }
 
 // isIgnored checks if a path matches any of the ignore patterns
-func (ep *EventProcessor) isIgnored(path string, ignorePatterns []string) bool {
+func (processor *EventProcessor) isIgnored(path string, ignorePatterns []string) bool {
 	for _, pattern := range ignorePatterns {
 		matched, err := doublestar.Match(filepath.ToSlash(pattern), path)
 		if err == nil && matched {
@@ -118,7 +116,7 @@ func (ep *EventProcessor) isIgnored(path string, ignorePatterns []string) bool {
 }
 
 // Deduplicate removes duplicate strings from a slice while preserving order
-func Deduplicate(items []string) []string {
+func deduplicate(items []string) []string {
 	seen := make(map[string]bool)
 	result := make([]string, 0, len(items))
 

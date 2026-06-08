@@ -14,7 +14,6 @@ type FileEventHandler struct {
 	Watches []WatchMapping
 	CWD     string
 
-	// Executor runs jobs. Defaults to ExecuteJob if nil.
 	Executor JobExecutor
 }
 
@@ -85,7 +84,7 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 
 	// 2. Dedupe targets per job
 	for jobName := range allExistingTargets {
-		allExistingTargets[jobName] = Deduplicate(allExistingTargets[jobName])
+		allExistingTargets[jobName] = deduplicate(allExistingTargets[jobName])
 	}
 
 	// 3. Execute jobs in matched rule order

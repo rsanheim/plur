@@ -40,7 +40,6 @@ func (r *FindResult) HasMissingTargets() bool {
 func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches []WatchMapping, cwd string) (*FindResult, error) {
 	processor := NewEventProcessor(jobs, watches)
 
-	// Get candidate targets from event processor
 	candidateTargets, err := processor.ProcessPath(filePath)
 	if err != nil {
 		return nil, err

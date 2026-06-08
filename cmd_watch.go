@@ -116,10 +116,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	}
 
 	debounceDelay := time.Duration(runCmd.Debounce) * time.Millisecond
-	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
-
-	// Create debouncer and file event handler
 	debouncer := watch.NewDebouncer(debounceDelay)
+	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
 
 	var watchDirs []string
 	for _, mapping := range watches {
