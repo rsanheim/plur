@@ -30,6 +30,7 @@ RSpec.describe "plur watch config edge cases" do
       expect(stdout).to include('msg="checking watch" file=lib/calculator.rb')
       expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb jobs=[rspec] target=spec/{{match}}_spec.rb')
       expect(stdout).to include('msg="found files" files=spec/calculator_spec.rb')
+      expect(stdout).to include('msg="would run" job=rspec cmd="bundle exec rspec spec/calculator_spec.rb"')
       expect(status.exitstatus).to eq(0)
     end
   end

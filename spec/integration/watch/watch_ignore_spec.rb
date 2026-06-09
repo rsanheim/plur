@@ -36,6 +36,29 @@ RSpec.describe "plur watch --ignore flag" do
     end
   end
 
+  describe "watch find parity" do
+    it "applies custom ignore patterns to watch find" do
+      Dir.chdir(default_ruby_dir) do
+        cmd = TTY::Command.new(timeout: 5, uuid: false, printer: :null)
+        result = cmd.run!("#{plur_binary} watch find --ignore='spec/**' spec/calculator_spec.rb")
+
+        expect(result.exit_status).to eq(2)
+        expect(result.out).to include("msg=ignored")
+        expect(result.out).not_to include('msg="found rules"')
+      end
+    end
+
+    it "applies default ignore patterns to watch find" do
+      Dir.chdir(default_ruby_dir) do
+        cmd = TTY::Command.new(timeout: 5, uuid: false, printer: :null)
+        result = cmd.run!("#{plur_binary} watch find node_modules/calculator_spec.rb")
+
+        expect(result.exit_status).to eq(2)
+        expect(result.out).to include("msg=ignored")
+      end
+    end
+  end
+
   describe "help output" do
     it "shows --ignore in plur watch --help" do
       cmd = TTY::Command.new(uuid: false, printer: :null)
