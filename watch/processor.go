@@ -17,6 +17,11 @@ type EventProcessor struct {
 	watches []WatchMapping
 }
 
+type MatchedWatch struct {
+	Watch   WatchMapping
+	Targets []string
+}
+
 // NewEventProcessor creates a new EventProcessor with the given jobs and watch mappings
 func NewEventProcessor(jobs map[string]framework.Job, watches []WatchMapping) *EventProcessor {
 	return &EventProcessor{
@@ -32,6 +37,33 @@ func NewEventProcessor(jobs map[string]framework.Job, watches []WatchMapping) *E
 func (processor *EventProcessor) ProcessPath(path string) (map[string][]string, error) {
 	results := make(map[string][]string)
 
+	matches, err := processor.MatchPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, match := range matches {
+		// Add targets to each job specified in this watch
+		for _, jobName := range match.Watch.Jobs {
+			// Validate job exists
+			if _, exists := processor.jobs[jobName]; !exists {
+				return nil, fmt.Errorf("watch %q references undefined job %q", match.Watch.Name, jobName)
+			}
+
+			results[jobName] = append(results[jobName], match.Targets...)
+		}
+	}
+
+	// Deduplicate targets per job
+	for jobName := range results {
+		results[jobName] = deduplicate(results[jobName])
+	}
+
+	return results, nil
+}
+
+func (processor *EventProcessor) MatchPath(path string) ([]MatchedWatch, error) {
+	matches := make([]MatchedWatch, 0)
 	normalizedPath := filepath.ToSlash(path)
 
 	for _, watch := range processor.watches {
@@ -55,23 +87,10 @@ func (processor *EventProcessor) ProcessPath(path string) (map[string][]string, 
 			return nil, fmt.Errorf("error rendering targets for watch %q: %w", watch.Name, err)
 		}
 
-		// Add targets to each job specified in this watch
-		for _, jobName := range watch.Jobs {
-			// Validate job exists
-			if _, exists := processor.jobs[jobName]; !exists {
-				return nil, fmt.Errorf("watch %q references undefined job %q", watch.Name, jobName)
-			}
-
-			results[jobName] = append(results[jobName], targets...)
-		}
+		matches = append(matches, MatchedWatch{Watch: watch, Targets: targets})
 	}
 
-	// Deduplicate targets per job
-	for jobName := range results {
-		results[jobName] = deduplicate(results[jobName])
-	}
-
-	return results, nil
+	return matches, nil
 }
 
 // renderTargets renders the target templates for a watch mapping

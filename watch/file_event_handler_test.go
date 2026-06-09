@@ -25,6 +25,21 @@ func (m *mockExecutor) execute(j framework.Job, targets []string, cwd string) er
 	return nil
 }
 
+func projectTmpDir(t *testing.T) string {
+	t.Helper()
+
+	rootTmp := filepath.Join("..", "tmp")
+	require.NoError(t, os.MkdirAll(rootTmp, 0755))
+
+	tmpDir, err := os.MkdirTemp(rootTmp, "watch-plan-*")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(tmpDir))
+	})
+
+	return tmpDir
+}
+
 func TestFileEventHandler_HandleBatch_EmptyWatches(t *testing.T) {
 	handler := &FileEventHandler{
 		Jobs:    map[string]framework.Job{},
@@ -238,6 +253,45 @@ func TestFileEventHandler_HandleBatch_NoTargetsExecutesWhenOtherTargetsAreMissin
 	assert.Equal(t, []string{"build"}, result.ExecutedJobs)
 	require.Len(t, mock.calls, 1)
 	assert.Empty(t, mock.calls[0].targets)
+}
+
+func TestFileEventHandler_HandleBatch_MissingOnlyJobDoesNotRunWhenAnotherJobHasTargets(t *testing.T) {
+	tmpDir := projectTmpDir(t)
+
+	specDir := filepath.Join(tmpDir, "spec")
+	require.NoError(t, os.MkdirAll(specDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(specDir, "user_spec.rb"), []byte("# spec"), 0644))
+
+	mock := &mockExecutor{}
+	handler := &FileEventHandler{
+		Jobs: map[string]framework.Job{
+			"rspec":    {Name: "rspec", Cmd: []string{"rspec"}},
+			"minitest": {Name: "minitest", Cmd: []string{"ruby"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:    "lib-to-rspec",
+				Source:  "lib/**/*.rb",
+				Targets: []string{"spec/{{match}}_spec.rb"},
+				Jobs:    []string{"rspec"},
+			},
+			{
+				Name:    "lib-to-minitest",
+				Source:  "lib/**/*.rb",
+				Targets: []string{"test/{{match}}_test.rb"},
+				Jobs:    []string{"minitest"},
+			},
+		},
+		CWD:      tmpDir,
+		Executor: mock.execute,
+	}
+
+	result := handler.HandleBatch([]string{"lib/user.rb"})
+
+	assert.Equal(t, []string{"rspec"}, result.ExecutedJobs)
+	require.Len(t, mock.calls, 1)
+	assert.Equal(t, "rspec", mock.calls[0].jobName)
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, mock.calls[0].targets)
 }
 
 func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
