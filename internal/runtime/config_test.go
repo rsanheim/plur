@@ -225,6 +225,20 @@ func TestValidateRuntimeConfigRejectsInvalidIgnorePattern(t *testing.T) {
 	assert.Contains(t, err.Error(), `invalid ignore pattern "vendor/["`)
 }
 
+func TestValidateRuntimeConfigAcceptsEmptySourcePattern(t *testing.T) {
+	rc := &RuntimeConfig{
+		Jobs: map[string]framework.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
+		},
+		Watches: []watch.WatchMapping{
+			{Name: "missing-source", Jobs: []string{"rspec"}},
+		},
+		Sources: []string{".plur.toml"},
+	}
+
+	require.NoError(t, validateRuntimeConfig(rc))
+}
+
 func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {
 	rc := &RuntimeConfig{
 		Use: "custom",

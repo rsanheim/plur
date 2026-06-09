@@ -2,6 +2,7 @@ package watch
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -19,9 +20,9 @@ type WatchMapping struct {
 
 // ValidatePattern reports whether a doublestar glob pattern is well-formed.
 // Config load validates every source and ignore pattern with this so that
-// pattern matching during planning cannot fail.
+// pattern matching at runtime cannot fail.
 func ValidatePattern(pattern string) bool {
-	return doublestar.ValidatePattern(pattern)
+	return doublestar.ValidatePattern(filepath.ToSlash(pattern))
 }
 
 // SourceDir returns the directory part of the source pattern
