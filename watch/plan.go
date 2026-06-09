@@ -82,7 +82,7 @@ func (p Planner) matchPath(path string) []Match {
 				if targetExists(target, p.CWD) {
 					m.Existing = append(m.Existing, target)
 				} else {
-					logger.Logger.Info("Skipping non-existent target", "target", target, "rule", rule.Name)
+					logger.Logger.Info("Skipping non-existent target", "target", target, "rule", rule.Name, "source", rule.Source)
 					m.Missing = append(m.Missing, target)
 				}
 			}
@@ -110,7 +110,14 @@ func (p Planner) buildRuns(matches []Match) []JobRun {
 			if !runnable {
 				continue
 			}
-			runs = append(runs, JobRun{Job: p.Jobs[jobName], Targets: targets})
+			job, ok := p.Jobs[jobName]
+			if !ok {
+				// Watch job references are validated at config load; log rather
+				// than executing a zero-value job if that invariant is ever broken.
+				logger.Logger.Error("watch rule references unknown job", "job", jobName)
+				continue
+			}
+			runs = append(runs, JobRun{Job: job, Targets: targets})
 		}
 	}
 	return runs
@@ -159,7 +166,7 @@ func renderRuleTargets(rule WatchMapping, normalizedPath string) []string {
 		}
 		targets = append(targets, rendered)
 	}
-	return targets
+	return deduplicate(targets)
 }
 
 func targetExists(target, cwd string) bool {

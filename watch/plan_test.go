@@ -233,7 +233,46 @@ func TestPlannerPlan_BatchMergesAndDeduplicatesTargets(t *testing.T) {
 
 		require.Len(t, plan.Runs, 1)
 		assert.Len(t, plan.Runs[0].Targets, 1)
+		require.Len(t, plan.Matches, 1)
+		assert.Len(t, plan.Matches[0].Existing, 1)
 	})
+}
+
+func TestPlannerPlan_JobWithOnlyMissingTargetsDoesNotRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	writeFileTree(t, tmpDir, "spec/user_spec.rb")
+
+	planner := Planner{
+		Jobs: map[string]framework.Job{
+			"rspec":   {Name: "rspec", Cmd: []string{"rspec"}},
+			"rubocop": {Name: "rubocop", Cmd: []string{"rubocop"}},
+		},
+		Watches: []WatchMapping{
+			{Name: "lib-to-spec", Source: "lib/**/*.rb", Targets: []string{"spec/{{match}}_spec.rb"}, Jobs: []string{"rspec"}},
+			{Name: "lib-to-missing", Source: "lib/**/*.rb", Targets: []string{"missing/{{match}}.txt"}, Jobs: []string{"rubocop"}},
+		},
+		CWD: tmpDir,
+	}
+
+	plan := planner.Plan([]string{"lib/user.rb"})
+
+	require.Len(t, plan.Runs, 1, "job with only missing targets must not run bare")
+	assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
+}
+
+func TestPlannerPlan_ReloadRuleWithJobs(t *testing.T) {
+	tmpDir := t.TempDir()
+	writeFileTree(t, tmpDir, "spec/user_spec.rb")
+
+	rule := libToSpec()
+	rule.Reload = true
+	planner := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{rule}, CWD: tmpDir}
+
+	plan := planner.Plan([]string{"lib/user.rb"})
+
+	assert.True(t, plan.Reload)
+	require.Len(t, plan.Runs, 1)
+	assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
 }
 
 func TestPlannerPlan_ReloadRuleWithoutJobs(t *testing.T) {
