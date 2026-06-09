@@ -12,7 +12,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/fsutil"
-	"github.com/rsanheim/plur/watch"
+	"github.com/rsanheim/plur/internal/watch"
 )
 
 //go:embed defaults.toml

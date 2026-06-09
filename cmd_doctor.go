@@ -14,7 +14,7 @@ import (
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/testruntime"
-	"github.com/rsanheim/plur/watch"
+	"github.com/rsanheim/plur/internal/watch"
 )
 
 // runtimeStats reads the runtime cache file at path and returns a one-line

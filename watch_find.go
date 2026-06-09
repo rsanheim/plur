@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/watch"
 	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/watch"
 )
 
 // WatchFindCmd implements the 'plur watch find' command

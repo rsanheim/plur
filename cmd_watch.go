@@ -16,8 +16,8 @@ import (
 	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/watch"
 	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/watch"
 )
 
 // Embed the watcher binaries at compile time

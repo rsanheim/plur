@@ -17,6 +17,13 @@ type EventProcessor struct {
 	watches []WatchMapping
 }
 
+// ProcessResult is the pure watch matching output before filesystem checks.
+type ProcessResult struct {
+	MatchedRules     []WatchMapping
+	CandidateTargets map[string][]string
+	NoTargetJobs     map[string]bool
+}
+
 // NewEventProcessor creates a new EventProcessor with the given jobs and watch mappings
 func NewEventProcessor(jobs map[string]framework.Job, watches []WatchMapping) *EventProcessor {
 	return &EventProcessor{
@@ -25,12 +32,15 @@ func NewEventProcessor(jobs map[string]framework.Job, watches []WatchMapping) *E
 	}
 }
 
-// ProcessPath maps a file path to target files per job
-// Returns a map of jobName -> []targetFiles
+// ProcessPath maps a file path to candidate target files per job.
 // If a watch mapping has no targets configured, the source file itself is used.
-// If no_targets is true, the job is still returned with an empty target list.
-func (processor *EventProcessor) ProcessPath(path string) (map[string][]string, error) {
-	results := make(map[string][]string)
+// If no_targets is true, the job is returned through NoTargetJobs.
+func (processor *EventProcessor) ProcessPath(path string) (*ProcessResult, error) {
+	result := &ProcessResult{
+		MatchedRules:     make([]WatchMapping, 0),
+		CandidateTargets: make(map[string][]string),
+		NoTargetJobs:     make(map[string]bool),
+	}
 
 	normalizedPath := filepath.ToSlash(path)
 
@@ -48,6 +58,8 @@ func (processor *EventProcessor) ProcessPath(path string) (map[string][]string, 
 			continue
 		}
 
+		result.MatchedRules = append(result.MatchedRules, watch)
+
 		// Determine target files
 		targets, err := processor.renderTargets(watch, normalizedPath)
 		logger.Logger.Debug("renderTargets result", "normalizedPath", normalizedPath, "watch", watch.Source, "targets", targets)
@@ -62,16 +74,20 @@ func (processor *EventProcessor) ProcessPath(path string) (map[string][]string, 
 				return nil, fmt.Errorf("watch %q references undefined job %q", watch.Name, jobName)
 			}
 
-			results[jobName] = append(results[jobName], targets...)
+			if watch.NoTargets {
+				result.NoTargetJobs[jobName] = true
+			} else {
+				result.CandidateTargets[jobName] = append(result.CandidateTargets[jobName], targets...)
+			}
 		}
 	}
 
 	// Deduplicate targets per job
-	for jobName := range results {
-		results[jobName] = deduplicate(results[jobName])
+	for jobName := range result.CandidateTargets {
+		result.CandidateTargets[jobName] = deduplicate(result.CandidateTargets[jobName])
 	}
 
-	return results, nil
+	return result, nil
 }
 
 // renderTargets renders the target templates for a watch mapping
