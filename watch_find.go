@@ -85,10 +85,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 	// Show found files
 	if findResult.HasExistingTargets() {
-		var allFiles []string
-		for _, targets := range findResult.ExistingTargets {
-			allFiles = append(allFiles, targets...)
-		}
+		allFiles := findResult.ExistingTargetFiles()
 		if len(allFiles) > 0 {
 			out.Info("found files", "files", strings.Join(allFiles, ", "))
 		}

@@ -38,7 +38,7 @@ func TestFindTargetsForFile_DeduplicatesExistingTargetsForSameJob(t *testing.T) 
 	result, err := FindTargetsForFile("lib/user.rb", jobs, watches, tmpDir)
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, result.ExistingTargets["rspec"])
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, result.ExistingTargetFiles())
 }
 
 func TestFindTargetsForFile_NoTargetsDoesNotWipeExistingTargetsForSameJob(t *testing.T) {
@@ -69,5 +69,5 @@ func TestFindTargetsForFile_NoTargetsDoesNotWipeExistingTargetsForSameJob(t *tes
 	result, err := FindTargetsForFile("lib/user.rb", jobs, watches, tmpDir)
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, result.ExistingTargets["rspec"])
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, result.ExistingTargetFiles())
 }

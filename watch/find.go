@@ -39,18 +39,27 @@ func (p *WatchPlan) ShouldReload() bool {
 
 // FindResult contains the results of finding targets for a file change
 type FindResult struct {
-	FilePath        string
-	MatchedRules    []WatchMapping           // Watch rules that matched the file
-	ExistingTargets map[string][]string      // jobName -> target files that exist
-	MissingTargets  map[string][]string      // jobName -> target files that don't exist
-	Jobs            map[string]framework.Job // All jobs referenced
-	JobRuns         []JobRun                 // Explicit executable job plan
+	FilePath       string
+	MatchedRules   []WatchMapping      // Watch rules that matched the file
+	MissingTargets map[string][]string // jobName -> target files that don't exist
+	JobRuns        []JobRun            // Explicit executable job plan
 }
 
-// HasExistingTargets returns true if any job has executable targets, including
-// a matched no-target job represented by a present key with an empty slice.
+// HasExistingTargets returns true if any job would execute, including explicit
+// no-target jobs.
 func (r *FindResult) HasExistingTargets() bool {
-	return len(r.ExistingTargets) > 0
+	return len(r.JobRuns) > 0
+}
+
+func (r *FindResult) ExistingTargetFiles() []string {
+	files := make([]string, 0)
+	for _, run := range r.JobRuns {
+		if run.NoTargets {
+			continue
+		}
+		files = append(files, run.Targets...)
+	}
+	return deduplicate(files)
 }
 
 // HasMissingTargets returns true if any targets are missing
@@ -73,22 +82,10 @@ func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches 
 	}
 
 	result := &FindResult{
-		FilePath:        filePath,
-		MatchedRules:    plan.MatchedRules,
-		ExistingTargets: make(map[string][]string),
-		MissingTargets:  make(map[string][]string),
-		Jobs:            jobs,
-		JobRuns:         plan.JobRuns,
-	}
-
-	for _, run := range plan.JobRuns {
-		if run.NoTargets {
-			if _, exists := result.ExistingTargets[run.JobName]; !exists {
-				result.ExistingTargets[run.JobName] = nil
-			}
-			continue
-		}
-		result.ExistingTargets[run.JobName] = deduplicate(append(result.ExistingTargets[run.JobName], run.Targets...))
+		FilePath:       filePath,
+		MatchedRules:   plan.MatchedRules,
+		MissingTargets: make(map[string][]string),
+		JobRuns:        plan.JobRuns,
 	}
 
 	for _, missing := range plan.MissingTargets {

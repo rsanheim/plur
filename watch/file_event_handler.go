@@ -31,10 +31,9 @@ type HandleResult struct {
 }
 
 type BatchWatchPlan struct {
-	MatchedRules   []WatchMapping
-	JobRuns        []JobRun
-	MissingTargets []MissingTarget
-	ShouldReload   bool
+	MatchedRules []WatchMapping
+	JobRuns      []JobRun
+	ShouldReload bool
 }
 
 // HandleBatch processes multiple file paths, aggregates targets, and executes jobs
@@ -64,9 +63,8 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 
 func (h *FileEventHandler) PlanBatch(paths []string) BatchWatchPlan {
 	plan := BatchWatchPlan{
-		MatchedRules:   make([]WatchMapping, 0),
-		JobRuns:        make([]JobRun, 0),
-		MissingTargets: make([]MissingTarget, 0),
+		MatchedRules: make([]WatchMapping, 0),
+		JobRuns:      make([]JobRun, 0),
 	}
 
 	runsByJob := make(map[string]int)
@@ -79,7 +77,6 @@ func (h *FileEventHandler) PlanBatch(paths []string) BatchWatchPlan {
 		}
 
 		plan.MatchedRules = append(plan.MatchedRules, filePlan.MatchedRules...)
-		plan.MissingTargets = append(plan.MissingTargets, filePlan.MissingTargets...)
 
 		if filePlan.ShouldReload() {
 			plan.ShouldReload = true
