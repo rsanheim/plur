@@ -52,6 +52,12 @@ type Plan struct {
 // path is valid for display even when ok is false.
 func (p Planner) Admit(path string) (string, bool) {
 	if filepath.IsAbs(path) {
+		// CWD is symlink-resolved; resolve the input the same way so
+		// logical paths (macOS /tmp, symlinked checkouts) relativize
+		// correctly. Fall back to the raw path when it does not exist.
+		if resolved, err := filepath.EvalSymlinks(path); err == nil {
+			path = resolved
+		}
 		rel, err := filepath.Rel(p.CWD, path)
 		if err != nil {
 			return path, false

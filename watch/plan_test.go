@@ -373,4 +373,19 @@ func TestPlannerAdmit(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, filepath.FromSlash("../other/file.rb"), path)
 	})
+
+	t.Run("absolute path through a symlinked dir relativizes against resolved CWD", func(t *testing.T) {
+		realDir, err := filepath.EvalSymlinks(t.TempDir())
+		require.NoError(t, err)
+		writeFileTree(t, realDir, "lib/user.rb")
+
+		linkParent := t.TempDir()
+		linkDir := filepath.Join(linkParent, "link")
+		require.NoError(t, os.Symlink(realDir, linkDir))
+
+		p := Planner{CWD: realDir}
+		path, ok := p.Admit(filepath.Join(linkDir, "lib", "user.rb"))
+		assert.True(t, ok)
+		assert.Equal(t, filepath.FromSlash("lib/user.rb"), path)
+	})
 }

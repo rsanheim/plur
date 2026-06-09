@@ -75,8 +75,13 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 			"cmd", watch.CommandString(run.Command(planner.CWD), run.Job.Env))
 	}
 
+	warned := make(map[string]bool)
 	for _, m := range plan.Matches {
 		for _, target := range m.Missing {
+			if warned[target] {
+				continue
+			}
+			warned[target] = true
 			out.Warn("not found", "file", target)
 		}
 	}
