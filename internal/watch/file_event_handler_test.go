@@ -1,11 +1,14 @@
 package watch
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/rsanheim/plur/internal/framework"
+	"github.com/rsanheim/plur/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -240,6 +243,49 @@ func TestFileEventHandler_HandleBatch_NoTargetsExecutesWhenOtherTargetsAreMissin
 	assert.Empty(t, mock.calls[0].targets)
 }
 
+func TestFileEventHandler_HandleBatch_MissingOnlyJobDoesNotExecuteWhenAnotherJobHasTargets(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	srcDir := filepath.Join(tmpDir, "app", "models")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
+
+	specDir := filepath.Join(tmpDir, "spec", "models")
+	require.NoError(t, os.MkdirAll(specDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(specDir, "user_spec.rb"), []byte("# spec"), 0644))
+
+	mock := &mockExecutor{}
+	handler := &FileEventHandler{
+		Jobs: map[string]framework.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
+			"lint":  {Name: "lint", Cmd: []string{"lint"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:    "model-to-spec",
+				Source:  "app/**/*.rb",
+				Targets: []string{"spec/{{match}}_spec.rb"},
+				Jobs:    []string{"rspec"},
+			},
+			{
+				Name:    "model-to-generated-lint-target",
+				Source:  "app/**/*.rb",
+				Targets: []string{"generated/{{match}}.rb"},
+				Jobs:    []string{"lint"},
+			},
+		},
+		CWD:      tmpDir,
+		Executor: mock.execute,
+	}
+
+	result := handler.HandleBatch([]string{"app/models/user.rb"})
+
+	assert.Equal(t, []string{"rspec"}, result.ExecutedJobs)
+	require.Len(t, mock.calls, 1)
+	assert.Equal(t, "rspec", mock.calls[0].jobName)
+	assert.Equal(t, []string{filepath.FromSlash("spec/models/user_spec.rb")}, mock.calls[0].targets)
+}
+
 func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -305,4 +351,45 @@ func TestFileEventHandler_HandleBatch_NoMatchingTargets(t *testing.T) {
 
 	assert.Empty(t, result.ExecutedJobs, "No jobs should run when target doesn't exist")
 	assert.Len(t, mock.calls, 0)
+}
+
+func TestFileEventHandler_HandleBatch_LogsNoExistingTargetsForPathWithoutRunnableJobs(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	srcDir := filepath.Join(tmpDir, "spec")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "spec_helper.rb"), []byte("# spec helper"), 0644))
+
+	var output bytes.Buffer
+	originalLogger := logger.Logger
+	logger.Logger = slog.New(logger.NewCustomTextHandler(&output, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	t.Cleanup(func() {
+		logger.Logger = originalLogger
+	})
+
+	mock := &mockExecutor{}
+	handler := &FileEventHandler{
+		Jobs: map[string]framework.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"rspec"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:    "spec-helper-to-missing-spec",
+				Source:  "spec/**/*.rb",
+				Targets: []string{"spec/{{match}}_spec.rb"},
+				Jobs:    []string{"rspec"},
+			},
+		},
+		CWD:      tmpDir,
+		Executor: mock.execute,
+	}
+
+	result := handler.HandleBatch([]string{"spec/spec_helper.rb"})
+
+	assert.Empty(t, result.ExecutedJobs)
+	assert.Empty(t, mock.calls)
+	assert.Contains(t, output.String(), "No existing targets for file")
+	assert.Contains(t, output.String(), "path=\"spec/spec_helper.rb\"")
 }

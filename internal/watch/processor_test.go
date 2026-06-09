@@ -61,14 +61,15 @@ func TestEventProcessorBasicMapping(t *testing.T) {
 			require.NoError(t, err)
 
 			if len(tt.expectedJobs) == 0 {
-				assert.Empty(t, result)
+				assert.Empty(t, result.MatchedRules)
+				assert.Empty(t, result.CandidateTargets)
 				return
 			}
 
 			for _, jobName := range tt.expectedJobs {
-				assert.Contains(t, result, jobName)
+				assert.Contains(t, result.CandidateTargets, jobName)
 				if tt.expectedTarget != "" {
-					assert.Contains(t, result[jobName], filepath.FromSlash(tt.expectedTarget))
+					assert.Contains(t, result.CandidateTargets[jobName], filepath.FromSlash(tt.expectedTarget))
 				}
 			}
 		})
@@ -98,8 +99,8 @@ func TestEventProcessorNoTargets(t *testing.T) {
 	result, err := processor.ProcessPath("spec/models/user_spec.rb")
 	require.NoError(t, err)
 
-	assert.Contains(t, result, "rspec")
-	assert.Equal(t, []string{filepath.FromSlash("spec/models/user_spec.rb")}, result["rspec"])
+	assert.Contains(t, result.CandidateTargets, "rspec")
+	assert.Equal(t, []string{filepath.FromSlash("spec/models/user_spec.rb")}, result.CandidateTargets["rspec"])
 }
 
 func TestEventProcessorNoTargetsDisabled(t *testing.T) {
@@ -124,9 +125,9 @@ func TestEventProcessorNoTargetsDisabled(t *testing.T) {
 	result, err := processor.ProcessPath("runner.go")
 	require.NoError(t, err)
 
-	targets, ok := result["build"]
+	_, ok := result.NoTargetJobs["build"]
 	assert.True(t, ok, "matched no-target jobs should be present")
-	assert.Empty(t, targets)
+	assert.Empty(t, result.CandidateTargets["build"])
 }
 
 func TestEventProcessorMultipleJobs(t *testing.T) {
@@ -155,10 +156,10 @@ func TestEventProcessorMultipleJobs(t *testing.T) {
 	result, err := processor.ProcessPath("lib/user.rb")
 	require.NoError(t, err)
 
-	assert.Contains(t, result, "rspec")
-	assert.Contains(t, result, "rubocop")
-	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, result["rspec"])
-	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, result["rubocop"])
+	assert.Contains(t, result.CandidateTargets, "rspec")
+	assert.Contains(t, result.CandidateTargets, "rubocop")
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, result.CandidateTargets["rspec"])
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, result.CandidateTargets["rubocop"])
 }
 
 func TestEventProcessorMultipleTargets(t *testing.T) {
@@ -184,10 +185,10 @@ func TestEventProcessorMultipleTargets(t *testing.T) {
 	result, err := processor.ProcessPath("lib/user.rb")
 	require.NoError(t, err)
 
-	assert.Contains(t, result, "rspec")
-	assert.Len(t, result["rspec"], 2)
-	assert.Contains(t, result["rspec"], filepath.FromSlash("spec/user_spec.rb"))
-	assert.Contains(t, result["rspec"], filepath.FromSlash("spec/lib/user_spec.rb"))
+	assert.Contains(t, result.CandidateTargets, "rspec")
+	assert.Len(t, result.CandidateTargets["rspec"], 2)
+	assert.Contains(t, result.CandidateTargets["rspec"], filepath.FromSlash("spec/user_spec.rb"))
+	assert.Contains(t, result.CandidateTargets["rspec"], filepath.FromSlash("spec/lib/user_spec.rb"))
 }
 
 func TestEventProcessorIgnorePatterns(t *testing.T) {
@@ -238,9 +239,10 @@ func TestEventProcessorIgnorePatterns(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.shouldMatch {
-				assert.NotEmpty(t, result)
+				assert.NotEmpty(t, result.MatchedRules)
 			} else {
-				assert.Empty(t, result)
+				assert.Empty(t, result.MatchedRules)
+				assert.Empty(t, result.CandidateTargets)
 			}
 		})
 	}
@@ -304,8 +306,8 @@ func TestEventProcessorMultipleWatches(t *testing.T) {
 			result, err := processor.ProcessPath(tt.path)
 			require.NoError(t, err)
 
-			assert.Contains(t, result, "rspec")
-			assert.Contains(t, result["rspec"], filepath.FromSlash(tt.expectedTarget))
+			assert.Contains(t, result.CandidateTargets, "rspec")
+			assert.Contains(t, result.CandidateTargets["rspec"], filepath.FromSlash(tt.expectedTarget))
 		})
 	}
 }
@@ -341,7 +343,7 @@ func TestEventProcessorMergedWatches(t *testing.T) {
 		processor := NewEventProcessor(jobs, watches)
 		result, err := processor.ProcessPath("lib/user.rb")
 		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("spec/override/user_spec.rb")}, result["rspec"])
+		assert.Equal(t, []string{filepath.FromSlash("spec/override/user_spec.rb")}, result.CandidateTargets["rspec"])
 	})
 
 	t.Run("additive merge keeps distinct watches", func(t *testing.T) {
@@ -370,7 +372,7 @@ func TestEventProcessorMergedWatches(t *testing.T) {
 		assert.ElementsMatch(t, []string{
 			filepath.FromSlash("spec/user_spec.rb"),
 			filepath.FromSlash("spec/lib/user_spec.rb"),
-		}, result["rspec"])
+		}, result.CandidateTargets["rspec"])
 	})
 }
 
@@ -396,8 +398,8 @@ func TestEventProcessorDeduplication(t *testing.T) {
 	result, err := processor.ProcessPath("lib/user.rb")
 	require.NoError(t, err)
 
-	assert.Contains(t, result, "rspec")
-	assert.Len(t, result["rspec"], 1, "Should deduplicate targets")
+	assert.Contains(t, result.CandidateTargets, "rspec")
+	assert.Len(t, result.CandidateTargets["rspec"], 1, "Should deduplicate targets")
 }
 
 func TestEventProcessorUndefinedJob(t *testing.T) {

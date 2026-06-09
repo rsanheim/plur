@@ -14,8 +14,8 @@ import (
 	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/watch"
 	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/watch"
 )
 
 type SpecCmd struct {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
-	"github.com/rsanheim/plur/watch"
+	"github.com/rsanheim/plur/internal/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

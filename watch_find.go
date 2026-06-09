@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/watch"
 	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/watch"
 )
 
 // WatchFindCmd implements the 'plur watch find' command
@@ -85,10 +85,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 	// Show found files
 	if findResult.HasExistingTargets() {
-		var allFiles []string
-		for _, targets := range findResult.ExistingTargets {
-			allFiles = append(allFiles, targets...)
-		}
+		allFiles := findResult.ExistingTargetFiles()
 		if len(allFiles) > 0 {
 			out.Info("found files", "files", strings.Join(allFiles, ", "))
 		}
