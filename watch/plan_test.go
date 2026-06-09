@@ -360,4 +360,17 @@ func TestPlannerAdmit(t *testing.T) {
 		_, ok := p.Admit(".git/config")
 		assert.True(t, ok)
 	})
+
+	t.Run("unrelativizable absolute path is rejected", func(t *testing.T) {
+		p := Planner{CWD: ""}
+		path, ok := p.Admit("/abs/other/file.rb")
+		assert.False(t, ok)
+		assert.Equal(t, "/abs/other/file.rb", path, "original path is returned for display")
+	})
+
+	t.Run("path escaping CWD is admitted", func(t *testing.T) {
+		path, ok := planner.Admit(filepath.Join(filepath.Dir(cwd), "other", "file.rb"))
+		assert.True(t, ok)
+		assert.Equal(t, filepath.FromSlash("../other/file.rb"), path)
+	})
 }
