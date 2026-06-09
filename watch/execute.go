@@ -11,6 +11,7 @@ import (
 // Job.Cmd plus targets, env is the inherited environment plus Job.Env
 // (last entry wins), and Dir is cwd. Execution and display both start
 // here so what plur prints is exactly what it runs.
+// Job.Cmd must be non-empty; config-load validation and ExecuteJob enforce this.
 func (r JobRun) Command(cwd string) *exec.Cmd {
 	argv := append(slices.Clone(r.Job.Cmd), r.Targets...)
 	cmd := exec.Command(argv[0], argv[1:]...)

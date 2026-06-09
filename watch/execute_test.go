@@ -35,6 +35,23 @@ func TestJobRunCommand_NoTargets(t *testing.T) {
 	assert.Equal(t, []string{"bin/rake", "install"}, cmd.Args)
 }
 
+func TestJobRunCommand_JobEnvOverridesInherited(t *testing.T) {
+	t.Setenv("PLUR_TEST_VAR", "from-environ")
+	run := JobRun{
+		Job: framework.Job{
+			Name: "rspec",
+			Cmd:  []string{"rspec"},
+			Env:  []string{"PLUR_TEST_VAR=from-job"},
+		},
+	}
+
+	cmd := run.Command(t.TempDir())
+
+	env := cmd.Environ()
+	assert.Contains(t, env, "PLUR_TEST_VAR=from-job")
+	assert.NotContains(t, env, "PLUR_TEST_VAR=from-environ")
+}
+
 func TestCommandString(t *testing.T) {
 	run := JobRun{
 		Job: framework.Job{
