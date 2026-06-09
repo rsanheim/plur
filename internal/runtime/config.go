@@ -88,6 +88,14 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 		if w.NoTargets && len(w.Targets) > 0 {
 			return fmt.Errorf("configuration error in %v: watch %q must not define targets when no_targets is true", rc.Sources, w.Name)
 		}
+		if w.Source != "" && !watch.ValidatePattern(w.Source) {
+			return fmt.Errorf("configuration error in %v: watch %q has invalid source pattern %q", rc.Sources, w.Name, w.Source)
+		}
+		for _, pattern := range w.Ignore {
+			if !watch.ValidatePattern(pattern) {
+				return fmt.Errorf("configuration error in %v: watch %q has invalid ignore pattern %q", rc.Sources, w.Name, pattern)
+			}
+		}
 		for _, target := range w.Targets {
 			if err := watch.ValidateTemplate(target); err != nil {
 				return fmt.Errorf("configuration error in %v: watch %q has invalid target template %q: %w", rc.Sources, w.Name, target, err)

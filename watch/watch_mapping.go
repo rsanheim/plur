@@ -17,6 +17,13 @@ type WatchMapping struct {
 	Reload    bool     `toml:"reload,omitempty" json:"reload,omitempty"` // Reload plur after jobs complete
 }
 
+// ValidatePattern reports whether a doublestar glob pattern is well-formed.
+// Config load validates every source and ignore pattern with this so that
+// pattern matching during planning cannot fail.
+func ValidatePattern(pattern string) bool {
+	return doublestar.ValidatePattern(pattern)
+}
+
 // SourceDir returns the directory part of the source pattern
 func (w WatchMapping) SourceDir() string {
 	base, _ := doublestar.SplitPattern(w.Source)

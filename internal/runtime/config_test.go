@@ -193,6 +193,38 @@ func TestValidateRuntimeConfigRejectsTemplateTokensInJobCommand(t *testing.T) {
 	}
 }
 
+func TestValidateRuntimeConfigRejectsInvalidSourcePattern(t *testing.T) {
+	rc := &RuntimeConfig{
+		Jobs: map[string]framework.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
+		},
+		Watches: []watch.WatchMapping{
+			{Name: "bad-source", Source: "lib/[", Jobs: []string{"rspec"}},
+		},
+		Sources: []string{".plur.toml"},
+	}
+
+	err := validateRuntimeConfig(rc)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid source pattern "lib/["`)
+}
+
+func TestValidateRuntimeConfigRejectsInvalidIgnorePattern(t *testing.T) {
+	rc := &RuntimeConfig{
+		Jobs: map[string]framework.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
+		},
+		Watches: []watch.WatchMapping{
+			{Name: "bad-ignore", Source: "lib/**/*.rb", Ignore: []string{"vendor/["}, Jobs: []string{"rspec"}},
+		},
+		Sources: []string{".plur.toml"},
+	}
+
+	err := validateRuntimeConfig(rc)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid ignore pattern "vendor/["`)
+}
+
 func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {
 	rc := &RuntimeConfig{
 		Use: "custom",
