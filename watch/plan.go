@@ -75,7 +75,11 @@ func (p Planner) Admit(path string) (string, bool) {
 func (p Planner) Plan(paths []string) Plan {
 	plan := Plan{}
 	for _, path := range paths {
-		plan.Matches = append(plan.Matches, p.matchPath(path)...)
+		matches := p.matchPath(path)
+		if !anyRunnable(matches) {
+			logger.Logger.Debug("No existing targets for file", "path", path)
+		}
+		plan.Matches = append(plan.Matches, matches...)
 	}
 
 	for _, m := range plan.Matches {
@@ -147,6 +151,20 @@ func (p Planner) buildRuns(matches []Match) []JobRun {
 	return runs
 }
 
+// anyRunnable reports whether any match can produce a job run: it has
+// existing targets or is a no_targets rule that runs its jobs bare.
+func anyRunnable(matches []Match) bool {
+	for _, m := range matches {
+		if len(m.Existing) > 0 {
+			return true
+		}
+		if m.Rule.NoTargets && len(m.Rule.Jobs) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // collectJobTargets gathers deduplicated existing targets for a job across
 // all matches. runnable is true when targets exist or a no_targets rule
 // matched for the job.
@@ -214,4 +232,19 @@ func matchesAny(normalizedPath string, patterns []string) bool {
 		}
 	}
 	return false
+}
+
+// deduplicate removes duplicate strings from a slice while preserving order
+func deduplicate(items []string) []string {
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(items))
+
+	for _, item := range items {
+		if !seen[item] {
+			seen[item] = true
+			result = append(result, item)
+		}
+	}
+
+	return result
 }

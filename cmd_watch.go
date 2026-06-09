@@ -135,18 +135,13 @@ func printWatchInfo(watchDirs []string) {
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
-	selected, err := runtime.SelectJobFromRuntimeConfig(cli.runtimeConfig, nil)
+	planner, selected, err := buildWatchPlanner(cli, watchCmd)
 	if err != nil {
-		return fmt.Errorf("failed to select watch job: %w", err)
+		return err
 	}
-	resolvedJob := selected.Job
-	jobs := cli.runtimeConfig.Jobs
-	watches := cli.runtimeConfig.Watches
 
-	runtime.LogInheritedFields(selected.Name, selected.Inherited)
-
-	if len(watches) > 0 {
-		logger.Logger.Info("Watch configuration loaded", "job", resolvedJob.Name, "watch_mappings", len(watches))
+	if len(planner.Watches) > 0 {
+		logger.Logger.Info("Watch configuration loaded", "job", selected.Job.Name, "watch_mappings", len(planner.Watches))
 	} else {
 		logger.Logger.Info("No watch mappings configured, file changes will not trigger tests")
 	}
@@ -156,9 +151,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
 
 	var watchDirs []string
-	for _, mapping := range watches {
-		dir := mapping.SourceDir()
-		watchDirs = append(watchDirs, dir)
+	for _, mapping := range planner.Watches {
+		watchDirs = append(watchDirs, mapping.SourceDir())
 	}
 
 	logger.Logger.Debug("Watch directories before filtering", "dirs", watchDirs)
@@ -172,11 +166,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		return fmt.Errorf("no directories to watch found in watch mappings")
 	}
 
-	globalIgnorePatterns := watchCmd.Ignore
-	if len(globalIgnorePatterns) == 0 {
-		globalIgnorePatterns = watch.DefaultIgnorePatterns
-	}
-	logger.Logger.Debug("Global watch ignore patterns", "patterns", globalIgnorePatterns)
+	logger.Logger.Debug("Global watch ignore patterns", "patterns", planner.IgnorePatterns)
 
 	projectName := "unknown"
 	if cwd, err := os.Getwd(); err == nil {
@@ -186,9 +176,9 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	logger.Logger.Info("plur configuration info",
 		"project", projectName,
 		"directories", watchDirs,
-		"job", resolvedJob.Name,
+		"job", selected.Job.Name,
 		"reason", selected.Reason,
-		"watch", fmt.Sprintf("%+v", watches),
+		"watch", fmt.Sprintf("%+v", planner.Watches),
 		"debug", globalConfig.Debug,
 		"verbose", globalConfig.Verbose,
 		"debounce", runCmd.Debounce,
@@ -208,7 +198,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		TimeoutSeconds: runCmd.Timeout,
 	}
 
-	// Create and start the watcher manager
 	manager := watch.NewWatcherManager(watcherConfig, watcherPath)
 	if err := manager.Start(); err != nil {
 		return err
@@ -220,7 +209,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		timeoutChan = time.After(time.Duration(runCmd.Timeout) * time.Second)
 	}
 
-	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
@@ -233,7 +221,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		}
 	}()
 
-	// Set up prompt channel - buffered to coalesce multiple prompt requests
 	promptChan := make(chan struct{}, 1)
 	showPrompt := func() {
 		select {
@@ -242,7 +229,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		}
 	}
 
-	// Set up reload channel - buffered to coalesce multiple reload requests
 	reloadChan := make(chan struct{}, 1)
 	triggerReload := func() {
 		select {
@@ -255,21 +241,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	printHelp()
 	showPrompt()
 
-	cwd, _ := os.Getwd()
-	if resolvedCwd, err := filepath.EvalSymlinks(cwd); err == nil {
-		if resolvedCwd != cwd {
-			logger.Logger.Debug("watch", "cwd_symlink_resolved", true, "original", cwd, "resolved", resolvedCwd)
-		}
-		cwd = resolvedCwd
-	}
-
-	// Create file event handler
-	handler := &watch.FileEventHandler{
-		Jobs:    jobs,
-		Watches: watches,
-		CWD:     cwd,
-	}
-
 	for {
 		select {
 		case input := <-stdinChan:
@@ -277,7 +248,9 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			switch input {
 			case "":
 				fmt.Println("Running all tests...")
-				watch.RunCommand(append([]string{}, resolvedJob.Cmd...))
+				if err := watch.ExecuteJob(watch.JobRun{Job: selected.Job}, planner.CWD); err != nil {
+					logger.Logger.Warn("Job execution error", "job", selected.Job.Name, "error", err)
+				}
 				fmt.Println()
 				showPrompt()
 			case "help":
@@ -304,19 +277,8 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			}
 
 		case event := <-manager.Events():
-			// Early filtering - skip events we don't care about
 			if event.PathType == "watcher" {
 				logger.Logger.Debug("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
-				continue
-			}
-
-			path, err := filepath.Rel(cwd, event.PathName)
-			if err != nil {
-				logger.Logger.Warn("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "error", fmt.Sprintf("failed to get relative path: %v", err))
-				continue
-			}
-
-			if watch.IsIgnored(path, globalIgnorePatterns) {
 				continue
 			}
 
@@ -324,15 +286,24 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				continue
 			}
 
+			path, ok := planner.Admit(event.PathName)
+			if !ok {
+				continue
+			}
+
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
-			// Debounce and process
 			debouncer.Debounce([]string{path}, func(paths []string) {
-				result := handler.HandleBatch(paths)
-				if result.ShouldReload {
+				plan := planner.Plan(paths)
+				for _, run := range plan.Runs {
+					if err := watch.ExecuteJob(run, planner.CWD); err != nil {
+						logger.Logger.Warn("Job execution error", "job", run.Job.Name, "error", err)
+					}
+				}
+				if plan.Reload {
 					triggerReload()
 				}
-				if len(result.ExecutedJobs) > 0 {
+				if len(plan.Runs) > 0 {
 					fmt.Println()
 					showPrompt()
 				}

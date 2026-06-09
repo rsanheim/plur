@@ -1,10 +1,13 @@
 package watch
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"slices"
 	"strings"
+
+	"github.com/rsanheim/plur/logger"
 )
 
 // Command builds the ready-to-run command for this job run: argv is
@@ -25,4 +28,18 @@ func (r JobRun) Command(cwd string) *exec.Cmd {
 func CommandString(cmd *exec.Cmd, addedEnv []string) string {
 	parts := append(slices.Clone(addedEnv), cmd.Args...)
 	return strings.Join(parts, " ")
+}
+
+// ExecuteJob runs a job run from cwd, streaming output to the terminal.
+func ExecuteJob(run JobRun, cwd string) error {
+	if len(run.Job.Cmd) == 0 {
+		return fmt.Errorf("job %q must define a command", run.Job.Name)
+	}
+	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", run.Targets))
+
+	cmd := run.Command(cwd)
+	fmt.Printf("\n[plur] %s\n", CommandString(cmd, run.Job.Env))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }

@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 )
 
@@ -208,59 +206,6 @@ func (w *Watcher) readErrors(stderr io.Reader) {
 
 // DefaultIgnorePatterns are the default patterns to ignore from watch events
 var DefaultIgnorePatterns = []string{".git/**", "node_modules/**"}
-
-// RunCommand runs a command from a slice of arguments
-func RunCommand(args []string) {
-	if len(args) == 0 {
-		return
-	}
-
-	fmt.Printf("\n[plur] %s\n", strings.Join(args, " "))
-
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
-	}
-}
-
-// ExecuteJob runs a job with the given target files.
-func ExecuteJob(j framework.Job, targetFiles []string, cwd string) error {
-	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
-
-	if len(j.Cmd) == 0 {
-		return fmt.Errorf("job %q must define a command", j.Name)
-	}
-
-	cmd := append([]string{}, j.Cmd...)
-	cmd = append(cmd, targetFiles...)
-	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
-
-	execCmd := exec.Command(cmd[0], cmd[1:]...)
-	execCmd.Dir = cwd
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
-	execCmd.Env = append(os.Environ(), j.Env...)
-
-	if err := execCmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// IsIgnored checks if a path matches any of the ignore patterns
-func IsIgnored(path string, patterns []string) bool {
-	normalizedPath := filepath.ToSlash(path)
-	for _, pattern := range patterns {
-		if matched, _ := doublestar.Match(pattern, normalizedPath); matched {
-			return true
-		}
-	}
-	return false
-}
 
 // FilterDirectories validates and filters watch directories:
 // 1. Security: Rejects paths that escape the project root (e.g., symlinks to "/")
