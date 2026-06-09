@@ -30,6 +30,42 @@ func runWatchInstall(force bool) error {
 	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
+// buildWatchPlanner resolves the inputs both watch commands share: the
+// selected job, symlink-resolved cwd, global ignore patterns, and the
+// planner that maps changed files to job runs.
+func buildWatchPlanner(globals *PlurCLI, watchCmd *WatchCmd) (watch.Planner, *runtime.SelectedJob, error) {
+	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
+	if err != nil {
+		return watch.Planner{}, nil, fmt.Errorf("failed to select watch job: %w", err)
+	}
+	runtime.LogInheritedFields(selected.Name, selected.Inherited)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return watch.Planner{}, nil, fmt.Errorf("failed to get current directory: %w", err)
+	}
+	if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
+		cwd = resolved
+	}
+
+	ignorePatterns := watchCmd.Ignore
+	if len(ignorePatterns) == 0 {
+		ignorePatterns = watch.DefaultIgnorePatterns
+	}
+	for _, pattern := range ignorePatterns {
+		if !watch.ValidatePattern(pattern) {
+			return watch.Planner{}, nil, fmt.Errorf("invalid --ignore pattern %q", pattern)
+		}
+	}
+
+	return watch.Planner{
+		Jobs:           globals.runtimeConfig.Jobs,
+		Watches:        globals.runtimeConfig.Watches,
+		IgnorePatterns: ignorePatterns,
+		CWD:            cwd,
+	}, selected, nil
+}
+
 func printHelp() {
 	cmdWidth := 20
 	fmt.Println("Available commands")
