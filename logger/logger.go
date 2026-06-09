@@ -38,9 +38,12 @@ func Init(level slog.Level) {
 	logLevel.Set(level)
 }
 
-// InitFromArgs determines the log level from CLI args and env vars
-// before Kong has parsed anything. CLI flags take precedence over env vars,
-// and PLUR_DEBUG can escalate verbose to debug.
+// InitFromArgs determines the log level from CLI args and env vars before
+// Kong has parsed anything. Config loading logs through slog while Kong is
+// still parsing (e.g. kongtoml's unknown-key warnings), before AfterApply
+// can call Init with the parsed flags - this pre-parse pass makes
+// --debug/-v/PLUR_DEBUG apply to that window too. CLI flags take precedence
+// over env vars, and PLUR_DEBUG can escalate verbose to debug.
 func InitFromArgs(args []string) {
 	level := slog.LevelWarn
 
@@ -127,11 +130,6 @@ func (h *CustomTextHandler) WithGroup(name string) slog.Handler {
 	return h
 }
 
-// SetLogLevel changes the log level dynamically at runtime
-func SetLogLevel(level slog.Level) {
-	logLevel.Set(level)
-}
-
 // ToggleDebug toggles between debug and info log levels
 func ToggleDebug() {
 	if logLevel.Level() == slog.LevelDebug {
@@ -144,9 +142,4 @@ func ToggleDebug() {
 // IsDebugEnabled returns true if debug level logging is enabled
 func IsDebugEnabled() bool {
 	return logLevel.Level() == slog.LevelDebug
-}
-
-// IsVerboseEnabled returns true if verbose logging is enabled (info level or lower)
-func IsVerboseEnabled() bool {
-	return logLevel.Level() <= slog.LevelInfo
 }

@@ -3,7 +3,6 @@ package logger
 import (
 	"bytes"
 	"log/slog"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -150,28 +149,6 @@ func TestToggleDebug_ConcurrentAccess(t *testing.T) {
 	wg.Wait()
 }
 
-func TestSetLogLevel_ChangesLevel(t *testing.T) {
-	originalLogger := Logger
-	defer func() {
-		Logger = originalLogger
-	}()
-
-	// Initialize first
-	Init(slog.LevelWarn)
-
-	// Change to debug with SetLogLevel
-	SetLogLevel(slog.LevelDebug)
-	assert.True(t, IsDebugEnabled())
-
-	// Change to info with SetLogLevel
-	SetLogLevel(slog.LevelInfo)
-	assert.False(t, IsDebugEnabled())
-
-	// Change to warn with SetLogLevel
-	SetLogLevel(slog.LevelWarn)
-	assert.False(t, IsDebugEnabled())
-}
-
 func TestDynamicLevel_TakesEffectImmediately(t *testing.T) {
 	originalLogger := Logger
 	defer func() {
@@ -285,88 +262,50 @@ func TestCustomTextHandler_DoesNotResolveLogValuerWhenDisabled(t *testing.T) {
 	assert.Empty(t, buf.String())
 }
 
-func TestIsVerboseEnabled(t *testing.T) {
-	// Test various log levels
-	testCases := []struct {
-		level   slog.Level
-		verbose bool
-	}{
-		{slog.LevelDebug, true},  // Debug is verbose
-		{slog.LevelInfo, true},   // Info is verbose
-		{slog.LevelWarn, false},  // Warn is not verbose
-		{slog.LevelError, false}, // Error is not verbose
-	}
-
-	for _, tc := range testCases {
-		Init(tc.level)
-		result := IsVerboseEnabled()
-		assert.Equal(t, tc.verbose, result, "Expected IsVerboseEnabled()=%v for level %v", tc.verbose, tc.level)
-	}
-}
-
-// Helper function to redirect stderr for testing
-func captureStderr(f func()) string {
-	old := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	f()
-
-	w.Close()
-	os.Stderr = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	return buf.String()
-}
-
 func TestInitFromArgs_DefaultWarn(t *testing.T) {
 	t.Setenv("PLUR_DEBUG", "")
 	InitFromArgs([]string{"spec"})
-	assert.False(t, IsDebugEnabled())
-	assert.False(t, IsVerboseEnabled())
+	assert.Equal(t, slog.LevelWarn, logLevel.Level())
 }
 
 func TestInitFromArgs_VerboseFlag(t *testing.T) {
 	t.Setenv("PLUR_DEBUG", "")
 	InitFromArgs([]string{"--verbose"})
-	assert.True(t, IsVerboseEnabled())
-	assert.False(t, IsDebugEnabled())
+	assert.Equal(t, slog.LevelInfo, logLevel.Level())
 
 	InitFromArgs([]string{"-v"})
-	assert.True(t, IsVerboseEnabled())
-	assert.False(t, IsDebugEnabled())
+	assert.Equal(t, slog.LevelInfo, logLevel.Level())
 }
 
 func TestInitFromArgs_DebugFlag(t *testing.T) {
 	t.Setenv("PLUR_DEBUG", "")
 	InitFromArgs([]string{"--debug"})
-	assert.True(t, IsDebugEnabled())
+	assert.Equal(t, slog.LevelDebug, logLevel.Level())
 
 	InitFromArgs([]string{"-d"})
-	assert.True(t, IsDebugEnabled())
+	assert.Equal(t, slog.LevelDebug, logLevel.Level())
 }
 
 func TestInitFromArgs_EnvDebug(t *testing.T) {
 	t.Setenv("PLUR_DEBUG", "1")
 	InitFromArgs([]string{"spec"})
-	assert.True(t, IsDebugEnabled())
+	assert.Equal(t, slog.LevelDebug, logLevel.Level())
 }
 
 func TestInitFromArgs_DebugWinsOverVerbose(t *testing.T) {
 	t.Setenv("PLUR_DEBUG", "")
 	InitFromArgs([]string{"--verbose", "--debug"})
-	assert.True(t, IsDebugEnabled())
+	assert.Equal(t, slog.LevelDebug, logLevel.Level())
 }
 
 func TestInitFromArgs_CLIFlagWinsOverEnv(t *testing.T) {
 	t.Setenv("PLUR_DEBUG", "0")
 	InitFromArgs([]string{"-d"})
-	assert.True(t, IsDebugEnabled())
+	assert.Equal(t, slog.LevelDebug, logLevel.Level())
 }
 
 func TestInitFromArgs_EnvDebugEscalatesVerbose(t *testing.T) {
 	t.Setenv("PLUR_DEBUG", "1")
 	InitFromArgs([]string{"-v"})
-	assert.True(t, IsDebugEnabled())
+	assert.Equal(t, slog.LevelDebug, logLevel.Level())
 }

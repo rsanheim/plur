@@ -282,10 +282,6 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	results := make(chan WorkerResult, len(commands))
 	outputChan := make(chan OutputMessage, len(commands)*10)
 
-	// Set PARALLEL_TEST_GROUPS env var (also set per-command, but this ensures
-	// it's available globally for any child process inspection)
-	os.Setenv(EnvParallelTestGroups, fmt.Sprintf("%d", len(commands)))
-
 	var outputWg sync.WaitGroup
 	outputWg.Go(func() {
 		outputAggregator(outputChan, r.config.ColorOutput, r.config.RspecTrace)

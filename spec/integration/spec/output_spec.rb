@@ -66,6 +66,33 @@ RSpec.describe "plur spec output handling" do
     end
   end
 
+  describe "PLUR_DEBUG environment variable" do
+    it "enables debug logging when set to 1" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", env: {"PLUR_DEBUG" => "1"})
+
+        expect(result.err).to include("DEBUG")
+        expect(result.err).to include("discovered test files")
+      end
+    end
+
+    it "stays quiet when unset" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run")
+
+        expect(result.err).not_to include("DEBUG")
+      end
+    end
+
+    it "stays quiet when set to 0" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", env: {"PLUR_DEBUG" => "0"})
+
+        expect(result.err).not_to include("DEBUG")
+      end
+    end
+  end
+
   describe "worker command errors" do
     it "keeps worker stderr off stdout when the command exits before test events" do
       tmp_root = ROOT_PATH.join("tmp")

@@ -25,7 +25,6 @@ type Event struct {
 	PathType   string      `json:"path_type"`
 	PathName   string      `json:"path_name"`
 	EffectType string      `json:"effect_type"`
-	EffectTime int64       `json:"effect_time"`
 	Associated interface{} `json:"associated"`
 }
 

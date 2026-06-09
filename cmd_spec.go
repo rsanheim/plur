@@ -64,7 +64,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	cfg.Auto = r.Auto
 	cfg.RspecTrace = r.RspecTrace
 
 	extraArgs := buildTagArgs(r.Tags)

@@ -25,7 +25,6 @@ type Planner struct {
 // targets split by whether they exist on disk. Rules without jobs match
 // for reload and reporting purposes but never render targets.
 type Match struct {
-	Path     string
 	Rule     WatchMapping
 	Existing []string
 	Missing  []string
@@ -105,7 +104,7 @@ func (p Planner) matchPath(path string) []Match {
 			continue
 		}
 
-		m := Match{Path: path, Rule: rule}
+		m := Match{Rule: rule}
 		if len(rule.Jobs) > 0 {
 			for _, target := range renderRuleTargets(rule, normalized) {
 				if targetExists(target, p.CWD) {

@@ -8,7 +8,6 @@ import (
 
 // GlobalConfig holds settings that are truly global across all commands
 type GlobalConfig struct {
-	Auto        bool
 	ColorOutput bool
 	ConfigPaths *ConfigPaths
 	Debug       bool

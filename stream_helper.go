@@ -81,8 +81,7 @@ func streamTestOutput(
 				if isProgress {
 					if outputChan != nil {
 						outputChan <- OutputMessage{
-							WorkerID: workerIndex,
-							Type:     progressType,
+							Type: progressType,
 						}
 					}
 				}
@@ -102,7 +101,6 @@ func streamTestOutput(
 				// so streaming would duplicate all output
 				if outputChan != nil && streamStdout {
 					outputChan <- OutputMessage{
-						WorkerID:    workerIndex,
 						Type:        "stdout",
 						Content:     line,
 						CurrentFile: parser.CurrentFile(),
@@ -143,9 +141,8 @@ func streamTestOutput(
 			stderrBuilder.WriteString("\n")
 			if outputChan != nil {
 				outputChan <- OutputMessage{
-					WorkerID: workerIndex,
-					Type:     "stderr",
-					Content:  line,
+					Type:    "stderr",
+					Content: line,
 				}
 			}
 
