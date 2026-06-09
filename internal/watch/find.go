@@ -16,18 +16,24 @@ type JobPlan struct {
 
 // FindResult contains the results of finding targets for a file change
 type FindResult struct {
-	FilePath        string
-	MatchedRules    []WatchMapping           // Watch rules that matched the file
-	ExistingTargets map[string][]string      // jobName -> target files that exist
-	MissingTargets  map[string][]string      // jobName -> target files that don't exist
-	RunnableJobs    []JobPlan                // Jobs that should execute for this file change
-	Jobs            map[string]framework.Job // All jobs referenced
+	FilePath       string
+	MatchedRules   []WatchMapping      // Watch rules that matched the file
+	MissingTargets map[string][]string // jobName -> target files that don't exist
+	RunnableJobs   []JobPlan           // Jobs that should execute for this file change
 }
 
 // HasExistingTargets returns true if any job would execute, including explicit
 // no-target jobs.
 func (r *FindResult) HasExistingTargets() bool {
 	return len(r.RunnableJobs) > 0
+}
+
+func (r *FindResult) ExistingTargetFiles() []string {
+	files := make([]string, 0)
+	for _, jobPlan := range r.RunnableJobs {
+		files = append(files, jobPlan.Targets...)
+	}
+	return deduplicate(files)
 }
 
 // HasMissingTargets returns true if any targets are missing
@@ -52,19 +58,13 @@ func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches 
 	}
 
 	result := &FindResult{
-		FilePath:        filePath,
-		MatchedRules:    processResult.MatchedRules,
-		ExistingTargets: make(map[string][]string),
-		MissingTargets:  make(map[string][]string),
-		RunnableJobs:    make([]JobPlan, 0),
-		Jobs:            jobs,
+		FilePath:       filePath,
+		MatchedRules:   processResult.MatchedRules,
+		MissingTargets: make(map[string][]string),
+		RunnableJobs:   make([]JobPlan, 0),
 	}
 
-	for jobName := range processResult.NoTargetJobs {
-		if _, exists := jobs[jobName]; exists {
-			result.ExistingTargets[jobName] = nil
-		}
-	}
+	existingTargets := make(map[string][]string)
 
 	// Filter targets by existence (resolve relative paths against cwd)
 	for jobName, targets := range processResult.CandidateTargets {
@@ -74,7 +74,7 @@ func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches 
 				targetPath = filepath.Join(cwd, target)
 			}
 			if _, err := os.Stat(targetPath); err == nil {
-				result.ExistingTargets[jobName] = append(result.ExistingTargets[jobName], target)
+				existingTargets[jobName] = append(existingTargets[jobName], target)
 			} else {
 				result.MissingTargets[jobName] = append(result.MissingTargets[jobName], target)
 			}
@@ -102,7 +102,7 @@ func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches 
 				continue
 			}
 
-			targets := result.ExistingTargets[jobName]
+			targets := existingTargets[jobName]
 			if len(targets) == 0 {
 				continue
 			}

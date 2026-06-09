@@ -62,7 +62,6 @@ func PlanBatch(paths []string, jobs map[string]framework.Job, watches []WatchMap
 
 	allTargets := make(map[string][]string)
 	runnableJobs := make(map[string]framework.Job)
-	allMatchedRules := []WatchMapping{}
 
 	for _, path := range paths {
 		result, err := FindTargetsForFile(path, jobs, watches, cwd)
@@ -71,7 +70,7 @@ func PlanBatch(paths []string, jobs map[string]framework.Job, watches []WatchMap
 			continue
 		}
 
-		allMatchedRules = append(allMatchedRules, result.MatchedRules...)
+		plan.MatchedRules = append(plan.MatchedRules, result.MatchedRules...)
 
 		if len(result.RunnableJobs) == 0 {
 			plan.NoRunnablePaths = append(plan.NoRunnablePaths, path)
@@ -87,7 +86,7 @@ func PlanBatch(paths []string, jobs map[string]framework.Job, watches []WatchMap
 		}
 	}
 
-	for _, rule := range allMatchedRules {
+	for _, rule := range plan.MatchedRules {
 		if rule.Reload {
 			plan.ShouldReload = true
 			break
@@ -102,7 +101,7 @@ func PlanBatch(paths []string, jobs map[string]framework.Job, watches []WatchMap
 	}
 
 	seenJobs := make(map[string]bool)
-	for _, rule := range allMatchedRules {
+	for _, rule := range plan.MatchedRules {
 		for _, jobName := range rule.Jobs {
 			if seenJobs[jobName] {
 				continue
@@ -121,8 +120,6 @@ func PlanBatch(paths []string, jobs map[string]framework.Job, watches []WatchMap
 			seenJobs[jobName] = true
 		}
 	}
-
-	plan.MatchedRules = allMatchedRules
 
 	return plan
 }
