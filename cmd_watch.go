@@ -249,7 +249,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			case "":
 				fmt.Println("Running all tests...")
 				if err := watch.ExecuteJob(watch.JobRun{Job: selected.Job}, planner.CWD); err != nil {
-					logger.Logger.Warn("Job execution error", "job", selected.Job.Name, "error", err)
+					fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
 				}
 				fmt.Println()
 				showPrompt()

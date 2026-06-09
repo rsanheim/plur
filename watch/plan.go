@@ -60,6 +60,7 @@ func (p Planner) Admit(path string) (string, bool) {
 		}
 		rel, err := filepath.Rel(p.CWD, path)
 		if err != nil {
+			logger.Logger.Debug("Rejecting unrelativizable path", "path", path, "cwd", p.CWD, "error", err)
 			return path, false
 		}
 		path = rel
