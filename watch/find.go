@@ -1,30 +1,54 @@
 package watch
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 )
 
-// FindResult contains the results of finding targets for a file change
+type JobRun struct {
+	JobName   string
+	Job       framework.Job
+	Targets   []string
+	NoTargets bool
+}
+
+type MissingTarget struct {
+	JobName string
+	Target  string
+}
+
+type WatchPlan struct {
+	MatchedRules   []WatchMapping
+	JobRuns        []JobRun
+	MissingTargets []MissingTarget
+	ShouldReload   bool
+}
+
 type FindResult struct {
-	FilePath        string
-	MatchedRules    []WatchMapping           // Watch rules that matched the file
-	ExistingTargets map[string][]string      // jobName -> target files that exist
-	MissingTargets  map[string][]string      // jobName -> target files that don't exist
-	Jobs            map[string]framework.Job // All jobs referenced
+	MatchedRules   []WatchMapping
+	MissingTargets map[string][]string
+	JobRuns        []JobRun
 }
 
-// HasExistingTargets returns true if any job has executable targets, including
-// a matched no-target job represented by a present key with an empty slice.
 func (r *FindResult) HasExistingTargets() bool {
-	return len(r.ExistingTargets) > 0
+	return len(r.JobRuns) > 0
 }
 
-// HasMissingTargets returns true if any targets are missing
+func (r *FindResult) ExistingTargetFiles() []string {
+	files := make([]string, 0)
+	for _, run := range r.JobRuns {
+		if run.NoTargets {
+			continue
+		}
+		files = append(files, run.Targets...)
+	}
+	return deduplicate(files)
+}
+
 func (r *FindResult) HasMissingTargets() bool {
 	for _, targets := range r.MissingTargets {
 		if len(targets) > 0 {
@@ -34,81 +58,83 @@ func (r *FindResult) HasMissingTargets() bool {
 	return false
 }
 
-// FindTargetsForFile determines what would be executed for a given file change.
-// The cwd parameter is used to resolve relative target paths for existence checks.
-// It returns all matched rules and separates existing vs missing target files.
 func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches []WatchMapping, cwd string) (*FindResult, error) {
-	processor := NewEventProcessor(jobs, watches)
-
-	candidateTargets, err := processor.ProcessPath(filePath)
+	plan, err := PlanWatchForFile(filePath, jobs, watches, cwd)
 	if err != nil {
 		return nil, err
 	}
 
 	result := &FindResult{
-		FilePath:        filePath,
-		MatchedRules:    make([]WatchMapping, 0),
-		ExistingTargets: make(map[string][]string),
-		MissingTargets:  make(map[string][]string),
-		Jobs:            jobs,
+		MatchedRules:   plan.MatchedRules,
+		MissingTargets: make(map[string][]string),
+		JobRuns:        plan.JobRuns,
 	}
 
-	// Find which rules actually matched
-	for _, w := range watches {
-		if matchesWatch(filePath, w) {
-			result.MatchedRules = append(result.MatchedRules, w)
-			if w.NoTargets {
-				for _, jobName := range w.Jobs {
-					result.ExistingTargets[jobName] = nil
-				}
-			}
-		}
-	}
-
-	// Filter targets by existence (resolve relative paths against cwd)
-	for jobName, targets := range candidateTargets {
-		if len(targets) == 0 {
-			result.ExistingTargets[jobName] = nil
-			continue
-		}
-		for _, target := range targets {
-			targetPath := target
-			if cwd != "" && !filepath.IsAbs(target) {
-				targetPath = filepath.Join(cwd, target)
-			}
-			if _, err := os.Stat(targetPath); err == nil {
-				result.ExistingTargets[jobName] = append(result.ExistingTargets[jobName], target)
-			} else {
-				result.MissingTargets[jobName] = append(result.MissingTargets[jobName], target)
-				logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
-			}
-		}
+	for _, missing := range plan.MissingTargets {
+		result.MissingTargets[missing.JobName] = append(result.MissingTargets[missing.JobName], missing.Target)
 	}
 
 	return result, nil
 }
 
-// matchesWatch checks if a file path matches a watch mapping
-// This duplicates some logic from EventProcessor.ProcessPath but is needed
-// to identify which rules matched without re-implementing the whole thing
-func matchesWatch(filePath string, w WatchMapping) bool {
-	// Check ignore patterns first
-	for _, ignore := range w.Ignore {
-		if matches(filePath, ignore) {
-			return false
+func PlanWatchForFile(filePath string, jobs map[string]framework.Job, watches []WatchMapping, cwd string) (*WatchPlan, error) {
+	processor := NewEventProcessor(jobs, watches)
+	matches, err := processor.MatchPath(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	plan := &WatchPlan{
+		MatchedRules:   make([]WatchMapping, 0, len(matches)),
+		JobRuns:        make([]JobRun, 0),
+		MissingTargets: make([]MissingTarget, 0),
+	}
+
+	for _, match := range matches {
+		plan.MatchedRules = append(plan.MatchedRules, match.Watch)
+		if match.Watch.Reload {
+			plan.ShouldReload = true
+		}
+
+		for _, jobName := range match.Watch.Jobs {
+			job, exists := jobs[jobName]
+			if !exists {
+				return nil, fmt.Errorf("watch %q references undefined job %q", match.Watch.Name, jobName)
+			}
+
+			if match.Watch.NoTargets {
+				plan.JobRuns = append(plan.JobRuns, JobRun{
+					JobName:   jobName,
+					Job:       job,
+					NoTargets: true,
+				})
+				continue
+			}
+
+			existingTargets := make([]string, 0, len(match.Targets))
+			for _, target := range match.Targets {
+				targetPath := target
+				if cwd != "" && !filepath.IsAbs(target) {
+					targetPath = filepath.Join(cwd, target)
+				}
+
+				if _, err := os.Stat(targetPath); err == nil {
+					existingTargets = append(existingTargets, target)
+				} else {
+					plan.MissingTargets = append(plan.MissingTargets, MissingTarget{JobName: jobName, Target: target})
+					logger.Logger.Info("Skipping non-existent target", "target", target, "job", jobName)
+				}
+			}
+
+			if len(existingTargets) > 0 {
+				plan.JobRuns = append(plan.JobRuns, JobRun{
+					JobName: jobName,
+					Job:     job,
+					Targets: existingTargets,
+				})
+			}
 		}
 	}
 
-	// Check if matches source pattern
-	return matches(filePath, w.Source)
-}
-
-// matches checks if a path matches a glob pattern
-func matches(path, pattern string) bool {
-	normalizedPath := filepath.ToSlash(path)
-	matched, err := doublestar.Match(filepath.ToSlash(pattern), normalizedPath)
-	if err != nil {
-		return false
-	}
-	return matched
+	return plan, nil
 }

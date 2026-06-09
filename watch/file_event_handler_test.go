@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockExecutor records job executions for testing
 type mockExecutor struct {
 	calls []executorCall
 }
@@ -23,6 +22,21 @@ type executorCall struct {
 func (m *mockExecutor) execute(j framework.Job, targets []string, cwd string) error {
 	m.calls = append(m.calls, executorCall{jobName: j.Name, targets: targets})
 	return nil
+}
+
+func projectTmpDir(t *testing.T) string {
+	t.Helper()
+
+	rootTmp := filepath.Join("..", "tmp")
+	require.NoError(t, os.MkdirAll(rootTmp, 0755))
+
+	tmpDir, err := os.MkdirTemp(rootTmp, "watch-plan-*")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(tmpDir))
+	})
+
+	return tmpDir
 }
 
 func TestFileEventHandler_HandleBatch_EmptyWatches(t *testing.T) {
@@ -39,15 +53,12 @@ func TestFileEventHandler_HandleBatch_EmptyWatches(t *testing.T) {
 }
 
 func TestFileEventHandler_HandleBatch_SingleFile(t *testing.T) {
-	// Create temp directory with real files
 	tmpDir := t.TempDir()
 
-	// Create source file
 	srcDir := filepath.Join(tmpDir, "lib")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
 
-	// Create target file (spec)
 	specDir := filepath.Join(tmpDir, "spec")
 	require.NoError(t, os.MkdirAll(specDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(specDir, "user_spec.rb"), []byte("# spec"), 0644))
@@ -81,13 +92,11 @@ func TestFileEventHandler_HandleBatch_SingleFile(t *testing.T) {
 func TestFileEventHandler_HandleBatch_MultipleFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create source files
 	srcDir := filepath.Join(tmpDir, "lib")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "post.rb"), []byte("# post"), 0644))
 
-	// Create target files (specs)
 	specDir := filepath.Join(tmpDir, "spec")
 	require.NoError(t, os.MkdirAll(specDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(specDir, "user_spec.rb"), []byte("# spec"), 0644))
@@ -110,7 +119,6 @@ func TestFileEventHandler_HandleBatch_MultipleFiles(t *testing.T) {
 		Executor: mock.execute,
 	}
 
-	// Handle both files in one batch
 	result := handler.HandleBatch([]string{"lib/user.rb", "lib/post.rb"})
 
 	assert.Equal(t, []string{"rspec"}, result.ExecutedJobs, "Job should only be executed once")
@@ -121,7 +129,6 @@ func TestFileEventHandler_HandleBatch_MultipleFiles(t *testing.T) {
 func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create a single target file
 	specDir := filepath.Join(tmpDir, "spec")
 	require.NoError(t, os.MkdirAll(specDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(specDir, "shared_spec.rb"), []byte("# spec"), 0644))
@@ -135,7 +142,7 @@ func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 			{
 				Name:    "both-to-same-spec",
 				Source:  "lib/**/*.rb",
-				Targets: []string{"spec/shared_spec.rb"}, // Same target for all
+				Targets: []string{"spec/shared_spec.rb"},
 				Jobs:    []string{"rspec"},
 			},
 		},
@@ -143,7 +150,6 @@ func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 		Executor: mock.execute,
 	}
 
-	// Two source files that map to the same target
 	result := handler.HandleBatch([]string{"lib/a.rb", "lib/b.rb"})
 
 	assert.Equal(t, []string{"rspec"}, result.ExecutedJobs)
@@ -154,7 +160,6 @@ func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 func TestFileEventHandler_HandleBatch_ShouldReload(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create source file
 	srcDir := filepath.Join(tmpDir, "config")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "settings.yml"), []byte("key: val"), 0644))
@@ -240,10 +245,48 @@ func TestFileEventHandler_HandleBatch_NoTargetsExecutesWhenOtherTargetsAreMissin
 	assert.Empty(t, mock.calls[0].targets)
 }
 
+func TestFileEventHandler_HandleBatch_MissingOnlyJobDoesNotRunWhenAnotherJobHasTargets(t *testing.T) {
+	tmpDir := projectTmpDir(t)
+
+	specDir := filepath.Join(tmpDir, "spec")
+	require.NoError(t, os.MkdirAll(specDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(specDir, "user_spec.rb"), []byte("# spec"), 0644))
+
+	mock := &mockExecutor{}
+	handler := &FileEventHandler{
+		Jobs: map[string]framework.Job{
+			"rspec":    {Name: "rspec", Cmd: []string{"rspec"}},
+			"minitest": {Name: "minitest", Cmd: []string{"ruby"}},
+		},
+		Watches: []WatchMapping{
+			{
+				Name:    "lib-to-rspec",
+				Source:  "lib/**/*.rb",
+				Targets: []string{"spec/{{match}}_spec.rb"},
+				Jobs:    []string{"rspec"},
+			},
+			{
+				Name:    "lib-to-minitest",
+				Source:  "lib/**/*.rb",
+				Targets: []string{"test/{{match}}_test.rb"},
+				Jobs:    []string{"minitest"},
+			},
+		},
+		CWD:      tmpDir,
+		Executor: mock.execute,
+	}
+
+	result := handler.HandleBatch([]string{"lib/user.rb"})
+
+	assert.Equal(t, []string{"rspec"}, result.ExecutedJobs)
+	require.Len(t, mock.calls, 1)
+	assert.Equal(t, "rspec", mock.calls[0].jobName)
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, mock.calls[0].targets)
+}
+
 func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create source and target files
 	srcDir := filepath.Join(tmpDir, "lib")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
@@ -279,7 +322,6 @@ func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
 func TestFileEventHandler_HandleBatch_NoMatchingTargets(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create source file but NOT the target
 	srcDir := filepath.Join(tmpDir, "lib")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
