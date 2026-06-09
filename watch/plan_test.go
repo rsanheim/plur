@@ -318,3 +318,46 @@ func TestPlannerPlan_MultipleTargetsPerRule(t *testing.T) {
 		filepath.FromSlash("spec/lib/user_spec.rb"),
 	}, plan.Runs[0].Targets)
 }
+
+func TestPlannerAdmit(t *testing.T) {
+	cwd := t.TempDir()
+	planner := Planner{IgnorePatterns: DefaultIgnorePatterns, CWD: cwd}
+
+	t.Run("relative path passes through", func(t *testing.T) {
+		path, ok := planner.Admit("lib/user.rb")
+		assert.True(t, ok)
+		assert.Equal(t, "lib/user.rb", path)
+	})
+
+	t.Run("absolute path becomes CWD-relative", func(t *testing.T) {
+		path, ok := planner.Admit(filepath.Join(cwd, "lib", "user.rb"))
+		assert.True(t, ok)
+		assert.Equal(t, filepath.FromSlash("lib/user.rb"), path)
+	})
+
+	t.Run("default ignore patterns reject", func(t *testing.T) {
+		_, ok := planner.Admit(".git/objects/pack/abc123")
+		assert.False(t, ok)
+
+		_, ok = planner.Admit("node_modules/lodash/index.js")
+		assert.False(t, ok)
+	})
+
+	t.Run("custom ignore patterns reject", func(t *testing.T) {
+		p := Planner{IgnorePatterns: []string{"vendor/**"}, CWD: cwd}
+		_, ok := p.Admit("vendor/bundle/ruby/gems/rails/lib/rails.rb")
+		assert.False(t, ok)
+	})
+
+	t.Run("rejected path is still returned for display", func(t *testing.T) {
+		path, ok := planner.Admit(".git/config")
+		assert.False(t, ok)
+		assert.Equal(t, ".git/config", path)
+	})
+
+	t.Run("empty patterns ignore nothing", func(t *testing.T) {
+		p := Planner{CWD: cwd}
+		_, ok := p.Admit(".git/config")
+		assert.True(t, ok)
+	})
+}

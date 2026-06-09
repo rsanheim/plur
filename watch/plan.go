@@ -46,6 +46,24 @@ type Plan struct {
 	Reload  bool
 }
 
+// Admit normalizes a changed path to be relative to CWD and applies the
+// global ignore patterns. The live event loop and watch find both route
+// paths through here so they agree on what gets processed. The returned
+// path is valid for display even when ok is false.
+func (p Planner) Admit(path string) (string, bool) {
+	if filepath.IsAbs(path) {
+		rel, err := filepath.Rel(p.CWD, path)
+		if err != nil {
+			return path, false
+		}
+		path = rel
+	}
+	if matchesAny(filepath.ToSlash(path), p.IgnorePatterns) {
+		return path, false
+	}
+	return path, true
+}
+
 // Plan decides which jobs run, with which targets, for a batch of changed
 // paths. Paths must already be CWD-relative (see Admit).
 func (p Planner) Plan(paths []string) Plan {
