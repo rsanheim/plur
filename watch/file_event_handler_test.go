@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockExecutor records job executions for testing
 type mockExecutor struct {
 	calls []executorCall
 }
@@ -54,15 +53,12 @@ func TestFileEventHandler_HandleBatch_EmptyWatches(t *testing.T) {
 }
 
 func TestFileEventHandler_HandleBatch_SingleFile(t *testing.T) {
-	// Create temp directory with real files
 	tmpDir := t.TempDir()
 
-	// Create source file
 	srcDir := filepath.Join(tmpDir, "lib")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
 
-	// Create target file (spec)
 	specDir := filepath.Join(tmpDir, "spec")
 	require.NoError(t, os.MkdirAll(specDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(specDir, "user_spec.rb"), []byte("# spec"), 0644))
@@ -96,13 +92,11 @@ func TestFileEventHandler_HandleBatch_SingleFile(t *testing.T) {
 func TestFileEventHandler_HandleBatch_MultipleFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create source files
 	srcDir := filepath.Join(tmpDir, "lib")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "post.rb"), []byte("# post"), 0644))
 
-	// Create target files (specs)
 	specDir := filepath.Join(tmpDir, "spec")
 	require.NoError(t, os.MkdirAll(specDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(specDir, "user_spec.rb"), []byte("# spec"), 0644))
@@ -125,7 +119,6 @@ func TestFileEventHandler_HandleBatch_MultipleFiles(t *testing.T) {
 		Executor: mock.execute,
 	}
 
-	// Handle both files in one batch
 	result := handler.HandleBatch([]string{"lib/user.rb", "lib/post.rb"})
 
 	assert.Equal(t, []string{"rspec"}, result.ExecutedJobs, "Job should only be executed once")
@@ -136,7 +129,6 @@ func TestFileEventHandler_HandleBatch_MultipleFiles(t *testing.T) {
 func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create a single target file
 	specDir := filepath.Join(tmpDir, "spec")
 	require.NoError(t, os.MkdirAll(specDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(specDir, "shared_spec.rb"), []byte("# spec"), 0644))
@@ -150,7 +142,7 @@ func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 			{
 				Name:    "both-to-same-spec",
 				Source:  "lib/**/*.rb",
-				Targets: []string{"spec/shared_spec.rb"}, // Same target for all
+				Targets: []string{"spec/shared_spec.rb"},
 				Jobs:    []string{"rspec"},
 			},
 		},
@@ -158,7 +150,6 @@ func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 		Executor: mock.execute,
 	}
 
-	// Two source files that map to the same target
 	result := handler.HandleBatch([]string{"lib/a.rb", "lib/b.rb"})
 
 	assert.Equal(t, []string{"rspec"}, result.ExecutedJobs)
@@ -169,7 +160,6 @@ func TestFileEventHandler_HandleBatch_TargetDeduplication(t *testing.T) {
 func TestFileEventHandler_HandleBatch_ShouldReload(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create source file
 	srcDir := filepath.Join(tmpDir, "config")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "settings.yml"), []byte("key: val"), 0644))
@@ -297,7 +287,6 @@ func TestFileEventHandler_HandleBatch_MissingOnlyJobDoesNotRunWhenAnotherJobHasT
 func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create source and target files
 	srcDir := filepath.Join(tmpDir, "lib")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))
@@ -333,7 +322,6 @@ func TestFileEventHandler_HandleBatch_MultipleJobs(t *testing.T) {
 func TestFileEventHandler_HandleBatch_NoMatchingTargets(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create source file but NOT the target
 	srcDir := filepath.Join(tmpDir, "lib")
 	require.NoError(t, os.MkdirAll(srcDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "user.rb"), []byte("# user"), 0644))

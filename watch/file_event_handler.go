@@ -5,10 +5,8 @@ import (
 	"github.com/rsanheim/plur/logger"
 )
 
-// JobExecutor is a function that executes a job with target files
 type JobExecutor func(j framework.Job, targets []string, cwd string) error
 
-// FileEventHandler processes file change events and executes jobs
 type FileEventHandler struct {
 	Jobs    map[string]framework.Job
 	Watches []WatchMapping
@@ -24,19 +22,11 @@ func (h *FileEventHandler) executor() JobExecutor {
 	return ExecuteJob
 }
 
-// HandleResult contains the outcomes of processing file events
 type HandleResult struct {
-	ExecutedJobs []string // job names that were run
-	ShouldReload bool     // true if any matched rule has Reload: true
-}
-
-type BatchWatchPlan struct {
-	MatchedRules []WatchMapping
-	JobRuns      []JobRun
+	ExecutedJobs []string
 	ShouldReload bool
 }
 
-// HandleBatch processes multiple file paths, aggregates targets, and executes jobs
 func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 	if len(h.Watches) == 0 {
 		return HandleResult{}
@@ -61,8 +51,8 @@ func (h *FileEventHandler) HandleBatch(paths []string) HandleResult {
 	}
 }
 
-func (h *FileEventHandler) PlanBatch(paths []string) BatchWatchPlan {
-	plan := BatchWatchPlan{
+func (h *FileEventHandler) PlanBatch(paths []string) WatchPlan {
+	plan := WatchPlan{
 		MatchedRules: make([]WatchMapping, 0),
 		JobRuns:      make([]JobRun, 0),
 	}
@@ -77,8 +67,9 @@ func (h *FileEventHandler) PlanBatch(paths []string) BatchWatchPlan {
 		}
 
 		plan.MatchedRules = append(plan.MatchedRules, filePlan.MatchedRules...)
+		plan.MissingTargets = append(plan.MissingTargets, filePlan.MissingTargets...)
 
-		if filePlan.ShouldReload() {
+		if filePlan.ShouldReload {
 			plan.ShouldReload = true
 		}
 

@@ -11,8 +11,6 @@ import (
 	"github.com/rsanheim/plur/watch"
 )
 
-// WatchFindCmd implements the 'plur watch find' command
-// Shows what would be executed for a given file change
 type WatchFindCmd struct {
 	FilePath string `arg:"" help:"File path to check for watch mappings" required:"true"`
 }
@@ -34,13 +32,11 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return nil
 	}
 
-	// Get the current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %w", err)
 	}
 
-	// Normalize the file path to be relative to cwd
 	filePath := cmd.FilePath
 	if filepath.IsAbs(filePath) {
 		if rel, err := filepath.Rel(cwd, filePath); err == nil {
@@ -52,19 +48,16 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 	out.Info("checking watch", "file", filePath)
 
-	// Use shared find logic
 	findResult, err := watch.FindTargetsForFile(filePath, jobs, watches, cwd)
 	if err != nil {
 		return fmt.Errorf("error processing file: %w", err)
 	}
 
-	// Show matched rules
 	if len(findResult.MatchedRules) == 0 {
 		out.Info("found rules", "count", 0)
 		return ExitCode{Code: 2}
 	}
 
-	// Print matched rules in concise format
 	for _, rule := range findResult.MatchedRules {
 		name := rule.Name
 		if name == "" {
@@ -83,7 +76,6 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 			"target", targetTemplate)
 	}
 
-	// Show found files
 	if findResult.HasExistingTargets() {
 		allFiles := findResult.ExistingTargetFiles()
 		if len(allFiles) > 0 {
@@ -91,7 +83,6 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		}
 	}
 
-	// Show missing files
 	if findResult.HasMissingTargets() {
 		for _, targets := range findResult.MissingTargets {
 			for _, target := range targets {
@@ -100,7 +91,6 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		}
 	}
 
-	// Exit code 2 if nothing would actually run
 	if !findResult.HasExistingTargets() {
 		return ExitCode{Code: 2}
 	}

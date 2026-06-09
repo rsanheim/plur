@@ -22,31 +22,18 @@ type MissingTarget struct {
 }
 
 type WatchPlan struct {
-	FilePath       string
 	MatchedRules   []WatchMapping
 	JobRuns        []JobRun
 	MissingTargets []MissingTarget
+	ShouldReload   bool
 }
 
-func (p *WatchPlan) ShouldReload() bool {
-	for _, rule := range p.MatchedRules {
-		if rule.Reload {
-			return true
-		}
-	}
-	return false
-}
-
-// FindResult contains the results of finding targets for a file change
 type FindResult struct {
-	FilePath       string
-	MatchedRules   []WatchMapping      // Watch rules that matched the file
-	MissingTargets map[string][]string // jobName -> target files that don't exist
-	JobRuns        []JobRun            // Explicit executable job plan
+	MatchedRules   []WatchMapping
+	MissingTargets map[string][]string
+	JobRuns        []JobRun
 }
 
-// HasExistingTargets returns true if any job would execute, including explicit
-// no-target jobs.
 func (r *FindResult) HasExistingTargets() bool {
 	return len(r.JobRuns) > 0
 }
@@ -62,7 +49,6 @@ func (r *FindResult) ExistingTargetFiles() []string {
 	return deduplicate(files)
 }
 
-// HasMissingTargets returns true if any targets are missing
 func (r *FindResult) HasMissingTargets() bool {
 	for _, targets := range r.MissingTargets {
 		if len(targets) > 0 {
@@ -72,9 +58,6 @@ func (r *FindResult) HasMissingTargets() bool {
 	return false
 }
 
-// FindTargetsForFile determines what would be executed for a given file change.
-// The cwd parameter is used to resolve relative target paths for existence checks.
-// It returns all matched rules and separates existing vs missing target files.
 func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches []WatchMapping, cwd string) (*FindResult, error) {
 	plan, err := PlanWatchForFile(filePath, jobs, watches, cwd)
 	if err != nil {
@@ -82,7 +65,6 @@ func FindTargetsForFile(filePath string, jobs map[string]framework.Job, watches 
 	}
 
 	result := &FindResult{
-		FilePath:       filePath,
 		MatchedRules:   plan.MatchedRules,
 		MissingTargets: make(map[string][]string),
 		JobRuns:        plan.JobRuns,
@@ -103,7 +85,6 @@ func PlanWatchForFile(filePath string, jobs map[string]framework.Job, watches []
 	}
 
 	plan := &WatchPlan{
-		FilePath:       filePath,
 		MatchedRules:   make([]WatchMapping, 0, len(matches)),
 		JobRuns:        make([]JobRun, 0),
 		MissingTargets: make([]MissingTarget, 0),
@@ -111,6 +92,9 @@ func PlanWatchForFile(filePath string, jobs map[string]framework.Job, watches []
 
 	for _, match := range matches {
 		plan.MatchedRules = append(plan.MatchedRules, match.Watch)
+		if match.Watch.Reload {
+			plan.ShouldReload = true
+		}
 
 		for _, jobName := range match.Watch.Jobs {
 			job, exists := jobs[jobName]
