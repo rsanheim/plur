@@ -3,6 +3,7 @@ package runtime
 import (
 	_ "embed"
 	"fmt"
+	"io/fs"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -59,16 +60,67 @@ func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 			continue
 		}
 		for _, pattern := range patterns {
-			matches, err := doublestar.FilepathGlob(pattern)
+			found, err := anyFileMatches(pattern)
 			if err != nil {
 				return "", fmt.Errorf("error finding files with pattern %q: %w", pattern, err)
 			}
-			if len(matches) > 0 {
+			if found {
 				return name, nil
 			}
 		}
 	}
 	return "", fmt.Errorf("no default spec/test files found using default patterns")
+}
+
+// detectIgnoredDirs are never descended into when checking for test file
+// presence. They hold third-party or generated code whose test files must
+// not drive detection, and they dominate walk time when present.
+var detectIgnoredDirs = map[string]bool{
+	".git":         true,
+	"node_modules": true,
+	"vendor":       true,
+	"tmp":          true,
+}
+
+// anyFileMatches reports whether at least one file matches the doublestar
+// pattern. Detection only needs existence, so unlike doublestar.FilepathGlob
+// (which collects every match), this walks from the pattern's fixed base,
+// prunes ignored directories, and stops at the first hit.
+func anyFileMatches(pattern string) (bool, error) {
+	base, rest := doublestar.SplitPattern(filepath.ToSlash(pattern))
+	base = filepath.FromSlash(base)
+	if resolved, err := filepath.EvalSymlinks(base); err == nil {
+		base = resolved
+	}
+
+	found := false
+	err := filepath.WalkDir(base, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			// A missing base or unreadable entry cannot match; glob
+			// semantics treat that as "no matches", not an error.
+			return nil
+		}
+		if d.IsDir() {
+			if path != base && detectIgnoredDirs[d.Name()] {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		rel, relErr := filepath.Rel(base, path)
+		if relErr != nil {
+			return nil
+		}
+		matched, matchErr := doublestar.Match(rest, filepath.ToSlash(rel))
+		if matchErr != nil {
+			return matchErr
+		}
+		if matched {
+			found = true
+			return fs.SkipAll
+		}
+		return nil
+	})
+	return found, err
 }
 
 // buildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
@@ -270,11 +322,11 @@ func dirMatchesFramework(dir string, detectPatterns []string) (bool, error) {
 	for _, pattern := range detectPatterns {
 		_, tail := doublestar.SplitPattern(pattern)
 		dirPattern := filepath.Join(dir, filepath.FromSlash(tail))
-		matches, err := doublestar.FilepathGlob(dirPattern)
+		found, err := anyFileMatches(dirPattern)
 		if err != nil {
 			return false, err
 		}
-		if len(matches) > 0 {
+		if found {
 			return true, nil
 		}
 	}
