@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -20,11 +19,6 @@ import (
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
-
-// Embed the watcher binaries at compile time
-//
-//go:embed embedded/watcher/*
-var watcherBinaries embed.FS
 
 func runWatchInstall(force bool) error {
 	configPaths := config.InitConfigPaths()

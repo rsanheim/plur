@@ -114,11 +114,13 @@ func getPlatformBinaryName() (string, error) {
 	}
 }
 
-// getEmbeddedBinaryPath returns the path within the embedded filesystem for the current platform
+// getEmbeddedBinaryPath returns the path within the embedded filesystem for
+// the current platform. embed.FS paths are always slash-separated, so this
+// must not use filepath.Join (backslashes on Windows).
 func getEmbeddedBinaryPath() (string, error) {
 	binaryName, err := getPlatformBinaryName()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join("embedded/watcher", binaryName), nil
+	return "embedded/watcher/" + binaryName, nil
 }
