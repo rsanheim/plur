@@ -55,6 +55,9 @@ jobs:
       - run:
           name: Run Go tests
           command: bin/rake test:go
+      - run:
+          name: Runtime cache benchmark budget
+          command: bin/rake bench:cache
 
   test-goreleaser:
     parameters:
