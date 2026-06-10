@@ -4,6 +4,7 @@
 * Shrink release binaries ~11%: embed only the current platform's watcher binary, replace text/template in watch with a simple token renderer, and build with -trimpath [#70](https://github.com/rsanheim/plur/pull/70)
 * Fix `plur watch install` on Windows: the embedded watcher lookup used backslashed paths [#70](https://github.com/rsanheim/plur/pull/70)
 * Add `bench:cache` rake task enforcing the runtime-cache load budget in full builds and CI [#70](https://github.com/rsanheim/plur/pull/70)
+* Breaking: install.sh is configured via environment variables only (`PLUR_VERSION`, `PLUR_INSTALL_PATH`); the `--version` and `--install-path` flags are removed. The default install directory is `~/.local/bin`, or `/usr/local/bin` when `~/.local/bin` doesn't exist.
 
 ## v0.60.0 - 2026-06-06
 * Improve help text: add examples, group commands, and hide irrelevant flags [#63](https://github.com/rsanheim/plur/pull/63)
