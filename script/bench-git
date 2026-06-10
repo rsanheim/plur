@@ -53,7 +53,14 @@ end
 def create_worktree(ref)
   path = worktree_path(ref)
   if path.exist?
-    puts "  Reusing existing worktree at #{path}"
+    current = `git -C #{path} rev-parse HEAD`.strip
+    target = `git rev-parse #{ref}^{commit}`.strip
+    if current == target
+      puts "  Reusing existing worktree at #{path}"
+    else
+      puts "  Updating stale worktree at #{path} (#{current[0, 8]} -> #{target[0, 8]})..."
+      system("git -C #{path} checkout --detach #{ref}", exception: true)
+    end
   else
     puts "  Creating worktree for #{ref} at #{path}..."
     system("git worktree add -d #{path} #{ref}", exception: true)
@@ -112,7 +119,7 @@ runs = opts[:runs]
 workers = opts[:workers]
 cleanup = opts[:cleanup]
 ignore_failure = opts[:ignore_failure]
-now = Time.now.getlocal("-06:00") # Central Time
+now = Time.now
 timestamp = now.strftime("%Y%m%d-%H%M%S")
 
 puts "Benchmarking plur against #{project_name} (#{project}) with #{refs.inspect}"
@@ -133,7 +140,7 @@ benchmark_info = <<~INFO
   Workers: #{workers}
   Warmup: #{warmup}
   Runs: #{runs}
-  Date: #{now.strftime("%Y-%m-%d %H:%M:%S")} CT
+  Date: #{now.strftime("%Y-%m-%d %H:%M:%S %Z")}
 INFO
 
 puts benchmark_info
