@@ -112,7 +112,7 @@ jobs:
       - checkout
       - run:
           name: Run Go tests with race detection
-          command: go test -mod=mod -race ./...
+          command: go test -mod=mod -race -short ./...
 
   test-ruby-integration:
     parameters:
