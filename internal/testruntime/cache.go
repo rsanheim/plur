@@ -1,12 +1,11 @@
 package testruntime
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"time"
-
-	json "github.com/goccy/go-json"
 )
 
 // SchemaVersion is the on-disk schema version Plur reads and writes.
