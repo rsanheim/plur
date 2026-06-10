@@ -15,7 +15,7 @@ func TestFilterDirectories(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create subdirectories
-	for _, d := range []string{"lib", "lib/foo", "lib/bar", "spec", "app", "app/models"} {
+	for _, d := range []string{"lib", "lib/foo", "lib/bar", "lib/..weird", "spec", "app", "app/models"} {
 		require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, d), 0755))
 	}
 
@@ -31,6 +31,7 @@ func TestFilterDirectories(t *testing.T) {
 		{"root subsumes all", []string{".", "lib", "spec"}, []string{"."}},
 		{"siblings preserved", []string{"lib", "spec", "app"}, []string{"app", "lib", "spec"}},
 		{"nested filtered", []string{"lib", "lib/foo", "lib/bar"}, []string{"lib"}},
+		{"dot-dot-prefixed name still filtered", []string{"lib", "lib/..weird"}, []string{"lib"}},
 		{"mixed", []string{"app", "app/models", "lib", "spec"}, []string{"app", "lib", "spec"}},
 	}
 

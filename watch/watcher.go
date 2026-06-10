@@ -276,9 +276,9 @@ func FilterDirectories(dirs []string) ([]string, error) {
 			rel, err := filepath.Rel(parent, v.path)
 			// v is a subdirectory of parent if:
 			// - Rel() succeeds
-			// - result doesn't start with ".." (not escaping parent)
+			// - result is local (stays within parent)
 			// - result isn't "." (same directory)
-			if err == nil && !strings.HasPrefix(rel, "..") && rel != "." {
+			if err == nil && rel != "." && filepath.IsLocal(rel) {
 				isSubdir = true
 				break
 			}
