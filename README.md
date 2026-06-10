@@ -15,16 +15,13 @@ brew install rsanheim/tap/plur
 ### Shell script (macOS / Linux)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh
 ```
 
-Installs to `~/.local/bin` by default. Set `PLUR_INSTALL_PATH` to customize.
-
-Pin a version or set an install path:
+Installs the latest release to `~/.local/bin`, or `/usr/local/bin` if `~/.local/bin` doesn't exist. Pin a version or change the destination with environment variables:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --version v0.5.0
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "$HOME/.local/bin" --version v0.5.0
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.60.0 sh
 ```
 
 ### Manual binary download

@@ -2,30 +2,32 @@
 
 Get up and running with plur for running parallel tests or watch mode.
 
+Plur works with Ruby projects that use RSpec, Minitest, or both. No Ruby gem installation is needed — plur is a standalone binary.
+
 ## Installation
 
 ### Homebrew (macOS)
 
 ```bash
 brew install rsanheim/tap/plur
-cd [my-project]
-plur --dry-run # preview what would run (no actual test execution)
-plur -n 4     # run tests across four cores
-plur          # run tests with the default 4 workers
-plur watch    # watch for changes and run tests automatically
 ```
 
 ### Shell script (macOS / Linux)
 
-You can use `install.sh` with the following options:
+```bash
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh
+```
 
-* `--install-path PATH` — installation directory override
-* `--version VERSION` — install a specific release tag
+The script detects your platform, downloads the latest release, verifies its checksum, and installs the binary. It installs to `~/.local/bin`, or `/usr/local/bin` if `~/.local/bin` doesn't exist.
+
+Two environment variables configure it:
+
+* `PLUR_VERSION` — release tag to install (default: latest release)
+* `PLUR_INSTALL_PATH` — install directory
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "/usr/local/bin"
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --version v0.5.0
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.60.0 sh
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_INSTALL_PATH=/usr/local/bin sh
 ```
 
 ### Manual binary download
@@ -37,6 +39,7 @@ Available platforms:
 * macOS ARM64 (Apple Silicon)
 * Linux x86_64
 * Linux ARM64
+* Windows x86_64 (experimental)
 
 ## Verify
 
@@ -46,10 +49,6 @@ plur --version
 # Check your environment for common issues
 plur doctor
 ```
-
-## Prerequisites
-
-Plur works with Ruby projects that use RSpec, Minitest, or both. No Ruby gem installation is needed — plur is a standalone binary.
 
 ## First Run
 

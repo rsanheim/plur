@@ -9,6 +9,7 @@
 * Fix duplicate watchers for directories whose names start with two dots
 * Speed up framework/job detection with an early-exit existence walk that skips `.git`, `node_modules`, `vendor`, and `tmp` (e.g. `plur version` 49ms -> 6ms on a tree with 30k files under `node_modules`)
 * Clean up CLI error output; REPL run failures print plain stderr
+* Breaking: install.sh is configured via environment variables only (`PLUR_VERSION`, `PLUR_INSTALL_PATH`); the `--version` and `--install-path` flags are removed. The default install directory is `~/.local/bin`, or `/usr/local/bin` when `~/.local/bin` doesn't exist.
 
 ## v0.60.0 - 2026-06-06
 * Improve help text: add examples, group commands, and hide irrelevant flags [#63](https://github.com/rsanheim/plur/pull/63)

@@ -1,20 +1,24 @@
 #!/bin/sh
-# Universal installation script for plur
-# Usage:
-#   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
-#   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --version v1.0.0
-#   curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path ~/.local/bin --version v1.0.0
+# Installation script for plur: downloads the release binary for your
+# platform, verifies its checksum, and installs it.
 #
-# Environment variables:
-#   PLUR_INSTALL_PATH - Installation directory (default: ~/.local/bin)
+# Usage:
+#   curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh
+#
+# Configure with environment variables:
+#   PLUR_VERSION      - release tag to install (default: latest release)
+#   PLUR_INSTALL_PATH - install directory (default: ~/.local/bin, or
+#                       /usr/local/bin if ~/.local/bin doesn't exist)
+#
+#   curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.60.0 sh
 
 set -eu
 
 # Configuration
 REPO_OWNER="rsanheim"
 REPO_NAME="plur"
-INSTALL_PATH="${PLUR_INSTALL_PATH:-$HOME/.local/bin}"
-VERSION=""
+INSTALL_PATH="${PLUR_INSTALL_PATH:-}"
+VERSION="${PLUR_VERSION:-}"
 DOWNLOAD_RETRIES=3
 DOWNLOAD_CONNECT_TIMEOUT=10
 
@@ -32,58 +36,16 @@ error() {
   exit 1
 }
 
-show_help() {
-  cat << EOF
-plur installer
-
-Usage:
-  sh install.sh [options]
-  curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
-  curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- [options]
-
-Options:
-  -h, --help             Show this help text
-  --install-path PATH    Installation directory (default: \$PLUR_INSTALL_PATH or ~/.local/bin)
-  --version VERSION      Version tag to install (for example: v0.5.0)
-EOF
-}
-
-parse_args() {
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      -h|--help)
-        show_help
-        exit 0
-        ;;
-      --install-path)
-        [ $# -ge 2 ] || error "--install-path requires a value"
-        INSTALL_PATH="$2"
-        shift 2
-        ;;
-      --install-path=*)
-        INSTALL_PATH="${1#*=}"
-        shift
-        ;;
-      --version)
-        [ $# -ge 2 ] || error "--version requires a value"
-        VERSION="$2"
-        shift 2
-        ;;
-      --version=*)
-        VERSION="${1#*=}"
-        shift
-        ;;
-      --)
-        error "Unexpected '--' (run with --help)"
-        ;;
-      -*)
-        error "Unknown option: $1 (run with --help)"
-        ;;
-      *)
-        error "Unexpected argument: $1 (use --version)"
-        ;;
-    esac
-  done
+# Prefer ~/.local/bin when it exists, then a writable /usr/local/bin,
+# falling back to creating ~/.local/bin.
+default_install_path() {
+  if [ -d "$HOME/.local/bin" ]; then
+    echo "$HOME/.local/bin"
+  elif [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
+    echo "/usr/local/bin"
+  else
+    echo "$HOME/.local/bin"
+  fi
 }
 
 require_command() {
@@ -225,6 +187,10 @@ get_latest_version() {
 
 # Download and install plur
 install_plur() {
+  if [ -z "$INSTALL_PATH" ]; then
+    INSTALL_PATH=$(default_install_path)
+  fi
+
   # Detect system info
   OS=$(detect_os)
   ARCH=$(detect_arch)
@@ -300,7 +266,6 @@ install_plur() {
 
 # Main
 main() {
-  parse_args "$@"
   check_prerequisites
 
   printf "\n"
@@ -321,4 +286,4 @@ main() {
   printf "\n"
 }
 
-main "$@"
+main
