@@ -368,10 +368,18 @@ func TestPlannerAdmit(t *testing.T) {
 		assert.Equal(t, "/abs/other/file.rb", path, "original path is returned for display")
 	})
 
-	t.Run("path escaping CWD is admitted", func(t *testing.T) {
+	t.Run("absolute path escaping CWD is rejected", func(t *testing.T) {
 		path, ok := planner.Admit(filepath.Join(filepath.Dir(cwd), "other", "file.rb"))
-		assert.True(t, ok)
-		assert.Equal(t, filepath.FromSlash("../other/file.rb"), path)
+		assert.False(t, ok)
+		assert.Equal(t, filepath.FromSlash("../other/file.rb"), path, "relativized path is returned for display")
+	})
+
+	t.Run("relative path escaping CWD is rejected", func(t *testing.T) {
+		_, ok := planner.Admit(filepath.FromSlash("../other/file.rb"))
+		assert.False(t, ok)
+
+		_, ok = planner.Admit(filepath.FromSlash("lib/../../file.rb"))
+		assert.False(t, ok)
 	})
 
 	t.Run("absolute path through a symlinked dir relativizes against resolved CWD", func(t *testing.T) {

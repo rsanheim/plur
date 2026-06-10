@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
@@ -46,9 +47,11 @@ type Plan struct {
 }
 
 // Admit normalizes a changed path to be relative to CWD and applies the
-// global ignore patterns. The live event loop and watch find both route
-// paths through here so they agree on what gets processed. The returned
-// path is valid for display even when ok is false.
+// global ignore patterns. Paths outside CWD are rejected: live watch roots
+// are filtered to the project, so a plan for an outside file could never
+// happen in a real watch session. The live event loop and watch find both
+// route paths through here so they agree on what gets processed. The
+// returned path is valid for display even when ok is false.
 func (p Planner) Admit(path string) (string, bool) {
 	if filepath.IsAbs(path) {
 		// CWD is symlink-resolved; resolve the input the same way so
@@ -64,10 +67,20 @@ func (p Planner) Admit(path string) (string, bool) {
 		}
 		path = rel
 	}
+	if escapesCWD(path) {
+		logger.Logger.Debug("Rejecting path outside CWD", "path", path, "cwd", p.CWD)
+		return path, false
+	}
 	if matchesAny(filepath.ToSlash(path), p.IgnorePatterns) {
 		return path, false
 	}
 	return path, true
+}
+
+// escapesCWD reports whether a CWD-relative path points outside CWD.
+func escapesCWD(path string) bool {
+	cleaned := filepath.ToSlash(filepath.Clean(path))
+	return cleaned == ".." || strings.HasPrefix(cleaned, "../")
 }
 
 // Plan decides which jobs run, with which targets, for a batch of changed

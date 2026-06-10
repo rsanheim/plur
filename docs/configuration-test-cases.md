@@ -217,10 +217,10 @@ Manual verification checklist for plur configuration behavior. Each case specifi
   * *Expected:* `plur watch find lib/foo.rb` maps to `spec/foo_spec.rb` via builtin `lib-to-spec`
   * *Actual:* Shows `found rules name=lib-to-spec` and `found files files=spec/foo_spec.rb`
 
-* [!] **No user watches, no detectable framework** — errors instead of gracefully showing no watches
+* [x] **No user watches, no detectable framework** — gracefully shows no watches
   * *Input:* Empty project, no spec/test dirs, no config
   * *Expected:* Shows no mappings, no crash
-  * *Actual:* `watch find` exits 1 with `failed to select watch job: no default spec/test files found`. The `selectJobFromRuntimeConfig` call in `watch_find.go` runs before the empty-watches check. `buildRuntimeConfig` correctly falls back to empty watches, but `watch find` then tries to select a job and fails. Minor issue — could check for empty watches first.
+  * *Actual:* `watch find` exits 0 with `No watch mappings configured.` and a hint to add config or use a supported project structure. `watch find` builds the planner without selecting a job, so missing-framework projects reach the no-mappings branch.
 
 ### 3.3 Watch validation failures
 

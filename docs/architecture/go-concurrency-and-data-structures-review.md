@@ -10,7 +10,7 @@ The concurrency surface area in the Go code is relatively small (a handful of go
 
 * [ ] Make `logger.CustomTextHandler` concurrency-safe as a `slog.Handler` (`logger/logger.go`).
 
-There are also a number of medium-priority cleanup opportunities (watch rule matching duplication, stringly-typed enums) that should improve maintainability and reduce future correctness risk.
+There are also a number of medium-priority cleanup opportunities (stringly-typed enums, notification type surface area) that should improve maintainability and reduce future correctness risk.
 
 ## Concurrency & Goroutine Lifecycle Audit
 
@@ -53,7 +53,7 @@ Recommended fix:
 
 * If the goal is "at most one job execution at a time", move to a single goroutine + queue model:
   * Debouncer just batches file paths.
-  * A runner goroutine serializes `HandleBatch` executions.
+  * A runner goroutine serializes `Planner.Plan` + `ExecuteJob` executions.
 * If the goal is "cancel in-flight job when new changes arrive", use `context.Context` with `exec.CommandContext` and/or process-group termination.
 
 ### 4) Logging concurrency (`slog.Handler`)
@@ -69,19 +69,7 @@ Recommended fix:
 
 ## Data Structures & Abstraction Review
 
-### 1) Watch rule matching is duplicated in multiple places
-
-* `EventProcessor.ProcessPath` does matching + ignore handling (`watch/processor.go:31-76`).
-* `FindTargetsForFile` re-matches rules again (`watch/find.go:61-66`) via `matchesWatch`, with a comment acknowledging duplication (`watch/find.go:87-99`).
-
-Recommended cleanup:
-
-* Make the processor return both:
-  * the `jobName -> targets` mapping, and
-  * the list of matched `WatchMapping`s
-  so `FindTargetsForFile` can be a thin wrapper without re-implementing matching semantics.
-
-### 2) Notification type surface area looks larger than needed
+### 1) Notification type surface area looks larger than needed
 
 The `types.TestNotification` interface + many concrete structs (`types/notifications.go`) is workable, but there are a few obvious simplifications:
 
@@ -91,7 +79,7 @@ The `types.TestNotification` interface + many concrete structs (`types/notificat
 
 This reduction makes downstream collection simpler and reduces type-switching.
 
-### 3) `FileGroup.TotalSize` is used as both bytes and milliseconds
+### 2) `FileGroup.TotalSize` is used as both bytes and milliseconds
 
 `FileGroup.TotalSize` is a byte count in size-based grouping, but runtime grouping stores runtime milliseconds into the same field (`grouper.go:141-144`).
 
@@ -100,7 +88,7 @@ Recommended cleanup:
 * Rename `TotalSize` to `TotalWeight` (or similar) to match its real semantics, or
 * Split into explicit fields (`TotalBytes`, `TotalRuntimeMs`) if both are used elsewhere.
 
-### 4) Stringly-typed enums and "magic strings"
+### 3) Stringly-typed enums and "magic strings"
 
 Examples:
 
@@ -112,16 +100,16 @@ Recommended cleanup:
 * Define small typed constants (e.g., `type OutputMessageType uint8`) with `const` values.
 * This prevents accidental mismatch (like the `"error"` progress bug) and reduces allocations/comparisons.
 
-### 5) "Set" maps should use `map[string]struct{}`
+### 4) "Set" maps should use `map[string]struct{}`
 
 Current patterns use `map[string]bool` in several places:
 
-* `watch.Deduplicate` (`watch/processor.go:115-127`)
+* `deduplicate` (`watch/plan.go`)
 * `Debouncer.pending` (`watch/debouncer.go:13-21`)
 
 Using `struct{}` avoids storing an extra boolean per entry and communicates intent.
 
-### 6) Keep framework command building append-based
+### 5) Keep framework command building append-based
 
 Run-mode command building now keeps file targets appended at the end of the
 command shape controlled by `framework.Job.BuildRunArgs`. That avoids the old
@@ -142,7 +130,7 @@ Recommended cleanup:
 ## Suggested Cleanup Sequence (No Back-Compat Assumed)
 
 * [ ] Make logging handler concurrency-safe (`logger/logger.go`).
-* [ ] Collapse duplicated watch matching logic (`watch/find.go`, `watch/processor.go`) and simplify notification types (`types/notifications.go`).
+* [ ] Simplify notification types (`types/notifications.go`).
 * [ ] Address structural cleanups (`FileGroup.TotalSize`).
 
 ## Validation Recommendations

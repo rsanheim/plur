@@ -120,7 +120,7 @@ to prevent duplicate events):
 
 1. **WatcherManager**: Orchestrates multiple watcher processes, aggregating their events into a single stream
 2. **Watcher**: Wrapper around the external C++ watcher binary, one per directory
-3. **FileMapper**: Maps source files to test files using Ruby/Rails conventions  
+3. **Planner**: Matches changed files against watch mappings and renders the targets each job runs
 4. **Debouncer**: Batches rapid changes to prevent duplicate test runs
 5. **Embedded Binary**: Platform-specific watcher binaries embedded at compile time
 
@@ -129,10 +129,10 @@ to prevent duplicate events):
 1. File system change detected by C++ watcher process
 2. JSON event emitted via stdout
 3. Watcher parses and forwards to WatcherManager
-4. Events filtered by file type and effect
-5. FileMapper determines which specs to run
-6. Debouncer batches changes (default 30ms window)
-7. Test runner executes specs using existing plur infrastructure
+4. Events filtered by file type and effect, then admitted by the planner (paths outside the project or matching ignore patterns are dropped)
+5. Debouncer batches changes (default 30ms window)
+6. Planner maps the batched files to job runs via watch mappings
+7. Each job run executes, streaming output to the terminal
 
 ### Platform Support
 

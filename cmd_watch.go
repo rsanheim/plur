@@ -31,18 +31,13 @@ func runWatchInstall(force bool) error {
 }
 
 // buildWatchPlanner resolves the inputs both watch commands share: the
-// selected job, symlink-resolved cwd, global ignore patterns, and the
-// planner that maps changed files to job runs.
-func buildWatchPlanner(globals *PlurCLI, watchCmd *WatchCmd) (watch.Planner, *runtime.SelectedJob, error) {
-	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
-	if err != nil {
-		return watch.Planner{}, nil, fmt.Errorf("failed to select watch job: %w", err)
-	}
-	runtime.LogInheritedFields(selected.Name, selected.Inherited)
-
+// symlink-resolved cwd, global ignore patterns, and the planner that maps
+// changed files to job runs. Job selection is deliberately separate so
+// watch find can report missing mappings even when no job is selectable.
+func buildWatchPlanner(globals *PlurCLI, watchCmd *WatchCmd) (watch.Planner, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return watch.Planner{}, nil, fmt.Errorf("failed to get current directory: %w", err)
+		return watch.Planner{}, fmt.Errorf("failed to get current directory: %w", err)
 	}
 	if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
 		cwd = resolved
@@ -54,7 +49,7 @@ func buildWatchPlanner(globals *PlurCLI, watchCmd *WatchCmd) (watch.Planner, *ru
 	}
 	for _, pattern := range ignorePatterns {
 		if !watch.ValidatePattern(pattern) {
-			return watch.Planner{}, nil, fmt.Errorf("invalid --ignore pattern %q", pattern)
+			return watch.Planner{}, fmt.Errorf("invalid --ignore pattern %q", pattern)
 		}
 	}
 
@@ -63,7 +58,7 @@ func buildWatchPlanner(globals *PlurCLI, watchCmd *WatchCmd) (watch.Planner, *ru
 		Watches:        globals.runtimeConfig.Watches,
 		IgnorePatterns: ignorePatterns,
 		CWD:            cwd,
-	}, selected, nil
+	}, nil
 }
 
 func printHelp() {
@@ -135,10 +130,16 @@ func printWatchInfo(watchDirs []string) {
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
-	planner, selected, err := buildWatchPlanner(cli, watchCmd)
+	planner, err := buildWatchPlanner(cli, watchCmd)
 	if err != nil {
 		return err
 	}
+
+	selected, err := runtime.SelectJobFromRuntimeConfig(cli.runtimeConfig, nil)
+	if err != nil {
+		return fmt.Errorf("failed to select watch job: %w", err)
+	}
+	runtime.LogInheritedFields(selected.Name, selected.Inherited)
 
 	if len(planner.Watches) > 0 {
 		logger.Logger.Info("Watch configuration loaded", "job", selected.Job.Name, "watch_mappings", len(planner.Watches))

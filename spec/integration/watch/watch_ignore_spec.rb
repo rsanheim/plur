@@ -57,6 +57,22 @@ RSpec.describe "plur watch --ignore flag" do
         expect(result.out).to include("msg=ignored")
       end
     end
+
+    it "rejects files outside the project instead of planning them" do
+      Dir.mktmpdir do |outside_dir|
+        outside_file = File.join(outside_dir, "foo.go")
+        File.write(outside_file, "package foo\n")
+
+        Dir.chdir(default_ruby_dir) do
+          cmd = TTY::Command.new(timeout: 5, uuid: false, printer: :null)
+          result = cmd.run!("#{plur_binary} -u go-test watch find #{outside_file}")
+
+          expect(result.exit_status).to eq(2)
+          expect(result.out).to include("msg=ignored")
+          expect(result.out).not_to include('msg="would run"')
+        end
+      end
+    end
   end
 
   describe "help output" do

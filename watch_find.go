@@ -15,7 +15,7 @@ type WatchFindCmd struct {
 }
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
-	planner, _, err := buildWatchPlanner(globals, parent)
+	planner, err := buildWatchPlanner(globals, parent)
 	if err != nil {
 		return err
 	}
