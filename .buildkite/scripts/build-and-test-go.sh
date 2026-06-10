@@ -18,3 +18,6 @@ echo "--- :go: Verify binary"
 
 echo "--- :go: Go tests"
 bin/rake test:go
+
+echo "--- :go: Runtime cache benchmark budget"
+bin/rake bench:cache
