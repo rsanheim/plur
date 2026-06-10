@@ -62,6 +62,9 @@ when "extract-notes"
 
   if content =~ /^## #{version_escaped}.*?\n(.*?)(?=^## |\z)/m
     puts $1.strip
+  elsif version.include?("-")
+    # Prereleases (e.g. v0.61.0-rc.1) don't require a changelog entry
+    puts "Prerelease #{version}"
   else
     abort "Error: No changelog entry found for version #{version}"
   end
