@@ -73,7 +73,7 @@ Recommended fix:
 
 The `types.TestNotification` interface + many concrete structs (`types/notifications.go`) is workable, but there are a few obvious simplifications:
 
-* RSpec now tracks `CurrentFile` directly inside `framework/rspec/parser.go` for trace output instead of emitting a separate group-started notification.
+* RSpec now tracks `CurrentFile` directly inside `internal/framework/rspec/parser.go` for trace output instead of emitting a separate group-started notification.
 * "Formatted*Notification" types all report `RawOutput` and are distinguished only by Go type (`types/notifications.go:86-109`).
   * Consider one `FormattedOutputNotification{Kind, Content}` instead of three separate structs.
 
@@ -112,7 +112,7 @@ Using `struct{}` avoids storing an extra boolean per entry and communicates inte
 ### 5) Keep framework command building append-based
 
 Run-mode command building now keeps file targets appended at the end of the
-command shape controlled by `framework.Job.BuildRunArgs`. That avoids the old
+command shape controlled by `internal/framework.Job.BuildRunArgs`. That avoids the old
 file-argument boundary scan that was previously used when inserting framework
 args.
 
