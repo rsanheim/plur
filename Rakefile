@@ -31,8 +31,8 @@ Dir.glob(Plur.config.root_dir.join("lib", "tasks", "*.rake")).each { |file| load
 PLUR_CORES = Plur.config.plur_cores
 
 # Default task runs all checks
-desc "Run all tests and linting"
-task default: ["lint:all", "build", "test:all"]
+desc "Run all tests, linting, and benchmark budgets"
+task default: ["lint:all", "build", "test:all", "bench:cache"]
 
 desc "Build the plur Go binary"
 task build: ["vendor:download:current"] do
@@ -113,6 +113,61 @@ namespace :test do
     name = args[:name] || abort("Usage: bin/rake test:appraisal[rspec-3.13.1]")
     puts "[test:appraisal] Running specs with #{name}..."
     sh "bundle exec appraisal #{name} rake test"
+  end
+end
+
+# Load budget for a large-suite runtime cache (>= 10K cached examples).
+# The documented criterion is 50ms combined load+save
+# (docs/plans/2026-05-22-runtime-cache-measurement-results.md), but save is
+# fsync-dominated and tracks disk speed, not JSON speed, so the automated
+# gate enforces the stable CPU-bound component: cache load. The runtime
+# cache is loaded on every plur run, and goccy/go-json was adopted
+# specifically because stdlib encoding/json decodes ~5x slower — stdlib
+# blows this budget on every machine measured (41-57ms), goccy stays well
+# under it (9-20ms).
+CACHE_LOAD_BUDGET_MS = Float(ENV.fetch("PLUR_CACHE_LOAD_BUDGET_MS", "30"))
+
+namespace :bench do
+  desc "Run runtime-cache benchmarks and enforce the load budget"
+  task :cache do
+    if ENV["CI"]
+      puts "[bench:cache] Skipping benchmark budget on CI (timing-sensitive)"
+      next
+    end
+    if ENV["PLUR_RACE"] && ENV["PLUR_RACE"] != "0"
+      puts "[bench:cache] Skipping benchmark budget under race detector (timing-sensitive)"
+      next
+    end
+
+    puts "[bench:cache] Running runtime cache benchmarks..."
+    output, status = Open3.capture2e(
+      "go", "test", "-mod=mod", "-run", "^$",
+      "-bench", "BenchmarkCache_(Load|Save)LargeRspecCache",
+      "-benchmem", "-count", "3", "./internal/testruntime"
+    )
+    puts output
+    abort "[bench:cache] >>> benchmark run failed" unless status.success?
+
+    # Best-of-count per benchmark: the minimum is the least noise-sensitive
+    # estimate of intrinsic speed on a shared or loaded machine.
+    times = Hash.new { |h, k| h[k] = [] }
+    output.scan(%r{^(BenchmarkCache_\w+)-\d+\s+\d+\s+([\d.]+) ns/op}) { |name, ns| times[name] << Float(ns) }
+    load_ns = times["BenchmarkCache_LoadLargeRspecCache"].min
+    save_ns = times["BenchmarkCache_SaveLargeRspecCache"].min
+    abort "[bench:cache] >>> could not parse benchmark output" unless load_ns && save_ns
+
+    load_ms = load_ns / 1_000_000.0
+    save_ms = save_ns / 1_000_000.0
+    puts format("[bench:cache] runtime cache load = %.1fms (budget %.0fms), save = %.1fms (informational)", load_ms, CACHE_LOAD_BUDGET_MS, save_ms)
+    if load_ms > CACHE_LOAD_BUDGET_MS
+      abort format(<<~MSG, load_ms, CACHE_LOAD_BUDGET_MS)
+        [bench:cache] >>> Runtime cache load %.1fms exceeds the %.0fms large-suite budget.
+        [bench:cache] >>> The cache is loaded on every plur invocation against a big project.
+        [bench:cache] >>> If you changed the cache JSON implementation or schema, see the
+        [bench:cache] >>> "go-json Parser Adoption" section of
+        [bench:cache] >>> docs/plans/2026-05-22-runtime-cache-measurement-results.md before relaxing this budget.
+      MSG
+    end
   end
 end
 
