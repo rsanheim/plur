@@ -1,5 +1,15 @@
 # plur CHANGELOG
 
+## v0.61.0 - unreleased
+* Rebuild watch on a shared planner: `plur watch find` is now a faithful probe of live watch, with identical ignore rules, path admission, and output
+* Validate watch glob patterns at config load and reject template tokens in job commands, so bad config fails early with clear errors
+* Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.
+* Support watch jobs with no targets (`no_targets = true`)
+* Reject watched paths that resolve outside the project directory; resolve symlinked input paths; dedupe missing-target warnings
+* Fix duplicate watchers for directories whose names start with two dots
+* Speed up framework/job detection with an early-exit existence walk that skips `.git`, `node_modules`, `vendor`, and `tmp` (e.g. `plur version` 49ms -> 6ms on a tree with 30k files under `node_modules`)
+* Clean up CLI error output; REPL run failures print plain stderr
+
 ## v0.60.0 - 2026-06-06
 * Improve help text: add examples, group commands, and hide irrelevant flags [#63](https://github.com/rsanheim/plur/pull/63)
 
