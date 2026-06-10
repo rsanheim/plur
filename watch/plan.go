@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
@@ -67,7 +66,7 @@ func (p Planner) Admit(path string) (string, bool) {
 		}
 		path = rel
 	}
-	if escapesCWD(path) {
+	if !filepath.IsLocal(path) {
 		logger.Logger.Debug("Rejecting path outside CWD", "path", path, "cwd", p.CWD)
 		return path, false
 	}
@@ -75,12 +74,6 @@ func (p Planner) Admit(path string) (string, bool) {
 		return path, false
 	}
 	return path, true
-}
-
-// escapesCWD reports whether a CWD-relative path points outside CWD.
-func escapesCWD(path string) bool {
-	cleaned := filepath.ToSlash(filepath.Clean(path))
-	return cleaned == ".." || strings.HasPrefix(cleaned, "../")
 }
 
 // Plan decides which jobs run, with which targets, for a batch of changed
