@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/embedded"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/job"
@@ -22,7 +23,7 @@ import (
 
 func runWatchInstall(force bool) error {
 	configPaths := config.InitConfigPaths()
-	return watch.InstallBinary(watcherBinaries, configPaths.BinDir, configPaths.PlurHome, force)
+	return watch.InstallBinary(embedded.Watcher, configPaths.BinDir, configPaths.PlurHome, force)
 }
 
 func printHelp() {
