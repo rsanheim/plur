@@ -12,25 +12,24 @@ Plur works with Ruby projects that use RSpec, Minitest, or both. No Ruby gem ins
 brew install rsanheim/tap/plur
 ```
 
-### Shell script (macOS / Linux)
+### Direct install (all platforms)
+
+The direct install script detects your platform, downloads the latest release, verifies its checksum, and installs the binary to either `~/.local/bin` or `/usr/local/bin`, whichever is found first. 
 
 ```bash
 curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh
 ```
 
-The script detects your platform, downloads the latest release, verifies its checksum, and installs the binary. It installs to `~/.local/bin`, or `/usr/local/bin` if `~/.local/bin` doesn't exist.
-
-Two environment variables configure it:
-
-* `PLUR_VERSION` — release tag to install (default: latest release)
-* `PLUR_INSTALL_PATH` — install directory
+You can override default install dir and/or version with env vars PLUR_VERSION and PLUR_INSTALL_PATH:
 
 ```bash
+# Install version 0.60.0
 curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.60.0 sh
+# Install to /usr/local/bin
 curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_INSTALL_PATH=/usr/local/bin sh
 ```
 
-### Manual binary download
+### Manual GitHub Releases download (all platforms)
 
 Download the latest release for your platform from [GitHub Releases](https://github.com/rsanheim/plur/releases), extract the archive, and place the `plur` binary somewhere on your PATH.
 
@@ -41,19 +40,10 @@ Available platforms:
 * Linux ARM64
 * Windows x86_64 (experimental)
 
-## Verify
-
-```bash
-plur --version
-
-# Check your environment for common issues
-plur doctor
-```
-
 ## First Run
 
 ```bash
-# Run all tests with the default worker count
+# Run all specs or tests with the default worker count
 plur
 
 # Run with a specific number of workers
@@ -77,6 +67,18 @@ Or set a default in your config file:
 ```toml
 # .plur.toml
 use = "minitest"
+```
+
+## Watch Mode
+
+See [Watch Mode](features/watch-mode.md) for more details.
+
+```bash
+# Watch for changes and re-run tests
+plur watch
+
+# Install the watcher binary if needed
+plur watch install
 ```
 
 ## Next Steps
