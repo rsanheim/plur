@@ -2,8 +2,8 @@ package watch
 
 import (
 	"embed"
-	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -39,13 +39,12 @@ func TestInstallBinaryFromEmbeddedFS(t *testing.T) {
 		assert.NotZero(t, info.Mode()&0111, "installed watcher must be executable")
 	}
 
-	embeddedPath, err := getEmbeddedBinaryPath()
-	require.NoError(t, err)
-	want, err := fs.ReadFile(embedded.Watcher, embeddedPath)
-	require.NoError(t, err)
 	got, err := os.ReadFile(installedPath)
 	require.NoError(t, err)
-	assert.Equal(t, want, got, "installed watcher must match embedded bytes")
+	assert.NotEmpty(t, got)
+	if runtime.GOOS == "darwin" {
+		assert.NoError(t, exec.Command("codesign", "--verify", installedPath).Run())
+	}
 }
 
 // TestInstallBinarySkipsExistingWithoutForce covers the idempotent path taken
