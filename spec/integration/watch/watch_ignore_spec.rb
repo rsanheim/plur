@@ -36,6 +36,29 @@ RSpec.describe "plur watch --ignore flag" do
     end
   end
 
+  describe "TOML config" do
+    it "uses watch-ignore as global ignore patterns", :skip_if_ci do
+      with_temp_watch_project do |project_dir|
+        project_dir.join(".plur.toml").write(<<~TOML)
+          watch-ignore = ["lib/**"]
+          use = "rspec"
+        TOML
+
+        lib_file = project_dir.join("lib", "calculator.rb")
+        original_content = lib_file.read
+
+        result = run_plur_watch(dir: project_dir, timeout: 3) do
+          lib_file.write(original_content + "\n# ignored by watch-ignore")
+        end
+
+        expect(result.err).to include("Global watch ignore patterns patterns=[lib/**]")
+        expect(result.err).not_to include('path="lib/calculator.rb"')
+        expect(result.err).not_to include("Executing job")
+        expect(result.success?).to be(true)
+      end
+    end
+  end
+
   describe "help output" do
     it "shows --ignore in plur watch --help" do
       cmd = TTY::Command.new(uuid: false, printer: :null)
