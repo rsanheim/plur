@@ -91,8 +91,9 @@ Jobs are selected in the following priority order:
 
 In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
 its fixed flags. Plur appends discovered targets automatically (or expands
-Minitest targets into `-e` requires). Job commands must not contain template
-tokens; templates are only supported in watch target mappings.
+Minitest targets into `-e` requires). Job commands must not contain the legacy
+`{{target}}` placeholder; target templates are only supported in watch target
+mappings.
 
 ### Framework Default File Patterns
 
