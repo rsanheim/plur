@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/internal/framework/rspec"
+	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -241,7 +242,7 @@ func BenchmarkGroupSpecFilesBySize(b *testing.B) {
 			files := generateSpecFiles(tc.count)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				GroupSpecFilesBySize(files, tc.workers)
+				testruntime.GroupSpecFilesBySize(files, tc.workers)
 			}
 		})
 	}
@@ -263,7 +264,7 @@ func BenchmarkGroupSpecFilesByRuntime(b *testing.B) {
 			runtimeData := generateRuntimeData(files)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				GroupSpecFilesByRuntime(files, tc.workers, runtimeData)
+				testruntime.GroupSpecFilesByRuntime(files, tc.workers, runtimeData)
 			}
 		})
 	}

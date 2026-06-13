@@ -107,7 +107,7 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 	return nil
 }
 
-func (r *Runner) groupFiles() []FileGroup {
+func (r *Runner) groupFiles() []testruntime.FileGroup {
 	runtimeData := r.tracker.LoadedData()
 
 	files := r.files
@@ -117,12 +117,12 @@ func (r *Runner) groupFiles() []FileGroup {
 		runtimeData = expandedRuntimes
 	}
 
-	var groups []FileGroup
+	var groups []testruntime.FileGroup
 	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(files, r.config.WorkerCount, runtimeData)
+		groups = testruntime.GroupSpecFilesByRuntime(files, r.config.WorkerCount, runtimeData)
 		logger.Logger.Debug("Using runtime-based grouped execution", "group_count", len(groups))
 	} else {
-		groups = GroupSpecFilesBySize(files, r.config.WorkerCount)
+		groups = testruntime.GroupSpecFilesBySize(files, r.config.WorkerCount)
 		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
 	}
 	return groups
@@ -143,7 +143,7 @@ func (r *Runner) shouldExpandSplits() bool {
 // the per-worker budget) pass through unchanged.
 //
 // Returns the expanded file list and a runtime map keyed by the expanded
-// targets, suitable for GroupSpecFilesByRuntime.
+// targets, suitable for testruntime.GroupSpecFilesByRuntime.
 func (r *Runner) expandRspecSplits(fileRuntimes map[string]float64) ([]string, map[string]float64) {
 	budget := perWorkerBudget(fileRuntimes, r.files, r.config.WorkerCount)
 	cache := r.tracker.Cache()
@@ -202,7 +202,7 @@ func perWorkerBudget(fileRuntimes map[string]float64, files []string, workerCoun
 	return total / float64(workerCount)
 }
 
-func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
+func (r *Runner) buildCommands(groups []testruntime.FileGroup) ([]*exec.Cmd, error) {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
