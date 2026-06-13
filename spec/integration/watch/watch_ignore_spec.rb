@@ -76,6 +76,29 @@ RSpec.describe "plur watch --ignore flag" do
         end
       end
     end
+
+    it "rejects relative symlink paths outside the project instead of planning them" do
+      tmp_root = ROOT_PATH.join("tmp")
+      FileUtils.mkdir_p(tmp_root)
+
+      Dir.mktmpdir("symlink-watch-file", tmp_root.to_s) do |tmpdir|
+        project_dir = File.join(tmpdir, "project")
+        outside_dir = File.join(tmpdir, "outside")
+        FileUtils.mkdir_p(project_dir)
+        FileUtils.mkdir_p(outside_dir)
+        File.write(File.join(outside_dir, "foo.go"), "package foo\n")
+        File.symlink("../outside", File.join(project_dir, "link"))
+
+        Dir.chdir(project_dir) do
+          cmd = TTY::Command.new(timeout: 5, uuid: false, printer: :null)
+          result = cmd.run!("#{plur_binary} -u go-test watch find link/foo.go")
+
+          expect(result.exit_status).to eq(2)
+          expect(result.out).to include("msg=ignored")
+          expect(result.out).not_to include('msg="would run"')
+        end
+      end
+    end
   end
 
   describe "TOML config" do

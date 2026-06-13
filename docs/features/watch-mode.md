@@ -26,8 +26,9 @@ By default, plur watch monitors:
 - `spec/**/*_spec.rb` - Test files (runs the changed spec)
 - `lib/**/*.rb` - Library files (runs corresponding spec)
 - `app/**/*.rb` - Rails app files (runs corresponding spec)
-- `spec/spec_helper.rb` - Triggers all specs
-- `spec/rails_helper.rb` - Triggers all specs
+
+Helper files such as `spec/spec_helper.rb` and `spec/rails_helper.rb` are
+detected by the watcher, but they do not trigger a test run by default.
 
 ### File Mapping Examples
 

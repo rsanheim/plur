@@ -396,4 +396,18 @@ func TestPlannerAdmit(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, filepath.FromSlash("lib/user.rb"), path)
 	})
+
+	t.Run("relative path through symlink escaping CWD is rejected", func(t *testing.T) {
+		root := t.TempDir()
+		projectDir := filepath.Join(root, "project")
+		outsideDir := filepath.Join(root, "outside")
+		require.NoError(t, os.MkdirAll(projectDir, 0755))
+		writeFileTree(t, outsideDir, "foo.go")
+		require.NoError(t, os.Symlink("../outside", filepath.Join(projectDir, "link")))
+
+		p := Planner{CWD: projectDir}
+		path, ok := p.Admit(filepath.FromSlash("link/foo.go"))
+		assert.False(t, ok)
+		assert.Equal(t, filepath.FromSlash("link/foo.go"), path)
+	})
 }

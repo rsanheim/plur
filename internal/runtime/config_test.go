@@ -225,7 +225,7 @@ func TestValidateRuntimeConfigRejectsInvalidIgnorePattern(t *testing.T) {
 	assert.Contains(t, err.Error(), `invalid ignore pattern "vendor/["`)
 }
 
-func TestValidateRuntimeConfigAcceptsEmptySourcePattern(t *testing.T) {
+func TestValidateRuntimeConfigRejectsWatchWithoutSource(t *testing.T) {
 	rc := &RuntimeConfig{
 		Jobs: map[string]framework.Job{
 			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
@@ -236,7 +236,25 @@ func TestValidateRuntimeConfigAcceptsEmptySourcePattern(t *testing.T) {
 		Sources: []string{".plur.toml"},
 	}
 
-	require.NoError(t, validateRuntimeConfig(rc))
+	err := validateRuntimeConfig(rc)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `watch "missing-source" must define source`)
+}
+
+func TestValidateRuntimeConfigRejectsWatchWithoutJobs(t *testing.T) {
+	rc := &RuntimeConfig{
+		Jobs: map[string]framework.Job{
+			"rspec": {Name: "rspec", Cmd: []string{"bin/rspec"}, FrameworkName: "rspec"},
+		},
+		Watches: []watch.WatchMapping{
+			{Name: "missing-jobs", Source: "lib/**/*.rb"},
+		},
+		Sources: []string{".plur.toml"},
+	}
+
+	err := validateRuntimeConfig(rc)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `watch "missing-jobs" must define at least one job`)
 }
 
 func TestSelectJobFromRuntimeConfig_UsesExplicitUse(t *testing.T) {

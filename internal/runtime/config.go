@@ -80,6 +80,12 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 	}
 
 	for _, w := range rc.Watches {
+		if w.Source == "" {
+			return fmt.Errorf("configuration error in %v: watch %q must define source", rc.Sources, w.Name)
+		}
+		if len(w.Jobs) == 0 {
+			return fmt.Errorf("configuration error in %v: watch %q must define at least one job", rc.Sources, w.Name)
+		}
 		for _, jobName := range w.Jobs {
 			if _, ok := rc.Jobs[jobName]; !ok {
 				return fmt.Errorf("configuration error in %v: watch %q references undefined job %q", rc.Sources, w.Name, jobName)
@@ -88,7 +94,7 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 		if w.NoTargets && len(w.Targets) > 0 {
 			return fmt.Errorf("configuration error in %v: watch %q must not define targets when no_targets is true", rc.Sources, w.Name)
 		}
-		if w.Source != "" && !watch.ValidatePattern(w.Source) {
+		if !watch.ValidatePattern(w.Source) {
 			return fmt.Errorf("configuration error in %v: watch %q has invalid source pattern %q", rc.Sources, w.Name, w.Source)
 		}
 		for _, pattern := range w.Ignore {

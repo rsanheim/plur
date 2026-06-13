@@ -65,9 +65,21 @@ func (p Planner) Admit(path string) (string, bool) {
 			return path, false
 		}
 		path = rel
+	} else {
+		path = filepath.Clean(path)
+		if filepath.IsLocal(path) && p.CWD != "" {
+			absPath := filepath.Join(p.CWD, path)
+			if resolved, err := filepath.EvalSymlinks(absPath); err == nil {
+				rel, err := filepath.Rel(p.CWD, resolved)
+				if err != nil || !filepath.IsLocal(rel) {
+					logger.Logger.Warn("Skipping path outside project", "path", path, "resolved", resolved, "cwd", p.CWD)
+					return path, false
+				}
+			}
+		}
 	}
 	if !filepath.IsLocal(path) {
-		logger.Logger.Debug("Rejecting path outside CWD", "path", path, "cwd", p.CWD)
+		logger.Logger.Warn("Skipping path outside project", "path", path, "cwd", p.CWD)
 		return path, false
 	}
 	if matchesAny(filepath.ToSlash(path), p.IgnorePatterns) {
