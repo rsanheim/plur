@@ -250,7 +250,7 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 | `ignore` | string[] | Patterns to ignore from watching | No |
 | `reload` | bool | Reload plur after jobs complete | No |
 
-**Note**: `ignore` is per-watch mapping. For global ignore patterns during a watch session, use the `plur watch --ignore` flag.
+**Note**: `ignore` is per-watch mapping. For global ignore patterns, use `watch-ignore` in `.plur.toml` or the `plur watch --ignore` flag for one session.
 
 **Note**: Named `[[watch]]` entries must be unique within user configuration. Plur rejects duplicate names during config loading.
 

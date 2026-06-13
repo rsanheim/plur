@@ -35,9 +35,10 @@ builds:
       - goos: windows
         goarch: arm64 # Not supporting Windows ARM64
 
-    # Set module mode
+    # Set module mode; trimpath for reproducible builds and smaller binaries
     flags:
       - -mod=vendor
+      - -trimpath
 
     # Embed version information via ldflags
     ldflags:
