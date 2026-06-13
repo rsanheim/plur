@@ -3,7 +3,7 @@
 ## Unreleased
 * Shrink release binaries ~11%: embed only the current platform's watcher binary, replace text/template in watch with a simple token renderer, and build with -trimpath [#70](https://github.com/rsanheim/plur/pull/70)
 * Fix `plur watch install` on Windows: the embedded watcher lookup used backslashed paths [#70](https://github.com/rsanheim/plur/pull/70)
-* Add `bench:cache` rake task enforcing the runtime-cache load budget in full builds and CI [#70](https://github.com/rsanheim/plur/pull/70)
+* Enforce the runtime-cache load budget via a Go test that runs with the standard Go test suite in full builds and CI [#70](https://github.com/rsanheim/plur/pull/70)
 * Rebuild watch on a shared planner: `plur watch find` is now a faithful probe of live watch, with identical ignore rules, path admission, and output
 * Validate watch glob patterns at config load and reject template tokens in job commands, so bad config fails early with clear errors
 * Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.
