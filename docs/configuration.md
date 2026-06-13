@@ -294,7 +294,7 @@ reload = true
 [[watch]]
 name = "go-source"
 source = "**/*.go"
-targets = ["{{dir_relative}}"]
+targets = ["./{{dir_relative}}"]
 jobs = ["go-test"]
 ignore = ["vendor/**", "**/testdata/**"]
 ```
