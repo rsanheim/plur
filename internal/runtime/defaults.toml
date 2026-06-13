@@ -72,7 +72,7 @@ jobs = ["minitest"]
 [[defaults.watch]]
 name = "go-source"
 source = "**/*.go"
-targets = ["{{dir_relative}}"]
+targets = ["./{{dir_relative}}"]
 jobs = ["go-test"]
 ignore = ["vendor/**", "**/testdata/**"]
 
@@ -80,6 +80,6 @@ ignore = ["vendor/**", "**/testdata/**"]
 [[defaults.watch]]
 name = "go-tests"
 source = "**/*_test.go"
-targets = ["{{dir_relative}}"]
+targets = ["./{{dir_relative}}"]
 jobs = ["go-test"]
 ignore = ["vendor/**"]

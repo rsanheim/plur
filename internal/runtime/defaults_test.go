@@ -17,6 +17,25 @@ func TestBuiltinDefaultsLoad(t *testing.T) {
 	assert.Contains(t, builtinDefaults.Defaults.Jobs, "go-test")
 }
 
+func TestBuiltinGoWatchTargetsUseLocalPackagePatterns(t *testing.T) {
+	expected := map[string][]string{
+		"go-source": {"./{{dir_relative}}"},
+		"go-tests":  {"./{{dir_relative}}"},
+	}
+
+	for _, watch := range builtinDefaults.Defaults.Watches {
+		targets, ok := expected[watch.Name]
+		if !ok {
+			continue
+		}
+
+		assert.Equal(t, targets, watch.Targets)
+		delete(expected, watch.Name)
+	}
+
+	assert.Empty(t, expected, "missing built-in Go watch mappings")
+}
+
 func writeDetectFile(t *testing.T, path string) {
 	t.Helper()
 	full := filepath.FromSlash(path)

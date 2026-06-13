@@ -225,6 +225,29 @@ RSpec.describe "plur watch config edge cases" do
     end
   end
 
+  it "renders built-in Go watch targets as local package patterns" do
+    tmp_root = ROOT_PATH.join("tmp")
+    FileUtils.mkdir_p(tmp_root)
+
+    Dir.mktmpdir("go-watch-defaults-", tmp_root.to_s) do |tmpdir|
+      FileUtils.mkdir_p(File.join(tmpdir, "pkg"))
+      File.write(File.join(tmpdir, "go.mod"), "module example.test/plur-watch\n")
+      File.write(File.join(tmpdir, "pkg", "runner.go"), "package pkg\n")
+
+      stdout, stderr, status = Open3.capture3(
+        {"HOME" => tmpdir},
+        plur_binary, "-u", "go-test", "watch", "find", "pkg/runner.go",
+        chdir: tmpdir
+      )
+
+      expect(stderr).to eq("")
+      expect(stdout).to include('msg="found rules" name=go-source source=**/*.go jobs=[go-test] target=./{{dir_relative}}')
+      expect(stdout).to include('msg="found files" files=./pkg/')
+      expect(stdout).to include('msg="would run" job=go-test cmd="go test ./pkg/"')
+      expect(status.exitstatus).to eq(0)
+    end
+  end
+
   it "rejects duplicate named watch mappings before merge" do
     with_temp_watch_config(<<~TOML) do |config_path, _tmpdir|
       use = "rspec"
