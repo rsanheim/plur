@@ -280,16 +280,15 @@ name = "spec-files"
 source = "spec/**/*_spec.rb"
 jobs = ["rspec"]
 
-# Rebuild without passing the changed file as an argument
+# A job for the 'no-targets' use case below
 [job.build]
-cmd = ["bin/rake", "install"]
+cmd = ["script/build"]
 
+# A watch to call `script/build` on any change with no target args
 [[watch]]
-name = "build"
 source = "**/*.go"
-no_targets = true
 jobs = ["build"]
-reload = true
+no_targets = true
 
 # Go: source files trigger package tests
 [[watch]]
