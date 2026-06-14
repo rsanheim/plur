@@ -168,12 +168,6 @@ Shows dots for test progress:
 - `F` - Failing test
 - `*` - Pending test
 
-### JSON Output
-
-Plur uses dual formatters internally:
-- Progress formatter for visual feedback
-- JSON formatter for parsing results
-
 ## Performance Monitoring
 
 ### Basic Timing

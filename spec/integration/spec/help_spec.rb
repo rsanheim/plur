@@ -92,7 +92,7 @@ RSpec.describe "help output" do
     expect(result).to be_success
     expect(result.out).to include("--dry-run")
     expect(result.out).to include("--workers")
-    expect(result.out).to include("--json")
+    expect(result.out).not_to include("--json")
     expect(result.out).to include("--rspec-split")
   end
 end
