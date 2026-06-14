@@ -1,18 +1,17 @@
 # plur CHANGELOG
 
 ## Unreleased
-* Shrink release binaries ~11%: embed only the current platform's watcher binary, replace text/template in watch with a simple token renderer, and build with -trimpath [#70](https://github.com/rsanheim/plur/pull/70)
-* Fix `plur watch install` on Windows: the embedded watcher lookup used backslashed paths [#70](https://github.com/rsanheim/plur/pull/70)
-* Enforce the runtime-cache load budget via a Go test that runs with the standard Go test suite in full builds and CI [#70](https://github.com/rsanheim/plur/pull/70)
-* Rebuild watch on a shared planner: `plur watch find` is now a faithful probe of live watch, with identical ignore rules, path admission, and output
-* Validate watch glob patterns at config load and reject template tokens in job commands, so bad config fails early with clear errors
 * Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.
-* Support watch jobs with no targets (`no_targets = true`)
-* Reject watched paths that resolve outside the project directory; resolve symlinked input paths; dedupe missing-target warnings
-* Fix duplicate watchers for directories whose names start with two dots
-* Speed up framework/job detection with an early-exit existence walk that skips `.git`, `node_modules`, `vendor`, and `tmp` (e.g. `plur version` 49ms -> 6ms on a tree with 30k files under `node_modules`)
-* Clean up CLI error output; REPL run failures print plain stderr
-* Breaking: install.sh is configured via environment variables only (`PLUR_VERSION`, `PLUR_INSTALL_PATH`); the `--version` and `--install-path` flags are removed. The default install directory is `~/.local/bin`, or `/usr/local/bin` when `~/.local/bin` doesn't exist.
+* Breaking: configure `install.sh` with environment variables only (`PLUR_VERSION`, `PLUR_INSTALL_PATH`); the `--version` and `--install-path` flags are removed. The default install directory is `~/.local/bin`, or `/usr/local/bin` when `~/.local/bin` doesn't exist.
+* Speed up framework/job detection: apply ignores and exit early on detction (e.g. startup 49ms -> 6ms on a tree with 30k files under `node_modules`).
+* Shrink release binaries ~11% by embedding only the current platform's watcher binary, replacing `text/template` in watch with a simple token renderer, and building with `-trimpath` [#70](https://github.com/rsanheim/plur/pull/70).
+* Watch improvements:
+  * Make `plur watch find` match live watch behavior, including ignore rules, path admission, target selection, and output.
+  * Support watch jobs with no targets (`no_targets = true`).
+  * Reject watched paths that resolve outside the project directory, resolve symlinked input paths, and dedupe missing-target warnings.
+  * Validate watch glob patterns at config load so bad config fails early with clear errors.
+  * Fix `plur watch install` on Windows by using slash-normalized embedded watcher paths [#70](https://github.com/rsanheim/plur/pull/70).
+  * Fix error output so REPL run failures print plain stderr.
 
 ## v0.60.0 - 2026-06-06
 * Improve help text: add examples, group commands, and hide irrelevant flags [#63](https://github.com/rsanheim/plur/pull/63)
