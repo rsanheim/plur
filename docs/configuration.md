@@ -392,6 +392,8 @@ Plur matches RSpec's behavior:
 
 * `PARALLEL_TEST_PROCESSORS` - Number of workers
 * `PLUR_DEBUG` - Enable debug output
+* `PLUR_CONFIG_FILE` - Load an additional config file after `~/.plur.toml` and `.plur.toml`
+* `PLUR_HOME` - Override Plur's home directory (default: `~/.plur`)
 
 ## Troubleshooting
 
