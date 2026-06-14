@@ -14,9 +14,8 @@ import (
 // the next aggregate-eligible run.
 const SchemaVersion = 4
 
-// Cache is the persisted runtime cache.
-// See docs/plans/2026-05-12-rspec-split-specs-experimental-plan.md for the
-// shape and lifecycle rules.
+// Cache is the persisted runtime cache. The schema shape and lifecycle rules
+// are covered by the cache tests in this package.
 type Cache struct {
 	Meta  CacheMeta            `json:"meta"`
 	Run   CacheRun             `json:"run"`
