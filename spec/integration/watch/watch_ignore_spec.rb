@@ -94,8 +94,14 @@ RSpec.describe "plur watch --ignore flag" do
           result = cmd.run!("#{plur_binary} -u go-test watch find link/foo.go")
 
           expect(result.exit_status).to eq(2)
-          expect(result.out).to include("msg=ignored")
+          expect(result.out).to include('msg="checking watch" file=link/foo.go')
+          expect(result.out).to include("msg=ignored file=link/foo.go")
           expect(result.out).not_to include('msg="would run"')
+          expect(result.err).to include("WARN")
+          expect(result.err).to include("Skipping path outside project")
+          expect(result.err).to include('path="link/foo.go"')
+          expect(result.err).to include(%(resolved="#{File.join(outside_dir, "foo.go")}"))
+          expect(result.err).to include(%(cwd="#{project_dir}"))
         end
       end
     end
