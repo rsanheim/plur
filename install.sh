@@ -173,27 +173,6 @@ detect_os() {
   esac
 }
 
-# Validate that a release asset exists for this platform.
-# Release assets ship only for: darwin/arm64, linux/amd64, linux/arm64.
-# There is intentionally no Intel macOS (darwin/amd64) binary.
-check_supported_platform() {
-  PLATFORM_OS="$1"
-  PLATFORM_ARCH="$2"
-
-  case "$PLATFORM_OS/$PLATFORM_ARCH" in
-    darwin/arm64|linux/amd64|linux/arm64)
-      return 0
-      ;;
-  esac
-
-  printf "Error: no prebuilt plur binary is available for %s/%s\n" "$PLATFORM_OS" "$PLATFORM_ARCH" >&2
-  printf "\n" >&2
-  printf "Alternatives:\n" >&2
-  printf "  - Homebrew: brew install rsanheim/tap/plur\n" >&2
-  printf "  - Build from source: https://github.com/%s/%s\n" "$REPO_OWNER" "$REPO_NAME" >&2
-  exit 1
-}
-
 # Get latest version from GitHub
 get_latest_version() {
   RELEASES_JSON=$(download_to_stdout "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases/latest")
@@ -218,7 +197,10 @@ install_plur() {
 
   info "Detected: $OS/$ARCH"
 
-  check_supported_platform "$OS" "$ARCH"
+  case "$OS/$ARCH" in
+    darwin/arm64|linux/amd64|linux/arm64) ;;
+    *) error "no prebuilt plur binary for $OS/$ARCH" ;;
+  esac
 
   # Determine version
   if [ -z "$VERSION" ]; then

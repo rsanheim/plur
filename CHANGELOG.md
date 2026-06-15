@@ -1,7 +1,7 @@
 # plur CHANGELOG
 
 ## Unreleased
-* Fix `install.sh` to fail fast with a clear, actionable message on platforms that have no prebuilt binary (e.g. Intel macOS), pointing to the Homebrew tap or building from source, instead of a confusing download error.
+* `install.sh`: fail with a clear error on platforms with no prebuilt binary (e.g. Intel macOS) instead of a confusing download failure.
 
 ## v0.70.0 - 2026-06-14
 * Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.
