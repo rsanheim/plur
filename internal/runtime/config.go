@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -12,6 +13,11 @@ import (
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
+
+// templateTokenPattern matches any {{ ... }} template-looking token. Job commands
+// are static; templates are not supported in cmd args (targets are appended
+// automatically), so any such token is rejected during config validation.
+var templateTokenPattern = regexp.MustCompile(`\{\{.*?\}\}`)
 
 type CLIInput struct {
 	Use           string
@@ -73,8 +79,8 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 			return fmt.Errorf("configuration error in %v: job %q must define a command", rc.Sources, name)
 		}
 		for _, arg := range j.Cmd {
-			if strings.Contains(arg, "{{target}}") {
-				return fmt.Errorf("configuration error in %v: job %q command must not contain {{target}} tokens", rc.Sources, name)
+			if token := templateTokenPattern.FindString(arg); token != "" {
+				return fmt.Errorf("configuration error in %v: job %q command must not contain template tokens (found %q); job commands are static — targets are appended automatically", rc.Sources, name, token)
 			}
 		}
 	}

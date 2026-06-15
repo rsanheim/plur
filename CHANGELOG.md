@@ -1,7 +1,7 @@
 # plur CHANGELOG
 
 ## Unreleased
-
+* Job `cmd` validation now rejects any `{{...}}` template token, not just `{{target}}`; the error names the offending token so it's easy to find.
 
 ## v0.70.0 - 2026-06-14
 * Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.

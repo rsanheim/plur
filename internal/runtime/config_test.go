@@ -164,16 +164,34 @@ func TestValidateRuntimeConfigRejectsJobWithoutCommand(t *testing.T) {
 
 func TestValidateRuntimeConfigRejectsTemplateTokensInJobCommand(t *testing.T) {
 	tests := []struct {
-		name string
-		cmd  []string
+		name  string
+		cmd   []string
+		token string
 	}{
 		{
-			name: "standalone template argument",
-			cmd:  []string{"bin/rspec", "{{target}}"},
+			name:  "standalone target template",
+			cmd:   []string{"bin/rspec", "{{target}}"},
+			token: "{{target}}",
 		},
 		{
-			name: "embedded template argument",
-			cmd:  []string{"bin/rspec", "--file={{target}}"},
+			name:  "embedded target template",
+			cmd:   []string{"bin/rspec", "--file={{target}}"},
+			token: "{{target}}",
+		},
+		{
+			name:  "path template",
+			cmd:   []string{"bin/rspec", "{{path}}"},
+			token: "{{path}}",
+		},
+		{
+			name:  "arbitrary template",
+			cmd:   []string{"bin/rspec", "{{foo}}"},
+			token: "{{foo}}",
+		},
+		{
+			name:  "spaced target template",
+			cmd:   []string{"bin/rspec", "{{ target }}"},
+			token: "{{ target }}",
 		},
 	}
 
@@ -188,7 +206,8 @@ func TestValidateRuntimeConfigRejectsTemplateTokensInJobCommand(t *testing.T) {
 
 			err := validateRuntimeConfig(rc)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job \"custom\" command must not contain {{target}} tokens")
+			assert.Contains(t, err.Error(), "job \"custom\" command must not contain template tokens")
+			assert.Contains(t, err.Error(), tt.token)
 		})
 	}
 }
