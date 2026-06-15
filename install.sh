@@ -7,8 +7,9 @@
 #
 # Configure with environment variables:
 #   PLUR_VERSION      - release tag to install (default: latest release)
-#   PLUR_INSTALL_PATH - install directory (default: ~/.local/bin, or
-#                       /usr/local/bin if ~/.local/bin doesn't exist)
+#   PLUR_INSTALL_PATH - install directory (default: ~/.local/bin; if that
+#                       doesn't exist, /usr/local/bin when present and
+#                       writable, otherwise ~/.local/bin is created)
 #
 #   curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.60.0 sh
 
