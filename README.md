@@ -18,7 +18,7 @@ brew install rsanheim/tap/plur
 curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh
 ```
 
-Installs the latest release to `~/.local/bin`, or `/usr/local/bin` if `~/.local/bin` doesn't exist. Pin a version or change the destination with environment variables:
+Installs the latest release to `~/.local/bin` by default. If that directory doesn't exist, it uses `/usr/local/bin` when that's present and writable, otherwise it creates `~/.local/bin`. Pin a version or change the destination (`PLUR_INSTALL_PATH`) with environment variables:
 
 ```bash
 curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.60.0 sh
