@@ -1,6 +1,9 @@
 # plur CHANGELOG
 
 ## Unreleased
+
+
+## v0.70.0 - 2026-06-14
 * Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.
 * Breaking: configure `install.sh` with environment variables only (`PLUR_VERSION`, `PLUR_INSTALL_PATH`); the `--version` and `--install-path` flags are removed. The default install directory is `~/.local/bin`, or `/usr/local/bin` when `~/.local/bin` doesn't exist.
 * Speed up framework/job detection: apply ignores and exit early on detction (e.g. startup 49ms -> 6ms on a tree with 30k files under `node_modules`).
