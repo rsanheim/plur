@@ -5,17 +5,17 @@
 
 [defaults.job.rspec]
 framework = "rspec"
-cmd = ["bundle", "exec", "rspec", "{{target}}"]
+cmd = ["bundle", "exec", "rspec"]
 target_pattern = "spec/**/*_spec.rb"
 
 [defaults.job.minitest]
 framework = "minitest"
-cmd = ["bundle", "exec", "ruby", "-Itest", "{{target}}"]
+cmd = ["bundle", "exec", "ruby", "-Itest"]
 target_pattern = "test/**/*_test.rb"
 
 [defaults.job.go-test]
 framework = "go-test"
-cmd = ["go", "test", "{{target}}"]
+cmd = ["go", "test"]
 target_pattern = "**/*_test.go"
 
 [defaults.job.rails]
@@ -72,7 +72,7 @@ jobs = ["minitest"]
 [[defaults.watch]]
 name = "go-source"
 source = "**/*.go"
-targets = ["{{dir_relative}}"]
+targets = ["./{{dir_relative}}"]
 jobs = ["go-test"]
 ignore = ["vendor/**", "**/testdata/**"]
 
@@ -80,6 +80,6 @@ ignore = ["vendor/**", "**/testdata/**"]
 [[defaults.watch]]
 name = "go-tests"
 source = "**/*_test.go"
-targets = ["{{dir_relative}}"]
+targets = ["./{{dir_relative}}"]
 jobs = ["go-test"]
 ignore = ["vendor/**"]

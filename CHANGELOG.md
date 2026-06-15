@@ -1,10 +1,17 @@
 # plur CHANGELOG
 
 ## Unreleased
-* Shrink release binaries ~11%: embed only the current platform's watcher binary, replace text/template in watch with a simple token renderer, and build with -trimpath [#70](https://github.com/rsanheim/plur/pull/70)
-* Fix `plur watch install` on Windows: the embedded watcher lookup used backslashed paths [#70](https://github.com/rsanheim/plur/pull/70)
-* Add `bench:cache` rake task enforcing the runtime-cache load budget in full builds and CI [#70](https://github.com/rsanheim/plur/pull/70)
-* Breaking: install.sh is configured via environment variables only (`PLUR_VERSION`, `PLUR_INSTALL_PATH`); the `--version` and `--install-path` flags are removed. The default install directory is `~/.local/bin`, or `/usr/local/bin` when `~/.local/bin` doesn't exist.
+* Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.
+* Breaking: configure `install.sh` with environment variables only (`PLUR_VERSION`, `PLUR_INSTALL_PATH`); the `--version` and `--install-path` flags are removed. The default install directory is `~/.local/bin`, or `/usr/local/bin` when `~/.local/bin` doesn't exist.
+* Speed up framework/job detection: apply ignores and exit early on detction (e.g. startup 49ms -> 6ms on a tree with 30k files under `node_modules`).
+* Shrink release binaries ~11% by embedding only the current platform's watcher binary, replacing `text/template` in watch with a simple token renderer, and building with `-trimpath` [#70](https://github.com/rsanheim/plur/pull/70).
+* Watch improvements:
+  * Make `plur watch find` match live watch behavior, including ignore rules, path admission, target selection, and output.
+  * Support watch jobs with no targets (`no_targets = true`).
+  * Reject watched paths that resolve outside the project directory, resolve symlinked input paths, and dedupe missing-target warnings.
+  * Validate watch glob patterns at config load so bad config fails early with clear errors.
+  * Fix `plur watch install` on Windows by using slash-normalized embedded watcher paths [#70](https://github.com/rsanheim/plur/pull/70).
+  * Fix error output so REPL run failures print plain stderr.
 
 ## v0.60.0 - 2026-06-06
 * Improve help text: add examples, group commands, and hide irrelevant flags [#63](https://github.com/rsanheim/plur/pull/63)
@@ -14,7 +21,7 @@
 * overhaul runtime tracking to support better runtime-based grouping and splitting
 
 ## v0.56.0 - 2026-05-12
-* Add --exclude patterns for excluding files from plur file discovery before sending to workers [#58](https://github.com/rsanheim/plur/pull/58)
+* Add `--exclude-pattern` for excluding files from plur file discovery before sending to workers [#58](https://github.com/rsanheim/plur/pull/58)
 
 ## v0.55.0 - 2026-05-06
 * Add `plur rails <args>` and `plur rake <args>` for running configured Rails/Rake jobs once per worker. Arguments are appended literally; use `--` to pass flags through (e.g. `plur rails db:migrate -n 4 -- --trace`).

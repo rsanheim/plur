@@ -8,19 +8,22 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/framework"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 )
+
+type DiscoverResult struct {
+	Files []string
+}
 
 // Discover returns sorted, deduped, exclude-filtered files for a job.
 // When inputs is empty, framework target patterns drive discovery; otherwise
 // each input is classified as a glob, an existing file (passthrough), or a
 // directory (joined with framework target tails). Exclude patterns are applied
 // after expansion using doublestar semantics.
-func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
+func Discover(j framework.Job, inputs, excludes []string) (DiscoverResult, error) {
 	patterns, err := classifyInputs(j, inputs)
 	if err != nil {
-		return nil, err
+		return DiscoverResult{}, err
 	}
 
 	var files []string
@@ -31,16 +34,20 @@ func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
 		}
 		matches, err := doublestar.FilepathGlob(p)
 		if err != nil {
-			return nil, fmt.Errorf("error finding files with pattern %q: %w", p, err)
+			return DiscoverResult{}, fmt.Errorf("error finding files with pattern %q: %w", p, err)
 		}
 		files = append(files, matches...)
 	}
 
 	for _, ex := range excludes {
 		if _, err := doublestar.PathMatch(ex, ""); err != nil {
-			return nil, fmt.Errorf("invalid exclude pattern %q: %w", ex, err)
+			return DiscoverResult{}, fmt.Errorf("invalid exclude pattern %q: %w", ex, err)
 		}
 	}
+
+	slices.Sort(files)
+	files = slices.Compact(files)
+
 	files = slices.DeleteFunc(files, func(f string) bool {
 		s := filepath.ToSlash(filePathForExcludeMatch(f))
 		for _, ex := range excludes {
@@ -51,8 +58,7 @@ func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
 		return false
 	})
 
-	slices.Sort(files)
-	return slices.Compact(files), nil
+	return DiscoverResult{Files: files}, nil
 }
 
 // hasGlobMeta reports whether s contains any doublestar metacharacters.
@@ -65,13 +71,9 @@ func filePathForExcludeMatch(s string) string {
 	return s
 }
 
-func classifyInputs(j job.Job, inputs []string) ([]string, error) {
+func classifyInputs(j framework.Job, inputs []string) ([]string, error) {
 	if len(inputs) == 0 {
-		return framework.TargetPatternsForJob(j)
-	}
-	spec, err := framework.Get(j.Framework)
-	if err != nil {
-		return nil, err
+		return j.TargetPatterns()
 	}
 	var targets []string
 	var out []string
@@ -93,7 +95,8 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 			continue
 		}
 		if targets == nil {
-			targets, err = framework.TargetPatternsForJobWithSpec(j, spec)
+			var err error
+			targets, err = j.TargetPatterns()
 			if err != nil {
 				return nil, err
 			}

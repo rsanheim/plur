@@ -8,21 +8,21 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
 
 type CLIInput struct {
 	Use           string
-	Jobs          map[string]job.Job
+	Jobs          map[string]framework.Job
 	WatchMappings []watch.WatchMapping
 	ConfigFiles   []string
 }
 
 type RuntimeConfig struct {
 	Use       string
-	Jobs      map[string]job.Job
+	Jobs      map[string]framework.Job
 	Watches   []watch.WatchMapping
 	Inherited map[string]InheritedFields
 	Sources   []string
@@ -72,12 +72,34 @@ func validateRuntimeConfig(rc *RuntimeConfig) error {
 		if len(j.Cmd) == 0 {
 			return fmt.Errorf("configuration error in %v: job %q must define a command", rc.Sources, name)
 		}
+		for _, arg := range j.Cmd {
+			if strings.Contains(arg, "{{target}}") {
+				return fmt.Errorf("configuration error in %v: job %q command must not contain {{target}} tokens", rc.Sources, name)
+			}
+		}
 	}
 
 	for _, w := range rc.Watches {
+		if w.Source == "" {
+			return fmt.Errorf("configuration error in %v: watch %q must define source", rc.Sources, w.Name)
+		}
+		if len(w.Jobs) == 0 {
+			return fmt.Errorf("configuration error in %v: watch %q must define at least one job", rc.Sources, w.Name)
+		}
 		for _, jobName := range w.Jobs {
 			if _, ok := rc.Jobs[jobName]; !ok {
 				return fmt.Errorf("configuration error in %v: watch %q references undefined job %q", rc.Sources, w.Name, jobName)
+			}
+		}
+		if w.NoTargets && len(w.Targets) > 0 {
+			return fmt.Errorf("configuration error in %v: watch %q must not define targets when no_targets is true", rc.Sources, w.Name)
+		}
+		if !watch.ValidatePattern(w.Source) {
+			return fmt.Errorf("configuration error in %v: watch %q has invalid source pattern %q", rc.Sources, w.Name, w.Source)
+		}
+		for _, pattern := range w.Ignore {
+			if !watch.ValidatePattern(pattern) {
+				return fmt.Errorf("configuration error in %v: watch %q has invalid ignore pattern %q", rc.Sources, w.Name, pattern)
 			}
 		}
 		for _, target := range w.Targets {
@@ -103,7 +125,7 @@ const (
 
 type SelectedJob struct {
 	Name      string
-	Job       job.Job
+	Job       framework.Job
 	Reason    ResolveReason
 	Inherited InheritedFields
 }
@@ -139,9 +161,13 @@ func buildSelectedJob(rc *RuntimeConfig, name string, reason ResolveReason) (*Se
 		available := slices.Sorted(maps.Keys(rc.Jobs))
 		return nil, fmt.Errorf("job '%s' not found. Available jobs: %s", name, strings.Join(available, ", "))
 	}
+	resolved, err := j.ResolveFramework()
+	if err != nil {
+		return nil, err
+	}
 	return &SelectedJob{
 		Name:      name,
-		Job:       j,
+		Job:       resolved,
 		Reason:    reason,
 		Inherited: rc.Inherited[name],
 	}, nil

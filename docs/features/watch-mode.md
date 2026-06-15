@@ -26,8 +26,10 @@ By default, plur watch monitors:
 - `spec/**/*_spec.rb` - Test files (runs the changed spec)
 - `lib/**/*.rb` - Library files (runs corresponding spec)
 - `app/**/*.rb` - Rails app files (runs corresponding spec)
-- `spec/spec_helper.rb` - Triggers all specs
-- `spec/rails_helper.rb` - Triggers all specs
+
+Default watch mappings do not include helper files such as
+`spec/spec_helper.rb` or `spec/rails_helper.rb`. Add a project-specific
+`[[watch]]` rule if helper changes should run tests.
 
 ### File Mapping Examples
 
@@ -46,14 +48,78 @@ By default, events from certain directories are ignored to reduce noise:
 * `.git/**` - Git internal files
 * `node_modules/**` - JavaScript dependencies
 
-These patterns are applied globally before any watch rules are evaluated. You can customize this via the `watch-ignore` config option:
+These patterns are applied globally before any watch rules are evaluated. You can customize them in `.plur.toml` with the `watch-ignore` option:
 
 ```toml
-# .plur.toml
 watch-ignore = [".git/**", "node_modules/**", "vendor/**", ".bundle/**"]
 ```
 
-Setting `watch-ignore` replaces the defaults entirely - include `.git/**` and `node_modules/**` if you still want them ignored.
+Or customize a single watch session with the repeatable `--ignore` flag:
+
+```bash
+plur watch --ignore ".git/**" --ignore "node_modules/**" --ignore "vendor/**" --ignore ".bundle/**"
+```
+
+Setting either `watch-ignore` or `--ignore` replaces the defaults entirely - include `.git/**` and `node_modules/**` if you still want them ignored.
+
+## Architecture
+
+### Multi-Process Design
+
+Watch mode uses a multi-process architecture. Before spawning watchers, directories are
+filtered to remove overlaps (e.g., if watching `.`, subdirectories like `lib/` are removed
+to prevent duplicate events):
+
+```
+┌─────────────────┐
+│   plur watch    │
+└────────┬────────┘
+         │
+  filterWatchDirectories()
+  (remove overlaps, validate paths)
+         │
+┌────────▼────────┐
+│ WatcherManager  │
+└────────┬────────┘
+         │
+   ┌─────┴─────┬─────────┐
+   │           │         │
+┌──▼──┐    ┌──▼──┐  ┌──▼──┐
+│  .  │ or │ lib │  │spec │  (Filtered directories → Watcher Processes)
+└──┬──┘    └──┬──┘  └──┬──┘
+   │          │        │
+   └──────────┴───┬────┘
+                  │
+           ┌──────▼──────┐
+           │Event Channel│  (Aggregated Events)
+           └──────┬──────┘
+                  │
+           ┌──────▼──────┐
+           │  Debouncer  │
+           └──────┬──────┘
+                  │
+           ┌──────▼──────┐
+           │ Test Runner │
+           └─────────────┘
+```
+
+### Key Components
+
+1. **WatcherManager**: Orchestrates multiple watcher processes, aggregating their events into a single stream
+2. **Watcher**: Wrapper around the external C++ watcher binary, one per directory
+3. **Planner**: Matches changed files against watch mappings and renders the targets each job runs
+4. **Debouncer**: Batches rapid changes to prevent duplicate test runs
+5. **Embedded Binary**: Platform-specific watcher binaries embedded at compile time
+
+### Event Processing
+
+1. File system change detected by C++ watcher process
+2. JSON event emitted via stdout
+3. Watcher parses and forwards to WatcherManager
+4. Events filtered by file type and effect, then admitted by the planner (paths outside the project or matching ignore patterns are dropped)
+5. Debouncer batches changes (default 30ms window)
+6. Planner maps the batched files to job runs via watch mappings
+7. Each job run executes, streaming output to the terminal
 
 ### Platform Support
 

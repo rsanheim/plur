@@ -84,6 +84,7 @@ snapshot:
 # Release configuration
 release:
   mode: replace # Overwrite any existing release body (GitHub may create empty releases on tag push)
+  prerelease: auto # Tags with a prerelease suffix (e.g. v0.61.0-rc.1) become GitHub prereleases
   github:
     owner: rsanheim
     name: plur
@@ -102,6 +103,7 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     directory: Formula
+    skip_upload: auto # Don't update the formula for prerelease tags
     homepage: https://github.com/rsanheim/plur
     description: Fast parallel test runner for Ruby/RSpec
     license: MIT

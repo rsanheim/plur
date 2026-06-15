@@ -152,7 +152,7 @@ RSpec.describe "plur doctor command" do
         use = "rspec"
 
         [job.rspec]
-        cmd = ["bin/rspec", "--format", "progress", "{{target}}"]
+        cmd = ["bin/rspec", "--format", "progress"]
         target_pattern = "spec/**/*_spec.rb"
       TOML
     end

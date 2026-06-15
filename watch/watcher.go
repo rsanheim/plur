@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 )
 
@@ -27,7 +25,6 @@ type Event struct {
 	PathType   string      `json:"path_type"`
 	PathName   string      `json:"path_name"`
 	EffectType string      `json:"effect_type"`
-	EffectTime int64       `json:"effect_time"`
 	Associated interface{} `json:"associated"`
 }
 
@@ -209,77 +206,6 @@ func (w *Watcher) readErrors(stderr io.Reader) {
 // DefaultIgnorePatterns are the default patterns to ignore from watch events
 var DefaultIgnorePatterns = []string{".git/**", "node_modules/**"}
 
-// RunCommand runs a command from a slice of arguments
-func RunCommand(args []string) {
-	if len(args) == 0 {
-		return
-	}
-
-	fmt.Printf("\n[plur] %s\n", strings.Join(args, " "))
-
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
-	}
-}
-
-// ExecuteJob runs a job with the given target files
-// If the job doesn't use targets (no {{target}} in cmd), it runs once without targets
-func ExecuteJob(j job.Job, targetFiles []string, cwd string) error {
-	logger.Logger.Info("Executing job", "job", j.Name, "targets", fmt.Sprintf("%+v", targetFiles))
-
-	// Jobs without {{target}} placeholder run once without targets
-	if !j.UsesTargets() {
-		cmd := j.Cmd
-		fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
-
-		execCmd := exec.Command(cmd[0], cmd[1:]...)
-		execCmd.Dir = cwd
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
-		execCmd.Env = append(os.Environ(), j.Env...)
-
-		if err := execCmd.Run(); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	// Jobs with {{target}} run once with all target files batched together
-	if len(targetFiles) == 0 {
-		return nil
-	}
-
-	cmd := job.BuildJobCmd(j, targetFiles)
-	fmt.Printf("\n[plur] %s\n", strings.Join(cmd, " "))
-
-	execCmd := exec.Command(cmd[0], cmd[1:]...)
-	execCmd.Dir = cwd
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
-	execCmd.Env = append(os.Environ(), j.Env...)
-
-	if err := execCmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// IsIgnored checks if a path matches any of the ignore patterns
-func IsIgnored(path string, patterns []string) bool {
-	normalizedPath := filepath.ToSlash(path)
-	for _, pattern := range patterns {
-		if matched, _ := doublestar.Match(pattern, normalizedPath); matched {
-			return true
-		}
-	}
-	return false
-}
-
 // FilterDirectories validates and filters watch directories:
 // 1. Security: Rejects paths that escape the project root (e.g., symlinks to "/")
 // 2. Deduplication: Removes symlinks pointing to the same actual directory
@@ -307,9 +233,7 @@ func FilterDirectories(dirs []string) ([]string, error) {
 	for _, dir := range dirs {
 		info, err := root.Stat(dir)
 		if err != nil {
-			// Path escapes root or doesn't exist - skip with warning
-			logger.Logger.Warn("Skipping watch directory (escapes project root or doesn't exist)",
-				"dir", dir, "error", err)
+			logger.Logger.Warn("Skipping watch path", "path", dir, "error", err)
 			continue
 		}
 		if !info.IsDir() {
@@ -329,8 +253,7 @@ func FilterDirectories(dirs []string) ([]string, error) {
 		isDupe := false
 		for _, existing := range deduped {
 			if os.SameFile(v.info, existing.info) {
-				logger.Logger.Debug("Filtering duplicate watch directory",
-					"dir", v.path, "same_as", existing.path)
+				logger.Logger.Debug("Filtering duplicate watch directory", "dir", v.path, "same_as", existing.path)
 				isDupe = true
 				break
 			}
@@ -353,9 +276,9 @@ func FilterDirectories(dirs []string) ([]string, error) {
 			rel, err := filepath.Rel(parent, v.path)
 			// v is a subdirectory of parent if:
 			// - Rel() succeeds
-			// - result doesn't start with ".." (not escaping parent)
+			// - result is local (stays within parent)
 			// - result isn't "." (same directory)
-			if err == nil && !strings.HasPrefix(rel, "..") && rel != "." {
+			if err == nil && rel != "." && filepath.IsLocal(rel) {
 				isSubdir = true
 				break
 			}

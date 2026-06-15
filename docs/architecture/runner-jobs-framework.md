@@ -5,22 +5,25 @@ This document defines how framework-aware commands are built for run mode
 spec derived from the runner-jobs RFC:
 
 ## Goals
-- Remove {{target}} dependence from run mode.
+- Keep run mode free of command template placeholders.
 - Keep watch mode flexible for guard-like mappings.
 - Centralize framework-specific behavior (parser + default args) in one place.
 - Preserve minitest multi-file execution via ruby -e require list.
-- Provide clear guardrails for the refactor with an outside-in integration spec.
+- Keep selected-job framework resolution explicit and easy to audit.
 
 ## Definitions
 - Run mode: `plur spec ...` and default `plur`.
 - Watch mode: `plur watch ...` and watch mappings.
 - Framework: rspec, minitest, passthrough, go-test (others as needed).
+- Resolved job: a `framework.Job` whose `FrameworkName` has been normalized and
+  whose internal `Framework` field has been populated from the registry.
 
 ## Job schema changes
 - Add `framework` to job definitions (string, optional for user jobs).
   - Examples: `framework = "rspec"`, `framework = "minitest"`, `framework = "passthrough"`.
-- In run mode, `{{target}}` tokens are ignored for framework jobs.
-- In watch mode, `{{target}}` continues to work as today.
+- Job commands are static executable-plus-fixed-args arrays.
+- Run mode and watch mode append resolved targets automatically.
+- Watch target mappings, not job commands, own path template expansion.
 
 ## Framework configurability
 - Frameworks are **not user-definable** via config. The registry is code-defined.
@@ -41,18 +44,17 @@ spec derived from the runner-jobs RFC:
 A framework registry provides:
 - Parser factory (required).
 - DefaultArgs(cfg) (optional).
+- DetectPatterns (optional).
 - TargetMode (required):
   - append: append files to args
   - ruby-require: build a ruby -e require list from files (minitest)
 
-No other fields are required in the framework spec.
-
 ## Run mode command building
-Given: job, framework, files, config.
+Given: resolved job, files, config.
 
-1) Base args = job.Cmd with any elements containing `{{target}}` removed.
-2) Append framework.DefaultArgs(cfg) if any.
-3) Append targets according to framework.TargetMode:
+1) Base args = job.Cmd.
+2) Append job.Framework.DefaultArgs(cfg) if any.
+3) Append targets according to job.Framework.TargetMode:
    - append: args = append(args, files...)
    - ruby-require: args = buildMinitestRequireList(args, files)
 
@@ -60,6 +62,9 @@ Notes:
 - Run mode does not attempt to place args before file tokens; files always trail.
 - If a job omits `cmd`, it is invalid (no implicit defaults beyond built-ins).
 - In run mode, job.Env is applied (align with watch mode).
+- The selected run job resolves its framework once during `runtime.SelectedJob`
+  construction. Discovery, command building, parsing, and summaries use the
+  resolved `framework.Job`.
 
 ## Minitest target mode (ruby-require)
 - When files > 1, build:
@@ -77,9 +82,9 @@ Notes:
 - These are appended before target files.
 
 ## Watch mode command building
-- Keep existing behavior:
-  - If job uses `{{target}}`, expand via BuildJobCmd.
-  - Otherwise run without targets.
+- Append resolved targets at the end of the command.
+- If a watch mapping sets `no_targets = true`, run the job command without
+  appending file arguments.
 - Watch remains responsible for guard-like path substitutions.
 
 ## Default jobs vs user jobs
@@ -97,37 +102,36 @@ Notes:
 - Dry-run output should make the framework visible and easy to verify:
   - a one-line summary includes framework (e.g., "Running 12 specs [rspec] in parallel…")
   - per-worker lines show the exact command (with framework default args applied)
-  - any ignored `{{target}}` in run mode should be noted in debug logs
 
 ## Validation rules
-- In run mode, if job.Cmd contains `{{target}}`, ignore tokens and warn in debug.
-- In watch mode, validate `{{target}}` usage as today.
+- Reject template tokens in job commands.
+- Validate watch target templates during config load.
 - Missing `framework` defaults as described above; unknown values error during config load.
 
 ## Cross references
 - docs/architecture/runner-jobs-rfc.md
-- spec/integration/plur_spec/framework_output_spec.rb (guardrail test for framework output + defaults)
+- spec/integration/spec/framework_output_spec.rb (guardrail test for framework output + defaults)
 
-## Guardrail spec summary (current failing expectations)
-This integration spec is now enforced as part of the refactor. It asserts:
+## Guardrail behavior
+The integration spec asserts:
 - Dry-run summary includes framework tag: `[dry-run] Running 1 spec [rspec] in parallel using 1 workers`
 - Debug logs include resolved framework: `framework="rspec"`
 - Worker command includes rspec default args (formatter + color) and the target file:
   `bundle exec rspec --fail-fast -r <plur_home>/formatter/json_rows_formatter.rb --format Plur::JsonRowsFormatter --no-color spec/example_spec.rb`
 
-Previous behavior (before refactor):
-- Summary prints `Running 1 test` without framework tag.
-- RSpec defaults (formatter + color flags) are not injected for non-`rspec` job names.
-
 ## Implementation status (current)
-- Framework registry implemented in `framework` package with TargetMode, DefaultArgs, Parser, and StreamStdout.
-- Run mode uses `BuildRunArgs`: strips `{{target}}`, appends framework defaults, then adds targets.
+- Framework registry is implemented in `internal/framework` with TargetMode,
+  DefaultArgs, Parser, and DetectPatterns.
+- `runtime.SelectedJob.Job` resolves the selected framework once before run-mode
+  consumers receive it.
+- `framework.Job` owns target pattern lookup and run-argument construction.
+- Run mode starts from `job.cmd`, appends framework defaults, then adds targets.
 - Minitest uses ruby `-e` require list for multi-file runs (single file appends directly).
 - Jobs default framework by name (built-ins) or `passthrough` for custom jobs when omitted.
 - Dry-run summary includes `[framework]`; verbose logs include `framework="..."`.
 - Job.Env now applies in run mode (aligns with watch mode).
-- `plur init` output updated to include `framework` and `{{target}}` examples.
+- `plur init` output uses static job command examples.
 
 ## Test notes
-- `bin/rspec spec/integration/plur_spec/framework_output_spec.rb` (passes after `bin/rake install`).
-- `bin/rake test:go` can fail intermittently on `TestTestCollectorComplexity` (existing flake).
+- `bin/rspec spec/integration/spec/framework_output_spec.rb`
+- `bin/rake test:go`

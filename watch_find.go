@@ -2,11 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -18,89 +15,78 @@ type WatchFindCmd struct {
 }
 
 func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
-	selected, err := runtime.SelectJobFromRuntimeConfig(globals.runtimeConfig, nil)
+	planner, err := buildWatchPlanner(globals, parent)
 	if err != nil {
-		return fmt.Errorf("failed to select watch job: %w", err)
+		return err
 	}
 
-	jobs := globals.runtimeConfig.Jobs
-	watches := globals.runtimeConfig.Watches
-	runtime.LogInheritedFields(selected.Name, selected.Inherited)
-
-	if len(watches) == 0 {
+	if len(planner.Watches) == 0 {
 		fmt.Println("No watch mappings configured.")
 		fmt.Println("Either add job/watch configuration to .plur.toml or ensure your project structure")
 		fmt.Println("matches a supported framework (Ruby with Gemfile, Go with go.mod).")
 		return nil
 	}
 
-	// Get the current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
-	}
-
-	// Normalize the file path to be relative to cwd
-	filePath := cmd.FilePath
-	if filepath.IsAbs(filePath) {
-		if rel, err := filepath.Rel(cwd, filePath); err == nil {
-			filePath = rel
-		}
-	}
-
 	out := logger.StdoutLogger
 
-	out.Info("checking watch", "file", filePath)
-
-	// Use shared find logic
-	findResult, err := watch.FindTargetsForFile(filePath, jobs, watches, cwd)
-	if err != nil {
-		return fmt.Errorf("error processing file: %w", err)
+	path, admitted := planner.Admit(cmd.FilePath)
+	out.Info("checking watch", "file", path)
+	if !admitted {
+		out.Info("ignored", "file", path)
+		return ExitCode{Code: 2}
 	}
 
-	// Show matched rules
-	if len(findResult.MatchedRules) == 0 {
+	plan := planner.Plan([]string{path})
+
+	if len(plan.Matches) == 0 {
 		out.Info("found rules", "count", 0)
 		return ExitCode{Code: 2}
 	}
 
-	// Print matched rules in concise format
-	for _, rule := range findResult.MatchedRules {
-		name := rule.Name
+	for _, m := range plan.Matches {
+		name := m.Rule.Name
 		if name == "" {
 			name = "(unnamed)"
 		}
 		targetTemplate := "[source file]"
-		if len(rule.Targets) > 0 {
-			targetTemplate = rule.Targets[0]
+		if m.Rule.NoTargets {
+			targetTemplate = "[no targets]"
+		} else if len(m.Rule.Targets) > 0 {
+			targetTemplate = m.Rule.Targets[0]
 		}
 		out.Info("found rules",
 			"name", name,
-			"source", rule.Source,
-			"jobs", rule.Jobs,
+			"source", m.Rule.Source,
+			"jobs", m.Rule.Jobs,
 			"target", targetTemplate)
 	}
 
-	// Show found files
-	if findResult.HasExistingTargets() {
-		var allFiles []string
-		for _, targets := range findResult.ExistingTargets {
-			allFiles = append(allFiles, targets...)
-		}
+	var allFiles []string
+	for _, run := range plan.Runs {
+		allFiles = append(allFiles, run.Targets...)
+	}
+	if len(allFiles) > 0 {
 		out.Info("found files", "files", strings.Join(allFiles, ", "))
 	}
 
-	// Show missing files
-	if findResult.HasMissingTargets() {
-		for _, targets := range findResult.MissingTargets {
-			for _, target := range targets {
-				out.Warn("not found", "file", target)
+	for _, run := range plan.Runs {
+		out.Info("would run",
+			"job", run.Job.Name,
+			"cmd", watch.CommandString(run.Command(planner.CWD), run.Job.Env))
+	}
+
+	warned := make(map[string]bool)
+	for _, m := range plan.Matches {
+		for _, target := range m.Missing {
+			if warned[target] {
+				continue
 			}
+			warned[target] = true
+			out.Warn("not found", "file", target)
 		}
 	}
 
-	// Exit code 2 if nothing would actually run
-	if !findResult.HasExistingTargets() {
+	if len(plan.Runs) == 0 {
 		return ExitCode{Code: 2}
 	}
 

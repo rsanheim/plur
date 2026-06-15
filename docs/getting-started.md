@@ -14,13 +14,16 @@ brew install rsanheim/tap/plur
 
 ### Direct install (all platforms)
 
-The direct install script detects your platform, downloads the latest release, verifies its checksum, and installs the binary to either `~/.local/bin` or `/usr/local/bin`, whichever is found first. 
+The direct install script detects your platform, downloads the latest release, verifies its checksum, and installs the binary. It installs to `~/.local/bin`, or `/usr/local/bin` if `~/.local/bin` doesn't exist.
 
 ```bash
 curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh
 ```
 
-You can override default install dir and/or version with env vars PLUR_VERSION and PLUR_INSTALL_PATH:
+Two environment variables configure it:
+
+* `PLUR_VERSION` - release tag to install (default: latest release)
+* `PLUR_INSTALL_PATH` - install directory
 
 ```bash
 # Install version 0.60.0
@@ -39,6 +42,15 @@ Available platforms:
 * Linux x86_64
 * Linux ARM64
 * Windows x86_64 (experimental)
+
+## Verify
+
+```bash
+plur --version
+
+# Check your environment for common issues
+plur doctor
+```
 
 ## First Run
 

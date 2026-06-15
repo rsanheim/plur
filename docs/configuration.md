@@ -89,7 +89,11 @@ Jobs are selected in the following priority order:
 | `exclude_patterns` | string[] | Glob patterns to exclude from discovered test files | No | `[]` |
 | `env` | string[] | Environment variables (e.g., `["VAR=value"]`) | No | `[]` |
 
-**Note**: In run mode (`plur` / `plur spec`), any `{{target}}` tokens in `cmd` are ignored and targets are always appended (or expanded into Minitest `-e` requires). In watch mode, `{{target}}` is honored.
+In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
+its fixed flags. Plur appends discovered targets automatically (or expands
+Minitest targets into `-e` requires). Job commands must not contain the legacy
+`{{target}}` placeholder; target templates are only supported in watch target
+mappings.
 
 ### Framework Default File Patterns
 
@@ -128,7 +132,8 @@ target_pattern = "spec/api/**/*_spec.rb"
 ### Exclude Patterns
 
 Use `exclude_patterns` to drop matching files from discovery. Patterns use
-doublestar semantics. Multiple entries are OR'd together.
+doublestar semantics. Multiple entries are OR'd together. Patterns that match no
+selected files are ignored.
 
 ```toml
 [job.rspec]
@@ -240,12 +245,13 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 |-------|------|-------------|----------|
 | `name` | string | Optional identifier for the rule. If set, it must be unique across user-defined `[[watch]]` entries. A named user watch can override a built-in watch with the same name. | No |
 | `source` | string | Glob pattern for files to watch | Yes |
-| `targets` | string[] | Target patterns with placeholders | No |
+| `targets` | string[] | Target patterns with placeholders. If omitted, the changed source file is used as the target. | No |
+| `no_targets` | bool | Run matching jobs without appending any target args. Must not be combined with `targets`. | No |
 | `jobs` | string[] | Jobs to trigger when source matches | Yes |
 | `ignore` | string[] | Patterns to ignore from watching | No |
 | `reload` | bool | Reload plur after jobs complete | No |
 
-**Note**: `ignore` is per-watch mapping. For global ignore patterns during a watch session, use the `plur watch --ignore` flag.
+**Note**: `ignore` is per-watch mapping. For global ignore patterns, use `watch-ignore` in `.plur.toml` or the `plur watch --ignore` flag for one session.
 
 **Note**: Named `[[watch]]` entries must be unique within user configuration. Plur rejects duplicate names during config loading.
 
@@ -253,6 +259,10 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 
 * `{{match}}` - The matched portion of the source path (e.g., `lib/foo.rb` → `foo`)
 * `{{dir_relative}}` - The relative directory of the matched file
+
+Watch mode resolves target templates first, then appends those targets to the
+job command. If `targets` is omitted, plur passes the changed source file. Use
+`no_targets = true` for jobs that should run without file arguments.
 
 ### Watch Configuration Examples
 
@@ -270,11 +280,21 @@ name = "spec-files"
 source = "spec/**/*_spec.rb"
 jobs = ["rspec"]
 
+# A job for the 'no-targets' use case below
+[job.build]
+cmd = ["script/build"]
+
+# A watch to call `script/build` on any change with no target args
+[[watch]]
+source = "**/*.go"
+jobs = ["build"]
+no_targets = true
+
 # Go: source files trigger package tests
 [[watch]]
 name = "go-source"
 source = "**/*.go"
-targets = ["{{dir_relative}}"]
+targets = ["./{{dir_relative}}"]
 jobs = ["go-test"]
 ignore = ["vendor/**", "**/testdata/**"]
 ```
@@ -355,7 +375,7 @@ plur spec/models/                  # Expands to spec/models/**/*_spec.rb
 
 # Single files (passed through even if not *_spec.rb)
 plur spec/user_spec.rb             # Specific file
-plur spec/spec_helper.rb           # Warning shown but runs
+plur spec/spec_helper.rb           # Runs as an explicit file
 ```
 
 ### RSpec Compatibility
@@ -363,8 +383,8 @@ plur spec/spec_helper.rb           # Warning shown but runs
 Plur matches RSpec's behavior:
 
 * **Directories**: Automatically append `**/*_spec.rb` pattern
-* **Single files**: Pass through with warning if not matching test suffix
-* **Glob patterns**: Filter results to only test files
+* **Single files**: Pass through even if not matching test suffix
+* **Glob patterns**: Expand matching files directly
 
 ## Environment Variables
 
@@ -372,6 +392,8 @@ Plur matches RSpec's behavior:
 
 * `PARALLEL_TEST_PROCESSORS` - Number of workers
 * `PLUR_DEBUG` - Enable debug output
+* `PLUR_CONFIG_FILE` - Load an additional config file after `~/.plur.toml` and `.plur.toml`
+* `PLUR_HOME` - Override Plur's home directory (default: `~/.plur`)
 
 ## Troubleshooting
 

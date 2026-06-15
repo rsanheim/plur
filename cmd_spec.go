@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
-	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/fileset"
 	"github.com/rsanheim/plur/internal/runtime"
@@ -20,7 +20,9 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	fmt.Fprintf(os.Stderr, "plur version=%s\n", buildinfo.GetVersionInfo())
 	logger.Logger.Debug("running plur", "command", "spec", "args", os.Args[1:])
 
-	selected, err := runtime.SelectJobFromRuntimeConfig(parent.runtimeConfig, r.Patterns)
+	patterns := normalizeSpecPatterns(r.Patterns)
+
+	selected, err := runtime.SelectJobFromRuntimeConfig(parent.runtimeConfig, patterns)
 	if err != nil {
 		return err
 	}
@@ -29,23 +31,24 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	runtime.LogInheritedFields(currentJob.Name, selected.Inherited)
 
-	if len(r.Tags) > 0 && currentJob.Framework != "rspec" {
-		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)
+	if len(r.Tags) > 0 && currentJob.Framework.Name != "rspec" {
+		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.FrameworkName)
 	}
 
-	targetPatterns, _ := framework.TargetPatternsForJob(currentJob)
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
+	targetPatterns, _ := currentJob.TargetPatterns()
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.FrameworkName, "patterns", patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
-	testFiles, err := fileset.Discover(currentJob, r.Patterns, excludes)
+	discovery, err := fileset.Discover(currentJob, patterns, excludes)
 	if err != nil {
 		return err
 	}
+	testFiles := discovery.Files
 	if len(testFiles) == 0 {
 		switch {
 		case len(excludes) > 0:
 			return fmt.Errorf("no test files remain after applying exclude patterns")
-		case len(r.Patterns) > 0:
+		case len(patterns) > 0:
 			return fmt.Errorf("no test files found matching provided patterns")
 		case len(targetPatterns) > 0:
 			return fmt.Errorf("no test files found (looking for %s)", strings.Join(targetPatterns, ", "))
@@ -61,7 +64,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	cfg.Auto = r.Auto
 	cfg.RspecTrace = r.RspecTrace
 
 	extraArgs := buildTagArgs(r.Tags)
@@ -93,7 +95,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	if hasValidRuntimeData {
-		runKind := testruntime.ClassifyRunKind(r.Patterns, r.Tags, parent.passthroughArgs, aborted)
+		runKind := testruntime.ClassifyRunKind(patterns, r.Tags, parent.passthroughArgs, aborted)
 		if err := runner.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
@@ -109,6 +111,14 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	return nil
+}
+
+func normalizeSpecPatterns(patterns []string) []string {
+	normalized := make([]string, len(patterns))
+	for i, pattern := range patterns {
+		normalized[i] = filepath.ToSlash(filepath.Clean(pattern))
+	}
+	return normalized
 }
 
 func buildTagArgs(tags []string) []string {

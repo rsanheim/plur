@@ -65,4 +65,89 @@ RSpec.describe "plur spec output handling" do
       end
     end
   end
+
+  describe "PLUR_DEBUG environment variable" do
+    it "enables debug logging when set to 1" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", env: {"PLUR_DEBUG" => "1"})
+
+        expect(result.err).to include("DEBUG")
+        expect(result.err).to include("discovered test files")
+      end
+    end
+
+    it "stays quiet when unset" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run")
+
+        expect(result.err).not_to include("DEBUG")
+      end
+    end
+
+    it "stays quiet when set to 0" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", env: {"PLUR_DEBUG" => "0"})
+
+        expect(result.err).not_to include("DEBUG")
+      end
+    end
+  end
+
+  describe "worker command errors" do
+    it "keeps worker stderr off stdout when the command exits before test events" do
+      tmp_root = ROOT_PATH.join("tmp")
+      FileUtils.mkdir_p(tmp_root)
+
+      Dir.mktmpdir("worker-error-output-", tmp_root.to_s) do |tmpdir|
+        FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+        File.write(File.join(tmpdir, "spec", "boom_spec.rb"), "# target placeholder\n")
+        File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
+          use = "boom"
+          color = false
+
+          [job.boom]
+          framework = "rspec"
+          cmd = ["sh", "-c", "echo WORKER_STDERR_MARKER >&2; exit 42", "boom"]
+          target_pattern = "spec/**/*_spec.rb"
+        TOML
+
+        stdout, stderr, status = Dir.chdir(tmpdir) do
+          Open3.capture3(plur_binary, "-n", "1")
+        end
+
+        expect(status.exitstatus).to eq(1)
+        expect(stderr).to include("WORKER_STDERR_MARKER")
+        expect(stdout).not_to include("WORKER_STDERR_MARKER")
+        expect(stdout).to include("0 examples, 0 failures")
+      end
+    end
+
+    it "prints worker startup errors to stderr" do
+      tmp_root = ROOT_PATH.join("tmp")
+      FileUtils.mkdir_p(tmp_root)
+
+      Dir.mktmpdir("worker-startup-error-", tmp_root.to_s) do |tmpdir|
+        FileUtils.mkdir_p(File.join(tmpdir, "spec"))
+        File.write(File.join(tmpdir, "spec", "missing_spec.rb"), "# target placeholder\n")
+        File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
+          use = "missing"
+          color = false
+
+          [job.missing]
+          framework = "rspec"
+          cmd = ["./definitely-missing-command"]
+          target_pattern = "spec/**/*_spec.rb"
+        TOML
+
+        stdout, stderr, status = Dir.chdir(tmpdir) do
+          Open3.capture3(plur_binary, "-n", "1")
+        end
+
+        expect(status.exitstatus).to eq(1)
+        expect(stderr).to include("Error: fork/exec ./definitely-missing-command")
+        expect(stdout).not_to include("fork/exec ./definitely-missing-command")
+        expect(stdout).to include("0 examples, 0 failures")
+      end
+    end
+  end
 end

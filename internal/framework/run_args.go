@@ -1,32 +1,31 @@
 package framework
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/job"
 )
 
 // BuildRunArgs builds command arguments for run mode (plur spec).
-// It ignores any {{target}} tokens in job.Cmd and appends targets at the end.
 // extraArgs are inserted after framework defaults and before target files.
-func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
-	spec, err := Get(j.Framework)
-	if err != nil {
-		return nil, err
+func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
+	fw := j.Framework
+	if fw.Name == "" {
+		return nil, fmt.Errorf("job %q has no resolved framework", j.Name)
 	}
 
-	args := stripTargetTokens(j.Cmd)
+	args := append([]string{}, j.Cmd...)
 
-	if spec.DefaultArgs != nil {
-		defaultArgs, err := spec.DefaultArgs(cfg)
+	if fw.DefaultArgs != nil {
+		defaultArgs, err := fw.DefaultArgs(cfg)
 		if err != nil {
 			return nil, err
 		}
 		args = append(args, defaultArgs...)
 	}
 
-	switch spec.TargetMode {
+	switch fw.TargetMode {
 	case TargetModeRubyRequire:
 		args = appendMinitestRequireArgs(args, files)
 		if len(extraArgs) > 0 {
@@ -40,17 +39,6 @@ func BuildRunArgs(j job.Job, files []string, cfg *config.GlobalConfig, extraArgs
 	}
 
 	return args, nil
-}
-
-func stripTargetTokens(args []string) []string {
-	filtered := make([]string, 0, len(args))
-	for _, arg := range args {
-		if strings.Contains(arg, "{{target}}") {
-			continue
-		}
-		filtered = append(filtered, arg)
-	}
-	return filtered
 }
 
 func appendMinitestRequireArgs(args []string, files []string) []string {

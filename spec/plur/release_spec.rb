@@ -28,6 +28,13 @@ RSpec.describe "script/release" do
       expect($?.success?).to be false
       expect(output).to include("No changelog entry found")
     end
+
+    it "fails for prerelease versions without changelog entries" do
+      output = `script/release extract-notes v99.99.99-rc.1 2>&1`
+
+      expect($?.success?).to be false
+      expect(output).to include("No changelog entry found")
+    end
   end
 
   describe "version validation" do

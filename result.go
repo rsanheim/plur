@@ -1,13 +1,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/rsanheim/plur/framework"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -38,7 +40,6 @@ func (r WorkerResult) Success() bool {
 
 // OutputMessage is a message from workers for output aggregation
 type OutputMessage struct {
-	WorkerID    int
 	Type        string // "dot", "failure", "pending", "error_progress", "error", "stderr", "stdout"
 	Content     string
 	CurrentFile string // Source file path (for rspec-trace mode, may be empty)
@@ -67,7 +68,7 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob job.Job) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob framework.Job) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
@@ -143,14 +144,8 @@ func renumberSummaryOutput(output string) string {
 }
 
 // PrintResults displays a test summary
-func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
-	spec, err := framework.Get(currentJob.Framework)
-	if err != nil {
-		// Fallback to basic output
-		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
-		return
-	}
-	parser := spec.Parser()
+func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Job) {
+	parser := currentJob.Framework.Parser()
 
 	// Print pending section first (RSpec outputs pending before failures)
 	if summary.FormattedPending != "" {
@@ -159,7 +154,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
-	if framework.IsMinitest(spec.Name) && summary.HasFailures {
+	if currentJob.Framework.Name == "minitest" && summary.HasFailures {
 		// Collect all output from failed workers
 		for _, result := range summary.AllResults {
 			if result.State == types.StateFailed && result.Output != "" {
@@ -197,7 +192,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 
 	// Print failed examples list only if we didn't get a formatted summary
 	// (RSpec's formatted summary already includes the failed examples list)
-	if !hasFormattedSummary && !framework.IsMinitest(spec.Name) {
+	if !hasFormattedSummary && currentJob.Framework.Name != "minitest" {
 		// Skip for minitest since we already printed the raw output
 		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
 			fmt.Println("\nFailed examples:")
@@ -207,8 +202,20 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 
 	// Print errored files
 	for _, result := range summary.ErroredFiles {
-		if result.State == types.StateError && result.Output != "" {
+		if result.State != types.StateError {
+			continue
+		}
+		if result.Output != "" {
 			fmt.Print(result.Output)
+			continue
+		}
+		if result.Error != nil && !isProcessExitError(result.Error) {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
 		}
 	}
+}
+
+func isProcessExitError(err error) bool {
+	var exitErr *exec.ExitError
+	return errors.As(err, &exitErr)
 }

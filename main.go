@@ -11,9 +11,9 @@ import (
 	"github.com/rsanheim/plur/cmd"
 	"github.com/rsanheim/plur/config"
 	clihelp "github.com/rsanheim/plur/internal/cli"
+	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/runtime"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -87,19 +87,19 @@ type PlurCLI struct {
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
 	ChangeDir string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Color     bool        `help:"Force colorized output (auto-detected by default)" negatable:"" default:"true"`
+	Color     bool        `help:"Enable colorized output" negatable:"" default:"true"`
 	Debug     bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
 	DryRun    bool        `help:"Print what would be executed without running" default:"false"`
 	FirstIs1  bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
-	JSON      string      `help:"Save detailed test results as JSON to the specified file" default:""`
+	JSON      string      `help:"Save detailed test results as JSON to the specified file" default:"" hidden:""`
 	Use       string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Verbose   bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
 	Version   bool        `help:"Show version information"`
 	Workers   WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
 
 	// Job and watch configuration
-	Job           map[string]job.Job   `help:"Job configurations (config file only)" hidden:""`
-	WatchMappings []watch.WatchMapping `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
+	Job           map[string]framework.Job `help:"Job configurations (config file only)" hidden:""`
+	WatchMappings []watch.WatchMapping     `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
 	// Store the built global config
 	globalConfig  *config.GlobalConfig   `kong:"-"`
@@ -309,7 +309,7 @@ func main() {
 		if errors.As(err, &exitErr) {
 			os.Exit(exitErr.Code)
 		}
-		logger.Logger.Error("Command failed", "error", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }

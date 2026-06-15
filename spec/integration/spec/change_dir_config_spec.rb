@@ -85,7 +85,7 @@ RSpec.describe "plur -C with config files", type: :integration do
         workers = 8
 
         [job.rspec]
-        cmd = ["bundle", "exec", "rspec", "--format", "progress", "{{target}}"]
+        cmd = ["bundle", "exec", "rspec", "--format", "progress"]
         target_pattern = "spec/**/*_spec.rb"
       TOML
 

@@ -10,9 +10,8 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/testruntime"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -29,16 +28,18 @@ const (
 type Runner struct {
 	config    *config.GlobalConfig
 	files     []string
-	job       job.Job
-	framework framework.Spec
+	job       framework.Job
 	tracker   *testruntime.RuntimeTracker
 	extraArgs []string
 }
 
-func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []string) (*Runner, error) {
-	spec, err := framework.Get(j.Framework)
-	if err != nil {
-		return nil, err
+func NewRunner(cfg *config.GlobalConfig, files []string, j framework.Job, extraArgs []string) (*Runner, error) {
+	if j.Framework.Name == "" {
+		var err error
+		j, err = j.ResolveFramework()
+		if err != nil {
+			return nil, err
+		}
 	}
 	tracker, err := testruntime.NewRuntimeTracker(cfg.RuntimeDir)
 	if err != nil {
@@ -48,7 +49,6 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []
 		config:    cfg,
 		files:     files,
 		job:       j,
-		framework: spec,
 		tracker:   tracker,
 		extraArgs: extraArgs,
 	}, nil
@@ -107,7 +107,7 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 	return nil
 }
 
-func (r *Runner) groupFiles() []FileGroup {
+func (r *Runner) groupFiles() []testruntime.FileGroup {
 	runtimeData := r.tracker.LoadedData()
 
 	files := r.files
@@ -117,12 +117,12 @@ func (r *Runner) groupFiles() []FileGroup {
 		runtimeData = expandedRuntimes
 	}
 
-	var groups []FileGroup
+	var groups []testruntime.FileGroup
 	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(files, r.config.WorkerCount, runtimeData)
+		groups = testruntime.GroupSpecFilesByRuntime(files, r.config.WorkerCount, runtimeData)
 		logger.Logger.Debug("Using runtime-based grouped execution", "group_count", len(groups))
 	} else {
-		groups = GroupSpecFilesBySize(files, r.config.WorkerCount)
+		groups = testruntime.GroupSpecFilesBySize(files, r.config.WorkerCount)
 		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
 	}
 	return groups
@@ -131,13 +131,7 @@ func (r *Runner) groupFiles() []FileGroup {
 // shouldExpandSplits reports whether the runner should expand long-running
 // RSpec files into focused file:line targets before grouping.
 func (r *Runner) shouldExpandSplits() bool {
-	if !r.config.RspecSplit {
-		return false
-	}
-	if r.framework.Name != "rspec" {
-		return false
-	}
-	if r.config.WorkerCount <= 1 {
+	if r.job.Framework.Name != "rspec" || r.config.WorkerCount <= 1 || !r.config.RspecSplit {
 		return false
 	}
 	return true
@@ -149,7 +143,7 @@ func (r *Runner) shouldExpandSplits() bool {
 // the per-worker budget) pass through unchanged.
 //
 // Returns the expanded file list and a runtime map keyed by the expanded
-// targets, suitable for GroupSpecFilesByRuntime.
+// targets, suitable for testruntime.GroupSpecFilesByRuntime.
 func (r *Runner) expandRspecSplits(fileRuntimes map[string]float64) ([]string, map[string]float64) {
 	budget := perWorkerBudget(fileRuntimes, r.files, r.config.WorkerCount)
 	cache := r.tracker.Cache()
@@ -208,15 +202,11 @@ func perWorkerBudget(fileRuntimes map[string]float64, files []string, workerCoun
 	return total / float64(workerCount)
 }
 
-func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
+func (r *Runner) buildCommands(groups []testruntime.FileGroup) ([]*exec.Cmd, error) {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
-		if r.job.UsesTargets() && logger.IsDebugEnabled() {
-			logger.Logger.Debug("ignoring {{target}} tokens in run mode", "job", r.job.Name)
-		}
-
-		args, err := framework.BuildRunArgs(r.job, group.Files, r.config, r.extraArgs)
+		args, err := r.job.BuildRunArgs(group.Files, r.config, r.extraArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +262,7 @@ func (r *Runner) printSummary(workerCount int) {
 }
 
 func (r *Runner) testLabel() string {
-	if r.framework.Name == "rspec" {
+	if r.job.Framework.Name == "rspec" {
 		return pluralize(len(r.files), "spec", "specs")
 	}
 	return pluralize(len(r.files), "test", "tests")
@@ -280,9 +270,9 @@ func (r *Runner) testLabel() string {
 
 func (r *Runner) frameworkLabel() string {
 	if r.shouldExpandSplits() {
-		return r.framework.Name + ", split"
+		return r.job.Framework.Name + ", split"
 	}
-	return r.framework.Name
+	return r.job.Framework.Name
 }
 
 func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
@@ -291,10 +281,6 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 
 	results := make(chan WorkerResult, len(commands))
 	outputChan := make(chan OutputMessage, len(commands)*10)
-
-	// Set PARALLEL_TEST_GROUPS env var (also set per-command, but this ensures
-	// it's available globally for any child process inspection)
-	os.Setenv(EnvParallelTestGroups, fmt.Sprintf("%d", len(commands)))
 
 	var outputWg sync.WaitGroup
 	outputWg.Go(func() {
@@ -346,14 +332,13 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		return errorResult(fmt.Errorf("failed to create stderr pipe: %w", err), start)
 	}
 	if err := cmd.Start(); err != nil {
-		return errorResult(fmt.Errorf("failed to start command: %w", err), start)
+		return errorResult(err, start)
 	}
 
-	parser := r.framework.Parser()
+	parser := r.job.Framework.Parser()
 	collector := NewTestCollector()
 	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
-	streamStdout := !framework.IsMinitest(r.framework.Name)
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
+	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, r.job.Framework.Name != "minitest")
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
 
@@ -365,7 +350,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 	}
 	success := exitCode == 0
 	state := types.StateSuccess
-	output := result.Output + stderrOutput
+	output := result.Output
 
 	if err != nil && result.ExampleCount == 0 {
 		state = types.StateError
@@ -453,14 +438,8 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 }
 
 func errorResult(err error, start time.Time) WorkerResult {
-	errorOutput := ""
-	if err != nil {
-		errorOutput = fmt.Sprintf("Error: %v\n", err)
-	}
-
 	return WorkerResult{
 		State:    types.StateError,
-		Output:   errorOutput,
 		Error:    err,
 		Duration: time.Since(start),
 	}

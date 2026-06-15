@@ -1,8 +1,12 @@
 # Project Overview
 
-This section provides an overview of the Plur project and its current status.
+Plur is a fast parallel test runner and watcher for Ruby projects, with
+zero-configuration defaults for RSpec and Minitest plus optional TOML
+configuration for custom jobs.
 
-## Contents
+## Start Here
 
-- [Project Status](project-status.md) - Current implementation status and features
-- [Roadmap](roadmap.md) - Future plans and optimization strategies
+- [Getting Started](../getting-started.md) - Installation and first run
+- [Usage](../usage.md) - Command reference
+- [Configuration](../configuration.md) - Jobs, frameworks, and watch mappings
+- [Benchmarks](../benchmarks/oss-benchmarks.md) - Performance data

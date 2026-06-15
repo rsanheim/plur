@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +15,7 @@ func TestFilterDirectories(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create subdirectories
-	for _, d := range []string{"lib", "lib/foo", "lib/bar", "spec", "app", "app/models"} {
+	for _, d := range []string{"lib", "lib/foo", "lib/bar", "lib/..weird", "spec", "app", "app/models"} {
 		require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, d), 0755))
 	}
 
@@ -32,6 +31,7 @@ func TestFilterDirectories(t *testing.T) {
 		{"root subsumes all", []string{".", "lib", "spec"}, []string{"."}},
 		{"siblings preserved", []string{"lib", "spec", "app"}, []string{"app", "lib", "spec"}},
 		{"nested filtered", []string{"lib", "lib/foo", "lib/bar"}, []string{"lib"}},
+		{"dot-dot-prefixed name still filtered", []string{"lib", "lib/..weird"}, []string{"lib"}},
 		{"mixed", []string{"app", "app/models", "lib", "spec"}, []string{"app", "lib", "spec"}},
 	}
 
@@ -96,150 +96,10 @@ func TestFilterDirectories_NonexistentDirSkipped(t *testing.T) {
 	assert.Equal(t, []string{"exists"}, result)
 }
 
-func TestIsIgnored(t *testing.T) {
-	tests := []struct {
-		name     string
-		path     string
-		patterns []string
-		expected bool
-	}{
-		{
-			name:     "matches .git directory",
-			path:     ".git/objects/pack/abc123",
-			patterns: []string{".git/**"},
-			expected: true,
-		},
-		{
-			name:     "matches node_modules",
-			path:     "node_modules/lodash/index.js",
-			patterns: []string{"node_modules/**"},
-			expected: true,
-		},
-		{
-			name:     "matches nested node_modules",
-			path:     "packages/api/node_modules/express/lib/router.js",
-			patterns: []string{"**/node_modules/**"},
-			expected: true,
-		},
-		{
-			name:     "does not match regular file",
-			path:     "lib/user.rb",
-			patterns: []string{".git/**", "node_modules/**"},
-			expected: false,
-		},
-		{
-			name:     "does not match spec file",
-			path:     "spec/lib/user_spec.rb",
-			patterns: []string{".git/**", "node_modules/**"},
-			expected: false,
-		},
-		{
-			name:     "empty patterns ignores nothing",
-			path:     ".git/config",
-			patterns: []string{},
-			expected: false,
-		},
-		{
-			name:     "matches vendor directory",
-			path:     "vendor/bundle/ruby/gems/rails/lib/rails.rb",
-			patterns: []string{"vendor/**"},
-			expected: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := IsIgnored(tt.path, tt.patterns)
-			assert.Equal(t, tt.expected, result, "path: %q, patterns: %v", tt.path, tt.patterns)
-		})
-	}
-}
-
 func TestDefaultIgnorePatterns(t *testing.T) {
-	// Verify defaults are sensible
 	assert.Contains(t, DefaultIgnorePatterns, ".git/**")
 	assert.Contains(t, DefaultIgnorePatterns, "node_modules/**")
 	assert.Len(t, DefaultIgnorePatterns, 2)
-
-	// Verify they actually work
-	assert.True(t, IsIgnored(".git/config", DefaultIgnorePatterns))
-	assert.True(t, IsIgnored("node_modules/lodash/index.js", DefaultIgnorePatterns))
-	assert.False(t, IsIgnored("lib/user.rb", DefaultIgnorePatterns))
-}
-
-func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "args.txt")
-
-	// Job that writes all arguments to a file - verifies batching behavior
-	j := job.Job{
-		Name: "test-batch",
-		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
-	}
-
-	err := ExecuteJob(j, []string{"file1.rb", "file2.rb", "file3.rb"}, tmpDir)
-	require.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	require.NoError(t, err)
-
-	// All three files should appear in a single command invocation
-	output := string(content)
-	assert.Contains(t, output, "file1.rb")
-	assert.Contains(t, output, "file2.rb")
-	assert.Contains(t, output, "file3.rb")
-}
-
-func TestExecuteJob_SingleTarget(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "args.txt")
-
-	j := job.Job{
-		Name: "test-single",
-		Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--", "{{target}}"},
-	}
-
-	err := ExecuteJob(j, []string{"only_file.rb"}, tmpDir)
-	require.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	require.NoError(t, err)
-	assert.Contains(t, string(content), "only_file.rb")
-}
-
-func TestExecuteJob_NoTargets(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "args.txt")
-
-	j := job.Job{
-		Name: "test-empty",
-		Cmd:  []string{"sh", "-c", "echo ran > " + outputFile, "--", "{{target}}"},
-	}
-
-	err := ExecuteJob(j, []string{}, tmpDir)
-	require.NoError(t, err)
-
-	// Command should not run at all with empty targets
-	_, err = os.ReadFile(outputFile)
-	assert.True(t, os.IsNotExist(err), "Command should not execute with no targets")
-}
-
-func TestExecuteJob_WithoutTargetPlaceholder(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "ran.txt")
-
-	// Job without {{target}} runs once regardless of targets
-	j := job.Job{
-		Name: "test-no-placeholder",
-		Cmd:  []string{"sh", "-c", "echo executed > " + outputFile},
-	}
-
-	err := ExecuteJob(j, []string{"ignored1.rb", "ignored2.rb"}, tmpDir)
-	require.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	require.NoError(t, err)
-	assert.Equal(t, "executed\n", string(content))
 }
 
 // Channel safety tests

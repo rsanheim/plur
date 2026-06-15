@@ -3,9 +3,9 @@ package framework
 import (
 	"testing"
 
-	frameworkminitest "github.com/rsanheim/plur/framework/minitest"
-	frameworkpassthrough "github.com/rsanheim/plur/framework/passthrough"
-	frameworkrspec "github.com/rsanheim/plur/framework/rspec"
+	frameworkminitest "github.com/rsanheim/plur/internal/framework/minitest"
+	frameworkpassthrough "github.com/rsanheim/plur/internal/framework/passthrough"
+	frameworkrspec "github.com/rsanheim/plur/internal/framework/rspec"
 	"github.com/stretchr/testify/require"
 )
 

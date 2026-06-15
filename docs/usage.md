@@ -22,6 +22,9 @@ plur --dry-run
 plur -C path/to/project
 ```
 
+Explicit path inputs are normalized before discovery and execution. For example,
+`./spec/models/user_spec.rb` is run as `spec/models/user_spec.rb`.
+
 ### Selecting Test Framework
 
 Plur auto-detects your test framework (RSpec or Minitest) based on directory structure, but you can override this:
@@ -57,7 +60,8 @@ use = "minitest"  # Override default to use Minitest
 ### Excluding Tests From Discovery
 
 Use `--exclude-pattern` (repeatable) to drop matching files from the test plan
-before workers run. Patterns use doublestar semantics.
+before workers run. Patterns use doublestar semantics. Patterns that match no
+selected files are ignored.
 
 ```bash
 # Skip a single file
@@ -163,12 +167,6 @@ Shows dots for test progress:
 - `.` - Passing test
 - `F` - Failing test
 - `*` - Pending test
-
-### JSON Output
-
-Plur uses dual formatters internally:
-- Progress formatter for visual feedback
-- JSON formatter for parsing results
 
 ## Performance Monitoring
 

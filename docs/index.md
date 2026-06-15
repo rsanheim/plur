@@ -17,7 +17,6 @@ Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
 Technical implementation details:
 
 * [Test Processing Flow](architecture/test-processing-flow.md) - How tests are distributed
-* [Concurrency Review](architecture/go-concurrency-and-data-structures-review.md) - Goroutine lifecycle and data structures audit
 * [Watch Architecture](architecture/plur-watch-architecture.md) - Watch mode internals
 
 ## Development
@@ -32,6 +31,4 @@ Guides for contributors:
 ## Reference
 
 * [Overview](overview/index.md) - Project overview
-* [Project Status](overview/project-status.md) - Current status and performance
-* [Roadmap](overview/roadmap.md) - Future plans
 * [Benchmarks](benchmarks/oss-benchmarks.md) - Performance benchmarks

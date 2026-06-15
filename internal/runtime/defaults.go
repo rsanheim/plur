@@ -3,6 +3,7 @@ package runtime
 import (
 	_ "embed"
 	"fmt"
+	"io/fs"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -10,9 +11,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/fsutil"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/watch"
 )
 
@@ -21,8 +21,8 @@ var defaultsFile []byte
 
 type defaultsConfig struct {
 	Defaults struct {
-		Jobs    map[string]job.Job   `toml:"job"`
-		Watches []watch.WatchMapping `toml:"watch"`
+		Jobs    map[string]framework.Job `toml:"job"`
+		Watches []watch.WatchMapping     `toml:"watch"`
 	} `toml:"defaults"`
 }
 
@@ -45,23 +45,26 @@ type InheritedFields struct {
 
 // autodetectJobName runs autodetection against the given resolved jobs and returns the
 // name of the best-matching job based on file system presence.
-func autodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
+func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 	priority := []string{"rspec", "minitest", "go-test"}
 	for _, name := range priority {
 		j, exists := resolvedJobs[name]
 		if !exists {
 			continue
 		}
-		patterns, err := framework.TargetPatternsForJob(j)
-		if err != nil || len(patterns) == 0 {
+		patterns := []string{j.TargetPattern}
+		if j.TargetPattern == "" {
+			patterns = framework.DetectPatterns(j.FrameworkName)
+		}
+		if len(patterns) == 0 {
 			continue
 		}
 		for _, pattern := range patterns {
-			matches, err := doublestar.FilepathGlob(pattern)
+			found, err := anyFileMatches(pattern)
 			if err != nil {
 				return "", fmt.Errorf("error finding files with pattern %q: %w", pattern, err)
 			}
-			if len(matches) > 0 {
+			if found {
 				return name, nil
 			}
 		}
@@ -69,33 +72,91 @@ func autodetectJobName(resolvedJobs map[string]job.Job) (string, error) {
 	return "", fmt.Errorf("no default spec/test files found using default patterns")
 }
 
+// detectIgnoredDirs are never descended into when checking for test file
+// presence. They hold third-party or generated code whose test files must
+// not drive detection, and they dominate walk time when present.
+var detectIgnoredDirs = map[string]bool{
+	".git":         true,
+	"node_modules": true,
+	"vendor":       true,
+	"tmp":          true,
+}
+
+// anyFileMatches reports whether at least one file matches the doublestar
+// pattern. Detection only needs existence, so unlike doublestar.FilepathGlob
+// (which collects every match), this walks from the pattern's fixed base,
+// prunes ignored directories, and stops at the first hit.
+func anyFileMatches(pattern string) (bool, error) {
+	base, rest := doublestar.SplitPattern(filepath.ToSlash(pattern))
+	base = filepath.FromSlash(base)
+	if resolved, err := filepath.EvalSymlinks(base); err == nil {
+		base = resolved
+	}
+
+	found := false
+	err := filepath.WalkDir(base, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			// A missing base or unreadable entry cannot match; glob
+			// semantics treat that as "no matches", not an error.
+			return nil
+		}
+		if d.IsDir() {
+			if path != base && detectIgnoredDirs[d.Name()] {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		rel, relErr := filepath.Rel(base, path)
+		if relErr != nil {
+			return nil
+		}
+		matched, matchErr := doublestar.Match(rest, filepath.ToSlash(rel))
+		if matchErr != nil {
+			return matchErr
+		}
+		if matched {
+			found = true
+			return fs.SkipAll
+		}
+		return nil
+	})
+	return found, err
+}
+
 // buildResolvedJobs merges built-in defaults and user jobs into a resolved jobs map.
 // It applies framework and target pattern defaulting and normalizes frameworks.
-func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[string]InheritedFields, error) {
-	resolved := make(map[string]job.Job)
+func buildResolvedJobs(userJobs map[string]framework.Job) (map[string]framework.Job, map[string]InheritedFields, error) {
+	resolved := make(map[string]framework.Job)
 	inherited := make(map[string]InheritedFields)
 
-	names := make(map[string]struct{})
+	jobNames := make(map[string]struct{})
 	for name := range builtinDefaults.Defaults.Jobs {
-		names[name] = struct{}{}
+		jobNames[name] = struct{}{}
 	}
 	for name := range userJobs {
-		names[name] = struct{}{}
+		jobNames[name] = struct{}{}
 	}
 
-	for name := range names {
-		builtin, hasBuiltin := builtinDefaults.Defaults.Jobs[name]
-		user, hasUser := job.Job{}, false
+	for jobName := range jobNames {
+		builtin, hasBuiltin := builtinDefaults.Defaults.Jobs[jobName]
+		user, hasUser := framework.Job{}, false
 		if userJobs != nil {
-			user, hasUser = userJobs[name]
+			user, hasUser = userJobs[jobName]
 		}
 
 		inherit := InheritedFields{}
-		resolvedJob := job.Job{}
+		resolvedJob := framework.Job{}
 
 		// Start with builtin if present
 		if hasBuiltin {
 			resolvedJob = builtin
+			if !hasUser {
+				inherit.Cmd = len(builtin.Cmd) > 0
+				inherit.Env = len(builtin.Env) > 0
+				inherit.Framework = builtin.FrameworkName != ""
+				inherit.TargetPattern = builtin.TargetPattern != ""
+				inherit.ExcludePatterns = len(builtin.ExcludePatterns) > 0
+			}
 		}
 
 		// Overlay user fields, tracking inheritance at decision point
@@ -112,9 +173,9 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 				inherit.Env = true
 			}
 
-			if user.Framework != "" {
-				resolvedJob.Framework = user.Framework
-			} else if resolvedJob.Framework != "" {
+			if user.FrameworkName != "" {
+				resolvedJob.FrameworkName = user.FrameworkName
+			} else if resolvedJob.FrameworkName != "" {
 				inherit.Framework = true
 			}
 
@@ -131,22 +192,22 @@ func buildResolvedJobs(userJobs map[string]job.Job) (map[string]job.Job, map[str
 			}
 		}
 
-		resolvedJob.Name = name
+		resolvedJob.Name = jobName
 
 		// Framework defaulting (only affects pure user jobs without builtin)
-		if resolvedJob.Framework == "" {
-			resolvedJob.Framework = "passthrough"
+		if resolvedJob.FrameworkName == "" {
+			resolvedJob.FrameworkName = "passthrough"
 		}
 
 		// Validate framework
-		normalizedFramework := framework.Normalize(resolvedJob.Framework)
+		normalizedFramework := framework.Normalize(resolvedJob.FrameworkName)
 		if !framework.IsKnown(normalizedFramework) {
-			return nil, nil, fmt.Errorf("job %q has unknown framework %q", name, resolvedJob.Framework)
+			return nil, nil, fmt.Errorf("job %q has unknown framework %q", jobName, resolvedJob.FrameworkName)
 		}
-		resolvedJob.Framework = normalizedFramework
+		resolvedJob.FrameworkName = normalizedFramework
 
-		resolved[name] = resolvedJob
-		inherited[name] = inherit
+		resolved[jobName] = resolvedJob
+		inherited[jobName] = inherit
 	}
 
 	return resolved, inherited, nil
@@ -198,14 +259,11 @@ func inferFrameworkFromPatterns(patterns []string) (string, error) {
 func frameworksMatchingPattern(pattern string, candidates []string) (map[string]struct{}, error) {
 	matched := make(map[string]struct{})
 	for _, name := range candidates {
-		spec, err := framework.Get(name)
-		if err != nil {
-			return nil, err
-		}
-		if len(spec.DetectPatterns) == 0 {
+		detectPatterns := framework.DetectPatterns(name)
+		if len(detectPatterns) == 0 {
 			continue
 		}
-		ok, err := patternMatchesFramework(pattern, spec.DetectPatterns)
+		ok, err := patternMatchesFramework(pattern, detectPatterns)
 		if err != nil {
 			return nil, err
 		}
@@ -264,11 +322,11 @@ func dirMatchesFramework(dir string, detectPatterns []string) (bool, error) {
 	for _, pattern := range detectPatterns {
 		_, tail := doublestar.SplitPattern(pattern)
 		dirPattern := filepath.Join(dir, filepath.FromSlash(tail))
-		matches, err := doublestar.FilepathGlob(dirPattern)
+		found, err := anyFileMatches(dirPattern)
 		if err != nil {
 			return false, err
 		}
-		if len(matches) > 0 {
+		if found {
 			return true, nil
 		}
 	}

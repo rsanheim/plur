@@ -11,7 +11,7 @@ RSpec.describe "plur watch config edge cases" do
     end
   end
 
-  it "accepts [[watch]] without source and yields no matching rules in watch find" do
+  it "rejects [[watch]] without source" do
     with_temp_watch_config(<<~TOML) do |config_path, _tmpdir|
       use = "rspec"
 
@@ -26,37 +26,13 @@ RSpec.describe "plur watch config edge cases" do
         chdir: default_ruby_dir.to_s
       )
 
-      expect(stderr).to eq("")
-      expect(stdout).to include('msg="checking watch" file=lib/calculator.rb')
-      expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb jobs=[rspec] target=spec/{{match}}_spec.rb')
-      expect(stdout).to include('msg="found files" files=spec/calculator_spec.rb')
-      expect(status.exitstatus).to eq(0)
+      expect(stdout).to eq("")
+      expect(stderr).to include('watch "missing-source" must define source')
+      expect(status).not_to be_success
     end
   end
 
-  it "uses the same loaded watch config in watch run and falls back to project root when source is missing", :skip_if_ci do
-    with_temp_watch_config(<<~TOML) do |config_path, tmpdir|
-      use = "rspec"
-
-      [[watch]]
-      name = "missing-source"
-      jobs = ["rspec"]
-    TOML
-
-      result = run_plur_watch(
-        timeout: 1,
-        env: {
-          "PLUR_CONFIG_FILE" => config_path,
-          "PLUR_HOME" => File.join(tmpdir, "plur-home")
-        }
-      )
-
-      expect(result.err).to include("Watch directories after filtering dirs=[.]")
-      expect(result.success?).to be(true)
-    end
-  end
-
-  it "accepts [[watch]] without jobs and reports jobs=[] in watch find" do
+  it "rejects [[watch]] without jobs" do
     with_temp_watch_config(<<~TOML) do |config_path, _tmpdir|
       use = "rspec"
 
@@ -71,34 +47,39 @@ RSpec.describe "plur watch config edge cases" do
         chdir: default_ruby_dir.to_s
       )
 
-      expect(stderr).to eq("")
-      expect(stdout).to include('msg="checking watch" file=lib/calculator.rb')
-      expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb jobs=[rspec] target=spec/{{match}}_spec.rb')
-      expect(stdout).to include('msg="found rules" name=missing-jobs source=lib/**/*.rb jobs=[] target="[source file]"')
-      expect(stdout).to include('msg="found files" files=spec/calculator_spec.rb')
-      expect(status.exitstatus).to eq(0)
+      expect(stdout).to eq("")
+      expect(stderr).to include('watch "missing-jobs" must define at least one job')
+      expect(status).not_to be_success
     end
   end
 
-  it "uses the same loaded watch config in watch run and merges built-in watch directories when jobs is missing", :skip_if_ci do
+  it "runs no-target watch jobs without passing the changed file" do
     with_temp_watch_config(<<~TOML) do |config_path, tmpdir|
-      use = "rspec"
+      use = "build"
+
+      [job.build]
+      cmd = ["echo", "build"]
 
       [[watch]]
-      name = "missing-jobs"
-      source = "lib/**/*.rb"
+      name = "go-build"
+      source = "**/*.go"
+      no_targets = true
+      jobs = ["build"]
     TOML
 
-      result = run_plur_watch(
-        timeout: 1,
-        env: {
-          "PLUR_CONFIG_FILE" => config_path,
-          "PLUR_HOME" => File.join(tmpdir, "plur-home")
-        }
+      File.write(File.join(tmpdir, "runner.go"), "package main\n")
+
+      stdout, stderr, status = Open3.capture3(
+        {"PLUR_CONFIG_FILE" => config_path},
+        plur_binary, "watch", "find", "runner.go",
+        chdir: tmpdir
       )
 
-      expect(result.err).to include("Watch directories after filtering dirs=[lib spec]")
-      expect(result.success?).to be(true)
+      expect(stderr).to eq("")
+      expect(stdout).to include('msg="checking watch" file=runner.go')
+      expect(stdout).to include('msg="found rules" name=go-build source=**/*.go jobs=[build] target="[no targets]"')
+      expect(stdout).not_to include("files=runner.go")
+      expect(status.exitstatus).to eq(0)
     end
   end
 
@@ -149,6 +130,70 @@ RSpec.describe "plur watch config edge cases" do
       expect(stdout).to include('msg="found rules" name=lib-to-spec source=lib/**/*.rb jobs=[rspec] target=spec/string_utils_spec.rb')
       expect(stdout).to include('msg="found files" files=spec/string_utils_spec.rb')
       expect(stdout).not_to include("spec/calculator_spec.rb")
+      expect(status.exitstatus).to eq(0)
+    end
+  end
+
+  it "shows no watch mappings in an empty project without a detectable framework" do
+    Dir.mktmpdir do |tmpdir|
+      stdout, stderr, status = Open3.capture3(
+        {"HOME" => tmpdir},
+        plur_binary, "watch", "find", "lib/foo.rb",
+        chdir: tmpdir
+      )
+
+      expect(stderr).to eq("")
+      expect(stdout).to include("No watch mappings configured.")
+      expect(status.exitstatus).to eq(0)
+    end
+  end
+
+  it "finds custom watch rules when config has no use key" do
+    with_temp_watch_config(<<~TOML) do |config_path, tmpdir|
+      [job.build]
+      cmd = ["echo", "build"]
+
+      [[watch]]
+      name = "go-build"
+      source = "**/*.go"
+      no_targets = true
+      jobs = ["build"]
+    TOML
+
+      File.write(File.join(tmpdir, "runner.go"), "package main\n")
+
+      stdout, stderr, status = Open3.capture3(
+        {"PLUR_CONFIG_FILE" => config_path},
+        plur_binary, "watch", "find", "runner.go",
+        chdir: tmpdir
+      )
+
+      expect(stderr).to eq("")
+      expect(stdout).to include('msg="found rules" name=go-build source=**/*.go jobs=[build] target="[no targets]"')
+      expect(stdout).to include('msg="would run" job=build cmd="echo build"')
+      expect(status.exitstatus).to eq(0)
+    end
+  end
+
+  it "renders built-in Go watch targets as local package patterns" do
+    tmp_root = ROOT_PATH.join("tmp")
+    FileUtils.mkdir_p(tmp_root)
+
+    Dir.mktmpdir("go-watch-defaults-", tmp_root.to_s) do |tmpdir|
+      FileUtils.mkdir_p(File.join(tmpdir, "pkg"))
+      File.write(File.join(tmpdir, "go.mod"), "module example.test/plur-watch\n")
+      File.write(File.join(tmpdir, "pkg", "runner.go"), "package pkg\n")
+
+      stdout, stderr, status = Open3.capture3(
+        {"HOME" => tmpdir},
+        plur_binary, "-u", "go-test", "watch", "find", "pkg/runner.go",
+        chdir: tmpdir
+      )
+
+      expect(stderr).to eq("")
+      expect(stdout).to include('msg="found rules" name=go-source source=**/*.go jobs=[go-test] target=./{{dir_relative}}')
+      expect(stdout).to include('msg="found files" files=./pkg/')
+      expect(stdout).to include('msg="would run" job=go-test cmd="go test ./pkg/"')
       expect(status.exitstatus).to eq(0)
     end
   end

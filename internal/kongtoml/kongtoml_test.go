@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/alecthomas/kong"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -222,7 +222,7 @@ cmd = ["bin/rspec"]
 	var cli struct {
 		Workers int
 		Use     string
-		Job     map[string]job.Job
+		Job     map[string]framework.Job
 		Watch   []watch.WatchMapping `name:"watch" toml:"watch"`
 	}
 	parser, err := kong.New(&cli)
@@ -250,7 +250,7 @@ jobs = ["rspec"]
 
 	var cli struct {
 		Use   string
-		Job   map[string]job.Job
+		Job   map[string]framework.Job
 		Watch []watch.WatchMapping `name:"watch" toml:"watch"`
 	}
 	parser, err := kong.New(&cli)

@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/testutil"
 )
 
 const (
@@ -49,6 +53,41 @@ func BenchmarkCache_LoadLargeRspecCache(b *testing.B) {
 		if len(loaded.Files) != benchFileCount {
 			b.Fatalf("loaded %d files, want %d", len(loaded.Files), benchFileCount)
 		}
+	}
+}
+
+// TestCacheLoadBudget enforces the runtime-cache load budget. The cache is read
+// on every plur run against a large suite, so a regression here slows everyone.
+func TestCacheLoadBudget(t *testing.T) {
+	if buildinfo.RaceEnabled {
+		t.Skip("skipping cache load budget under race detector")
+	}
+
+	budgetMS := 30.0
+	if testutil.IsCI() {
+		budgetMS = 45.0
+	}
+	if v, ok := os.LookupEnv("PLUR_CACHE_LOAD_BUDGET_MS"); ok {
+		parsed, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			t.Fatalf("invalid PLUR_CACHE_LOAD_BUDGET_MS=%q: %v", v, err)
+		}
+		budgetMS = parsed
+	}
+
+	// best of 3 runs
+	bestMS := 0.0
+	for i := 0; i < 3; i++ {
+		res := testing.Benchmark(BenchmarkCache_LoadLargeRspecCache)
+		ms := float64(res.NsPerOp()) / 1e6
+		if i == 0 || ms < bestMS {
+			bestMS = ms
+		}
+	}
+
+	t.Logf("runtime cache load = %.1fms (budget %.0fms)", bestMS, budgetMS)
+	if bestMS > budgetMS {
+		t.Fatalf("runtime cache load %.1fms exceeds %.0fms budget", bestMS, budgetMS)
 	}
 }
 

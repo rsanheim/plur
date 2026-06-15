@@ -1,4 +1,4 @@
-package main
+package testruntime
 
 import (
 	"os"
@@ -9,9 +9,7 @@ import (
 
 // FileGroup represents a group of spec files that will run in one process
 type FileGroup struct {
-	Files     []string
-	TotalSize int64
-	WorkerID  int
+	Files []string
 }
 
 // GroupSpecFilesBySize distributes spec files into groups to minimize total processes
@@ -41,12 +39,9 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 
 	// Initialize groups
 	groups := make([]FileGroup, numWorkers)
+	groupSizes := make([]int64, numWorkers)
 	for i := range groups {
-		groups[i] = FileGroup{
-			Files:     make([]string, 0),
-			TotalSize: 0,
-			WorkerID:  i,
-		}
+		groups[i] = FileGroup{Files: make([]string, 0)}
 	}
 
 	// Distribute files using "smallest group first" algorithm
@@ -54,17 +49,17 @@ func GroupSpecFilesBySize(specFiles []string, numWorkers int) []FileGroup {
 	for _, file := range filesWithSizes {
 		// Find the group with smallest total size
 		minIdx := 0
-		minSize := groups[0].TotalSize
+		minSize := groupSizes[0]
 		for i := 1; i < len(groups); i++ {
-			if groups[i].TotalSize < minSize {
+			if groupSizes[i] < minSize {
 				minIdx = i
-				minSize = groups[i].TotalSize
+				minSize = groupSizes[i]
 			}
 		}
 
 		// Add file to smallest group
 		groups[minIdx].Files = append(groups[minIdx].Files, file.path)
-		groups[minIdx].TotalSize += file.size
+		groupSizes[minIdx] += file.size
 	}
 
 	// Remove empty groups (when we have more workers than files)
@@ -116,11 +111,7 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 	groups := make([]FileGroup, numWorkers)
 	groupRuntimes := make([]float64, numWorkers)
 	for i := range groups {
-		groups[i] = FileGroup{
-			Files:     make([]string, 0),
-			TotalSize: 0,
-			WorkerID:  i,
-		}
+		groups[i] = FileGroup{Files: make([]string, 0)}
 	}
 
 	// Distribute files using "smallest runtime first" algorithm
@@ -139,8 +130,6 @@ func GroupSpecFilesByRuntime(specFiles []string, numWorkers int, runtimeData map
 		// Add file to group with smallest runtime
 		groups[minIdx].Files = append(groups[minIdx].Files, file.path)
 		groupRuntimes[minIdx] += file.runtime
-		// Store runtime as int64 (milliseconds) for compatibility
-		groups[minIdx].TotalSize += int64(file.runtime * 1000)
 	}
 
 	// Remove empty groups (when we have more workers than files)

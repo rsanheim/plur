@@ -20,11 +20,12 @@ The `plur watch` command provides automatic test execution when files change, us
 - Communicates via JSON events over stdout/stderr
 - Keeps process alive via stdin pipe
 
-### 3. FileMapper (`watch/file_mapper.go`)
+### 3. Planner (`watch/plan.go`)
 
-- Maps source files to their corresponding test files
-- Supports Rails conventions (app/models → spec/models)
-- Handles special cases (spec_helper.rb runs all specs)
+* Decides what a file change does; shared by `plur watch` and `plur watch find` so both agree on behavior
+* `Admit` normalizes paths to be CWD-relative, rejecting paths outside the project and paths matching global ignore patterns
+* `Plan` matches watch rules against changed paths, renders target templates, skips targets that do not exist on disk, and merges deduplicated targets into per-job runs
+* Built from validated runtime config, so planning cannot fail at runtime
 
 ### 4. Debouncer (`watch/debouncer.go`)
 
@@ -33,13 +34,10 @@ The `plur watch` command provides automatic test execution when files change, us
 * Batches and deduplicates file paths before processing
 * Timer resets on each new event within the delay window
 
-### 5. FileEventHandler (`watch/file_event_handler.go`)
+### 5. Job Execution (`watch/execute.go`)
 
-* Processes batched file events from the Debouncer
-* Aggregates targets across multiple source files
-* Deduplicates target files per job
-* Executes jobs in matched rule order
-* Returns `HandleResult` with executed jobs and reload flag
+* `ExecuteJob` runs each `JobRun` from the plan, streaming output to the terminal
+* `JobRun.Command` builds the argv (job command plus targets) and environment; execution and display both start here so what plur prints is exactly what it runs
 
 ## Event Flow
 
@@ -58,11 +56,15 @@ WatcherManager.eventChan (unified stream)
     ↓
 Main Watch Loop (cmd_watch.go)
     ↓
-Event Filtering (path type, effect type, ignore patterns)
+Event Filtering (path type, effect type)
+    ↓
+Planner.Admit() (relativize path, reject outside-CWD, ignore patterns)
     ↓
 Debouncer.Debounce() (batch changes, deduplicate files)
     ↓
-FileEventHandler.HandleBatch() (map files → targets, execute jobs)
+Planner.Plan() (match rules, render targets, merge job runs)
+    ↓
+watch.ExecuteJob() (run each job)
     ↓
 promptChan / reloadChan (coordinate output and process reload)
 ```
@@ -166,12 +168,16 @@ The downloaded binaries are stored in `embedded/watcher/` and embedded into the 
 
 ## File Mapping Rules
 
-1. **Direct spec mapping**: `lib/foo.rb` → `spec/foo_spec.rb`
-2. **Rails conventions**: `app/models/user.rb` → `spec/models/user_spec.rb`
-3. **Nested files**: `lib/foo/bar.rb` → `spec/foo/bar_spec.rb`
-4. **Special cases**:
-   - `spec_helper.rb` → runs all specs in `spec/`
-   - `rails_helper.rb` → runs all specs in `spec/`
+File-to-target mapping is driven by watch mappings: built-in defaults
+(`internal/runtime/defaults.toml`) merged with user `[[watch]]` config.
+Built-in examples:
+
+1. **Direct spec mapping** (`lib-to-spec`): `lib/foo.rb` → `spec/foo_spec.rb`
+2. **Rails conventions** (`app-to-spec`): `app/models/user.rb` → `spec/models/user_spec.rb`
+3. **Spec files run themselves** (`spec-files`): `spec/foo_spec.rb` → `spec/foo_spec.rb`
+4. **Go packages** (`go-source`): `pkg/foo.go` → `go test ./pkg/`
+
+Rendered targets that do not exist on disk are skipped.
 
 ## Signal Handling
 
@@ -223,11 +229,11 @@ This is useful for development workflows where plur rebuilds itself.
 │  │                      Event Processing                               │    │
 │  │                                                                     │    │
 │  │  ┌─────────────────┐    ┌─────────────────────┐                    │    │
-│  │  │    Debouncer    │───▶│  FileEventHandler   │                    │    │
+│  │  │    Debouncer    │───▶│  Planner / Execute  │                    │    │
 │  │  │                 │    │                     │                    │    │
-│  │  │ * Batch files   │    │ * Map to targets    │                    │    │
-│  │  │ * Deduplicate   │    │ * Execute jobs      │                    │    │
-│  │  │ * 30ms delay    │    │ * Return results    │                    │    │
+│  │  │ * Batch files   │    │ * Match watch rules │                    │    │
+│  │  │ * Deduplicate   │    │ * Render targets    │                    │    │
+│  │  │ * 30ms delay    │    │ * Execute job runs  │                    │    │
 │  │  └─────────────────┘    └─────────────────────┘                    │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                             │

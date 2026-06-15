@@ -4,6 +4,9 @@ site_url: https://github.com/rsanheim/plur
 repo_name: rsanheim/plur
 repo_url: https://github.com/rsanheim/plur
 
+exclude_docs: |
+  README.md
+
 theme:
   name: material
   icon:

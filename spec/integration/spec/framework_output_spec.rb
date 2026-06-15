@@ -22,7 +22,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
 
         [job.fast]
         framework = "rspec"
-        cmd = ["bundle", "exec", "rspec", "--fail-fast", "{{target}}"]
+        cmd = ["bundle", "exec", "rspec", "--fail-fast"]
         target_pattern = "spec/**/*_spec.rb"
       TOML
 

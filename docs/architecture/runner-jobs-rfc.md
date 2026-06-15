@@ -5,7 +5,7 @@ framework defaults. It focuses on the interaction between user jobs, built-in
 jobs, frameworks, and watch mappings.
 
 ## Status
-Draft
+Implemented
 
 ## Normative language
 The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" are to be
@@ -62,7 +62,10 @@ Fields and meaning:
 - `Cmd` ([]string): executable + args. MUST be non-empty for runnable jobs.
 - `Env` ([]string): additional environment variables ("KEY=VALUE"). If set,
   it replaces (does not append to) any built-in Env.
-- `Framework` (string): framework identity (rspec/minitest/passthrough/go-test).
+- `FrameworkName` (string): normalized framework identity from config
+  (rspec/minitest/passthrough/go-test).
+- `Framework` (internal): resolved registry entry populated only for the selected
+  runnable job.
 - `TargetPattern` (string): glob for file discovery (autodetect and directory
   expansion). Uses doublestar semantics.
   - `TargetPattern` is job-specific and can override framework detection
@@ -108,7 +111,7 @@ job name in the union of built-ins and user jobs:
 2. If a user job exists for the same name, overlay its fields:
    - `Cmd` overrides when user-provided and non-empty.
    - `Env` overrides when user-provided and non-empty.
-   - `Framework` overrides when user-provided and non-empty.
+   - `FrameworkName` overrides when user-provided and non-empty.
    - `TargetPattern` overrides when user-provided and non-empty.
 3. Set `resolved.Name = job_name`.
 
@@ -118,7 +121,7 @@ Notes:
 
 ### Framework defaulting rules
 After overlaying:
-- If `resolved.Framework` is non-empty, normalize and validate it.
+- If `resolved.FrameworkName` is non-empty, normalize and validate it.
 - Else if a built-in job exists for the same name, use that framework.
 - Else default to `passthrough`.
 - Unknown framework values MUST error during config load.
@@ -131,6 +134,11 @@ After framework defaulting:
 
 ## Resolution order
 All resolution steps MUST use the resolved jobs map.
+
+After a job is selected, runtime constructs the selected runnable job by
+resolving `FrameworkName` into the internal `Framework` field once. Downstream
+discovery, runner command construction, parsing, and result printing use that
+resolved `framework.Job` instead of looking up the framework again.
 
 1) Explicit name
 - If `--use` / `use = "..."` is provided, select the job by name.
@@ -239,19 +247,19 @@ unless intentionally diverging.
 
 ## Built-in defaults (documented)
 These are the canonical defaults that job resolution should preserve unless
-explicitly overridden. Keep this in sync with `autodetect/defaults.toml`.
+explicitly overridden. Keep this in sync with `internal/runtime/defaults.toml`.
 
 - `rspec`
   - framework: `rspec`
-  - cmd: `["bundle", "exec", "rspec", "{{target}}"]`
+  - cmd: `["bundle", "exec", "rspec"]`
   - target_pattern: `spec/**/*_spec.rb`
 - `minitest`
   - framework: `minitest`
-  - cmd: `["bundle", "exec", "ruby", "-Itest", "{{target}}"]`
+  - cmd: `["bundle", "exec", "ruby", "-Itest"]`
   - target_pattern: `test/**/*_test.rb`
 - `go-test`
   - framework: `go-test`
-  - cmd: `["go", "test", "{{target}}"]`
+  - cmd: `["go", "test"]`
   - target_pattern: `**/*_test.go`
 
 ## Compatibility / impact
