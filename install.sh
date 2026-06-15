@@ -197,6 +197,11 @@ install_plur() {
 
   info "Detected: $OS/$ARCH"
 
+  case "$OS/$ARCH" in
+    darwin/arm64|linux/amd64|linux/arm64) ;;
+    *) error "no prebuilt plur binary for $OS/$ARCH" ;;
+  esac
+
   # Determine version
   if [ -z "$VERSION" ]; then
     info "Fetching latest version..."

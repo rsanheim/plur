@@ -1,18 +1,13 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Project: Plur - Fast parallel test runner & watcher
 
-## Project: Plur - Fast parallel test runner for Ruby/RSpec
-
-Production-ready Go implementation, ~13% faster than turbo_tests/parallel_tests.
-
-## 🚨 IMPORTANT: Always use `bin/rake`, never bare `rake`
+### Development
 
 ```bash
 # Daily workflow commands (in order of frequency):
 bin/rake                      # Run full build -> lint, install, tests
 bin/rake install              # Build & install a global binary sys/contianer wide
-bin/rake test:default_ruby    # Test plur on default-ruby fixture project (quick check)
 bin/rake test                 # Run full Ruby test suite
 bin/rake standard:fix         # Fix Ruby lint issues
 ```
@@ -22,26 +17,22 @@ Notes:
 - For a single spec file, use `bin/rspec spec/path/to/file_spec.rb`.
 - Install tools from top-level `.mise.toml`: `mise install --yes`
 
-## Internal Planning Repo
-
-- The private planning repo for this project is `plur-internal`.
-- On this machine, and on the user's other dev machines, it lives at `../plur-internal` relative to this repository.
-- GitHub: `https://github.com/rsanheim/plur-internal`
-- Git remote: `git@github.com:rsanheim/plur-internal.git`
-- Keep public product docs in this repo's `docs/` tree focused on current user-facing behavior.
-- Put planning docs, research notes, WIP writeups, marketing drafts, and internal design material in `../plur-internal`.
-
 ### bin/rake build vs bin/rake install
 
-* **bin/rake build** - Fast local build using `go build` (creates `./plur`)
-  * Version detection may be incorrect (uses runtime git describe in CWD)
-  * Used by CI for speed
-  * Fine for testing, not for distribution
+* **bin/rake build** - standard local go build via `go build` (creates `./plur`)
 
 * **bin/rake install** - Production dev install using `goreleaser build` (installs to `$GOPATH/bin/plur`)
   * Version is correctly embedded via ldflags at build time
   * Always shows consistent version regardless of CWD
-  * Use this for your daily workflow
+  * Use this for real verification with other local repos
+
+## Internal Planning Repo
+
+- The private planning repo for this project is `plur-internal` - it lives at "../plur-internal" releative to this repo.
+- GitHub: `https://github.com/rsanheim/plur-internal`
+- Git remote: `git@github.com:rsanheim/plur-internal.git`
+- Keep public product docs in this repo's `docs/` tree focused on current user-facing behavior.
+- Put planning docs, research notes, WIP writeups, marketing drafts, and internal design material in `../plur-internal`.
 
 ## Quick Reference
 
@@ -87,9 +78,7 @@ See [Configuration Documentation](docs/configuration.md#job-configuration) for f
 - **ALWAYS use plur project root `./tmp` directory** for temporary files, never `/tmp` or subproject tmp dirs
 
 ### Framework Detection (Updated Behavior)
-When both `spec/` and `test/` directories exist:
-- **Current behavior (as of commit 7796831)**: Plur defaults to RSpec
-- **Previous behavior**: Plur defaulted to Minitest
+When both `spec/` and `test/` directories exist, Plur defaults to RSpec
 - **Rationale**: RSpec is typically the primary framework in projects with both directories
 - **Override**: Use `plur --use=minitest` or set `use = "minitest"` in `.plur.toml`
 
@@ -97,7 +86,7 @@ When both `spec/` and `test/` directories exist:
 - Worker pool with goroutines
 - Runtime-based test distribution (tracks execution times)
 - Channel-based output aggregation (no lock contention)
-- Compatible with PARALLEL_TEST_PROCESSORS env var
+- We are removing top-level `*.go` files; new Go files must live under `internal/` or another appropriate package, not the repository root.
 
 ### Development Cycle
 1. Make changes
@@ -114,11 +103,7 @@ Keep git operations simple:
 
 ## Testing from Outside-In
 
-ALWAYS use integration specs as guardrails:
-- `spec/integration/plur_spec/general_integration_spec.rb` - Core functionality
-- `spec/integration/plur_spec/parallel_execution_spec.rb` - Parallelism
-- `spec/integration/plur_spec/error_handling_spec.rb` - Error cases
-- `spec/integration/plur_doctor/doctor_spec.rb` - Doctor command with backspin
+ALWAYS use integration specs as guardrails - we have many, see `spec/integration`.
 
 Run all specs via: `bin/rake test` or target specific: `bundle exec rspec spec/[file]`
 
@@ -152,19 +137,7 @@ script/bench-git --refs v0.15.0 v0.14.0 main -p ~/src/oss/rspec-core
 
 ## Kong CLI Patterns
 
-**IMPORTANT**: When implementing Kong subcommands, be aware that Kong executes commands in reverse order (from deepest subcommand up to parent). Parent commands must check the context to avoid running when a subcommand is invoked. See `docs/development/kong-cli-patterns.md` for critical implementation details.
-
-### Check CircleCI status
-```bash
-circle-auth && circle-status
-```
-
-### Check Buildkite status
-```bash
-bk build list --pipeline plur          # List recent builds
-bk build watch <number> --pipeline plur # Watch a build in real-time
-bk job log <job-id> -p plur -b <number> --no-timestamps # Get job logs
-```
+**IMPORTANT**: When implementing Kong subcommands, be aware that Kong executes commands in reverse order (from deepest subcommand up to parent). Parent commands must check the context to avoid running when a subcommand is invoked. See `docs/development/kong-cli-patterns.md` for details.
 
 ### GitHub CLI
 Prefer the `gh` CLI for searching GitHub or getting info about related repos, issues, etc:
@@ -180,34 +153,10 @@ gh api repos/owner/repo/commits/SHA --jq '{sha: .sha, message: .commit.message}'
 Keep documentation focused on the **current state** of the project:
 - Document what exists and works today, not future plans
 - Remove inline references to "coming soon", "will support", etc.
-- Future plans belong only in `docs/overview/roadmap.md`
 - When features are implemented, move them from roadmap to main docs
-
-## Output Formatting
-
-- No ANSI color codes in output (keep it plain text)
-- Use simple ASCII for emphasis: `>>>`, `✓`, `✗`
 
 ## ⚠️ No Backward Compatibility Without Explicit Instruction
 
 **NEVER** keep old code around for backward compatibility UNLESS explicitly instructed to do so. This includes:
 - No deprecated aliases or wrapper functions, no 'backwards compatibility' comments or code paths
 - No maintaining old method names or interfaces
-
-When renaming or refactoring:
-1. Change the code directly
-2. Update all references
-3. Delete the old implementation completely
-4. Do NOT leave deprecated versions "for compatibility"
-
-This is a hard rule. Break things if needed - we prefer clean breaks over technical debt.
-
-## Planning and Estimates
-
-**NEVER** include time estimates or effort calculations in plans or documentation. Focus on:
-- Clear description of what needs to be done
-- Dependencies and ordering
-- Testing strategy
-- Success criteria
-
-Skip any discussion of "hours", "days", or "effort estimates" - we don't track or care about those.
