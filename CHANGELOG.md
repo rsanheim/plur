@@ -1,7 +1,7 @@
 # plur CHANGELOG
 
 ## Unreleased
-
+* Fix file discovery leaking test files from ignored directories (`node_modules`, `.git`, `vendor`, `tmp`). This affected go-test's full-tree pattern (`**/*_test.go`), which could hand vendored/generated test files to workers; discovery now prunes the same ignored directories as detection.
 
 ## v0.70.0 - 2026-06-14
 * Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.

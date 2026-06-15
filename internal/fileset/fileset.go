@@ -9,6 +9,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
+	"github.com/rsanheim/plur/internal/fsutil"
 )
 
 type DiscoverResult struct {
@@ -36,7 +37,7 @@ func Discover(j framework.Job, inputs, excludes []string) (DiscoverResult, error
 		if err != nil {
 			return DiscoverResult{}, fmt.Errorf("error finding files with pattern %q: %w", p, err)
 		}
-		files = append(files, matches...)
+		files = append(files, pruneIgnoredDirs(p, matches)...)
 	}
 
 	for _, ex := range excludes {
@@ -63,6 +64,40 @@ func Discover(j framework.Job, inputs, excludes []string) (DiscoverResult, error
 
 // hasGlobMeta reports whether s contains any doublestar metacharacters.
 func hasGlobMeta(s string) bool { return strings.ContainsAny(s, "*?[{") }
+
+// pruneIgnoredDirs drops matches that descend into an ignored directory
+// (fsutil.IgnoredDirs). For full-tree patterns like go-test's "**/*_test.go"
+// this stops vendored/generated test files (e.g. node_modules/junk/fake_test.go)
+// from reaching workers. This mirrors the detection walk in internal/runtime,
+// which prunes the same directories. A path component is only treated as ignored
+// when it lies below the pattern's fixed base, so a pattern explicitly rooted at
+// an ignored dir (e.g. "vendor/**/*_spec.rb") still matches its own files.
+func pruneIgnoredDirs(pattern string, matches []string) []string {
+	base, _ := doublestar.SplitPattern(filepath.ToSlash(pattern))
+	out := matches[:0]
+	for _, m := range matches {
+		rel := filepath.ToSlash(m)
+		if base != "." && base != "" {
+			rel = strings.TrimPrefix(rel, base+"/")
+		}
+		if ignoredComponent(rel) {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// ignoredComponent reports whether any path component of the slash-separated
+// path is an ignored directory.
+func ignoredComponent(slashPath string) bool {
+	for _, part := range strings.Split(slashPath, "/") {
+		if fsutil.IgnoredDirs[part] {
+			return true
+		}
+	}
+	return false
+}
 
 func filePathForExcludeMatch(s string) string {
 	if isFileLineTarget(s) {

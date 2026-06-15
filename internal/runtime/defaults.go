@@ -72,16 +72,6 @@ func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 	return "", fmt.Errorf("no default spec/test files found using default patterns")
 }
 
-// detectIgnoredDirs are never descended into when checking for test file
-// presence. They hold third-party or generated code whose test files must
-// not drive detection, and they dominate walk time when present.
-var detectIgnoredDirs = map[string]bool{
-	".git":         true,
-	"node_modules": true,
-	"vendor":       true,
-	"tmp":          true,
-}
-
 // anyFileMatches reports whether at least one file matches the doublestar
 // pattern. Detection only needs existence, so unlike doublestar.FilepathGlob
 // (which collects every match), this walks from the pattern's fixed base,
@@ -101,7 +91,7 @@ func anyFileMatches(pattern string) (bool, error) {
 			return nil
 		}
 		if d.IsDir() {
-			if path != base && detectIgnoredDirs[d.Name()] {
+			if path != base && fsutil.IgnoredDirs[d.Name()] {
 				return fs.SkipDir
 			}
 			return nil

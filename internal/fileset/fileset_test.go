@@ -226,6 +226,36 @@ func TestDiscover_FileLineNonExistentFileErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "file not found")
 }
 
+func TestDiscover_FullTreePatternPrunesIgnoredDirs(t *testing.T) {
+	// Regression: go-test's full-tree pattern "**/*_test.go" must not hand
+	// vendored/generated test files to workers. Only the real file is returned.
+	discoverChdir(t)
+	writeStubFiles(t,
+		"pkg/real_test.go",
+		"node_modules/junk/fake_test.go",
+		"vendor/dep/dep_test.go",
+		"tmp/scratch_test.go",
+		".git/hooks/hook_test.go",
+	)
+
+	j := framework.Job{Name: "go-test", TargetPattern: "**/*_test.go"}
+	discovery, err := Discover(j, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"pkg/real_test.go"}, discovery.Files)
+}
+
+func TestDiscover_PatternRootedAtIgnoredDirIsStillSearched(t *testing.T) {
+	// A pattern whose own base is an ignored directory must still match its
+	// files; only descent into ignored dirs below the base is pruned.
+	discoverChdir(t)
+	writeStubFiles(t, "vendor/specs/user_spec.rb")
+
+	j := framework.Job{Name: "rspec", TargetPattern: "vendor/**/*_spec.rb"}
+	discovery, err := Discover(j, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"vendor/specs/user_spec.rb"}, discovery.Files)
+}
+
 func TestDiscover_DedupsAcrossInputs(t *testing.T) {
 	discoverChdir(t)
 	writeStubFiles(t, "spec/a_spec.rb")
