@@ -33,6 +33,16 @@ end
 # Inject version via ldflags since detached worktrees don't have VCS info
 # We also download the watcher binaries if they are missing.
 def build_plur(worktree, ref)
+  binary = worktree.join("plur")
+  if binary.exist?
+    worktree_head = `git -C #{worktree} rev-parse HEAD`.strip
+    expected_sha = `git rev-parse #{ref}^{commit}`.strip
+    if worktree_head == expected_sha
+      puts "  Binary already up-to-date at #{ref}, skipping build."
+      return binary
+    end
+  end
+
   puts "  Building plur at #{ref}..."
   if worktree.glob("embedded/watcher/watcher*").empty?
     puts "  watcher binaries missing; download them..."
@@ -47,7 +57,7 @@ def build_plur(worktree, ref)
     system("go build #{ldflags} .", exception: true)
   end
 
-  worktree.join("plur")
+  binary
 end
 
 def create_worktree(ref)
