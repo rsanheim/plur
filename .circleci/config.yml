@@ -3,7 +3,7 @@ version: 2.1
 parameters:
   go_version:
     type: string
-    default: "1.25.7"
+    default: "1.26.4"
   ruby_version:
     type: string
     default: "4.0.2"
