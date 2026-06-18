@@ -29,8 +29,6 @@ steps:
       XDG_CACHE_HOME: /cache/plur/xdg
       # renovate: datasource=github-releases depName=goreleaser/goreleaser
       GORELEASER_VERSION: 2.16.0
-      # sqlite.org prebuilt CLI tools (bump manually; sqlite.org has no release feed).
-      SQLITE_TOOLS_URL: 'https://www.sqlite.org/2026/sqlite-tools-linux-x64-3530200.zip'
     when:
       - path:
           exclude: ['**/*.md']
@@ -53,14 +51,14 @@ steps:
 
         # The rails fixture specs verify migrations with the `sqlite3` CLI, which
         # isn't in the base image (it ships postgresql-client). The app itself
-        # uses the sqlite3 gem, so only the CLI is missing. Grab sqlite.org's
-        # prebuilt binary instead of an apt round-trip (unzip is present via the
-        # ruby:bookworm / buildpack-deps base).
+        # uses the sqlite3 gem, so only the CLI is missing.
+        #
+        # No compatible official prebuilt binary exists for this image: sqlite.org's
+        # current linux-x64 tools build requires GLIBC_2.38, but ruby:4.0.5-bookworm
+        # ships glibc 2.36; the legacy sqlite.org builds are 32-bit x86. So we fall
+        # back to apt for the CLI.
         if ! command -v sqlite3 >/dev/null 2>&1; then
-          curl -fsSL "$SQLITE_TOOLS_URL" -o /tmp/sqlite-tools.zip
-          unzip -o -q /tmp/sqlite-tools.zip sqlite3 -d /tmp
-          install -m 0755 /tmp/sqlite3 /usr/local/bin/sqlite3
-          rm -f /tmp/sqlite-tools.zip /tmp/sqlite3
+          apt-get update -qq && apt-get install -y -qq sqlite3
         fi
         sqlite3 --version
 
