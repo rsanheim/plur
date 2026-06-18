@@ -1,0 +1,59 @@
+# Plur CI on self-hosted Crow. Mirrors the CircleCI build: lint, Go build/tests,
+# and the Ruby suite + fixtures driven by `bin/rake` (default task =
+# lint:all -> build -> test:all).
+#
+# Reuses the shared clarice CI image (Ruby 4.0.5 + Go + bundler + shellcheck +
+# plur + node) and fetches goreleaser per run, since plur's install/build rake
+# tasks shell out to goreleaser and it is not baked into the base image.
+#
+# CircleCI stays the source of truth for the open-source matrix builds; this is
+# the faster self-hosted mirror.
+when:
+  - event: pull_request
+  - event: push
+    branch: ${CI_REPO_DEFAULT_BRANCH}
+
+variables:
+  - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+
+steps:
+  - name: ci
+    image: *plur_image
+    environment:
+      CI: 'true'
+      BUNDLE_JOBS: '4'
+      BUNDLE_RETRY: '3'
+      BUNDLE_PATH: /cache/plur/bundle
+      GOPATH: /cache/plur/go
+      GOCACHE: /cache/plur/go-build
+      XDG_CACHE_HOME: /cache/plur/xdg
+      # renovate: datasource=github-releases depName=goreleaser/goreleaser
+      GORELEASER_VERSION: 2.16.0
+    when:
+      - path:
+          exclude: ['**/*.md']
+    commands:
+      - |
+        set -e
+
+        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME"
+        # Prefer the freshly built/installed plur (GOBIN) over the one baked into
+        # the base image.
+        export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
+
+        # goreleaser is a single static binary, fetched per run (not in the image).
+        if ! command -v goreleaser >/dev/null 2>&1; then
+          curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/goreleaser_Linux_x86_64.tar.gz" -o /tmp/goreleaser.tar.gz
+          tar -xzf /tmp/goreleaser.tar.gz -C /usr/local/bin goreleaser
+          rm /tmp/goreleaser.tar.gz
+        fi
+        goreleaser --version
+
+        bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
+        bin/rake
+
+  # Keeps the workflow green when the work above is skipped on a docs-only change.
+  - name: docs-only-passthrough
+    image: *plur_image
+    commands:
+      - 'echo "docs-only change: heavy work skipped, keeping this workflow green"'
