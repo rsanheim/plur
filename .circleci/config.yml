@@ -7,9 +7,6 @@ parameters:
   ruby_version:
     type: string
     default: "4.0.5"
-  alt_resource_class:
-    type: string
-    default: rsanheim/orbstack-arm64
 
 orbs:
   ruby: circleci/ruby@2.6.0
@@ -151,7 +148,8 @@ jobs:
           command: |
             bin/rake test:default_ruby
       - restore_cache:
-          key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock"
+          key:
+            v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock"
             }}
       - run:
           name: Setup test_app
@@ -161,7 +159,8 @@ jobs:
             bundle install
             bundle exec rake db:create db:migrate
       - save_cache:
-          key: v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock"
+          key:
+            v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock"
             }}
           paths:
             - fixtures/projects/default-rails/vendor/bundle
@@ -183,18 +182,22 @@ workflows:
       - build-and-test-go:
           matrix:
             parameters:
-              resource_class: [ "medium", << pipeline.parameters.alt_resource_class >> ]
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
       - test-goreleaser:
           matrix:
             parameters:
-              resource_class: [ "medium", << pipeline.parameters.alt_resource_class >> ]
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
       - test-go-race:
           matrix:
             parameters:
-              resource_class: [ "medium", << pipeline.parameters.alt_resource_class >> ]
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
       - test-ruby-integration:
           matrix:
             parameters:
-              resource_class: [ "medium", << pipeline.parameters.alt_resource_class >> ]
+              resource_class:
+                ["medium", << pipeline.parameters.alt_resource_class >>]
           requires:
             - build-and-test-go-<< matrix.resource_class >>
