@@ -49,6 +49,13 @@ steps:
         fi
         goreleaser --version
 
+        # The rails fixture specs verify migrations with the `sqlite3` CLI, which
+        # isn't in the base image (it ships postgresql-client). The app itself
+        # uses the sqlite3 gem, so only the CLI is missing.
+        if ! command -v sqlite3 >/dev/null 2>&1; then
+          apt-get update -qq && apt-get install -y -qq sqlite3
+        fi
+
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
         # Pre-warm the default-rails fixture (mirrors the CircleCI setup) so the
