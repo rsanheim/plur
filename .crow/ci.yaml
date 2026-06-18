@@ -50,6 +50,15 @@ steps:
         goreleaser --version
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
+
+        # Pre-warm the default-rails fixture (mirrors the CircleCI setup) so the
+        # integration suite doesn't cold-bundle and boot Rails across parallel
+        # workers at once. Shares BUNDLE_PATH, so the suite's own
+        # `bundle check` is then a no-op.
+        ( cd fixtures/projects/default-rails \
+          && bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY" \
+          && RAILS_ENV=test bundle exec rake db:create db:migrate )
+
         bin/rake
 
   # Keeps the workflow green when the work above is skipped on a docs-only change.
