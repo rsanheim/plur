@@ -15,14 +15,10 @@ orbs:
 
 jobs:
   build-and-test-go:
-    parameters:
-      resource_class:
-        type: string
-        default: medium
     docker:
       - image: cimg/ruby:<< pipeline.parameters.ruby_version >>
     working_directory: ~/project
-    resource_class: << parameters.resource_class >>
+    resource_class: medium
     environment:
       - VERBOSE=true
     steps:
@@ -54,13 +50,9 @@ jobs:
           command: bin/rake test:go
 
   test-goreleaser:
-    parameters:
-      resource_class:
-        type: string
-        default: medium
     docker:
       - image: cimg/go:<< pipeline.parameters.go_version >>
-    resource_class: << parameters.resource_class >>
+    resource_class: medium
     working_directory: ~/project
     steps:
       - checkout
@@ -94,13 +86,9 @@ jobs:
           destination: goreleaser-artifacts
 
   test-go-race:
-    parameters:
-      resource_class:
-        type: string
-        default: medium
     docker:
       - image: cimg/go:<< pipeline.parameters.go_version >>
-    resource_class: << parameters.resource_class >>
+    resource_class: medium
     working_directory: ~/project
     steps:
       - checkout
@@ -109,13 +97,9 @@ jobs:
           command: go test -mod=mod -race -short ./...
 
   test-ruby-integration:
-    parameters:
-      resource_class:
-        type: string
-        default: medium
     docker:
       - image: cimg/ruby:<< pipeline.parameters.ruby_version >>
-    resource_class: << parameters.resource_class >>
+    resource_class: medium
     working_directory: ~/project/
     steps:
       - checkout
@@ -179,25 +163,9 @@ jobs:
 workflows:
   test-all:
     jobs:
-      - build-and-test-go:
-          matrix:
-            parameters:
-              resource_class:
-                ["medium", << pipeline.parameters.alt_resource_class >>]
-      - test-goreleaser:
-          matrix:
-            parameters:
-              resource_class:
-                ["medium", << pipeline.parameters.alt_resource_class >>]
-      - test-go-race:
-          matrix:
-            parameters:
-              resource_class:
-                ["medium", << pipeline.parameters.alt_resource_class >>]
+      - build-and-test-go
+      - test-goreleaser
+      - test-go-race
       - test-ruby-integration:
-          matrix:
-            parameters:
-              resource_class:
-                ["medium", << pipeline.parameters.alt_resource_class >>]
           requires:
-            - build-and-test-go-<< matrix.resource_class >>
+            - build-and-test-go
