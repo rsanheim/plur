@@ -96,8 +96,6 @@ func anyFileMatches(pattern string) (bool, error) {
 	found := false
 	err := filepath.WalkDir(base, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			// A missing base or unreadable entry cannot match; glob
-			// semantics treat that as "no matches", not an error.
 			return nil
 		}
 		if d.IsDir() {
