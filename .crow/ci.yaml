@@ -6,7 +6,7 @@
 # plur + node) and fetches goreleaser per run, since plur's install/build rake
 # tasks shell out to goreleaser and it is not baked into the base image.
 #
-# CircleCI stays the source of truth for the open-source matrix builds; this is
+# CircleCI stays the source of truth for the open-source cloud builds; this is
 # the faster self-hosted mirror.
 when:
   - event: pull_request
