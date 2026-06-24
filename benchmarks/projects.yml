@@ -29,9 +29,12 @@ projects:
     ignore-failure: true
 
   # Minitest; files are test/spec_*.rb (outside plur's default patterns), so the
-  # command overrides with an explicit pattern + --use minitest.
+  # command overrides with an explicit pattern + --use minitest. Green locally but
+  # a few specs fail as root in CI (same as rubocop), so ignore-failure for now;
+  # the proper fix is running the bench step non-root.
   - name: rack
     repo: https://github.com/rack/rack.git
     ref: v3.2.6
+    ignore-failure: true
     commands:
       - "plur test/spec_*.rb --use minitest --workers {workers}"
