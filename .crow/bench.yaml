@@ -21,6 +21,11 @@ when:
   - event: manual
   - event: push
     branch: ${CI_REPO_DEFAULT_BRANCH}
+  # Opt-in per-PR benchmarking: put "[bench]" in the PR title. Crow exposes the
+  # PR title (CI_COMMIT_PULL_REQUEST_TITLE) but not the PR body, so this keys off
+  # the title only. evaluate uses expr-lang (contains).
+  - event: pull_request
+    evaluate: 'CI_COMMIT_PULL_REQUEST_TITLE contains "[bench]"'
 
 variables:
   - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
