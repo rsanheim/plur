@@ -182,6 +182,25 @@ RSpec.describe Plur::Benchmark do
         expect(argv).to include("--setup", "bundle install")
         expect(argv).to include("--ignore-failure")
       end
+
+      it "sweeps the plur binary across refs when plur_refs is given" do
+        project = {"name" => "x", "repo" => "r", "ref" => "v1", "warmup" => 2, "runs" => 8,
+                   "commands" => ["plur --workers {workers}"]}
+        argv = runner.send(:build_hyperfine_argv, project, "/o/h.json",
+          plur_refs: ["HEAD", "v0.70.0"], plur_bindir: "/bin")
+        expect(argv).to include("--parameter-list", "plur_ref", "HEAD,v0.70.0")
+        expect(argv).to include("--command-name", "plur-{plur_ref}")
+        # the leading `plur` token is swapped for the per-ref binary; args kept
+        expect(argv.last).to eq("/bin/plur-{plur_ref} --workers {workers}")
+      end
+    end
+
+    describe "#resolve_plur_tags" do
+      it "returns literal tags (project over defaults), empty when unset" do
+        runner.send(:load_manifest)
+        expect(runner.send(:resolve_plur_tags, {"plur-tags" => ["v0.69.0"]})).to eq(["v0.69.0"])
+        expect(runner.send(:resolve_plur_tags, {})).to eq([])
+      end
     end
 
     describe "#load_manifest" do

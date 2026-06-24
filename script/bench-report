@@ -28,10 +28,11 @@ rows = File.readlines(index_path).map(&:strip).reject(&:empty?).map { |l| JSON.p
 abort "Error: index.jsonl is empty" if rows.empty?
 
 # A series is one project × command × parameter combination, tracked over runs.
-# `command` is hyperfine's verbatim value (the literal command, or a
-# --command-name label if a target set one).
+# Parameters are folded in so combinations sharing a --command-name label (e.g.
+# plur-{plur_ref} across worker counts) stay distinct.
 def series_key(row)
-  "#{row["project"]} / #{row["command"]}"
+  params = (row["parameters"] || {}).sort.map { |k, v| "#{k}=#{v}" }.join(" ")
+  [row["project"], row["command"], params].reject { |s| s.to_s.empty? }.join(" / ")
 end
 
 run_ids = rows.map { |r| r["run_id"] }.uniq.sort

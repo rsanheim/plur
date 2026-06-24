@@ -1,57 +1,37 @@
-# Pinned benchmark targets. Fields map 1:1 to hyperfine flags (passed through
-# verbatim) or are clearly ours (which repo to clone, metadata). We never
-# string-munge a field into a flag. See docs/plans (plur-internal) for the
-# full design.
+# Pinned benchmark targets. Fields are either hyperfine flags passed through
+# verbatim (warmup, runs, parameter-lists, commands, setup, command-name,
+# ignore-failure, output) or ours (name, repo, ref, subdir, plur-tags). See the
+# recurring-benchmarks plan in plur-internal for the full design.
 #
-# Pass-through to hyperfine:
-#   warmup            -> --warmup
-#   runs              -> --runs
-#   parameter-lists   -> one `-L <var> <values>` each; values stored verbatim
-#   commands          -> positional <command>...; hyperfine substitutes {VAR}
-# Per-target pass-throughs (added only when a target proves it needs them):
-#   setup             -> --setup
-#   command-name      -> --command-name
-#   ignore-failure    -> --ignore-failure (true, or a "<codes>" string)
-#   output            -> --output
-# Ours (not hyperfine concerns):
-#   name              -> slug for dirs/URLs
-#   repo / ref / subdir -> target provisioning (clone, checkout pin, monorepo subdir)
-#
-# warmup, runs, parameter-lists and commands fall back to `defaults`, so a target
-# that uses the standard worker sweep + command is just name/repo/ref. Counts in
-# the per-target comments are plur --dry-run baselines at the pinned ref (for
-# drift detection); pins are immutable release tags, resolved SHA recorded too.
+# warmup/runs/parameter-lists/commands fall back to `defaults`; plur-tags names
+# published plur releases to benchmark alongside HEAD ("latest" = newest tag).
 
 defaults:
-  warmup: 2          # --warmup 2
-  runs: 8            # --runs 8
+  warmup: 2
+  runs: 8
   parameter-lists:
-    - { var: workers, values: "4,8" }   # -L workers 4,8
+    - { var: workers, values: "4,8" }
   commands:
-    - "plur --workers {workers}"        # verbatim; hyperfine substitutes {workers}
+    - "plur --workers {workers}"
 
 projects:
-  # RSpec, MIT — Rob's own gem, sub-second. Dogfood + fast CI iteration. 12 specs.
   - name: backspin
     repo: https://github.com/rsanheim/backspin.git
-    ref: v0.12.0                          # 118ac5a7
+    ref: v0.12.0                          # RSpec, ~12 specs
 
-  # RSpec flagship; run plur directly (not `rake spec`, which uses test-queue).
-  # 747 spec files / ~31.7k examples. Green locally under Ruby 4.0.5, but a few
-  # specs fail when the suite runs as root (Crow steps run as root) — permission
-  # specs that root bypasses. ignore-failure keeps collecting plur's wall-time on
-  # this large suite while we green it under the CI user (full suite still runs;
-  # only the exit code is non-zero). See plur-internal tracking doc.
+  # RSpec flagship, ~31.7k examples. Compare HEAD against the last release. A few
+  # specs fail as root (Crow steps run as root), so ignore-failure keeps the
+  # wall-time while we green it under the CI user.
   - name: rubocop
     repo: https://github.com/rubocop/rubocop.git
-    ref: v1.88.0                          # 82b8257b
+    ref: v1.88.0
+    plur-tags: [latest]
     ignore-failure: true
 
-  # Minitest (minitest/spec style). rack names its files test/spec_*.rb, which is
-  # outside plur's default patterns, so this target overrides the command with an
-  # explicit pattern + --use minitest (proven needed via --dry-run). 39 tests.
+  # Minitest; files are test/spec_*.rb (outside plur's default patterns), so the
+  # command overrides with an explicit pattern + --use minitest.
   - name: rack
     repo: https://github.com/rack/rack.git
-    ref: v3.2.6                           # f7066999
+    ref: v3.2.6
     commands:
       - "plur test/spec_*.rb --use minitest --workers {workers}"

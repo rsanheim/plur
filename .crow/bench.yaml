@@ -1,29 +1,17 @@
-# Plur recurring benchmarks on self-hosted Crow. Runs the pinned benchmark suite
-# (script/bench-suite over benchmarks/projects.yml) and writes structured results
-# to the dedicated benchmark volume (ci-bench:/bench, namespaced under
-# /bench/plur). Kept separate from ci.yaml so benchmarking stays off the critical
-# path of normal builds.
+# Plur recurring benchmarks. Runs script/bench-suite over benchmarks/projects.yml,
+# writing results to the dedicated ci-bench:/bench volume (see snax/script/ci-bench-setup
+# for the one-time host wiring). Separate from ci.yaml to stay off the build path.
 #
-# Triggers: a nightly cron named in the Crow UI, on-demand manual runs, and after
-# a push to the default branch.
-#
-# Crow performs dollar-brace variable substitution over the whole file, comments
-# included, so this comment deliberately avoids that brace syntax. In commands,
-# use bare $VAR (no braces) for shell variables so the shell expands them at
-# runtime; only Crow's own builtins (written with braces in the when block below)
-# are substituted by Crow, mirroring ci.yaml.
-#
-# Prereq (one-time, on the host): the ci-bench volume must be wired into the
-# agent so /bench is mounted. See snax/script/ci-bench-setup.
+# Footgun: Crow substitutes dollar-brace vars over the whole file (comments too),
+# so commands use bare $VAR (shell-expanded); only Crow builtins use braces.
 when:
   - event: cron
     cron: nightly-bench
   - event: manual
   - event: push
     branch: ${CI_REPO_DEFAULT_BRANCH}
-  # Opt-in per-PR benchmarking: put "[bench]" in the PR title. Crow exposes the
-  # PR title (CI_COMMIT_PULL_REQUEST_TITLE) but not the PR body, so this keys off
-  # the title only. evaluate uses expr-lang (contains).
+  # Opt-in: "[bench]" in the PR title runs benchmarks (Crow exposes the title, not
+  # the PR body, so it keys off the title only).
   - event: pull_request
     evaluate: 'CI_COMMIT_PULL_REQUEST_TITLE contains "[bench]"'
 

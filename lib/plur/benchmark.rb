@@ -5,6 +5,7 @@ require "open3"
 require "bundler"
 require "yaml"
 require "socket"
+require "tmpdir"
 require_relative "../plur"
 
 module Plur
@@ -299,16 +300,11 @@ module Plur
       end
     end
 
-    # Orchestrates a benchmark suite: reads a hyperfine-faithful manifest,
-    # provisions each pinned target on a persistent volume, runs one hyperfine
-    # invocation per project, and writes structured results — a pristine
-    # hyperfine.json, an enriched result.json, an output.log, plus one
-    # append-only index.jsonl row per hyperfine result element. See the
-    # recurring-benchmarks plan in plur-internal.
-    #
-    # Commands from the manifest are passed to hyperfine verbatim as an argv
-    # array (never a shell string), so `{VAR}` placeholders reach hyperfine
-    # untouched for it to substitute.
+    # Runs each pinned target in the manifest through one hyperfine invocation and
+    # writes a pristine hyperfine.json + enriched result.json + output.log + one
+    # append-only index.jsonl row per result element. Commands reach hyperfine
+    # verbatim as an argv array (never a shell), so `{VAR}` is substituted by
+    # hyperfine, not Ruby. See the recurring-benchmarks plan in plur-internal.
     class SuiteRunner
       attr_reader :run_id
 
@@ -350,17 +346,13 @@ module Plur
           projects.each do |project|
             benchmark_project(project, run_dir: run_dir, index_path: index_path,
               plur: plur, host: host)
-            # Render after each project so the dashboard updates incrementally
-            # while a slow target (e.g. rubocop) is still running.
-            run_report_hook(host_dir)
+            run_report_hook(host_dir) # incremental: refresh while a slow target runs
           end
         rescue => e
           status = "failed"
           warn "[bench-suite] FAILED: #{e.class}: #{e.message}"
           raise
         ensure
-          # Always finalize: records the run status and renders a final view even
-          # when a project raised (the failed run still shows completed targets).
           write_run_json(run_dir, status: status, started_at: started_at,
             finished_at: Time.now.utc.iso8601, plur: plur, host: host, projects: projects)
           run_report_hook(host_dir)
@@ -388,12 +380,18 @@ module Plur
         run_in = provision(project)
         target_sha = git("rev-parse HEAD", checkout_dir(project))
 
+        # When a target lists plur-tags, also benchmark those published releases
+        # (HEAD + each tag) as a `plur_ref` parameter-list, comparing versions.
+        plur_refs = resolve_plur_tags(project)
+        plur_refs = plur_refs.empty? ? nil : ["HEAD", *plur_refs]
+        plur_bindir = plur_refs && provision_plur_binaries(plur_refs)
+
         proj_dir = File.join(run_dir, name)
         FileUtils.mkdir_p(proj_dir)
         hyperfine_json = File.join(proj_dir, "hyperfine.json")
         output_log = File.join(proj_dir, "output.log")
 
-        argv = build_hyperfine_argv(project, hyperfine_json)
+        argv = build_hyperfine_argv(project, hyperfine_json, plur_refs:, plur_bindir:)
         log "  cwd=#{run_in}"
         log "  #{argv.join(" ")}"
 
@@ -421,8 +419,6 @@ module Plur
         append_index_rows(index_path, project, target_sha, plur, host, results)
         log "  wrote #{proj_dir} (#{results.length} result element(s))"
       end
-
-      # --- provisioning ---------------------------------------------------
 
       def checkout_dir(project)
         File.join(@out_root, "targets", project.fetch("name"))
@@ -456,11 +452,11 @@ module Plur
         end
       end
 
-      # --- hyperfine command assembly ------------------------------------
-
       # parameter-lists and commands fall back to manifest defaults, so a target
-      # that uses the standard worker sweep + command is just name/repo/ref.
-      def build_hyperfine_argv(project, hyperfine_json)
+      # using the standard worker sweep + command is just name/repo/ref. When
+      # plur_refs is set, sweep the plur binary too: the leading `plur` token in
+      # each command is swapped for the per-ref binary built in provision step.
+      def build_hyperfine_argv(project, hyperfine_json, plur_refs: nil, plur_bindir: nil)
         warmup = (project["warmup"] || @defaults["warmup"]).to_s
         runs = (project["runs"] || @defaults["runs"]).to_s
 
@@ -469,15 +465,63 @@ module Plur
         Array(project["parameter-lists"] || @defaults["parameter-lists"]).each do |pl|
           argv += ["--parameter-list", pl.fetch("var"), pl.fetch("values").to_s]
         end
-        Array(project["command-name"]).each { |n| argv += ["--command-name", n] }
+        if plur_refs
+          argv += ["--parameter-list", "plur_ref", plur_refs.join(",")]
+          argv += ["--command-name", "plur-{plur_ref}"]
+        else
+          Array(project["command-name"]).each { |n| argv += ["--command-name", n] }
+        end
         argv += ["--setup", project["setup"]] if project["setup"]
         argv << "--ignore-failure" if project["ignore-failure"]
         argv += ["--export-json", hyperfine_json]
-        argv += Array(project["commands"] || @defaults.fetch("commands"))
-        argv
+        commands = Array(project["commands"] || @defaults.fetch("commands"))
+        commands = commands.map { |c| c.sub(/\Aplur\b/, "#{plur_bindir}/plur-{plur_ref}") } if plur_refs
+        argv + commands
       end
 
-      # --- record writing -------------------------------------------------
+      # plur-tags (per-project or defaults) names published releases to benchmark
+      # alongside HEAD. "latest" resolves to the newest non-prerelease tag.
+      def resolve_plur_tags(project)
+        Array(project["plur-tags"] || @defaults["plur-tags"]).flat_map do |tag|
+          (tag == "latest") ? Array(latest_plur_release) : [tag]
+        end.compact.uniq
+      end
+
+      def latest_plur_release
+        `git ls-remote --tags --refs https://github.com/rsanheim/plur.git 2>/dev/null`
+          .lines.filter_map { |l| l[%r{refs/tags/(\S+)}, 1] }
+          .reject { |t| t.include?("-") }
+          .max_by { |t| Gem::Version.new(t.delete_prefix("v")) }
+      end
+
+      # Place a plur binary per ref at <out>/plur-bin/plur-<ref>: HEAD is the
+      # installed binary; tags are the published release downloads (cached).
+      def provision_plur_binaries(refs)
+        bindir = File.join(@out_root, "plur-bin")
+        FileUtils.mkdir_p(bindir)
+        refs.each do |ref|
+          dest = File.join(bindir, "plur-#{ref}")
+          if ref == "HEAD"
+            FileUtils.ln_sf(`which plur`.strip, dest)
+          elsif !File.exist?(dest)
+            download_plur_release(ref, dest)
+          end
+        end
+        bindir
+      end
+
+      def download_plur_release(tag, dest)
+        arch = {"x86_64" => "amd64", "amd64" => "amd64", "arm64" => "arm64", "aarch64" => "arm64"}
+          .fetch(`uname -m`.strip)
+        base = "plur_#{tag.delete_prefix("v")}_#{`uname -s`.strip.downcase}_#{arch}"
+        url = "https://github.com/rsanheim/plur/releases/download/#{tag}/#{base}.tar.gz"
+        Dir.mktmpdir do |tmp|
+          sh!("curl -fsSL #{url} -o #{tmp}/plur.tar.gz")
+          sh!("tar -xzf #{tmp}/plur.tar.gz -C #{tmp} --strip-components 1 #{base}/plur")
+          FileUtils.mv("#{tmp}/plur", dest)
+          File.chmod(0o755, dest)
+        end
+      end
 
       def target_meta(project, sha)
         {"repo" => project.fetch("repo"), "ref" => project.fetch("ref"),
@@ -547,8 +591,6 @@ module Plur
         warn "[bench-suite] report hook error (non-fatal): #{e.message}"
       end
 
-      # --- live host capture (cross-platform: linux /proc, macOS sysctl) --
-
       def capture_plur
         raw = `plur --version 2>/dev/null`.strip
         version = raw.include?("=") ? raw.split("=", 2).last.strip : raw.sub(/^plur\s+version\s*/i, "").strip
@@ -580,10 +622,8 @@ module Plur
         }
       end
 
-      # A tool's version line, or nil if the tool isn't installed. Ruby execs a
-      # metacharacter-free command directly (no shell), so a missing binary
-      # raises Errno::ENOENT rather than returning empty — host capture must
-      # degrade gracefully (the real hyperfine invocation fails loudly later).
+      # Version line, or nil if absent. (A missing bare command raises ENOENT
+      # since Ruby skips the shell for metacharacter-free commands.)
       def tool_version(cmd)
         `#{cmd}`.strip
       rescue
@@ -650,8 +690,6 @@ module Plur
       rescue
         []
       end
-
-      # --- small shell helpers -------------------------------------------
 
       def git(args, dir)
         `git -C #{dir} #{args} 2>/dev/null`.strip
