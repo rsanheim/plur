@@ -9,6 +9,7 @@
 require "optparse"
 require "json"
 require "fileutils"
+require "cgi"
 
 options = {host_dir: nil}
 OptionParser.new do |opts|
@@ -26,6 +27,10 @@ abort "Error: no index.jsonl at #{index_path}" unless File.exist?(index_path)
 
 rows = File.readlines(index_path).map(&:strip).reject(&:empty?).map { |l| JSON.parse(l) }
 abort "Error: index.jsonl is empty" if rows.empty?
+
+def h(value)
+  CGI.escapeHTML(value.to_s)
+end
 
 # A series is one project × command × parameter combination, tracked over runs.
 # Parameters are folded in so combinations sharing a --command-name label (e.g.
@@ -86,9 +91,9 @@ table_html = latest_rows.map do |r|
   t = r["target"] || {}
   <<~ROW
     <tr>
-      <td class="series">#{key}</td>
-      <td>#{r.dig("plur", "version")}</td>
-      <td>#{t["ref"]}@#{t["sha"].to_s[0, 8]}</td>
+      <td class="series">#{h(key)}</td>
+      <td>#{h(r.dig("plur", "version"))}</td>
+      <td>#{h("#{t["ref"]}@#{t["sha"].to_s[0, 8]}")}</td>
       <td class="num">#{fmt(r["mean"])} <span class="pm">± #{fmt(r["stddev"])}</span></td>
       <td class="num">#{delta_cell(r["mean"], prev_mean)}</td>
       <td class="num">#{delta_cell(r["mean"], trailing_median)}</td>
@@ -111,7 +116,7 @@ html = <<~HTML
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>plur benchmarks — #{File.basename(host_dir)}</title>
+    <title>plur benchmarks — #{h(File.basename(host_dir))}</title>
     <style>
       /* Pin to a light scheme: the grays below are tuned for it, so the page
          reads the same whether the viewer is in light or dark mode. */
@@ -135,8 +140,8 @@ html = <<~HTML
     </style>
   </head>
   <body>
-    <h1>plur benchmarks — #{File.basename(host_dir)}</h1>
-    <div class="sub">Latest run <code>#{latest_run}</code> · trigger <code>#{run_meta["trigger"]}</code> · status <code>#{run_meta["status"]}</code> · #{generated}</div>
+    <h1>plur benchmarks — #{h(File.basename(host_dir))}</h1>
+    <div class="sub">Latest run <code>#{h(latest_run)}</code> · trigger <code>#{h(run_meta["trigger"])}</code> · status <code>#{h(run_meta["status"])}</code> · #{h(generated)}</div>
 
     <h2>Latest run</h2>
     <table>
@@ -155,12 +160,12 @@ html = <<~HTML
     <h2>Run metadata</h2>
     <div class="meta">
       <dl>
-        <dt>host</dt><dd>#{host["name"]} (#{host["os"]}/#{host["arch"]})</dd>
-        <dt>cpu</dt><dd>#{host["cpu_model"]} — #{host["cpu_cores_physical"]} cores / #{host["nproc"]} threads</dd>
+        <dt>host</dt><dd>#{h(host["name"])} (#{h(host["os"])}/#{h(host["arch"])})</dd>
+        <dt>cpu</dt><dd>#{h(host["cpu_model"])} — #{h(host["cpu_cores_physical"])} cores / #{h(host["nproc"])} threads</dd>
         <dt>memory</dt><dd>#{host["mem_total_bytes"].to_i / (1024**3)} GiB total</dd>
-        <dt>load before</dt><dd>#{(host["load_avg_before"] || []).join(", ")}</dd>
-        <dt>ruby / hyperfine</dt><dd>#{host["ruby"]} / #{host["hyperfine"]}</dd>
-        <dt>config</dt><dd>warmup #{run_meta.dig("config", "warmup")}, runs #{run_meta.dig("config", "runs")}</dd>
+        <dt>load before</dt><dd>#{h((host["load_avg_before"] || []).join(", "))}</dd>
+        <dt>ruby / hyperfine</dt><dd>#{h(host["ruby"])} / #{h(host["hyperfine"])}</dd>
+        <dt>config</dt><dd>warmup #{h(run_meta.dig("config", "warmup"))}, runs #{h(run_meta.dig("config", "runs"))}</dd>
         <dt>runs tracked</dt><dd>#{run_ids.length}</dd>
       </dl>
     </div>

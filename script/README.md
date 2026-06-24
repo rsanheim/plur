@@ -1,50 +1,52 @@
 # Setup Scripts
 
-## bench
+## bench-suite
 
-Benchmarks plur against turbo_tests using hyperfine for performance comparison.
+Runs the pinned benchmark manifest with hyperfine and writes structured trend
+results under a host-scoped output directory.
 
 ### Usage
 
 ```bash
-# Benchmark default projects (default-ruby and example-project)
-./script/bench
+# Run every project in benchmarks/projects.yml
+./script/bench-suite
 
-# Benchmark a specific project (--project, or -p for short)
-./script/bench --project ./path/to/project
+# Run one manifest project
+./script/bench-suite --only backspin
 
-# Benchmark multiple projects
-./script/bench --project ./project1 --project ./project2
+# Write into the project tmp tree
+./script/bench-suite --out ./tmp/bench
 
-# Specify worker count (--workers, or -n for short)
-./script/bench --project ./project --workers 4
-
-# Create combined summary files
-./script/bench --checkpoint
+# Skip the static HTML report hook
+./script/bench-suite --no-report
 
 # See all options
-./script/bench --help
+./script/bench-suite --help
 ```
 
 ### What it does
 
-1. **Verifies project** has spec directory
-2. **Runs hyperfine benchmarks** comparing `turbo_tests` vs `plur` at specified worker count
-3. **Exports results** to timestamped JSON files in `results/` directory
-4. Optionally creates **checkpoint summaries** combining multiple project results
+1. Reads `benchmarks/projects.yml`
+2. Clones or updates each pinned target under the output root
+3. Installs the target bundle in `vendor/bundle`
+4. Runs one hyperfine invocation per target
+5. Writes `hyperfine.json`, enriched `result.json`, `output.log`, `run.json`, and append-only `index.jsonl`
+6. Refreshes the static report with `script/bench-report`
 
 ### Requirements
 
 * `hyperfine` (install with `brew install hyperfine`)
 * `plur` binary in PATH (`bin/rake install`)
-* `turbo_tests` gem installed in the target project
-* Ruby project with spec directory
+* Bundler and git for provisioning target projects
 
 ### Output
 
-Results are saved to `results/` directory with timestamps:
-* `{timestamp}-{commit}-{project}.json` - Hyperfine benchmark data
-* `{timestamp}-{commit}-summary.md` - Combined summary (with `--checkpoint`)
+By default, results are saved under `tmp/bench/<host>/`:
+* `runs/<run-id>/run.json` - run metadata
+* `runs/<run-id>/<project>/hyperfine.json` - raw hyperfine export
+* `runs/<run-id>/<project>/result.json` - hyperfine data with plur/target/host metadata
+* `index.jsonl` - one trend row per hyperfine result element
+* `site/index.html` - static dashboard from `script/bench-report`
 
 ## benchmark-memory
 

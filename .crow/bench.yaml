@@ -42,15 +42,16 @@ steps:
       - |
         set -e
 
-        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$BENCH_ROOT"
+        tool_tmp="$PWD/tmp/bench-tools"
+        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$BENCH_ROOT" "$tool_tmp"
         # Prefer the freshly built/installed plur (GOBIN) over the image's baked one.
         export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
 
         # goreleaser is a single static binary, fetched per run (not in the image).
         if ! command -v goreleaser >/dev/null 2>&1; then
-          curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/goreleaser_Linux_x86_64.tar.gz" -o /tmp/goreleaser.tar.gz
-          tar -xzf /tmp/goreleaser.tar.gz -C /usr/local/bin goreleaser
-          rm /tmp/goreleaser.tar.gz
+          curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/goreleaser_Linux_x86_64.tar.gz" -o "$tool_tmp/goreleaser.tar.gz"
+          tar -xzf "$tool_tmp/goreleaser.tar.gz" -C /usr/local/bin goreleaser
+          rm "$tool_tmp/goreleaser.tar.gz"
         fi
         goreleaser --version
 
@@ -58,10 +59,10 @@ steps:
         # the static musl build per run (no glibc dependency).
         if ! command -v hyperfine >/dev/null 2>&1; then
           hf="hyperfine-v$HYPERFINE_VERSION-x86_64-unknown-linux-musl"
-          curl -fsSL "https://github.com/sharkdp/hyperfine/releases/download/v$HYPERFINE_VERSION/$hf.tar.gz" -o /tmp/hyperfine.tar.gz
-          tar -xzf /tmp/hyperfine.tar.gz -C /tmp
-          install "/tmp/$hf/hyperfine" /usr/local/bin/hyperfine
-          rm -rf /tmp/hyperfine.tar.gz "/tmp/$hf"
+          curl -fsSL "https://github.com/sharkdp/hyperfine/releases/download/v$HYPERFINE_VERSION/$hf.tar.gz" -o "$tool_tmp/hyperfine.tar.gz"
+          tar -xzf "$tool_tmp/hyperfine.tar.gz" -C "$tool_tmp"
+          install "$tool_tmp/$hf/hyperfine" /usr/local/bin/hyperfine
+          rm -rf "$tool_tmp/hyperfine.tar.gz" "$tool_tmp/$hf"
         fi
         hyperfine --version
 

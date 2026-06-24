@@ -6,300 +6,11 @@ require "bundler"
 require "yaml"
 require "socket"
 require "tmpdir"
+require "etc"
 require_relative "../plur"
 
 module Plur
   module Benchmark
-    class Config
-      attr_accessor :workers, :warmup, :runs, :min_runs, :max_runs, :projects, :save_results,
-        :show_output, :ignore_failure, :checkpoint, :results_dir, :timestamp
-
-      def initialize
-        @workers = Plur.config.plur_cores
-        @warmup = 2
-        @runs = 5
-        @min_runs = nil
-        @max_runs = nil
-        @projects = []
-        @trace = false
-        @save_results = true
-        @show_output = false
-        @ignore_failure = false
-        @checkpoint = false
-        @results_dir = File.join(Dir.pwd, "results")
-        @timestamp = ENV["BENCH_TIMESTAMP"] || Time.now.utc.strftime("%Y%m%d-%H%M%S")
-      end
-
-      def default_projects
-        [
-          Plur.config.default_ruby_dir.to_s,
-          Plur.config.root_dir.join("tmp", "example-project").to_s
-        ]
-      end
-
-      def projects_to_benchmark
-        @projects.empty? ? default_projects : @projects
-      end
-    end
-
-    class Runner
-      attr_reader :config, :git_sha, :plur_version, :original_dir
-
-      def initialize(config)
-        @config = config
-        @original_dir = Dir.pwd
-        check_plur_installed!
-        @git_sha = get_git_sha
-        @plur_version = get_plur_version
-      end
-
-      def run
-        FileUtils.mkdir_p(config.results_dir)
-
-        results = benchmark_projects
-
-        if config.checkpoint
-          create_checkpoint(results)
-        end
-
-        results
-      end
-
-      private
-
-      def benchmark_projects
-        config.projects_to_benchmark.map do |project_path|
-          benchmark_project(project_path)
-        end.compact
-      end
-
-      def benchmark_project(project_path)
-        unless File.directory?(project_path)
-          puts "Warning: project directory not found: #{project_path}"
-          return nil
-        end
-
-        project_name = File.basename(project_path)
-        results_path = Pathname.new(config.results_dir)
-        json_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.json").to_s
-        markdown_file = results_path.join("#{config.timestamp}-#{git_sha}-#{project_name}.md").to_s
-        puts "\n=== Benchmarking #{project_name} ==="
-
-        Dir.chdir(project_path) do
-          spec_count = Dir.glob("spec/**/*_spec.rb").count
-          puts "Found #{spec_count} spec files"
-
-          hyperfine_cmd = build_hyperfine_command(project_name, json_file, markdown_file)
-          run_hyperfine(project_name, hyperfine_cmd, json_file: json_file, markdown_file: markdown_file)
-        end
-      end
-
-      def build_hyperfine_command(project_name, json_file, markdown_file)
-        plur_cmd = "plur -n #{config.workers}"
-
-        hyperfine_cmd = [
-          "hyperfine",
-          "--warmup", config.warmup.to_s
-        ]
-
-        if config.runs && !config.min_runs && !config.max_runs
-          hyperfine_cmd += ["--runs", config.runs.to_s]
-        else
-          hyperfine_cmd += ["--min-runs", config.min_runs.to_s] if config.min_runs
-          hyperfine_cmd += ["--max-runs", config.max_runs.to_s] if config.max_runs
-        end
-
-        hyperfine_cmd += ["--show-output"] if config.show_output
-        hyperfine_cmd += ["--ignore-failure"] if config.ignore_failure
-
-        if config.save_results
-          hyperfine_cmd += ["--export-json", json_file]
-          hyperfine_cmd += ["--export-markdown", markdown_file] if config.checkpoint
-        end
-
-        hyperfine_cmd + [
-          "turbo_tests -n #{config.workers}",
-          plur_cmd
-        ]
-      end
-
-      def run_hyperfine(project_name, hyperfine_cmd, json_file:, markdown_file:)
-        puts "Running benchmarks with #{config.workers} workers, #{config.warmup} warmup runs, #{config.runs} runs"
-        puts "Plur version: #{plur_version}"
-        puts "Command: #{hyperfine_cmd.join(" ")}"
-        puts "===================="
-
-        Bundler.with_unbundled_env do
-          system(*hyperfine_cmd)
-        end
-
-        if File.exist?(json_file) && File.size(json_file) > 0
-          add_version_to_json(json_file)
-          puts "\nResults saved to:\n  - #{json_file}"
-          puts "  - #{markdown_file}" if File.exist?(markdown_file)
-
-          # Return the result data
-          begin
-            {
-              project: project_name,
-              json_file: json_file,
-              markdown_file: markdown_file,
-              data: JSON.parse(File.read(json_file))
-            }
-          rescue JSON::ParserError => e
-            abort "Warning: Could not parse results JSON: #{e.message}"
-          end
-        else
-          puts "\nWarning: Benchmark failed - no results saved"
-        end
-      end
-
-      def add_version_to_json(json_file)
-        data = JSON.parse(File.read(json_file))
-        data["plur_version"] = plur_version
-        File.write(json_file, JSON.pretty_generate(data))
-      rescue => e
-        puts "Warning: Could not add version to JSON: #{e.message}"
-      end
-
-      def create_checkpoint(results)
-        checkpoint = Checkpoint.new(config, results, git_sha, plur_version)
-        checkpoint.create
-      end
-
-      def get_git_sha
-        `git rev-parse --short HEAD`.strip
-      rescue
-        "nogit"
-      end
-
-      def get_plur_version
-        `plur --version 2>/dev/null`.strip
-      rescue
-        "plur version unknown"
-      end
-
-      def check_plur_installed!
-        unless system("which plur > /dev/null 2>&1")
-          puts <<~ERROR
-            Error: plur not found in PATH
-            
-            Please install plur first by running:
-              bin/rake install
-          ERROR
-          exit 1
-        end
-      end
-    end
-
-    class Checkpoint
-      attr_reader :config, :results, :git_sha, :plur_version
-
-      def initialize(config, results, git_sha, plur_version)
-        @config = config
-        @results = results
-        @git_sha = git_sha
-        @plur_version = plur_version
-      end
-
-      def create
-        write_json_summary if config.save_results
-        write_markdown_summary
-      end
-
-      private
-
-      def write_json_summary
-        git_sha_long = begin
-          `git rev-parse HEAD`.strip
-        rescue
-          git_sha
-        end
-
-        summary = {
-          "commit" => git_sha_long,
-          "timestamp" => config.timestamp,
-          "plur_version" => plur_version,
-          "projects" => results.map { |r| r[:project] if r }.compact
-        }
-
-        # Add metadata for each project
-        results.each do |result|
-          next unless result
-          project_key = "#{result[:project]}_results"
-          summary[project_key] = {
-            "json_file" => result[:json_file],
-            "markdown_file" => result[:markdown_file]
-          }
-        end
-
-        results_path = Pathname.new(config.results_dir)
-        json_file = results_path.join("#{config.timestamp}-#{git_sha}-summary.json")
-        json_file.write(JSON.pretty_generate(summary))
-        puts "\nCheckpoint summary saved to: #{json_file}"
-      end
-
-      def write_markdown_summary
-        results_path = Pathname.new(config.results_dir)
-        md_file = results_path.join("#{config.timestamp}-#{git_sha}-summary.md")
-
-        md_file.open("w") do |f|
-          f.puts "# Benchmark Summary"
-          f.puts ""
-          f.puts "- **Date**: #{config.timestamp} UTC"
-          f.puts "- **Commit**: [#{git_sha}](https://github.com/rsanheim/plur/commit/#{begin
-            `git rev-parse HEAD`.strip
-          rescue
-            git_sha
-          end})"
-          f.puts "- **Plur Version**: #{plur_version}"
-          f.puts ""
-          f.puts "## Results"
-          f.puts ""
-
-          # Include the hyperfine-generated markdown for each project
-          results.each do |result|
-            next unless result && File.exist?(result[:markdown_file])
-
-            f.puts "### #{result[:project]}"
-            f.puts ""
-
-            # Read hyperfine's markdown and include it
-            hyperfine_md = File.read(result[:markdown_file])
-            # Skip the header line if it exists
-            lines = hyperfine_md.lines
-            lines.shift if lines.first&.start_with?("|")
-            f.puts lines.join
-
-            # Add percentage comparison
-            if result[:data] && result[:data]["results"]
-              comparison = calculate_comparison(result[:data])
-              f.puts comparison if comparison
-            end
-            f.puts ""
-          end
-        end
-
-        puts "Summary Markdown saved to: #{md_file}"
-        puts "\n#{md_file.read}"
-      end
-
-      def calculate_comparison(data)
-        results = data["results"]
-        return nil unless results && results.size >= 2
-
-        turbo = results.find { |r| r["command"].include?("turbo_tests") }
-        plur = results.find { |r| r["command"].include?("plur") }
-
-        return nil unless turbo && plur
-
-        diff_percent = ((plur["mean"] - turbo["mean"]) / turbo["mean"] * 100).round(1)
-        status = (diff_percent > 0) ? "slower" : "faster"
-
-        "\n**plur is #{diff_percent.abs}% #{status} than turbo_tests**"
-      end
-    end
-
     # Runs each pinned target in the manifest through one hyperfine invocation and
     # writes a pristine hyperfine.json + enriched result.json + output.log + one
     # append-only index.jsonl row per result element. Commands reach hyperfine
@@ -378,7 +89,7 @@ module Plur
         log "=== #{name} (#{project["repo"]} @ #{project["ref"]}) ==="
 
         run_in = provision(project)
-        target_sha = git("rev-parse HEAD", checkout_dir(project))
+        target_sha = git(["rev-parse", "HEAD"], checkout_dir(project))
 
         # When a target lists plur-tags, also benchmark those published releases
         # (HEAD + each tag) as a `plur_ref` parameter-list, comparing versions.
@@ -430,8 +141,8 @@ module Plur
           FileUtils.mkdir_p(File.dirname(dir))
           clone(project.fetch("repo"), dir)
         end
-        git!("fetch --tags --quiet origin", dir)
-        git!("checkout --quiet --detach #{project.fetch("ref")}", dir)
+        git!(["fetch", "--tags", "--quiet", "origin"], dir)
+        git!(["checkout", "--quiet", "--detach", project.fetch("ref")], dir)
 
         run_in = project["subdir"] ? File.join(dir, project["subdir"]) : dir
         bundle_install(run_in)
@@ -439,16 +150,17 @@ module Plur
       end
 
       def clone(repo, dest)
-        if system("which git-cache > /dev/null 2>&1") && system("git-cache", "clone", repo, dest)
+        if tool_path("git-cache") && system("git-cache", "clone", repo, dest)
           return
         end
-        sh!("git clone #{repo} #{dest}")
+        run!("git", "clone", repo, dest)
       end
 
       def bundle_install(dir)
         Bundler.with_unbundled_env do
-          sh!("bundle config set --local path vendor/bundle", chdir: dir)
-          sh!("bundle check || bundle install --jobs 4 --retry 3", chdir: dir)
+          run!("bundle", "config", "set", "--local", "path", "vendor/bundle", chdir: dir)
+          next if system("bundle", "check", chdir: dir)
+          run!("bundle", "install", "--jobs", "4", "--retry", "3", chdir: dir)
         end
       end
 
@@ -475,7 +187,7 @@ module Plur
         argv << "--ignore-failure" if project["ignore-failure"]
         argv += ["--export-json", hyperfine_json]
         commands = Array(project["commands"] || @defaults.fetch("commands"))
-        commands = commands.map { |c| c.sub(/\Aplur\b/, "#{plur_bindir}/plur-{plur_ref}") } if plur_refs
+        commands = commands.map { |c| c.sub(/\Aplur(?=\s|$)/, "#{plur_bindir}/plur-{plur_ref}") } if plur_refs
         argv + commands
       end
 
@@ -488,7 +200,7 @@ module Plur
       end
 
       def latest_plur_release
-        `git ls-remote --tags --refs https://github.com/rsanheim/plur.git 2>/dev/null`
+        capture("git", "ls-remote", "--tags", "--refs", "https://github.com/rsanheim/plur.git")
           .lines.filter_map { |l| l[%r{refs/tags/(\S+)}, 1] }
           .reject { |t| t.include?("-") }
           .max_by { |t| Gem::Version.new(t.delete_prefix("v")) }
@@ -502,7 +214,7 @@ module Plur
         refs.each do |ref|
           dest = File.join(bindir, "plur-#{ref}")
           if ref == "HEAD"
-            FileUtils.ln_sf(`which plur`.strip, dest)
+            FileUtils.ln_sf(tool_path("plur"), dest)
           elsif !File.exist?(dest)
             download_plur_release(ref, dest)
           end
@@ -512,12 +224,15 @@ module Plur
 
       def download_plur_release(tag, dest)
         arch = {"x86_64" => "amd64", "amd64" => "amd64", "arm64" => "arm64", "aarch64" => "arm64"}
-          .fetch(`uname -m`.strip)
-        base = "plur_#{tag.delete_prefix("v")}_#{`uname -s`.strip.downcase}_#{arch}"
+          .fetch(capture("uname", "-m"))
+        base = "plur_#{tag.delete_prefix("v")}_#{capture("uname", "-s").downcase}_#{arch}"
         url = "https://github.com/rsanheim/plur/releases/download/#{tag}/#{base}.tar.gz"
-        Dir.mktmpdir do |tmp|
-          sh!("curl -fsSL #{url} -o #{tmp}/plur.tar.gz")
-          sh!("tar -xzf #{tmp}/plur.tar.gz -C #{tmp} --strip-components 1 #{base}/plur")
+        tmp_parent = File.join(@plur_root, "tmp")
+        FileUtils.mkdir_p(tmp_parent)
+        Dir.mktmpdir("bench-plur-release-", tmp_parent) do |tmp|
+          archive = File.join(tmp, "plur.tar.gz")
+          run!("curl", "-fsSL", url, "-o", archive)
+          run!("tar", "-xzf", archive, "-C", tmp, "--strip-components", "1", "#{base}/plur")
           FileUtils.mv("#{tmp}/plur", dest)
           File.chmod(0o755, dest)
         end
@@ -592,24 +307,24 @@ module Plur
       end
 
       def capture_plur
-        raw = `plur --version 2>/dev/null`.strip
+        raw = capture("plur", "--version")
         version = raw.include?("=") ? raw.split("=", 2).last.strip : raw.sub(/^plur\s+version\s*/i, "").strip
-        commit = version[/([0-9a-f]{7,40})$/, 1] || git("rev-parse HEAD", @plur_root)
+        commit = version[/([0-9a-f]{7,40})$/, 1] || git(["rev-parse", "HEAD"], @plur_root)
         {
           "version" => version,
           "commit" => commit,
-          "branch" => git("rev-parse --abbrev-ref HEAD", @plur_root),
-          "go_version" => tool_version("go version")&.slice(/go\d[\d.]*/) || "unknown"
+          "branch" => git(["rev-parse", "--abbrev-ref", "HEAD"], @plur_root),
+          "go_version" => tool_version("go", "version")&.slice(/go\d[\d.]*/) || "unknown"
         }
       end
 
       def capture_host
-        os = `uname -s`.strip.downcase
+        os = capture("uname", "-s").downcase
         {
           "name" => @host_slug,
           "os" => os,
-          "arch" => `uname -m`.strip,
-          "kernel" => `uname -r`.strip,
+          "arch" => capture("uname", "-m"),
+          "kernel" => capture("uname", "-r"),
           "cpu_model" => cpu_model(os),
           "cpu_cores_physical" => cpu_cores_physical(os),
           "nproc" => logical_cpus(os),
@@ -617,22 +332,19 @@ module Plur
           "mem_available_bytes_before" => mem_available_bytes(os),
           "container_image" => ENV["BENCH_CONTAINER_IMAGE"],
           "ruby" => RUBY_VERSION,
-          "hyperfine" => tool_version("hyperfine --version")&.split&.last,
+          "hyperfine" => tool_version("hyperfine", "--version")&.split&.last,
           "load_avg_before" => load_avg(os)
         }
       end
 
-      # Version line, or nil if absent. (A missing bare command raises ENOENT
-      # since Ruby skips the shell for metacharacter-free commands.)
-      def tool_version(cmd)
-        `#{cmd}`.strip
-      rescue
-        nil
+      def tool_version(*argv)
+        out = capture(*argv)
+        out.empty? ? nil : out
       end
 
       def cpu_model(os)
         if os == "darwin"
-          `sysctl -n machdep.cpu.brand_string`.strip
+          capture("sysctl", "-n", "machdep.cpu.brand_string")
         else
           line = File.foreach("/proc/cpuinfo").find { |l| l.start_with?("model name") }
           line&.split(":", 2)&.last&.strip
@@ -642,15 +354,15 @@ module Plur
       end
 
       def logical_cpus(os)
-        out = (os == "darwin") ? `sysctl -n hw.logicalcpu` : `nproc`
-        out.strip.to_i
+        out = (os == "darwin") ? capture("sysctl", "-n", "hw.logicalcpu") : capture("nproc")
+        out.to_i.positive? ? out.to_i : Etc.nprocessors
       rescue
         nil
       end
 
       def cpu_cores_physical(os)
         if os == "darwin"
-          `sysctl -n hw.physicalcpu`.strip.to_i
+          capture("sysctl", "-n", "hw.physicalcpu").to_i
         else
           cores = File.foreach("/proc/cpuinfo")
             .select { |l| l.start_with?("core id") }
@@ -663,7 +375,7 @@ module Plur
 
       def mem_total_bytes(os)
         if os == "darwin"
-          `sysctl -n hw.memsize`.strip.to_i
+          capture("sysctl", "-n", "hw.memsize").to_i
         else
           line = File.foreach("/proc/meminfo").find { |l| l.start_with?("MemTotal") }
           line ? line.split[1].to_i * 1024 : nil
@@ -683,7 +395,7 @@ module Plur
 
       def load_avg(os)
         if os == "darwin"
-          `sysctl -n vm.loadavg`.scan(/[\d.]+/).first(3).map(&:to_f)
+          capture("sysctl", "-n", "vm.loadavg").scan(/[\d.]+/).first(3).map(&:to_f)
         else
           File.read("/proc/loadavg").split.first(3).map(&:to_f)
         end
@@ -692,20 +404,34 @@ module Plur
       end
 
       def git(args, dir)
-        `git -C #{dir} #{args} 2>/dev/null`.strip
+        capture("git", "-C", dir, *args)
       end
 
       def git!(args, dir)
-        sh!("git -C #{dir} #{args}")
+        run!("git", "-C", dir, *args)
       end
 
-      def sh!(cmd, chdir: nil)
+      def capture(*argv, chdir: nil)
         opts = chdir ? {chdir: chdir} : {}
-        system(cmd, **opts) || raise("command failed: #{cmd}#{" (in #{chdir})" if chdir}")
+        output, status = Open3.capture2e(*argv, **opts)
+        status.success? ? output.strip : ""
+      rescue Errno::ENOENT
+        ""
+      end
+
+      def run!(*argv, chdir: nil)
+        opts = chdir ? {chdir: chdir} : {}
+        system(*argv, **opts) || raise("command failed: #{argv.join(" ")}#{" (in #{chdir})" if chdir}")
+      end
+
+      def tool_path(name)
+        ENV.fetch("PATH", "").split(File::PATH_SEPARATOR)
+          .map { |dir| File.join(dir, name) }
+          .find { |path| File.executable?(path) && !File.directory?(path) }
       end
 
       def check_plur_installed!
-        return if system("which plur > /dev/null 2>&1")
+        return if tool_path("plur")
         raise "plur not found in PATH. Run `bin/rake install` first (CI does this before bench-suite)."
       end
 
