@@ -144,4 +144,63 @@ RSpec.describe Plur::Benchmark do
       end
     end
   end
+
+  describe Plur::Benchmark::SuiteRunner do
+    # The real Phase 0 manifest is the contract; assert against it directly.
+    let(:manifest) { Plur.config.root_dir.join("benchmarks", "projects.yml").to_s }
+    let(:runner) do
+      Plur::Benchmark::SuiteRunner.new(manifest_path: manifest, out_root: "/tmp/bench-test", host: "testhost")
+    end
+
+    describe "#build_hyperfine_argv" do
+      it "assembles a no-shell argv with verbatim commands and parameter values" do
+        project = runner.send(:load_manifest).first
+        argv = runner.send(:build_hyperfine_argv, project, "/out/hyperfine.json")
+
+        # {workers} must reach hyperfine untouched (the quoting footgun): the
+        # command is one verbatim array element, never interpolated by Ruby.
+        expect(argv).to eq([
+          "hyperfine", "--shell", "none", "--style", "basic",
+          "--warmup", "2", "--runs", "8",
+          "--parameter-list", "workers", "4,8",
+          "--export-json", "/out/hyperfine.json",
+          "plur --workers {workers}"
+        ])
+      end
+
+      it "adds optional pass-throughs only when present" do
+        project = {
+          "name" => "x", "repo" => "r", "ref" => "v1",
+          "warmup" => 2, "runs" => 8,
+          "command-name" => "plur-w{workers}",
+          "setup" => "bundle install",
+          "ignore-failure" => true,
+          "commands" => ["plur"]
+        }
+        argv = runner.send(:build_hyperfine_argv, project, "/out/h.json")
+        expect(argv).to include("--command-name", "plur-w{workers}")
+        expect(argv).to include("--setup", "bundle install")
+        expect(argv).to include("--ignore-failure")
+      end
+    end
+
+    describe "#load_manifest" do
+      it "loads the pinned backspin target" do
+        projects = runner.send(:load_manifest)
+        backspin = projects.find { |p| p["name"] == "backspin" }
+        expect(backspin["ref"]).to eq("v0.12.0")
+        expect(backspin["commands"]).to eq(["plur --workers {workers}"])
+      end
+    end
+
+    describe "#capture_host" do
+      it "captures live host facts as a JSON-ready hash" do
+        host = runner.send(:capture_host)
+        expect(host["name"]).to eq("testhost")
+        expect(host["os"]).to match(/darwin|linux/)
+        expect(host["nproc"]).to be > 0
+        expect(host).to have_key("load_avg_before")
+      end
+    end
+  end
 end

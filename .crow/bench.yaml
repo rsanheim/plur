@@ -1,0 +1,81 @@
+# Plur recurring benchmarks on self-hosted Crow. Runs the pinned benchmark suite
+# (script/bench-suite over benchmarks/projects.yml) and writes structured results
+# to the dedicated benchmark volume (ci-bench:/bench, namespaced under
+# /bench/plur). Kept separate from ci.yaml so benchmarking stays off the critical
+# path of normal builds.
+#
+# Triggers: a nightly cron named in the Crow UI, on-demand manual runs, and after
+# a push to the default branch.
+#
+# Crow runs ${...} substitution over the whole file (comments included). Use
+# $VAR (no braces) for shell variables so only Crow's own builtins like
+# ${CI_REPO_DEFAULT_BRANCH} get substituted, mirroring ci.yaml.
+#
+# Prereq (one-time, on the host): the ci-bench volume must be wired into the
+# agent so /bench is mounted. See snax/script/ci-bench-setup.
+when:
+  - event: cron
+    cron: nightly-bench
+  - event: manual
+  - event: push
+    branch: ${CI_REPO_DEFAULT_BRANCH}
+
+variables:
+  - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+
+steps:
+  - name: bench
+    image: *plur_image
+    environment:
+      CI: 'true'
+      BUNDLE_JOBS: '4'
+      BUNDLE_RETRY: '3'
+      # plur's own build/bundle caches stay on the shared /cache volume (fast builds)
+      BUNDLE_PATH: /cache/plur/bundle
+      GOPATH: /cache/plur/go
+      GOCACHE: /cache/plur/go-build
+      XDG_CACHE_HOME: /cache/plur/xdg
+      # dedicated benchmark volume: targets + results live here, not on /cache
+      BENCH_ROOT: /bench/plur
+      BENCH_HOST: minibox
+      BENCH_CONTAINER_IMAGE: 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+      # renovate: datasource=github-releases depName=goreleaser/goreleaser
+      GORELEASER_VERSION: 2.16.0
+      # renovate: datasource=github-releases depName=sharkdp/hyperfine
+      HYPERFINE_VERSION: 1.19.0
+    commands:
+      - |
+        set -e
+
+        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$BENCH_ROOT"
+        # Prefer the freshly built/installed plur (GOBIN) over the image's baked one.
+        export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
+
+        # goreleaser is a single static binary, fetched per run (not in the image).
+        if ! command -v goreleaser >/dev/null 2>&1; then
+          curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/goreleaser_Linux_x86_64.tar.gz" -o /tmp/goreleaser.tar.gz
+          tar -xzf /tmp/goreleaser.tar.gz -C /usr/local/bin goreleaser
+          rm /tmp/goreleaser.tar.gz
+        fi
+        goreleaser --version
+
+        # hyperfine drives the benchmarks and is not baked into the image; fetch
+        # the static musl build per run (no glibc dependency).
+        if ! command -v hyperfine >/dev/null 2>&1; then
+          hf="hyperfine-v$HYPERFINE_VERSION-x86_64-unknown-linux-musl"
+          curl -fsSL "https://github.com/sharkdp/hyperfine/releases/download/v$HYPERFINE_VERSION/$hf.tar.gz" -o /tmp/hyperfine.tar.gz
+          tar -xzf /tmp/hyperfine.tar.gz -C /tmp
+          install "/tmp/$hf/hyperfine" /usr/local/bin/hyperfine
+          rm -rf /tmp/hyperfine.tar.gz "/tmp/$hf"
+        fi
+        hyperfine --version
+
+        # Build + install plur from this checkout so the suite benchmarks the
+        # just-built binary. vendor:download:current fetches the watcher binaries
+        # that go:embed needs at compile time.
+        bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
+        bin/rake vendor:download:current
+        bin/rake install
+
+        # Trigger label is the Crow event (cron/manual/push), set as a step env var.
+        script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"

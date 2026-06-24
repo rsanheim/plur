@@ -1,0 +1,35 @@
+# Pinned benchmark targets. Fields map 1:1 to hyperfine flags (passed through
+# verbatim) or are clearly ours (which repo to clone, metadata). We never
+# string-munge a field into a flag. See docs/plans (plur-internal) for the
+# full design.
+#
+# Pass-through to hyperfine:
+#   warmup            -> --warmup
+#   runs              -> --runs
+#   parameter-lists   -> one `-L <var> <values>` each; values stored verbatim
+#   commands          -> positional <command>...; hyperfine substitutes {VAR}
+# Per-target pass-throughs (added only when a target proves it needs them):
+#   setup             -> --setup
+#   command-name      -> --command-name
+#   ignore-failure    -> --ignore-failure (true, or a "<codes>" string)
+#   output            -> --output
+# Ours (not hyperfine concerns):
+#   name              -> slug for dirs/URLs
+#   repo / ref / subdir -> target provisioning (clone, checkout pin, monorepo subdir)
+
+defaults:
+  warmup: 2          # --warmup 2
+  runs: 8            # --runs 8
+
+projects:
+  - name: backspin
+    repo: https://github.com/rsanheim/backspin.git
+    ref: v0.12.0
+    parameter-lists:
+      - { var: workers, values: "4,8" }   # -L workers 4,8
+    commands:
+      - "plur --workers {workers}"        # verbatim; hyperfine substitutes {workers}
+    # command-name is intentionally omitted: with no --command-name, hyperfine
+    # records the literal command ("plur --workers 4") in its `command` field,
+    # which is what we trend on. Add `command-name:` per-target only if a label
+    # is worth more than the literal command in the records.
