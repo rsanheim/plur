@@ -551,7 +551,7 @@ module Plur
           "version" => version,
           "commit" => commit,
           "branch" => git("rev-parse --abbrev-ref HEAD", @plur_root),
-          "go_version" => `go version`.strip[/go\d[\d.]*/] || "unknown"
+          "go_version" => tool_version("go version")&.slice(/go\d[\d.]*/) || "unknown"
         }
       end
 
@@ -570,9 +570,19 @@ module Plur
           "mem_available_bytes_before" => mem_available_bytes(os),
           "container_image" => ENV["BENCH_CONTAINER_IMAGE"],
           "ruby" => RUBY_VERSION,
-          "hyperfine" => `hyperfine --version`.strip.split.last,
+          "hyperfine" => tool_version("hyperfine --version")&.split&.last,
           "load_avg_before" => load_avg(os)
         }
+      end
+
+      # A tool's version line, or nil if the tool isn't installed. Ruby execs a
+      # metacharacter-free command directly (no shell), so a missing binary
+      # raises Errno::ENOENT rather than returning empty — host capture must
+      # degrade gracefully (the real hyperfine invocation fails loudly later).
+      def tool_version(cmd)
+        `#{cmd}`.strip
+      rescue
+        nil
       end
 
       def cpu_model(os)
