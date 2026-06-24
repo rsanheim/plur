@@ -37,10 +37,15 @@ projects:
     ref: v0.12.0                          # 118ac5a7
 
   # RSpec flagship; run plur directly (not `rake spec`, which uses test-queue).
-  # 747 spec files / ~31.7k examples; green under Ruby 4.0.5 (0 failures).
+  # 747 spec files / ~31.7k examples. Green locally under Ruby 4.0.5, but a few
+  # specs fail when the suite runs as root (Crow steps run as root) — permission
+  # specs that root bypasses. ignore-failure keeps collecting plur's wall-time on
+  # this large suite while we green it under the CI user (full suite still runs;
+  # only the exit code is non-zero). See plur-internal tracking doc.
   - name: rubocop
     repo: https://github.com/rubocop/rubocop.git
     ref: v1.88.0                          # 82b8257b
+    ignore-failure: true
 
   # Minitest (minitest/spec style). rack names its files test/spec_*.rb, which is
   # outside plur's default patterns, so this target overrides the command with an
