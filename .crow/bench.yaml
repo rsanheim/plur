@@ -7,9 +7,11 @@
 # Triggers: a nightly cron named in the Crow UI, on-demand manual runs, and after
 # a push to the default branch.
 #
-# Crow runs ${...} substitution over the whole file (comments included). Use
-# $VAR (no braces) for shell variables so only Crow's own builtins like
-# ${CI_REPO_DEFAULT_BRANCH} get substituted, mirroring ci.yaml.
+# Crow performs dollar-brace variable substitution over the whole file, comments
+# included, so this comment deliberately avoids that brace syntax. In commands,
+# use bare $VAR (no braces) for shell variables so the shell expands them at
+# runtime; only Crow's own builtins (written with braces in the when block below)
+# are substituted by Crow, mirroring ci.yaml.
 #
 # Prereq (one-time, on the host): the ci-bench volume must be wired into the
 # agent so /bench is mounted. See snax/script/ci-bench-setup.
