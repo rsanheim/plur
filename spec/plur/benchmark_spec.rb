@@ -185,11 +185,20 @@ RSpec.describe Plur::Benchmark do
     end
 
     describe "#load_manifest" do
-      it "loads the pinned backspin target" do
+      it "loads the pinned backspin target, inheriting the command from defaults" do
         projects = runner.send(:load_manifest)
         backspin = projects.find { |p| p["name"] == "backspin" }
         expect(backspin["ref"]).to eq("v0.12.0")
-        expect(backspin["commands"]).to eq(["plur --workers {workers}"])
+        # the standard command + worker sweep come from manifest defaults
+        argv = runner.send(:build_hyperfine_argv, backspin, "/out/h.json")
+        expect(argv).to include("--parameter-list", "workers", "4,8")
+        expect(argv.last).to eq("plur --workers {workers}")
+      end
+
+      it "lets a target override the command (rack's minitest file pattern)" do
+        rack = runner.send(:load_manifest).find { |p| p["name"] == "rack" }
+        argv = runner.send(:build_hyperfine_argv, rack, "/out/h.json")
+        expect(argv.last).to eq("plur test/spec_*.rb --use minitest --workers {workers}")
       end
     end
 

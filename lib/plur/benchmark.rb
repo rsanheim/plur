@@ -350,6 +350,8 @@ module Plur
           projects.each do |project|
             benchmark_project(project, run_dir: run_dir, index_path: index_path,
               plur: plur, host: host)
+            # Render after each project so the dashboard updates incrementally
+            # while a slow target (e.g. rubocop) is still running.
             run_report_hook(host_dir)
           end
         rescue => e
@@ -357,6 +359,8 @@ module Plur
           warn "[bench-suite] FAILED: #{e.class}: #{e.message}"
           raise
         ensure
+          # Always finalize: records the run status and renders a final view even
+          # when a project raised (the failed run still shows completed targets).
           write_run_json(run_dir, status: status, started_at: started_at,
             finished_at: Time.now.utc.iso8601, plur: plur, host: host, projects: projects)
           run_report_hook(host_dir)
@@ -454,20 +458,22 @@ module Plur
 
       # --- hyperfine command assembly ------------------------------------
 
+      # parameter-lists and commands fall back to manifest defaults, so a target
+      # that uses the standard worker sweep + command is just name/repo/ref.
       def build_hyperfine_argv(project, hyperfine_json)
         warmup = (project["warmup"] || @defaults["warmup"]).to_s
         runs = (project["runs"] || @defaults["runs"]).to_s
 
         argv = ["hyperfine", "--shell", "none", "--style", "basic",
           "--warmup", warmup, "--runs", runs]
-        Array(project["parameter-lists"]).each do |pl|
+        Array(project["parameter-lists"] || @defaults["parameter-lists"]).each do |pl|
           argv += ["--parameter-list", pl.fetch("var"), pl.fetch("values").to_s]
         end
         Array(project["command-name"]).each { |n| argv += ["--command-name", n] }
         argv += ["--setup", project["setup"]] if project["setup"]
         argv << "--ignore-failure" if project["ignore-failure"]
         argv += ["--export-json", hyperfine_json]
-        argv += Array(project.fetch("commands"))
+        argv += Array(project["commands"] || @defaults.fetch("commands"))
         argv
       end
 
@@ -564,7 +570,6 @@ module Plur
           "kernel" => `uname -r`.strip,
           "cpu_model" => cpu_model(os),
           "cpu_cores_physical" => cpu_cores_physical(os),
-          "cpu_threads" => logical_cpus(os),
           "nproc" => logical_cpus(os),
           "mem_total_bytes" => mem_total_bytes(os),
           "mem_available_bytes_before" => mem_available_bytes(os),

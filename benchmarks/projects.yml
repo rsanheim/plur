@@ -16,20 +16,37 @@
 # Ours (not hyperfine concerns):
 #   name              -> slug for dirs/URLs
 #   repo / ref / subdir -> target provisioning (clone, checkout pin, monorepo subdir)
+#
+# warmup, runs, parameter-lists and commands fall back to `defaults`, so a target
+# that uses the standard worker sweep + command is just name/repo/ref. Counts in
+# the per-target comments are plur --dry-run baselines at the pinned ref (for
+# drift detection); pins are immutable release tags, resolved SHA recorded too.
 
 defaults:
   warmup: 2          # --warmup 2
   runs: 8            # --runs 8
+  parameter-lists:
+    - { var: workers, values: "4,8" }   # -L workers 4,8
+  commands:
+    - "plur --workers {workers}"        # verbatim; hyperfine substitutes {workers}
 
 projects:
+  # RSpec, MIT — Rob's own gem, sub-second. Dogfood + fast CI iteration. 12 specs.
   - name: backspin
     repo: https://github.com/rsanheim/backspin.git
-    ref: v0.12.0
-    parameter-lists:
-      - { var: workers, values: "4,8" }   # -L workers 4,8
+    ref: v0.12.0                          # 118ac5a7
+
+  # RSpec flagship; run plur directly (not `rake spec`, which uses test-queue).
+  # 747 spec files / ~31.7k examples; green under Ruby 4.0.5 (0 failures).
+  - name: rubocop
+    repo: https://github.com/rubocop/rubocop.git
+    ref: v1.88.0                          # 82b8257b
+
+  # Minitest (minitest/spec style). rack names its files test/spec_*.rb, which is
+  # outside plur's default patterns, so this target overrides the command with an
+  # explicit pattern + --use minitest (proven needed via --dry-run). 39 tests.
+  - name: rack
+    repo: https://github.com/rack/rack.git
+    ref: v3.2.6                           # f7066999
     commands:
-      - "plur --workers {workers}"        # verbatim; hyperfine substitutes {workers}
-    # command-name is intentionally omitted: with no --command-name, hyperfine
-    # records the literal command ("plur --workers 4") in its `command` field,
-    # which is what we trend on. Add `command-name:` per-target only if a label
-    # is worth more than the literal command in the records.
+      - "plur test/spec_*.rb --use minitest --workers {workers}"
