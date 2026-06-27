@@ -19,8 +19,7 @@ module Plur
     class SuiteRunner
       attr_reader :run_id
 
-      def initialize(manifest_path:, out_root:, trigger: "local", host: nil,
-        only: nil, run_report: true, report_cmd: nil)
+      def initialize(manifest_path:, out_root:, trigger: "local", host: nil, only: nil, run_report: true, report_cmd: nil)
         @plur_root = Dir.pwd
         @manifest_path = File.expand_path(manifest_path)
         @out_root = File.expand_path(out_root)
