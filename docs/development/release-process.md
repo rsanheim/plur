@@ -1,80 +1,111 @@
 # Release Process
 
+This is the canonical release runbook for Plur. Keep release procedure details here, and point other docs or command help back to this page instead of duplicating the workflow.
+
 ## Quick Start
 
 ```bash
-# 1. Prepare release (generates changelog)
-script/release prepare v0.14.0
+# Start from an up-to-date main branch
+git checkout main
+git pull --ff-only origin main
 
-# 2. Review and edit CHANGELOG.md if needed
+# Preview and prepare the changelog entry
+script/release prepare v0.61.0 --dry-run
+script/release prepare v0.61.0
 
-# 3. Commit changelog
-git add CHANGELOG.md && git commit -m "Changelog for v0.14.0"
+# Review/edit CHANGELOG.md, then verify and commit it
+bin/rake
+git add CHANGELOG.md
+git commit -m "Changelog for v0.61.0"
 
-# 4. Push release (tags and triggers GitHub Actions)
-script/release push v0.14.0
+# Push main, create the annotated tag, and trigger GitHub Actions
+script/release push v0.61.0
 ```
 
 ## Prerequisites
 
-* GitHub CLI (`gh`) installed and authenticated
-* Clean working directory on `main` branch
-* Push access to the repository
+* GitHub CLI (`gh`) installed and authenticated.
+* Push access to `rsanheim/plur`.
+* An up-to-date `main` branch.
+* A clean working directory before `script/release push`.
+* Release workflow secrets configured in GitHub Actions:
+  * `GITHUB_TOKEN` is provided by GitHub Actions.
+  * `TAP_GITHUB_TOKEN` updates `rsanheim/homebrew-tap` for non-prerelease tags.
+
+## Version Format
+
+Versions must be semver with a `v` prefix:
+
+```text
+vX.Y.Z
+vX.Y.Z-rc.1
+```
 
 ## Commands
 
 ### `script/release prepare VERSION`
 
-Generates changelog entries by finding PRs merged since the last release:
+Generates a changelog entry by finding PRs merged since the latest GitHub release:
 
 ```bash
-script/release prepare v0.14.0
+script/release prepare v0.61.0
 ```
 
-This updates `CHANGELOG.md` with PR titles and links. Review and edit as needed before committing.
+The command verifies local `main` matches `origin/main`, reads the latest release tag from GitHub, scans commit messages since that tag for PR numbers, fetches PR titles and URLs with `gh`, and updates `CHANGELOG.md`.
+
+Review the generated changelog before committing. Remove duplicate or noisy entries, add important user-facing context, and keep `## Unreleased` at the top.
 
 ### `script/release push VERSION`
 
-Tags and pushes to trigger the release:
+Pushes `main`, creates an annotated tag, and pushes the tag:
 
 ```bash
-script/release push v0.14.0
+script/release push v0.61.0
 ```
 
 This command:
-1. Verifies you're on `main` branch
-2. Verifies git status is clean
-3. Verifies changelog has entry for version
-4. Creates annotated git tag
-5. Pushes tag to origin
 
-Pushing the tag triggers GitHub Actions to run GoReleaser.
+1. Verifies the current branch is `main`.
+2. Verifies git status is clean.
+3. Verifies `CHANGELOG.md` has an entry for the version.
+4. Pushes `main` to `origin`.
+5. Creates an annotated git tag.
+6. Pushes the tag to `origin`.
+
+The tag push triggers the active release workflow: `.github/workflows/release.yml`.
 
 ### `script/release extract-notes VERSION`
 
-Extracts release notes from CHANGELOG.md (used by CI):
+Extracts release notes from `CHANGELOG.md`:
 
 ```bash
-script/release extract-notes v0.14.0
+script/release extract-notes v0.61.0
 ```
 
-### `--dry-run` Flag
+This command is used by GitHub Actions and is useful for checking exactly what release notes GoReleaser will receive.
 
-All commands support `--dry-run` to see what would happen without executing:
+### `--dry-run`
+
+Use `--dry-run` to see what a command would do without writing the changelog or creating/pushing tags:
 
 ```bash
-script/release prepare v0.14.0 --dry-run
-script/release push v0.14.0 --dry-run
+script/release prepare v0.61.0 --dry-run
+script/release push v0.61.0 --dry-run
 ```
 
-## What Happens After Push
+## Automated Release Workflow
 
-GitHub Actions (`.github/workflows/release.yml`) automatically:
+Pushing a `v*` tag starts `.github/workflows/release.yml`. The workflow:
 
-1. Extracts release notes from CHANGELOG.md
-2. Runs GoReleaser to build multi-platform binaries
-3. Creates GitHub release with artifacts
-4. Updates the Homebrew tap formula in `rsanheim/homebrew-tap`
+1. Checks out the full git history.
+2. Sets up Go and Ruby.
+3. Runs `bundle exec script/release extract-notes VERSION`.
+4. Runs `goreleaser release --clean --release-notes=/tmp/notes.md`.
+5. Creates or replaces the GitHub release.
+6. Uploads release archives and checksums.
+7. Updates the Homebrew formula in `rsanheim/homebrew-tap` for non-prerelease tags.
+
+GoReleaser uses `.goreleaser.yml`. That file is release configuration, not a second runbook; update this page when the operator-facing release process changes.
 
 ## Known GoReleaser Warnings
 
@@ -91,7 +122,30 @@ Each release includes binaries for:
 * Linux ARM64
 * Windows x86_64 (experimental)
 
-All artifacts include SHA256 checksums, README, LICENSE, and CHANGELOG.
+Archives include `README.md`, `LICENSE`, and `CHANGELOG.md`. Each release also includes SHA256 checksums.
+
+## Verification
+
+After `script/release push VERSION`:
+
+1. Watch the [Release workflow](https://github.com/rsanheim/plur/actions/workflows/release.yml).
+2. Confirm the [GitHub release](https://github.com/rsanheim/plur/releases) exists and its notes match `script/release extract-notes VERSION`.
+3. Confirm the release contains archives for the supported platforms plus the checksums file.
+4. For a stable release, confirm `rsanheim/homebrew-tap` updated `Formula/plur.rb`.
+5. Install the release and verify the binary:
+
+```bash
+brew upgrade rsanheim/tap/plur
+plur --version
+plur doctor
+```
+
+For the shell installer, pin the version being verified:
+
+```bash
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.61.0 sh
+plur --version
+```
 
 ## Manual Release (Emergency)
 
@@ -99,7 +153,8 @@ If automation fails:
 
 ```bash
 # Update CHANGELOG.md manually, then:
-git commit -am "Update CHANGELOG for vX.Y.Z"
+git add CHANGELOG.md
+git commit -m "Changelog for vX.Y.Z"
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin main --tags
 
@@ -107,7 +162,3 @@ git push origin main --tags
 # Or run GoReleaser locally:
 goreleaser release --clean
 ```
-
-## Version Format
-
-Versions must be semver with `v` prefix: `vX.Y.Z` (e.g., `v0.14.0`, `v1.0.0-rc1`)

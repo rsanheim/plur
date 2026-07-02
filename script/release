@@ -22,11 +22,8 @@ def print_usage
     Options:
       --dry-run             Show what would be done without executing
 
-    Workflow:
-      1. script/release prepare v0.14.0
-      2. Review/edit CHANGELOG.md
-      3. git add CHANGELOG.md && git commit -m "Changelog for v0.14.0"
-      4. script/release push v0.14.0
+    Release workflow:
+      See docs/development/release-process.md
 
     Version must be in format vX.Y.Z (e.g., v0.14.0, v1.0.0-rc1)
   USAGE

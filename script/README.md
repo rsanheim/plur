@@ -1,5 +1,7 @@
 # Setup Scripts
 
+Release workflow details live in [Release Process](../docs/development/release-process.md). Keep that page as the source of truth; `script/release --help` is only a command reference.
+
 ## bench
 
 Benchmarks plur against turbo_tests using hyperfine for performance comparison.
