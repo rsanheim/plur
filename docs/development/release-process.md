@@ -74,6 +74,13 @@ GitHub Actions (`.github/workflows/release.yml`) automatically:
 1. Extracts release notes from CHANGELOG.md
 2. Runs GoReleaser to build multi-platform binaries
 3. Creates GitHub release with artifacts
+4. Updates the Homebrew tap formula in `rsanheim/homebrew-tap`
+
+## Known GoReleaser Warnings
+
+GoReleaser currently warns that the `brews` configuration is deprecated. We intentionally ignore this warning.
+
+For Plur, a Homebrew formula remains the simpler and preferred distribution path for a CLI binary installed from release archives. Casks are not a better fit for this release shape. Keep the formula-based `brews` setup unless GoReleaser removes support entirely or Homebrew's CLI packaging guidance changes.
 
 ## Platform Artifacts
 
