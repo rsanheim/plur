@@ -14,18 +14,90 @@ def print_usage
 
     Current version: #{current_version}
 
+    Prerequisites:
+      * GitHub CLI (`gh`) installed and authenticated
+      * Push access to rsanheim/plur
+      * An up-to-date main branch
+      * A clean working directory before `script/release push`
+      * GitHub Actions has GITHUB_TOKEN and TAP_GITHUB_TOKEN available
+
+    Version format:
+      Versions must use a v-prefixed semver tag:
+        vX.Y.Z
+        vX.Y.Z-rc.1
+
+    Release workflow:
+      1. git checkout main
+      2. git pull --ff-only origin main
+      3. script/release prepare VERSION --dry-run
+      4. script/release prepare VERSION
+      5. Review/edit CHANGELOG.md
+      6. bin/rake
+      7. git add CHANGELOG.md && git commit -m "Changelog for VERSION"
+      8. script/release push VERSION
+
     Commands:
       prepare VERSION       Generate changelog entries for VERSION
       push VERSION          Tag and push VERSION (triggers GitHub Actions release)
       extract-notes VERSION Extract release notes from CHANGELOG.md (used by CI)
 
+    Command details:
+      prepare VERSION
+        Verifies the current checkout matches origin/main, reads the latest
+        GitHub release tag, scans git commit messages since that tag for PR
+        numbers, fetches PR titles and URLs with gh, and updates CHANGELOG.md.
+        Review the generated entry before committing it.
+
+      push VERSION
+        Verifies the current branch is main, verifies git status is clean,
+        verifies CHANGELOG.md has an entry for VERSION, pushes main to origin,
+        creates an annotated git tag, and pushes the tag to origin.
+
+      extract-notes VERSION
+        Prints the CHANGELOG.md section for VERSION. GitHub Actions uses this
+        output as the GoReleaser release notes file.
+
     Options:
       --dry-run             Show what would be done without executing
 
-    Release workflow:
-      See docs/development/release-process.md
+    After push:
+      Pushing a v* tag starts .github/workflows/release.yml. The workflow
+      extracts release notes, runs GoReleaser with .goreleaser.yml, creates or
+      replaces the GitHub release, uploads archives and checksums, and updates
+      rsanheim/homebrew-tap for non-prerelease tags.
 
-    Version must be in format vX.Y.Z (e.g., v0.14.0, v1.0.0-rc1)
+    Release artifacts:
+      * macOS ARM64
+      * Linux x86_64
+      * Linux ARM64
+      * Windows x86_64 (experimental)
+      * SHA256 checksums
+      * Archives include README.md, LICENSE, and CHANGELOG.md
+
+    Verification:
+      1. Watch https://github.com/rsanheim/plur/actions/workflows/release.yml
+      2. Confirm the GitHub release notes match:
+           script/release extract-notes VERSION
+      3. Confirm archives and checksums exist on the GitHub release.
+      4. For stable releases, confirm rsanheim/homebrew-tap updated Formula/plur.rb.
+      5. Install and verify:
+           brew upgrade rsanheim/tap/plur
+           plur --version
+           plur doctor
+      6. To verify the shell installer:
+           curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=VERSION sh
+           plur --version
+
+    Known GoReleaser warning:
+      GoReleaser may warn that the brews configuration is deprecated. Keep the
+      formula-based Homebrew setup unless GoReleaser removes support entirely
+      or Homebrew's CLI packaging guidance changes.
+
+    Emergency manual release:
+      git add CHANGELOG.md
+      git commit -m "Changelog for VERSION"
+      git tag -a VERSION -m "Release VERSION"
+      git push origin main --tags
   USAGE
 end
 

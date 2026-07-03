@@ -1,6 +1,6 @@
 # Setup Scripts
 
-Release workflow details live in [Release Process](../docs/development/release-process.md). Keep that page as the source of truth; `script/release --help` is only a command reference.
+Release workflow details live in `script/release --help`; [Release Process](../docs/development/release-process.md) is only the stable docs entry point.
 
 ## bench
 
