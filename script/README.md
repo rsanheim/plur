@@ -1,6 +1,6 @@
 # Setup Scripts
 
-Release workflow details live in `script/release --help`; [Release Process](../docs/development/release-process.md) is only the stable docs entry point.
+Use `script/release --help` for command reference, and [Release Process](../docs/development/release-process.md) for the full operator runbook.
 
 ## bench
 

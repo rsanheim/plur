@@ -1,18 +1,153 @@
 # Release Process
 
-The operator-facing release runbook lives in the release command help:
+This is the operator-facing runbook for a full Plur release. Use `script/release --help` for command-level reference; use this page for the end-to-end process.
 
-```bash
-script/release --help
+## Overview
+
+Plur releases use `script/release` to prepare changelog entries, validate release state, create and push a version tag, and extract release notes for CI. The actual published release is built by GitHub Actions and GoReleaser after the tag is pushed.
+
+## Prerequisites
+
+* GitHub CLI (`gh`) installed and authenticated.
+* Push access to `rsanheim/plur`.
+* An up-to-date `main` branch.
+* A clean working directory before `script/release push`.
+* Release workflow secrets configured in GitHub Actions:
+  * `GITHUB_TOKEN` is provided by GitHub Actions.
+  * `TAP_GITHUB_TOKEN` updates `rsanheim/homebrew-tap` for non-prerelease tags.
+
+## Version Format
+
+Versions must be semver with a `v` prefix:
+
+```text
+vX.Y.Z
+vX.Y.Z-rc.1
 ```
 
-Keep command behavior, release steps, artifact expectations, and verification details in `script/release --help` so an operator can work from the terminal without jumping between docs.
+## Release Steps
 
-This page exists as the stable documentation entry point for release process navigation.
+```bash
+# Start from an up-to-date main branch
+git checkout main
+git pull --ff-only origin main
 
-Implementation references:
+# Preview and prepare the changelog entry
+script/release prepare v0.61.0 --dry-run
+script/release prepare v0.61.0
 
-* `script/release` parses the CLI.
-* `lib/plur/release.rb` implements `prepare` and `push`.
-* `.github/workflows/release.yml` runs the tag-triggered release.
-* `.goreleaser.yml` defines release artifacts and Homebrew publishing.
+# Review/edit CHANGELOG.md, then verify and commit it
+bin/rake
+git add CHANGELOG.md
+git commit -m "Changelog for v0.61.0"
+
+# Push main, create the annotated tag, and trigger GitHub Actions
+script/release push v0.61.0
+```
+
+## Command Notes
+
+### `script/release prepare VERSION`
+
+Generates a changelog entry by finding PRs merged since the latest GitHub release.
+
+The command verifies local `main` matches `origin/main`, reads the latest release tag from GitHub, scans commit messages since that tag for PR numbers, fetches PR titles and URLs with `gh`, and updates `CHANGELOG.md`.
+
+Review the generated changelog before committing. Remove duplicate or noisy entries, add important user-facing context, and keep `## Unreleased` at the top.
+
+### `script/release push VERSION`
+
+Pushes `main`, creates an annotated tag, and pushes the tag.
+
+This command:
+
+1. Verifies the current branch is `main`.
+2. Verifies git status is clean.
+3. Verifies `CHANGELOG.md` has an entry for the version.
+4. Pushes `main` to `origin`.
+5. Creates an annotated git tag.
+6. Pushes the tag to `origin`.
+
+### `script/release extract-notes VERSION`
+
+Extracts release notes from `CHANGELOG.md`.
+
+This is used by GitHub Actions and is also useful for checking exactly what release notes GoReleaser will receive.
+
+### `--dry-run`
+
+Use `--dry-run` to see what a command would do without writing the changelog or creating or pushing tags:
+
+```bash
+script/release prepare v0.61.0 --dry-run
+script/release push v0.61.0 --dry-run
+```
+
+## Automated Release Workflow
+
+Pushing a `v*` tag starts `.github/workflows/release.yml`. The workflow:
+
+1. Checks out the full git history.
+2. Sets up Go and Ruby.
+3. Runs `bundle exec script/release extract-notes VERSION`.
+4. Runs `goreleaser release --clean --release-notes=/tmp/notes.md`.
+5. Creates or replaces the GitHub release.
+6. Uploads release archives and checksums.
+7. Updates the Homebrew formula in `rsanheim/homebrew-tap` for non-prerelease tags.
+
+GoReleaser uses `.goreleaser.yml`. That file is release configuration, not the operator runbook.
+
+## Known GoReleaser Warning
+
+GoReleaser currently warns that the `brews` configuration is deprecated. We intentionally ignore this warning.
+
+For Plur, a Homebrew formula remains the simpler and preferred distribution path for a CLI binary installed from release archives. Casks are not a better fit for this release shape. Keep the formula-based `brews` setup unless GoReleaser removes support entirely or Homebrew's CLI packaging guidance changes.
+
+## Platform Artifacts
+
+Each release includes:
+
+* macOS ARM64 (Apple Silicon)
+* Linux x86_64
+* Linux ARM64
+* Windows x86_64 (experimental)
+* SHA256 checksums
+
+Archives include `README.md`, `LICENSE`, and `CHANGELOG.md`.
+
+## Verification
+
+After `script/release push VERSION`:
+
+1. Watch the [Release workflow](https://github.com/rsanheim/plur/actions/workflows/release.yml).
+2. Confirm the [GitHub release](https://github.com/rsanheim/plur/releases) exists and its notes match `script/release extract-notes VERSION`.
+3. Confirm the release contains archives for the supported platforms plus the checksums file.
+4. For a stable release, confirm `rsanheim/homebrew-tap` updated `Formula/plur.rb`.
+5. Install the release and verify the binary:
+
+```bash
+brew upgrade rsanheim/tap/plur
+plur --version
+plur doctor
+```
+
+To verify the shell installer:
+
+```bash
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.61.0 sh
+plur --version
+```
+
+## Manual Release
+
+If automation fails:
+
+```bash
+git add CHANGELOG.md
+git commit -m "Changelog for vX.Y.Z"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin main --tags
+
+# Or run GoReleaser locally:
+goreleaser release --clean
+```
