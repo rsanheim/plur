@@ -1,7 +1,7 @@
 # Pinned benchmark targets. Fields are either hyperfine flags passed through
 # verbatim (warmup, runs, parameter-lists, commands, setup, command-name,
-# ignore-failure, output) or ours (name, repo, ref, subdir, plur-tags). See the
-# recurring-benchmarks plan in plur-internal for the full design.
+# ignore-failure, show-output) or ours (name, repo, ref, subdir, plur-tags).
+# See the recurring-benchmarks plan in plur-internal for the full design.
 #
 # warmup/runs/parameter-lists/commands fall back to `defaults`; plur-tags names
 # published plur releases to benchmark alongside HEAD ("latest" = newest tag).
@@ -24,6 +24,7 @@ projects:
     repo: https://github.com/rubocop/rubocop.git
     ref: v1.88.0
     plur-tags: [latest]
+    show-output: true # temporary: debugging the non-root warmup failure in CI
 
   # Minitest; files are test/spec_*.rb (outside plur's default patterns), so the
   # command overrides with an explicit pattern + --use minitest.

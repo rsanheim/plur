@@ -184,6 +184,7 @@ module Plur
         end
         argv += ["--setup", project["setup"]] if project["setup"]
         argv << "--ignore-failure" if project["ignore-failure"]
+        argv << "--show-output" if project["show-output"]
         argv += ["--export-json", hyperfine_json]
         commands = Array(project["commands"] || @defaults.fetch("commands"))
         commands = commands.map { |c| c.sub(/\Aplur(?=\s|$)/, "#{plur_bindir}/plur-{plur_ref}") } if plur_refs
