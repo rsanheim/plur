@@ -26,7 +26,6 @@ Guides for contributors:
 * [Contributing](development/contributing.md) - How to contribute
 * [Testing](development/testing.md) - Testing guidelines
 * [Release Process](development/release-process.md) - How releases work
-* [Kong CLI Patterns](development/kong-cli-patterns.md) - CLI implementation notes
 
 ## Reference
 
