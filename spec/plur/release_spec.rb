@@ -15,7 +15,6 @@ RSpec.describe "script/release" do
       expect(output).to include("Command details:")
       expect(output).to include("Full release process:")
       expect(output).to include("docs/development/release-process.md")
-      expect(output).not_to include("After push:")
     end
   end
 

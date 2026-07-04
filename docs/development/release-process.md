@@ -36,51 +36,13 @@ git pull --ff-only origin main
 script/release prepare v0.61.0 --dry-run
 script/release prepare v0.61.0
 
-# Review/edit CHANGELOG.md, then verify and commit it
+# Review/edit CHANGELOG.md (keep "## Unreleased" at the top), then verify and commit it
 bin/rake
 git add CHANGELOG.md
 git commit -m "Changelog for v0.61.0"
 
 # Push main, create the annotated tag, and trigger GitHub Actions
 script/release push v0.61.0
-```
-
-## Command Notes
-
-### `script/release prepare VERSION`
-
-Generates a changelog entry by finding PRs merged since the latest GitHub release.
-
-The command verifies local `main` matches `origin/main`, reads the latest release tag from GitHub, scans commit messages since that tag for PR numbers, fetches PR titles and URLs with `gh`, and updates `CHANGELOG.md`.
-
-Review the generated changelog before committing. Remove duplicate or noisy entries, add important user-facing context, and keep `## Unreleased` at the top.
-
-### `script/release push VERSION`
-
-Pushes `main`, creates an annotated tag, and pushes the tag.
-
-This command:
-
-1. Verifies the current branch is `main`.
-2. Verifies git status is clean.
-3. Verifies `CHANGELOG.md` has an entry for the version.
-4. Pushes `main` to `origin`.
-5. Creates an annotated git tag.
-6. Pushes the tag to `origin`.
-
-### `script/release extract-notes VERSION`
-
-Extracts release notes from `CHANGELOG.md`.
-
-This is used by GitHub Actions and is also useful for checking exactly what release notes GoReleaser will receive.
-
-### `--dry-run`
-
-Use `--dry-run` to see what a command would do without writing the changelog or creating or pushing tags:
-
-```bash
-script/release prepare v0.61.0 --dry-run
-script/release push v0.61.0 --dry-run
 ```
 
 ## Automated Release Workflow
