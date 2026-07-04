@@ -1,6 +1,6 @@
 # Release Process
 
-This is the operator-facing runbook for a full Plur release. Use `script/release --help` for command-level reference; use this page for the end-to-end process.
+How to do a release of Plur.
 
 ## Overview
 
@@ -12,18 +12,10 @@ Plur releases use `script/release` to prepare changelog entries, validate releas
 * Push access to `rsanheim/plur`.
 * An up-to-date `main` branch.
 * A clean working directory before `script/release push`.
-* Release workflow secrets configured in GitHub Actions:
-  * `GITHUB_TOKEN` is provided by GitHub Actions.
-  * `TAP_GITHUB_TOKEN` updates `rsanheim/homebrew-tap` for non-prerelease tags.
 
 ## Version Format
 
-Versions must be semver with a `v` prefix:
-
-```text
-vX.Y.Z
-vX.Y.Z-rc.1
-```
+Versions must be semver with a `v` prefix, i.e. `vX.Y.Z` or `vX.Y.Z-rc.1`.
 
 ## Release Steps
 
@@ -47,35 +39,11 @@ script/release push v0.61.0
 
 ## Automated Release Workflow
 
-Pushing a `v*` tag starts `.github/workflows/release.yml`. The workflow:
-
-1. Checks out the full git history.
-2. Sets up Go and Ruby.
-3. Runs `bundle exec script/release extract-notes VERSION`.
-4. Runs `goreleaser release --clean --release-notes=/tmp/notes.md`.
-5. Creates or replaces the GitHub release.
-6. Uploads release archives and checksums.
-7. Updates the Homebrew formula in `rsanheim/homebrew-tap` for non-prerelease tags.
-
-GoReleaser uses `.goreleaser.yml`. That file is release configuration, not the operator runbook.
+Pushing a `v*` tag starts `.github/workflows/release.yml`. The workflow handles the goreleaser build, GH release, archives, and [homebrew formula update](https://github.com/rsanheim/homebrew-tap).
 
 ## Known GoReleaser Warning
 
-GoReleaser currently warns that the `brews` configuration is deprecated. We intentionally ignore this warning.
-
-For Plur, a Homebrew formula remains the simpler and preferred distribution path for a CLI binary installed from release archives. Casks are not a better fit for this release shape. Keep the formula-based `brews` setup unless GoReleaser removes support entirely or Homebrew's CLI packaging guidance changes.
-
-## Platform Artifacts
-
-Each release includes:
-
-* macOS ARM64 (Apple Silicon)
-* Linux x86_64
-* Linux ARM64
-* Windows x86_64 (experimental)
-* SHA256 checksums
-
-Archives include `README.md`, `LICENSE`, and `CHANGELOG.md`.
+GoReleaser currently warns that the `brews` configuration is deprecated. We intentionally ignore this warning. Formulas are fine for CLIs, and casks just add complexity.
 
 ## Verification
 
@@ -91,13 +59,6 @@ After `script/release push VERSION`:
 brew upgrade rsanheim/tap/plur
 plur --version
 plur doctor
-```
-
-To verify the shell installer:
-
-```bash
-curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.61.0 sh
-plur --version
 ```
 
 ## Manual Release
