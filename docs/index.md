@@ -8,7 +8,6 @@ Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
 
 ## Features
 
-* [Parallel Execution](features/parallel-execution.md) - How parallel test execution works
 * [Watch Mode](features/watch-mode.md) - Auto-run tests on file changes
 * [Doctor Command](features/doctor-command.md) - Debug installation issues
 
@@ -24,7 +23,6 @@ Technical implementation details:
 Guides for contributors:
 
 * [Contributing](development/contributing.md) - How to contribute
-* [Testing](development/testing.md) - Testing guidelines
 * [Release Process](development/release-process.md) - How releases work
 
 ## Reference
