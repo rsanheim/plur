@@ -1,146 +1,118 @@
 require "spec_helper"
-require "support/capture_helper"
 require "plur/benchmark"
-require "tempfile"
-require "json"
 
 RSpec.describe Plur::Benchmark do
-  include CaptureHelper
-
-  describe Plur::Benchmark::Config do
-    let(:config) { Plur::Benchmark::Config.new }
-
-    describe "#initialize" do
-      it "sets default values" do
-        expect(config.workers).to eq(Plur.config.plur_cores)
-        expect(config.warmup).to eq(2)
-        expect(config.runs).to eq(5)
-        expect(config.min_runs).to be_nil
-        expect(config.max_runs).to be_nil
-        expect(config.projects).to eq([])
-        expect(config.save_results).to be true
-        expect(config.show_output).to be false
-        expect(config.checkpoint).to be false
-        expect(config.results_dir).to eq(File.join(Dir.pwd, "results"))
-      end
-
-      it "uses BENCH_TIMESTAMP if set" do
-        ENV["BENCH_TIMESTAMP"] = "20241225-120000"
-        config = Plur::Benchmark::Config.new
-        expect(config.timestamp).to eq("20241225-120000")
-        ENV.delete("BENCH_TIMESTAMP")
-      end
+  describe Plur::Benchmark::SuiteRunner do
+    # The real Phase 0 manifest is the contract; assert against it directly.
+    let(:manifest) { Plur.config.root_dir.join("benchmarks", "projects.yml").to_s }
+    let(:out_root) { Plur.config.root_dir.join("tmp", "bench-test").to_s }
+    let(:runner) do
+      Plur::Benchmark::SuiteRunner.new(manifest_path: manifest, out_root: out_root, host: "testhost")
     end
 
-    describe "#default_projects" do
-      it "returns the default project paths" do
-        expect(config.default_projects).to eq([
-          Plur.config.default_ruby_dir.to_s,
-          Plur.config.root_dir.join("tmp", "example-project").to_s
-        ])
-      end
-    end
+    describe "#build_hyperfine_argv" do
+      it "assembles a no-shell argv with verbatim commands and parameter values" do
+        project = runner.send(:load_manifest).first
+        argv = runner.send(:build_hyperfine_argv, project, "/out/hyperfine.json")
 
-    describe "#projects_to_benchmark" do
-      it "returns default projects when no projects specified" do
-        expect(config.projects_to_benchmark).to eq(config.default_projects)
-      end
-
-      it "returns specified projects when set" do
-        config.projects = ["./custom/project"]
-        expect(config.projects_to_benchmark).to eq(["./custom/project"])
-      end
-    end
-  end
-
-  describe Plur::Benchmark::Runner do
-    let(:config) { Plur::Benchmark::Config.new }
-    let(:runner) { Plur::Benchmark::Runner.new(config) }
-
-    before do
-      allow(File).to receive(:exist?).and_call_original
-      allow(runner).to receive(:system).and_return(true)
-      allow(runner).to receive(:get_git_sha).and_return("abc123")
-      allow(runner).to receive(:get_plur_version).and_return("plur version 1.0.0")
-      allow(Dir).to receive(:chdir).and_yield
-      allow(Dir).to receive(:glob).and_return(["spec/example_spec.rb"])
-      allow(File).to receive(:directory?).and_return(true)
-      allow(FileUtils).to receive(:mkdir_p)
-    end
-
-    describe "#run" do
-      it "benchmarks each project" do
-        config.projects = ["./project1", "./project2"]
-
-        expect(runner).to receive(:benchmark_project).with("./project1").and_return({})
-        expect(runner).to receive(:benchmark_project).with("./project2").and_return({})
-
-        runner.run
-      end
-    end
-
-    describe "#benchmark_project" do
-      it "skips non-existent directories" do
-        expect(File).to receive(:directory?).and_return(false)
-        result = silence { runner.send(:benchmark_project, "./nonexistent") }
-        expect(result).to be_nil
-      end
-
-      it "runs hyperfine with correct basic options" do
-        cmd = runner.send(:build_hyperfine_command, "test-project", "foo.json", "foo.md")
-        expect(cmd).to eq([
-          "hyperfine",
-          "--warmup", "2",
-          "--runs", "5",
-          "--export-json", "foo.json",
-          "turbo_tests -n #{config.workers}",
-          "plur -n #{config.workers}"
+        # {workers} must reach hyperfine untouched (the quoting footgun): the
+        # command is one verbatim array element, never interpolated by Ruby.
+        expect(argv).to eq([
+          "hyperfine", "--shell", "none", "--style", "basic",
+          "--warmup", "2", "--runs", "8",
+          "--parameter-list", "workers", "4,8",
+          "--export-json", "/out/hyperfine.json",
+          "plur --workers {workers}"
         ])
       end
 
-      it "includes min/max runs when specified" do
-        config.min_runs = 3
-        config.max_runs = 10
-
-        cmd = runner.send(:build_hyperfine_command, "test-project", "foo.json", "foo.md")
-        expect(cmd).to include("--min-runs", "3")
-        expect(cmd).to include("--max-runs", "10")
-        expect(cmd).not_to include("--runs")
+      it "adds optional pass-throughs only when present" do
+        project = {
+          "name" => "x", "repo" => "r", "ref" => "v1",
+          "warmup" => 2, "runs" => 8,
+          "command-name" => "plur-w{workers}",
+          "setup" => "bundle install",
+          "ignore-failure" => true,
+          "commands" => ["plur"]
+        }
+        argv = runner.send(:build_hyperfine_argv, project, "/out/h.json")
+        expect(argv).to include("--command-name", "plur-w{workers}")
+        expect(argv).to include("--setup", "bundle install")
+        expect(argv).to include("--ignore-failure")
       end
 
-      it "includes show-output flag when enabled" do
-        config.show_output = true
+      it "keeps multiple benchmark commands as whole verbatim argv elements" do
+        project = {
+          "name" => "x", "repo" => "r", "ref" => "v1",
+          "warmup" => 2, "runs" => 8,
+          "parameter-lists" => [
+            {"var" => "workers", "values" => "4,8"},
+            {"var" => "mode", "values" => "cold,warm"}
+          ],
+          "commands" => [
+            "plur --workers {workers} --mode {mode}",
+            "bundle exec parallel_rspec -n {workers}"
+          ]
+        }
 
-        cmd = runner.send(:build_hyperfine_command, "test-project", "foo.json", "foo.md")
-        expect(cmd).to include("--show-output")
+        argv = runner.send(:build_hyperfine_argv, project, "/out/h.json")
+
+        expect(argv).to include("--shell", "none")
+        expect(argv).to include("--parameter-list", "workers", "4,8")
+        expect(argv).to include("--parameter-list", "mode", "cold,warm")
+        expect(argv.last(2)).to eq([
+          "plur --workers {workers} --mode {mode}",
+          "bundle exec parallel_rspec -n {workers}"
+        ])
+        expect(argv).not_to include("{workers}")
+        expect(argv).not_to include("{mode}")
+      end
+
+      it "sweeps the plur binary across refs when plur_refs is given" do
+        project = {"name" => "x", "repo" => "r", "ref" => "v1", "warmup" => 2, "runs" => 8,
+                   "commands" => ["plur --workers {workers}"]}
+        argv = runner.send(:build_hyperfine_argv, project, "/o/h.json",
+          plur_refs: ["HEAD", "v0.70.0"], plur_bindir: "/bin")
+        expect(argv).to include("--parameter-list", "plur_ref", "HEAD,v0.70.0")
+        expect(argv).to include("--command-name", "plur-{plur_ref}")
+        # the leading `plur` token is swapped for the per-ref binary; args kept
+        expect(argv.last).to eq("/bin/plur-{plur_ref} --workers {workers}")
       end
     end
 
-    describe "#get_git_sha" do
-      it "returns git sha when available" do
-        runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("git rev-parse --short HEAD").and_return("abc123\n")
-        expect(runner.send(:get_git_sha)).to eq("abc123")
-      end
-
-      it "returns nogit when git fails" do
-        runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("git rev-parse --short HEAD").and_raise(StandardError)
-        expect(runner.send(:get_git_sha)).to eq("nogit")
+    describe "#resolve_plur_tags" do
+      it "returns literal tags (project over defaults), empty when unset" do
+        runner.send(:load_manifest)
+        expect(runner.send(:resolve_plur_tags, {"plur-tags" => ["v0.69.0"]})).to eq(["v0.69.0"])
+        expect(runner.send(:resolve_plur_tags, {})).to eq([])
       end
     end
 
-    describe "#get_plur_version" do
-      it "returns plur version when available" do
-        runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("plur --version 2>/dev/null").and_return("plur version 1.0.0\n")
-        expect(runner.send(:get_plur_version)).to eq("plur version 1.0.0")
+    describe "#load_manifest" do
+      it "loads the pinned backspin target, inheriting the command from defaults" do
+        projects = runner.send(:load_manifest)
+        backspin = projects.find { |p| p["name"] == "backspin" }
+        expect(backspin["ref"]).to eq("v0.12.0")
+        # the standard command + worker sweep come from manifest defaults
+        argv = runner.send(:build_hyperfine_argv, backspin, "/out/h.json")
+        expect(argv).to include("--parameter-list", "workers", "4,8")
+        expect(argv.last).to eq("plur --workers {workers}")
       end
 
-      it "returns unknown when plur fails" do
-        runner = Plur::Benchmark::Runner.new(config)
-        allow(runner).to receive(:`).with("plur --version 2>/dev/null").and_raise(StandardError)
-        expect(runner.send(:get_plur_version)).to eq("plur version unknown")
+      it "lets a target override the command (rack's minitest file pattern)" do
+        rack = runner.send(:load_manifest).find { |p| p["name"] == "rack" }
+        argv = runner.send(:build_hyperfine_argv, rack, "/out/h.json")
+        expect(argv.last).to eq("plur test/spec_*.rb --use minitest --workers {workers}")
+      end
+    end
+
+    describe "#capture_host" do
+      it "captures live host facts as a JSON-ready hash" do
+        host = runner.send(:capture_host)
+        expect(host["name"]).to eq("testhost")
+        expect(host["os"]).to match(/darwin|linux/)
+        expect(host["nproc"]).to be > 0
+        expect(host).to have_key("load_avg_before")
       end
     end
   end

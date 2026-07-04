@@ -1,0 +1,40 @@
+# Pinned benchmark targets. Fields are either hyperfine flags passed through
+# verbatim (warmup, runs, parameter-lists, commands, setup, command-name,
+# ignore-failure, output) or ours (name, repo, ref, subdir, plur-tags). See the
+# recurring-benchmarks plan in plur-internal for the full design.
+#
+# warmup/runs/parameter-lists/commands fall back to `defaults`; plur-tags names
+# published plur releases to benchmark alongside HEAD ("latest" = newest tag).
+
+defaults:
+  warmup: 2
+  runs: 8
+  parameter-lists:
+    - { var: workers, values: "4,8" }
+  commands:
+    - "plur --workers {workers}"
+
+projects:
+  - name: backspin
+    repo: https://github.com/rsanheim/backspin.git
+    ref: v0.12.0                          # RSpec, ~12 specs
+
+  # RSpec flagship, ~31.7k examples. Compare HEAD against the last release. A few
+  # specs fail as root (Crow steps run as root), so ignore-failure keeps the
+  # wall-time while we green it under the CI user.
+  - name: rubocop
+    repo: https://github.com/rubocop/rubocop.git
+    ref: v1.88.0
+    plur-tags: [latest]
+    ignore-failure: true
+
+  # Minitest; files are test/spec_*.rb (outside plur's default patterns), so the
+  # command overrides with an explicit pattern + --use minitest. Green locally but
+  # a few specs fail as root in CI (same as rubocop), so ignore-failure for now;
+  # the proper fix is running the bench step non-root.
+  - name: rack
+    repo: https://github.com/rack/rack.git
+    ref: v3.2.6
+    ignore-failure: true
+    commands:
+      - "plur test/spec_*.rb --use minitest --workers {workers}"

@@ -1,0 +1,186 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# script/bench-report - render a self-contained static dashboard from a host's
+# benchmark trend store. Reads <host-dir>/index.jsonl and writes
+# <host-dir>/site/index.html (+ data.json). No external assets, no JS libs:
+# data is embedded and trends are inline SVG, so it opens from a file:// path.
+
+require "optparse"
+require "json"
+require "fileutils"
+require "cgi"
+
+options = {host_dir: nil}
+OptionParser.new do |opts|
+  opts.banner = "Usage: script/bench-report --host-dir DIR"
+  opts.on("--host-dir DIR", "Host dir containing index.jsonl (e.g. /bench/plur/minibox)") { |v| options[:host_dir] = v }
+  opts.on("-h", "--help") do
+    puts opts
+    exit 0
+  end
+end.parse!
+
+host_dir = options[:host_dir] or abort "Error: --host-dir is required"
+index_path = File.join(host_dir, "index.jsonl")
+abort "Error: no index.jsonl at #{index_path}" unless File.exist?(index_path)
+
+rows = File.readlines(index_path).map(&:strip).reject(&:empty?).map { |l| JSON.parse(l) }
+abort "Error: index.jsonl is empty" if rows.empty?
+
+def h(value)
+  CGI.escapeHTML(value.to_s)
+end
+
+# A series is one project × command × parameter combination, tracked over runs.
+# Parameters are folded in so combinations sharing a --command-name label (e.g.
+# plur-{plur_ref} across worker counts) stay distinct.
+def series_key(row)
+  params = (row["parameters"] || {}).sort.map { |k, v| "#{k}=#{v}" }.join(" ")
+  [row["project"], row["command"], params].reject { |s| s.to_s.empty? }.join(" / ")
+end
+
+run_ids = rows.map { |r| r["run_id"] }.uniq.sort
+latest_run = run_ids.last
+prev_run = run_ids[-2]
+
+by_series = rows.group_by { |r| series_key(r) }
+
+def fmt(seconds)
+  return "—" if seconds.nil?
+  "#{(seconds * 1000).round(1)} ms"
+end
+
+def delta_cell(current, baseline)
+  return "—" if current.nil? || baseline.nil? || baseline.zero?
+  pct = ((current - baseline) / baseline * 100).round(1)
+  cls = if pct > 2
+    "bad"
+  else
+    ((pct < -2) ? "good" : "neutral")
+  end
+  sign = (pct > 0) ? "+" : ""
+  %(<span class="#{cls}">#{sign}#{pct}%</span>)
+end
+
+def sparkline(means)
+  vals = means.compact
+  return "" if vals.length < 2
+  w, h = 120, 24
+  lo, hi = vals.min, vals.max
+  span = (hi - lo)
+  span = 1.0 if span.zero?
+  pts = means.each_with_index.map do |m, i|
+    next nil if m.nil?
+    x = (means.length == 1) ? 0 : (i.to_f / (means.length - 1) * (w - 2) + 1).round(2)
+    y = (h - 1 - (m - lo) / span * (h - 2)).round(2)
+    "#{x},#{y}"
+  end.compact.join(" ")
+  %(<svg width="#{w}" height="#{h}" viewBox="0 0 #{w} #{h}"><polyline fill="none" stroke="#3b82f6" stroke-width="1.5" points="#{pts}"/></svg>)
+end
+
+# Latest-run table rows
+latest_rows = rows.select { |r| r["run_id"] == latest_run }.sort_by { |r| series_key(r) }
+
+table_html = latest_rows.map do |r|
+  key = series_key(r)
+  series = by_series[key].sort_by { |x| x["run_id"] }
+  prev_mean = series.find { |x| x["run_id"] == prev_run }&.fetch("mean", nil)
+  trailing = series.reject { |x| x["run_id"] == latest_run }.last(7).map { |x| x["mean"] }.compact.sort
+  trailing_median = trailing.empty? ? nil : trailing[trailing.length / 2]
+  t = r["target"] || {}
+  <<~ROW
+    <tr>
+      <td class="series">#{h(key)}</td>
+      <td>#{h(r.dig("plur", "version"))}</td>
+      <td>#{h("#{t["ref"]}@#{t["sha"].to_s[0, 8]}")}</td>
+      <td class="num">#{fmt(r["mean"])} <span class="pm">± #{fmt(r["stddev"])}</span></td>
+      <td class="num">#{delta_cell(r["mean"], prev_mean)}</td>
+      <td class="num">#{delta_cell(r["mean"], trailing_median)}</td>
+      <td>#{sparkline(series.map { |x| x["mean"] })}</td>
+    </tr>
+  ROW
+end.join("\n")
+
+# Run metadata from the latest run.json, if present
+run_meta = {}
+run_json = File.join(host_dir, "runs", latest_run, "run.json")
+run_meta = JSON.parse(File.read(run_json)) if File.exist?(run_json)
+host = run_meta["host"] || {}
+
+generated = run_meta.dig("finished_at") || run_meta.dig("started_at") || ""
+
+html = <<~HTML
+  <!doctype html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>plur benchmarks — #{h(File.basename(host_dir))}</title>
+    <style>
+      /* Pin to a light scheme: the grays below are tuned for it, so the page
+         reads the same whether the viewer is in light or dark mode. */
+      :root { color-scheme: light; }
+      body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem; max-width: 1100px; background: #fff; color: #111827; }
+      h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+      .sub { color: #6b7280; margin-bottom: 1.5rem; }
+      table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; }
+      th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #e5e7eb; }
+      th { font-weight: 600; color: #374151; border-bottom: 2px solid #d1d5db; }
+      td.num { text-align: right; font-variant-numeric: tabular-nums; }
+      td.series { font-weight: 600; }
+      .pm { color: #9ca3af; font-size: .85em; }
+      .good { color: #16a34a; font-weight: 600; }
+      .bad { color: #dc2626; font-weight: 600; }
+      .neutral { color: #6b7280; }
+      .meta { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem 1.25rem; font-size: 13px; }
+      .meta dt { font-weight: 600; color: #6b7280; }
+      .meta dl { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: 0; }
+      code { background: rgba(127,127,127,.15); padding: 0 .3em; border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <h1>plur benchmarks — #{h(File.basename(host_dir))}</h1>
+    <div class="sub">Latest run <code>#{h(latest_run)}</code> · trigger <code>#{h(run_meta["trigger"])}</code> · status <code>#{h(run_meta["status"])}</code> · #{h(generated)}</div>
+
+    <h2>Latest run</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>project / command</th><th>plur</th><th>target</th>
+          <th class="num">mean ± stddev</th><th class="num">Δ prev</th>
+          <th class="num">Δ 7-run median</th><th>trend</th>
+        </tr>
+      </thead>
+      <tbody>
+  #{table_html}
+      </tbody>
+    </table>
+
+    <h2>Run metadata</h2>
+    <div class="meta">
+      <dl>
+        <dt>host</dt><dd>#{h(host["name"])} (#{h(host["os"])}/#{h(host["arch"])})</dd>
+        <dt>cpu</dt><dd>#{h(host["cpu_model"])} — #{h(host["cpu_cores_physical"])} cores / #{h(host["nproc"])} threads</dd>
+        <dt>memory</dt><dd>#{host["mem_total_bytes"].to_i / (1024**3)} GiB total</dd>
+        <dt>load before</dt><dd>#{h((host["load_avg_before"] || []).join(", "))}</dd>
+        <dt>ruby / hyperfine</dt><dd>#{h(host["ruby"])} / #{h(host["hyperfine"])}</dd>
+        <dt>config</dt><dd>warmup #{h(run_meta.dig("config", "warmup"))}, runs #{h(run_meta.dig("config", "runs"))}</dd>
+        <dt>runs tracked</dt><dd>#{run_ids.length}</dd>
+      </dl>
+    </div>
+  </body>
+  </html>
+HTML
+
+site_dir = File.join(host_dir, "site")
+FileUtils.mkdir_p(site_dir)
+File.write(File.join(site_dir, "index.html"), html)
+File.write(File.join(site_dir, "data.json"), JSON.pretty_generate({
+  generated_from: index_path,
+  run_ids: run_ids,
+  latest_run: latest_run,
+  rows: rows
+}))
+
+puts "[bench-report] wrote #{File.join(site_dir, "index.html")} (#{run_ids.length} runs, #{by_series.length} series)"
