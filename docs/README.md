@@ -1,6 +1,6 @@
 # Documentation
 
-This directory contains all documentation for Plur.
+This directory contains all documentation for Plur. We currently use MkDocs, see guidance below.
 
 ## Local Development
 
