@@ -5,11 +5,11 @@
 # Footgun: Crow substitutes dollar-brace vars over the whole file (comments too),
 # so commands use bare $VAR (shell-expanded); only Crow builtins use braces.
 when:
+  # No push trigger: a push-to-main bench overlapping the nightly cron starved
+  # the box and got one run killed. Cron + deliberate triggers only.
   - event: cron
     cron: nightly-bench
   - event: manual
-  - event: push
-    branch: ${CI_REPO_DEFAULT_BRANCH}
   # Opt-in: "[bench]" in the PR title runs benchmarks (Crow exposes the title, not
   # the PR body, so it keys off the title only).
   - event: pull_request
