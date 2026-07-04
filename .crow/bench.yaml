@@ -79,7 +79,10 @@ steps:
         # Rootless podman maps container-root to the host user, so uid 0 in here
         # is still "root" to Bundler and chmod-based specs.
         id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
-        chown -R bench:bench "$PWD" "$BENCH_ROOT" "$XDG_CACHE_HOME"
+        chown -R bench:bench "$PWD" "$BENCH_ROOT"
 
+        # XDG_CACHE_HOME is for the root-owned build caches above; it must not
+        # leak into the benchmarked suites (rubocop has specs asserting the
+        # default cache dir in $HOME). The bench user gets stock XDG defaults.
         # Trigger label is the Crow event (cron/manual/push), set as a step env var.
-        runuser -u bench -- env PATH="$PATH" HOME=/home/bench CI=true BENCH_HOST="$BENCH_HOST" XDG_CACHE_HOME="$XDG_CACHE_HOME" script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"
+        runuser -u bench -- env -u XDG_CACHE_HOME PATH="$PATH" HOME=/home/bench CI=true BENCH_HOST="$BENCH_HOST" script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"
