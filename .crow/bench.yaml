@@ -73,5 +73,13 @@ steps:
         bin/rake vendor:download:current
         bin/rake install
 
+        # The suite runs as a non-root user: rubocop + rack have specs that fail
+        # under root (root bypasses the permission checks they test). Build and
+        # install above stay root; only the benchmarked processes drop privileges.
+        # Rootless podman maps container-root to the host user, so uid 0 in here
+        # is still "root" to Bundler and chmod-based specs.
+        id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
+        chown -R bench:bench "$PWD" "$BENCH_ROOT" "$XDG_CACHE_HOME"
+
         # Trigger label is the Crow event (cron/manual/push), set as a step env var.
-        script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"
+        runuser -u bench -- env PATH="$PATH" HOME=/home/bench CI=true BENCH_HOST="$BENCH_HOST" XDG_CACHE_HOME="$XDG_CACHE_HOME" script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"
