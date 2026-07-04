@@ -1,6 +1,6 @@
 [tools]
 ruby = "4.0.5"
-go = "1.25.8"
+go = "1.26.4"
 python = "3.14.0"
 goreleaser = "2"
 shellcheck = "latest"
