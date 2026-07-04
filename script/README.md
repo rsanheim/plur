@@ -1,5 +1,7 @@
 # Setup Scripts
 
+Use `script/release --help` for command reference, and [Release Process](../docs/development/release-process.md) for the full operator runbook.
+
 ## bench
 
 Benchmarks plur against turbo_tests using hyperfine for performance comparison.

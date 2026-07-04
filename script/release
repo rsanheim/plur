@@ -12,23 +12,42 @@ def print_usage
   puts <<~USAGE
     Usage: script/release <command> <version> [options]
 
+    Prepare changelog entries, validate release state, tag releases, and
+    extract release notes from CHANGELOG.md for plur releases.
+
     Current version: #{current_version}
+
+    Version format:
+      Versions must use a v-prefixed semver tag:
+        vX.Y.Z
+        vX.Y.Z-rc.1
 
     Commands:
       prepare VERSION       Generate changelog entries for VERSION
       push VERSION          Tag and push VERSION (triggers GitHub Actions release)
       extract-notes VERSION Extract release notes from CHANGELOG.md (used by CI)
 
+    Command details:
+      prepare VERSION
+        Verifies the current checkout matches origin/main, reads the latest
+        GitHub release tag, scans git commit messages since that tag for PR
+        numbers, fetches PR titles and URLs with gh, and updates CHANGELOG.md.
+        Review the generated entry before committing it.
+
+      push VERSION
+        Verifies the current branch is main, verifies git status is clean,
+        verifies CHANGELOG.md has an entry for VERSION, pushes main to origin,
+        creates an annotated git tag, and pushes the tag to origin.
+
+      extract-notes VERSION
+        Prints the CHANGELOG.md section for VERSION. GitHub Actions uses this
+        output as the GoReleaser release notes file.
+
     Options:
       --dry-run             Show what would be done without executing
 
-    Workflow:
-      1. script/release prepare v0.14.0
-      2. Review/edit CHANGELOG.md
-      3. git add CHANGELOG.md && git commit -m "Changelog for v0.14.0"
-      4. script/release push v0.14.0
-
-    Version must be in format vX.Y.Z (e.g., v0.14.0, v1.0.0-rc1)
+    Full release process:
+      See docs/development/release-process.md
   USAGE
 end
 

@@ -11,6 +11,10 @@ RSpec.describe "script/release" do
       expect(output).to include("prepare VERSION")
       expect(output).to include("push VERSION")
       expect(output).to include("extract-notes VERSION")
+      expect(output).to include("Prepare changelog entries, validate release state")
+      expect(output).to include("Command details:")
+      expect(output).to include("Full release process:")
+      expect(output).to include("docs/development/release-process.md")
     end
   end
 
