@@ -10,16 +10,12 @@ results under a host-scoped output directory.
 ```bash
 # Run every project in benchmarks/projects.yml
 ./script/bench-suite
-
 # Run one manifest project
 ./script/bench-suite --only backspin
-
 # Write into the project tmp tree
 ./script/bench-suite --out ./tmp/bench
-
 # Skip the static HTML report hook
 ./script/bench-suite --no-report
-
 # See all options
 ./script/bench-suite --help
 ```
