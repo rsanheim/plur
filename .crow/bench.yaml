@@ -5,11 +5,11 @@
 # Footgun: Crow substitutes dollar-brace vars over the whole file (comments too),
 # so commands use bare $VAR (shell-expanded); only Crow builtins use braces.
 when:
+  # No push trigger: a push-to-main bench overlapping the nightly cron starved
+  # the box and got one run killed. Cron + deliberate triggers only.
   - event: cron
     cron: nightly-bench
   - event: manual
-  - event: push
-    branch: ${CI_REPO_DEFAULT_BRANCH}
   # Opt-in: "[bench]" in the PR title runs benchmarks (Crow exposes the title, not
   # the PR body, so it keys off the title only).
   - event: pull_request
@@ -73,5 +73,16 @@ steps:
         bin/rake vendor:download:current
         bin/rake install
 
+        # The suite runs as a non-root user: rubocop + rack have specs that fail
+        # under root (root bypasses the permission checks they test). Build and
+        # install above stay root; only the benchmarked processes drop privileges.
+        # Rootless podman maps container-root to the host user, so uid 0 in here
+        # is still "root" to Bundler and chmod-based specs.
+        id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
+        chown -R bench:bench "$PWD" "$BENCH_ROOT"
+
+        # XDG_CACHE_HOME is for the root-owned build caches above; it must not
+        # leak into the benchmarked suites (rubocop has specs asserting the
+        # default cache dir in $HOME). The bench user gets stock XDG defaults.
         # Trigger label is the Crow event (cron/manual/push), set as a step env var.
-        script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"
+        runuser -u bench -- env -u XDG_CACHE_HOME PATH="$PATH" HOME=/home/bench CI=true BENCH_HOST="$BENCH_HOST" script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"
