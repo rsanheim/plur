@@ -135,11 +135,7 @@ Use `script/bench-git` to compare plur performance across git refs for a given R
 script/bench-git --refs v0.15.0 v0.14.0 main -p ~/src/oss/rspec-core
 ```
 
-## Kong CLI Patterns
-
-**IMPORTANT**: When implementing Kong subcommands, be aware that Kong executes commands in reverse order (from deepest subcommand up to parent). Parent commands must check the context to avoid running when a subcommand is invoked. See `docs/development/kong-cli-patterns.md` for details.
-
-### GitHub CLI
+## GitHub CLI
 Prefer the `gh` CLI for searching GitHub or getting info about related repos, issues, etc:
 ```bash
 # Search with specific fields
