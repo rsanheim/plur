@@ -63,6 +63,7 @@ RSpec.describe "plur doctor command" do
       .gsub(/Source:\s+.+/, "Source: [CONFIG_SOURCE]")
       .gsub(/Workers:\s+\d+/, "Workers: [WORKER_COUNT]")
       .gsub(/Color:\s+.+/, "Color: [COLOR_VALUE]")
+      .gsub(/PLUR_WORKERS:\s+.+/, "PLUR_WORKERS:             [PLUR_WORKERS]")
       .gsub(/PARALLEL_TEST_PROCESSORS:\s+.+/, "PARALLEL_TEST_PROCESSORS: [PARALLEL_TEST_PROCESSORS]")
       .gsub(/FORCE_COLOR:\s+.+/, "FORCE_COLOR:              [FORCE_COLOR]")
       .gsub(/NO_COLOR:\s+.+/, "NO_COLOR:                 [NO_COLOR]")
@@ -127,6 +128,7 @@ RSpec.describe "plur doctor command" do
       "Cache Directory:",
       "Runtime Data:",
       "Environment Variables:",
+      "PLUR_WORKERS:",
       "PARALLEL_TEST_PROCESSORS:",
       "FORCE_COLOR:",
       "NO_COLOR:",
