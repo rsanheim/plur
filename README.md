@@ -106,8 +106,9 @@ Config files load in this order (later files override earlier values):
 See `docs/examples/` directory for more configuration examples.
 
 ### Environment Variables
+* `PLUR_WORKERS`: Number of workers
 * `TEST_ENV_NUMBER`: Worker 0 gets `""`, worker N gets `"N+1"`
 * `PARALLEL_TEST_GROUPS`: Total number of workers
-* `PARALLEL_TEST_PROCESSORS`: Compatible with parallel_tests
+* `PARALLEL_TEST_PROCESSORS`: Legacy fallback for `PLUR_WORKERS` (parallel_tests compatibility)
 
 More information in the [Documentation](docs/index.md).

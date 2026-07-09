@@ -95,7 +95,7 @@ type PlurCLI struct {
 	Use       string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Verbose   bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
 	Version   bool        `help:"Show version information"`
-	Workers   WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
+	Workers   WorkerCount `short:"n" help:"Number of parallel workers" env:"PLUR_WORKERS,PARALLEL_TEST_PROCESSORS" default:"4"`
 
 	// Job and watch configuration
 	Job           map[string]framework.Job `help:"Job configurations (config file only)" hidden:""`

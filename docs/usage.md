@@ -129,7 +129,7 @@ These commands run the configured job once per worker, with `PARALLEL_TEST_GROUP
 
 ### Environment Variables
 
-* `PARALLEL_TEST_PROCESSORS` - Override number of workers
+* `PLUR_WORKERS` - Override number of workers (`PARALLEL_TEST_PROCESSORS` is a legacy fallback)
 * `PLUR_DEBUG` - Enable debug logging
 * `PLUR_CONFIG_FILE` - Load a specific config file
 * `PLUR_HOME` - Override Plur's home directory (`~/.plur`)
@@ -140,7 +140,7 @@ These commands run the configured job once per worker, with `PARALLEL_TEST_GROUP
 
 Plur uses 4 workers by default:
 - Override with `-n` or `--workers`
-- Respects `PARALLEL_TEST_PROCESSORS` if set
+- Respects `PLUR_WORKERS` (or the legacy `PARALLEL_TEST_PROCESSORS`) if set
 - Project config can set a different default
 
 ### Manual Control
