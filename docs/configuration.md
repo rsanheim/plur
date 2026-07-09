@@ -5,8 +5,8 @@ Plur aims for zero-configuration operation, but provides flexible configuration 
 Plur supports multiple configuration methods with the following precedence (highest to lowest):
 
 1. Command-line flags
-2. Configuration files (merged; later files override earlier values)
-3. Environment variables (e.g., `PARALLEL_TEST_PROCESSORS`, `PLUR_DEBUG`)
+2. Environment variables (e.g., `PARALLEL_TEST_PROCESSORS`, `PLUR_DEBUG`)
+3. Configuration files (merged; later files override earlier values)
 4. Built-in defaults
 
 ## Configuration Files (TOML)
