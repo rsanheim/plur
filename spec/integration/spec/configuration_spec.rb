@@ -78,22 +78,8 @@ RSpec.describe "Configuration" do
       expect(error).not_to include("Worker 1:")
     end
 
-    it "environment variables have lower precedence than config files" do
-      _, error, status = Dir.chdir(config_fixture_dir) do
-        Open3.capture3(
-          {
-            "PLUR_CONFIG_FILE" => "valid.toml",
-            "PARALLEL_TEST_PROCESSORS" => "16"
-          },
-          plur_binary, "--dry-run"
-        )
-      end
-
-      expect(status).to be_success
-      expect(error).to include("Worker 0:")
-      expect(error).to include("Worker 1:")
-      expect(error).not_to include("Worker 2:")
-    end
+    # Worker-count env-var precedence lives in configuration_precedence_spec.rb,
+    # which asserts via `plur doctor` (not capped by fixture file count).
 
     it "project config overrides home config" do
       Dir.mktmpdir do |home_dir|
@@ -155,23 +141,6 @@ RSpec.describe "Configuration" do
         expect(error).to include("Worker 0:")
         expect(error).not_to include("Worker 1:")
       end
-    end
-
-    it "config file takes precedence over PARALLEL_TEST_PROCESSORS" do
-      _, error, status = Dir.chdir(config_fixture_dir) do
-        Open3.capture3(
-          {
-            "PLUR_CONFIG_FILE" => "valid.toml",
-            "PARALLEL_TEST_PROCESSORS" => "16"
-          },
-          plur_binary, "--dry-run"
-        )
-      end
-
-      expect(status).to be_success
-      expect(error).to include("Worker 0:")
-      expect(error).to include("Worker 1:")
-      expect(error).not_to include("Worker 2:")
     end
 
     it "CLI flag takes precedence over everything" do

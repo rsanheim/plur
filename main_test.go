@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -33,6 +34,7 @@ func TestWorkerCountValidation(t *testing.T) {
 		{name: "rejects negative environment value", env: "-1"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			clearWorkerEnv(t)
 			setTestEnv(t, "PARALLEL_TEST_PROCESSORS", tt.env, tt.env != "")
 
 			var parsed workerCountTestCLI
@@ -58,6 +60,7 @@ func TestWorkerCountValidationAcceptsPositiveValues(t *testing.T) {
 		{name: "uses default value", expected: DefaultWorkerCount},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			clearWorkerEnv(t)
 			setTestEnv(t, "PARALLEL_TEST_PROCESSORS", tt.env, tt.env != "")
 
 			var parsed workerCountTestCLI
@@ -72,9 +75,9 @@ func TestWorkerCountValidationAcceptsPositiveValues(t *testing.T) {
 }
 
 func TestWorkerCountValidationRejectsConfigValue(t *testing.T) {
+	clearWorkerEnv(t)
 	configPath := filepath.Join(t.TempDir(), "plur.toml")
 	require.NoError(t, os.WriteFile(configPath, []byte("workers = 0\n"), 0644))
-	setTestEnv(t, "PARALLEL_TEST_PROCESSORS", "", false)
 
 	var parsed workerCountTestCLI
 	parser, err := kong.New(&parsed, kong.Configuration(kongtoml.Loader, configPath))
@@ -85,8 +88,64 @@ func TestWorkerCountValidationRejectsConfigValue(t *testing.T) {
 	assert.Contains(t, err.Error(), "workers must be at least 1")
 }
 
+// Precedence: CLI flag > PLUR_WORKERS > PARALLEL_TEST_PROCESSORS > config > default.
+
+func TestWorkerCountConfigAppliesWithoutEnv(t *testing.T) {
+	clearWorkerEnv(t)
+	assert.Equal(t, 8, parseWorkerCount(t, configWithWorkers(t, 8), nil))
+}
+
+func TestWorkerCountPlurWorkersOverridesConfig(t *testing.T) {
+	clearWorkerEnv(t)
+	setTestEnv(t, "PLUR_WORKERS", "4", true)
+	assert.Equal(t, 4, parseWorkerCount(t, configWithWorkers(t, 8), nil))
+}
+
+func TestWorkerCountParallelTestProcessorsOverridesConfig(t *testing.T) {
+	clearWorkerEnv(t)
+	setTestEnv(t, "PARALLEL_TEST_PROCESSORS", "4", true)
+	assert.Equal(t, 4, parseWorkerCount(t, configWithWorkers(t, 8), nil))
+}
+
+func TestWorkerCountPlurWorkersBeatsParallelTestProcessors(t *testing.T) {
+	clearWorkerEnv(t)
+	setTestEnv(t, "PLUR_WORKERS", "4", true)
+	setTestEnv(t, "PARALLEL_TEST_PROCESSORS", "9", true)
+	assert.Equal(t, 4, parseWorkerCount(t, configWithWorkers(t, 8), nil))
+}
+
+func TestWorkerCountCLIOverridesConfigAndEnv(t *testing.T) {
+	clearWorkerEnv(t)
+	setTestEnv(t, "PLUR_WORKERS", "4", true)
+	setTestEnv(t, "PARALLEL_TEST_PROCESSORS", "9", true)
+	assert.Equal(t, 2, parseWorkerCount(t, configWithWorkers(t, 8), []string{"--workers=2"}))
+}
+
+func clearWorkerEnv(t *testing.T) {
+	t.Helper()
+	setTestEnv(t, "PLUR_WORKERS", "", false)
+	setTestEnv(t, "PARALLEL_TEST_PROCESSORS", "", false)
+}
+
+func configWithWorkers(t *testing.T, workers int) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "plur.toml")
+	require.NoError(t, os.WriteFile(path, []byte(fmt.Sprintf("workers = %d\n", workers)), 0644))
+	return path
+}
+
+func parseWorkerCount(t *testing.T, configPath string, args []string) int {
+	t.Helper()
+	var parsed workerCountTestCLI
+	parser, err := kong.New(&parsed, kong.Configuration(kongtoml.Loader, configPath))
+	require.NoError(t, err)
+	_, err = parser.Parse(args)
+	require.NoError(t, err)
+	return int(parsed.Workers)
+}
+
 type workerCountTestCLI struct {
-	Workers WorkerCount `short:"n" help:"Number of parallel workers" env:"PARALLEL_TEST_PROCESSORS" default:"4"`
+	Workers WorkerCount `short:"n" help:"Number of parallel workers" env:"PLUR_WORKERS,PARALLEL_TEST_PROCESSORS" default:"4"`
 }
 
 func (cli *workerCountTestCLI) Validate() error {

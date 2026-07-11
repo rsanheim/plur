@@ -6,6 +6,7 @@ package kongtoml
 import (
 	"io"
 	"log/slog"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -71,6 +72,16 @@ type Resolver struct {
 }
 
 func (r *Resolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Flag) (interface{}, error) {
+	// Environment variables outrank config files (precedence: CLI flag > env > config >
+	// default). Kong applies a flag's env tag during Reset(), before resolvers run; if
+	// that env var is set, defer to it rather than overriding with the config value.
+	if flag.Tag != nil {
+		for _, env := range flag.Tag.Envs {
+			if _, ok := os.LookupEnv(env); ok {
+				return nil, nil
+			}
+		}
+	}
 	value, ok := r.findValue(parent, flag)
 	if !ok {
 		return nil, nil

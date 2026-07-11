@@ -5,8 +5,8 @@ Plur aims for zero-configuration operation, but provides flexible configuration 
 Plur supports multiple configuration methods with the following precedence (highest to lowest):
 
 1. Command-line flags
-2. Configuration files (merged; later files override earlier values)
-3. Environment variables (e.g., `PARALLEL_TEST_PROCESSORS`, `PLUR_DEBUG`)
+2. Environment variables (e.g., `PLUR_WORKERS`, `PLUR_DEBUG`)
+3. Configuration files (merged; later files override earlier values)
 4. Built-in defaults
 
 ## Configuration Files (TOML)
@@ -326,7 +326,7 @@ plur -n 8
 plur --workers 8
 
 # or via environment variable
-export PARALLEL_TEST_PROCESSORS=8
+export PLUR_WORKERS=8
 plur
 ```
 
@@ -390,7 +390,8 @@ Plur matches RSpec's behavior:
 
 ### Recognized Variables
 
-* `PARALLEL_TEST_PROCESSORS` - Number of workers
+* `PLUR_WORKERS` - Number of workers
+* `PARALLEL_TEST_PROCESSORS` - Number of workers (legacy fallback for `PLUR_WORKERS`; parallel_tests compatibility)
 * `PLUR_DEBUG` - Enable debug output
 * `PLUR_CONFIG_FILE` - Load an additional config file after `~/.plur.toml` and `.plur.toml`
 * `PLUR_HOME` - Override Plur's home directory (default: `~/.plur`)

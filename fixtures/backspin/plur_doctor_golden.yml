@@ -46,6 +46,7 @@ snapshot:
                       [RUNTIME_STATS]
 
     Environment Variables:
+      PLUR_WORKERS:             [PLUR_WORKERS]
       PARALLEL_TEST_PROCESSORS: [PARALLEL_TEST_PROCESSORS]
       FORCE_COLOR:              [FORCE_COLOR]
       NO_COLOR:                 [NO_COLOR]
