@@ -1,9 +1,9 @@
 # plur CHANGELOG
 
-## Unreleased
+## v0.71.0 - 2026-07-11
 * Environment variables now take precedence over config file values (`CLI flag > env > config > default`), matching conventional CLI precedence; previously a committed `.plur.toml` value overrode an env var [#88](https://github.com/rsanheim/plur/pull/88).
 * Add `PLUR_WORKERS` as the primary worker-count env var; `PARALLEL_TEST_PROCESSORS` remains as a legacy fallback (`PLUR_WORKERS` wins when both are set) [#88](https://github.com/rsanheim/plur/pull/88).
-* `install.sh`: fail clearly on platforms with no prebuilt binary (e.g. Intel macOS).
+* `install.sh`: fail clearly on platforms with no prebuilt binary (e.g. Intel macOS) [#73](https://github.com/rsanheim/plur/pull/73).
 
 ## v0.70.0 - 2026-06-14
 * Breaking: job commands are now static executable-plus-args definitions; `{{target}}` placeholders are no longer supported in `cmd` and are rejected at config validation. Resolved targets are appended automatically in run and watch modes.
