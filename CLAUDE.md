@@ -28,11 +28,12 @@ Notes:
 
 ## Internal Planning Repo
 
-- The private planning repo for this project is `plur-internal` - it lives at "../plur-internal" releative to this repo.
+- The private planning repo for this project is `plur-internal` - it lives at "../plur-internal" relative to this repo.
 - GitHub: `https://github.com/rsanheim/plur-internal`
 - Git remote: `git@github.com:rsanheim/plur-internal.git`
 - Keep public product docs in this repo's `docs/` tree focused on current user-facing behavior.
 - Put planning docs, research notes, WIP writeups, marketing drafts, and internal design material in `../plur-internal`.
+- This is the **public** repo — keep internal/private material out of it: don't copy plans, WIP notes, reviews, or private research into tracked files, issues, PRs, or release docs unless explicitly asked and reviewed for public release. (Mirror of the guardrail in `plur-internal`'s CLAUDE.md.)
 
 ## Quick Reference
 
