@@ -16,7 +16,6 @@ require "backspin"
 ENV["MISE_YES"] ||= "1"
 
 ROOT_PATH = Pathname.new(__dir__).parent
-DEFAULT_RUBY_DIR = ROOT_PATH.join("fixtures", "projects", "default-ruby")
 DEFAULT_RUBY_SPEC_FILE_COUNT = 13
 
 Backspin.configure do |config|
