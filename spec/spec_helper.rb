@@ -79,12 +79,4 @@ RSpec.configure do |config|
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
   end
-
-  # Restore default-ruby state after the entire test suite - kinda hacky but its fine
-  config.after(:suite) do
-    Dir.chdir(DEFAULT_RUBY_DIR) do
-      # Reset any file changes made during tests
-      system("git checkout .", out: File::NULL, err: File::NULL)
-    end
-  end
 end
