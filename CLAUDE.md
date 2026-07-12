@@ -65,7 +65,7 @@ cmd = ["bundle", "exec", "rubocop"]
 target_pattern = "**/*.rb"
 ```
 
-Configuration precedence: CLI flags > `.plur.toml` (local) > `~/.plur.toml` (global) > defaults
+Configuration precedence (highest to lowest): CLI flags > environment variables (e.g. `PLUR_WORKERS`) > config files (`.plur.toml` local > `~/.plur.toml` global) > built-in defaults. Env vars beat config files (locked in by #88); see [docs/configuration.md](docs/configuration.md).
 
 See [Configuration Documentation](docs/configuration.md#job-configuration) for full details on creating custom jobs.
 
