@@ -1,5 +1,12 @@
 # plur CHANGELOG
 
+## Unreleased
+* Breaking: `--color` is now git-style — `--color=auto|always|never` (`on`/`off` accepted as aliases), default `auto`: colored on a terminal, plain when piped or redirected (agents, CI, log files). Bare `--color` and `--no-color` are removed; use `--color=always` / `--color=never`.
+* Breaking: the `color` config key takes the same strings (`color = "auto"`); the boolean form (`color = true`) now fails with a migration error.
+* `NO_COLOR` ([no-color.org](https://no-color.org)), `FORCE_COLOR`, and `CLICOLOR_FORCE` are now honored in auto mode (previously displayed by `plur doctor` but ignored). Precedence: `--color flag > FORCE_COLOR/CLICOLOR_FORCE > NO_COLOR > config file > terminal detection`.
+* `plur doctor` shows the resolved color decision and its source (e.g. `Color: false (not a tty)`); `--verbose` logs the same at startup.
+* Piped runs against projects on RSpec < 3.6 no longer fail with `invalid option: --force-color` — non-TTY runs now pass `--no-color` (which predates 3.6) to RSpec workers.
+
 ## v0.71.0 - 2026-07-11
 * Environment variables now take precedence over config file values (`CLI flag > env > config > default`), matching conventional CLI precedence; previously a committed `.plur.toml` value overrode an env var [#88](https://github.com/rsanheim/plur/pull/88).
 * Add `PLUR_WORKERS` as the primary worker-count env var; `PARALLEL_TEST_PROCESSORS` remains as a legacy fallback (`PLUR_WORKERS` wins when both are set) [#88](https://github.com/rsanheim/plur/pull/88).

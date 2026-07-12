@@ -103,7 +103,7 @@ RSpec.describe "plur spec output handling" do
         File.write(File.join(tmpdir, "spec", "boom_spec.rb"), "# target placeholder\n")
         File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
           use = "boom"
-          color = false
+          color = "never"
 
           [job.boom]
           framework = "rspec"
@@ -131,7 +131,7 @@ RSpec.describe "plur spec output handling" do
         File.write(File.join(tmpdir, "spec", "missing_spec.rb"), "# target placeholder\n")
         File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
           use = "missing"
-          color = false
+          color = "never"
 
           [job.missing]
           framework = "rspec"

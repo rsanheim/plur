@@ -9,6 +9,7 @@ import (
 // GlobalConfig holds settings that are truly global across all commands
 type GlobalConfig struct {
 	ColorOutput bool
+	ColorSource string // what decided ColorOutput: always|never|FORCE_COLOR|CLICOLOR_FORCE|NO_COLOR|tty|not a tty
 	ConfigPaths *ConfigPaths
 	Debug       bool
 	Verbose     bool

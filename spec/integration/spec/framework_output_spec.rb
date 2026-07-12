@@ -17,7 +17,7 @@ RSpec.describe "Framework output (dry-run + verbose)" do
 
       File.write(File.join(dir, ".plur.toml"), <<~TOML)
         workers = 1
-        color = false
+        color = "never"
         use = "fast"
 
         [job.fast]

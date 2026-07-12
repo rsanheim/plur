@@ -1,6 +1,6 @@
 # Configuration file with job definitions
 workers = 2
-color = false
+color = "never"
 
 [job.rspec]
 cmd = ["bin/rspec", "--format", "documentation"]

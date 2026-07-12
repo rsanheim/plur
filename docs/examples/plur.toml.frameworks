@@ -8,7 +8,7 @@
 # =============================================================================
 
 # workers = 8                          # More workers for larger test suites
-# color = true
+# color = "always"
 # use = "rspec"
 #
 # [job.rspec]
@@ -43,7 +43,7 @@
 # =============================================================================
 
 # workers = 16                         # Max out CI workers
-# color = false                        # Disable color for log files
+# color = "never"                      # Disable color for log files
 # verbose = true                       # More output for debugging
 #
 # [job.rspec]

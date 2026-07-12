@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/term"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -87,7 +89,7 @@ type PlurCLI struct {
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
 	ChangeDir string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Color     bool        `help:"Enable colorized output" negatable:"" default:"true"`
+	Color     string      `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,on,off" default:"auto"`
 	Debug     bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
 	DryRun    bool        `help:"Print what would be executed without running" default:"false"`
 	FirstIs1  bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
@@ -147,8 +149,12 @@ func (cli *PlurCLI) AfterApply() error {
 		}
 	}
 
+	colorOn, colorSource := term.ResolveColor(cli.Color, os.LookupEnv, term.IsStdoutTTY())
+	slog.Info("color output resolved", "mode", cli.Color, "enabled", colorOn, "source", colorSource)
+
 	cli.globalConfig = &config.GlobalConfig{
-		ColorOutput:   cli.Color,
+		ColorOutput:   colorOn,
+		ColorSource:   colorSource,
 		ConfigPaths:   configPaths,
 		Debug:         cli.Debug,
 		Verbose:       cli.Verbose,
@@ -287,7 +293,7 @@ func main() {
 		kong.ConfigureHelp(kong.HelpOptions{Compact: true, FlagsLast: true}),
 		clihelp.ConfigureHelpDetails(),
 		kong.Help(clihelp.HelpPrinter),
-		kong.Configuration(kongtoml.Loader, configFiles...))
+		kong.Configuration(colorAwareLoader, configFiles...))
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
@@ -316,6 +322,34 @@ func main() {
 
 func commandSupportsPassthrough(command string) bool {
 	return strings.HasPrefix(command, "spec") || strings.HasPrefix(command, "rails")
+}
+
+// colorAwareLoader wraps the TOML config loader to keep the color key's
+// precedence correct: the color env conventions (FORCE_COLOR, CLICOLOR_FORCE,
+// NO_COLOR) outrank config files, and the retired boolean form fails with a
+// useful error instead of kong's raw type-mismatch message.
+func colorAwareLoader(r io.Reader) (kong.Resolver, error) {
+	resolver, err := kongtoml.Loader(r)
+	if err != nil {
+		return nil, err
+	}
+	return colorConfigResolver{resolver}, nil
+}
+
+type colorConfigResolver struct{ kong.Resolver }
+
+func (r colorConfigResolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Flag) (interface{}, error) {
+	value, err := r.Resolver.Resolve(kctx, parent, flag)
+	if err != nil || value == nil || flag.Name != "color" {
+		return value, err
+	}
+	if _, isBool := value.(bool); isBool {
+		return nil, errors.New(`booleans are no longer supported; use "auto", "always", or "never"`)
+	}
+	if term.EnvDecidesColor(os.LookupEnv) {
+		return nil, nil // env outranks the config file for color
+	}
+	return value, nil
 }
 
 type ExitCode struct {

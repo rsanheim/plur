@@ -39,10 +39,10 @@ RSpec.describe "pending specs output" do
         )
       end
 
-      # Verify plur output matches
+      # Verify plur output matches (--color=always for parity with rspec's --force-color)
       result = chdir fixture_path("failing_specs") do
         Backspin.run(
-          [plur_binary, "spec/mixed_results_spec.rb"],
+          [plur_binary, "--color=always", "spec/mixed_results_spec.rb"],
           name: "pending_output_comparison",
           filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
         )
@@ -73,7 +73,7 @@ RSpec.describe "pending specs output" do
   describe "pending progress indicators" do
     it "shows yellow * for pending specs with color" do
       chdir fixture_path("failing_specs") do
-        stdout, _stderr, _status = run_plur("spec/mixed_results_spec.rb")
+        stdout, _stderr, _status = run_plur("spec/mixed_results_spec.rb", "--color=always")
 
         # Yellow * for pending specs
         expect(stdout).to include("\e[33m*\e[0m")

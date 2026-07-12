@@ -14,7 +14,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        # Config has color = false
+        # Config has color = "never"
         expect(error).to include("--no-color")
         # Config has workers = 2
         expect(error).to include("Worker 0:")
@@ -69,7 +69,7 @@ RSpec.describe "Configuration" do
       _, error, status = Dir.chdir(config_fixture_dir) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => "valid.toml"},
-          plur_binary, "--workers=1", "--color", "--dry-run"
+          plur_binary, "--workers=1", "--color=always", "--dry-run"
         )
       end
 
@@ -123,7 +123,7 @@ RSpec.describe "Configuration" do
       Dir.mktmpdir do |tmpdir|
         File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
           workers = 8
-          color = true
+          color = "always"
         TOML
 
         spec_dir = File.join(tmpdir, "spec")
@@ -221,7 +221,7 @@ RSpec.describe "Configuration" do
       end
 
       expect(status).not_to be_success
-      expect(error).to match(/expected a valid 64 bit int|invalid value/)
+      expect(error).to match(/expected a valid 64 bit int|invalid value|must be one of/)
     end
 
     it "exits with error for duplicate keys" do
