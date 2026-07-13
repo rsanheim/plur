@@ -8,8 +8,14 @@ require "tmpdir"
 require "tty-command"
 require "backspin"
 
+# The suite shells out to the `plur` binary, which on dev machines is usually a
+# mise shim. Several integration specs spawn it with an isolated HOME, so mise
+# can't reach its trust store and aborts with "config not trusted", polluting
+# the subprocess stderr. Our mise configs are trusted, so auto-confirm instead
+# of failing. No effect when `plur` is a plain binary, since mise never runs.
+ENV["MISE_YES"] ||= "1"
+
 ROOT_PATH = Pathname.new(__dir__).parent
-DEFAULT_RUBY_DIR = ROOT_PATH.join("fixtures", "projects", "default-ruby")
 DEFAULT_RUBY_SPEC_FILE_COUNT = 13
 
 Backspin.configure do |config|
@@ -71,13 +77,5 @@ RSpec.configure do |config|
 
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
-  end
-
-  # Restore default-ruby state after the entire test suite - kinda hacky but its fine
-  config.after(:suite) do
-    Dir.chdir(DEFAULT_RUBY_DIR) do
-      # Reset any file changes made during tests
-      system("git checkout .", out: File::NULL, err: File::NULL)
-    end
   end
 end
