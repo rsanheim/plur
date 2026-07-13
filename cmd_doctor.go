@@ -148,8 +148,6 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 	fmt.Println("Environment Variables:")
 	fmt.Printf("  PLUR_WORKERS:             %s\n", getEnvOrDefault("PLUR_WORKERS", "(not set)"))
 	fmt.Printf("  PARALLEL_TEST_PROCESSORS: %s\n", getEnvOrDefault("PARALLEL_TEST_PROCESSORS", "(not set)"))
-	fmt.Printf("  FORCE_COLOR:              %s\n", getEnvOrDefault("FORCE_COLOR", "(not set)"))
-	fmt.Printf("  CLICOLOR_FORCE:           %s\n", getEnvOrDefault("CLICOLOR_FORCE", "(not set)"))
 	fmt.Printf("  NO_COLOR:                 %s\n", getEnvOrDefault("NO_COLOR", "(not set)"))
 	fmt.Printf("  HOME:                     %s\n", getEnvOrDefault("HOME", "(not set)"))
 	fmt.Printf("  GOPATH:                   %s\n", getEnvOrDefault("GOPATH", "(not set)"))

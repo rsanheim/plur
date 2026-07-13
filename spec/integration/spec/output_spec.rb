@@ -21,8 +21,7 @@ RSpec.describe "plur spec output handling" do
 
     it "maintains colored output when supported" do
       Dir.chdir(default_ruby_dir) do
-        # Force color output
-        result = run_plur("-n", "4", env: {"FORCE_COLOR" => "1"})
+        result = run_plur("-n", "4", "--color=always")
 
         # Should contain ANSI color codes for green dots
         expect(result.out).to include("\e[32m.\e[0m")

@@ -396,9 +396,8 @@ Plur matches RSpec's behavior:
 * `PLUR_CONFIG_FILE` - Load an additional config file after `~/.plur.toml` and `.plur.toml`
 * `PLUR_HOME` - Override Plur's home directory (default: `~/.plur`)
 * `NO_COLOR` - Disable colored output when set to any value ([no-color.org](https://no-color.org))
-* `FORCE_COLOR` / `CLICOLOR_FORCE` - Force colored output even when not on a terminal (`0`, `false`, and empty values do not force; `FORCE_COLOR` wins over `NO_COLOR` when both are set)
 
-Color env vars apply in `--color=auto` mode (the default); an explicit `--color=always|never` flag beats them. `plur doctor` shows the resolved color decision and its source.
+`NO_COLOR` applies in `--color=auto` mode (the default); an explicit `--color=always|never` flag beats it. `plur doctor` shows the resolved color decision and its source.
 
 ## Troubleshooting
 

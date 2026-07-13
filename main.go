@@ -325,9 +325,8 @@ func commandSupportsPassthrough(command string) bool {
 }
 
 // colorAwareLoader wraps the TOML config loader to keep the color key's
-// precedence correct: the color env conventions (FORCE_COLOR, CLICOLOR_FORCE,
-// NO_COLOR) outrank config files, and the retired boolean form fails with a
-// useful error instead of kong's raw type-mismatch message.
+// precedence correct: NO_COLOR outranks config files, and the retired boolean
+// form fails with a useful error instead of kong's raw type-mismatch message.
 func colorAwareLoader(r io.Reader) (kong.Resolver, error) {
 	resolver, err := kongtoml.Loader(r)
 	if err != nil {

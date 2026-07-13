@@ -3,7 +3,7 @@ require "spec_helper"
 # Color resolution is a documented contract, so this file pins every rung of the
 # ladder as seen through a pipe (which is how agents and CI always run plur):
 #
-#   --color=always|never  >  FORCE_COLOR / CLICOLOR_FORCE / NO_COLOR  >  config file  >  auto (tty detection)
+#   --color=always|never  >  NO_COLOR  >  config file  >  auto (tty detection)
 #
 # run_plur drives the real binary through pipes, so "no flags, clean env" means
 # auto resolves to no color. TTY-side behavior lives in tty_output_spec.rb.
@@ -51,29 +51,14 @@ RSpec.describe "Color resolution over a pipe" do
   end
 
   context "environment conventions" do
-    it "FORCE_COLOR=1 forces ANSI on a pipe" do
-      result = run_mixed(env: {"FORCE_COLOR" => "1"})
-      expect(result.out).to match(ansi)
-    end
-
-    it "CLICOLOR_FORCE=1 forces ANSI on a pipe" do
-      result = run_mixed(env: {"CLICOLOR_FORCE" => "1"})
-      expect(result.out).to match(ansi)
-    end
-
-    it "FORCE_COLOR=0 does not force" do
-      result = run_mixed(env: {"FORCE_COLOR" => "0"})
-      expect(result.out).not_to match(ansi)
-    end
-
-    it "NO_COLOR disables color" do
+    it "NO_COLOR keeps color off on a pipe" do
       result = run_mixed(env: {"NO_COLOR" => "1"})
       expect(result.out).not_to match(ansi)
     end
 
-    it "FORCE_COLOR beats NO_COLOR when both are set" do
-      result = run_mixed(env: {"FORCE_COLOR" => "1", "NO_COLOR" => "1"})
-      expect(result.out).to match(ansi)
+    it "NO_COLOR is presence-based (empty value still counts)" do
+      result = run_mixed(env: {"NO_COLOR" => ""})
+      expect(result.out).not_to match(ansi)
     end
   end
 
@@ -93,10 +78,10 @@ RSpec.describe "Color resolution over a pipe" do
       end
     end
 
-    it "env beats config: color = \"never\" loses to FORCE_COLOR=1" do
-      with_color_config(%("never")) do |config_path|
-        result = run_mixed(env: {"PLUR_CONFIG_FILE" => config_path, "FORCE_COLOR" => "1"})
-        expect(result.out).to match(ansi)
+    it "env beats config: color = \"always\" loses to NO_COLOR" do
+      with_color_config(%("always")) do |config_path|
+        result = run_mixed(env: {"PLUR_CONFIG_FILE" => config_path, "NO_COLOR" => "1"})
+        expect(result.out).not_to match(ansi)
       end
     end
 

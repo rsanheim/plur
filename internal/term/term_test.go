@@ -28,22 +28,12 @@ func TestResolveColor(t *testing.T) {
 		{"never", "never", nil, true, false, "never"},
 		{"off alias", "off", nil, true, false, "never"},
 		{"always beats NO_COLOR", "always", map[string]string{"NO_COLOR": "1"}, false, true, "always"},
-		{"never beats FORCE_COLOR", "never", map[string]string{"FORCE_COLOR": "1"}, true, false, "never"},
-
-		// auto: force vars win first, and are value-sensitive.
-		{"auto FORCE_COLOR=1", "auto", map[string]string{"FORCE_COLOR": "1"}, false, true, "FORCE_COLOR"},
-		{"auto CLICOLOR_FORCE=1", "auto", map[string]string{"CLICOLOR_FORCE": "1"}, false, true, "CLICOLOR_FORCE"},
-		{"auto FORCE_COLOR=0 is not forcing", "auto", map[string]string{"FORCE_COLOR": "0"}, false, false, "not a tty"},
-		{"auto FORCE_COLOR=false is not forcing", "auto", map[string]string{"FORCE_COLOR": "false"}, false, false, "not a tty"},
-		{"auto FORCE_COLOR empty is not forcing", "auto", map[string]string{"FORCE_COLOR": ""}, false, false, "not a tty"},
-		{"auto force beats NO_COLOR", "auto", map[string]string{"FORCE_COLOR": "1", "NO_COLOR": "1"}, false, true, "FORCE_COLOR"},
 
 		// auto: NO_COLOR is presence-based (empty value still counts).
 		{"auto NO_COLOR=1", "auto", map[string]string{"NO_COLOR": "1"}, true, false, "NO_COLOR"},
 		{"auto NO_COLOR empty", "auto", map[string]string{"NO_COLOR": ""}, true, false, "NO_COLOR"},
-		{"auto FORCE_COLOR=0 falls through to NO_COLOR", "auto", map[string]string{"FORCE_COLOR": "0", "NO_COLOR": "1"}, true, false, "NO_COLOR"},
 
-		// auto: tty decides when env is silent.
+		// auto: tty decides when NO_COLOR is absent.
 		{"auto tty", "auto", nil, true, true, "tty"},
 		{"auto pipe", "auto", nil, false, false, "not a tty"},
 	}
@@ -63,11 +53,8 @@ func TestEnvDecidesColor(t *testing.T) {
 		want bool
 	}{
 		{"nothing set", nil, false},
-		{"FORCE_COLOR=1", map[string]string{"FORCE_COLOR": "1"}, true},
-		{"CLICOLOR_FORCE=1", map[string]string{"CLICOLOR_FORCE": "1"}, true},
-		{"NO_COLOR set", map[string]string{"NO_COLOR": ""}, true},
-		{"FORCE_COLOR=0 does not decide", map[string]string{"FORCE_COLOR": "0"}, false},
-		{"FORCE_COLOR=0 but NO_COLOR set decides", map[string]string{"FORCE_COLOR": "0", "NO_COLOR": "1"}, true},
+		{"NO_COLOR set (empty)", map[string]string{"NO_COLOR": ""}, true},
+		{"NO_COLOR=1", map[string]string{"NO_COLOR": "1"}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

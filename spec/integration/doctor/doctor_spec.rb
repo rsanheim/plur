@@ -65,8 +65,6 @@ RSpec.describe "plur doctor command" do
       .gsub(/Color:\s+.+/, "Color: [COLOR_VALUE]")
       .gsub(/PLUR_WORKERS:\s+.+/, "PLUR_WORKERS:             [PLUR_WORKERS]")
       .gsub(/PARALLEL_TEST_PROCESSORS:\s+.+/, "PARALLEL_TEST_PROCESSORS: [PARALLEL_TEST_PROCESSORS]")
-      .gsub(/FORCE_COLOR:\s+.+/, "FORCE_COLOR:              [FORCE_COLOR]")
-      .gsub(/CLICOLOR_FORCE:\s+.+/, "CLICOLOR_FORCE:           [CLICOLOR_FORCE]")
       .gsub(/NO_COLOR:\s+.+/, "NO_COLOR:                 [NO_COLOR]")
       .gsub(/GOPATH:\s+.+/, "GOPATH:                   [GOPATH]")
       .gsub(/Debounce:\s+\d+ms/, "Debounce: [DEBOUNCE_MS]")
@@ -131,7 +129,6 @@ RSpec.describe "plur doctor command" do
       "Environment Variables:",
       "PLUR_WORKERS:",
       "PARALLEL_TEST_PROCESSORS:",
-      "FORCE_COLOR:",
       "NO_COLOR:",
       "HOME:",
       "GOPATH:",
