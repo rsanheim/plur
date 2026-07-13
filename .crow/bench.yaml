@@ -1,6 +1,7 @@
 # Plur recurring benchmarks. Runs script/bench-suite over benchmarks/projects.yml,
-# writing results to the dedicated ci-bench:/bench volume (see snax/script/ci-bench-setup
-# for the one-time host wiring). Separate from ci.yaml to stay off the build path.
+# writing results to the dedicated ci-bench:/bench volume. Provision it with
+# infra/script/ci-bench-setup; this workflow alone mounts it. Separate from
+# ci.yaml to stay off the build path. The repo needs Crow's Volumes trust flag.
 #
 # Footgun: Crow substitutes dollar-brace vars over the whole file (comments too),
 # so commands use bare $VAR (shell-expanded); only Crow builtins use braces.
@@ -11,9 +12,15 @@ when:
     cron: nightly-bench
   - event: manual
   # Opt-in: "[bench]" in the PR title runs benchmarks (Crow exposes the title, not
-  # the PR body, so it keys off the title only).
+  # the PR body). Restrict it to Rob-authored PRs on the canonical repository.
   - event: pull_request
-    evaluate: 'CI_COMMIT_PULL_REQUEST_TITLE contains "[bench]"'
+    evaluate: >-
+      CI_COMMIT_PULL_REQUEST_TITLE contains "[bench]" &&
+      CI_REPO == "rsanheim/plur" &&
+      CI_PIPELINE_AUTHOR == "rsanheim"
+
+labels:
+  platform: linux/amd64
 
 variables:
   - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
@@ -21,6 +28,8 @@ variables:
 steps:
   - name: bench
     image: *plur_image
+    volumes:
+      - ci-bench:/bench
     environment:
       CI: 'true'
       BUNDLE_JOBS: '4'
