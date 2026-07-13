@@ -110,16 +110,19 @@ RSpec.describe "Color resolution over a pipe" do
   end
 
   context "retired flag forms" do
-    it "bare --color errors" do
-      result = run_mixed("--color")
+    it "bare --color errors with a hint at the new forms" do
+      result = run_plur_allowing_errors("--color")
       expect(result.exit_status).not_to eq(0)
-      expect(result.err).to include("--color")
+      expect(result.err).to include("--color needs a value")
+      expect(result.err).to include("--color=always")
+      expect(result.err).to include("--color=never")
     end
 
-    it "--no-color errors" do
+    it "--no-color errors with a hint at --color=never" do
       result = run_mixed("--no-color")
       expect(result.exit_status).not_to eq(0)
-      expect(result.err).to include("unknown flag")
+      expect(result.err).to include("--no-color is no longer supported")
+      expect(result.err).to include("--color=never")
     end
   end
 end

@@ -301,7 +301,7 @@ func main() {
 	}
 
 	ctx, err := parser.Parse(args)
-	parser.FatalIfErrorf(err)
+	parser.FatalIfErrorf(retiredColorFlagHint(err))
 
 	if len(cli.passthroughArgs) > 0 && !commandSupportsPassthrough(ctx.Command()) {
 		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec, rails, and rake commands")
@@ -351,6 +351,33 @@ func (r colorConfigResolver) Resolve(kctx *kong.Context, parent *kong.Path, flag
 	}
 	return value, nil
 }
+
+// retiredColorFlagHint rewrites kong's generic parse errors for the removed
+// bare --color and --no-color forms into messages that point at the new
+// --color=auto|always|never syntax. Any other error passes through unchanged.
+// (An explicit bad value like --color=purple keeps kong's enum error, which
+// already lists the valid choices.)
+func retiredColorFlagHint(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "unknown flag --no-color"):
+		return usageError("--no-color is no longer supported; use --color=never")
+	case strings.Contains(msg, "--color") && strings.Contains(msg, "expected string value"):
+		return usageError("--color needs a value; use --color=auto, --color=always, or --color=never")
+	}
+	return err
+}
+
+// usageError is a CLI usage error that reports kong's usage-error exit status
+// (80, per https://github.com/square/exit) via kong's ExitCoder interface, so
+// rewritten flag errors exit consistently with kong's own parse errors.
+type usageError string
+
+func (e usageError) Error() string { return string(e) }
+func (e usageError) ExitCode() int { return 80 }
 
 type ExitCode struct {
 	Code int
