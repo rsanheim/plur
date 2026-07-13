@@ -89,7 +89,7 @@ type PlurCLI struct {
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
 	ChangeDir string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Color     string      `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,on,off" default:"auto"`
+	Color     string      `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,on,off" env:"PLUR_COLOR" default:"auto"`
 	Debug     bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
 	DryRun    bool        `help:"Print what would be executed without running" default:"false"`
 	FirstIs1  bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`

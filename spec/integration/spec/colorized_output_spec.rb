@@ -62,6 +62,18 @@ RSpec.describe "Color resolution over a pipe" do
     end
   end
 
+  context "PLUR_COLOR env var" do
+    it "rides along like the flag: PLUR_COLOR=always emits ANSI on a pipe" do
+      result = run_mixed(env: {"PLUR_COLOR" => "always"})
+      expect(result.out).to match(ansi)
+    end
+
+    it "the --color flag beats PLUR_COLOR" do
+      result = run_mixed("--color=never", env: {"PLUR_COLOR" => "always"})
+      expect(result.out).not_to match(ansi)
+    end
+  end
+
   context "config file" do
     def with_color_config(value)
       Dir.mktmpdir do |dir|
@@ -82,6 +94,13 @@ RSpec.describe "Color resolution over a pipe" do
       with_color_config(%("always")) do |config_path|
         result = run_mixed(env: {"PLUR_CONFIG_FILE" => config_path, "NO_COLOR" => "1"})
         expect(result.out).not_to match(ansi)
+      end
+    end
+
+    it "env beats config: PLUR_COLOR=always beats color = \"never\"" do
+      with_color_config(%("never")) do |config_path|
+        result = run_mixed(env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_COLOR" => "always"})
+        expect(result.out).to match(ansi)
       end
     end
 
