@@ -37,34 +37,7 @@ Notes:
 
 ## Quick Reference
 
-### Plur Commands
-```bash
-plur                      # Run tests (default: 4 workers)
-plur -n 4                 # Specify workers (often fastest)
-plur -C path/to/project   # Change to directory before running (like git -C)
-plur --dry-run            # Preview what will run
-plur doctor               # Debug installation issues
-plur watch                # Auto-run tests on file changes (experimental)
-plur spec                      # Run tests with detected job
-```
-
 ### Configuration Files
-
-Plur supports TOML configuration files for persistent settings:
-
-```toml
-# .plur.toml or ~/.plur.toml
-workers = 4              # Number of parallel workers
-color = true             # Enable colored output
-use = "rspec"            # Default job to use (can be overridden with --use)
-
-[job.rspec]
-cmd = ["bin/rspec"]        # Override default command
-
-[job.custom-lint]
-cmd = ["bundle", "exec", "rubocop"]
-target_pattern = "**/*.rb"
-```
 
 Configuration precedence (highest to lowest): CLI flags > environment variables (e.g. `PLUR_WORKERS`) > config files (`.plur.toml` local > `~/.plur.toml` global) > built-in defaults. Env vars beat config files (locked in by #88); see [docs/configuration.md](docs/configuration.md).
 
@@ -84,9 +57,6 @@ When both `spec/` and `test/` directories exist, Plur defaults to RSpec
 - **Override**: Use `plur --use=minitest` or set `use = "minitest"` in `.plur.toml`
 
 ### Architecture Notes
-- Worker pool with goroutines
-- Runtime-based test distribution (tracks execution times)
-- Channel-based output aggregation (no lock contention)
 - We are removing top-level `*.go` files; new Go files must live under `internal/` or another appropriate package, not the repository root.
 
 ### Development Cycle
@@ -137,13 +107,7 @@ script/bench-git --refs v0.15.0 v0.14.0 main -p ~/src/oss/rspec-core
 ```
 
 ## GitHub CLI
-Prefer the `gh` CLI for searching GitHub or getting info about related repos, issues, etc:
-```bash
-# Search with specific fields
-gh search repos --language=go --stars=">50" glob --json name,owner,stargazersCount
-# Get commit info
-gh api repos/owner/repo/commits/SHA --jq '{sha: .sha, message: .commit.message}'
-```
+Prefer the `gh` CLI for searching GitHub or getting info about related repos, issues, etc.
 
 ## Documentation Guidelines
 
