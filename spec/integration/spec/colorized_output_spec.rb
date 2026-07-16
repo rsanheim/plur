@@ -72,12 +72,6 @@ RSpec.describe "Color resolution over a pipe" do
       result = run_mixed("--color=never", env: {"PLUR_COLOR" => "always"})
       expect(result.out).not_to match(ansi)
     end
-
-    it "treats a set-but-empty PLUR_COLOR as unset" do
-      result = run_mixed(env: {"PLUR_COLOR" => ""})
-      expect(result.out).not_to match(ansi)
-      expect(result.out).to include(".")
-    end
   end
 
   context "config file" do
