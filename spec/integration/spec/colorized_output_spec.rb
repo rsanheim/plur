@@ -8,10 +8,6 @@ require "spec_helper"
 # run_plur drives the real binary through pipes, so "no flags, clean env" means
 # auto resolves to no color. TTY-side behavior lives in tty_output_spec.rb.
 RSpec.describe "Color resolution over a pipe" do
-  def ansi
-    /\e\[\d+m/
-  end
-
   def run_mixed(*args, env: {})
     chdir(project_fixture("failing_specs")) do
       run_plur_allowing_errors(*args, "spec/mixed_results_spec.rb", env: env)
@@ -112,7 +108,7 @@ RSpec.describe "Color resolution over a pipe" do
     end
   end
 
-  context "retired flag forms" do
+  context "unsupported flag forms" do
     it "bare --color errors with a hint at the new forms" do
       result = run_plur_allowing_errors("--color")
       expect(result.exit_status).not_to eq(0)

@@ -16,12 +16,12 @@ RSpec.describe "Color resolution under a TTY", :pty do
 
   it "NO_COLOR disables color even on a terminal" do
     output = run_passing_in_pty(env: {"NO_COLOR" => "1"})
-    expect(output).not_to match(/\e\[\d+m/)
+    expect(output).not_to match(ansi)
   end
 
   it "--color=never disables color even on a terminal" do
     fixture = project_fixture("default-ruby")
     output = run_in_pty(plur_binary, "--color=never", "-n", "2", "spec/calculator_spec.rb", chdir: fixture)
-    expect(output).not_to match(/\e\[\d+m/)
+    expect(output).not_to match(ansi)
   end
 end

@@ -150,15 +150,14 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 	fmt.Println()
 
 	fmt.Println("Environment Variables:")
-	keys := slices.Clone(importantEnvVars)
+	var plurVars []string
 	for _, kv := range os.Environ() {
-		key, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(key, "PLUR_") && !slices.Contains(keys, key) {
-			keys = append(keys, key)
+		if key, _, _ := strings.Cut(kv, "="); strings.HasPrefix(key, "PLUR_") {
+			plurVars = append(plurVars, key)
 		}
 	}
-	slices.Sort(keys[len(importantEnvVars):])
-	for _, key := range keys {
+	slices.Sort(plurVars)
+	for _, key := range slices.Concat(importantEnvVars, plurVars) {
 		fmt.Printf("  %-25s %s\n", key+":", envDisplay(key))
 	}
 	fmt.Println()

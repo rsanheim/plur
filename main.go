@@ -150,7 +150,7 @@ func (cli *PlurCLI) AfterApply() error {
 		}
 	}
 
-	colorOn, colorSource := term.ResolveColor(cli.Color, os.LookupEnv, term.IsStdoutTTY())
+	colorOn, colorSource := term.ResolveColor(cli.Color, term.IsStdoutTTY())
 	slog.Info("color output resolved", "mode", cli.Color, "enabled", colorOn, "source", colorSource)
 
 	cli.globalConfig = &config.GlobalConfig{
@@ -302,7 +302,7 @@ func main() {
 	}
 
 	ctx, err := parser.Parse(args)
-	parser.FatalIfErrorf(retiredColorFlagHint(err))
+	parser.FatalIfErrorf(colorFlagHint(err))
 
 	if len(cli.passthroughArgs) > 0 && !commandSupportsPassthrough(ctx.Command()) {
 		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec, rails, and rake commands")
@@ -346,18 +346,17 @@ func (r colorConfigResolver) Resolve(kctx *kong.Context, parent *kong.Path, flag
 	if b, isBool := value.(bool); isBool {
 		value = strconv.FormatBool(b)
 	}
-	if term.EnvDecidesColor(os.LookupEnv) {
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
 		return nil, nil // env outranks the config file for color
 	}
 	return value, nil
 }
 
-// retiredColorFlagHint rewrites kong's generic parse errors for the removed
-// bare --color and --no-color forms into messages that point at the new
-// --color=auto|always|never syntax. Any other error passes through unchanged.
-// (An explicit bad value like --color=purple keeps kong's enum error, which
-// already lists the valid choices.)
-func retiredColorFlagHint(err error) error {
+// colorFlagHint rewrites kong's generic parse errors for bare --color and
+// --no-color into messages that point at --color=auto|always|never. Any other
+// error passes through unchanged. (An explicit bad value like --color=purple
+// keeps kong's enum error, which already lists the valid choices.)
+func colorFlagHint(err error) error {
 	if err == nil {
 		return nil
 	}
