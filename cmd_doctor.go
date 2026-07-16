@@ -146,11 +146,11 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 
 	// Environment variables
 	fmt.Println("Environment Variables:")
-	fmt.Printf("  PLUR_WORKERS:             %s\n", getEnvOrDefault("PLUR_WORKERS", "(not set)"))
-	fmt.Printf("  PARALLEL_TEST_PROCESSORS: %s\n", getEnvOrDefault("PARALLEL_TEST_PROCESSORS", "(not set)"))
-	fmt.Printf("  NO_COLOR:                 %s\n", getEnvOrDefault("NO_COLOR", "(not set)"))
-	fmt.Printf("  HOME:                     %s\n", getEnvOrDefault("HOME", "(not set)"))
-	fmt.Printf("  GOPATH:                   %s\n", getEnvOrDefault("GOPATH", "(not set)"))
+	fmt.Printf("  PLUR_WORKERS:             %s\n", envDisplay("PLUR_WORKERS"))
+	fmt.Printf("  PARALLEL_TEST_PROCESSORS: %s\n", envDisplay("PARALLEL_TEST_PROCESSORS"))
+	fmt.Printf("  NO_COLOR:                 %s\n", envDisplay("NO_COLOR"))
+	fmt.Printf("  HOME:                     %s\n", envDisplay("HOME"))
+	fmt.Printf("  GOPATH:                   %s\n", envDisplay("GOPATH"))
 	fmt.Println()
 
 	// Configuration
@@ -171,11 +171,17 @@ func getCommandOutput(name string, args ...string) (string, error) {
 	return string(output), nil
 }
 
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+// envDisplay shows an env var's literal value: set-but-empty is `""`, not
+// conflated with unset.
+func envDisplay(key string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return "(not set)"
 	}
-	return defaultValue
+	if value == "" {
+		return `""`
+	}
+	return value
 }
 
 func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) error {
