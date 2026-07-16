@@ -7,6 +7,7 @@ import (
 	stdruntime "runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -171,17 +172,14 @@ func getCommandOutput(name string, args ...string) (string, error) {
 	return string(output), nil
 }
 
-// envDisplay shows an env var's literal value: set-but-empty is `""`, not
-// conflated with unset.
+// envDisplay shows an env var's value as a quoted Go literal, so empty and
+// whitespace-only values are visible and distinct from unset.
 func envDisplay(key string) string {
 	value, ok := os.LookupEnv(key)
 	if !ok {
 		return "(not set)"
 	}
-	if value == "" {
-		return `""`
-	}
-	return value
+	return strconv.Quote(value)
 }
 
 func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) error {
