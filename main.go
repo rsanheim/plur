@@ -273,6 +273,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// A set-but-empty PLUR_COLOR means unset; kong would otherwise feed "" to
+	// --color's enum and fail every command without mentioning the env var.
+	if v, ok := os.LookupEnv("PLUR_COLOR"); ok && v == "" {
+		os.Unsetenv("PLUR_COLOR")
+	}
+
 	configFiles := []string{"~/.plur.toml", ".plur.toml"}
 	if configFile := os.Getenv("PLUR_CONFIG_FILE"); configFile != "" {
 		if _, err := os.Stat(configFile); err != nil {
