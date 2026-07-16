@@ -1,8 +1,8 @@
 # plur CHANGELOG
 
 ## Unreleased
-* Breaking: `--color` is now git-style — `--color=auto|always|never` (`on`/`off` accepted as aliases), default `auto`: colored on a terminal, plain when piped or redirected (agents, CI, log files). Bare `--color` and `--no-color` are removed; both now error with a hint pointing at `--color=always` / `--color=never`.
-* Breaking: the `color` config key takes the same strings (`color = "auto"`); the boolean form (`color = true`) now fails with a migration error.
+* Breaking: `--color` is now git-style — `--color=auto|always|never` (`true`/`false` accepted as aliases for `always`/`never`), default `auto`: colored on a terminal, plain when piped or redirected (agents, CI, log files). Bare `--color` and `--no-color` are removed; both now error with a hint pointing at `--color=always` / `--color=never`.
+* The `color` config key takes the same values (`color = "auto"`); existing boolean configs keep working — `color = true` means `always`, `color = false` means `never`.
 * `PLUR_COLOR` sets the color mode from the environment (same values as `--color`). `NO_COLOR` ([no-color.org](https://no-color.org)) disables color in auto mode. Precedence: `--color flag > PLUR_COLOR > NO_COLOR > config file > terminal detection`.
 * `plur doctor` shows the resolved color decision and its source (e.g. `Color: false (not a tty)`); `--verbose` logs the same at startup.
 * Piped runs against projects on RSpec < 3.6 no longer fail with `invalid option: --force-color` — non-TTY runs now pass `--no-color` (which predates 3.6) to RSpec workers.

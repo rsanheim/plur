@@ -24,9 +24,9 @@ func TestResolveColor(t *testing.T) {
 	}{
 		// Explicit modes short-circuit everything, including contrary env.
 		{"always", "always", nil, false, true, "always"},
-		{"on alias", "on", nil, false, true, "always"},
+		{"true alias", "true", nil, false, true, "always"},
 		{"never", "never", nil, true, false, "never"},
-		{"off alias", "off", nil, true, false, "never"},
+		{"false alias", "false", nil, true, false, "never"},
 		{"always beats NO_COLOR", "always", map[string]string{"NO_COLOR": "1"}, false, true, "always"},
 
 		// auto: NO_COLOR is presence-based (empty value still counts).

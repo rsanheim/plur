@@ -34,8 +34,8 @@ RSpec.describe "Color resolution over a pipe" do
       expect(result.out).to include("\e[32m.\e[0m")
     end
 
-    it "--color=on is an alias for always" do
-      result = run_mixed("--color=on")
+    it "--color=true is an alias for always" do
+      result = run_mixed("--color=true")
       expect(result.out).to match(ansi)
     end
 
@@ -104,11 +104,10 @@ RSpec.describe "Color resolution over a pipe" do
       end
     end
 
-    it "rejects the retired boolean form with a useful error" do
+    it "boolean color = true means always" do
       with_color_config("true") do |config_path|
         result = run_mixed(env: {"PLUR_CONFIG_FILE" => config_path})
-        expect(result.exit_status).not_to eq(0)
-        expect(result.err).to include('use "auto", "always", or "never"')
+        expect(result.out).to match(ansi)
       end
     end
   end

@@ -38,7 +38,7 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 #### Global Settings
 
 * `workers` - Number of parallel workers (default: 4)
-* `color` - When to color output: `"auto"` (detect terminal), `"always"`, or `"never"` (default: auto)
+* `color` - When to color output: `"auto"` (detect terminal), `"always"`, or `"never"` (default: auto); booleans work too — `true` means always, `false` means never
 * `verbose` - Enable verbose output (default: false)
 * `use` - Default job to use (default: auto-detect based on project structure)
 
@@ -395,7 +395,7 @@ Plur matches RSpec's behavior:
 * `PLUR_DEBUG` - Enable debug output
 * `PLUR_CONFIG_FILE` - Load an additional config file after `~/.plur.toml` and `.plur.toml`
 * `PLUR_HOME` - Override Plur's home directory (default: `~/.plur`)
-* `PLUR_COLOR` - Color mode from the environment: `auto`, `always`, or `never` (same values as `--color`; `on`/`off` aliases accepted)
+* `PLUR_COLOR` - Color mode from the environment: `auto`, `always`, or `never` (same values as `--color`; `true`/`false` aliases accepted)
 * `NO_COLOR` - Disable colored output when set to any value ([no-color.org](https://no-color.org))
 
 Precedence: `--color` flag > `PLUR_COLOR` > `NO_COLOR` > config file > terminal detection. `NO_COLOR` and terminal detection decide only when the mode resolves to `auto`. `plur doctor` shows the resolved color decision and its source.

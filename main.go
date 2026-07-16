@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -89,7 +90,7 @@ type PlurCLI struct {
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
 	ChangeDir string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Color     string      `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,on,off" env:"PLUR_COLOR" default:"auto"`
+	Color     string      `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,true,false" env:"PLUR_COLOR" default:"auto"`
 	Debug     bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
 	DryRun    bool        `help:"Print what would be executed without running" default:"false"`
 	FirstIs1  bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
@@ -325,8 +326,8 @@ func commandSupportsPassthrough(command string) bool {
 }
 
 // colorAwareLoader wraps the TOML config loader to keep the color key's
-// precedence correct: NO_COLOR outranks config files, and the retired boolean
-// form fails with a useful error instead of kong's raw type-mismatch message.
+// precedence correct: NO_COLOR outranks config files, and TOML booleans map
+// to their string aliases (color = true means "always", false means "never").
 func colorAwareLoader(r io.Reader) (kong.Resolver, error) {
 	resolver, err := kongtoml.Loader(r)
 	if err != nil {
@@ -342,8 +343,8 @@ func (r colorConfigResolver) Resolve(kctx *kong.Context, parent *kong.Path, flag
 	if err != nil || value == nil || flag.Name != "color" {
 		return value, err
 	}
-	if _, isBool := value.(bool); isBool {
-		return nil, errors.New(`booleans are no longer supported; use "auto", "always", or "never"`)
+	if b, isBool := value.(bool); isBool {
+		value = strconv.FormatBool(b)
 	}
 	if term.EnvDecidesColor(os.LookupEnv) {
 		return nil, nil // env outranks the config file for color

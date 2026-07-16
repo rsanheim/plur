@@ -17,15 +17,16 @@ func IsStdoutTTY() bool {
 	return xterm.IsTerminal(int(os.Stdout.Fd()))
 }
 
-// ResolveColor turns a color mode (auto, always, never — with on/off accepted
-// as aliases) into the final on/off decision, plus a short source tag for
-// doctor/verbose output. Precedence within auto: NO_COLOR
-// (https://no-color.org), then TTY detection.
+// ResolveColor turns a color mode (auto, always, never — with true/false
+// accepted as aliases for always/never, so boolean config values work) into
+// the final on/off decision, plus a short source tag for doctor/verbose
+// output. Precedence within auto: NO_COLOR (https://no-color.org), then TTY
+// detection.
 func ResolveColor(mode string, lookup LookupEnv, stdoutIsTTY bool) (bool, string) {
 	switch mode {
-	case "always", "on":
+	case "always", "true":
 		return true, "always"
-	case "never", "off":
+	case "never", "false":
 		return false, "never"
 	}
 	if _, ok := lookup("NO_COLOR"); ok {
