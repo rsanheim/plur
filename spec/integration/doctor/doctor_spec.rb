@@ -63,6 +63,9 @@ RSpec.describe "plur doctor command" do
       .gsub(/Source:\s+.+/, "Source: [CONFIG_SOURCE]")
       .gsub(/Workers:\s+\d+/, "Workers: [WORKER_COUNT]")
       .gsub(/Color:\s+.+/, "Color: [COLOR_VALUE]")
+      # doctor lists every PLUR_* var set in the environment; beyond
+      # PLUR_WORKERS those vary by machine, so drop them from the golden
+      .gsub(/^\s*PLUR_(?!WORKERS:)\w+:.*\n/, "")
       .gsub(/PLUR_WORKERS:\s+.+/, "PLUR_WORKERS:             [PLUR_WORKERS]")
       .gsub(/PARALLEL_TEST_PROCESSORS:\s+.+/, "PARALLEL_TEST_PROCESSORS: [PARALLEL_TEST_PROCESSORS]")
       .gsub(/NO_COLOR:\s+.+/, "NO_COLOR:                 [NO_COLOR]")
@@ -94,6 +97,13 @@ RSpec.describe "plur doctor command" do
 
     expect(stdout).to match(/Status:\s+Available/)
     expect(stdout).to match(/Binary Path:\s+/)
+  end
+
+  it "lists any PLUR_ env vars set in the environment" do
+    stdout, _, _ = Open3.capture3({"PLUR_FAKE_VAR" => "hello", "PLUR_EMPTY_VAR" => ""}, plur_binary, "doctor")
+
+    expect(stdout).to match(/PLUR_FAKE_VAR:\s+"hello"/)
+    expect(stdout).to match(/PLUR_EMPTY_VAR:\s+""/)
   end
 
   it "produces consistent output using Backspin golden testing", :skip_if_ci do

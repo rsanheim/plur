@@ -145,13 +145,21 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 	}
 	fmt.Println()
 
-	// Environment variables
+	// Environment variables: the always-shown set, then any other PLUR_*
+	// vars present in the environment.
 	fmt.Println("Environment Variables:")
-	fmt.Printf("  PLUR_WORKERS:             %s\n", envDisplay("PLUR_WORKERS"))
-	fmt.Printf("  PARALLEL_TEST_PROCESSORS: %s\n", envDisplay("PARALLEL_TEST_PROCESSORS"))
-	fmt.Printf("  NO_COLOR:                 %s\n", envDisplay("NO_COLOR"))
-	fmt.Printf("  HOME:                     %s\n", envDisplay("HOME"))
-	fmt.Printf("  GOPATH:                   %s\n", envDisplay("GOPATH"))
+	important := []string{"PLUR_WORKERS", "PARALLEL_TEST_PROCESSORS", "NO_COLOR", "HOME", "GOPATH"}
+	keys := slices.Clone(important)
+	for _, kv := range os.Environ() {
+		key, _, _ := strings.Cut(kv, "=")
+		if strings.HasPrefix(key, "PLUR_") && !slices.Contains(keys, key) {
+			keys = append(keys, key)
+		}
+	}
+	slices.Sort(keys[len(important):])
+	for _, key := range keys {
+		fmt.Printf("  %-25s %s\n", key+":", envDisplay(key))
+	}
 	fmt.Println()
 
 	// Configuration

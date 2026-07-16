@@ -5,6 +5,7 @@
 * The `color` config key takes the same values (`color = "auto"`); existing boolean configs keep working — `color = true` means `always`, `color = false` means `never`.
 * `PLUR_COLOR` sets the color mode from the environment (same values as `--color`). `NO_COLOR` ([no-color.org](https://no-color.org)) disables color in auto mode. Precedence: `--color flag > PLUR_COLOR > NO_COLOR > config file > terminal detection`.
 * `plur doctor` shows the resolved color decision and its source (e.g. `Color: false (not a tty)`); `--verbose` logs the same at startup.
+* `plur doctor` lists every `PLUR_*` env var set in the environment alongside the usual set (`NO_COLOR`, `HOME`, `GOPATH`, ...), with values printed as quoted literals so a set-but-empty var is distinct from an unset one.
 * Piped runs against projects on RSpec < 3.6 no longer fail with `invalid option: --force-color` — non-TTY runs now pass `--no-color` (which predates 3.6) to RSpec workers.
 
 ## v0.71.0 - 2026-07-11
