@@ -18,6 +18,10 @@ import (
 	"github.com/rsanheim/plur/watch"
 )
 
+// importantEnvVars always display in doctor, set or not; every PLUR_* var
+// present in the environment is listed after them.
+var importantEnvVars = []string{"PARALLEL_TEST_PROCESSORS", "NO_COLOR", "HOME", "GOPATH"}
+
 // runtimeStats reads the runtime cache file at path and returns a one-line
 // summary suitable for the plur doctor "Runtime Data:" block. Falls back to
 // the original "(file exists)" wording if the cache is unreadable or in an
@@ -145,18 +149,15 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 	}
 	fmt.Println()
 
-	// Environment variables: the always-shown set, then any other PLUR_*
-	// vars present in the environment.
 	fmt.Println("Environment Variables:")
-	important := []string{"PLUR_WORKERS", "PARALLEL_TEST_PROCESSORS", "NO_COLOR", "HOME", "GOPATH"}
-	keys := slices.Clone(important)
+	keys := slices.Clone(importantEnvVars)
 	for _, kv := range os.Environ() {
 		key, _, _ := strings.Cut(kv, "=")
 		if strings.HasPrefix(key, "PLUR_") && !slices.Contains(keys, key) {
 			keys = append(keys, key)
 		}
 	}
-	slices.Sort(keys[len(important):])
+	slices.Sort(keys[len(importantEnvVars):])
 	for _, key := range keys {
 		fmt.Printf("  %-25s %s\n", key+":", envDisplay(key))
 	}
