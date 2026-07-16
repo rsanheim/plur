@@ -32,7 +32,7 @@ module PlurHomeHelper
   # exercise these pass them explicitly via run_plur's env: param.
   def without_plur_parallel_env
     saved = {}
-    %w[TEST_ENV_NUMBER PARALLEL_TEST_GROUPS NO_COLOR].each do |key|
+    %w[TEST_ENV_NUMBER PARALLEL_TEST_GROUPS NO_COLOR PLUR_COLOR].each do |key|
       saved[key] = ENV.delete(key)
     end
     yield
