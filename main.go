@@ -151,7 +151,7 @@ func (cli *PlurCLI) AfterApply() error {
 	}
 
 	colorOn, colorSource := term.ResolveColor(cli.Color, term.IsStdoutTTY())
-	slog.Info("color output resolved", "mode", cli.Color, "enabled", colorOn, "source", colorSource)
+	slog.Debug("color output resolved", "mode", cli.Color, "enabled", colorOn, "source", colorSource)
 
 	cli.globalConfig = &config.GlobalConfig{
 		ColorOutput:   colorOn,
