@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -371,6 +372,16 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		FormattedPending:  result.FormattedPending,
 		FormattedSummary:  result.FormattedSummary,
 	}
+}
+
+// processExitCode reports the exit code from err when it (or an error it wraps)
+// is an *exec.ExitError. The boolean is false for nil or non-exit errors.
+func processExitCode(err error) (int, bool) {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode(), true
+	}
+	return 0, false
 }
 
 func (r *Runner) Tracker() *testruntime.RuntimeTracker {

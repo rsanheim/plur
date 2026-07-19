@@ -20,9 +20,11 @@ import (
 // drainStderr runs streamTestOutput and collects the stderr lines it forwards
 // to the output channel (the real delivery path used in production).
 func drainStderr(stdout, stderr io.Reader, parser types.TestOutputParser, collector *TestCollector) []string {
-	ch := make(chan OutputMessage, 64)
-	streamTestOutput(stdout, stderr, parser, collector, ch, 0, false)
-	close(ch)
+	ch := make(chan OutputMessage)
+	go func() {
+		streamTestOutput(stdout, stderr, parser, collector, ch, 0, false)
+		close(ch)
+	}()
 
 	var lines []string
 	for msg := range ch {

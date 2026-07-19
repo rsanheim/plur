@@ -147,6 +147,6 @@ func streamTestOutput(
 		}
 	})
 
-	// Wait for all output to be captured
+	// Wait for both stream readers to finish
 	wg.Wait()
 }
