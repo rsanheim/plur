@@ -7,6 +7,7 @@ import (
 	stdruntime "runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -16,6 +17,10 @@ import (
 	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/watch"
 )
+
+// importantEnvVars always display in doctor, set or not; every PLUR_* var
+// present in the environment is listed after them.
+var importantEnvVars = []string{"PARALLEL_TEST_PROCESSORS", "NO_COLOR", "HOME", "GOPATH"}
 
 // runtimeStats reads the runtime cache file at path and returns a one-line
 // summary suitable for the plur doctor "Runtime Data:" block. Falls back to
@@ -144,14 +149,17 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 	}
 	fmt.Println()
 
-	// Environment variables
 	fmt.Println("Environment Variables:")
-	fmt.Printf("  PLUR_WORKERS:             %s\n", getEnvOrDefault("PLUR_WORKERS", "(not set)"))
-	fmt.Printf("  PARALLEL_TEST_PROCESSORS: %s\n", getEnvOrDefault("PARALLEL_TEST_PROCESSORS", "(not set)"))
-	fmt.Printf("  FORCE_COLOR:              %s\n", getEnvOrDefault("FORCE_COLOR", "(not set)"))
-	fmt.Printf("  NO_COLOR:                 %s\n", getEnvOrDefault("NO_COLOR", "(not set)"))
-	fmt.Printf("  HOME:                     %s\n", getEnvOrDefault("HOME", "(not set)"))
-	fmt.Printf("  GOPATH:                   %s\n", getEnvOrDefault("GOPATH", "(not set)"))
+	var plurVars []string
+	for _, kv := range os.Environ() {
+		if key, _, _ := strings.Cut(kv, "="); strings.HasPrefix(key, "PLUR_") {
+			plurVars = append(plurVars, key)
+		}
+	}
+	slices.Sort(plurVars)
+	for _, key := range slices.Concat(importantEnvVars, plurVars) {
+		fmt.Printf("  %-25s %s\n", key+":", envDisplay(key))
+	}
 	fmt.Println()
 
 	// Configuration
@@ -172,11 +180,14 @@ func getCommandOutput(name string, args ...string) (string, error) {
 	return string(output), nil
 }
 
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+// envDisplay shows an env var's value as a quoted Go literal, so empty and
+// whitespace-only values are visible and distinct from unset.
+func envDisplay(key string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return "(not set)"
 	}
-	return defaultValue
+	return strconv.Quote(value)
 }
 
 func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) error {
@@ -199,7 +210,7 @@ func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtim
 	// Show actual configuration values
 	fmt.Println("\n  Active Settings:")
 	fmt.Printf("    Workers:     %d\n", globalConfig.WorkerCount)
-	fmt.Printf("    Color:       %v\n", globalConfig.ColorOutput)
+	fmt.Printf("    Color:       %v (%s)\n", globalConfig.ColorOutput, globalConfig.ColorSource)
 	fmt.Printf("    Debug:       %v\n", globalConfig.Debug)
 	fmt.Printf("    Verbose:     %v\n", globalConfig.Verbose)
 

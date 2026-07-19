@@ -42,7 +42,7 @@ RSpec.describe "Minitest Integration" do
     it "displays correct progress dot count with puts interleaving" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "1", "--no-color")
+          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
           expect(result).to be_success
           # All 8 progress dots should appear on the first line,
           # even though some are on lines interleaved with puts output
@@ -100,7 +100,7 @@ RSpec.describe "Minitest Integration" do
     it "displays correct progress and summary with multiple workers" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "2", "--no-color")
+          result = run_plur("--use", "minitest", "-n", "2", "--color=never")
           expect(result).to be_success
 
           # With 2 workers (1 file each), both producing mixed progress lines,
@@ -148,7 +148,7 @@ RSpec.describe "Minitest Integration" do
     end
 
     def plur_minitest_serial_command
-      [plur_binary, "--use", "minitest", "-n", "1", "--no-color"]
+      [plur_binary, "--use", "minitest", "-n", "1", "--color=never"]
     end
 
     it "records grouped minitest output from a ruby -e require list" do

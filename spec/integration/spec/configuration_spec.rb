@@ -69,7 +69,7 @@ RSpec.describe "Configuration" do
       _, error, status = Dir.chdir(config_fixture_dir) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => "valid.toml"},
-          plur_binary, "--workers=1", "--color", "--dry-run"
+          plur_binary, "--workers=1", "--color=always", "--dry-run"
         )
       end
 
@@ -221,7 +221,7 @@ RSpec.describe "Configuration" do
       end
 
       expect(status).not_to be_success
-      expect(error).to match(/expected a valid 64 bit int|invalid value/)
+      expect(error).to match(/expected a valid 64 bit int|invalid value|must be one of/)
     end
 
     it "exits with error for duplicate keys" do

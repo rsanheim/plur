@@ -4,7 +4,7 @@ RSpec.describe "Plur parallel execution" do
   describe "environment variables" do
     it "sets TEST_ENV_NUMBER for each worker" do
       chdir(default_ruby_dir) do
-        result = run_plur("-n", "3", "--verbose", "spec/env_test_spec.rb", "--no-color")
+        result = run_plur("-n", "3", "--verbose", "spec/env_test_spec.rb", "--color=never")
 
         expect(result.out).to include("1 example, 0 failures")
 
@@ -16,7 +16,7 @@ RSpec.describe "Plur parallel execution" do
 
     it "sets PARALLEL_TEST_GROUPS correctly" do
       chdir(default_ruby_dir) do
-        result = run_plur("-n", "4", "spec/env_test_spec.rb", "--no-color")
+        result = run_plur("-n", "4", "spec/env_test_spec.rb", "--color=never")
 
         expect(result.out).to include("1 example, 0 failures")
 
@@ -28,7 +28,7 @@ RSpec.describe "Plur parallel execution" do
 
     it "does not set TEST_ENV_NUMBER in serial mode" do
       chdir(default_ruby_dir) do
-        result = run_plur("-n", "1", "spec/env_test_spec.rb", "--no-color")
+        result = run_plur("-n", "1", "spec/env_test_spec.rb", "--color=never")
 
         expect(result.out).to include("1 example, 0 failures")
 
@@ -103,7 +103,7 @@ RSpec.describe "Plur parallel execution" do
     it "matches rspec output and has correct pending and failure output" do
       chdir(failing_specs_path) do
         rspec_output, _, _ = system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
-        plur_output, _, _ = run_plur_allowing_errors("--no-color", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :null)
+        plur_output, _, _ = run_plur_allowing_errors("--color=never", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :null)
         # ensure we get a single Pending: and Failure: header for plur, not one per worker
         pending_headers = plur_output.scan(/^Pending:/).count
         failure_headers = plur_output.scan(/^Failures:/).count
@@ -116,7 +116,7 @@ RSpec.describe "Plur parallel execution" do
 
     it "does not duplicate pending or failure headers with multiple workers" do
       chdir(failing_specs_path) do
-        result = run_plur_allowing_errors("--no-color", "-n", "3",
+        result = run_plur_allowing_errors("--color=never", "-n", "3",
           "spec/expectation_failures_spec.rb",
           "spec/mixed_results_spec.rb",
           "spec/single_failure_spec.rb")
@@ -131,7 +131,7 @@ RSpec.describe "Plur parallel execution" do
 
     it "shows combined progress from all workers" do
       chdir(project_fixture("failing_specs")) do
-        result = run_plur_allowing_errors("-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
+        result = run_plur_allowing_errors("--color=always", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
 
         expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots
         expect(result.out).to match(/\e\[31mF\e\[0m/) # Red F's

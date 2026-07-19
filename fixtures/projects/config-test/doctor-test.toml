@@ -1,5 +1,5 @@
 workers = 4
-color = true
+color = "always"
 use = "doctor-test"
 
 [job.doctor-test]

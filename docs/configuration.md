@@ -23,7 +23,7 @@ Plur automatically loads configuration from TOML files using the following order
 ```toml
 # .plur.toml
 workers = 4
-color = true
+color = "auto"           # colorize when output is a terminal (the default)
 use = "rspec"  # Default job to use
 
 [job.rspec]
@@ -38,7 +38,7 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 #### Global Settings
 
 * `workers` - Number of parallel workers (default: 4)
-* `color` - Enable colored output (default: true)
+* `color` - When to colorize output: `"auto"` (default — on for a terminal, off when piped), `"always"`, or `"never"`
 * `verbose` - Enable verbose output (default: false)
 * `use` - Default job to use (default: auto-detect based on project structure)
 
@@ -395,6 +395,10 @@ Plur matches RSpec's behavior:
 * `PLUR_DEBUG` - Enable debug output
 * `PLUR_CONFIG_FILE` - Load an additional config file after `~/.plur.toml` and `.plur.toml`
 * `PLUR_HOME` - Override Plur's home directory (default: `~/.plur`)
+* `PLUR_COLOR` - Color mode from the environment: `auto`, `always`, or `never` (same values as `--color`; `true`/`false` aliases accepted)
+* `NO_COLOR` - Disable colored output when set to any value ([no-color.org](https://no-color.org))
+
+Precedence: `--color` flag > `PLUR_COLOR` > `NO_COLOR` > config file > terminal detection. `NO_COLOR` and terminal detection decide only when the mode resolves to `auto`. `plur doctor` shows the resolved color decision and its source.
 
 ## Troubleshooting
 
