@@ -344,10 +344,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 
 	logger.Logger.Debug("finished", "worker", workerIdx, "success", err == nil)
 
-	exitCode := 0
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		exitCode = exitErr.ExitCode()
-	}
+	exitCode, _ := processExitCode(err)
 	success := exitCode == 0
 	state := types.StateSuccess
 	output := result.Output

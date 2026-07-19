@@ -209,13 +209,18 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Jo
 			fmt.Print(result.Output)
 			continue
 		}
-		if result.Error != nil && !isProcessExitError(result.Error) {
+		if _, isExit := processExitCode(result.Error); result.Error != nil && !isExit {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
 		}
 	}
 }
 
-func isProcessExitError(err error) bool {
+// processExitCode reports the exit code from err when it (or an error it wraps)
+// is an *exec.ExitError. The boolean is false for nil or non-exit errors.
+func processExitCode(err error) (int, bool) {
 	var exitErr *exec.ExitError
-	return errors.As(err, &exitErr)
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode(), true
+	}
+	return 0, false
 }
