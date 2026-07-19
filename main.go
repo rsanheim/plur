@@ -3,8 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -14,6 +16,7 @@ import (
 	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/term"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -87,7 +90,7 @@ type PlurCLI struct {
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
 	ChangeDir string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Color     bool        `help:"Enable colorized output" negatable:"" default:"true"`
+	Color     string      `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,true,false" env:"PLUR_COLOR" default:"auto"`
 	Debug     bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
 	DryRun    bool        `help:"Print what would be executed without running" default:"false"`
 	FirstIs1  bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
@@ -147,8 +150,12 @@ func (cli *PlurCLI) AfterApply() error {
 		}
 	}
 
+	colorOn, colorSource := term.ResolveColor(cli.Color, term.IsStdoutTTY())
+	slog.Debug("color output resolved", "mode", cli.Color, "enabled", colorOn, "source", colorSource)
+
 	cli.globalConfig = &config.GlobalConfig{
-		ColorOutput:   cli.Color,
+		ColorOutput:   colorOn,
+		ColorSource:   colorSource,
 		ConfigPaths:   configPaths,
 		Debug:         cli.Debug,
 		Verbose:       cli.Verbose,
@@ -287,7 +294,7 @@ func main() {
 		kong.ConfigureHelp(kong.HelpOptions{Compact: true, FlagsLast: true}),
 		clihelp.ConfigureHelpDetails(),
 		kong.Help(clihelp.HelpPrinter),
-		kong.Configuration(kongtoml.Loader, configFiles...))
+		kong.Configuration(colorAwareLoader, configFiles...))
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
@@ -295,7 +302,7 @@ func main() {
 	}
 
 	ctx, err := parser.Parse(args)
-	parser.FatalIfErrorf(err)
+	parser.FatalIfErrorf(colorFlagHint(err))
 
 	if len(cli.passthroughArgs) > 0 && !commandSupportsPassthrough(ctx.Command()) {
 		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec, rails, and rake commands")
@@ -317,6 +324,59 @@ func main() {
 func commandSupportsPassthrough(command string) bool {
 	return strings.HasPrefix(command, "spec") || strings.HasPrefix(command, "rails")
 }
+
+// colorAwareLoader wraps the TOML config loader to keep the color key's
+// precedence correct: NO_COLOR outranks config files, and TOML booleans map
+// to their string aliases (color = true means "always", false means "never").
+func colorAwareLoader(r io.Reader) (kong.Resolver, error) {
+	resolver, err := kongtoml.Loader(r)
+	if err != nil {
+		return nil, err
+	}
+	return colorConfigResolver{resolver}, nil
+}
+
+type colorConfigResolver struct{ kong.Resolver }
+
+func (r colorConfigResolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Flag) (interface{}, error) {
+	value, err := r.Resolver.Resolve(kctx, parent, flag)
+	if err != nil || value == nil || flag.Name != "color" {
+		return value, err
+	}
+	if b, isBool := value.(bool); isBool {
+		value = strconv.FormatBool(b)
+	}
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return nil, nil // env outranks the config file for color
+	}
+	return value, nil
+}
+
+// colorFlagHint rewrites kong's generic parse errors for bare --color and
+// --no-color into messages that point at --color=auto|always|never. Any other
+// error passes through unchanged. (An explicit bad value like --color=purple
+// keeps kong's enum error, which already lists the valid choices.)
+func colorFlagHint(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "unknown flag --no-color"):
+		return usageError("--no-color is no longer supported; use --color=never")
+	case strings.Contains(msg, "--color") && strings.Contains(msg, "expected string value"):
+		return usageError("--color needs a value; use --color=auto, --color=always, or --color=never")
+	}
+	return err
+}
+
+// usageError is a CLI usage error that reports kong's usage-error exit status
+// (80, per https://github.com/square/exit) via kong's ExitCoder interface, so
+// rewritten flag errors exit consistently with kong's own parse errors.
+type usageError string
+
+func (e usageError) Error() string { return string(e) }
+func (e usageError) ExitCode() int { return 80 }
 
 type ExitCode struct {
 	Code int

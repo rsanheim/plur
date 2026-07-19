@@ -19,9 +19,9 @@
 # Default: 4
 workers = 4
 
-# Enable colored output
-# Default: true (auto-detected based on terminal support)
-color = true
+# When to color output: "auto" (detect terminal), "always", or "never"
+# Default: "auto"
+color = "auto"
 
 # Enable verbose output
 # Default: false

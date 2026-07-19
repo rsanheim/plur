@@ -9,6 +9,7 @@ import (
 // GlobalConfig holds settings that are truly global across all commands
 type GlobalConfig struct {
 	ColorOutput bool
+	ColorSource string // short source tag from term.ResolveColor, shown by doctor and --verbose
 	ConfigPaths *ConfigPaths
 	Debug       bool
 	Verbose     bool

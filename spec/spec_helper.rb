@@ -45,6 +45,11 @@ RSpec.configure do |config|
     end
   end
 
+  # Matches any ANSI color escape sequence in command output.
+  def ansi
+    /\e\[\d+m/
+  end
+
   def default_ruby_dir
     @default_ruby_dir ||= project_fixture("default-ruby")
   end

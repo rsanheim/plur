@@ -1,12 +1,12 @@
 ---
 format_version: '4.1'
-first_recorded_at: '2026-02-10T20:23:57-06:00'
-recorded_at: '2026-02-11T02:21:22-06:00'
-record_count: 2
+first_recorded_at: '2026-07-12T04:36:11-05:00'
+recorded_at: '2026-07-12T04:36:11-05:00'
+record_count: 1
 snapshot:
   command_type: Open3::Capture3
   args:
-  - plur
+  - "/Users/rsanheim/src/rsanheim/plur/.claude/worktrees/agent-friendly-output/plur"
   - "--dry-run"
   - spec/calculator_spec.rb
   - "--"
@@ -18,6 +18,6 @@ snapshot:
   stderr: |
     plur version=[VERSION]
     [dry-run] Running 1 spec [rspec] in parallel using 1 worker
-    [dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --format documentation --out tmp/rspec.out spec/calculator_spec.rb
+    [dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --no-color --format documentation --out tmp/rspec.out spec/calculator_spec.rb
   status: 0
-  recorded_at: '2026-02-11T02:21:22-06:00'
+  recorded_at: '2026-07-12T04:36:11-05:00'

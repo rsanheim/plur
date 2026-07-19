@@ -79,7 +79,6 @@ const railsConfigTemplate = `# Plur configuration for Rails applications
 
 # Use more workers for Rails apps
 workers = 8
-color = true
 use = "rspec"
 
 [job.rspec]

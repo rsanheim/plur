@@ -1,12 +1,12 @@
 ---
 format_version: '4.1'
-first_recorded_at: '2026-02-11T02:36:15-06:00'
-recorded_at: '2026-02-28T04:46:31-06:00'
-record_count: 2
+first_recorded_at: '2026-07-16T06:01:37-05:00'
+recorded_at: '2026-07-16T06:01:37-05:00'
+record_count: 1
 snapshot:
   command_type: Open3::Capture3
   args:
-  - plur
+  - "/Users/rsanheim/src/rsanheim/plur/.claude/worktrees/agent-friendly-output/plur"
   - doctor
   stdout: |
     Plur Doctor
@@ -46,9 +46,7 @@ snapshot:
                       [RUNTIME_STATS]
 
     Environment Variables:
-      PLUR_WORKERS:             [PLUR_WORKERS]
       PARALLEL_TEST_PROCESSORS: [PARALLEL_TEST_PROCESSORS]
-      FORCE_COLOR:              [FORCE_COLOR]
       NO_COLOR:                 [NO_COLOR]
       HOME:                     [HOME_PATH]
       GOPATH:                   [GOPATH]
@@ -73,4 +71,4 @@ snapshot:
         spec/ (exists)
   stderr: ''
   status: 0
-  recorded_at: '2026-02-28T04:46:31-06:00'
+  recorded_at: '2026-07-16T06:01:37-05:00'

@@ -44,7 +44,7 @@ RSpec.describe "Plur error handling" do
 
   it "includes errors outside of examples in multi-worker summaries" do
     chdir(fixture_dir) do
-      result = run_plur_allowing_errors("-n", "2", "--no-color",
+      result = run_plur_allowing_errors("-n", "2", "--color=never",
         "spec/passing_spec.rb", "spec/load_error_spec.rb")
 
       expect(result.exit_status).to eq(1)

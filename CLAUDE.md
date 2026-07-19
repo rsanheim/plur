@@ -55,7 +55,7 @@ Plur supports TOML configuration files for persistent settings:
 ```toml
 # .plur.toml or ~/.plur.toml
 workers = 4              # Number of parallel workers
-color = true             # Enable colored output
+color = "auto"           # When to color output: auto, always, or never
 use = "rspec"            # Default job to use (can be overridden with --use)
 
 [job.rspec]
