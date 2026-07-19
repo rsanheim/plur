@@ -1,4 +1,4 @@
 # Valid configuration file
 workers = 2
-color = "never"
+color = false
 verbose = true

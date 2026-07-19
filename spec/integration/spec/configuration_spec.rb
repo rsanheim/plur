@@ -14,7 +14,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        # Config has color = "never"
+        # Config has color = false
         expect(error).to include("--no-color")
         # Config has workers = 2
         expect(error).to include("Worker 0:")

@@ -23,7 +23,7 @@ Plur automatically loads configuration from TOML files using the following order
 ```toml
 # .plur.toml
 workers = 4
-color = "auto"           # auto (detect terminal), always, or never
+color = "auto"           # colorize when output is a terminal (the default)
 use = "rspec"  # Default job to use
 
 [job.rspec]
@@ -38,7 +38,7 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 #### Global Settings
 
 * `workers` - Number of parallel workers (default: 4)
-* `color` - When to color output: `"auto"` (detect terminal), `"always"`, or `"never"` (default: auto); booleans work too — `true` means always, `false` means never
+* `color` - When to colorize output: `"auto"` (default — on for a terminal, off when piped), `"always"`, or `"never"`
 * `verbose` - Enable verbose output (default: false)
 * `use` - Default job to use (default: auto-detect based on project structure)
 
