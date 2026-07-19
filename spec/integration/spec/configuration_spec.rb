@@ -123,7 +123,7 @@ RSpec.describe "Configuration" do
       Dir.mktmpdir do |tmpdir|
         File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
           workers = 8
-          color = "always"
+          color = true
         TOML
 
         spec_dir = File.join(tmpdir, "spec")

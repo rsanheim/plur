@@ -156,7 +156,7 @@ RSpec.describe "plur doctor command" do
     before do
       File.write(File.join(test_dir, ".plur.toml"), <<~TOML)
         workers = 8
-        color = "never"
+        color = false
         use = "rspec"
 
         [job.rspec]
