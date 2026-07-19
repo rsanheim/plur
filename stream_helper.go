@@ -14,7 +14,6 @@ import (
 // 256KB allows for large output lines while being memory-efficient.
 // Default bufio.Scanner is 64KB which can fail on large single lines.
 const ScannerBufferSize = 256 * 1024
-const StdErrBufferSize = 1024 * 8
 
 // ANSI color codes
 const (
@@ -43,9 +42,7 @@ func streamTestOutput(
 	outputChan chan<- OutputMessage,
 	workerIndex int,
 	streamStdout bool, // Only stream unconsumed stdout for RSpec (JSON makes it safe)
-) (stderrOutput string) {
-	var stderrBuilder strings.Builder
-	stderrBuilder.Grow(StdErrBufferSize) // Pre-allocate for typical stderr output
+) {
 	var wg sync.WaitGroup
 
 	// Stream stdout and parse using event-based architecture
@@ -137,8 +134,6 @@ func streamTestOutput(
 				}
 			}
 
-			stderrBuilder.WriteString(line)
-			stderrBuilder.WriteString("\n")
 			if outputChan != nil {
 				outputChan <- OutputMessage{
 					Type:    "stderr",
@@ -154,6 +149,4 @@ func streamTestOutput(
 
 	// Wait for all output to be captured
 	wg.Wait()
-
-	return stderrBuilder.String()
 }
