@@ -1,10 +1,9 @@
 # plur CHANGELOG
 
 ## v0.72.0 - 2026-07-19
-* Breaking: `--color` is now git-style — `--color=auto|always|never` (`true`/`false` accepted as aliases for `always`/`never`), default `auto`: colored on a terminal, plain when piped or redirected (agents, CI, log files). Bare `--color` and `--no-color` are removed; both now error with messages pointing at the valid forms.
+* Breaking: `--color` is now git-style — `--color=auto|always|never` (`true`/`false` accepted as aliases for `always`/`never`), default `auto`: colored on a terminal, plain when piped or redirected (agents, CI, log files). Bare `--color` and `--no-color` are removed; both now error with messages pointing at the valid forms. [#89](https://github.com/rsanheim/plur/pull/89)
 * `PLUR_COLOR` respects same values; `NO_COLOR` always disables color.
 * `plur doctor` shows the resolved color decision and its source (e.g. `Color: false (not a tty)`).
-* `plur doctor` lists every `PLUR_*` env var set in the environment alongside the usual set (`NO_COLOR`, `HOME`, `GOPATH`, ...), with values printed as quoted literals so a set-but-empty var is distinct from an unset one.
 * Piped runs against projects on RSpec < 3.6 no longer fail with `invalid option: --force-color` — non-TTY runs now pass `--no-color` (which predates 3.6) to RSpec workers.
 
 ## v0.71.0 - 2026-07-11
