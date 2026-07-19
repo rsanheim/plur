@@ -1,10 +1,8 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -209,13 +207,11 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Jo
 			fmt.Print(result.Output)
 			continue
 		}
-		if result.Error != nil && !isProcessExitError(result.Error) {
+		if result.Error == nil {
+			continue
+		}
+		if _, isExit := processExitCode(result.Error); !isExit {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
 		}
 	}
-}
-
-func isProcessExitError(err error) bool {
-	var exitErr *exec.ExitError
-	return errors.As(err, &exitErr)
 }
