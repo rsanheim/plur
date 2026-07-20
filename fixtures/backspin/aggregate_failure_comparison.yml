@@ -1,0 +1,40 @@
+---
+format_version: '4.1'
+first_recorded_at: '2026-07-20T10:52:44-05:00'
+recorded_at: '2026-07-20T10:52:44-05:00'
+record_count: 1
+snapshot:
+  command_type: Open3::Capture3
+  args:
+  - "[AGGREGATE_FAILURE_COMMAND]"
+  stdout: "\e[32m.\e[0m\e[32m.\e[0m\e[32m.\e[0m\e[31mF\e[0m\e[31mF\e[0m\e[31mF\e[0m\n\nFailures:\n\n
+    \ 1) Order adds sales tax to the subtotal\n     \e[31mFailure/Error: \e[0m\e[32mexpect\e[0m(subtotal
+    + tax).to eq(\e[1;34m2000\e[0m) \e[1;30m# 1849 + 148 = 1997\e[0m\e[0m\n     \e[31m\e[0m\n
+    \    \e[31m  expected: 2000\e[0m\n     \e[31m       got: 1997\e[0m\n     \e[31m\e[0m\n
+    \    \e[31m  (compared using ==)\e[0m\n     \e[36m# ./spec/aggregate_failure_spec.rb:24:in
+    'block (2 levels) in <top (required)>'\e[0m\n\n  2) Order validates every order
+    field at once\n     \e[31mGot 3 failures:\e[0m\n\n     2.1) \e[31mFailure/Error:
+    \e[0m\e[32mexpect\e[0m(\e[1;34m1\e[0m).to eq(\e[1;34m2\e[0m)\e[0m\n          \e[31m\e[0m\n
+    \         \e[31m  expected: 2\e[0m\n          \e[31m       got: 1\e[0m\n          \e[31m\e[0m\n
+    \         \e[31m  (compared using ==)\e[0m\n          \e[36m# ./spec/aggregate_failure_spec.rb:28:in
+    'block (2 levels) in <top (required)>'\e[0m\n\n     2.2) \e[31mFailure/Error:
+    \e[0m\e[32mexpect\e[0m(\e[31m\e[1;31m\"\e[0m\e[31mpending\e[1;31m\"\e[0m\e[31m\e[0m).to
+    eq(\e[31m\e[1;31m\"\e[0m\e[31mshipped\e[1;31m\"\e[0m\e[31m\e[0m)\e[0m\n          \e[31m\e[0m\n
+    \         \e[31m  expected: \"shipped\"\e[0m\n          \e[31m       got: \"pending\"\e[0m\n
+    \         \e[31m\e[0m\n          \e[31m  (compared using ==)\e[0m\n          \e[36m#
+    ./spec/aggregate_failure_spec.rb:29:in 'block (2 levels) in <top (required)>'\e[0m\n\n
+    \    2.3) \e[31mFailure/Error: \e[0m\e[32mexpect\e[0m([]).not_to be_empty\e[0m\n
+    \         \e[31m  expected `[].empty?` to be falsey, got true\e[0m\n          \e[36m#
+    ./spec/aggregate_failure_spec.rb:30:in 'block (2 levels) in <top (required)>'\e[0m\n\n
+    \ 3) Order accepts only numeric coupon codes\n     \e[31mFailure/Error: \e[0m\e[32mexpect\e[0m(\e[31m\e[1;31m\"\e[0m\e[31mSAVE10\e[1;31m\"\e[0m\e[31m\e[0m.match?(\e[35m\e[1;35m/\e[0m\e[35m\e[1;35m\\A\e[0m\e[35m\e[1;35m\\d\e[0m\e[35m+\e[1;35m\\z\e[0m\e[35m\e[1;35m/\e[0m\e[35m\e[0m)).to
+    be(\e[1;36mtrue\e[0m)\e[0m\n     \e[31m\e[0m\n     \e[31m  expected true\e[0m\n
+    \    \e[31m       got false\e[0m\n     \e[36m# ./spec/aggregate_failure_spec.rb:34:in
+    'block (2 levels) in <top (required)>'\e[0m\n\nFinished in [fake-time] seconds
+    (files took [fake-time] seconds to load)\n\e[31m6 examples, 3 failures\e[0m\n\nFailed
+    examples:\n\n\e[31mrspec ./spec/aggregate_failure_spec.rb:21\e[0m \e[36m# Order
+    adds sales tax to the subtotal\e[0m\n\e[31mrspec ./spec/aggregate_failure_spec.rb:27\e[0m
+    \e[36m# Order validates every order field at once\e[0m\n\e[31mrspec ./spec/aggregate_failure_spec.rb:33\e[0m
+    \e[36m# Order accepts only numeric coupon codes\e[0m"
+  stderr: ''
+  status: 1
+  recorded_at: '2026-07-20T10:52:44-05:00'
