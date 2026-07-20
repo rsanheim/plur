@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## v0.72.1 - 2026-07-20
+* perf: stop serializing unused per-example exception data [#95](https://github.com/rsanheim/plur/pull/95)
+
 ## v0.72.0 - 2026-07-19
 * Breaking: `--color` is now git-style — `--color=auto|always|never` (`true`/`false` accepted as aliases for `always`/`never`), default `auto`: colored on a terminal, plain when piped or redirected (agents, CI, log files). Bare `--color` and `--no-color` are removed; both now error with messages pointing at the valid forms. [#89](https://github.com/rsanheim/plur/pull/89)
 * `PLUR_COLOR` respects same values; `NO_COLOR` always disables color.
