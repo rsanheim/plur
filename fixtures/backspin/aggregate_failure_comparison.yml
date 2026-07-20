@@ -1,0 +1,29 @@
+---
+format_version: '4.1'
+first_recorded_at: '2026-07-20T02:01:29-05:00'
+recorded_at: '2026-07-20T02:01:29-05:00'
+record_count: 1
+snapshot:
+  command_type: Open3::Capture3
+  args:
+  - "[AGGREGATE_FAILURE_COMMAND]"
+  stdout: "\e[31mF\e[0m\n\nFailures:\n\n  1) Aggregate Failure reports several failures
+    at once\n     \e[31mGot 3 failures:\e[0m\n\n     1.1) \e[31mFailure/Error: \e[0m\e[32mexpect\e[0m(\e[1;34m1\e[0m).to
+    eq(\e[1;34m2\e[0m)\e[0m\n          \e[31m\e[0m\n          \e[31m  expected: 2\e[0m\n
+    \         \e[31m       got: 1\e[0m\n          \e[31m\e[0m\n          \e[31m  (compared
+    using ==)\e[0m\n          \e[36m# ./spec/aggregate_failure_spec.rb:3:in 'block
+    (2 levels) in <top (required)>'\e[0m\n\n     1.2) \e[31mFailure/Error: \e[0m\e[32mexpect\e[0m(\e[31m\e[1;31m\"\e[0m\e[31mfoo\e[1;31m\"\e[0m\e[31m\e[0m).to
+    eq(\e[31m\e[1;31m\"\e[0m\e[31mbar\e[1;31m\"\e[0m\e[31m\e[0m)\e[0m\n          \e[31m\e[0m\n
+    \         \e[31m  expected: \"bar\"\e[0m\n          \e[31m       got: \"foo\"\e[0m\n
+    \         \e[31m\e[0m\n          \e[31m  (compared using ==)\e[0m\n          \e[36m#
+    ./spec/aggregate_failure_spec.rb:4:in 'block (2 levels) in <top (required)>'\e[0m\n\n
+    \    1.3) \e[31mFailure/Error: \e[0m\e[32mexpect\e[0m([\e[1;34m1\e[0m, \e[1;34m2\e[0m,
+    \e[1;34m3\e[0m]).to be_empty\e[0m\n          \e[31m  expected `[1, 2, 3].empty?`
+    to be truthy, got false\e[0m\n          \e[36m# ./spec/aggregate_failure_spec.rb:5:in
+    'block (2 levels) in <top (required)>'\e[0m\n\nFinished in [fake-time] seconds
+    (files took [fake-time] seconds to load)\n\e[31m1 example, 1 failure\e[0m\n\nFailed
+    examples:\n\n\e[31mrspec ./spec/aggregate_failure_spec.rb:2\e[0m \e[36m# Aggregate
+    Failure reports several failures at once\e[0m"
+  stderr: ''
+  status: 1
+  recorded_at: '2026-07-20T02:01:29-05:00'

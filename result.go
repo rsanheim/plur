@@ -127,18 +127,48 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 }
 
 const placeholder string = "‽"
-const placeholderWithParentheses string = "‽)"
 
-// renumberFailures replaces ‽ placeholders with incrementing numbers.
-// The Ruby formatter outputs ‽ instead of actual numbers so plur can
-// correctly number failures after aggregating from multiple workers.
+// renumberSummaryOutput replaces the ‽ placeholders emitted by the Ruby
+// formatter with real, sequential failure numbers. Each worker emits ‽ because
+// it cannot know the global failure count, so plur assigns the final numbers
+// here after aggregating output from every worker.
+//
+// Two marker shapes appear in RSpec output:
+//
+//	top-level:            "‽)"    -> next incrementing number, e.g. "3)"
+//	aggregate sub-failure: "‽.1)" -> the parent failure's number, e.g. "3.1)"
+//
+// RSpec derives aggregate sub-indices from the number we pass to
+// fully_formatted, so both shapes share the same ‽ placeholder; the sub-markers
+// must inherit their parent's number rather than consume a new one.
 func renumberSummaryOutput(output string) string {
-	count := 0
-	for strings.Contains(output, placeholderWithParentheses) {
-		count++
-		output = strings.Replace(output, placeholder, strconv.Itoa(count), 1)
+	var b strings.Builder
+	b.Grow(len(output))
+
+	count := 0 // most recently assigned top-level failure number
+	for i := 0; i < len(output); {
+		rest, isMarker := strings.CutPrefix(output[i:], placeholder)
+		if !isMarker {
+			b.WriteByte(output[i])
+			i++
+			continue
+		}
+
+		switch {
+		case strings.HasPrefix(rest, ")"):
+			// top-level marker "‽)"
+			count++
+			b.WriteString(strconv.Itoa(count))
+		case count > 0 && len(rest) >= 2 && rest[0] == '.' && rest[1] >= '0' && rest[1] <= '9':
+			// aggregate sub-marker "‽.N)" inherits the parent's number
+			b.WriteString(strconv.Itoa(count))
+		default:
+			// stray placeholder that is not a marker; leave it untouched
+			b.WriteString(placeholder)
+		}
+		i += len(placeholder)
 	}
-	return output
+	return b.String()
 }
 
 // PrintResults displays a test summary
