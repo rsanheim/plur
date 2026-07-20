@@ -168,8 +168,7 @@ module Plur
         scoped_id: metadata[:scoped_id],
         status: example.execution_result.status,
         run_time: example.execution_result.run_time,
-        pending_message: example.execution_result.pending_message,
-        exception: exception_to_json(example.execution_result.exception)
+        pending_message: example.execution_result.pending_message
       }
     end
 
@@ -193,31 +192,6 @@ module Plur
       obj.public_send(method)
     rescue
       nil
-    end
-
-    def exception_to_json(exception)
-      return nil unless exception
-
-      {
-        class: exception.class.name,
-        message: exception.message,
-        backtrace: format_backtrace(exception.backtrace)
-      }
-    end
-
-    # Use RSpec's built-in backtrace filtering for filtering, though we have a rescue
-    # here to handle the case where RSpec's backtrace formatter fails.
-    # This can happen if the test suite is changing the cwd in around hook for parallel runs.
-    # This is done in Rspec suite's for example:
-    # https://github.com/rspec/rspec/blob/0c37a88d4ff511debd563d68e10c1c7672318c3c/rspec-support/lib/rspec/support/spec/with_isolated_directory.rb#L5-L15
-    #
-    # Returns the backtrace as an array of strings
-    def format_backtrace(backtrace)
-      return [] unless backtrace
-
-      RSpec.configuration.backtrace_formatter.format_backtrace(backtrace)
-    rescue Errno::ENOENT
-      backtrace
     end
 
     def output_row(obj)
