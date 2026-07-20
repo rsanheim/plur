@@ -96,13 +96,13 @@ RSpec.describe Plur::JsonRowsFormatter do
   end
 
   describe "#example_failed" do
-    it "outputs a failed example message with exception details" do
-      exception = StandardError.new("Something went wrong")
-      exception.set_backtrace([
-        "/path/to/file.rb:123:in `method'",
-        "/path/to/another.rb:456:in `block'"
-      ])
-
+    # Per-example failure detail (class/message/backtrace) is intentionally NOT
+    # serialized: plur's displayed failure block comes entirely from
+    # #dump_failures (fully_formatted), and the Go side never reads per-example
+    # exception data. Emitting it here just duplicated a backtrace-filtering pass
+    # per failure. The identity fields still flow through example_to_json; the
+    # displayed failure output is covered by #dump_failures and the golden test.
+    it "outputs a failed example message with identity metadata and no exception payload" do
       example = double("example",
         id: "./spec/foo_spec.rb[1:2]",
         description: "fails",
@@ -114,16 +114,8 @@ RSpec.describe Plur::JsonRowsFormatter do
         execution_result: double("result",
           status: :failed,
           run_time: 0.02,
-          pending_message: nil,
-          exception: exception))
+          pending_message: nil))
       notification = double("notification", example: example)
-
-      # Mock RSpec configuration for backtrace formatting
-      config_double = double("config", dry_run?: false)
-      formatter_double = double("backtrace_formatter")
-      allow(formatter_double).to receive(:format_backtrace).with(anything) { |backtrace| backtrace }
-      allow(config_double).to receive(:backtrace_formatter).and_return(formatter_double)
-      allow(RSpec).to receive(:configuration).and_return(config_double)
 
       formatter.example_failed(notification)
 
@@ -131,14 +123,7 @@ RSpec.describe Plur::JsonRowsFormatter do
       expect(messages.size).to eq(1)
       expect(messages[0]["type"]).to eq("example_failed")
       expect(messages[0]["example"]["status"]).to eq("failed")
-      expect(messages[0]["example"]["exception"]).to eq({
-        "class" => "StandardError",
-        "message" => "Something went wrong",
-        "backtrace" => [
-          "/path/to/file.rb:123:in `method'",
-          "/path/to/another.rb:456:in `block'"
-        ]
-      })
+      expect(messages[0]["example"]).not_to have_key("exception")
     end
   end
 

@@ -25,26 +25,18 @@ type ExampleGroup struct {
 
 // StreamExample matches the example format from the Ruby formatter
 type StreamExample struct {
-	ID                    string           `json:"id,omitempty"`
-	Description           string           `json:"description"`
-	FullDescription       string           `json:"full_description"`
-	Location              string           `json:"location"`
-	FilePath              string           `json:"file_path"`
-	AbsoluteFilePath      string           `json:"absolute_file_path,omitempty"`
-	LineNumber            int              `json:"line_number"`
-	LocationRerunArgument string           `json:"location_rerun_argument,omitempty"`
-	ScopedID              string           `json:"scoped_id,omitempty"`
-	Status                string           `json:"status"`
-	RunTime               float64          `json:"run_time"`
-	PendingMessage        string           `json:"pending_message,omitempty"`
-	Exception             *StreamException `json:"exception,omitempty"`
-}
-
-// StreamException matches the exception format from the Ruby formatter
-type StreamException struct {
-	Class     string   `json:"class"`
-	Message   string   `json:"message"`
-	Backtrace []string `json:"backtrace"`
+	ID                    string  `json:"id,omitempty"`
+	Description           string  `json:"description"`
+	FullDescription       string  `json:"full_description"`
+	Location              string  `json:"location"`
+	FilePath              string  `json:"file_path"`
+	AbsoluteFilePath      string  `json:"absolute_file_path,omitempty"`
+	LineNumber            int     `json:"line_number"`
+	LocationRerunArgument string  `json:"location_rerun_argument,omitempty"`
+	ScopedID              string  `json:"scoped_id,omitempty"`
+	Status                string  `json:"status"`
+	RunTime               float64 `json:"run_time"`
+	PendingMessage        string  `json:"pending_message,omitempty"`
 }
 
 // LoadSummary represents the load_summary message's summary field
