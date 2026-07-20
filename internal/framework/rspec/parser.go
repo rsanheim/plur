@@ -204,14 +204,6 @@ func (p *outputParser) parseStreamExample(msgType string, ex *StreamExample) typ
 		Duration:              time.Duration(ex.RunTime * float64(time.Second)),
 	}
 
-	if msgType == "example_failed" && ex.Exception != nil {
-		notification.Exception = &types.TestException{
-			Class:     ex.Exception.Class,
-			Message:   ex.Exception.Message,
-			Backtrace: ex.Exception.Backtrace,
-		}
-	}
-
 	if msgType == "example_pending" {
 		notification.PendingMessage = ex.PendingMessage
 	}
