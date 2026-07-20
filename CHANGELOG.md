@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## v0.72.2 - 2026-07-20
+* fix: number `:aggregate_failures` sub-failures (e.g. `2.1)`) correctly instead of leaking the `‽` placeholder [#96](https://github.com/rsanheim/plur/pull/96)
+
 ## v0.72.1 - 2026-07-20
 * perf: stop serializing unused per-example exception data [#95](https://github.com/rsanheim/plur/pull/95)
 
