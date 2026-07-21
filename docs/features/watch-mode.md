@@ -146,12 +146,15 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 
 ### Event Types
 
-The watcher detects:
+Plur triggers a test run on `create` and `modify` events (see the effect-type
+filter in `cmd_watch.go`); events with other effect types are skipped.
 
-- `create` - New files
-- `modify` - Content changes (metadata-only changes like `touch` are ignored)
-- `destroy` - Deleted files
-- `rename` - Renamed files
+This means watch mode is driven by **content** changes, not timestamps. A bare
+`touch` that only bumps a file's modification time is not treated as a change, so
+it does *not* trigger a run. That is deliberate: modern editors, formatters, build
+tools, and sync agents churn file timestamps constantly, and reacting to every
+mtime bump would make watch mode far too noisy. Real edits always change content
+and are always picked up.
 
 ### Debouncing
 

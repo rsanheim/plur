@@ -6,7 +6,7 @@ module Plur
 
     def initialize
       # we should automate getting the latest version from https://github.com/e-dant/watcher
-      @edant_watcher_version = "0.13.8"
+      @edant_watcher_version = "0.14.5"
 
       @root_dir = Pathname.new(__dir__).join("../..").expand_path
       @watcher_dir = @root_dir.join("embedded", "watcher")
