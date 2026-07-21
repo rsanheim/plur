@@ -17,6 +17,12 @@ plur watch --dry-run
 
 # Set custom debounce delay (milliseconds)
 plur watch --debounce 250
+
+# Install the embedded watcher binary (idempotent; skips if already present)
+plur watch install
+
+# Force a reinstall to refresh a stale binary after upgrading plur
+plur watch install --force
 ```
 
 ### What Gets Watched
@@ -130,7 +136,7 @@ Embedded watcher binaries via [e-dant/watcher](https://github.com/e-dant/watcher
 - Linux ARM64
 - Windows x86_64 (experimental)
 
-Binaries are extracted on first use to `~/.plur/bin/` (or `$PLUR_HOME/bin/`).
+Binaries are extracted on first use to `~/.plur/bin/` (or `$PLUR_HOME/bin/`). After upgrading plur, run `plur watch install --force` to overwrite a cached binary with the newer embedded version.
 
 ## Implementation Details
 

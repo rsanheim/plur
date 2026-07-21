@@ -63,6 +63,23 @@ func TestInstallBinarySkipsExistingWithoutForce(t *testing.T) {
 	assert.Equal(t, "sentinel", string(content), "existing binary must not be overwritten without force")
 }
 
+// TestInstallBinaryOverwritesExistingWithForce covers the upgrade path: a stale
+// binary already at the target must be replaced by the embedded one when forced.
+func TestInstallBinaryOverwritesExistingWithForce(t *testing.T) {
+	binaryName := skipUnlessWatcherSupported(t)
+	binDir := t.TempDir()
+
+	existing := filepath.Join(binDir, binaryName)
+	require.NoError(t, os.WriteFile(existing, []byte("stale"), 0o755))
+
+	require.NoError(t, InstallBinary(embedded.Watcher, binDir, t.TempDir(), true))
+
+	content, err := os.ReadFile(existing)
+	require.NoError(t, err)
+	assert.NotEqual(t, "stale", string(content), "forced install must overwrite the existing binary")
+	assert.NotEmpty(t, content)
+}
+
 func TestInstallBinaryErrorsWhenNotEmbedded(t *testing.T) {
 	skipUnlessWatcherSupported(t)
 

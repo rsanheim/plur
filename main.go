@@ -62,10 +62,12 @@ func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	return runWatchWithConfig(config, w, parent, globals)
 }
 
-type WatchInstallCmd struct{}
+type WatchInstallCmd struct {
+	Force bool `short:"f" help:"Reinstall the watcher binary even if it already exists"`
+}
 
 func (w *WatchInstallCmd) Run(parent *PlurCLI) error {
-	return runWatchInstall(true)
+	return runWatchInstall(w.Force)
 }
 
 type DoctorCmd struct{}
