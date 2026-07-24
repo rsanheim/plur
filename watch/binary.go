@@ -66,7 +66,7 @@ func InstallBinary(watcherBinaries embed.FS, binDir, plurHome, expectedVersion s
 		return fmt.Errorf("watcher binary not embedded for this platform: %v", err)
 	}
 
-	if err := os.WriteFile(binaryPath, data, 0755); err != nil {
+	if err := replaceBinary(binaryPath, data); err != nil {
 		return fmt.Errorf("failed to write watcher binary: %v", err)
 	}
 
@@ -83,6 +83,28 @@ func InstallBinary(watcherBinaries embed.FS, binDir, plurHome, expectedVersion s
 	fmt.Printf("installed watcher binary path=%s\n", relPath)
 
 	return nil
+}
+
+func replaceBinary(binaryPath string, data []byte) error {
+	temp, err := os.CreateTemp(filepath.Dir(binaryPath), ".watcher-*")
+	if err != nil {
+		return err
+	}
+	tempPath := temp.Name()
+	defer os.Remove(tempPath)
+
+	if _, err := temp.Write(data); err != nil {
+		temp.Close()
+		return err
+	}
+	if err := temp.Chmod(0o755); err != nil {
+		temp.Close()
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tempPath, binaryPath)
 }
 
 func installedWatcherVersion(binaryPath string) (string, error) {
