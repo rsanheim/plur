@@ -18,6 +18,7 @@ RSpec.describe Plur::Config do
       expect(config.edant_watcher_version).to be_a(String)
       expect(config.edant_watcher_version).not_to be_empty
       expect(config.edant_watcher_version).to match(/^\d+\.\d+\.\d+$/)
+      expect(config.edant_watcher_version).to eq(ROOT_PATH.join("embedded", "watcher.version").read.strip)
     end
 
     it "defines root_dir as an existing Pathname" do

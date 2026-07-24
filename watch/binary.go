@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/rsanheim/plur/logger"
 )
@@ -27,16 +28,31 @@ func GetWatcherBinaryPath(binDir string) (string, error) {
 	return "", fmt.Errorf("watcher binary not found at %s. Please run 'plur watch install' to install it", binaryPath)
 }
 
-// InstallBinary extracts the embedded watcher binary and installs it to PLUR_HOME/bin
-func InstallBinary(watcherBinaries embed.FS, binDir, plurHome string, force bool) error {
+// InstallBinary extracts the embedded watcher binary and installs it to PLUR_HOME/bin.
+func InstallBinary(watcherBinaries embed.FS, binDir, plurHome, expectedVersion string, force bool) error {
 	binaryPath, err := getBinaryPath(binDir)
 	if err != nil {
 		return fmt.Errorf("failed to determine binary path: %v", err)
 	}
+	expectedVersion = strings.TrimSpace(expectedVersion)
+	if expectedVersion == "" {
+		return fmt.Errorf("embedded watcher version is empty")
+	}
+
 	if !force {
 		if _, err := os.Stat(binaryPath); err == nil {
-			logger.Logger.Debug("e-dant/watcher installed", "path", binaryPath)
-			return nil
+			installedVersion, versionErr := installedWatcherVersion(binaryPath)
+			if versionErr == nil && installedVersion == expectedVersion {
+				logger.Logger.Debug("e-dant/watcher installed", "path", binaryPath, "version", installedVersion)
+				return nil
+			}
+			logger.Logger.Debug(
+				"updating e-dant/watcher",
+				"path", binaryPath,
+				"installed_version", installedVersion,
+				"expected_version", expectedVersion,
+				"version_error", versionErr,
+			)
 		}
 	}
 
@@ -67,6 +83,18 @@ func InstallBinary(watcherBinaries embed.FS, binDir, plurHome string, force bool
 	fmt.Printf("installed watcher binary path=%s\n", relPath)
 
 	return nil
+}
+
+func installedWatcherVersion(binaryPath string) (string, error) {
+	output, err := exec.Command(binaryPath, "-v").Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to read installed watcher version: %w", err)
+	}
+	version := strings.TrimSpace(string(output))
+	if version == "" {
+		return "", fmt.Errorf("installed watcher returned an empty version")
+	}
+	return version, nil
 }
 
 // getBinaryPath determines the platform-specific watcher binary path

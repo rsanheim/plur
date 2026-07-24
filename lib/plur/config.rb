@@ -5,11 +5,9 @@ module Plur
     attr_reader :edant_watcher_version, :root_dir, :watcher_dir, :fixtures_dir, :default_ruby_dir, :default_rails_dir
 
     def initialize
-      # we should automate getting the latest version from https://github.com/e-dant/watcher
-      @edant_watcher_version = "0.14.5"
-
       @root_dir = Pathname.new(__dir__).join("../..").expand_path
       @watcher_dir = @root_dir.join("embedded", "watcher")
+      @edant_watcher_version = @root_dir.join("embedded", "watcher.version").read.strip
 
       @fixtures_dir = @root_dir.join("fixtures", "projects")
       @default_ruby_dir = @fixtures_dir.join("default-ruby")
