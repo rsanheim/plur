@@ -22,7 +22,13 @@ import (
 
 func runWatchInstall(force bool) error {
 	configPaths := config.InitConfigPaths()
-	return watch.InstallBinary(embedded.Watcher, configPaths.BinDir, configPaths.PlurHome, force)
+	return watch.InstallBinary(
+		embedded.Watcher,
+		configPaths.BinDir,
+		configPaths.PlurHome,
+		embedded.WatcherVersion(),
+		force,
+	)
 }
 
 // buildWatchPlanner resolves the inputs both watch commands share: the

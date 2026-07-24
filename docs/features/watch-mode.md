@@ -130,7 +130,8 @@ Embedded watcher binaries via [e-dant/watcher](https://github.com/e-dant/watcher
 - Linux ARM64
 - Windows x86_64 (experimental)
 
-Binaries are extracted on first use to `~/.plur/bin/` (or `$PLUR_HOME/bin/`).
+Binaries are extracted on first use to `~/.plur/bin/` (or `$PLUR_HOME/bin/`)
+and automatically replaced when Plur ships a newer watcher version.
 
 ## Implementation Details
 
@@ -146,12 +147,16 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 
 ### Event Types
 
-The watcher detects:
+Plur considers `create` and `modify` events for a test run (see the effect-type
+filter in `cmd_watch.go`); events with other effect types are skipped before
+the usual ignore and watch-mapping rules are applied.
 
-- `create` - New files
-- `modify` - Content changes (metadata-only changes like `touch` are ignored)
-- `destroy` - Deleted files
-- `rename` - Renamed files
+On macOS and Linux, this makes watch mode driven by **content** changes, not
+timestamps. A bare `touch` that only bumps a file's modification time is not
+reported as `create` or `modify`, so it does *not* trigger a run. That is
+deliberate: modern editors, formatters, build tools, and sync agents churn file
+timestamps constantly, and reacting to every mtime bump would make watch mode
+far too noisy.
 
 ### Debouncing
 
