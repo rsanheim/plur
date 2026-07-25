@@ -1,6 +1,11 @@
 source "https://rubygems.org"
 
-gem "rails", "~> 8.0"
+# Frameworks are listed individually rather than through the `rails` meta-gem so
+# this fixture only carries what its specs exercise. ActionCable, ActionMailer,
+# ActiveStorage, ActiveJob, ActionText, and ActionMailbox are all unused here.
+gem "railties", "~> 8.0"
+gem "activerecord", "~> 8.0"
+gem "actionpack", "~> 8.0"
 gem "sqlite3", ">= 2.1"
 gem "puma", ">= 5.0"
 
