@@ -1,8 +1,5 @@
 source "https://rubygems.org"
 
-# Frameworks are listed individually rather than through the `rails` meta-gem to
-# keep this fixture close to a stock app without pulling in ActionMailer,
-# ActiveStorage, ActionText, or ActionMailbox, which nothing here touches.
 gem "railties", "~> 8.0"
 gem "activerecord", "~> 8.0"
 gem "activejob", "~> 8.0"
