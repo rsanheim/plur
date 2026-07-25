@@ -43,6 +43,11 @@ RSpec.describe "plur watch exit" do
         expect(terminal.wait_for("[plur] >", timeout: 30)).to be(true), "watch never prompted:\n#{terminal.screen}"
 
         terminal.leave_and_return
+        # The tty echoes the reports, so this confirms they landed before the
+        # user typed anything - without it a slow box could pass for the wrong
+        # reason.
+        expect(terminal.wait_for("^[[O")).to be(true), "terminal never reported the focus change:\n#{terminal.screen}"
+
         terminal.submit("exit")
 
         expect(terminal.wait_for("Exiting watch mode...")).to be(true), "screen was:\n#{terminal.screen}"
