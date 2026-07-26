@@ -26,32 +26,20 @@ RSpec.describe "aggregate failure golden test" do
 
   def normalize_snapshot(snapshot)
     snapshot.merge(
-      "args" => ["[AGGREGATE_FAILURE_COMMAND]"],
       "stdout" => make_summary_line_consistent(snapshot.fetch("stdout", "")).strip,
       "stderr" => ""
     )
   end
 
   it "numbers a mixed pass/fail/aggregate run the same as rspec (no ‽ placeholder leak)" do
-    # Record rspec's own output as the baseline
-    chdir fixture_path("failing_specs") do
-      Backspin.run(
-        rspec_command,
-        name: "aggregate_failure_comparison",
-        filter: ->(snapshot) { normalize_snapshot(snapshot) }
-      )
-    end
-
+    # rspec's own output is the baseline; a mismatch raises with the diff
     result = chdir fixture_path("failing_specs") do
-      Backspin.run(
-        plur_command,
-        name: "aggregate_failure_comparison",
+      Backspin.compare(
+        reference: rspec_command,
+        actual: plur_command,
         filter: ->(snapshot) { normalize_snapshot(snapshot) }
       )
     end
-
-    # plur output matches rspec byte-for-byte after normalization
-    expect(result.verified?).to be(true)
 
     # And concretely: the aggregate is the 2nd failure, so its sub-failures
     # inherit "2.x", and the top-level counter continues to "3" for the plain

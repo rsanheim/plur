@@ -22,7 +22,6 @@ RSpec.describe "pending specs output" do
 
   def normalize_pending_output_snapshot(snapshot)
     snapshot.merge(
-      "args" => ["[OUTPUT_COMPARISON_COMMAND]"],
       "stdout" => normalize_timing(snapshot.fetch("stdout", "")).strip,
       "stderr" => ""
     )
@@ -30,20 +29,11 @@ RSpec.describe "pending specs output" do
 
   describe "pending section output" do
     it "shows pending section before failures like RSpec" do
-      # Record rspec output as baseline
-      chdir fixture_path("failing_specs") do
-        Backspin.run(
-          ["bundle", "exec", "rspec", "spec/mixed_results_spec.rb", "--force-color"],
-          name: "pending_output_comparison",
-          filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
-        )
-      end
-
-      # Verify plur output matches (--color=always for parity with rspec's --force-color)
+      # --color=always for parity with rspec's --force-color
       result = chdir fixture_path("failing_specs") do
-        Backspin.run(
-          [plur_binary, "--color=always", "spec/mixed_results_spec.rb"],
-          name: "pending_output_comparison",
+        Backspin.compare(
+          reference: ["bundle", "exec", "rspec", "spec/mixed_results_spec.rb", "--force-color"],
+          actual: [plur_binary, "--color=always", "spec/mixed_results_spec.rb"],
           filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
         )
       end
