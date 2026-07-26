@@ -120,34 +120,24 @@ RSpec.describe "Minitest Integration" do
 
   context "with grouped minitest command output" do
     let(:project_dir) { project_fixture!("minitest-success") }
-    let(:minitest_seed) { "8378" }
 
-    def normalize_minitest_output(output)
-      output
+    def normalize_grouped_minitest_snapshot(snapshot)
+      stdout = snapshot.fetch("stdout", "")
         .gsub(/Run options: --seed \d+/, "Run options: --seed [SEED]")
         .gsub(/Finished in [\d.]+s, [\d.]+ runs\/s, [\d.]+ assertions\/s\./,
           "Finished in [DURATION]s, [RUNS_PER_SEC] runs/s, [ASSERTIONS_PER_SEC] assertions/s.")
+      # plur writes a version/worker banner to stderr; raw minitest does not
+      snapshot.merge("stdout" => stdout, "stderr" => "")
     end
 
-    def normalize_grouped_minitest_snapshot(snapshot)
-      snapshot.merge(
-        "stdout" => normalize_minitest_output(snapshot.fetch("stdout", "")),
-        "stderr" => ""
-      )
-    end
-
-    def grouped_minitest_command(seed:)
+    def grouped_minitest_command
       # Use a single ruby command with a quoted -e script to require each file.
       [
         "bundle", "exec", "ruby",
         "-Itest",
         "-e", '["calculator_test", "string_helper_test"].each { |f| require f }',
-        "--", "--seed", seed
+        "--", "--seed", "8378"
       ]
-    end
-
-    def plur_minitest_serial_command
-      [plur_binary, "--use", "minitest", "-n", "1", "--color=never"]
     end
 
     it "compares plur -n1 output to grouped minitest output" do
@@ -156,8 +146,8 @@ RSpec.describe "Minitest Integration" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           Backspin.compare(
-            reference: grouped_minitest_command(seed: minitest_seed),
-            actual: plur_minitest_serial_command,
+            reference: grouped_minitest_command,
+            actual: [plur_binary, "--use", "minitest", "-n", "1", "--color=never"],
             filter: ->(snapshot) { normalize_grouped_minitest_snapshot(snapshot) }
           )
         end
