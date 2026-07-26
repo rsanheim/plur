@@ -85,7 +85,9 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 		}
 	case types.TestStdout:
 		if output, ok := n.(types.OutputNotification); ok {
-			collector.testStdout.WriteString(output.Content + "\n")
+			// Written verbatim - the newline, if the test wrote one, is already
+			// carried on Content. Appending one here would invent output.
+			collector.testStdout.WriteString(output.Content)
 		}
 	}
 }

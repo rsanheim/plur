@@ -72,7 +72,19 @@ func streamTestOutput(
 
 			notifications, consumed := parser.ParseLine(line)
 
+			// ReadString only returns a nil error when it found the delimiter, so
+			// this is the one place that still knows whether the test's own output
+			// ended in a newline. Carry it, rather than inventing one downstream.
+			hadNewline := err == nil
+
 			for _, notification := range notifications {
+				if out, ok := notification.(types.OutputNotification); ok && out.Event == types.TestStdout {
+					if hadNewline {
+						out.Content += "\n"
+					}
+					notification = out
+				}
+
 				progressType, isProgress := parser.NotificationToProgress(notification)
 				// Handle progress notifications
 				if isProgress {
