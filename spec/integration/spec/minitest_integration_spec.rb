@@ -131,7 +131,6 @@ RSpec.describe "Minitest Integration" do
 
     def normalize_grouped_minitest_snapshot(snapshot)
       snapshot.merge(
-        "args" => ["[MINITEST_COMPARISON_COMMAND]"],
         "stdout" => normalize_minitest_output(snapshot.fetch("stdout", "")),
         "stderr" => ""
       )
@@ -151,26 +150,14 @@ RSpec.describe "Minitest Integration" do
       [plur_binary, "--use", "minitest", "-n", "1", "--color=never"]
     end
 
-    it "records grouped minitest output from a ruby -e require list" do
-      chdir(project_dir) do
-        Bundler.with_unbundled_env do
-          Backspin.run(
-            grouped_minitest_command(seed: minitest_seed),
-            name: "minitest_grouped_ruby_command_output",
-            filter: ->(snapshot) { normalize_grouped_minitest_snapshot(snapshot) }
-          )
-        end
-      end
-    end
-
     it "compares plur -n1 output to grouped minitest output" do
       pending("plur output does not match raw minitest output yet")
 
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          Backspin.run(
-            plur_minitest_serial_command,
-            name: "minitest_grouped_ruby_command_output",
+          Backspin.compare(
+            reference: grouped_minitest_command(seed: minitest_seed),
+            actual: plur_minitest_serial_command,
             filter: ->(snapshot) { normalize_grouped_minitest_snapshot(snapshot) }
           )
         end
