@@ -64,8 +64,120 @@ RSpec.describe "Minitest Integration" do
     end
   end
 
+  context "with minitest-stdout project" do
+    let(:project_dir) { project_fixture!("minitest-stdout") }
+
+    before(:all) do
+      chdir(project_fixture!("minitest-stdout")) do
+        Bundler.with_unbundled_env do
+          system("bundle check", out: File::NULL, err: File::NULL) ||
+            system("bundle install", out: File::NULL, err: File::NULL, exception: true)
+        end
+      end
+    end
+
+    # The fixture writes binary bytes, so work on bytes throughout.
+    def stdout_lines(result)
+      lines = result.out.b.split("\n", -1)
+      lines.shift # progress line
+      lines.take_while { |line| !line.start_with?("Finished in ") }
+    end
+
+    it "counts progress exactly and prints what the tests wrote" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
+          expect(result).to be_success
+
+          # 18 tests, 18 progress characters, none of them borrowed from the text
+          expect(result.out.b.split("\n").first).to eq("." * 18)
+          expect(result.out.b).to include("18 runs, 19 assertions, 0 failures".b)
+
+          # At -n 1 both files share one process, so the unterminated `print` may
+          # merge with whichever line follows it; substring checks for that reason.
+          text = result.out.b
+          expect(text).to include("FIRST_LINE".b) # no F stolen for the progress line
+          expect(text).to include("PLUR_OUT:NOT_REALLY_A_MARKER".b)
+          expect(text).to include("VIA_STDOUT_CONSTANT".b)
+          expect(text.scan("PARTIAL_APARTIAL_B".b).size).to eq(1)
+        end
+      end
+    end
+
+    # One file per worker, so nothing merges into the unterminated `print` line.
+    it "renders every style of test-written stdout byte-faithfully" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "2", "--color=never")
+          expect(result).to be_success
+
+          expect(result.out.b.split("\n").first).to eq("." * 18)
+          expect(result.out.b).to include("18 runs, 19 assertions, 0 failures".b)
+
+          lines = stdout_lines(result)
+          expect(lines).to include("FIRST_LINE".b) # no F stolen for the progress line
+          expect(lines).to include("MULTI_ONE".b, "MULTI_TWO".b)
+          expect(lines).to include("ARRAY_ONE".b, "ARRAY_TWO".b, "AFTER_BLANK".b)
+          expect(lines).to include("VIA_STDOUT_CONSTANT".b)
+          expect(lines).to include("PLUR_OUT:NOT_REALLY_A_MARKER".b)
+          expect(lines).to include(".....".b) # text, not progress
+          expect(lines).to include("TERMINATED_ATERMINATED_B".b)
+          expect(lines).to include("BYTES".b, "AB".b) # $stdout.write
+          # `print` with no newline: one line, flushed once, at the end
+          expect(lines.count("PARTIAL_APARTIAL_B".b)).to eq(1)
+          # `puts` with no arguments
+          expect(lines).to include("".b)
+        end
+      end
+    end
+
+    it "passes through binary bytes and lines larger than the read buffer" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "2", "--color=never")
+
+          lines = stdout_lines(result)
+          expect(lines).to include("BINARY:\xC0\xFF".b)
+          long = lines.find { |line| line.start_with?("LONG_LINE_START".b) }
+          expect(long&.bytesize).to eq("LONG_LINE_START".bytesize + 300_000)
+        end
+      end
+    end
+
+    it "keeps lines intact when tests write from parallel threads" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "2", "--color=never")
+
+          parallel = stdout_lines(result).select { |line| line.include?("PARALLEL_".b) }
+          expect(parallel.size).to eq(100)
+          expect(parallel.grep_v(/\APARALLEL_\d_\d+\z/)).to be_empty
+        end
+      end
+    end
+  end
+
   context "with minitest-failures project" do
     let(:project_dir) { project_fixture!("minitest-failures") }
+
+    it "shows stdout from failing tests alongside the failure details" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "1", "--color=never", allow_error: true)
+          expect(result).to be_failure
+
+          # Each on a line of its own, never glued to the progress characters
+          expect(result.out.split("\n")).to include(
+            "OUTPUT_BEFORE_FAILURE", "OUTPUT_BEFORE_ERROR", "OUTPUT_FROM_PASSING_TEST"
+          )
+          # and only once: consumed from the raw output, not printed twice
+          expect(result.out.scan("OUTPUT_BEFORE_FAILURE").size).to eq(1)
+          # failure details still parse
+          expect(result.out).to include("OutputOnFailureTest#test_writes_then_fails")
+          expect(result.out).to match(/\d+ runs, \d+ assertions, \d+ failures, \d+ errors/)
+        end
+      end
+    end
 
     it "reports minitest test failures" do
       chdir(project_dir) do
@@ -76,6 +188,35 @@ RSpec.describe "Minitest Integration" do
           # In parallel execution, individual failure details are not shown
           # Check that the summary shows failures
           expect(result.out).to match(/\d+ failures?/)
+        end
+      end
+    end
+  end
+
+  # minitest-reporters installs its own reporter, which writes ANSI colored
+  # progress characters. plur's plugin has to leave that alone, and the marker
+  # must never leak into the output.
+  context "with minitest-reporters project" do
+    let(:project_dir) { project_fixture!("minitest-reporters") }
+
+    before(:all) do
+      chdir(project_fixture!("minitest-reporters")) do
+        Bundler.with_unbundled_env do
+          system("bundle check", out: File::NULL, err: File::NULL) ||
+            system("bundle install", out: File::NULL, err: File::NULL, exception: true)
+        end
+      end
+    end
+
+    it "coexists with a custom reporter" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
+          expect(result).to be_success
+
+          expect(result.out.split("\n")).to include("This is normal stdout output")
+          expect(result.out).not_to include("PLUR_OUT")
+          expect(result.out).to include("11 runs, 18 assertions, 0 failures")
         end
       end
     end

@@ -5,6 +5,7 @@ import (
 
 	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOutputParser_BasicFlow(t *testing.T) {
@@ -328,110 +329,116 @@ func TestNotificationToProgress(t *testing.T) {
 	}
 }
 
-func TestCountLeadingProgressChars(t *testing.T) {
-	tests := []struct {
-		line     string
-		expected int
-	}{
-		{"..in test_titleize", 2},
-		{"...in test_addition", 3},
-		{"....", 4},
-		{"in test_titleize", 0},
-		{"", 0},
-		{"F.text", 2},
-		{".FES", 4},
-		{"...", 3},
-		{".hello", 1},
-		{"  ..dots after spaces", 0},
-		{"Finished in 0.001s", 1},
+// progressChars returns the progress characters in order, and stdoutLines the
+// content of every test-written stdout notification.
+func classify(notifications []types.TestNotification) (progress string, stdout []string, raw []string) {
+	for _, n := range notifications {
+		switch v := n.(type) {
+		case types.ProgressEvent:
+			progress += v.Character
+		case types.OutputNotification:
+			if v.Event == types.TestStdout {
+				stdout = append(stdout, v.Content)
+			} else {
+				raw = append(raw, v.Content)
+			}
+		}
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.line, func(t *testing.T) {
-			assert.Equal(t, tt.expected, countLeadingProgressChars(tt.line))
-		})
-	}
+	return progress, stdout, raw
 }
 
-func TestOutputParser_MixedProgressLines(t *testing.T) {
-	t.Run("leading dots with puts output", func(t *testing.T) {
-		assert := assert.New(t)
+func TestOutputParser_TaggedStdout(t *testing.T) {
+	t.Run("splits progress prefix from test output", func(t *testing.T) {
 		parser := &outputParser{}
 
-		// Set up running phase
-		parser.ParseLine("# Running:")
+		notifications, consumed := parser.ParseLine("..PLUR_OUT:in test_titleize")
+		assert.True(t, consumed, "tagged lines are consumed so they never reach rawOutput")
 
-		notifications, consumed := parser.ParseLine("..in test_titleize")
-		assert.False(consumed, "line should not be consumed so it goes to rawOutput")
-		assert.Len(notifications, 2)
-		assert.Equal(".", notifications[0].(types.ProgressEvent).Character)
-		assert.Equal(0, notifications[0].(types.ProgressEvent).Index)
-		assert.Equal(".", notifications[1].(types.ProgressEvent).Character)
-		assert.Equal(1, notifications[1].(types.ProgressEvent).Index)
-		assert.Equal(2, parser.progressCount)
+		progress, stdout, raw := classify(notifications)
+		assert.Equal(t, "..", progress)
+		assert.Equal(t, []string{"in test_titleize"}, stdout)
+		assert.Empty(t, raw)
+		assert.Equal(t, 2, parser.progressCount)
 	})
 
-	t.Run("mixed line then pure dots", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{inRunningPhase: true}
-
-		parser.ParseLine("..in test_addition")
-		notifications, _ := parser.ParseLine("....")
-
-		assert.Len(notifications, 4)
-		assert.Equal(6, parser.progressCount) // 2 from mixed + 4 from pure
-	})
-
-	t.Run("not extracted outside running phase", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{} // inRunningPhase is false
-
-		notifications, consumed := parser.ParseLine("..in test_titleize")
-		assert.False(consumed)
-		assert.Empty(notifications)
-	})
-
-	t.Run("no leading progress chars", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{inRunningPhase: true}
-
-		notifications, _ := parser.ParseLine("in test_titleize")
-		assert.Empty(notifications)
-	})
-
-	t.Run("Finished in line does not extract F as progress", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{inRunningPhase: true}
-
-		notifications, _ := parser.ParseLine("Finished in 0.001234s, 2430.1337 runs/s")
-		assert.Empty(notifications)
-		assert.False(parser.inRunningPhase)
-	})
-
-	t.Run("inRunningPhase set by # Running: and cleared by failure header", func(t *testing.T) {
-		assert := assert.New(t)
+	t.Run("no progress prefix", func(t *testing.T) {
 		parser := &outputParser{}
 
-		assert.False(parser.inRunningPhase)
+		notifications, _ := parser.ParseLine("PLUR_OUT:hello")
 
-		parser.ParseLine("# Running:")
-		assert.True(parser.inRunningPhase)
-
-		parser.ParseLine("  1) Failure:")
-		assert.False(parser.inRunningPhase)
+		progress, stdout, _ := classify(notifications)
+		assert.Empty(t, progress)
+		assert.Equal(t, []string{"hello"}, stdout)
+		assert.Equal(t, 0, parser.progressCount)
 	})
 
-	t.Run("inRunningPhase cleared by summary line", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{inRunningPhase: true}
+	t.Run("preserves empty lines and leading whitespace", func(t *testing.T) {
+		parser := &outputParser{}
 
-		parser.ParseLine("3 runs, 3 assertions, 0 failures, 0 errors, 0 skips")
-		assert.False(parser.inRunningPhase)
+		_, stdout, _ := classify(first(parser.ParseLine("PLUR_OUT:")))
+		assert.Equal(t, []string{""}, stdout)
+
+		_, stdout, _ = classify(first(parser.ParseLine("PLUR_OUT:   indented  ")))
+		assert.Equal(t, []string{"   indented  "}, stdout)
+	})
+
+	t.Run("text that looks like progress is not counted as progress", func(t *testing.T) {
+		parser := &outputParser{}
+
+		notifications, _ := parser.ParseLine("...PLUR_OUT:.....")
+
+		progress, stdout, _ := classify(notifications)
+		assert.Equal(t, "...", progress)
+		assert.Equal(t, []string{"....."}, stdout)
+		assert.Equal(t, 3, parser.progressCount)
+	})
+
+	t.Run("puts FIRST_LINE does not leak an F into the progress line", func(t *testing.T) {
+		parser := &outputParser{}
+
+		notifications, _ := parser.ParseLine(".PLUR_OUT:FIRST_LINE")
+
+		progress, stdout, _ := classify(notifications)
+		assert.Equal(t, ".", progress)
+		assert.Equal(t, []string{"FIRST_LINE"}, stdout)
+	})
+
+	t.Run("a test printing the marker keeps its own text intact", func(t *testing.T) {
+		parser := &outputParser{}
+
+		// The plugin tags the line, so plur's marker is always the first one.
+		notifications, _ := parser.ParseLine("..PLUR_OUT:PLUR_OUT:sneaky")
+
+		progress, stdout, _ := classify(notifications)
+		assert.Equal(t, "..", progress)
+		assert.Equal(t, []string{"PLUR_OUT:sneaky"}, stdout)
+	})
+
+	t.Run("non-progress prefix is preserved instead of miscounted", func(t *testing.T) {
+		parser := &outputParser{}
+
+		// minitest-reporters writes ANSI colored progress characters
+		notifications, _ := parser.ParseLine("\033[32m.\033[0mPLUR_OUT:hello")
+
+		progress, stdout, raw := classify(notifications)
+		assert.Empty(t, progress, "an unrecognized prefix must not inflate the progress count")
+		assert.Equal(t, []string{"hello"}, stdout)
+		assert.Equal(t, []string{"\033[32m.\033[0m"}, raw)
+	})
+
+	t.Run("bare text is never mistaken for progress", func(t *testing.T) {
+		parser := &outputParser{}
+
+		// Untagged output, e.g. a subprocess writing straight to fd 1
+		notifications, consumed := parser.ParseLine("..FROM_SUBPROCESS")
+
+		assert.False(t, consumed, "untagged text stays in rawOutput")
+		assert.Empty(t, notifications)
+		assert.Equal(t, 0, parser.progressCount)
 	})
 }
 
-func TestOutputParser_FullIntegrationWithMixedProgress(t *testing.T) {
-	assert := assert.New(t)
+func TestOutputParser_FullIntegrationWithTaggedStdout(t *testing.T) {
 	parser := &outputParser{}
 
 	lines := []string{
@@ -439,35 +446,92 @@ func TestOutputParser_FullIntegrationWithMixedProgress(t *testing.T) {
 		"",
 		"# Running:",
 		"",
-		"..in test_titleize",
-		"..in test_addition",
-		"....",
+		".PLUR_OUT:in test_titleize",
+		".....PLUR_OUT:in test_addition",
+		"..",
 		"",
 		"Finished in 0.001234s, 2430.1337 runs/s, 4860.2674 assertions/s.",
 		"",
 		"8 runs, 23 assertions, 0 failures, 0 errors, 0 skips",
+		// a trailing `print` with no newline is flushed after the summary
+		"PLUR_OUT:trailing partial",
 	}
 
-	var progressEvents []types.ProgressEvent
-
+	var all []types.TestNotification
 	for _, line := range lines {
 		notifications, _ := parser.ParseLine(line)
-		for _, n := range notifications {
-			if pe, ok := n.(types.ProgressEvent); ok {
-				progressEvents = append(progressEvents, pe)
-			}
+		all = append(all, notifications...)
+	}
+
+	progress, stdout, _ := classify(all)
+	assert.Equal(t, "........", progress, "8 tests produce exactly 8 progress characters")
+	assert.Equal(t, 8, parser.progressCount)
+	assert.Equal(t, []string{"in test_titleize", "in test_addition", "trailing partial"}, stdout)
+
+	var suite types.SuiteNotification
+	for _, n := range all {
+		if s, ok := n.(types.SuiteNotification); ok && s.Event == types.SuiteFinished {
+			suite = s
 		}
 	}
+	assert.Equal(t, 8, suite.TestCount)
+	assert.Equal(t, 23, suite.AssertionCount)
+}
 
-	// Should have 8 progress events total: 2 + 2 + 4
-	assert.Len(progressEvents, 8)
-	assert.Equal(8, parser.progressCount)
+// A failing run still has to classify minitest's own chrome, and the tagged
+// output must not disturb the failure section or the summary.
+func TestOutputParser_TaggedStdoutOnFailureRun(t *testing.T) {
+	parser := &outputParser{}
 
-	// All should be dots
-	for i, pe := range progressEvents {
-		assert.Equal(".", pe.Character)
-		assert.Equal(i, pe.Index, "progress index should be sequential")
+	lines := []string{
+		"Run options: --seed 1",
+		"",
+		"# Running:",
+		"",
+		".PLUR_OUT:FIRST_LINE",
+		"F.",
+		"",
+		"Finished in 0.000668s, 11976.0480 runs/s, 31437.1261 assertions/s.",
+		"",
+		"  1) Failure:",
+		"CalculatorTest#test_addition [test/calculator_test.rb:29]:",
+		"Expected: 999",
+		"  Actual: 5",
+		"",
+		"4 runs, 5 assertions, 1 failures, 0 errors, 0 skips",
 	}
+
+	var all []types.TestNotification
+	for _, line := range lines {
+		notifications, _ := parser.ParseLine(line)
+		all = append(all, notifications...)
+	}
+
+	progress, stdout, _ := classify(all)
+	assert.Equal(t, ".F.", progress)
+	assert.Equal(t, []string{"FIRST_LINE"}, stdout)
+
+	require.Len(t, parser.failures, 1)
+	assert.Equal(t, "CalculatorTest#test_addition", parser.failures[0].TestID)
+
+	var suite types.SuiteNotification
+	for _, n := range all {
+		if s, ok := n.(types.SuiteNotification); ok && s.Event == types.SuiteFinished {
+			suite = s
+		}
+	}
+	assert.Equal(t, types.SuiteFinished, suite.Event, "SuiteFinished must still fire")
+	assert.Equal(t, 4, suite.TestCount)
+	assert.Equal(t, 1, suite.FailureCount)
+}
+
+// The Ruby plugin and the Go parser have to agree on the marker.
+func TestPluginMarkerMatchesParser(t *testing.T) {
+	assert.Contains(t, plurPluginCode, `PREFIX = "`+stdoutMarker+`"`)
+}
+
+func first(notifications []types.TestNotification, _ bool) []types.TestNotification {
+	return notifications
 }
 
 func TestOutputParser_FormatSummaryUsesAssertionAndErrorCounts(t *testing.T) {

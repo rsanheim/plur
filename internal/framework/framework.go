@@ -37,6 +37,7 @@ var registry = map[string]Framework{
 	"minitest": {
 		Name:           "minitest",
 		Parser:         minitest.NewOutputParser,
+		DefaultArgs:    minitestDefaultArgs,
 		DetectPatterns: []string{"**/*_test.rb"},
 		TargetMode:     TargetModeRubyRequire,
 	},
@@ -80,6 +81,21 @@ func DetectPatterns(name string) []string {
 		return nil
 	}
 	return fw.DetectPatterns
+}
+
+// minitestDefaultArgs puts plur's minitest plugin on Ruby's $LOAD_PATH so
+// minitest autoloads it and tags whatever the tests write to stdout.
+func minitestDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
+	if cfg == nil || cfg.ConfigPaths == nil {
+		return nil, fmt.Errorf("config paths are required for the minitest plugin")
+	}
+
+	loadPath, err := minitest.GetPluginLoadPath(cfg.ConfigPaths.FormatterDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize minitest plugin: %w", err)
+	}
+
+	return []string{"-I" + loadPath}, nil
 }
 
 func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {

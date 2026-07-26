@@ -245,3 +245,17 @@ func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {
 	// Should preserve LoadTime from SuiteStarted, not SuiteFinished
 	assert.Equal(t, 800*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should take precedence")
 }
+
+func TestTestCollector_TestStdoutIsKeptSeparateFromRawOutput(t *testing.T) {
+	collector := NewTestCollector()
+
+	collector.AddNotification(types.OutputNotification{Event: types.RawOutput, Content: "# Running:"})
+	collector.AddNotification(types.OutputNotification{Event: types.TestStdout, Content: "hello"})
+	collector.AddNotification(types.OutputNotification{Event: types.TestStdout, Content: ""})
+	collector.AddNotification(types.OutputNotification{Event: types.TestStdout, Content: "  spaced  "})
+
+	result := collector.BuildResult(time.Second)
+
+	assert.Equal(t, "hello\n\n  spaced  \n", result.TestStdout)
+	assert.Equal(t, "# Running:\n", result.Output, "test stdout must not be duplicated into the raw output")
+}

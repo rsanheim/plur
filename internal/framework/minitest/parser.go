@@ -17,6 +17,12 @@ var (
 	failureHeaderLineRegex = regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`)
 )
 
+// stdoutMarker prefixes every line the tests write to stdout. plur's minitest
+// plugin (plur_plugin.rb) adds it so progress characters, which minitest emits
+// with no trailing newline, can be told apart from test output sharing the same
+// physical line. It must stay in sync with PlurTaggedIO::PREFIX.
+const stdoutMarker = "PLUR_OUT:"
+
 // outputParser parses minitest text output into notifications
 type outputParser struct {
 	collectingFailures bool                         // Whether we're collecting failure text
@@ -24,7 +30,6 @@ type outputParser struct {
 	failures           []types.TestCaseNotification // Extracted failures for runtime tracking
 	progressCount      int                          // Track progress index
 	startTime          time.Time                    // When the parser was created (for load time calculation)
-	inRunningPhase     bool                         // true between "# Running:" and summary/failure sections
 }
 
 // NewOutputParser creates a new minitest output parser with proper initialization
@@ -113,9 +118,14 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	logger.Logger.Debug("[ParseLine]", "line", line)
 
+	// A tagged line splits cleanly: progress characters before the marker, the
+	// test's own bytes after it.
+	if index := strings.Index(line, stdoutMarker); index >= 0 {
+		return p.parseTaggedLine(line, index), true
+	}
+
 	// Emit suite started on "# Running:" with load time
 	if strings.HasPrefix(line, "# Running:") {
-		p.inRunningPhase = true
 		loadTime := time.Duration(0)
 		if !p.startTime.IsZero() {
 			loadTime = time.Since(p.startTime)
@@ -131,23 +141,8 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 		return p.parseProgressLine(line), false
 	}
 
-	// "Finished in" timing line ends the progress section
-	if p.inRunningPhase && strings.HasPrefix(line, "Finished in ") {
-		p.inRunningPhase = false
-	}
-
-	// Extract leading progress chars from mixed lines (e.g. "..in test_foo")
-	// Only during the running phase to avoid false positives in failure details
-	// or the "Finished in" timing line (which starts with 'F')
-	if p.inRunningPhase {
-		if count := countLeadingProgressChars(line); count > 0 {
-			return p.parseProgressLine(line[:count]), false
-		}
-	}
-
 	// Start collecting failures on first failure header
 	if !p.collectingFailures && isFailureHeaderLine(line) {
-		p.inRunningPhase = false
 		p.collectingFailures = true
 		p.failureBuffer.WriteString(line + "\n")
 		return nil, false // Preserve the line in output
@@ -166,11 +161,35 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 
 	// Check for summary without failures
 	if isSummaryLine(line) {
-		p.inRunningPhase = false
 		return p.parseSummaryLine(line), false
 	}
 
 	return nil, false // Minitest output is always preserved
+}
+
+// parseTaggedLine splits a line the plugin tagged. Everything after the marker
+// is what the tests wrote. Everything before it is minitest's progress
+// characters - unless some other writer (a custom reporter, say) got there
+// first, in which case it is preserved as raw output rather than miscounted as
+// progress.
+func (p *outputParser) parseTaggedLine(line string, index int) []types.TestNotification {
+	var notifications []types.TestNotification
+
+	if prefix := line[:index]; prefix != "" {
+		if containsProgressChars(prefix) {
+			notifications = p.parseProgressLine(prefix)
+		} else {
+			notifications = append(notifications, types.OutputNotification{
+				Event:   types.RawOutput,
+				Content: prefix,
+			})
+		}
+	}
+
+	return append(notifications, types.OutputNotification{
+		Event:   types.TestStdout,
+		Content: line[index+len(stdoutMarker):],
+	})
 }
 
 func (p *outputParser) parseSummaryLine(line string) []types.TestNotification {
@@ -247,22 +266,6 @@ func containsProgressChars(line string) bool {
 		}
 	}
 	return true
-}
-
-// countLeadingProgressChars returns the number of consecutive progress characters
-// (., F, E, S) at the start of a line. Returns 0 if the line doesn't start with
-// a progress character. Does not trim whitespace since minitest never indents
-// progress output.
-func countLeadingProgressChars(line string) int {
-	for i, char := range line {
-		switch char {
-		case '.', 'F', 'E', 'S':
-			continue
-		default:
-			return i
-		}
-	}
-	return len(line)
 }
 
 func isFailureHeaderLine(line string) bool {

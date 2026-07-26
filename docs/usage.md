@@ -168,6 +168,26 @@ Shows dots for test progress:
 - `F` - Failing test
 - `*` - Pending test
 
+### Test Output (puts, print, p)
+
+Anything your tests write to stdout is collected while they run and printed
+after the progress line, so it never breaks the run of dots.
+
+For Minitest, plur loads a small plugin into the test process that marks what
+the tests write, which is how it tells that output apart from Minitest's
+progress characters (Minitest writes those without a trailing newline, so a
+`puts` lands on the same physical line). The plugin needs Minitest 5.0 or newer
+- older versions have no plugin system, and plur falls back to showing that
+output only for workers that failed.
+
+Two kinds of output stay outside that mechanism:
+
+- Bytes written straight to file descriptor 1, such as a subprocess started with
+  `system` or a backtick. plur shows those only for workers that failed.
+- A `print` with no trailing newline followed by `exit!` or a crash. The partial
+  line is flushed when the run ends, so an abrupt exit drops it, exactly as it
+  would without plur.
+
 ## Performance Monitoring
 
 ### Basic Timing

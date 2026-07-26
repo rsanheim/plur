@@ -14,6 +14,7 @@ type TestCollector struct {
 	pending           []types.TestCaseNotification
 	suiteInfo         *types.SuiteNotification
 	rawOutput         strings.Builder
+	testStdout        strings.Builder
 	formattedFailures string
 	formattedPending  string
 	formattedSummary  string
@@ -70,6 +71,12 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 				collector.suiteInfo.LoadTime = loadTime
 			}
 		}
+	case types.TestStdout:
+		// Buffered rather than streamed so it never lands in the middle of the
+		// progress line; printed once the run is over.
+		if v, ok := n.(types.OutputNotification); ok {
+			collector.testStdout.WriteString(v.Content + "\n")
+		}
 	case types.RawOutput:
 		// Handle special formatted notifications
 		switch v := n.(type) {
@@ -88,6 +95,7 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 func (collector *TestCollector) BuildResult(duration time.Duration) WorkerResult {
 	result := WorkerResult{
 		Output:            collector.rawOutput.String(),
+		TestStdout:        collector.testStdout.String(),
 		Duration:          duration,
 		ExampleCount:      len(collector.tests),
 		AssertionCount:    0,

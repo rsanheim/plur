@@ -15,6 +15,7 @@ import (
 type WorkerResult struct {
 	State          types.TestState
 	Output         string
+	TestStdout     string // What the tests wrote to stdout (minitest only)
 	Error          error
 	Duration       time.Duration
 	FileLoadTime   time.Duration
@@ -58,6 +59,7 @@ type TestSummary struct {
 	ErroredFiles      []WorkerResult // Workers that had errors running tests
 	TotalPending      int            // Total pending/skipped tests
 	AllResults        []WorkerResult // All worker results for accessing raw output
+	TestStdout        string         // What the tests wrote to stdout, across all workers
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -107,6 +109,8 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 			summary.ErroredFiles = append(summary.ErroredFiles, result)
 			// StateSuccess requires no action - summary.Success defaults to true
 		}
+
+		summary.TestStdout += result.TestStdout
 
 		// Collect formatted failures and pending (concatenate them)
 		if result.FormattedFailures != "" {
@@ -174,6 +178,12 @@ func renumberSummaryOutput(output string) string {
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Job) {
 	parser := currentJob.Framework.Parser()
+
+	// Whatever the tests wrote to stdout, held back during the run so it does
+	// not break up the progress line
+	if summary.TestStdout != "" {
+		fmt.Print(summary.TestStdout)
+	}
 
 	// Print pending section first (RSpec outputs pending before failures)
 	if summary.FormattedPending != "" {

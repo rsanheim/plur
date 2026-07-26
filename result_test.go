@@ -108,6 +108,19 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 	assert.Equal(t, "", summary.FormattedSummary, "summary with multiple results should be empty")
 }
 
+func TestBuildTestSummaryConcatenatesTestStdout(t *testing.T) {
+	results := []WorkerResult{
+		{State: types.StateSuccess, ExampleCount: 1, TestStdout: "from worker one\n"},
+		{State: types.StateSuccess, ExampleCount: 1, TestStdout: ""},
+		{State: types.StateFailed, ExampleCount: 1, FailureCount: 1, TestStdout: "from worker three\n"},
+	}
+
+	testJob := framework.Job{Name: "minitest", FrameworkName: "minitest"}
+	summary := BuildTestSummary(results, 100*time.Millisecond, testJob)
+
+	assert.Equal(t, "from worker one\nfrom worker three\n", summary.TestStdout)
+}
+
 func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 	results := []WorkerResult{
 		{
