@@ -136,15 +136,6 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 		p.inRunningPhase = false
 	}
 
-	// Extract leading progress chars from mixed lines (e.g. "..in test_foo")
-	// Only during the running phase to avoid false positives in failure details
-	// or the "Finished in" timing line (which starts with 'F')
-	if p.inRunningPhase {
-		if count := countLeadingProgressChars(line); count > 0 {
-			return p.parseProgressLine(line[:count]), false
-		}
-	}
-
 	// Start collecting failures on first failure header
 	if !p.collectingFailures && isFailureHeaderLine(line) {
 		p.inRunningPhase = false
@@ -168,6 +159,24 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 	if isSummaryLine(line) {
 		p.inRunningPhase = false
 		return p.parseSummaryLine(line), false
+	}
+
+	// Anything still unrecognized during the running phase is the test's own
+	// stdout. Minitest writes progress characters without a trailing newline, so
+	// a `puts` from a test lands as a tail on the current progress line (e.g.
+	// "..in test_foo"). Split the two: the leading progress characters feed the
+	// aggregated progress line, the tail is buffered and flushed with the
+	// results. This must stay the last check so minitest's own output - failure
+	// headers, the timing line, the summary - is always claimed first.
+	if p.inRunningPhase {
+		count := countLeadingProgressChars(line)
+		if tail := line[count:]; tail != "" {
+			notifications := p.parseProgressLine(line[:count])
+			return append(notifications, types.OutputNotification{
+				Event:   types.TestStdout,
+				Content: tail,
+			}), true
+		}
 	}
 
 	return nil, false // Minitest output is always preserved

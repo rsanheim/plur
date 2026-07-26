@@ -14,6 +14,7 @@ type TestCollector struct {
 	pending           []types.TestCaseNotification
 	suiteInfo         *types.SuiteNotification
 	rawOutput         strings.Builder
+	testStdout        strings.Builder
 	formattedFailures string
 	formattedPending  string
 	formattedSummary  string
@@ -82,12 +83,17 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 		case types.OutputNotification:
 			collector.rawOutput.WriteString(v.Content + "\n")
 		}
+	case types.TestStdout:
+		if output, ok := n.(types.OutputNotification); ok {
+			collector.testStdout.WriteString(output.Content + "\n")
+		}
 	}
 }
 
 func (collector *TestCollector) BuildResult(duration time.Duration) WorkerResult {
 	result := WorkerResult{
 		Output:            collector.rawOutput.String(),
+		TestStdout:        collector.testStdout.String(),
 		Duration:          duration,
 		ExampleCount:      len(collector.tests),
 		AssertionCount:    0,

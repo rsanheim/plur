@@ -15,6 +15,7 @@ import (
 type WorkerResult struct {
 	State          types.TestState
 	Output         string
+	TestStdout     string // Output the tests wrote themselves (puts/pp), buffered rather than streamed
 	Error          error
 	Duration       time.Duration
 	FileLoadTime   time.Duration
@@ -174,6 +175,15 @@ func renumberSummaryOutput(output string) string {
 // PrintResults displays a test summary
 func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Job) {
 	parser := currentJob.Framework.Parser()
+
+	// Frameworks that interleave test output with the progress characters
+	// (minitest) buffer it per worker instead of streaming it, so flush it here -
+	// after the progress line is complete, before the failures and summary.
+	for _, result := range summary.AllResults {
+		if result.TestStdout != "" {
+			fmt.Print(result.TestStdout)
+		}
+	}
 
 	// Print pending section first (RSpec outputs pending before failures)
 	if summary.FormattedPending != "" {

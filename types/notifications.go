@@ -22,7 +22,8 @@ const (
 	SuiteStarted  TestEvent = "suite_started"
 	SuiteFinished TestEvent = "suite_finished"
 	RawOutput     TestEvent = "raw_output"
-	Progress      TestEvent = "progress" // Progress indicator for real-time display
+	TestStdout    TestEvent = "test_stdout" // Output a test wrote itself (puts/pp), not framework chrome
+	Progress      TestEvent = "progress"    // Progress indicator for real-time display
 )
 
 // TestNotification is the interface that all notifications implement
@@ -80,9 +81,9 @@ type SuiteNotification struct {
 func (n SuiteNotification) GetEvent() TestEvent { return n.Event }
 func (n SuiteNotification) GetTestID() string   { return "" } // Suite events don't have test IDs
 
-// OutputNotification represents raw output that doesn't match patterns
+// OutputNotification represents output that doesn't match patterns
 type OutputNotification struct {
-	Event   TestEvent // Always RawOutput
+	Event   TestEvent // RawOutput or TestStdout
 	Content string
 }
 

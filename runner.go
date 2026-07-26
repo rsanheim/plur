@@ -359,6 +359,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 	return WorkerResult{
 		State:             state,
 		Output:            output,
+		TestStdout:        result.TestStdout,
 		Error:             err,
 		Duration:          result.Duration,
 		FileLoadTime:      result.FileLoadTime,

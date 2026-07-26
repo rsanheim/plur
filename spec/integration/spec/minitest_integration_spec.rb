@@ -52,6 +52,21 @@ RSpec.describe "Minitest Integration" do
       end
     end
 
+    it "prints stdout written by the tests themselves" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
+          expect(result).to be_success
+          # Both fixture tests puts while the suite runs; minitest interleaves
+          # that text with the progress dots, so plur buffers it and flushes it
+          # after the progress line rather than dropping it.
+          expect(result.out).to include("in test_addition")
+          expect(result.out).to include("in test_titleize")
+          expect(result.out.split("\n").first).to eq("." * 8)
+        end
+      end
+    end
+
     it "discovers minitest test files" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
@@ -113,6 +128,10 @@ RSpec.describe "Minitest Integration" do
           expect(result.out).to include("23 assertions")
           expect(result.out).to include("0 failures")
           expect(result.out).to include("0 errors")
+
+          # Each worker's own stdout survives the aggregation
+          expect(result.out).to include("in test_addition")
+          expect(result.out).to include("in test_titleize")
         end
       end
     end

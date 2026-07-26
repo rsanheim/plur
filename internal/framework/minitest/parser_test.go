@@ -362,13 +362,17 @@ func TestOutputParser_MixedProgressLines(t *testing.T) {
 		parser.ParseLine("# Running:")
 
 		notifications, consumed := parser.ParseLine("..in test_titleize")
-		assert.False(consumed, "line should not be consumed so it goes to rawOutput")
-		assert.Len(notifications, 2)
+		assert.True(consumed, "parser splits the line itself, so it must not also go to rawOutput")
+		assert.Len(notifications, 3)
 		assert.Equal(".", notifications[0].(types.ProgressEvent).Character)
 		assert.Equal(0, notifications[0].(types.ProgressEvent).Index)
 		assert.Equal(".", notifications[1].(types.ProgressEvent).Character)
 		assert.Equal(1, notifications[1].(types.ProgressEvent).Index)
 		assert.Equal(2, parser.progressCount)
+
+		stdout := notifications[2].(types.OutputNotification)
+		assert.Equal(types.TestStdout, stdout.Event)
+		assert.Equal("in test_titleize", stdout.Content)
 	})
 
 	t.Run("mixed line then pure dots", func(t *testing.T) {
@@ -391,12 +395,17 @@ func TestOutputParser_MixedProgressLines(t *testing.T) {
 		assert.Empty(notifications)
 	})
 
-	t.Run("no leading progress chars", func(t *testing.T) {
+	t.Run("no leading progress chars is all test stdout", func(t *testing.T) {
 		assert := assert.New(t)
 		parser := &outputParser{inRunningPhase: true}
 
-		notifications, _ := parser.ParseLine("in test_titleize")
-		assert.Empty(notifications)
+		notifications, consumed := parser.ParseLine("in test_titleize")
+		assert.True(consumed)
+		assert.Len(notifications, 1)
+
+		stdout := notifications[0].(types.OutputNotification)
+		assert.Equal(types.TestStdout, stdout.Event)
+		assert.Equal("in test_titleize", stdout.Content)
 	})
 
 	t.Run("Finished in line does not extract F as progress", func(t *testing.T) {
@@ -468,6 +477,52 @@ func TestOutputParser_FullIntegrationWithMixedProgress(t *testing.T) {
 		assert.Equal(".", pe.Character)
 		assert.Equal(i, pe.Index, "progress index should be sequential")
 	}
+}
+
+// Real output captured from `bundle exec ruby -Itest -e ...` against the
+// minitest-success fixture, where two tests puts while the suite runs. The
+// puts text must come back out as TestStdout rather than being dropped or
+// folded into the progress line.
+func TestOutputParser_SeparatesTestStdoutFromProgress(t *testing.T) {
+	assert := assert.New(t)
+	parser := &outputParser{}
+
+	lines := []string{
+		"Run options: --seed 60145",
+		"",
+		"# Running:",
+		"",
+		".in test_addition",
+		"......in test_titleize",
+		".",
+		"",
+		"Finished in 0.000694s, 11527.3775 runs/s, 33141.2103 assertions/s.",
+		"",
+		"8 runs, 23 assertions, 0 failures, 0 errors, 0 skips",
+	}
+
+	var progress, testStdout, unconsumed []string
+	for _, line := range lines {
+		notifications, consumed := parser.ParseLine(line)
+		for _, n := range notifications {
+			switch event := n.(type) {
+			case types.ProgressEvent:
+				progress = append(progress, event.Character)
+			case types.OutputNotification:
+				if event.Event == types.TestStdout {
+					testStdout = append(testStdout, event.Content)
+				}
+			}
+		}
+		if !consumed {
+			unconsumed = append(unconsumed, line)
+		}
+	}
+
+	assert.Len(progress, 8, "all 8 dots feed the aggregated progress line")
+	assert.Equal([]string{"in test_addition", "in test_titleize"}, testStdout)
+	assert.NotContains(unconsumed, ".in test_addition", "split lines must not also reach rawOutput")
+	assert.NotContains(unconsumed, "......in test_titleize")
 }
 
 func TestOutputParser_FormatSummaryUsesAssertionAndErrorCounts(t *testing.T) {
