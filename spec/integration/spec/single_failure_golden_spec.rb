@@ -6,7 +6,6 @@ RSpec.describe "single failure golden test" do
       /Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
       "Finished in [fake-time] seconds (files took [fake-time] seconds to load)"
     )
-    # plur writes a version/worker banner to stderr; rspec writes nothing there
     snapshot.merge("stdout" => stdout.strip, "stderr" => "")
   end
 
@@ -18,6 +17,10 @@ RSpec.describe "single failure golden test" do
         filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
       )
     end
+
+    expect(result.actual.status).to eq(1)
+    expect(result.actual.stdout).to match(/1 failure\b/)
+    expect(result.actual.stderr).to include("Running 1 spec [rspec]")
 
     expect(result.actual.stdout).to include("\e[31m") # Red color for failures
     expect(result.actual.stdout).to include("\e[32m") # Green color for syntax highlighting

@@ -12,7 +12,6 @@ RSpec.describe "pending specs output" do
       /Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
       "Finished in [TIME] seconds (files took [TIME] seconds to load)"
     )
-    # plur writes a version/worker banner to stderr; rspec writes nothing there
     snapshot.merge("stdout" => stdout.strip, "stderr" => "")
   end
 

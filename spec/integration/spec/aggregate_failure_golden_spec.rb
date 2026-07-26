@@ -12,7 +12,6 @@ RSpec.describe "aggregate failure golden test" do
       /Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
       "Finished in [fake-time] seconds (files took [fake-time] seconds to load)"
     )
-    # plur writes a version/worker banner to stderr; rspec writes nothing there
     snapshot.merge("stdout" => stdout.strip, "stderr" => "")
   end
 

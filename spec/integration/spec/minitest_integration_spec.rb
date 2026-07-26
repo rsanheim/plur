@@ -126,7 +126,6 @@ RSpec.describe "Minitest Integration" do
         .gsub(/Run options: --seed \d+/, "Run options: --seed [SEED]")
         .gsub(/Finished in [\d.]+s, [\d.]+ runs\/s, [\d.]+ assertions\/s\./,
           "Finished in [DURATION]s, [RUNS_PER_SEC] runs/s, [ASSERTIONS_PER_SEC] assertions/s.")
-      # plur writes a version/worker banner to stderr; raw minitest does not
       snapshot.merge("stdout" => stdout, "stderr" => "")
     end
 
