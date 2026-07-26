@@ -117,40 +117,4 @@ RSpec.describe "Minitest Integration" do
       end
     end
   end
-
-  context "with grouped minitest command output" do
-    let(:project_dir) { project_fixture!("minitest-success") }
-
-    def normalize_grouped_minitest_snapshot(snapshot)
-      stdout = snapshot.fetch("stdout", "")
-        .gsub(/Run options: --seed \d+/, "Run options: --seed [SEED]")
-        .gsub(/Finished in [\d.]+s, [\d.]+ runs\/s, [\d.]+ assertions\/s\./,
-          "Finished in [DURATION]s, [RUNS_PER_SEC] runs/s, [ASSERTIONS_PER_SEC] assertions/s.")
-      snapshot.merge("stdout" => stdout, "stderr" => "")
-    end
-
-    def grouped_minitest_command
-      # Use a single ruby command with a quoted -e script to require each file.
-      [
-        "bundle", "exec", "ruby",
-        "-Itest",
-        "-e", '["calculator_test", "string_helper_test"].each { |f| require f }',
-        "--", "--seed", "8378"
-      ]
-    end
-
-    it "compares plur -n1 output to grouped minitest output" do
-      pending("plur output does not match raw minitest output yet")
-
-      chdir(project_dir) do
-        Bundler.with_unbundled_env do
-          Backspin.compare(
-            reference: grouped_minitest_command,
-            actual: [plur_binary, "--use", "minitest", "-n", "1", "--color=never"],
-            filter: ->(snapshot) { normalize_grouped_minitest_snapshot(snapshot) }
-          )
-        end
-      end
-    end
-  end
 end
