@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"syscall"
@@ -19,6 +20,18 @@ import (
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
+
+// Terminals send in-band reports on stdin — focus in/out after a window
+// switch, replies to queries a job asked (cursor position, device
+// attributes), SGR mouse events — and those bytes arrive glued to whatever
+// the user types next. All of them are CSI sequences (ESC [ parameters
+// intermediates final), so strip complete CSI sequences before matching
+// commands.
+var csiSequence = regexp.MustCompile(`\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]`)
+
+func stripTerminalReports(line string) string {
+	return csiSequence.ReplaceAllString(line, "")
+}
 
 func runWatchInstall(force bool) error {
 	configPaths := config.InitConfigPaths()
@@ -218,7 +231,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
+			line := strings.TrimSpace(stripTerminalReports(scanner.Text()))
 			stdinChan <- line
 		}
 	}()
