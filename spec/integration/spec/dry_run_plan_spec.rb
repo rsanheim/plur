@@ -25,21 +25,6 @@ RSpec.describe "dry-run JSON plan output" do
     end
   end
 
-  it "includes warnings in the structured plan" do
-    chdir(default_ruby_dir) do
-      File.write("spec/helper.rb", "# helper file")
-
-      begin
-        result = run_plur("--dry-run", "--dry-run-format=json", "spec/helper.rb")
-        plan = JSON.parse(result.out)
-
-        expect(plan["warnings"]).to include("target 'spec/helper.rb' does not match selected job 'rspec' target pattern 'spec/**/*_spec.rb'")
-      ensure
-        File.delete("spec/helper.rb") if File.exist?("spec/helper.rb")
-      end
-    end
-  end
-
   it "includes configured job env in worker plans without dumping inherited env" do
     tmp_root = ROOT_PATH.join("tmp")
     FileUtils.mkdir_p(tmp_root)

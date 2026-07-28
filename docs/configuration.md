@@ -5,8 +5,8 @@ Plur aims for zero-configuration operation, but provides flexible configuration 
 Plur supports multiple configuration methods with the following precedence (highest to lowest):
 
 1. Command-line flags
-2. Configuration files (merged; later files override earlier values)
-3. Environment variables (e.g., `PARALLEL_TEST_PROCESSORS`, `PLUR_DEBUG`)
+2. Environment variables (e.g., `PLUR_WORKERS`, `PLUR_DEBUG`)
+3. Configuration files (merged; later files override earlier values)
 4. Built-in defaults
 
 ## Configuration Files (TOML)
@@ -18,26 +18,12 @@ Plur automatically loads configuration from TOML files using the following order
 2. `.plur.toml` in the current directory (project-specific)
 3. `PLUR_CONFIG_FILE` (if set)
 
-Configuration keys are strict. TOML files may only contain the documented
-persistent settings, `[job.<name>]` fields, and `[[watch]]` fields listed on
-this page. Plur fails fast when a config file contains an unknown key such as
-`wokers`, `job.rspec.cmdd`, or `watch.soruce`, so typos do not silently fall
-back to defaults.
-
-Preview controls are CLI-only. Use `plur --dry-run` and
-`plur --dry-run --dry-run-format=json` for a single invocation; do not persist
-`dry-run` or `dry-run-format` in TOML.
-
-Operational controls are not persisted in TOML. Use CLI flags or environment
-variables for per-session behavior such as `--debug`, `--first-is-1`, or
-`--rspec-split`.
-
 ### Basic Example
 
 ```toml
 # .plur.toml
 workers = 4
-color = true
+color = "auto"           # colorize when output is a terminal (the default)
 use = "rspec"  # Default job to use
 
 [job.rspec]
@@ -52,7 +38,7 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 #### Global Settings
 
 * `workers` - Number of parallel workers (default: 4)
-* `color` - Enable colored output (default: true)
+* `color` - When to colorize output: `"auto"` (default — on for a terminal, off when piped), `"always"`, or `"never"`
 * `verbose` - Enable verbose output (default: false)
 * `use` - Default job to use (default: auto-detect based on project structure)
 
@@ -105,9 +91,9 @@ Jobs are selected in the following priority order:
 
 In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
 its fixed flags. Plur appends discovered targets automatically (or expands
-Minitest targets into `-e` requires), so user job commands must not include
-`{{target}}`. Run mode rejects user job commands that contain `{{target}}` with
-a configuration error.
+Minitest targets into `-e` requires). Job commands must not contain the legacy
+`{{target}}` placeholder; target templates are only supported in watch target
+mappings.
 
 ### Framework Default File Patterns
 
@@ -146,7 +132,8 @@ target_pattern = "spec/api/**/*_spec.rb"
 ### Exclude Patterns
 
 Use `exclude_patterns` to drop matching files from discovery. Patterns use
-doublestar semantics. Multiple entries are OR'd together.
+doublestar semantics. Multiple entries are OR'd together. Patterns that match no
+selected files are ignored.
 
 ```toml
 [job.rspec]
@@ -258,12 +245,13 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 |-------|------|-------------|----------|
 | `name` | string | Optional identifier for the rule. If set, it must be unique across user-defined `[[watch]]` entries. A named user watch can override a built-in watch with the same name. | No |
 | `source` | string | Glob pattern for files to watch | Yes |
-| `targets` | string[] | Target patterns with placeholders | No |
+| `targets` | string[] | Target patterns with placeholders. If omitted, the changed source file is used as the target. | No |
+| `no_targets` | bool | Run matching jobs without appending any target args. Must not be combined with `targets`. | No |
 | `jobs` | string[] | Jobs to trigger when source matches | Yes |
 | `ignore` | string[] | Patterns to ignore from watching | No |
 | `reload` | bool | Reload plur after jobs complete | No |
 
-**Note**: `ignore` is per-watch mapping. For global ignore patterns during a watch session, use the `plur watch --ignore` flag.
+**Note**: `ignore` is per-watch mapping. For global ignore patterns, use `watch-ignore` in `.plur.toml` or the `plur watch --ignore` flag for one session.
 
 **Note**: Named `[[watch]]` entries must be unique within user configuration. Plur rejects duplicate names during config loading.
 
@@ -272,10 +260,9 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 * `{{match}}` - The matched portion of the source path (e.g., `lib/foo.rb` → `foo`)
 * `{{dir_relative}}` - The relative directory of the matched file
 
-Watch mode can also use `{{target}}` inside a job command to customize where
-resolved targets are placed. If a watch job command has no `{{target}}`, Plur
-appends the resolved targets at the end of the command, matching one-shot run
-mode.
+Watch mode resolves target templates first, then appends those targets to the
+job command. If `targets` is omitted, plur passes the changed source file. Use
+`no_targets = true` for jobs that should run without file arguments.
 
 ### Watch Configuration Examples
 
@@ -293,17 +280,31 @@ name = "spec-files"
 source = "spec/**/*_spec.rb"
 jobs = ["rspec"]
 
+# A job for the 'no-targets' use case below
+[job.build]
+cmd = ["script/build"]
+
+# A watch to call `script/build` on any change with no target args
+[[watch]]
+source = "**/*.go"
+jobs = ["build"]
+no_targets = true
+
 # Go: source files trigger package tests
 [[watch]]
 name = "go-source"
 source = "**/*.go"
-targets = ["{{dir_relative}}"]
+targets = ["./{{dir_relative}}"]
 jobs = ["go-test"]
 ignore = ["vendor/**", "**/testdata/**"]
 ```
 
-For watch command examples and troubleshooting, see
-[Watch Mode](features/watch-mode.md).
+### Using Watch Mode
+
+```bash
+plur watch                    # Watch with auto-detected job
+plur watch --use=custom-job   # Watch with specific job
+```
 
 ## Worker Configuration
 
@@ -325,15 +326,18 @@ plur -n 8
 plur --workers 8
 
 # or via environment variable
-export PARALLEL_TEST_PROCESSORS=8
+export PLUR_WORKERS=8
 plur
 ```
 
-## Diagnostic Output
+## Output Configuration
 
-Stable output formats, stream roles, and exit codes are documented in
-[Output Contracts](output-contracts.md). Use verbosity only for local
-diagnostics; debug output is not a stable machine interface.
+### Formatters
+
+Plur always uses dual formatters:
+
+* Progress formatter (for visual feedback)
+* JSON formatter (for result parsing)
 
 ### Verbosity
 
@@ -371,7 +375,7 @@ plur spec/models/                  # Expands to spec/models/**/*_spec.rb
 
 # Single files (passed through even if not *_spec.rb)
 plur spec/user_spec.rb             # Specific file
-plur spec/spec_helper.rb           # Warning shown but runs
+plur spec/spec_helper.rb           # Runs as an explicit file
 ```
 
 ### RSpec Compatibility
@@ -379,15 +383,22 @@ plur spec/spec_helper.rb           # Warning shown but runs
 Plur matches RSpec's behavior:
 
 * **Directories**: Automatically append `**/*_spec.rb` pattern
-* **Single files**: Pass through with warning if not matching test suffix
-* **Glob patterns**: Filter results to only test files
+* **Single files**: Pass through even if not matching test suffix
+* **Glob patterns**: Expand matching files directly
 
 ## Environment Variables
 
 ### Recognized Variables
 
-* `PARALLEL_TEST_PROCESSORS` - Number of workers
+* `PLUR_WORKERS` - Number of workers
+* `PARALLEL_TEST_PROCESSORS` - Number of workers (legacy fallback for `PLUR_WORKERS`; parallel_tests compatibility)
 * `PLUR_DEBUG` - Enable debug output
+* `PLUR_CONFIG_FILE` - Load an additional config file after `~/.plur.toml` and `.plur.toml`
+* `PLUR_HOME` - Override Plur's home directory (default: `~/.plur`)
+* `PLUR_COLOR` - Color mode from the environment: `auto`, `always`, or `never` (same values as `--color`; `true`/`false` aliases accepted)
+* `NO_COLOR` - Disable colored output when set to any value ([no-color.org](https://no-color.org))
+
+Precedence: `--color` flag > `PLUR_COLOR` > `NO_COLOR` > config file > terminal detection. `NO_COLOR` and terminal detection decide only when the mode resolves to `auto`. `plur doctor` shows the resolved color decision and its source.
 
 ## Troubleshooting
 

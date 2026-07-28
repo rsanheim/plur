@@ -4,7 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/framework/rspec"
+	"github.com/rsanheim/plur/internal/framework/rspec"
+	"github.com/rsanheim/plur/internal/testruntime"
 )
 
 // Complexity detection tests measure execution time at multiple scales
@@ -29,7 +30,7 @@ func TestGrouperComplexity(t *testing.T) {
 
 		start := time.Now()
 		for i := 0; i < iterations; i++ {
-			GroupSpecFilesBySize(files, workers)
+			testruntime.GroupSpecFilesBySize(files, workers)
 		}
 		times[idx] = time.Since(start) / time.Duration(iterations)
 
@@ -57,7 +58,7 @@ func TestGrouperRuntimeComplexity(t *testing.T) {
 
 		start := time.Now()
 		for i := 0; i < iterations; i++ {
-			GroupSpecFilesByRuntime(files, workers, runtimeData)
+			testruntime.GroupSpecFilesByRuntime(files, workers, runtimeData)
 		}
 		times[idx] = time.Since(start) / time.Duration(iterations)
 

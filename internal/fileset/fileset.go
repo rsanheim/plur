@@ -8,18 +8,11 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/rsanheim/plur/framework"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 )
 
 type DiscoverResult struct {
-	Files          []string
-	ExcludeMatches map[string]int
-}
-
-type TargetMismatch struct {
-	Target string
-	Path   string
+	Files []string
 }
 
 // Discover returns sorted, deduped, exclude-filtered files for a job.
@@ -27,15 +20,7 @@ type TargetMismatch struct {
 // each input is classified as a glob, an existing file (passthrough), or a
 // directory (joined with framework target tails). Exclude patterns are applied
 // after expansion using doublestar semantics.
-func Discover(j job.Job, inputs, excludes []string) ([]string, error) {
-	result, err := DiscoverWithDetails(j, inputs, excludes)
-	if err != nil {
-		return nil, err
-	}
-	return result.Files, nil
-}
-
-func DiscoverWithDetails(j job.Job, inputs, excludes []string) (DiscoverResult, error) {
+func Discover(j framework.Job, inputs, excludes []string) (DiscoverResult, error) {
 	patterns, err := classifyInputs(j, inputs)
 	if err != nil {
 		return DiscoverResult{}, err
@@ -63,24 +48,17 @@ func DiscoverWithDetails(j job.Job, inputs, excludes []string) (DiscoverResult, 
 	slices.Sort(files)
 	files = slices.Compact(files)
 
-	excludeMatches := make(map[string]int, len(excludes))
-	for _, ex := range excludes {
-		excludeMatches[ex] = 0
-	}
-
 	files = slices.DeleteFunc(files, func(f string) bool {
 		s := filepath.ToSlash(filePathForExcludeMatch(f))
-		excluded := false
 		for _, ex := range excludes {
 			if ok, _ := doublestar.PathMatch(ex, s); ok {
-				excludeMatches[ex]++
-				excluded = true
+				return true
 			}
 		}
-		return excluded
+		return false
 	})
 
-	return DiscoverResult{Files: files, ExcludeMatches: excludeMatches}, nil
+	return DiscoverResult{Files: files}, nil
 }
 
 // hasGlobMeta reports whether s contains any doublestar metacharacters.
@@ -93,63 +71,9 @@ func filePathForExcludeMatch(s string) string {
 	return s
 }
 
-func ExplicitTargetMismatches(inputs, targetPatterns []string) ([]TargetMismatch, error) {
-	if len(inputs) == 0 || len(targetPatterns) == 0 {
-		return nil, nil
-	}
-
-	var mismatches []TargetMismatch
-	for _, in := range inputs {
-		targetPath, ok := explicitFileTargetPath(in)
-		if !ok {
-			continue
-		}
-		matched, err := matchesAnyTargetPattern(targetPath, targetPatterns)
-		if err != nil {
-			return nil, err
-		}
-		if !matched {
-			mismatches = append(mismatches, TargetMismatch{Target: in, Path: targetPath})
-		}
-	}
-	return mismatches, nil
-}
-
-func explicitFileTargetPath(input string) (string, bool) {
-	if hasGlobMeta(input) {
-		return "", false
-	}
-	if isFileLineTarget(input) {
-		return filePathForExcludeMatch(input), true
-	}
-	info, err := os.Stat(input)
-	if err != nil || info.IsDir() {
-		return "", false
-	}
-	return input, true
-}
-
-func matchesAnyTargetPattern(path string, targetPatterns []string) (bool, error) {
-	normalized := filepath.ToSlash(path)
-	for _, pattern := range targetPatterns {
-		matched, err := doublestar.Match(filepath.ToSlash(pattern), normalized)
-		if err != nil {
-			return false, fmt.Errorf("invalid target pattern %q: %w", pattern, err)
-		}
-		if matched {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func classifyInputs(j job.Job, inputs []string) ([]string, error) {
+func classifyInputs(j framework.Job, inputs []string) ([]string, error) {
 	if len(inputs) == 0 {
-		return framework.TargetPatternsForJob(j)
-	}
-	spec, err := framework.Get(j.Framework)
-	if err != nil {
-		return nil, err
+		return j.TargetPatterns()
 	}
 	var targets []string
 	var out []string
@@ -174,7 +98,8 @@ func classifyInputs(j job.Job, inputs []string) ([]string, error) {
 			continue
 		}
 		if targets == nil {
-			targets, err = framework.TargetPatternsForJobWithSpec(j, spec)
+			var err error
+			targets, err = j.TargetPatterns()
 			if err != nil {
 				return nil, err
 			}

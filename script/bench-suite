@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# script/bench-suite - run the pinned benchmark suite (one hyperfine invocation
+# per project) and write structured results to a persistent volume.
+#
+# plur must already be on PATH (CI runs `bin/rake install` first). See the
+# recurring-benchmarks plan in plur-internal.
+
+require "optparse"
+require_relative "../lib/plur/benchmark"
+
+options = {
+  manifest: File.join(Dir.pwd, "benchmarks", "projects.yml"),
+  out: ENV["BENCH_ROOT"] || File.join(Dir.pwd, "tmp", "bench"),
+  trigger: "local",
+  host: nil,
+  only: nil,
+  run_report: true
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: script/bench-suite [OPTIONS]"
+  opts.separator ""
+  opts.separator "Run the pinned benchmark suite and write results under --out."
+  opts.separator ""
+
+  opts.on("--manifest PATH", "Manifest YAML (default: benchmarks/projects.yml)") { |v| options[:manifest] = v }
+  opts.on("--out DIR", "Output root, e.g. /bench/plur (default: $BENCH_ROOT or ./tmp/bench)") { |v| options[:out] = v }
+  opts.on("--trigger NAME", "Trigger label recorded in run.json (cron/manual/push/local)") { |v| options[:trigger] = v }
+  opts.on("--host SLUG", "Override host slug (default: $BENCH_HOST or short hostname)") { |v| options[:host] = v }
+  opts.on("--only NAME", "Run only the named project from the manifest") { |v| options[:only] = v }
+  opts.on("--no-report", "Skip the post-project bench-report hook") { options[:run_report] = false }
+  opts.on("-h", "--help", "Show this help") do
+    puts opts
+    exit 0
+  end
+end.parse!
+
+runner = Plur::Benchmark::SuiteRunner.new(
+  manifest_path: options[:manifest],
+  out_root: options[:out],
+  trigger: options[:trigger],
+  host: options[:host],
+  only: options[:only],
+  run_report: options[:run_report]
+)
+runner.run

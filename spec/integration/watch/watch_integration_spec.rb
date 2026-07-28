@@ -73,18 +73,18 @@ RSpec.describe "plur watch integration" do
     end
   end
 
-  it "detects spec_helper.rb changes" do
+  it "does not run jobs for spec_helper.rb changes by default" do
     with_temp_watch_project do |project_dir|
       spec_helper = project_dir.join("spec/spec_helper.rb")
       original_content = spec_helper.read
 
-      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "No matching rule") do
+      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "No existing targets") do
         spec_helper.write(original_content + "\n# Modified by test")
       end
 
       expect_file_change_logged(result.err, "spec/spec_helper.rb")
-      expect(result.out).to include("[watch] No matching rule for spec/spec_helper.rb")
-      expect(result.out).to include("[watch] Hint: add a [[watch]] mapping for shared files if this change should run tests.")
+      # spec_helper.rb is under the watched spec directory, but no default rule maps it to a job.
+      expect(result.err).to include("No existing targets for file")
     end
   end
 

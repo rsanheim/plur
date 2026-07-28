@@ -2,7 +2,7 @@
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/rsanheim/plur/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/rsanheim/plur/tree/main)
 
-`plur` is a fast, parallel, drop-in test runner and watcher primarily targeting Ruby and Rails using RSpec or Minitest. Its written in Go, so just install once and use across all your projects.
+`plur` is a fast, parallel, drop-in test runner and watcher primarily targeting Ruby and Rails using RSpec or Minitest. Its written in Go, so just a single binary to install, once, and use across all projects.
 
 ## Installation
 
@@ -15,16 +15,13 @@ brew install rsanheim/tap/plur
 ### Shell script (macOS / Linux)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh
 ```
 
-Installs to `~/.local/bin` by default. Set `PLUR_INSTALL_PATH` to customize.
-
-Pin a version or set an install path:
+Installs the latest release to `~/.local/bin` by default. If that directory doesn't exist, it uses `/usr/local/bin` when that's present and writable, otherwise it creates `~/.local/bin`. Pin a version or change the destination (`PLUR_INSTALL_PATH`) with environment variables:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --version v0.5.0
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "$HOME/.local/bin" --version v0.5.0
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.60.0 sh
 ```
 
 ### Manual binary download
@@ -109,8 +106,9 @@ Config files load in this order (later files override earlier values):
 See `docs/examples/` directory for more configuration examples.
 
 ### Environment Variables
+* `PLUR_WORKERS`: Number of workers
 * `TEST_ENV_NUMBER`: Worker 0 gets `""`, worker N gets `"N+1"`
 * `PARALLEL_TEST_GROUPS`: Total number of workers
-* `PARALLEL_TEST_PROCESSORS`: Compatible with parallel_tests
+* `PARALLEL_TEST_PROCESSORS`: Legacy fallback for `PLUR_WORKERS` (parallel_tests compatibility)
 
 More information in the [Documentation](docs/index.md).

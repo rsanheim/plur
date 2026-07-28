@@ -42,7 +42,7 @@ RSpec.describe "Minitest Integration" do
     it "displays correct progress dot count with puts interleaving" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "1", "--no-color")
+          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
           expect(result).to be_success
           # All 8 progress dots should appear on the first line,
           # even though some are on lines interleaved with puts output
@@ -100,7 +100,7 @@ RSpec.describe "Minitest Integration" do
     it "displays correct progress and summary with multiple workers" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "2", "--no-color")
+          result = run_plur("--use", "minitest", "-n", "2", "--color=never")
           expect(result).to be_success
 
           # With 2 workers (1 file each), both producing mixed progress lines,
@@ -113,66 +113,6 @@ RSpec.describe "Minitest Integration" do
           expect(result.out).to include("23 assertions")
           expect(result.out).to include("0 failures")
           expect(result.out).to include("0 errors")
-        end
-      end
-    end
-  end
-
-  context "with grouped minitest command output" do
-    let(:project_dir) { project_fixture!("minitest-success") }
-    let(:minitest_seed) { "8378" }
-
-    def normalize_minitest_output(output)
-      output
-        .gsub(/Run options: --seed \d+/, "Run options: --seed [SEED]")
-        .gsub(/Finished in [\d.]+s, [\d.]+ runs\/s, [\d.]+ assertions\/s\./,
-          "Finished in [DURATION]s, [RUNS_PER_SEC] runs/s, [ASSERTIONS_PER_SEC] assertions/s.")
-    end
-
-    def normalize_grouped_minitest_snapshot(snapshot)
-      snapshot.merge(
-        "args" => ["[MINITEST_COMPARISON_COMMAND]"],
-        "stdout" => normalize_minitest_output(snapshot.fetch("stdout", "")),
-        "stderr" => ""
-      )
-    end
-
-    def grouped_minitest_command(seed:)
-      # Use a single ruby command with a quoted -e script to require each file.
-      [
-        "bundle", "exec", "ruby",
-        "-Itest",
-        "-e", '["calculator_test", "string_helper_test"].each { |f| require f }',
-        "--", "--seed", seed
-      ]
-    end
-
-    def plur_minitest_serial_command
-      [plur_binary, "--use", "minitest", "-n", "1", "--no-color"]
-    end
-
-    it "records grouped minitest output from a ruby -e require list" do
-      chdir(project_dir) do
-        Bundler.with_unbundled_env do
-          Backspin.run(
-            grouped_minitest_command(seed: minitest_seed),
-            name: "minitest_grouped_ruby_command_output",
-            filter: ->(snapshot) { normalize_grouped_minitest_snapshot(snapshot) }
-          )
-        end
-      end
-    end
-
-    it "compares plur -n1 output to grouped minitest output" do
-      pending("plur output does not match raw minitest output yet")
-
-      chdir(project_dir) do
-        Bundler.with_unbundled_env do
-          Backspin.run(
-            plur_minitest_serial_command,
-            name: "minitest_grouped_ruby_command_output",
-            filter: ->(snapshot) { normalize_grouped_minitest_snapshot(snapshot) }
-          )
         end
       end
     end

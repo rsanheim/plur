@@ -26,11 +26,13 @@ module PlurHomeHelper
     ENV.fetch("PLUR_BINARY", "plur")
   end
 
-  # Temporarily remove plur parallel env vars that leak from the outer
-  # test runner when the suite itself is run via plur.
+  # Temporarily remove env vars that leak from the outer environment into
+  # spawned plur processes: parallel vars when the suite itself runs via plur,
+  # and color conventions a developer machine or CI may export. Specs that
+  # exercise these pass them explicitly via run_plur's env: param.
   def without_plur_parallel_env
     saved = {}
-    %w[TEST_ENV_NUMBER PARALLEL_TEST_GROUPS].each do |key|
+    %w[TEST_ENV_NUMBER PARALLEL_TEST_GROUPS NO_COLOR PLUR_COLOR].each do |key|
       saved[key] = ENV.delete(key)
     end
     yield

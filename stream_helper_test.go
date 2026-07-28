@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -15,6 +16,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// drainStderr runs streamTestOutput and collects the stderr lines it forwards
+// to the output channel (the real delivery path used in production).
+func drainStderr(stdout, stderr io.Reader, parser types.TestOutputParser, collector *TestCollector) []string {
+	ch := make(chan OutputMessage)
+	go func() {
+		streamTestOutput(stdout, stderr, parser, collector, ch, 0, false)
+		close(ch)
+	}()
+
+	var lines []string
+	for msg := range ch {
+		if msg.Type == "stderr" {
+			lines = append(lines, msg.Content)
+		}
+	}
+	return lines
+}
 
 // mockParser is a minimal parser for testing that doesn't consume lines
 type mockParser struct {
@@ -99,10 +118,10 @@ func TestStreamTestOutput_LongLineDoesNotHang(t *testing.T) {
 	collector := NewTestCollector()
 
 	// Run streamTestOutput - this should NOT hang
-	done := make(chan string)
+	done := make(chan struct{})
 	go func() {
-		stderrOutput := streamTestOutput(stdout, stderr, parser, collector, nil, 0, false)
-		done <- stderrOutput
+		streamTestOutput(stdout, stderr, parser, collector, nil, 0, false)
+		done <- struct{}{}
 	}()
 
 	// Wait for completion or timeout
@@ -130,9 +149,9 @@ func TestStreamTestOutput_MultipleLines(t *testing.T) {
 	parser := &mockParser{}
 	collector := NewTestCollector()
 
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, nil, 0, false)
+	stderrLines := drainStderr(stdout, stderr, parser, collector)
 
-	assert.Equal(t, "err1\nerr2\n", stderrOutput)
+	assert.Equal(t, []string{"err1", "err2"}, stderrLines)
 	assert.Len(t, parser.linesReceived, 3)
 	assert.Equal(t, []string{"line1", "line2", "line3"}, parser.linesReceived)
 }
@@ -158,8 +177,8 @@ func TestStreamTestOutput_EmptyInput(t *testing.T) {
 	parser := &mockParser{}
 	collector := NewTestCollector()
 
-	stderrOutput := streamTestOutput(stdout, stderr, parser, collector, nil, 0, false)
+	stderrLines := drainStderr(stdout, stderr, parser, collector)
 
-	assert.Empty(t, stderrOutput)
+	assert.Empty(t, stderrLines)
 	assert.Empty(t, parser.linesReceived)
 }

@@ -36,7 +36,7 @@ RSpec.describe "Runner jobs resolution integration" do
   it "uses rspec defaults for custom framework jobs without target_pattern" do
     result = run_plur(
       "-C", default_ruby_dir.to_s,
-      "--no-color", "--dry-run",
+      "--color=never", "--dry-run",
       "--use", "fast",
       env: {"PLUR_CONFIG_FILE" => config_file.to_s}
     )

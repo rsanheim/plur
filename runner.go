@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,9 +11,8 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/framework"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/testruntime"
-	"github.com/rsanheim/plur/job"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
@@ -29,16 +29,18 @@ const (
 type Runner struct {
 	config    *config.GlobalConfig
 	files     []string
-	job       job.Job
-	framework framework.Spec
+	job       framework.Job
 	tracker   *testruntime.RuntimeTracker
 	extraArgs []string
 }
 
-func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []string) (*Runner, error) {
-	spec, err := framework.Get(j.Framework)
-	if err != nil {
-		return nil, err
+func NewRunner(cfg *config.GlobalConfig, files []string, j framework.Job, extraArgs []string) (*Runner, error) {
+	if j.Framework.Name == "" {
+		var err error
+		j, err = j.ResolveFramework()
+		if err != nil {
+			return nil, err
+		}
 	}
 	tracker, err := testruntime.NewRuntimeTracker(cfg.RuntimeDir)
 	if err != nil {
@@ -48,7 +50,6 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j job.Job, extraArgs []
 		config:    cfg,
 		files:     files,
 		job:       j,
-		framework: spec,
 		tracker:   tracker,
 		extraArgs: extraArgs,
 	}, nil
@@ -67,7 +68,6 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 
 	// executing...
 	if r.config.DryRun {
-		r.printDryRunPlanSummary(len(commands))
 		for i, cmd := range commands {
 			printDryRunWorker(r.config.DryRun, i, cmd)
 		}
@@ -78,6 +78,8 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 	return results, wallTime, nil
 }
 
+// DryRunPlan builds the structured plan for --dry-run --dry-run-format=json:
+// every target and, per worker, the argv, env, and shell string that would run.
 func (r *Runner) DryRunPlan() (*RunnerDryRunPlan, error) {
 	groups := r.groupFiles()
 	commands, err := r.buildCommands(groups)
@@ -90,12 +92,13 @@ func (r *Runner) DryRunPlan() (*RunnerDryRunPlan, error) {
 	for i, cmd := range commands {
 		groupTargets := append([]string(nil), groups[i].Files...)
 		targets = append(targets, groupTargets...)
+		env := planEnv(cmd)
 		workers = append(workers, DryRunPlanWorker{
 			Index:   i,
 			Targets: groupTargets,
 			Argv:    append([]string(nil), cmd.Args...),
-			Env:     dryRunEnv(cmd),
-			Shell:   dryRunString(cmd),
+			Env:     env,
+			Shell:   strings.Join(append(append([]string{}, env...), cmd.Args...), " "),
 		})
 	}
 
@@ -132,7 +135,7 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 	return nil
 }
 
-func (r *Runner) groupFiles() []FileGroup {
+func (r *Runner) groupFiles() []testruntime.FileGroup {
 	runtimeData := r.tracker.LoadedData()
 
 	files := r.files
@@ -142,12 +145,12 @@ func (r *Runner) groupFiles() []FileGroup {
 		runtimeData = expandedRuntimes
 	}
 
-	var groups []FileGroup
+	var groups []testruntime.FileGroup
 	if len(runtimeData) > 0 {
-		groups = GroupSpecFilesByRuntime(files, r.config.WorkerCount, runtimeData)
+		groups = testruntime.GroupSpecFilesByRuntime(files, r.config.WorkerCount, runtimeData)
 		logger.Logger.Debug("Using runtime-based grouped execution", "group_count", len(groups))
 	} else {
-		groups = GroupSpecFilesBySize(files, r.config.WorkerCount)
+		groups = testruntime.GroupSpecFilesBySize(files, r.config.WorkerCount)
 		logger.Logger.Debug("Using size-based grouping (no runtime data available)")
 	}
 	return groups
@@ -156,13 +159,7 @@ func (r *Runner) groupFiles() []FileGroup {
 // shouldExpandSplits reports whether the runner should expand long-running
 // RSpec files into focused file:line targets before grouping.
 func (r *Runner) shouldExpandSplits() bool {
-	if !r.config.RspecSplit {
-		return false
-	}
-	if r.framework.Name != "rspec" {
-		return false
-	}
-	if r.config.WorkerCount <= 1 {
+	if r.job.Framework.Name != "rspec" || r.config.WorkerCount <= 1 || !r.config.RspecSplit {
 		return false
 	}
 	return true
@@ -174,7 +171,7 @@ func (r *Runner) shouldExpandSplits() bool {
 // the per-worker budget) pass through unchanged.
 //
 // Returns the expanded file list and a runtime map keyed by the expanded
-// targets, suitable for GroupSpecFilesByRuntime.
+// targets, suitable for testruntime.GroupSpecFilesByRuntime.
 func (r *Runner) expandRspecSplits(fileRuntimes map[string]float64) ([]string, map[string]float64) {
 	budget := perWorkerBudget(fileRuntimes, r.files, r.config.WorkerCount)
 	cache := r.tracker.Cache()
@@ -233,11 +230,11 @@ func perWorkerBudget(fileRuntimes map[string]float64, files []string, workerCoun
 	return total / float64(workerCount)
 }
 
-func (r *Runner) buildCommands(groups []FileGroup) ([]*exec.Cmd, error) {
+func (r *Runner) buildCommands(groups []testruntime.FileGroup) ([]*exec.Cmd, error) {
 	commands := make([]*exec.Cmd, len(groups))
 
 	for i, group := range groups {
-		args, err := framework.BuildRunArgs(r.job, group.Files, r.config, r.extraArgs)
+		args, err := r.job.BuildRunArgs(group.Files, r.config, r.extraArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -292,15 +289,8 @@ func (r *Runner) printSummary(workerCount int) {
 		len(r.files), label, r.frameworkLabel(), workerCountPhrase(r.config, workerCount))
 }
 
-func (r *Runner) printDryRunPlanSummary(workerCount int) {
-	toStdErr(true, "Plan: %d %s across %d %s; no commands will run\n",
-		len(r.files), pluralize(len(r.files), "target", "targets"),
-		workerCount, pluralize(workerCount, "worker", "workers"))
-	toStdErr(true, "Commands:\n")
-}
-
 func (r *Runner) testLabel() string {
-	if r.framework.Name == "rspec" {
+	if r.job.Framework.Name == "rspec" {
 		return pluralize(len(r.files), "spec", "specs")
 	}
 	return pluralize(len(r.files), "test", "tests")
@@ -308,9 +298,9 @@ func (r *Runner) testLabel() string {
 
 func (r *Runner) frameworkLabel() string {
 	if r.shouldExpandSplits() {
-		return r.framework.Name + ", split"
+		return r.job.Framework.Name + ", split"
 	}
-	return r.framework.Name
+	return r.job.Framework.Name
 }
 
 func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
@@ -319,10 +309,6 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 
 	results := make(chan WorkerResult, len(commands))
 	outputChan := make(chan OutputMessage, len(commands)*10)
-
-	// Set PARALLEL_TEST_GROUPS env var (also set per-command, but this ensures
-	// it's available globally for any child process inspection)
-	os.Setenv(EnvParallelTestGroups, fmt.Sprintf("%d", len(commands)))
 
 	var outputWg sync.WaitGroup
 	outputWg.Go(func() {
@@ -374,23 +360,19 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		return errorResult(fmt.Errorf("failed to create stderr pipe: %w", err), start)
 	}
 	if err := cmd.Start(); err != nil {
-		return errorResult(fmt.Errorf("failed to start command: %w", err), start)
+		return errorResult(err, start)
 	}
 
-	parser := r.framework.Parser()
+	parser := r.job.Framework.Parser()
 	collector := NewTestCollector()
 	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
-	streamStdout := !framework.IsMinitest(r.framework.Name)
-	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, streamStdout)
+	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, r.job.Framework.Name != "minitest")
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
 
 	logger.Logger.Debug("finished", "worker", workerIdx, "success", err == nil)
 
-	exitCode := 0
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		exitCode = exitErr.ExitCode()
-	}
+	exitCode, _ := processExitCode(err)
 	success := exitCode == 0
 	state := types.StateSuccess
 	output := result.Output
@@ -417,6 +399,16 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		FormattedPending:  result.FormattedPending,
 		FormattedSummary:  result.FormattedSummary,
 	}
+}
+
+// processExitCode reports the exit code from err when it (or an error it wraps)
+// is an *exec.ExitError. The boolean is false for nil or non-exit errors.
+func processExitCode(err error) (int, bool) {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode(), true
+	}
+	return 0, false
 }
 
 func (r *Runner) Tracker() *testruntime.RuntimeTracker {

@@ -1,6 +1,6 @@
 module github.com/rsanheim/plur
 
-go 1.25
+go 1.26.4
 
 require github.com/alecthomas/kong v1.12.1
 
@@ -8,7 +8,12 @@ require github.com/bmatcuk/doublestar/v4 v4.9.1
 
 require github.com/BurntSushi/toml v1.6.0
 
-require github.com/goccy/go-json v0.10.6
+require (
+	github.com/goccy/go-json v0.10.6
+	golang.org/x/term v0.45.0
+)
+
+require golang.org/x/sys v0.47.0 // indirect
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

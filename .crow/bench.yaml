@@ -1,0 +1,97 @@
+# Plur recurring benchmarks. Runs script/bench-suite over benchmarks/projects.yml,
+# writing results to the dedicated ci-bench:/bench volume. Provision it with
+# infra/script/ci-bench-setup; this workflow alone mounts it. Separate from
+# ci.yaml to stay off the build path. The repo needs Crow's Volumes trust flag.
+#
+# Footgun: Crow substitutes dollar-brace vars over the whole file (comments too),
+# so commands use bare $VAR (shell-expanded); only Crow builtins use braces.
+when:
+  # No push trigger: a push-to-main bench overlapping the nightly cron starved
+  # the box and got one run killed. Cron + deliberate triggers only.
+  - event: cron
+    cron: nightly-bench
+  - event: manual
+  # Opt-in: "[bench]" in the PR title runs benchmarks (Crow exposes the title, not
+  # the PR body). Restrict it to Rob-authored PRs on the canonical repository.
+  - event: pull_request
+    evaluate: >-
+      CI_COMMIT_PULL_REQUEST_TITLE contains "[bench]" &&
+      CI_REPO == "rsanheim/plur" &&
+      CI_PIPELINE_AUTHOR == "rsanheim"
+
+labels:
+  platform: linux/amd64
+
+variables:
+  - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+
+steps:
+  - name: bench
+    image: *plur_image
+    volumes:
+      - ci-bench:/bench
+    environment:
+      CI: 'true'
+      BUNDLE_JOBS: '4'
+      BUNDLE_RETRY: '3'
+      # plur's own build/bundle caches stay on the shared /cache volume (fast builds)
+      BUNDLE_PATH: /cache/plur/bundle
+      GOPATH: /cache/plur/go
+      GOCACHE: /cache/plur/go-build
+      XDG_CACHE_HOME: /cache/plur/xdg
+      # dedicated benchmark volume: targets + results live here, not on /cache
+      BENCH_ROOT: /bench/plur
+      BENCH_HOST: minibox
+      BENCH_CONTAINER_IMAGE: 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+      # renovate: datasource=github-releases depName=goreleaser/goreleaser
+      GORELEASER_VERSION: 2.16.0
+      # renovate: datasource=github-releases depName=sharkdp/hyperfine
+      HYPERFINE_VERSION: 1.19.0
+    commands:
+      - |
+        set -e
+
+        tool_tmp="$PWD/tmp/bench-tools"
+        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$BENCH_ROOT" "$tool_tmp"
+        # Prefer the freshly built/installed plur (GOBIN) over the image's baked one.
+        export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
+
+        # goreleaser is a single static binary, fetched per run (not in the image).
+        if ! command -v goreleaser >/dev/null 2>&1; then
+          curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/goreleaser_Linux_x86_64.tar.gz" -o "$tool_tmp/goreleaser.tar.gz"
+          tar -xzf "$tool_tmp/goreleaser.tar.gz" -C /usr/local/bin goreleaser
+          rm "$tool_tmp/goreleaser.tar.gz"
+        fi
+        goreleaser --version
+
+        # hyperfine drives the benchmarks and is not baked into the image; fetch
+        # the static musl build per run (no glibc dependency).
+        if ! command -v hyperfine >/dev/null 2>&1; then
+          hf="hyperfine-v$HYPERFINE_VERSION-x86_64-unknown-linux-musl"
+          curl -fsSL "https://github.com/sharkdp/hyperfine/releases/download/v$HYPERFINE_VERSION/$hf.tar.gz" -o "$tool_tmp/hyperfine.tar.gz"
+          tar -xzf "$tool_tmp/hyperfine.tar.gz" -C "$tool_tmp"
+          install "$tool_tmp/$hf/hyperfine" /usr/local/bin/hyperfine
+          rm -rf "$tool_tmp/hyperfine.tar.gz" "$tool_tmp/$hf"
+        fi
+        hyperfine --version
+
+        # Build + install plur from this checkout so the suite benchmarks the
+        # just-built binary. vendor:download:current fetches the watcher binaries
+        # that go:embed needs at compile time.
+        bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
+        bin/rake vendor:download:current
+        bin/rake install
+
+        # The suite runs as a non-root user: rubocop + rack have specs that fail
+        # under root (root bypasses the permission checks they test). Build and
+        # install above stay root; only the benchmarked processes drop privileges.
+        # Rootless podman maps container-root to the host user, so uid 0 in here
+        # is still "root" to Bundler and chmod-based specs.
+        id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
+        chown -R bench:bench "$PWD" "$BENCH_ROOT"
+
+        # XDG_CACHE_HOME is for the root-owned build caches above; it must not
+        # leak into the benchmarked suites (rubocop has specs asserting the
+        # default cache dir in $HOME). The bench user gets stock XDG defaults.
+        # Trigger label is the Crow event (cron/manual/push), set as a step env var.
+        runuser -u bench -- env -u XDG_CACHE_HOME PATH="$PATH" HOME=/home/bench CI=true BENCH_HOST="$BENCH_HOST" script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"

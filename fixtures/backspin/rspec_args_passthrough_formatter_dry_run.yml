@@ -1,8 +1,8 @@
 ---
 format_version: '4.1'
-first_recorded_at: '2026-02-10T20:23:57-06:00'
-recorded_at: '2026-02-11T02:21:22-06:00'
-record_count: 2
+first_recorded_at: '2026-07-28T09:57:50Z'
+recorded_at: '2026-07-28T09:57:50Z'
+record_count: 1
 snapshot:
   command_type: Open3::Capture3
   args:
@@ -19,8 +19,6 @@ snapshot:
     plur version=[VERSION]
     [dry-run] Selected job: rspec (framework: rspec, reason: explicit patterns)
     [dry-run] Running 1 spec [rspec] in parallel using 1 worker
-    [dry-run] Plan: 1 target across 1 worker; no commands will run
-    [dry-run] Commands:
-    [dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --force-color --format documentation --out tmp/rspec.out spec/calculator_spec.rb
+    [dry-run] Worker 0: PARALLEL_TEST_GROUPS=1 TEST_ENV_NUMBER=1 bundle exec rspec -r [FORMATTER_PATH] --format Plur::JsonRowsFormatter --no-color --format documentation --out tmp/rspec.out spec/calculator_spec.rb
   status: 0
-  recorded_at: '2026-02-11T02:21:22-06:00'
+  recorded_at: '2026-07-28T09:57:50Z'

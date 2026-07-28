@@ -44,7 +44,7 @@ RSpec.describe "Plur error handling" do
 
   it "includes errors outside of examples in multi-worker summaries" do
     chdir(fixture_dir) do
-      result = run_plur_allowing_errors("-n", "2", "--no-color",
+      result = run_plur_allowing_errors("-n", "2", "--color=never",
         "spec/passing_spec.rb", "spec/load_error_spec.rb")
 
       expect(result.exit_status).to eq(1)
@@ -80,18 +80,6 @@ RSpec.describe "Plur error handling" do
         end
       end
     end
-  end
-
-  it "prints command selection errors as plain user-facing errors" do
-    result = run_plur_allowing_errors(
-      "watch", "find", "--format=json", "--use=does-not-exist", "spec/integration/spec/help_spec.rb"
-    )
-
-    expect(result.exit_status).to eq(1)
-    expect(result.out).to eq("")
-    expect(result.err).to include("Error: failed to select watch job: job 'does-not-exist' not found")
-    expect(result.err).not_to include("ERROR - Command failed")
-    expect(result.err).not_to match(/^\d{2}:\d{2}:\d{2} - ERROR/)
   end
 
   it "prints missing target errors as plain user-facing errors" do

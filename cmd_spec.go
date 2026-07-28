@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
-	"github.com/rsanheim/plur/framework"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/fileset"
 	"github.com/rsanheim/plur/internal/runtime"
@@ -21,7 +21,9 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	fmt.Fprintf(os.Stderr, "plur version=%s\n", buildinfo.GetVersionInfo())
 	logger.Logger.Debug("running plur", "command", "spec", "args", os.Args[1:])
 
-	selected, err := runtime.SelectJobFromRuntimeConfig(parent.runtimeConfig, r.Patterns)
+	patterns := normalizeSpecPatterns(r.Patterns)
+
+	selected, err := runtime.SelectJobFromRuntimeConfig(parent.runtimeConfig, patterns)
 	if err != nil {
 		return err
 	}
@@ -30,19 +32,15 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	runtime.LogInheritedFields(currentJob.Name, selected.Inherited)
 
-	if err := rejectRunModeTargetTemplate(currentJob.Name, currentJob.UsesTargets(), selected.Inherited.Cmd); err != nil {
-		return err
+	if len(r.Tags) > 0 && currentJob.Framework.Name != "rspec" {
+		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.FrameworkName)
 	}
 
-	if len(r.Tags) > 0 && currentJob.Framework != "rspec" {
-		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework)
-	}
-
-	targetPatterns, _ := framework.TargetPatternsForJob(currentJob)
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework, "patterns", r.Patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
+	targetPatterns, _ := currentJob.TargetPatterns()
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.FrameworkName, "patterns", patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
-	discovery, err := fileset.DiscoverWithDetails(currentJob, r.Patterns, excludes)
+	discovery, err := fileset.Discover(currentJob, patterns, excludes)
 	if err != nil {
 		return err
 	}
@@ -51,7 +49,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		switch {
 		case len(excludes) > 0:
 			return fmt.Errorf("no test files remain after applying exclude patterns")
-		case len(r.Patterns) > 0:
+		case len(patterns) > 0:
 			return fmt.Errorf("no test files found matching provided patterns")
 		case len(targetPatterns) > 0:
 			return fmt.Errorf("no test files found (looking for %s)", strings.Join(targetPatterns, ", "))
@@ -60,17 +58,9 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
-	warnings := unmatchedCLIExcludeWarnings(r.ExcludePatterns, discovery.ExcludeMatches)
-	targetWarnings, err := explicitTargetMismatchWarnings(r.Patterns, targetPatterns, currentJob.Name)
-	if err != nil {
-		return err
-	}
-	warnings = append(warnings, targetWarnings...)
-	printWarnings(warnings)
-
 	if cfg.DryRun && cfg.DryRunFormat == "text" {
 		fmt.Fprintf(os.Stderr, "[dry-run] Selected job: %s (framework: %s, reason: %s)\n",
-			selected.Name, currentJob.Framework, dryRunReasonLabel(selected.Reason))
+			selected.Name, currentJob.FrameworkName, dryRunReasonLabel(selected.Reason))
 	}
 
 	if r.Auto {
@@ -80,7 +70,6 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	cfg.Auto = r.Auto
 	cfg.RspecTrace = r.RspecTrace
 
 	extraArgs := buildTagArgs(r.Tags)
@@ -92,7 +81,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	if cfg.DryRun && cfg.DryRunFormat == "json" {
-		return writeSpecDryRunPlan(runner, selected.Name, currentJob.Framework, selected.Reason, warnings)
+		return writeSpecDryRunPlan(runner, selected.Name, currentJob.FrameworkName, selected.Reason)
 	}
 
 	results, wallTime, err := runner.Run()
@@ -117,7 +106,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	if hasValidRuntimeData {
-		runKind := testruntime.ClassifyRunKind(r.Patterns, r.Tags, parent.passthroughArgs, aborted)
+		runKind := testruntime.ClassifyRunKind(patterns, r.Tags, parent.passthroughArgs, aborted)
 		if err := runner.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
@@ -135,49 +124,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	return nil
 }
 
-func rejectRunModeTargetTemplate(jobName string, usesTargets, inheritedCmd bool) error {
-	if !usesTargets || inheritedCmd {
-		return nil
-	}
-	return fmt.Errorf("job %q command uses {{target}}, but run mode appends targets automatically; remove {{target}} from job cmd", jobName)
-}
-
 func dryRunReasonLabel(reason runtime.ResolveReason) string {
 	return strings.ReplaceAll(string(reason), "_", " ")
 }
 
-func unmatchedCLIExcludeWarnings(patterns []string, matches map[string]int) []string {
-	var warnings []string
-	for _, pattern := range patterns {
-		if matches[pattern] == 0 {
-			warnings = append(warnings, fmt.Sprintf("--exclude-pattern %s matched no selected files", shellSingleQuote(pattern)))
-		}
-	}
-	return warnings
-}
-
-func explicitTargetMismatchWarnings(patterns, targetPatterns []string, jobName string) ([]string, error) {
-	mismatches, err := fileset.ExplicitTargetMismatches(patterns, targetPatterns)
-	if err != nil {
-		return nil, err
-	}
-	var warnings []string
-	for _, mismatch := range mismatches {
-		warnings = append(warnings, fmt.Sprintf("target %s does not match selected job %s target pattern %s",
-			shellSingleQuote(mismatch.Target),
-			shellSingleQuote(jobName),
-			shellSingleQuote(strings.Join(targetPatterns, ", "))))
-	}
-	return warnings, nil
-}
-
-func printWarnings(warnings []string) {
-	for _, warning := range warnings {
-		fmt.Fprintf(os.Stderr, "[warn] %s\n", warning)
-	}
-}
-
-func writeSpecDryRunPlan(runner *Runner, jobName, frameworkName string, reason runtime.ResolveReason, warnings []string) error {
+func writeSpecDryRunPlan(runner *Runner, jobName, frameworkName string, reason runtime.ResolveReason) error {
 	runnerPlan, err := runner.DryRunPlan()
 	if err != nil {
 		return err
@@ -191,7 +142,7 @@ func writeSpecDryRunPlan(runner *Runner, jobName, frameworkName string, reason r
 			Reason:    string(reason),
 		},
 		Targets:  runnerPlan.Targets,
-		Warnings: append([]string{}, warnings...),
+		Warnings: []string{},
 		Workers:  runnerPlan.Workers,
 	}
 	encoder := json.NewEncoder(os.Stdout)
@@ -199,8 +150,12 @@ func writeSpecDryRunPlan(runner *Runner, jobName, frameworkName string, reason r
 	return encoder.Encode(plan)
 }
 
-func shellSingleQuote(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
+func normalizeSpecPatterns(patterns []string) []string {
+	normalized := make([]string, len(patterns))
+	for i, pattern := range patterns {
+		normalized[i] = filepath.ToSlash(filepath.Clean(pattern))
+	}
+	return normalized
 }
 
 func buildTagArgs(tags []string) []string {

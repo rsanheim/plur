@@ -1,11 +1,9 @@
 package watch
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
 	"strings"
-	"text/template"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -79,42 +77,45 @@ func BuildTokens(path string, sourcePattern string) Tokens {
 	}
 }
 
-// RenderTemplate renders a template string with the given tokens
-// Uses Go's text/template with custom functions for each token
+// RenderTemplate renders a template string with the given tokens.
+// Templates only support simple {{token}} substitution, so this uses a small
+// hand-rolled scanner instead of text/template (which costs ~270kB of binary).
 func RenderTemplate(tmpl string, tok Tokens) (string, error) {
-	// Create function map with all token accessors
-	funcs := template.FuncMap{
-		"match":        func() string { return tok.Match },
-		"path":         func() string { return tok.Path },
-		"dir":          func() string { return tok.Dir },
-		"dir_relative": func() string { return tok.DirRelative },
-		"base":         func() string { return tok.Base },
-		"name":         func() string { return tok.Name },
-		"ext":          func() string { return tok.Ext },
-		"ext_no_dot":   func() string { return tok.ExtNoDot },
+	values := map[string]string{
+		"match":        tok.Match,
+		"path":         tok.Path,
+		"dir":          tok.Dir,
+		"dir_relative": tok.DirRelative,
+		"base":         tok.Base,
+		"name":         tok.Name,
+		"ext":          tok.Ext,
+		"ext_no_dot":   tok.ExtNoDot,
 	}
 
-	// Parse and execute template
-	t := template.New("target").Funcs(funcs)
-	t, err := t.Parse(tmpl)
-	if err != nil {
-		// Try to provide helpful error message for common mistakes
-		if strings.Contains(err.Error(), "function") {
-			// Extract the function name from error
-			return "", fmt.Errorf("invalid token in template %q: %w\nAvailable tokens: {{match}}, {{path}}, {{dir}}, {{dir_relative}}, {{base}}, {{name}}, {{ext}}, {{ext_no_dot}}", tmpl, err)
+	var out strings.Builder
+	rest := tmpl
+	for {
+		start := strings.Index(rest, "{{")
+		if start == -1 {
+			out.WriteString(rest)
+			break
 		}
-		return "", fmt.Errorf("failed to parse template %q: %w", tmpl, err)
+		out.WriteString(rest[:start])
+		end := strings.Index(rest[start:], "}}")
+		if end == -1 {
+			return "", fmt.Errorf("failed to parse template %q: unclosed {{", tmpl)
+		}
+		token := strings.TrimSpace(rest[start+2 : start+end])
+		value, ok := values[token]
+		if !ok {
+			return "", fmt.Errorf("invalid token %q in template %q\nAvailable tokens: {{match}}, {{path}}, {{dir}}, {{dir_relative}}, {{base}}, {{name}}, {{ext}}, {{ext_no_dot}}", token, tmpl)
+		}
+		out.WriteString(value)
+		rest = rest[start+end+2:]
 	}
-
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, nil); err != nil {
-		return "", fmt.Errorf("failed to execute template %q: %w", tmpl, err)
-	}
-
-	result := buf.String()
 
 	// Convert back to native path separators
-	return filepath.FromSlash(result), nil
+	return filepath.FromSlash(out.String()), nil
 }
 
 // ValidateTemplate checks if a template string is valid without executing it

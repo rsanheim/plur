@@ -2,33 +2,37 @@
 
 Get up and running with plur for running parallel tests or watch mode.
 
+Plur works with Ruby projects that use RSpec, Minitest, or both. No Ruby gem installation is needed — plur is a standalone binary.
+
 ## Installation
 
 ### Homebrew (macOS)
 
 ```bash
 brew install rsanheim/tap/plur
-cd [my-project]
-plur --dry-run # preview what would run (no actual test execution)
-plur -n 4     # run tests across four cores
-plur          # run tests with the default 4 workers
-plur watch    # watch for changes and run tests automatically
 ```
 
-### Shell script (macOS / Linux)
+### Direct install (all platforms)
 
-You can use `install.sh` with the following options:
-
-* `--install-path PATH` — installation directory override
-* `--version VERSION` — install a specific release tag
+The direct install script detects your platform, downloads the latest release, verifies its checksum, and installs the binary. It installs to `~/.local/bin` by default. If that directory doesn't exist, it uses `/usr/local/bin` when that's present and writable, otherwise it creates `~/.local/bin`. Set `PLUR_INSTALL_PATH` to override.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --install-path "/usr/local/bin"
-curl -sSL https://raw.githubusercontent.com/rsanheim/plur/main/install.sh | sh -s -- --version v0.5.0
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh
 ```
 
-### Manual binary download
+Two environment variables configure it:
+
+* `PLUR_VERSION` - release tag to install (default: latest release)
+* `PLUR_INSTALL_PATH` - install directory
+
+```bash
+# Install version 0.60.0
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_VERSION=v0.60.0 sh
+# Install to /usr/local/bin
+curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | PLUR_INSTALL_PATH=/usr/local/bin sh
+```
+
+### Manual GitHub Releases download (all platforms)
 
 Download the latest release for your platform from [GitHub Releases](https://github.com/rsanheim/plur/releases), extract the archive, and place the `plur` binary somewhere on your PATH.
 
@@ -37,6 +41,7 @@ Available platforms:
 * macOS ARM64 (Apple Silicon)
 * Linux x86_64
 * Linux ARM64
+* Windows x86_64 (experimental)
 
 ## Verify
 
@@ -47,14 +52,10 @@ plur --version
 plur doctor
 ```
 
-## Prerequisites
-
-Plur works with Ruby projects that use RSpec, Minitest, or both. No Ruby gem installation is needed — plur is a standalone binary.
-
 ## First Run
 
 ```bash
-# Run all tests with the default worker count
+# Run all specs or tests with the default worker count
 plur
 
 # Run with a specific number of workers
@@ -78,6 +79,18 @@ Or set a default in your config file:
 ```toml
 # .plur.toml
 use = "minitest"
+```
+
+## Watch Mode
+
+See [Watch Mode](features/watch-mode.md) for more details.
+
+```bash
+# Watch for changes and re-run tests
+plur watch
+
+# Install the watcher binary if needed
+plur watch install
 ```
 
 ## Next Steps

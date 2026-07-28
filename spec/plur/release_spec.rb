@@ -11,6 +11,10 @@ RSpec.describe "script/release" do
       expect(output).to include("prepare VERSION")
       expect(output).to include("push VERSION")
       expect(output).to include("extract-notes VERSION")
+      expect(output).to include("Prepare changelog entries, validate release state")
+      expect(output).to include("Command details:")
+      expect(output).to include("Full release process:")
+      expect(output).to include("docs/development/release-process.md")
     end
   end
 
@@ -24,6 +28,13 @@ RSpec.describe "script/release" do
 
     it "fails for unknown version" do
       output = `script/release extract-notes v99.99.99 2>&1`
+
+      expect($?.success?).to be false
+      expect(output).to include("No changelog entry found")
+    end
+
+    it "fails for prerelease versions without changelog entries" do
+      output = `script/release extract-notes v99.99.99-rc.1 2>&1`
 
       expect($?.success?).to be false
       expect(output).to include("No changelog entry found")

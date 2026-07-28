@@ -21,8 +21,7 @@ RSpec.describe "plur spec output handling" do
 
     it "maintains colored output when supported" do
       Dir.chdir(default_ruby_dir) do
-        # Force color output
-        result = run_plur("-n", "4", env: {"FORCE_COLOR" => "1"})
+        result = run_plur("-n", "4", "--color=always")
 
         # Should contain ANSI color codes for green dots
         expect(result.out).to include("\e[32m.\e[0m")
@@ -66,6 +65,33 @@ RSpec.describe "plur spec output handling" do
     end
   end
 
+  describe "PLUR_DEBUG environment variable" do
+    it "enables debug logging when set to 1" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", env: {"PLUR_DEBUG" => "1"})
+
+        expect(result.err).to include("DEBUG")
+        expect(result.err).to include("discovered test files")
+      end
+    end
+
+    it "stays quiet when unset" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run")
+
+        expect(result.err).not_to include("DEBUG")
+      end
+    end
+
+    it "stays quiet when set to 0" do
+      Dir.chdir(default_ruby_dir) do
+        result = run_plur("--dry-run", env: {"PLUR_DEBUG" => "0"})
+
+        expect(result.err).not_to include("DEBUG")
+      end
+    end
+  end
+
   describe "worker command errors" do
     it "keeps worker stderr off stdout when the command exits before test events" do
       tmp_root = ROOT_PATH.join("tmp")
@@ -95,20 +121,20 @@ RSpec.describe "plur spec output handling" do
       end
     end
 
-    it "prints worker startup errors to stderr instead of stdout" do
+    it "prints worker startup errors to stderr" do
       tmp_root = ROOT_PATH.join("tmp")
       FileUtils.mkdir_p(tmp_root)
 
       Dir.mktmpdir("worker-startup-error-", tmp_root.to_s) do |tmpdir|
         FileUtils.mkdir_p(File.join(tmpdir, "spec"))
-        File.write(File.join(tmpdir, "spec", "boom_spec.rb"), "# target placeholder\n")
+        File.write(File.join(tmpdir, "spec", "missing_spec.rb"), "# target placeholder\n")
         File.write(File.join(tmpdir, ".plur.toml"), <<~TOML)
           use = "missing"
           color = false
 
           [job.missing]
           framework = "rspec"
-          cmd = ["definitely-not-a-real-plur-command"]
+          cmd = ["./definitely-missing-command"]
           target_pattern = "spec/**/*_spec.rb"
         TOML
 
@@ -117,8 +143,8 @@ RSpec.describe "plur spec output handling" do
         end
 
         expect(status.exitstatus).to eq(1)
-        expect(stderr).to include("failed to start command")
-        expect(stdout).not_to include("failed to start command")
+        expect(stderr).to include("Error: fork/exec ./definitely-missing-command")
+        expect(stdout).not_to include("fork/exec ./definitely-missing-command")
         expect(stdout).to include("0 examples, 0 failures")
       end
     end

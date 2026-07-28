@@ -10,6 +10,7 @@ import (
 type GlobalConfig struct {
 	Auto         bool
 	ColorOutput  bool
+	ColorSource  string // short source tag from term.ResolveColor, shown by doctor and --verbose
 	ConfigPaths  *ConfigPaths
 	Debug        bool
 	Verbose      bool
@@ -17,9 +18,10 @@ type GlobalConfig struct {
 	DryRunFormat string
 	WorkerCount  int
 	RuntimeDir   string
-	FirstIs1     bool // Start TEST_ENV_NUMBER at 1 instead of empty string
-	RspecTrace   bool // Prefix stdout/stderr with source file path (RSpec only)
-	RspecSplit   bool // EXPERIMENTAL: split long RSpec files into focused file:line targets
+	JSON         string // JSON output file
+	FirstIs1     bool   // Start TEST_ENV_NUMBER at 1 instead of empty string
+	RspecTrace   bool   // Prefix stdout/stderr with source file path (RSpec only)
+	RspecSplit   bool   // EXPERIMENTAL: split long RSpec files into focused file:line targets
 
 	// Configuration source tracking
 	LoadedConfigs []string // List of config files that actually exist and were loaded

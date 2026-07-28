@@ -14,8 +14,8 @@ FileUtils.mkdir_p(TMP_PARENT)
 PLUR = ENV.fetch("PLUR_BINARY", ROOT.join("plur").to_s)
 DEMO = ENV["PLUR_DEMO"] == "1"
 
-CommandRun = Struct.new(:argv, :cwd, :env, keyword_init: true)
-InventoryCase = Struct.new(:label, :intent, :runs, keyword_init: true)
+CommandRun = Struct.new(:argv, :cwd, :env)
+InventoryCase = Struct.new(:label, :intent, :runs)
 
 def configure_paths(tmp_root)
   root = Pathname.new(tmp_root)

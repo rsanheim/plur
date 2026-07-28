@@ -8,14 +8,14 @@ module PlurWatchHelper
   WATCH_DIRS_PATTERN = /Watch directories after filtering dirs=\[([^\]]*)\]/
   READY_SETTLE_SECONDS = 0.3
 
-  WatchResult = Struct.new(:out, :err, :exit_status, keyword_init: true) do
+  WatchResult = Struct.new(:out, :err, :exit_status) do
     def success?
       return exit_status.success? if exit_status.respond_to?(:success?)
       exit_status == 0
     end
   end
 
-  WatchProcess = Struct.new(:stdin, :out, :err, :ready_state, keyword_init: true) do
+  WatchProcess = Struct.new(:stdin, :out, :err, :ready_state) do
     def close_stdin
       stdin.close unless stdin.closed?
     end

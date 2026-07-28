@@ -319,7 +319,7 @@ RSpec.describe "Plur runtime tracking" do
 
     it "does not duplicate generated examples that share a rerunnable line" do
       Dir.chdir(project_fixture("rspec-success-simple")) do
-        run_plur("-n", "2", "--no-color", "spec/generated_examples_spec.rb")
+        run_plur("-n", "2", "--color=never", "spec/generated_examples_spec.rb")
         cache, runtime_file = runtime_cache_data
 
         entry = cache.fetch("files").fetch("spec/generated_examples_spec.rb")
@@ -338,7 +338,7 @@ RSpec.describe "Plur runtime tracking" do
         end
         File.write(runtime_file, JSON.pretty_generate(cache))
 
-        dry_run = run_plur("--rspec-split", "--dry-run", "--debug", "-n", "4", "--no-color", "spec/generated_examples_spec.rb")
+        dry_run = run_plur("--rspec-split", "--dry-run", "--debug", "-n", "4", "--color=never", "spec/generated_examples_spec.rb")
         planned_targets = dry_run.err.scan(%r{spec/generated_examples_spec\.rb(?::\d+)+})
         duplicate_line = duplicate_selector.split(":").last
         duplicate_line_occurrences = planned_targets.sum do |target|
@@ -346,7 +346,7 @@ RSpec.describe "Plur runtime tracking" do
         end
         expect(duplicate_line_occurrences).to eq(1)
 
-        result = run_plur("--rspec-split", "-n", "4", "--no-color", "spec/generated_examples_spec.rb")
+        result = run_plur("--rspec-split", "-n", "4", "--color=never", "spec/generated_examples_spec.rb")
         expect(result.exit_status).to eq(0)
         expect(result.out).to include("8 examples, 0 failures")
       end
@@ -365,7 +365,7 @@ RSpec.describe "Plur runtime tracking" do
         expect(raw_out).to include("5 examples, 0 failures")
         expect(raw_out).not_to include("with a small sum")
 
-        warm_run = run_plur("-n", "2", "--no-color", "spec/shared_example_consumers_spec.rb")
+        warm_run = run_plur("-n", "2", "--color=never", "spec/shared_example_consumers_spec.rb")
         expect(warm_run.out).to match(/\A\.\.\.\.\./)
         expect(warm_run.out).to include("5 examples, 0 failures")
         expect(warm_run.out).not_to include("with a small sum")
@@ -392,7 +392,7 @@ RSpec.describe "Plur runtime tracking" do
         end
         File.write(runtime_file, JSON.pretty_generate(cache))
 
-        dry_run = run_plur("--rspec-split", "--dry-run", "--debug", "-n", "4", "--no-color", "spec/shared_example_consumers_spec.rb")
+        dry_run = run_plur("--rspec-split", "--dry-run", "--debug", "-n", "4", "--color=never", "spec/shared_example_consumers_spec.rb")
         planned_targets = dry_run.err.scan(%r{spec/shared_example_consumers_spec\.rb(?::\d+)+})
         expect(planned_targets).not_to be_empty
 
@@ -402,7 +402,7 @@ RSpec.describe "Plur runtime tracking" do
           expect(occurrences).to eq(1)
         end
 
-        result = run_plur("--rspec-split", "-n", "4", "--no-color", "spec/shared_example_consumers_spec.rb")
+        result = run_plur("--rspec-split", "-n", "4", "--color=never", "spec/shared_example_consumers_spec.rb")
         expect(result.exit_status).to eq(0)
         expect(result.out).to match(/\A\.\.\.\.\./)
         expect(result.out).to include("5 examples, 0 failures")

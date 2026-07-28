@@ -1,16 +1,13 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/rsanheim/plur/framework"
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/types"
 )
 
@@ -41,7 +38,6 @@ func (r WorkerResult) Success() bool {
 
 // OutputMessage is a message from workers for output aggregation
 type OutputMessage struct {
-	WorkerID    int
 	Type        string // "dot", "failure", "pending", "error_progress", "error", "stderr", "stdout"
 	Content     string
 	CurrentFile string // Source file path (for rspec-trace mode, may be empty)
@@ -70,7 +66,7 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob job.Job) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob framework.Job) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
@@ -131,29 +127,53 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob
 }
 
 const placeholder string = "‽"
-const placeholderWithParentheses string = "‽)"
 
-// renumberFailures replaces ‽ placeholders with incrementing numbers.
-// The Ruby formatter outputs ‽ instead of actual numbers so plur can
-// correctly number failures after aggregating from multiple workers.
+// renumberSummaryOutput replaces the ‽ placeholders emitted by the Ruby
+// formatter with real, sequential failure numbers. Each worker emits ‽ because
+// it cannot know the global failure count, so plur assigns the final numbers
+// here after aggregating output from every worker.
+//
+// Two marker shapes appear in RSpec output:
+//
+//	top-level:            "‽)"    -> next incrementing number, e.g. "3)"
+//	aggregate sub-failure: "‽.1)" -> the parent failure's number, e.g. "3.1)"
+//
+// RSpec derives aggregate sub-indices from the number we pass to
+// fully_formatted, so both shapes share the same ‽ placeholder; the sub-markers
+// must inherit their parent's number rather than consume a new one.
 func renumberSummaryOutput(output string) string {
-	count := 0
-	for strings.Contains(output, placeholderWithParentheses) {
-		count++
-		output = strings.Replace(output, placeholder, strconv.Itoa(count), 1)
+	var b strings.Builder
+	b.Grow(len(output))
+
+	count := 0 // most recently assigned top-level failure number
+	for i := 0; i < len(output); {
+		rest, isMarker := strings.CutPrefix(output[i:], placeholder)
+		if !isMarker {
+			b.WriteByte(output[i])
+			i++
+			continue
+		}
+
+		switch {
+		case strings.HasPrefix(rest, ")"):
+			// top-level marker "‽)"
+			count++
+			b.WriteString(strconv.Itoa(count))
+		case count > 0 && len(rest) >= 2 && rest[0] == '.' && rest[1] >= '0' && rest[1] <= '9':
+			// aggregate sub-marker "‽.N)" inherits the parent's number
+			b.WriteString(strconv.Itoa(count))
+		default:
+			// stray placeholder that is not a marker; leave it untouched
+			b.WriteString(placeholder)
+		}
+		i += len(placeholder)
 	}
-	return output
+	return b.String()
 }
 
 // PrintResults displays a test summary
-func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
-	spec, err := framework.Get(currentJob.Framework)
-	if err != nil {
-		// Fallback to basic output
-		fmt.Printf("%d examples, %d failures\n", summary.TotalExamples, summary.TotalFailures)
-		return
-	}
-	parser := spec.Parser()
+func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Job) {
+	parser := currentJob.Framework.Parser()
 
 	// Print pending section first (RSpec outputs pending before failures)
 	if summary.FormattedPending != "" {
@@ -162,7 +182,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 	}
 
 	// For minitest with failures, print the raw output which contains failure details
-	if framework.IsMinitest(spec.Name) && summary.HasFailures {
+	if currentJob.Framework.Name == "minitest" && summary.HasFailures {
 		// Collect all output from failed workers
 		for _, result := range summary.AllResults {
 			if result.State == types.StateFailed && result.Output != "" {
@@ -200,7 +220,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 
 	// Print failed examples list only if we didn't get a formatted summary
 	// (RSpec's formatted summary already includes the failed examples list)
-	if !hasFormattedSummary && !framework.IsMinitest(spec.Name) {
+	if !hasFormattedSummary && currentJob.Framework.Name != "minitest" {
 		// Skip for minitest since we already printed the raw output
 		if failedList := parser.FormatFailuresList(summary.AllFailures); failedList != "" {
 			fmt.Println("\nFailed examples:")
@@ -217,13 +237,11 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob job.Job) {
 			fmt.Print(result.Output)
 			continue
 		}
-		if result.Error != nil && !isProcessExitError(result.Error) {
+		if result.Error == nil {
+			continue
+		}
+		if _, isExit := processExitCode(result.Error); !isExit {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
 		}
 	}
-}
-
-func isProcessExitError(err error) bool {
-	var exitErr *exec.ExitError
-	return errors.As(err, &exitErr)
 }

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/job"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -60,7 +60,7 @@ func TestBuildTestSummary(t *testing.T) {
 	}
 
 	wallTime := 250 * time.Millisecond
-	testJob := job.Job{Name: "rspec", Framework: "rspec"}
+	testJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
 	summary := BuildTestSummary(results, wallTime, testJob)
 
 	assert := assert.New(t)
@@ -96,7 +96,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 		},
 	}
 
-	testJob := job.Job{Name: "rspec", Framework: "rspec"}
+	testJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
 	summary := BuildTestSummary(results, 250*time.Millisecond, testJob)
 
 	assert.Equal(t, 15, summary.TotalExamples)
@@ -120,10 +120,65 @@ func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 		},
 	}
 
-	testJob := job.Job{Name: "rspec", Framework: "rspec"}
+	testJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
 	summary := BuildTestSummary(results, 100*time.Millisecond, testJob)
 
 	assert.Equal(t, 10, summary.TotalExamples)
 	assert.True(t, summary.Success)
 	assert.Equal(t, summary.FormattedSummary, "10 examples, 0 failures")
+}
+
+func TestRenumberSummaryOutput(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "empty",
+			in:   "",
+			want: "",
+		},
+		{
+			name: "no placeholders passes through",
+			in:   "Finished in 1.0 seconds\n3 examples, 0 failures\n",
+			want: "Finished in 1.0 seconds\n3 examples, 0 failures\n",
+		},
+		{
+			name: "single top-level failure",
+			in:   "  ‽) does a thing\n     Failure/Error: expect(1).to eq(2)\n",
+			want: "  1) does a thing\n     Failure/Error: expect(1).to eq(2)\n",
+		},
+		{
+			name: "multiple top-level failures increment",
+			in:   "  ‽) first\n  ‽) second\n  ‽) third\n",
+			want: "  1) first\n  2) second\n  3) third\n",
+		},
+		{
+			name: "aggregate sub-markers inherit parent number",
+			in:   "  ‽) aggregate example\n     Got 2 failures:\n\n     ‽.1) Failure/Error: expect(1).to eq(2)\n     ‽.2) Failure/Error: expect(3).to eq(4)\n",
+			want: "  1) aggregate example\n     Got 2 failures:\n\n     1.1) Failure/Error: expect(1).to eq(2)\n     1.2) Failure/Error: expect(3).to eq(4)\n",
+		},
+		{
+			name: "aggregate nested among plain failures keeps numbering aligned",
+			in:   "  ‽) first\n  ‽) aggregate\n     ‽.1) sub a\n     ‽.2) sub b\n  ‽) third\n",
+			want: "  1) first\n  2) aggregate\n     2.1) sub a\n     2.2) sub b\n  3) third\n",
+		},
+		{
+			name: "double-digit aggregate sub-index",
+			in:   "  ‽) aggregate\n     ‽.10) tenth sub\n",
+			want: "  1) aggregate\n     1.10) tenth sub\n",
+		},
+		{
+			name: "stray placeholder not part of a marker is left untouched",
+			in:   "  ‽) message contains a literal ‽ here\n",
+			want: "  1) message contains a literal ‽ here\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, renumberSummaryOutput(tt.in))
+		})
+	}
 }

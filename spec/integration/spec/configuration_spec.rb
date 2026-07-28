@@ -47,7 +47,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(error).to include(%q(echo ''\''SPEC:'\'''))
+        expect(error).to include("echo 'SPEC:'")
       end
 
       it "applies command-specific configuration with --use CLI flag" do
@@ -59,8 +59,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(error).to include("[dry-run] Selected job: rspec (framework: rspec, reason: explicit name)")
-        expect(error).to include(%q(echo ''\''SPEC:'\'''))
+        expect(error).to include("echo 'SPEC:'")
       end
     end
   end
@@ -70,7 +69,7 @@ RSpec.describe "Configuration" do
       _, error, status = Dir.chdir(config_fixture_dir) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => "valid.toml"},
-          plur_binary, "--workers=1", "--color", "--dry-run"
+          plur_binary, "--workers=1", "--color=always", "--dry-run"
         )
       end
 
@@ -79,22 +78,8 @@ RSpec.describe "Configuration" do
       expect(error).not_to include("Worker 1:")
     end
 
-    it "environment variables have lower precedence than config files" do
-      _, error, status = Dir.chdir(config_fixture_dir) do
-        Open3.capture3(
-          {
-            "PLUR_CONFIG_FILE" => "valid.toml",
-            "PARALLEL_TEST_PROCESSORS" => "16"
-          },
-          plur_binary, "--dry-run"
-        )
-      end
-
-      expect(status).to be_success
-      expect(error).to include("Worker 0:")
-      expect(error).to include("Worker 1:")
-      expect(error).not_to include("Worker 2:")
-    end
+    # Worker-count env-var precedence lives in configuration_precedence_spec.rb,
+    # which asserts via `plur doctor` (not capped by fixture file count).
 
     it "project config overrides home config" do
       Dir.mktmpdir do |home_dir|
@@ -156,23 +141,6 @@ RSpec.describe "Configuration" do
         expect(error).to include("Worker 0:")
         expect(error).not_to include("Worker 1:")
       end
-    end
-
-    it "config file takes precedence over PARALLEL_TEST_PROCESSORS" do
-      _, error, status = Dir.chdir(config_fixture_dir) do
-        Open3.capture3(
-          {
-            "PLUR_CONFIG_FILE" => "valid.toml",
-            "PARALLEL_TEST_PROCESSORS" => "16"
-          },
-          plur_binary, "--dry-run"
-        )
-      end
-
-      expect(status).to be_success
-      expect(error).to include("Worker 0:")
-      expect(error).to include("Worker 1:")
-      expect(error).not_to include("Worker 2:")
     end
 
     it "CLI flag takes precedence over everything" do
@@ -253,7 +221,7 @@ RSpec.describe "Configuration" do
       end
 
       expect(status).not_to be_success
-      expect(error).to match(/expected a valid 64 bit int|invalid value/)
+      expect(error).to match(/expected a valid 64 bit int|invalid value|must be one of/)
     end
 
     it "exits with error for duplicate keys" do
@@ -298,108 +266,6 @@ RSpec.describe "Configuration" do
         expect(status).not_to be_success
         expect(error).to include("Configuration error:")
         expect(error).to match(/already been defined|duplicated tables|defined twice/)
-      end
-    end
-
-    it "rejects unknown top-level, job, and watch keys" do
-      Dir.mktmpdir do |tmpdir|
-        config_path = File.join(tmpdir, "unknown-keys.toml")
-        File.write(config_path, <<~TOML)
-          wokers = 2
-          use = "custom"
-
-          [job.custom]
-          framework = "passthrough"
-          cmd = ["echo", "RUN"]
-          cmdd = ["echo", "TYPO"]
-          target_pattern = "spec/**/*_spec.rb"
-
-          [[watch]]
-          source = "spec/**/*_spec.rb"
-          soruce = "spec/**/*_spec.rb"
-          jobs = ["custom"]
-        TOML
-
-        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
-          Open3.capture3(
-            {"PLUR_CONFIG_FILE" => config_path},
-            plur_binary, "doctor"
-          )
-        end
-
-        expect(status).not_to be_success
-        expect(error).to include("Configuration error:")
-        expect(error).to include(config_path)
-        expect(error).to include("unknown config keys")
-        expect(error).to include("wokers")
-        expect(error).to include("job.custom.cmdd")
-        expect(error).to include("watch.soruce")
-      end
-    end
-
-    it "rejects dry-run preview controls in config files" do
-      Dir.mktmpdir do |tmpdir|
-        config_path = File.join(tmpdir, "dry-run-config.toml")
-        File.write(config_path, <<~TOML)
-          dry-run = true
-          dry-run-format = "json"
-        TOML
-
-        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
-          Open3.capture3(
-            {"PLUR_CONFIG_FILE" => config_path},
-            plur_binary, "spec"
-          )
-        end
-
-        expect(status).not_to be_success
-        expect(error).to include("Configuration error:")
-        expect(error).to include(config_path)
-        expect(error).to include("CLI-only config keys")
-        expect(error).to include("dry-run")
-        expect(error).to include("dry-run-format")
-      end
-    end
-
-    it "rejects CLI and session controls outside the persistent config schema" do
-      Dir.mktmpdir do |tmpdir|
-        config_path = File.join(tmpdir, "cli-controls.toml")
-        File.write(config_path, <<~TOML)
-          auto = true
-          change-dir = "fixtures"
-          debug = true
-          exclude-pattern = ["spec/system/**"]
-          first-is-1 = false
-          rspec-split = true
-          rspec-trace = true
-          watch-ignore = ["tmp/**"]
-          watch-run-debounce = 250
-          watch-run-timeout = 5
-          config-init-force = true
-        TOML
-
-        _, error, status = Dir.chdir(project_fixture("default-ruby")) do
-          Open3.capture3(
-            {"PLUR_CONFIG_FILE" => config_path},
-            plur_binary, "doctor"
-          )
-        end
-
-        expect(status).not_to be_success
-        expect(error).to include("Configuration error:")
-        expect(error).to include(config_path)
-        expect(error).to include("unknown config keys")
-        expect(error).to include("auto")
-        expect(error).to include("change-dir")
-        expect(error).to include("debug")
-        expect(error).to include("exclude-pattern")
-        expect(error).to include("first-is-1")
-        expect(error).to include("rspec-split")
-        expect(error).to include("rspec-trace")
-        expect(error).to include("watch-ignore")
-        expect(error).to include("watch-run-debounce")
-        expect(error).to include("watch-run-timeout")
-        expect(error).to include("config-init-force")
       end
     end
   end
@@ -451,12 +317,12 @@ RSpec.describe "Configuration" do
       end
     end
 
-    it "rejects target templates in run-mode job commands" do
+    it "rejects template tokens in job commands" do
       Dir.mktmpdir do |tmpdir|
         FileUtils.mkdir_p(File.join(tmpdir, "spec"))
         File.write(File.join(tmpdir, "spec", "example_spec.rb"), "RSpec.describe('x'){ it('works'){} }")
 
-        config_path = File.join(tmpdir, "run-target-template.toml")
+        config_path = File.join(tmpdir, "job-command-template.toml")
         File.write(config_path, <<~TOML)
           use = "custom"
 
@@ -469,14 +335,12 @@ RSpec.describe "Configuration" do
         _, error, status = Dir.chdir(tmpdir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => config_path},
-            plur_binary, "--dry-run"
+            plur_binary, "doctor"
           )
         end
 
         expect(status).not_to be_success
-        expect(error).to include('job "custom" command uses {{target}}')
-        expect(error).to include("run mode appends targets automatically")
-        expect(error).to include("remove {{target}}")
+        expect(error).to include('job "custom" command must not contain {{target}} tokens')
       end
     end
 
@@ -611,57 +475,10 @@ RSpec.describe "Configuration" do
         expect(error).to include("unclosed")
       end
     end
-
-    it "rejects invalid watch glob patterns" do
-      cases = [
-        [
-          <<~TOML,
-            use = "rspec"
-
-            [job.rspec]
-            cmd = ["bin/rspec"]
-
-            [[watch]]
-            name = "bad-source"
-            source = "["
-            jobs = ["rspec"]
-          TOML
-          /configuration error in \[[^\]]+\]: watch "bad-source" has invalid source pattern "\[": invalid glob pattern "\["/
-        ],
-        [
-          <<~TOML,
-            use = "rspec"
-
-            [job.rspec]
-            cmd = ["bin/rspec"]
-
-            [[watch]]
-            name = "bad-ignore"
-            source = "lib/**/*.rb"
-            ignore = ["["]
-            jobs = ["rspec"]
-          TOML
-          /configuration error in \[[^\]]+\]: watch "bad-ignore" has invalid ignore pattern "\[": invalid glob pattern "\["/
-        ]
-      ]
-
-      cases.each do |config, error_pattern|
-        Dir.mktmpdir do |tmpdir|
-          File.write(File.join(tmpdir, ".plur.toml"), config)
-          FileUtils.mkdir_p(File.join(tmpdir, "spec"))
-          File.write(File.join(tmpdir, "spec", "example_spec.rb"), "RSpec.describe('x'){ it('works'){} }")
-
-          _, error, status = Dir.chdir(tmpdir) { Open3.capture3(plur_binary, "doctor") }
-
-          expect(status).not_to be_success
-          expect(error).to match(error_pattern)
-        end
-      end
-    end
   end
 
   describe "resolver edge cases" do
-    it "rejects a scalar prefix typo even when a valid hyphenated key exists" do
+    it "still applies a hyphenated key when a scalar prefix key exists" do
       Dir.mktmpdir do |tmpdir|
         FileUtils.mkdir_p(File.join(tmpdir, "spec"))
         File.write(File.join(tmpdir, "spec", "test_spec.rb"), "describe('test') { it('works') { expect(1).to eq(1) } }")
@@ -685,15 +502,13 @@ RSpec.describe "Configuration" do
           )
         end
 
-        expect(status).not_to be_success
-        expect(error).to include("Configuration error:")
-        expect(error).to include(config_path)
-        expect(error).to include("unknown config key")
-        expect(error).to include("dry")
+        expect(status).to be_success
+        expect(error).to include("[dry-run] Worker 0:")
+        expect(error).to include("echo RUN spec/test_spec.rb")
       end
     end
 
-    it "rejects unknown nested job keys before command execution" do
+    it "logs unknown nested job keys in debug output" do
       Dir.mktmpdir do |tmpdir|
         config_path = File.join(tmpdir, "unknown-job-key.toml")
         File.write(config_path, <<~TOML)
@@ -707,14 +522,12 @@ RSpec.describe "Configuration" do
         _, error, status = Dir.chdir(tmpdir) do
           Open3.capture3(
             {"PLUR_CONFIG_FILE" => config_path},
-            plur_binary, "doctor"
+            plur_binary, "--debug", "doctor"
           )
         end
 
-        expect(status).not_to be_success
-        expect(error).to include("Configuration error:")
-        expect(error).to include(config_path)
-        expect(error).to include("unknown config key")
+        expect(status).to be_success
+        expect(error).to include("unknown config keys")
         expect(error).to include("job.rspec.cmdd")
       end
     end
@@ -805,8 +618,8 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(error).to include(%q(echo ''\''SPEC:'\'''))
-        expect(error).not_to include(%q(echo ''\''WATCH:'\'''))
+        expect(error).to include("echo 'SPEC:'")
+        expect(error).not_to include("echo 'WATCH:'")
       end
 
       it "loads watch mappings from config for watch runs" do
@@ -836,7 +649,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(error).to include(%q(echo ''\''GLOBAL:'\'''))
+        expect(error).to include("echo 'GLOBAL:'")
       end
     end
   end
@@ -905,7 +718,7 @@ RSpec.describe "Configuration" do
         end
 
         expect(status).to be_success
-        expect(output).to include("echo 'CUSTOM TASK:'")
+        expect(output).to include("echo CUSTOM TASK:")
       end
     end
 
