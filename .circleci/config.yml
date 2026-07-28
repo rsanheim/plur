@@ -110,6 +110,9 @@ jobs:
           name: Add GOPATH/bin to PATH
           command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"
       - run:
+          name: Install tmux
+          command: sudo apt-get update -qq && sudo apt-get install -y -qq tmux
+      - run:
           name: Bundle install
           command: bundle install
       - run:

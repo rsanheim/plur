@@ -57,10 +57,17 @@ steps:
         # current linux-x64 tools build requires GLIBC_2.38, but ruby:4.0.5-bookworm
         # ships glibc 2.36; the legacy sqlite.org builds are 32-bit x86. So we fall
         # back to apt for the CLI.
-        if ! command -v sqlite3 >/dev/null 2>&1; then
-          apt-get update -qq && apt-get install -y -qq sqlite3
+        #
+        # tmux comes from apt too: the watch REPL specs drive plur through a real
+        # terminal, and tmux is the terminal emulator they use.
+        missing=""
+        command -v sqlite3 >/dev/null 2>&1 || missing="$missing sqlite3"
+        command -v tmux >/dev/null 2>&1 || missing="$missing tmux"
+        if [ -n "$missing" ]; then
+          apt-get update -qq && apt-get install -y -qq $missing
         fi
         sqlite3 --version
+        tmux -V
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
