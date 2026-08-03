@@ -1,6 +1,7 @@
 # plur CHANGELOG
 
-## v0.80.0-.rc.1 - 2026-08-03
+## v0.80.0-rc.1 - 2026-08-03
+* Build with Go 1.26.5 #108
 * Update e-dant/watcher to 0.14.5 - #99
 * Fix 'exit' from plur watch on incidental stdin - #104
 
