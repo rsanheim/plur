@@ -26,9 +26,12 @@ jobs:
           version: << pipeline.parameters.go_version >>
       - go/mod-download-cached
       - go/load-build-cache
+      # Gems live outside the repo: goreleaser's `go mod vendor` before-hook
+      # rewrites ./vendor, which would wipe the orb's default vendor/bundle.
       - ruby/install-deps:
-          key: "plur-v2"
+          key: "plur-v3"
           include-branch-in-cache-key: false
+          path: /home/circleci/bundle
       - run:
           name: Install shellcheck
           command: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
@@ -117,9 +120,12 @@ jobs:
       - run:
           name: Install tmux
           command: sudo apt-get update -qq && sudo apt-get install -y -qq tmux
+      # Gems live outside the repo: goreleaser's `go mod vendor` before-hook
+      # rewrites ./vendor, which would wipe the orb's default vendor/bundle.
       - ruby/install-deps:
-          key: "plur-v2"
+          key: "plur-v3"
           include-branch-in-cache-key: false
+          path: /home/circleci/bundle
       - run:
           name: Install plur globally
           command: bin/rake install
