@@ -1,5 +1,10 @@
 # plur CHANGELOG
 
+## v0.80.0-rc.1 - 2026-08-03
+* Build with Go 1.26.5 #108
+* Update e-dant/watcher to 0.14.5 - #99
+* Fix 'exit' from plur watch on incidental stdin - #104
+
 ## v0.72.2 - 2026-07-20
 * fix: number `:aggregate_failures` sub-failures (e.g. `2.1)`) correctly instead of leaking the `‽` placeholder [#96](https://github.com/rsanheim/plur/pull/96)
 
