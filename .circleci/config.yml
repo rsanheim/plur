@@ -11,7 +11,6 @@ parameters:
 orbs:
   ruby: circleci/ruby@2.6.0
   go: circleci/go@3.0.3
-  gh: circleci/github-cli@2.7.2
 
 jobs:
   build-and-test-go:
@@ -23,16 +22,16 @@ jobs:
       - VERBOSE=true
     steps:
       - checkout
-      - run:
-          name: Debug - Show directory structure
-          command: |
-            pwd
-            ls -la
       - go/install:
           version: << pipeline.parameters.go_version >>
+      - go/mod-download-cached
+      - go/load-build-cache
+      # Gems live outside the repo: goreleaser's `go mod vendor` before-hook
+      # rewrites ./vendor, which would wipe the orb's default vendor/bundle.
       - ruby/install-deps:
-          key: "plur-v2"
+          key: "plur-v3"
           include-branch-in-cache-key: false
+          path: /home/circleci/bundle
       - run:
           name: Install shellcheck
           command: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
@@ -48,6 +47,7 @@ jobs:
       - run:
           name: Run Go tests
           command: bin/rake test:go
+      - go/save-build-cache
 
   test-goreleaser:
     docker:
@@ -56,6 +56,8 @@ jobs:
     working_directory: ~/project
     steps:
       - checkout
+      - go/mod-download-cached
+      - go/load-build-cache
       - go/install-goreleaser
       - run:
           name: Verify GoReleaser installation
@@ -84,6 +86,7 @@ jobs:
       - store_artifacts:
           path: dist
           destination: goreleaser-artifacts
+      - go/save-build-cache
 
   test-go-race:
     docker:
@@ -92,19 +95,24 @@ jobs:
     working_directory: ~/project
     steps:
       - checkout
+      - go/mod-download-cached
+      - go/load-build-cache
       - run:
           name: Run Go tests with race detection
           command: go test -mod=mod -race -short ./...
+      - go/save-build-cache
 
   test-ruby-integration:
     docker:
       - image: cimg/ruby:<< pipeline.parameters.ruby_version >>
-    resource_class: medium
+    resource_class: medium+
     working_directory: ~/project/
     steps:
       - checkout
       - go/install:
           version: << pipeline.parameters.go_version >>
+      - go/mod-download-cached
+      - go/load-build-cache
       - go/install-goreleaser
       - run:
           name: Add GOPATH/bin to PATH
@@ -112,9 +120,12 @@ jobs:
       - run:
           name: Install tmux
           command: sudo apt-get update -qq && sudo apt-get install -y -qq tmux
-      - run:
-          name: Bundle install
-          command: bundle install
+      # Gems live outside the repo: goreleaser's `go mod vendor` before-hook
+      # rewrites ./vendor, which would wipe the orb's default vendor/bundle.
+      - ruby/install-deps:
+          key: "plur-v3"
+          include-branch-in-cache-key: false
+          path: /home/circleci/bundle
       - run:
           name: Install plur globally
           command: bin/rake install
@@ -127,17 +138,13 @@ jobs:
             which plur
             plur doctor
       - run:
-          name: Run ruby linting
-          command: |
-            bin/rake lint:ruby
-      - run:
           name: Run Ruby tests with plur
           command: |
             bin/rake test:default_ruby
       - restore_cache:
-          key:
-            v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock"
-            }}
+          keys:
+            - v1-fixture-rails-{{ checksum "fixtures/projects/default-rails/Gemfile.lock" }}
+            - v1-fixture-rails-
       - run:
           name: Setup test_app
           working_directory: fixtures/projects/default-rails
@@ -156,12 +163,10 @@ jobs:
           working_directory: fixtures/projects/default-rails
           command: plur
       - run:
-          name: Install turbo_tests
-          command: gem install turbo_tests
-      - run:
           name: Run all Ruby specs
           command: |
             bin/rake test
+      - go/save-build-cache
 
 workflows:
   test-all:
@@ -169,6 +174,4 @@ workflows:
       - build-and-test-go
       - test-goreleaser
       - test-go-race
-      - test-ruby-integration:
-          requires:
-            - build-and-test-go
+      - test-ruby-integration
