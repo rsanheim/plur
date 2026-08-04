@@ -6,16 +6,18 @@
 # Footgun: Crow substitutes dollar-brace vars over the whole file (comments too),
 # so commands use bare $VAR (shell-expanded); only Crow builtins use braces.
 when:
-  # No push trigger: a push-to-main bench overlapping the nightly cron starved
-  # the box and got one run killed. Cron + deliberate triggers only.
+  # No unconditional push trigger: a push-to-main bench overlapping the nightly
+  # cron starved the box and got one run killed. Cron + deliberate triggers only;
+  # the push event below fires solely on an explicit commit-message marker.
   - event: cron
     cron: nightly-bench
   - event: manual
-  # Opt-in: "[bench]" in the PR title runs benchmarks (Crow exposes the title, not
-  # the PR body). Restrict it to Rob-authored PRs on the canonical repository.
-  - event: pull_request
+  # Opt-in: "[bench]" in the commit message runs benchmarks for that push, once.
+  # (A PR-title marker was tried first but re-ran the suite on every push to the
+  # PR.) Restrict it to Rob's pushes on the canonical repository.
+  - event: push
     evaluate: >-
-      CI_COMMIT_PULL_REQUEST_TITLE contains "[bench]" &&
+      CI_COMMIT_MESSAGE contains "[bench]" &&
       CI_REPO == "rsanheim/plur" &&
       CI_PIPELINE_AUTHOR == "rsanheim"
 
