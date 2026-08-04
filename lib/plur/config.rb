@@ -14,8 +14,11 @@ module Plur
       @default_rails_dir = @fixtures_dir.join("default-rails")
     end
 
-    # lock things down a bit for CI
+    # lock things down a bit for CI; PLUR_WORKERS lets a CI host with more
+    # cores (e.g. crow on minibox) raise the cap without a code change
     def plur_cores
+      workers = ENV["PLUR_WORKERS"]
+      return Integer(workers) if workers
       ENV["CI"] ? 4 : 8
     end
   end

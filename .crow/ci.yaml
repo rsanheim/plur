@@ -12,6 +12,10 @@ when:
   - event: pull_request
   - event: push
     branch: ${CI_REPO_DEFAULT_BRANCH}
+  - event: manual
+
+labels:
+  platform: linux/amd64
 
 variables:
   - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
@@ -27,6 +31,8 @@ steps:
       GOPATH: /cache/plur/go
       GOCACHE: /cache/plur/go-build
       XDG_CACHE_HOME: /cache/plur/xdg
+      # minibox has cores to spare; raise plur's CI worker cap (default 4)
+      PLUR_WORKERS: '8'
       # renovate: datasource=github-releases depName=goreleaser/goreleaser
       GORELEASER_VERSION: 2.16.0
     when:
@@ -41,10 +47,12 @@ steps:
         # the base image.
         export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
 
-        # goreleaser is a single static binary, fetched per run (not in the image).
-        if ! command -v goreleaser >/dev/null 2>&1; then
+        # goreleaser is a single static binary, not in the image. Keep it in
+        # $GOPATH/bin on the /cache volume so it persists across runs; re-fetch
+        # only when the pinned version bumps.
+        if ! "$GOPATH/bin/goreleaser" --version 2>/dev/null | grep -qF "$GORELEASER_VERSION"; then
           curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/goreleaser_Linux_x86_64.tar.gz" -o /tmp/goreleaser.tar.gz
-          tar -xzf /tmp/goreleaser.tar.gz -C /usr/local/bin goreleaser
+          tar -xzf /tmp/goreleaser.tar.gz -C "$GOPATH/bin" goreleaser
           rm /tmp/goreleaser.tar.gz
         fi
         goreleaser --version
