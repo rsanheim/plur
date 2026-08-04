@@ -171,9 +171,10 @@ module Plur
         warmup = (project["warmup"] || @defaults["warmup"]).to_s
         runs = (project["runs"] || @defaults["runs"]).to_s
 
+        show_output = project.fetch("show-output", @defaults["show-output"])
         argv = ["hyperfine", "--shell", "none"]
         # hyperfine rejects --style with --show-output; basic is only for quiet CI logs
-        argv += ["--style", "basic"] unless project["show-output"]
+        argv += ["--style", "basic"] unless show_output
         argv += ["--warmup", warmup, "--runs", runs]
         Array(project["parameter-lists"] || @defaults["parameter-lists"]).each do |pl|
           argv += ["--parameter-list", pl.fetch("var"), pl.fetch("values").to_s]
@@ -186,7 +187,7 @@ module Plur
         end
         argv += ["--setup", project["setup"]] if project["setup"]
         argv << "--ignore-failure" if project["ignore-failure"]
-        argv << "--show-output" if project["show-output"]
+        argv << "--show-output" if show_output
         argv += ["--export-json", hyperfine_json]
         commands = Array(project["commands"] || @defaults.fetch("commands"))
         commands = commands.map { |c| c.sub(/\Aplur(?=\s|$)/, "#{plur_bindir}/plur-{plur_ref}") } if plur_refs

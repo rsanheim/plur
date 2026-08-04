@@ -17,13 +17,25 @@ RSpec.describe Plur::Benchmark do
 
         # {workers} must reach hyperfine untouched (the quoting footgun): the
         # command is one verbatim array element, never interpolated by Ruby.
+        # show-output comes from defaults (and excludes --style, which hyperfine
+        # rejects alongside it).
         expect(argv).to eq([
-          "hyperfine", "--shell", "none", "--style", "basic",
+          "hyperfine", "--shell", "none",
           "--warmup", "2", "--runs", "8",
           "--parameter-list", "workers", "4,8",
+          "--show-output",
           "--export-json", "/out/hyperfine.json",
           "plur --workers {workers}"
         ])
+      end
+
+      it "lets a project turn off the show-output default" do
+        runner.send(:load_manifest)
+        project = {"name" => "x", "repo" => "r", "ref" => "v1", "warmup" => 2, "runs" => 8,
+                   "show-output" => false, "commands" => ["plur"]}
+        argv = runner.send(:build_hyperfine_argv, project, "/out/h.json")
+        expect(argv).to include("--style", "basic")
+        expect(argv).not_to include("--show-output")
       end
 
       it "adds optional pass-throughs only when present" do
