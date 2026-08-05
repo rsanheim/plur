@@ -2,12 +2,15 @@
 ruby = "4.0.6"
 go = "1.26.5"
 python = "3.14.0"
-goreleaser = "2"
+goreleaser = "2.16.0"
+hyperfine = "1.19.0"
 shellcheck = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 
 [settings]
 python.uv_venv_auto = true
+# CI images bake ruby from this file; never compile it there (or locally)
+ruby.compile = false
 
 [env]
 # Fix for macOS: Python needs to find cairo installed via Homebrew
