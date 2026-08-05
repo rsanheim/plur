@@ -1,9 +1,11 @@
 name: Claude Code
 
-# Responds to `@claude` mentions. Logic lives in rsanheim/infra.
-# See infra/.github/workflows/README.md.
+# Responds to `@claude` mentions. plur is summons-only: no automatic reviewer.
 #
-# This repo is summons-only by design: no automatic PR reviewer.
+# This duplicates rsanheim/infra's reusable claude.yml rather than calling it.
+# GitHub shares components in a private repo only with other private repos, and
+# plur is public, so a `uses:` reference to infra cannot resolve. Keep this in
+# sync with infra/.github/workflows/claude.yml by hand.
 
 on:
   issue_comment:
@@ -17,12 +19,29 @@ on:
 
 jobs:
   claude:
-    uses: rsanheim/infra/.github/workflows/claude.yml@main
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
       issues: read
       id-token: write
       actions: read
-    secrets:
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
