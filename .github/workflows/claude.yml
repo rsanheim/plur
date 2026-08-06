@@ -2,10 +2,6 @@ name: Claude Code
 
 # Responds to `@claude` mentions. plur is summons-only: no automatic reviewer.
 #
-# This duplicates rsanheim/infra's reusable claude.yml rather than calling it.
-# GitHub shares components in a private repo only with other private repos, and
-# plur is public, so a `uses:` reference to infra cannot resolve. Keep this in
-# sync with infra/.github/workflows/claude.yml by hand.
 
 on:
   issue_comment:
