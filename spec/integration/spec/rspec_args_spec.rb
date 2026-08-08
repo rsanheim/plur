@@ -55,7 +55,7 @@ RSpec.describe "RSpec CLI args" do
 
   context "with explicit --tag on non-rspec framework" do
     it "errors with a clear message" do
-      Dir.chdir(project_fixture("minitest-success")) do
+      Dir.chdir(project_fixture("minitest-outcomes")) do
         result = run_plur_allowing_errors("--dry-run", "--use=minitest", "--tag=slow")
 
         expect(result.exit_status).not_to eq(0)
