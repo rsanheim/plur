@@ -1,6 +1,7 @@
 require_relative "../../spec_helper"
 
-# All minitest integration coverage lives here, grouped by aspect.
+# All minitest-specific run behavior lives here, grouped by aspect; framework
+# selection, args, and configuration live with their own specs.
 #
 # minitest-outcomes is the canonical minitest fixture: every outcome the
 # progress line can show (pass, failure, error, skip), stdout written mid-run
@@ -56,7 +57,9 @@ RSpec.describe "Minitest integration" do
     it "reports a green run with a full progress line and RSpec-style duration" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "1", "--color=never", "test/passing_test.rb")
+          # No --use: this is the one real (non-dry-run) exercise of framework
+          # auto-detection, proven by the [minitest] tag below.
+          result = run_plur("-n", "1", "--color=never", "test/passing_test.rb")
           expect(result).to be_success
 
           expect(result.err).to include("plur version")
@@ -74,6 +77,21 @@ RSpec.describe "Minitest integration" do
 
           # Passing workers' stdout is currently dropped entirely.
           expect(result.out).not_to include("OUT_MID_RUN")
+        end
+      end
+    end
+
+    it "sums all-green workers into one passing summary" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "2", "--color=never",
+            "test/passing_test.rb", "test/output_test.rb")
+          expect(result).to be_success
+
+          # The progress line is not asserted here: output_test's unterminated
+          # print glues progress characters order-dependently (see the
+          # characterization below). The summed counts and exit are the point.
+          expect(result.out).to include("8 runs, 9 assertions, 0 failures, 0 errors, 0 skips")
         end
       end
     end
@@ -105,6 +123,7 @@ RSpec.describe "Minitest integration" do
           # line, which depends on the random order. A known limitation: when
           # minitest output handling improves, this becomes exactly 12.
           progress = result.out.split("\n").first
+          expect(progress).to match(/\A[.FES*]+\z/)
           expect(progress.length).to be_between(1, 11)
           expect(result.out).to include("12 runs, 11 assertions, 2 failures, 1 error, 1 skip")
         end
@@ -155,6 +174,7 @@ RSpec.describe "Minitest integration" do
 
           # Both failing workers' detail blocks survive. plur does not renumber
           # minitest failures across workers, so each block starts at "1)".
+          expect(result.out.scan(/^ {2}1\) /).length).to eq(2)
           expect(result.out).to include("MixedResultsTest#test_display_name_failure")
           expect(result.out).to include("ArrayOperationsTest#test_average_calculation_failure")
           expect(result.out).to include("ArrayOperationsTest#test_find_max_with_nil")

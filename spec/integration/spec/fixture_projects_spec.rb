@@ -1,9 +1,10 @@
 require "spec_helper"
 require_relative "../../support/fixture_runner"
 
+# Minitest fixtures are covered in minitest_integration_spec.rb: its Backspin
+# comparison raw-runs minitest-outcomes, and minitest-failures is pinned there
+# by exact aggregate counts.
 RSpec.describe "Fixture Projects" do
-  # Minitest fixtures are validated in minitest_integration_spec.rb, whose
-  # Backspin comparison already raw-runs minitest-outcomes against plur.
   describe "test-unit projects" do
     it "runs testunit-success project with all tests passing" do
       result = run_fixture_tests("testunit-success", framework: :testunit)
