@@ -213,7 +213,10 @@ func (r *Runner) buildCommands(groups []testruntime.FileGroup) ([]*exec.Cmd, err
 		}
 
 		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Env = r.buildEnv(i, len(groups))
+		cmd.Env, err = r.buildEnv(i, len(groups))
+		if err != nil {
+			return nil, err
+		}
 		commands[i] = cmd
 	}
 
@@ -235,14 +238,18 @@ func (r *Runner) buildArgsPerWorkerCommands(ctx context.Context, args []string) 
 		cmdArgs = append(cmdArgs, args...)
 
 		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
-		cmd.Env = r.buildEnv(i, r.config.WorkerCount)
+		env, err := r.buildEnv(i, r.config.WorkerCount)
+		if err != nil {
+			return nil, err
+		}
+		cmd.Env = env
 		commands[i] = cmd
 	}
 
 	return commands, nil
 }
 
-func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
+func (r *Runner) buildEnv(workerIndex, totalGroups int) ([]string, error) {
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("%s=%d", EnvParallelTestGroups, totalGroups))
 
@@ -251,9 +258,17 @@ func (r *Runner) buildEnv(workerIndex, totalGroups int) []string {
 		env = append(env, EnvTestEnvNumber+"="+testEnvNumber)
 	}
 
+	if r.job.Framework.DefaultEnv != nil {
+		frameworkEnv, err := r.job.Framework.DefaultEnv(r.config)
+		if err != nil {
+			return nil, err
+		}
+		env = append(env, frameworkEnv...)
+	}
+
 	env = append(env, r.job.Env...)
 
-	return env
+	return env, nil
 }
 
 func (r *Runner) printSummary(workerCount int) {
@@ -338,8 +353,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 
 	parser := r.job.Framework.Parser()
 	collector := NewTestCollector()
-	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
-	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, r.job.Framework.Name != "minitest")
+	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx)
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
 

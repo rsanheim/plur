@@ -70,7 +70,7 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 				collector.suiteInfo.LoadTime = loadTime
 			}
 		}
-	case types.RawOutput:
+	case types.RawOutput, types.TestStdout:
 		// Handle special formatted notifications
 		switch v := n.(type) {
 		case types.FormattedFailuresNotification:

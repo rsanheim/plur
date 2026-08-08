@@ -2,6 +2,7 @@ package framework
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/rsanheim/plur/config"
@@ -22,6 +23,7 @@ type Framework struct {
 	Name           string
 	Parser         func() types.TestOutputParser
 	DefaultArgs    func(*config.GlobalConfig) ([]string, error)
+	DefaultEnv     func(*config.GlobalConfig) ([]string, error)
 	DetectPatterns []string
 	TargetMode     TargetMode
 }
@@ -37,6 +39,7 @@ var registry = map[string]Framework{
 	"minitest": {
 		Name:           "minitest",
 		Parser:         minitest.NewOutputParser,
+		DefaultEnv:     minitestDefaultEnv,
 		DetectPatterns: []string{"**/*_test.rb"},
 		TargetMode:     TargetModeRubyRequire,
 	},
@@ -80,6 +83,27 @@ func DetectPatterns(name string) []string {
 		return nil
 	}
 	return fw.DetectPatterns
+}
+
+// minitestDefaultEnv injects the embedded reporter via RUBYOPT rather than
+// argv: it survives any job cmd (bundle exec ruby, bin/rails test, rake) and
+// registers through Minitest.extensions, which works on minitest 5 and 6
+// alike. Appends to any existing RUBYOPT so bundler et al are preserved.
+func minitestDefaultEnv(cfg *config.GlobalConfig) ([]string, error) {
+	if cfg == nil || cfg.ConfigPaths == nil {
+		return nil, fmt.Errorf("config paths are required for minitest reporter")
+	}
+
+	reporterPath, err := minitest.GetReporterPath(cfg.ConfigPaths.FormatterDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize minitest reporter: %w", err)
+	}
+
+	rubyopt := "-r" + reporterPath
+	if existing := os.Getenv("RUBYOPT"); existing != "" {
+		rubyopt = existing + " " + rubyopt
+	}
+	return []string{"RUBYOPT=" + rubyopt}, nil
 }
 
 func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {

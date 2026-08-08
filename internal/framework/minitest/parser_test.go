@@ -2,481 +2,200 @@ package minitest
 
 import (
 	"testing"
+	"time"
 
 	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestOutputParser_BasicFlow(t *testing.T) {
-	assert := assert.New(t)
-	parser := &outputParser{}
+func TestParseLine_SuiteStarted(t *testing.T) {
+	parser := NewOutputParser()
 
-	// Suite starts
-	notifications, _ := parser.ParseLine("# Running:")
-	assert.Len(notifications, 1)
-	assert.Equal(types.SuiteStarted, notifications[0].GetEvent())
+	notifications, consumed := parser.ParseLine(`PLUR_JSON:{"type":"suite_started"}`)
 
-	// Progress indicators
-	notifications, _ = parser.ParseLine("...")
-	assert.Len(notifications, 3)
-
-	// Ignore "Finished in" line
-	notifications, _ = parser.ParseLine("Finished in 0.001234s, 2430.1337 runs/s")
-	assert.Empty(notifications)
-
-	// Summary line
-	notifications, _ = parser.ParseLine("3 runs, 3 assertions, 0 failures, 0 errors, 0 skips")
-	assert.Len(notifications, 1) // Just suite finished (no failures)
-	assert.Equal(types.SuiteFinished, notifications[0].GetEvent())
+	assert.True(t, consumed)
+	require.Len(t, notifications, 1)
 	suite := notifications[0].(types.SuiteNotification)
-	assert.Equal(3, suite.TestCount)
-	assert.Equal(3, suite.AssertionCount)
-	assert.Equal(0, suite.ErrorCount)
+	assert.Equal(t, types.SuiteStarted, suite.Event)
+	assert.Greater(t, suite.LoadTime, time.Duration(0))
 }
 
-func TestOutputParser_SummaryIncludesErrors(t *testing.T) {
-	assert := assert.New(t)
-	parser := &outputParser{}
-
-	notifications, _ := parser.ParseLine("3 runs, 4 assertions, 1 failure, 2 errors, 0 skips")
-	assert.Len(notifications, 1)
-	suite := notifications[0].(types.SuiteNotification)
-	assert.Equal(types.SuiteFinished, suite.Event)
-	assert.Equal(3, suite.TestCount)
-	assert.Equal(4, suite.AssertionCount)
-	assert.Equal(1, suite.FailureCount)
-	assert.Equal(2, suite.ErrorCount)
-	assert.Equal(0, suite.PendingCount)
-}
-
-func TestOutputParser_SummaryWithErrorsOnly(t *testing.T) {
-	assert := assert.New(t)
-	parser := &outputParser{}
-
-	notifications, _ := parser.ParseLine("3 runs, 4 assertions, 0 failures, 2 errors, 0 skips")
-	assert.Len(notifications, 1)
-	suite := notifications[0].(types.SuiteNotification)
-	assert.Equal(types.SuiteFinished, suite.Event)
-	assert.Equal(3, suite.TestCount)
-	assert.Equal(4, suite.AssertionCount)
-	assert.Equal(0, suite.FailureCount)
-	assert.Equal(2, suite.ErrorCount)
-	assert.Equal(0, suite.PendingCount)
-}
-
-func TestOutputParser_ProgressParsing(t *testing.T) {
-	t.Run("all passing", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{}
-		notifications, _ := parser.ParseLine("...")
-
-		// Should create 3 progress events
-		assert.Len(notifications, 3)
-		for i, n := range notifications {
-			assert.Equal(types.Progress, n.GetEvent())
-			pe := n.(types.ProgressEvent)
-			assert.Equal(".", pe.Character)
-			assert.Equal(i, pe.Index)
-		}
-
-		// Progress count should be updated
-		assert.Equal(3, parser.progressCount)
-	})
-
-	t.Run("mixed results", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{}
-		notifications, _ := parser.ParseLine("..F.F")
-
-		// Should create 5 progress events
-		assert.Len(notifications, 5)
-
-		// Check each progress event
-		assert.Equal(".", notifications[0].(types.ProgressEvent).Character)
-		assert.Equal(".", notifications[1].(types.ProgressEvent).Character)
-		assert.Equal("F", notifications[2].(types.ProgressEvent).Character)
-		assert.Equal(".", notifications[3].(types.ProgressEvent).Character)
-		assert.Equal("F", notifications[4].(types.ProgressEvent).Character)
-
-		// Progress count
-		assert.Equal(5, parser.progressCount)
-	})
-
-	t.Run("with errors and skips", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{}
-		notifications, _ := parser.ParseLine(".FES")
-
-		assert.Len(notifications, 4)
-		assert.Equal(".", notifications[0].(types.ProgressEvent).Character)
-		assert.Equal("F", notifications[1].(types.ProgressEvent).Character)
-		assert.Equal("E", notifications[2].(types.ProgressEvent).Character)
-		assert.Equal("S", notifications[3].(types.ProgressEvent).Character)
-
-		// Check indices
-		assert.Equal(0, notifications[0].(types.ProgressEvent).Index)
-		assert.Equal(1, notifications[1].(types.ProgressEvent).Index)
-		assert.Equal(2, notifications[2].(types.ProgressEvent).Index)
-		assert.Equal(3, notifications[3].(types.ProgressEvent).Index)
-	})
-}
-
-func TestOutputParser_FailureDetailMatching(t *testing.T) {
-	assert := assert.New(t)
-	parser := &outputParser{}
-
-	// Parse first failure header - should start collecting
-	notifications, _ := parser.ParseLine("  1) Failure:")
-	assert.Empty(notifications)
-	assert.True(parser.collectingFailures)
-
-	// Parse failure details
-	notifications, _ = parser.ParseLine("MixedResultsTest#test_email_validation [test/mixed_results_test.rb:54]:")
-	assert.Empty(notifications) // Still accumulating
-
-	// Parse failure message
-	notifications, _ = parser.ParseLine("Expected false to be truthy.")
-	assert.Empty(notifications) // Still accumulating
-
-	// Empty line
-	notifications, _ = parser.ParseLine("")
-	assert.Empty(notifications) // Still accumulating
-
-	// Summary line triggers extraction
-	notifications, _ = parser.ParseLine("5 runs, 5 assertions, 2 failures, 0 errors, 0 skips")
-	assert.Len(notifications, 2) // 1 failure TestCaseNotification + 1 SuiteNotification
-
-	// Check that failures were extracted
-	assert.Len(parser.failures, 1)
-	failure := parser.failures[0]
-	assert.Equal(types.TestFailed, failure.Event)
-	assert.Equal("MixedResultsTest#test_email_validation", failure.TestID)
-	assert.Equal("MixedResultsTest#test_email_validation", failure.Description)
-	assert.Equal("test/mixed_results_test.rb:54", failure.Location)
-	assert.Equal("Expected false to be truthy.", failure.Exception.Message)
-}
-
-func TestOutputParser_BothSummaryFormats(t *testing.T) {
-	t.Run("runs format", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{}
-
-		// Standard minitest output uses "runs"
-		notifications, _ := parser.ParseLine("5 runs, 13 assertions, 0 failures, 0 errors, 0 skips")
-		assert.Len(notifications, 1)
-		suite := notifications[0].(types.SuiteNotification)
-		assert.Equal(types.SuiteFinished, suite.Event)
-		assert.Equal(5, suite.TestCount)
-		assert.Equal(13, suite.AssertionCount)
-		assert.Equal(0, suite.FailureCount)
-		assert.Equal(0, suite.ErrorCount)
-		assert.Equal(0, suite.PendingCount)
-	})
-
-	t.Run("tests format", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{}
-
-		// Minitest::Reporters output uses "tests"
-		notifications, _ := parser.ParseLine("2 tests, 2 assertions, 0 failures, 0 errors, 0 skips")
-		assert.Len(notifications, 1)
-		suite := notifications[0].(types.SuiteNotification)
-		assert.Equal(types.SuiteFinished, suite.Event)
-		assert.Equal(2, suite.TestCount)
-		assert.Equal(2, suite.AssertionCount)
-		assert.Equal(0, suite.FailureCount)
-		assert.Equal(0, suite.ErrorCount)
-		assert.Equal(0, suite.PendingCount)
-	})
-
-	t.Run("singular forms", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{}
-
-		// Test singular "run"
-		notifications, _ := parser.ParseLine("1 run, 1 assertion, 0 failures, 0 errors, 0 skips")
-		assert.Len(notifications, 1)
-
-		// Test singular "test"
-		notifications, _ = parser.ParseLine("1 test, 1 assertion, 1 failure, 0 errors, 0 skips")
-		assert.Len(notifications, 1)
-		suite := notifications[0].(types.SuiteNotification)
-		assert.Equal(1, suite.TestCount)
-		assert.Equal(1, suite.AssertionCount)
-		assert.Equal(1, suite.FailureCount)
-		assert.Equal(0, suite.ErrorCount)
-	})
-}
-
-func TestOutputParser_FullIntegration(t *testing.T) {
-	assert := assert.New(t)
-	parser := &outputParser{}
-
-	lines := []string{
-		"Run options: --seed 58399",
-		"",
-		"# Running:",
-		"",
-		"FFF..F.",
-		"",
-		"Finished in 0.000586s, 11945.3917 runs/s, 18771.3298 assertions/s.",
-		"",
-		"  1) Failure:",
-		"MixedResultsTest#test_display_name_failure [test/mixed_results_test.rb:46]:",
-		`Expected: "john doe"`,
-		`  Actual: "JOHN DOE"`,
-		"",
-		"  2) Failure:",
-		"MixedResultsTest#test_type_error_will_fail [test/mixed_results_test.rb:70]:",
-		`Expected: "25"`,
-		`  Actual: 25`,
-		"",
-		"  3) Failure:",
-		"MixedResultsTest#test_email_validation_mixed [test/mixed_results_test.rb:54]:",
-		"Expected false to be truthy.",
-		"",
-		"  4) Failure:",
-		"MixedResultsTest#test_nil_handling_error [test/mixed_results_test.rb:60]:",
-		`Expected: ""`,
-		`  Actual: nil`,
-		"",
-		"7 runs, 11 assertions, 4 failures, 0 errors, 0 skips",
-	}
-
-	var allNotifications []types.TestNotification
-	var progressEvents []types.ProgressEvent
-	var testCases []types.TestCaseNotification
-
-	for _, line := range lines {
-		notifications, _ := parser.ParseLine(line)
-		for _, n := range notifications {
-			allNotifications = append(allNotifications, n)
-			if pe, ok := n.(types.ProgressEvent); ok {
-				progressEvents = append(progressEvents, pe)
-			} else if tc, ok := n.(types.TestCaseNotification); ok {
-				testCases = append(testCases, tc)
-			}
-		}
-	}
-
-	// Should have:
-	// 1 suite start
-	// 7 progress events (from "FFF..F.")
-	// 4 failure TestCaseNotifications
-	// 1 suite finish
-	// Total = 13 notifications
-	assert.Len(allNotifications, 13)
-
-	// Check progress events
-	assert.Len(progressEvents, 7)
-	// Progress line was "FFF..F."
-	assert.Equal("F", progressEvents[0].Character)
-	assert.Equal("F", progressEvents[1].Character)
-	assert.Equal("F", progressEvents[2].Character)
-	assert.Equal(".", progressEvents[3].Character)
-	assert.Equal(".", progressEvents[4].Character)
-	assert.Equal("F", progressEvents[5].Character)
-	assert.Equal(".", progressEvents[6].Character)
-
-	// Check test case notifications - we now emit individual failure notifications
-	assert.Len(testCases, 4) // 4 failure notifications
-
-	// Check that failures were extracted and stored in parser
-	if len(parser.failures) != 4 {
-		t.Logf("Expected 4 failures, got %d", len(parser.failures))
-		for i, f := range parser.failures {
-			t.Logf("Failure %d: %s", i, f.TestID)
-		}
-	}
-	assert.Len(parser.failures, 4) // 4 failures extracted by ExtractFailures
-
-	// Check suite summary
-	var suite types.SuiteNotification
-	for _, n := range allNotifications {
-		if s, ok := n.(types.SuiteNotification); ok && s.Event == types.SuiteFinished {
-			suite = s
-			break
-		}
-	}
-	assert.Equal(7, suite.TestCount)
-	assert.Equal(11, suite.AssertionCount)
-	assert.Equal(4, suite.FailureCount)
-	assert.Equal(0, suite.ErrorCount)
-	assert.Equal(0, suite.PendingCount)
-}
-
-func TestNotificationToProgress(t *testing.T) {
-	parser := &outputParser{}
-
+func TestParseLine_TestResults(t *testing.T) {
 	tests := []struct {
-		char     string
-		wantType string
-	}{
-		{".", "dot"},
-		{"F", "failure"},
-		{"E", "error_progress"},
-		{"S", "pending"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.char, func(t *testing.T) {
-			event := types.ProgressEvent{Event: types.Progress, Character: tt.char}
-			gotType, ok := parser.NotificationToProgress(event)
-			assert.True(t, ok)
-			assert.Equal(t, tt.wantType, gotType)
-		})
-	}
-}
-
-func TestCountLeadingProgressChars(t *testing.T) {
-	tests := []struct {
+		name     string
 		line     string
-		expected int
+		event    types.TestEvent
+		status   string
+		progress string
 	}{
-		{"..in test_titleize", 2},
-		{"...in test_addition", 3},
-		{"....", 4},
-		{"in test_titleize", 0},
-		{"", 0},
-		{"F.text", 2},
-		{".FES", 4},
-		{"...", 3},
-		{".hello", 1},
-		{"  ..dots after spaces", 0},
-		{"Finished in 0.001s", 1},
+		{
+			name:     "passing test",
+			line:     `PLUR_JSON:{"type":"test_result","code":".","id":"FooTest#test_pass","file_path":"test/foo_test.rb","line_number":5,"run_time":0.25,"assertions":2}`,
+			event:    types.TestPassed,
+			status:   "passed",
+			progress: "dot",
+		},
+		{
+			name:     "failing test",
+			line:     `PLUR_JSON:{"type":"test_result","code":"F","id":"FooTest#test_fail","file_path":"test/foo_test.rb","line_number":9,"run_time":0.25,"assertions":1}`,
+			event:    types.TestFailed,
+			status:   "failed",
+			progress: "failure",
+		},
+		{
+			name:     "erroring test",
+			line:     `PLUR_JSON:{"type":"test_result","code":"E","id":"FooTest#test_boom","file_path":"test/foo_test.rb","line_number":13,"run_time":0.25,"assertions":0}`,
+			event:    types.TestFailed,
+			status:   "error",
+			progress: "error_progress",
+		},
+		{
+			name:     "skipped test",
+			line:     `PLUR_JSON:{"type":"test_result","code":"S","id":"FooTest#test_skip","file_path":"test/foo_test.rb","line_number":17,"run_time":0.25,"assertions":0}`,
+			event:    types.TestPending,
+			status:   "skipped",
+			progress: "pending",
+		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.line, func(t *testing.T) {
-			assert.Equal(t, tt.expected, countLeadingProgressChars(tt.line))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			parser := NewOutputParser()
+
+			notifications, consumed := parser.ParseLine(tc.line)
+
+			assert.True(t, consumed)
+			require.Len(t, notifications, 1)
+			test := notifications[0].(types.TestCaseNotification)
+			assert.Equal(t, tc.event, test.Event)
+			assert.Equal(t, tc.status, test.Status)
+			assert.Equal(t, "test/foo_test.rb", test.FilePath)
+			assert.Equal(t, 250*time.Millisecond, test.Duration)
+
+			progress, isProgress := parser.NotificationToProgress(test)
+			assert.True(t, isProgress)
+			assert.Equal(t, tc.progress, progress)
 		})
 	}
 }
 
-func TestOutputParser_MixedProgressLines(t *testing.T) {
-	t.Run("leading dots with puts output", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{}
+func TestParseLine_TestResultCarriesIdentityAndLocation(t *testing.T) {
+	parser := NewOutputParser()
 
-		// Set up running phase
-		parser.ParseLine("# Running:")
+	line := `PLUR_JSON:{"type":"test_result","code":".","id":"FooTest#test_pass","file_path":"test/foo_test.rb","line_number":5,"run_time":0.01,"assertions":2}`
+	notifications, _ := parser.ParseLine(line)
 
-		notifications, consumed := parser.ParseLine("..in test_titleize")
-		assert.False(consumed, "line should not be consumed so it goes to rawOutput")
-		assert.Len(notifications, 2)
-		assert.Equal(".", notifications[0].(types.ProgressEvent).Character)
-		assert.Equal(0, notifications[0].(types.ProgressEvent).Index)
-		assert.Equal(".", notifications[1].(types.ProgressEvent).Character)
-		assert.Equal(1, notifications[1].(types.ProgressEvent).Index)
-		assert.Equal(2, parser.progressCount)
-	})
-
-	t.Run("mixed line then pure dots", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{inRunningPhase: true}
-
-		parser.ParseLine("..in test_addition")
-		notifications, _ := parser.ParseLine("....")
-
-		assert.Len(notifications, 4)
-		assert.Equal(6, parser.progressCount) // 2 from mixed + 4 from pure
-	})
-
-	t.Run("not extracted outside running phase", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{} // inRunningPhase is false
-
-		notifications, consumed := parser.ParseLine("..in test_titleize")
-		assert.False(consumed)
-		assert.Empty(notifications)
-	})
-
-	t.Run("no leading progress chars", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{inRunningPhase: true}
-
-		notifications, _ := parser.ParseLine("in test_titleize")
-		assert.Empty(notifications)
-	})
-
-	t.Run("Finished in line does not extract F as progress", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{inRunningPhase: true}
-
-		notifications, _ := parser.ParseLine("Finished in 0.001234s, 2430.1337 runs/s")
-		assert.Empty(notifications)
-		assert.False(parser.inRunningPhase)
-	})
-
-	t.Run("inRunningPhase set by # Running: and cleared by failure header", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{}
-
-		assert.False(parser.inRunningPhase)
-
-		parser.ParseLine("# Running:")
-		assert.True(parser.inRunningPhase)
-
-		parser.ParseLine("  1) Failure:")
-		assert.False(parser.inRunningPhase)
-	})
-
-	t.Run("inRunningPhase cleared by summary line", func(t *testing.T) {
-		assert := assert.New(t)
-		parser := &outputParser{inRunningPhase: true}
-
-		parser.ParseLine("3 runs, 3 assertions, 0 failures, 0 errors, 0 skips")
-		assert.False(parser.inRunningPhase)
-	})
+	require.Len(t, notifications, 1)
+	test := notifications[0].(types.TestCaseNotification)
+	assert.Equal(t, "FooTest#test_pass", test.TestID)
+	assert.Equal(t, "FooTest#test_pass", test.FullDescription)
+	assert.Equal(t, "test/foo_test.rb:5", test.Location)
+	assert.Equal(t, 5, test.LineNumber)
 }
 
-func TestOutputParser_FullIntegrationWithMixedProgress(t *testing.T) {
-	assert := assert.New(t)
-	parser := &outputParser{}
+func TestParseLine_TestResultWithoutSourceLocation(t *testing.T) {
+	// Dynamically defined tests can lack a resolvable source_location; the
+	// reporter then omits file_path and the tracker skips the test.
+	parser := NewOutputParser()
 
-	lines := []string{
-		"Run options: --seed 58399",
-		"",
+	line := `PLUR_JSON:{"type":"test_result","code":".","id":"EvalTest#test_dynamic","file_path":null,"line_number":null,"run_time":0.01,"assertions":1}`
+	notifications, consumed := parser.ParseLine(line)
+
+	assert.True(t, consumed)
+	require.Len(t, notifications, 1)
+	test := notifications[0].(types.TestCaseNotification)
+	assert.Equal(t, "", test.FilePath)
+	assert.Equal(t, "", test.Location)
+}
+
+func TestParseLine_DumpFailures(t *testing.T) {
+	parser := NewOutputParser()
+
+	line := `PLUR_JSON:{"type":"dump_failures","formatted_output":"\n  ‽) Failure:\nFooTest#test_fail [test/foo_test.rb:10]:\nExpected: 1\n  Actual: 2\n"}`
+	notifications, consumed := parser.ParseLine(line)
+
+	assert.True(t, consumed)
+	require.Len(t, notifications, 1)
+	failures := notifications[0].(types.FormattedFailuresNotification)
+	assert.Contains(t, failures.Content, "‽) Failure:")
+	assert.Contains(t, failures.Content, "FooTest#test_fail [test/foo_test.rb:10]:")
+}
+
+func TestParseLine_Summary(t *testing.T) {
+	parser := NewOutputParser()
+
+	line := `PLUR_JSON:{"type":"summary","count":9,"assertions":8,"failures":2,"errors":1,"skips":1}`
+	notifications, consumed := parser.ParseLine(line)
+
+	assert.True(t, consumed)
+	require.Len(t, notifications, 1)
+	suite := notifications[0].(types.SuiteNotification)
+	assert.Equal(t, types.SuiteFinished, suite.Event)
+	assert.Equal(t, 9, suite.TestCount)
+	assert.Equal(t, 8, suite.AssertionCount)
+	assert.Equal(t, 2, suite.FailureCount)
+	assert.Equal(t, 1, suite.ErrorCount)
+	assert.Equal(t, 1, suite.PendingCount)
+}
+
+func TestParseLine_BareLinesAreTestOutput(t *testing.T) {
+	// With minitest's reporters replaced, anything without the row prefix is
+	// test-written stdout - including lines that look like progress or
+	// minitest's own prose.
+	parser := NewOutputParser()
+
+	for _, line := range []string{
+		"OUT_MID_RUN",
+		"...",
+		"..in test_foo",
 		"# Running:",
-		"",
-		"..in test_titleize",
-		"..in test_addition",
-		"....",
-		"",
-		"Finished in 0.001234s, 2430.1337 runs/s, 4860.2674 assertions/s.",
-		"",
-		"8 runs, 23 assertions, 0 failures, 0 errors, 0 skips",
-	}
-
-	var progressEvents []types.ProgressEvent
-
-	for _, line := range lines {
-		notifications, _ := parser.ParseLine(line)
-		for _, n := range notifications {
-			if pe, ok := n.(types.ProgressEvent); ok {
-				progressEvents = append(progressEvents, pe)
-			}
-		}
-	}
-
-	// Should have 8 progress events total: 2 + 2 + 4
-	assert.Len(progressEvents, 8)
-	assert.Equal(8, parser.progressCount)
-
-	// All should be dots
-	for i, pe := range progressEvents {
-		assert.Equal(".", pe.Character)
-		assert.Equal(i, pe.Index, "progress index should be sequential")
+		"3 runs, 3 assertions, 0 failures, 0 errors, 0 skips",
+		"  1) Failure:",
+	} {
+		notifications, consumed := parser.ParseLine(line)
+		assert.False(t, consumed, "line %q must not be consumed", line)
+		assert.Empty(t, notifications, "line %q must produce no notifications", line)
 	}
 }
 
-func TestOutputParser_FormatSummaryUsesAssertionAndErrorCounts(t *testing.T) {
-	parser := &outputParser{}
+func TestParseLine_MalformedRowFallsBackToRawOutput(t *testing.T) {
+	// A test printing the prefix itself must not crash the parser or forge
+	// notifications; the line falls through as ordinary test output.
+	parser := NewOutputParser()
 
-	suite := &types.SuiteNotification{
-		AssertionCount: 23,
-		ErrorCount:     2,
-	}
-	summary := parser.FormatSummary(suite, 8, 1, 0, 1.2345, 0)
-	assert.Contains(t, summary, "8 runs, 23 assertions, 1 failure, 2 errors, 0 skips")
+	notifications, consumed := parser.ParseLine("PLUR_JSON:not json at all")
+
+	assert.False(t, consumed)
+	assert.Empty(t, notifications)
+}
+
+func TestParseLine_UnknownRowTypeIsConsumed(t *testing.T) {
+	// Forward compatibility: rows from a newer reporter are plur-internal,
+	// never test output.
+	parser := NewOutputParser()
+
+	notifications, consumed := parser.ParseLine(`PLUR_JSON:{"type":"telemetry"}`)
+
+	assert.True(t, consumed)
+	assert.Empty(t, notifications)
+}
+
+func TestFormatSummary(t *testing.T) {
+	parser := NewOutputParser()
+
+	t.Run("pluralizes counts", func(t *testing.T) {
+		suite := &types.SuiteNotification{AssertionCount: 11, ErrorCount: 1}
+		summary := parser.FormatSummary(suite, 12, 2, 1, 1.5, 0.2)
+
+		assert.Contains(t, summary, "12 runs, 11 assertions, 2 failures, 1 error, 1 skip")
+		assert.Contains(t, summary, "Finished in 1.5 seconds")
+	})
+
+	t.Run("singular counts", func(t *testing.T) {
+		suite := &types.SuiteNotification{AssertionCount: 1}
+		summary := parser.FormatSummary(suite, 1, 1, 0, 0.5, 0.1)
+
+		assert.Contains(t, summary, "1 run, 1 assertion, 1 failure, 0 errors, 0 skips")
+	})
 }

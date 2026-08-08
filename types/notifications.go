@@ -22,7 +22,8 @@ const (
 	SuiteStarted  TestEvent = "suite_started"
 	SuiteFinished TestEvent = "suite_finished"
 	RawOutput     TestEvent = "raw_output"
-	Progress      TestEvent = "progress" // Progress indicator for real-time display
+	TestStdout    TestEvent = "test_stdout" // Test-written stdout split off a consumed line; streamed live
+	Progress      TestEvent = "progress"    // Progress indicator for real-time display
 )
 
 // TestNotification is the interface that all notifications implement
@@ -82,7 +83,7 @@ func (n SuiteNotification) GetTestID() string   { return "" } // Suite events do
 
 // OutputNotification represents raw output that doesn't match patterns
 type OutputNotification struct {
-	Event   TestEvent // Always RawOutput
+	Event   TestEvent // RawOutput, or TestStdout for output split off a consumed line
 	Content string
 }
 

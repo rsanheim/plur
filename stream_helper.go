@@ -41,7 +41,6 @@ func streamTestOutput(
 	collector *TestCollector,
 	outputChan chan<- OutputMessage,
 	workerIndex int,
-	streamStdout bool, // Only stream unconsumed stdout for RSpec (JSON makes it safe)
 ) {
 	var wg sync.WaitGroup
 
@@ -85,18 +84,29 @@ func streamTestOutput(
 
 				// Add all notifications to collector (ProgressEvents will be ignored)
 				collector.AddNotification(notification)
+
+				// Test output the parser split off a consumed line (e.g. a
+				// partial write glued to a structured row) still streams live
+				if notification.GetEvent() == types.TestStdout && outputChan != nil {
+					if out, ok := notification.(types.OutputNotification); ok {
+						outputChan <- OutputMessage{
+							Type:        "stdout",
+							Content:     out.Content,
+							CurrentFile: parser.CurrentFile(),
+						}
+					}
+				}
 			}
 
-			// If line wasn't consumed by parser, add it as raw output
+			// If line wasn't consumed by parser, it's test-written output:
+			// collect it and stream it in real-time (structured rows carry
+			// everything the frameworks themselves emit)
 			if !consumed {
 				collector.AddNotification(types.OutputNotification{
 					Event:   types.RawOutput,
 					Content: line,
 				})
-				// Stream stdout in real-time for RSpec (JSON formatter makes this safe)
-				// Don't stream for Minitest - it returns consumed=false for everything,
-				// so streaming would duplicate all output
-				if outputChan != nil && streamStdout {
+				if outputChan != nil {
 					outputChan <- OutputMessage{
 						Type:        "stdout",
 						Content:     line,

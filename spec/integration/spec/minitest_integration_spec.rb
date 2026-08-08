@@ -10,21 +10,22 @@ require_relative "../../spec_helper"
 #
 # 12 tests: 8 pass, 2 fail, 1 error, 1 skip. Tokens written to stdout during
 # the run avoid the characters ".FES" so progress characters can be counted
-# exactly in raw minitest output.
+# exactly even when test output interleaves with the progress stream.
 #
 # minitest-failures is kept for the one thing outcomes cannot express: failures
 # in more than one file, so a parallel run has two *failing* workers to
-# aggregate.
+# aggregate. minitest-reporters pins minitest 5.x (outcomes is on 6.x) and
+# proves plur's reporter wins the composite against minitest-reporters.
 #
 # Determinism: minitest randomizes test order per run, and plur cannot
 # currently forward --seed to the multi-file run form, so every expectation
-# here holds for ANY order. Exact progress counts are asserted only on the
-# files whose stdout writes are all newline-terminated (progress characters
-# then always lead their line); the unterminated-print file is covered by an
-# order-independent invariant instead.
+# here holds for ANY order. Test stdout streams live, so progress characters
+# and output lines interleave order-dependently; counts are asserted across
+# the whole progress region (everything before the failure details/summary)
+# rather than on any single line.
 RSpec.describe "Minitest integration" do
   before(:all) do
-    %w[minitest-outcomes minitest-failures].each do |fixture|
+    %w[minitest-outcomes minitest-failures minitest-reporters].each do |fixture|
       chdir(project_fixture!(fixture)) do
         Bundler.with_unbundled_env do
           system("bundle check", out: File::NULL, err: File::NULL) ||
@@ -36,10 +37,14 @@ RSpec.describe "Minitest integration" do
 
   let(:project_dir) { project_fixture!("minitest-outcomes") }
 
-  # Occurrences of each progress character plur can render. Skips show as "*"
+  # Occurrences of each progress character plur can render, counted across the
+  # progress region (everything before failure details and the summary, which
+  # legitimately contain F/E/dots). Fixture stdout tokens avoid ".FES*" so
+  # interleaved test output cannot skew the counts. Skips show as "*"
   # (matching RSpec pending), never "S".
-  def alphabet(line)
-    %w[. F E S *].to_h { |char| [char, line.count(char)] }
+  def progress_alphabet(out)
+    region = out.split("\nFailures:").first.split("\nFinished in").first
+    %w[. F E S *].to_h { |char| [char, region.count(char)] }
   end
 
   # Reduces a run to the facts that must not depend on which runner printed
@@ -54,7 +59,7 @@ RSpec.describe "Minitest integration" do
   end
 
   context "outcomes and progress" do
-    it "reports a green run with a full progress line and RSpec-style duration" do
+    it "reports a green run with full progress, live stdout, and RSpec-style duration" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           # No --use: this is the one real (non-dry-run) exercise of framework
@@ -65,18 +70,18 @@ RSpec.describe "Minitest integration" do
           expect(result.err).to include("plur version")
           expect(result.err).to include("Running 1 test [minitest]")
 
-          # Two of the five tests write to stdout mid-run, so their text lands
-          # on the same physical line as minitest's progress characters. All
-          # five dots still reach the first line of plur's output.
-          expect(result.out.split("\n").first).to eq("." * 5)
+          expect(progress_alphabet(result.out)).to eq(
+            "." => 5, "F" => 0, "E" => 0, "S" => 0, "*" => 0
+          )
           expect(result.out).to include("5 runs, 6 assertions, 0 failures, 0 errors, 0 skips")
 
           # Duration uses RSpec's "seconds" wording, not minitest's bare "Xs."
           expect(result.out).to match(/Finished in \d+(?:\.\d{1,5})? seconds/)
           expect(result.out).not_to match(/Finished in [\d.]+s\./)
 
-          # Passing workers' stdout is currently dropped entirely.
-          expect(result.out).not_to include("OUT_MID_RUN")
+          # Test stdout streams live, even on a passing run.
+          expect(result.out.scan("OUT_MID_RUN").length).to eq(1)
+          expect(result.out.scan("OUT_GLOBAL_IO").length).to eq(1)
         end
       end
     end
@@ -96,14 +101,14 @@ RSpec.describe "Minitest integration" do
       end
     end
 
-    it "renders every outcome type in the progress line with exact counts" do
+    it "renders every outcome type with exact progress counts" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "1", "--color=never",
             "test/passing_test.rb", "test/outcomes_test.rb", allow_error: true)
           expect(result).to be_failure
 
-          expect(alphabet(result.out.split("\n").first)).to eq(
+          expect(progress_alphabet(result.out)).to eq(
             "." => 5, "F" => 2, "E" => 1, "S" => 0, "*" => 1
           )
           expect(result.out).to include("9 runs, 8 assertions, 2 failures, 1 error, 1 skip")
@@ -111,26 +116,24 @@ RSpec.describe "Minitest integration" do
       end
     end
 
-    it "under-counts progress when an unterminated print swallows the line" do
+    it "counts every test even when an unterminated print shares its line" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "1", "--color=never", allow_error: true)
 
-          # 12 tests, but the unterminated `print` test's own progress dot is
-          # always glued to its output ("PARTIAL_APARTIAL_B.") and the current
-          # parser only extracts leading progress characters, so at least that
-          # dot is dropped - more when later silent tests glue onto the same
-          # line, which depends on the random order. A known limitation: when
-          # minitest output handling improves, this becomes exactly 12.
-          progress = result.out.split("\n").first
-          expect(progress).to match(/\A[.FES*]+\z/)
-          expect(progress.length).to be_between(1, 11)
+          # The unterminated `print` test's output lands on the same physical
+          # line as the reporter's structured row; the parser splits them, so
+          # neither the progress character nor the partial text is lost.
+          expect(progress_alphabet(result.out)).to eq(
+            "." => 8, "F" => 2, "E" => 1, "S" => 0, "*" => 1
+          )
+          expect(result.out).to include("PARTIAL_APARTIAL_B")
           expect(result.out).to include("12 runs, 11 assertions, 2 failures, 1 error, 1 skip")
         end
       end
     end
 
-    it "aggregates outcomes across parallel workers" do
+    it "aggregates outcomes across parallel workers with all stdout visible" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "3", "--color=never", allow_error: true)
@@ -138,11 +141,10 @@ RSpec.describe "Minitest integration" do
 
           expect(result.out).to include("12 runs, 11 assertions, 2 failures, 1 error, 1 skip")
 
-          # Stdout is currently shown only for failed workers: the failing
-          # worker's output survives, the passing workers' output is dropped.
+          # Every worker's stdout streams, passing and failing alike.
           expect(result.out).to include("OUT_B4_KABOOM")
-          expect(result.out).not_to include("OUT_MID_RUN")
-          expect(result.out).not_to include("PARTIAL_A")
+          expect(result.out).to include("OUT_MID_RUN")
+          expect(result.out).to include("PARTIAL_A")
         end
       end
     end
@@ -172,9 +174,10 @@ RSpec.describe "Minitest integration" do
 
           expect(result.out).to include("13 runs, 16 assertions, 6 failures, 1 error, 0 skips")
 
-          # Both failing workers' detail blocks survive. plur does not renumber
-          # minitest failures across workers, so each block starts at "1)".
-          expect(result.out.scan(/^ {2}1\) /).length).to eq(2)
+          # Both failing workers' detail blocks survive under one "Failures:"
+          # header, renumbered sequentially across workers.
+          expect(result.out).to include("Failures:")
+          expect(result.out.scan(/^ {2}(\d+)\) /).flatten).to eq(%w[1 2 3 4 5 6 7])
           expect(result.out).to include("MixedResultsTest#test_display_name_failure")
           expect(result.out).to include("ArrayOperationsTest#test_average_calculation_failure")
           expect(result.out).to include("ArrayOperationsTest#test_find_max_with_nil")
@@ -192,6 +195,25 @@ RSpec.describe "Minitest integration" do
           %w[OUT_MID_RUN OUT_GLOBAL_IO OUT_B4_KABOOM MULTI_1].each do |token|
             expect(result.out.scan(token).length).to eq(1), "expected #{token} exactly once"
           end
+        end
+      end
+    end
+  end
+
+  context "ecosystem coexistence" do
+    it "keeps structured reporting on minitest 5 with minitest-reporters installed" do
+      # The fixture's test_helper calls Minitest::Reporters.use!, which
+      # replaces the composite's reporters wholesale. plur re-asserts its
+      # reporter at CompositeReporter#start, after every plugin init, so its
+      # structured rows win regardless of load order - on minitest 5.x, the
+      # other supported major.
+      chdir(project_fixture!("minitest-reporters")) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
+          expect(result).to be_success
+
+          expect(progress_alphabet(result.out)["."]).to eq(11)
+          expect(result.out).to include("11 runs, 18 assertions, 0 failures, 0 errors, 0 skips")
         end
       end
     end
