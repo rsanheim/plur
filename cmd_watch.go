@@ -108,7 +108,10 @@ func reload(manager *watch.WatcherManager) error {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 
-	// Must cleanup before exec - defers won't run
+	// Must cleanup before exec - defers won't run. The job is a child of this
+	// pid, so exec'ing over it would leave the new image with a child it never
+	// waits on, which then lingers as a zombie.
+	watch.TerminateRunningJob()
 	manager.Stop()
 	resetTerminal()
 
@@ -218,6 +221,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		return err
 	}
 	defer manager.Stop()
+	defer watch.TerminateRunningJob()
 
 	var timeoutChan <-chan time.Time
 	if runCmd.Timeout > 0 {
@@ -263,11 +267,15 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			switch input {
 			case "":
 				fmt.Println("Running all tests...")
-				if err := watch.ExecuteJob(watch.JobRun{Job: selected.Job}, planner.CWD); err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
-				}
-				fmt.Println()
-				showPrompt()
+				// Run off the select loop so signals stay serviced while the
+				// job runs; ExecuteJob serializes against file-change runs.
+				go func() {
+					if err := watch.ExecuteJob(watch.JobRun{Job: selected.Job}, planner.CWD); err != nil {
+						fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
+					}
+					fmt.Println()
+					showPrompt()
+				}()
 			case "help":
 				printHelp()
 				showPrompt()

@@ -3,7 +3,9 @@ package watch
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/rsanheim/plur/internal/framework"
 	"github.com/stretchr/testify/assert"
@@ -143,4 +145,84 @@ func TestExecuteJob_EmptyCmdErrors(t *testing.T) {
 	err := ExecuteJob(JobRun{Job: framework.Job{Name: "broken"}}, t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `job "broken" must define a command`)
+}
+
+// A burst of saves must not put two suites on the same test database at once.
+func TestExecuteJob_RunsAreSerialized(t *testing.T) {
+	tmpDir := t.TempDir()
+	log := filepath.Join(tmpDir, "log")
+
+	// Each run brackets itself with start/end markers. Serialized runs produce
+	// strictly alternating pairs; any overlap interleaves them.
+	run := JobRun{
+		Job: framework.Job{
+			Name: "overlap-detector",
+			Cmd:  []string{"sh", "-c", "echo start >> " + log + "; sleep 0.2; echo end >> " + log},
+		},
+	}
+
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Go(func() {
+			assert.NoError(t, ExecuteJob(run, tmpDir))
+		})
+	}
+	wg.Wait()
+
+	content, err := os.ReadFile(log)
+	require.NoError(t, err)
+	assert.Equal(t, "start\nend\nstart\nend\nstart\nend\nstart\nend\n", string(content),
+		"jobs overlapped instead of running one at a time")
+}
+
+func TestTerminateRunningJob_StopsInFlightJob(t *testing.T) {
+	tmpDir := t.TempDir()
+	run := JobRun{
+		Job: framework.Job{Name: "sleeper", Cmd: []string{"sleep", "60"}},
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- ExecuteJob(run, tmpDir) }()
+
+	require.Eventually(t, func() bool { return currentProcess() != nil }, 5*time.Second, 10*time.Millisecond,
+		"job never started")
+
+	TerminateRunningJob()
+
+	select {
+	case err := <-done:
+		assert.Error(t, err, "a terminated job reports a non-zero exit")
+	case <-time.After(5 * time.Second):
+		t.Fatal("job outlived TerminateRunningJob")
+	}
+	assert.Nil(t, currentProcess(), "process handle is cleared once the job is reaped")
+}
+
+// Ruby test runners rescue Interrupt, so plur must escalate past SIGTERM.
+func TestTerminateRunningJob_KillsJobThatIgnoresSIGTERM(t *testing.T) {
+	tmpDir := t.TempDir()
+	run := JobRun{
+		Job: framework.Job{
+			Name: "stubborn",
+			Cmd:  []string{"sh", "-c", "trap '' TERM; sleep 60"},
+		},
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- ExecuteJob(run, tmpDir) }()
+
+	require.Eventually(t, func() bool { return currentProcess() != nil }, 5*time.Second, 10*time.Millisecond,
+		"job never started")
+
+	TerminateRunningJob()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("job survived the SIGKILL escalation")
+	}
+}
+
+func TestTerminateRunningJob_NoJobRunning(t *testing.T) {
+	assert.NotPanics(t, TerminateRunningJob)
 }
