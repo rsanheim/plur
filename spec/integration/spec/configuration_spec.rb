@@ -674,7 +674,7 @@ RSpec.describe "Configuration" do
     it "respects minitest job configuration" do
       minitest_config = config_fixture_dir.join("minitest.toml")
 
-      _, error, status = Dir.chdir(project_fixture("minitest-success")) do
+      _, error, status = Dir.chdir(project_fixture("minitest-outcomes")) do
         Open3.capture3(
           {"PLUR_CONFIG_FILE" => minitest_config.to_s},
           plur_binary, "spec", "--dry-run"
@@ -683,7 +683,7 @@ RSpec.describe "Configuration" do
 
       expect(status).to be_success
       expect(error).to include("bundle exec ruby -Itest")
-      expect(error).to match(/calculator_test/)
+      expect(error).to match(/passing_test/)
     end
   end
 
