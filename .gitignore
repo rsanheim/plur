@@ -57,6 +57,7 @@ vendor/
 .DS_Store
 .codex/
 .claude/scheduled_tasks.lock
+opencode.json
 
 # Test artifacts
 test-pipes/
