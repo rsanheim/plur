@@ -32,10 +32,13 @@ module PlurWatchHelper
   # @param debounce [Integer] debounce delay in milliseconds
   # @param env [Hash] environment variables
   # @param until_output [String, nil] kill process when this string appears in output
+  # @param until_condition [#call, nil] receives the WatchProcess each poll; kill
+  #   the process when it returns truthy. Use for conditions until_output cannot
+  #   express, such as counting repeated output.
   # @param ready_dirs [Array<String>, Symbol, nil] watcher directories to wait for, or :detected to infer from startup logs
   # @return [WatchResult]
   def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT,
-    debounce: nil, env: {}, until_output: nil, ready_dirs: :detected, &block)
+    debounce: nil, env: {}, until_output: nil, until_condition: nil, ready_dirs: :detected, &block)
     block_fired = false
 
     capture_plur_watch_process(dir: dir, timeout: timeout, debounce: debounce, env: env) do |process|
@@ -47,6 +50,8 @@ module PlurWatchHelper
       end
 
       if until_output && (process.err.include?(until_output) || process.out.include?(until_output))
+        :terminate
+      elsif until_condition&.call(process)
         :terminate
       end
     end
