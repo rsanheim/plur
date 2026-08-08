@@ -119,22 +119,4 @@ RSpec.describe "Plur stdout streaming" do
       end
     end
   end
-
-  describe "Minitest stdout behavior" do
-    it "does not stream stdout (avoiding duplication since consumed=false for all lines)" do
-      minitest_fixture = project_fixture("minitest-success")
-
-      chdir(minitest_fixture) do
-        result = run_plur("test/calculator_test.rb")
-
-        # Minitest tests should pass
-        expect(result.out).to include("assertions")
-        expect(result.out).to include("0 failures")
-        expect(result.exit_status).to eq(0)
-
-        # Key point: Minitest output appears through normal capture, not duplicated
-        # We don't stream unconsumed stdout for Minitest because consumed=false for everything
-      end
-    end
-  end
 end

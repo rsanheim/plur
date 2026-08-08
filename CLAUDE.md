@@ -72,7 +72,7 @@ See [Configuration Documentation](docs/configuration.md#job-configuration) for f
 
 ### Common Fixes
 - **"watcher binary not found"** → Run `plur watch install` to install the binary
-- **Testing fixtures is cumbersome** → Use `plur -C fixtures/minitest-success` instead of `cd`
+- **Testing fixtures is cumbersome** → Use `plur -C fixtures/projects/minitest-outcomes` instead of `cd`
 - **Tests fail in rake but pass alone** → Use `bin/rake` not `rake`
 
 ### Temporary Files
