@@ -67,13 +67,9 @@ reports structured results to plur; test-written stdout streams through
 untouched. On minitest 6, where plugin loading is opt-in, plur's worker
 script calls `Minitest.load_plugins` itself.
 
-* Setting `MT_NO_PLUGINS=1` (minitest's own plugin opt-out) disables plur's
-  plugin too; plur then reports zero results while the suite's native output
-  streams through, with exit codes still reflecting the suite result.
-* Plugins that rewrite minitest's reporter set wholesale after plur's
-  (for example minitest-reporters via `Minitest::Reporters.use!`) take over
-  output the same way: their format streams through, plur's summary shows
-  zero observed tests, and exit codes remain correct.
+Setting `MT_NO_PLUGINS=1` (minitest's own plugin opt-out) disables plur's
+plugin too; plur then reports zero results while the suite's native output
+streams through, with exit codes still reflecting the suite result.
 
 ### Excluding Tests From Discovery
 

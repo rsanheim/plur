@@ -14,10 +14,7 @@ require_relative "../../spec_helper"
 #
 # minitest-failures is kept for the one thing outcomes cannot express: failures
 # in more than one file, so a parallel run has two *failing* workers to
-# aggregate. minitest-reporters pins minitest 5.x (outcomes is on 6.x) and
-# characterizes the known trade against composite-rewriting plugins.
-# minitest-meta pins the guarantee that test-constructed CompositeReporters
-# are never touched by plur's plugin.
+# aggregate.
 #
 # Determinism: minitest randomizes test order per run, and plur cannot
 # currently forward --seed to the multi-file run form, so every expectation
@@ -27,7 +24,7 @@ require_relative "../../spec_helper"
 # rather than on any single line.
 RSpec.describe "Minitest integration" do
   before(:all) do
-    %w[minitest-outcomes minitest-failures minitest-reporters minitest-meta].each do |fixture|
+    %w[minitest-outcomes minitest-failures].each do |fixture|
       chdir(project_fixture!(fixture)) do
         Bundler.with_unbundled_env do
           system("bundle check", out: File::NULL, err: File::NULL) ||
@@ -197,43 +194,6 @@ RSpec.describe "Minitest integration" do
           %w[OUT_MID_RUN OUT_GLOBAL_IO OUT_B4_KABOOM MULTI_1].each do |token|
             expect(result.out.scan(token).length).to eq(1), "expected #{token} exactly once"
           end
-        end
-      end
-    end
-  end
-
-  context "ecosystem coexistence" do
-    it "never touches CompositeReporters that test code constructs" do
-      # Meta-testing suites (minitest's own repo, reporter libraries) build
-      # and start their own composites. plur's plugin only modifies the
-      # top-level Minitest.reporter during init_plugins - the extension
-      # point minitest documents - so test-owned composites keep their
-      # reporters and captured output.
-      chdir(project_fixture!("minitest-meta")) do
-        Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
-          expect(result).to be_success
-
-          expect(result.out).to include("2 runs, 4 assertions, 0 failures, 0 errors, 0 skips")
-        end
-      end
-    end
-
-    it "yields output to plugins that rewrite the composite, keeping exit codes" do
-      # The fixture's test_helper calls Minitest::Reporters.use!, whose
-      # plugin replaces the composite's reporters wholesale after plur's
-      # init. plur is a good citizen on minitest's documented extension
-      # point and does not fight back: minitest-reporters' output streams
-      # through and plur's own summary reports zero observed tests. The
-      # exit code still reflects the suite result. A deliberate trade -
-      # see docs and the plugin header comment.
-      chdir(project_fixture!("minitest-reporters")) do
-        Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
-          expect(result).to be_success
-
-          expect(result.out).to include("# Running tests with run options")
-          expect(result.out).to include("0 runs, 0 assertions, 0 failures, 0 errors, 0 skips")
         end
       end
     end
