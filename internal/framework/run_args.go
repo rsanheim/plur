@@ -41,19 +41,22 @@ func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []
 	return args, nil
 }
 
-func appendMinitestRequireArgs(args []string, files []string) []string {
-	if len(files) <= 1 {
-		return append(args, files...)
-	}
+// appendMinitestRequireArgs loads the target files via an -e script rather
+// than script arguments, so the script can end with the plugin epilogue:
+// minitest 5.x discovers plur's plugin automatically inside Minitest.run,
+// but minitest 6 made plugin loading opt-in, so the worker asks for it via
+// the documented Minitest.load_plugins. Minitest.load is 6-only (added with
+// the opt-in redesign), which makes it the capability gate; on 5.x minitest
+// still owns plugin loading itself. MT_NO_PLUGINS is minitest's own opt-out
+// convention and doubles as plur's escape hatch.
+const minitestPluginEpilogue = `Minitest.load_plugins if defined?(Minitest) && Minitest.respond_to?(:load) && !ENV["MT_NO_PLUGINS"]`
 
+func appendMinitestRequireArgs(args []string, files []string) []string {
 	requires := make([]string, 0, len(files))
 	for _, file := range files {
-		testFile := strings.TrimPrefix(file, "test/")
-		testFile = strings.TrimSuffix(testFile, ".rb")
-		requires = append(requires, testFile)
+		requires = append(requires, `"`+file+`"`)
 	}
 
-	requireList := `"` + strings.Join(requires, `", "`) + `"`
-	script := `[` + requireList + `].each { |f| require f }`
+	script := `[` + strings.Join(requires, `, `) + `].each { |f| require File.expand_path(f) }; ` + minitestPluginEpilogue
 	return append(args, "-e", script)
 }

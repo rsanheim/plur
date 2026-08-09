@@ -37,7 +37,9 @@ func TestBuildRunArgsRSpecDefaults(t *testing.T) {
 }
 
 func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
-	cfg := &config.GlobalConfig{}
+	t.Setenv("PLUR_HOME", t.TempDir())
+
+	cfg := &config.GlobalConfig{ConfigPaths: config.InitConfigPaths()}
 	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
@@ -49,13 +51,16 @@ func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
 
 	expected := []string{
 		"bundle", "exec", "ruby", "-Itest",
-		"-e", `["foo_test", "bar_test"].each { |f| require f }`,
+		"-I" + cfg.ConfigPaths.RubyLibDir,
+		"-e", `["test/foo_test.rb", "test/bar_test.rb"].each { |f| require File.expand_path(f) }; ` + minitestPluginEpilogue,
 	}
 	assert.Equal(t, expected, args)
 }
 
 func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
-	cfg := &config.GlobalConfig{}
+	t.Setenv("PLUR_HOME", t.TempDir())
+
+	cfg := &config.GlobalConfig{ConfigPaths: config.InitConfigPaths()}
 	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
@@ -65,12 +70,18 @@ func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
 	args, err := j.BuildRunArgs([]string{"test/foo_test.rb"}, cfg, nil)
 	require.NoError(t, err)
 
-	expected := []string{"bundle", "exec", "ruby", "-Itest", "test/foo_test.rb"}
+	expected := []string{
+		"bundle", "exec", "ruby", "-Itest",
+		"-I" + cfg.ConfigPaths.RubyLibDir,
+		"-e", `["test/foo_test.rb"].each { |f| require File.expand_path(f) }; ` + minitestPluginEpilogue,
+	}
 	assert.Equal(t, expected, args)
 }
 
 func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
-	cfg := &config.GlobalConfig{}
+	t.Setenv("PLUR_HOME", t.TempDir())
+
+	cfg := &config.GlobalConfig{ConfigPaths: config.InitConfigPaths()}
 	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
@@ -80,12 +91,19 @@ func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 	args, err := j.BuildRunArgs([]string{"test/foo_test.rb"}, cfg, []string{"--seed", "1234"})
 	require.NoError(t, err)
 
-	expected := []string{"bundle", "exec", "ruby", "-Itest", "test/foo_test.rb", "--seed", "1234"}
+	expected := []string{
+		"bundle", "exec", "ruby", "-Itest",
+		"-I" + cfg.ConfigPaths.RubyLibDir,
+		"-e", `["test/foo_test.rb"].each { |f| require File.expand_path(f) }; ` + minitestPluginEpilogue,
+		"--seed", "1234",
+	}
 	assert.Equal(t, expected, args)
 }
 
 func TestBuildRunArgsMinitestRubyRequireWithExtraArgs(t *testing.T) {
-	cfg := &config.GlobalConfig{}
+	t.Setenv("PLUR_HOME", t.TempDir())
+
+	cfg := &config.GlobalConfig{ConfigPaths: config.InitConfigPaths()}
 	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
@@ -97,7 +115,8 @@ func TestBuildRunArgsMinitestRubyRequireWithExtraArgs(t *testing.T) {
 
 	expected := []string{
 		"bundle", "exec", "ruby", "-Itest",
-		"-e", `["foo_test", "bar_test"].each { |f| require f }`,
+		"-I" + cfg.ConfigPaths.RubyLibDir,
+		"-e", `["test/foo_test.rb", "test/bar_test.rb"].each { |f| require File.expand_path(f) }; ` + minitestPluginEpilogue,
 		"--seed", "1234",
 	}
 	assert.Equal(t, expected, args)

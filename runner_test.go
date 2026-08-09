@@ -177,13 +177,6 @@ func TestDryRunString(t *testing.T) {
 	})
 }
 
-func mustBuildEnv(t *testing.T, r *Runner, workerIndex, totalGroups int) []string {
-	t.Helper()
-	env, err := r.buildEnv(workerIndex, totalGroups)
-	require.NoError(t, err)
-	return env
-}
-
 func TestBuildEnv(t *testing.T) {
 	t.Run("parallel mode includes TEST_ENV_NUMBER", func(t *testing.T) {
 		cfg := &config.GlobalConfig{
@@ -192,7 +185,7 @@ func TestBuildEnv(t *testing.T) {
 		}
 		runner := &Runner{config: cfg}
 
-		env := mustBuildEnv(t, runner, 0, 4)
+		env := runner.buildEnv(0, 4)
 
 		// Should contain our env vars
 		assertEnvContains(t, env, "PARALLEL_TEST_GROUPS=4")
@@ -206,7 +199,7 @@ func TestBuildEnv(t *testing.T) {
 		}
 		runner := &Runner{config: cfg}
 
-		env := mustBuildEnv(t, runner, 0, 1)
+		env := runner.buildEnv(0, 1)
 
 		assertEnvContains(t, env, "PARALLEL_TEST_GROUPS=1")
 		assertEnvNotContains(t, env, "TEST_ENV_NUMBER=")
@@ -219,9 +212,9 @@ func TestBuildEnv(t *testing.T) {
 		}
 		runner := &Runner{config: cfg}
 
-		worker0 := mustBuildEnv(t, runner, 0, 3)
-		worker1 := mustBuildEnv(t, runner, 1, 3)
-		worker2 := mustBuildEnv(t, runner, 2, 3)
+		worker0 := runner.buildEnv(0, 3)
+		worker1 := runner.buildEnv(1, 3)
+		worker2 := runner.buildEnv(2, 3)
 
 		assertEnvContains(t, worker0, "TEST_ENV_NUMBER=1")
 		assertEnvContains(t, worker1, "TEST_ENV_NUMBER=2")
@@ -235,8 +228,8 @@ func TestBuildEnv(t *testing.T) {
 		}
 		runner := &Runner{config: cfg}
 
-		worker0 := mustBuildEnv(t, runner, 0, 3)
-		worker1 := mustBuildEnv(t, runner, 1, 3)
+		worker0 := runner.buildEnv(0, 3)
+		worker1 := runner.buildEnv(1, 3)
 
 		// First worker gets empty string when first-is-1 is false
 		assertEnvContains(t, worker0, "TEST_ENV_NUMBER=")
@@ -250,7 +243,7 @@ func TestBuildEnv(t *testing.T) {
 		}
 		runner := &Runner{config: cfg}
 
-		env := mustBuildEnv(t, runner, 0, 2)
+		env := runner.buildEnv(0, 2)
 
 		// Should have more than just our two vars (inherited from os.Environ())
 		assert.Greater(t, len(env), 2, "should inherit system environment")
@@ -438,7 +431,7 @@ func TestRunner_SerialModeNoTestEnvNumber(t *testing.T) {
 	require.NoError(t, err)
 
 	// In serial mode, buildEnv should NOT include TEST_ENV_NUMBER
-	env := mustBuildEnv(t, runner, 0, 1)
+	env := runner.buildEnv(0, 1)
 	assertEnvContains(t, env, "PARALLEL_TEST_GROUPS=1")
 	assertEnvNotContains(t, env, "TEST_ENV_NUMBER=")
 }
@@ -462,7 +455,7 @@ func TestRunner_GroupCountMatchesActualGroups(t *testing.T) {
 
 	// With 3 files and 10 workers requested, we should get 3 groups
 	// Each env should show PARALLEL_TEST_GROUPS=3
-	env := mustBuildEnv(t, runner, 0, 3)
+	env := runner.buildEnv(0, 3)
 	assertEnvContains(t, env, "PARALLEL_TEST_GROUPS=3")
 }
 

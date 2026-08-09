@@ -36,6 +36,7 @@ type ConfigPaths struct {
 	CacheDir     string
 	RuntimeDir   string
 	FormatterDir string
+	RubyLibDir   string // added to ruby $LOAD_PATH via -I for minitest plugin discovery
 }
 
 // InitConfigPaths initializes PLUR_HOME if necessary, as well as subdirs inside it.
@@ -61,8 +62,9 @@ func InitConfigPaths() *ConfigPaths {
 	cacheDir := filepath.Join(plurHome, "cache")
 	runtimeDir := filepath.Join(plurHome, "runtime")
 	formatterDir := filepath.Join(plurHome, "formatter")
+	rubyLibDir := filepath.Join(plurHome, "config", "ruby")
 
-	paths := []string{binDir, cacheDir, runtimeDir, formatterDir}
+	paths := []string{binDir, cacheDir, runtimeDir, formatterDir, rubyLibDir}
 	for _, path := range paths {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			fmt.Fprintf(os.Stderr, "Fatal error: failed to create %s directory: %v\n", path, err)
@@ -76,6 +78,7 @@ func InitConfigPaths() *ConfigPaths {
 		CacheDir:     cacheDir,
 		RuntimeDir:   runtimeDir,
 		FormatterDir: formatterDir,
+		RubyLibDir:   rubyLibDir,
 	}
 
 	return &configPaths

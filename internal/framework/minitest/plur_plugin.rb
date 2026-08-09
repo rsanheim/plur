@@ -1,26 +1,20 @@
 # frozen_string_literal: true
 
-# Plur's minitest integration, loaded via RUBYOPT before the test process
-# starts. Replaces minitest's reporters with one that emits structured
-# PLUR_JSON rows for plur to parse. With ProgressReporter and SummaryReporter
-# out of the composite, nothing else writes progress characters to stdout, so
-# any bare line on the pipe is test-written output by elimination.
+# Plur's minitest plugin, written to $PLUR_HOME/config/ruby/minitest/ and
+# discovered by minitest's own plugin loading (Gem.find_files searches the
+# $LOAD_PATH plur extends with -I). Minitest requires this file itself, so
+# Minitest is already fully loaded here and nothing needs requiring early.
 #
-# Inert when minitest isn't available (test-unit projects, plain ruby
-# subprocesses spawned by tests).
-begin
-  require "minitest"
-rescue LoadError
-  return
-end
-
+# On minitest 5.x discovery happens automatically inside Minitest.run; on
+# minitest 6 plugin loading is opt-in, so plur's worker script calls the
+# documented Minitest.load_plugins after the test files are required.
 require "json"
 
 module Plur
   # Streams one JSON row per test to minitest's own output IO (options[:io],
-  # captured before any test code can swap $stdout). StatisticsReporter
-  # supplies the counting and the passed? exit-code contract; both have been
-  # stable extension points since minitest 5.0.
+  # captured before any test code can swap $stdout). With ProgressReporter
+  # and SummaryReporter removed from the composite, any bare line on stdout
+  # is test-written output by elimination.
   class MinitestReporter < Minitest::StatisticsReporter
     SEPARATOR = ENV["PLUR_FORMATTER_SEPARATOR"] || "PLUR_JSON:"
     # Placeholder failure number - plur renumbers globally across workers
@@ -81,22 +75,22 @@ module Plur
   end
 end
 
-Minitest.extensions << "plur" unless Minitest.extensions.include?("plur")
-
-# Registered via Minitest.extensions above, so this runs on minitest 5 and 6
-# alike - unlike *_plugin.rb autoloading, which minitest 6 made opt-in. The
-# takeover happens in CompositeReporter#start, which Minitest.run calls after
-# every plugin init, so it wins regardless of load order against plugins that
-# rewrite the composite (minitest-reporters, Rails).
+# The documented plugin hook (README.rdoc "Writing Extensions"): minitest
+# calls this during init_plugins with Minitest.reporter - the top-level
+# composite - available. Remove minitest's two default output reporters and
+# add ours alongside anything other plugins installed. The composite itself
+# is never replaced or patched, so composites that test code constructs
+# (meta-testing suites) are untouched.
+#
+# Known trades: a plugin whose init runs after ours and rewrites the
+# composite wholesale (minitest-reporters) wins; and with SummaryReporter
+# gone, minitest's empty_run! guard never fires, so a filter matching
+# nothing exits 0 instead of 1 (same deviation minitest-reporters has).
 def Minitest.plugin_plur_init(options)
-  plur_io = options[:io]
-  Minitest::CompositeReporter.prepend(Module.new do
-    define_method(:start) do
-      unless reporters.any? { |r| Plur::MinitestReporter === r }
-        reporters.clear
-        reporters << Plur::MinitestReporter.new(plur_io, options)
-      end
-      super()
-    end
-  end)
+  reporter = Minitest.reporter
+  return unless reporter
+  return if reporter.reporters.any? { |r| Plur::MinitestReporter === r }
+
+  reporter.reporters.reject! { |r| Minitest::ProgressReporter === r || Minitest::SummaryReporter === r }
+  reporter << Plur::MinitestReporter.new(options[:io], options)
 end

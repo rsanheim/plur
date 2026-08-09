@@ -2,7 +2,6 @@ package framework
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/rsanheim/plur/config"
@@ -23,7 +22,6 @@ type Framework struct {
 	Name           string
 	Parser         func() types.TestOutputParser
 	DefaultArgs    func(*config.GlobalConfig) ([]string, error)
-	DefaultEnv     func(*config.GlobalConfig) ([]string, error)
 	DetectPatterns []string
 	TargetMode     TargetMode
 }
@@ -39,7 +37,7 @@ var registry = map[string]Framework{
 	"minitest": {
 		Name:           "minitest",
 		Parser:         minitest.NewOutputParser,
-		DefaultEnv:     minitestDefaultEnv,
+		DefaultArgs:    minitestDefaultArgs,
 		DetectPatterns: []string{"**/*_test.rb"},
 		TargetMode:     TargetModeRubyRequire,
 	},
@@ -85,25 +83,23 @@ func DetectPatterns(name string) []string {
 	return fw.DetectPatterns
 }
 
-// minitestDefaultEnv injects the embedded reporter via RUBYOPT rather than
-// argv: it survives any job cmd (bundle exec ruby, bin/rails test, rake) and
-// registers through Minitest.extensions, which works on minitest 5 and 6
-// alike. Appends to any existing RUBYOPT so bundler et al are preserved.
-func minitestDefaultEnv(cfg *config.GlobalConfig) ([]string, error) {
+// minitestDefaultArgs extends ruby's $LOAD_PATH with plur's plugin dir so
+// minitest's own plugin discovery (Gem.find_files, which searches the load
+// path) finds minitest/plur_plugin.rb - the extension mechanism prescribed
+// by minitest's "Writing Extensions" docs. Discovery is automatic on
+// minitest 5.x; on 6.x the worker script calls Minitest.load_plugins
+// (see BuildRunArgs).
+func minitestDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
 	if cfg == nil || cfg.ConfigPaths == nil {
-		return nil, fmt.Errorf("config paths are required for minitest reporter")
+		return nil, fmt.Errorf("config paths are required for minitest plugin")
 	}
 
-	reporterPath, err := minitest.GetReporterPath(cfg.ConfigPaths.FormatterDir)
+	loadPath, err := minitest.GetPluginLoadPath(cfg.ConfigPaths.RubyLibDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize minitest reporter: %w", err)
+		return nil, fmt.Errorf("failed to initialize minitest plugin: %w", err)
 	}
 
-	rubyopt := "-r" + reporterPath
-	if existing := os.Getenv("RUBYOPT"); existing != "" {
-		rubyopt = existing + " " + rubyopt
-	}
-	return []string{"RUBYOPT=" + rubyopt}, nil
+	return []string{"-I" + loadPath}, nil
 }
 
 func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {

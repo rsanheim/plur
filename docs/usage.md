@@ -57,6 +57,24 @@ Or set a permanent default in `.plur.toml`:
 use = "minitest"  # Override default to use Minitest
 ```
 
+### Minitest Integration Notes
+
+Plur integrates with Minitest as a standard minitest plugin: a
+`minitest/plur_plugin.rb` file (written to `$PLUR_HOME/config/ruby/`) is added
+to ruby's load path, where minitest's own plugin discovery finds it. The
+plugin replaces minitest's progress and summary reporters with one that
+reports structured results to plur; test-written stdout streams through
+untouched. On minitest 6, where plugin loading is opt-in, plur's worker
+script calls `Minitest.load_plugins` itself.
+
+* Setting `MT_NO_PLUGINS=1` (minitest's own plugin opt-out) disables plur's
+  plugin too; plur then reports zero results while the suite's native output
+  streams through, with exit codes still reflecting the suite result.
+* Plugins that rewrite minitest's reporter set wholesale after plur's
+  (for example minitest-reporters via `Minitest::Reporters.use!`) take over
+  output the same way: their format streams through, plur's summary shows
+  zero observed tests, and exit codes remain correct.
+
 ### Excluding Tests From Discovery
 
 Use `--exclude-pattern` (repeatable) to drop matching files from the test plan
