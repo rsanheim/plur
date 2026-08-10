@@ -50,7 +50,7 @@ RSpec.describe "plur watch command", :skip_if_ci do
         spec_file = project_dir.join("spec", "calculator_spec.rb")
         original_content = spec_file.read
 
-        result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "calculator_spec.rb") do
+        result = run_plur_watch(dir: project_dir, timeout: 10, stop_on: "calculator_spec.rb") do
           spec_file.write("# Modified by watch_spec\n#{original_content}")
         end
 

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/rsanheim/plur/logger"
 )
@@ -31,15 +32,22 @@ func CommandString(cmd *exec.Cmd, addedEnv []string) string {
 }
 
 // ExecuteJob runs a job run from cwd, streaming output to the terminal.
+// Watch runs jobs concurrently, so matching start/finish lines make overlap
+// visible in log order. The caller logs failures.
 func ExecuteJob(run JobRun, cwd string) error {
 	if len(run.Job.Cmd) == 0 {
 		return fmt.Errorf("job %q must define a command", run.Job.Name)
 	}
-	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", run.Targets))
+	targets := fmt.Sprintf("%+v", run.Targets)
+	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", targets)
 
 	cmd := run.Command(cwd)
 	fmt.Printf("\n[plur] %s\n", CommandString(cmd, run.Job.Env))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+
+	started := time.Now()
+	err := cmd.Run()
+	logger.Logger.Info("Finished job", "job", run.Job.Name, "targets", targets, "duration", time.Since(started).Round(time.Millisecond))
+	return err
 }
