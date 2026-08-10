@@ -31,28 +31,28 @@ func TestParseLine_TestResults(t *testing.T) {
 	}{
 		{
 			name:     "passing test",
-			line:     `PLUR_JSON:{"type":"test_result","code":".","id":"FooTest#test_pass","file_path":"test/foo_test.rb","line_number":5,"run_time":0.25,"assertions":2}`,
+			line:     `PLUR_JSON:{"type":"test_result","status":"passed","id":"FooTest#test_pass","file_path":"test/foo_test.rb","line_number":5,"run_time":0.25}`,
 			event:    types.TestPassed,
 			status:   "passed",
 			progress: "dot",
 		},
 		{
 			name:     "failing test",
-			line:     `PLUR_JSON:{"type":"test_result","code":"F","id":"FooTest#test_fail","file_path":"test/foo_test.rb","line_number":9,"run_time":0.25,"assertions":1}`,
+			line:     `PLUR_JSON:{"type":"test_result","status":"failed","id":"FooTest#test_fail","file_path":"test/foo_test.rb","line_number":9,"run_time":0.25}`,
 			event:    types.TestFailed,
 			status:   "failed",
 			progress: "failure",
 		},
 		{
 			name:     "erroring test",
-			line:     `PLUR_JSON:{"type":"test_result","code":"E","id":"FooTest#test_boom","file_path":"test/foo_test.rb","line_number":13,"run_time":0.25,"assertions":0}`,
+			line:     `PLUR_JSON:{"type":"test_result","status":"error","id":"FooTest#test_boom","file_path":"test/foo_test.rb","line_number":13,"run_time":0.25}`,
 			event:    types.TestFailed,
 			status:   "error",
 			progress: "error_progress",
 		},
 		{
 			name:     "skipped test",
-			line:     `PLUR_JSON:{"type":"test_result","code":"S","id":"FooTest#test_skip","file_path":"test/foo_test.rb","line_number":17,"run_time":0.25,"assertions":0}`,
+			line:     `PLUR_JSON:{"type":"test_result","status":"skipped","id":"FooTest#test_skip","file_path":"test/foo_test.rb","line_number":17,"run_time":0.25}`,
 			event:    types.TestPending,
 			status:   "skipped",
 			progress: "pending",
@@ -83,7 +83,7 @@ func TestParseLine_TestResults(t *testing.T) {
 func TestParseLine_TestResultCarriesIdentityAndLocation(t *testing.T) {
 	parser := NewOutputParser()
 
-	line := `PLUR_JSON:{"type":"test_result","code":".","id":"FooTest#test_pass","file_path":"test/foo_test.rb","line_number":5,"run_time":0.01,"assertions":2}`
+	line := `PLUR_JSON:{"type":"test_result","status":"passed","id":"FooTest#test_pass","file_path":"test/foo_test.rb","line_number":5,"run_time":0.01}`
 	notifications, _ := parser.ParseLine(line)
 
 	require.Len(t, notifications, 1)
@@ -99,7 +99,7 @@ func TestParseLine_TestResultWithoutSourceLocation(t *testing.T) {
 	// reporter then omits file_path and the tracker skips the test.
 	parser := NewOutputParser()
 
-	line := `PLUR_JSON:{"type":"test_result","code":".","id":"EvalTest#test_dynamic","file_path":null,"line_number":null,"run_time":0.01,"assertions":1}`
+	line := `PLUR_JSON:{"type":"test_result","status":"passed","id":"EvalTest#test_dynamic","file_path":null,"line_number":null,"run_time":0.01}`
 	notifications, consumed := parser.ParseLine(line)
 
 	assert.True(t, consumed)
@@ -125,7 +125,7 @@ func TestParseLine_DumpFailures(t *testing.T) {
 func TestParseLine_Summary(t *testing.T) {
 	parser := NewOutputParser()
 
-	line := `PLUR_JSON:{"type":"summary","count":9,"assertions":8,"failures":2,"errors":1,"skips":1}`
+	line := `PLUR_JSON:{"type":"suite_finished","test_count":9,"assertion_count":8,"failure_count":2,"error_count":1,"pending_count":1}`
 	notifications, consumed := parser.ParseLine(line)
 
 	assert.True(t, consumed)

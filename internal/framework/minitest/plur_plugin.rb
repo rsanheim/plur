@@ -8,6 +8,11 @@
 # On minitest 5.x discovery happens automatically inside Minitest.run; on
 # minitest 6 plugin loading is opt-in, so plur's worker script calls the
 # documented Minitest.load_plugins after the test files are required.
+#
+# Wire format: each row's fields mirror the canonical notification types in
+# types/notifications.go (TestCaseNotification, SuiteNotification), which is
+# the contract the Go parser fills. Rows carry only fields the contract
+# consumes; see internal/framework/minitest/parser.go for the reader.
 require "json"
 
 module Plur
@@ -33,12 +38,11 @@ module Plur
 
       output_row(
         type: :test_result,
-        code: result.result_code,
+        status: status_of(result),
         id: "#{class_name_of(result)}##{result.name}",
         file_path: file,
         line_number: line,
-        run_time: result.time,
-        assertions: result.assertions
+        run_time: result.time
       )
     end
 
@@ -51,16 +55,26 @@ module Plur
       output_row(type: :dump_failures, formatted_output: formatted) unless formatted.empty?
 
       output_row(
-        type: :summary,
-        count: count,
-        assertions: assertions,
-        failures: failures,
-        errors: errors,
-        skips: skips
+        type: :suite_finished,
+        test_count: count,
+        assertion_count: assertions,
+        failure_count: failures,
+        error_count: errors,
+        pending_count: skips
       )
     end
 
     private
+
+    # Minitest's own result predicates, in precedence order (a skip is also
+    # a failure entry, so it must be checked first).
+    def status_of(result)
+      if result.skipped? then "skipped"
+      elsif result.error? then "error"
+      elsif result.passed? then "passed"
+      else "failed"
+      end
+    end
 
     # Minitest::Result (5.11+) has class_name; older minitest hands the
     # reporter the test instance itself.

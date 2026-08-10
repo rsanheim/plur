@@ -198,15 +198,8 @@ func generateTestNotifications(count int, failureRate float64) []types.TestCaseN
 
 	for i := 0; i < count; i++ {
 		event := types.TestPassed
-		var exception *types.TestException
-
 		if i < failureThreshold {
 			event = types.TestFailed
-			exception = &types.TestException{
-				Class:     "RSpec::Expectations::ExpectationNotMetError",
-				Message:   fmt.Sprintf("Expected %d to eq %d", i, i+1),
-				Backtrace: []string{fmt.Sprintf("spec/model_spec.rb:%d", i+10)},
-			}
 		}
 
 		notifications = append(notifications, types.TestCaseNotification{
@@ -217,7 +210,6 @@ func generateTestNotifications(count int, failureRate float64) []types.TestCaseN
 			FilePath:        fmt.Sprintf("spec/models/model_%d_spec.rb", i/10),
 			LineNumber:      i + 10,
 			Duration:        time.Duration(50+i%200) * time.Millisecond,
-			Exception:       exception,
 		})
 	}
 	return notifications

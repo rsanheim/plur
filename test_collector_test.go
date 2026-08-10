@@ -35,11 +35,6 @@ func TestTestCollector_AddNotification(t *testing.T) {
 		FilePath:        "spec/example_spec.rb",
 		LineNumber:      20,
 		Duration:        50 * time.Millisecond,
-		Exception: &types.TestException{
-			Class:     "RSpec::Expectations::ExpectationNotMetError",
-			Message:   "expected true to be false",
-			Backtrace: []string{"spec/example_spec.rb:20:in `block (2 levels) in <top (required)>'"},
-		},
 	}
 	collector.AddNotification(failedTest)
 
@@ -99,10 +94,6 @@ func TestTestCollector_BuildResult(t *testing.T) {
 		TestID:          "test-2",
 		FullDescription: "Example fails",
 		LineNumber:      20,
-		Exception: &types.TestException{
-			Message:   "Expected true to be false",
-			Backtrace: []string{"spec/example_spec.rb:20"},
-		},
 	})
 
 	// Add suite info
@@ -151,8 +142,6 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	failure := failures[0]
 	assert.Equal(t, "Example fails", failure.FullDescription)
 	assert.Equal(t, 20, failure.LineNumber)
-	assert.Equal(t, "Expected true to be false", failure.Exception.Message)
-	assert.Equal(t, []string{"spec/example_spec.rb:20"}, failure.Exception.Backtrace)
 }
 
 func TestTestCollector_BuildResult_Success(t *testing.T) {

@@ -49,22 +49,12 @@ type TestCaseNotification struct {
 	LocationRerunArgument string // file:line argument RSpec recommends for re-running
 	ScopedID              string // RSpec metadata[:scoped_id]
 
-	// Only populated for failures
-	Exception *TestException
-
 	// Only populated for pending tests
 	PendingMessage string
 }
 
 func (n TestCaseNotification) GetEvent() TestEvent { return n.Event }
 func (n TestCaseNotification) GetTestID() string   { return n.TestID }
-
-// TestException contains failure information
-type TestException struct {
-	Class     string
-	Message   string
-	Backtrace []string
-}
 
 // SuiteNotification represents suite-level events
 type SuiteNotification struct {

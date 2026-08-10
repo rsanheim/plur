@@ -13,27 +13,29 @@ import (
 const jsonPrefix string = "PLUR_JSON:"
 const jsonPrefixLen int = len(jsonPrefix)
 
-// streamRow represents a single PLUR_JSON line from the embedded reporter.
-// See framework/minitest/reporter.rb for the reporter implementation.
+// streamRow represents a single PLUR_JSON line from the embedded plugin
+// (see plur_plugin.rb). Field names mirror the canonical notification types
+// in types/notifications.go that each row feeds: test_result rows fill
+// TestCaseNotification, suite_finished rows fill SuiteNotification.
 type streamRow struct {
 	Type string `json:"type"`
 
-	// test_result fields
-	Code       string  `json:"code"` // ".", "F", "E", "S"
-	ID         string  `json:"id"`   // Klass#test_name
+	// test_result fields -> TestCaseNotification
+	Status     string  `json:"status"` // "passed", "failed", "error", "skipped"
+	ID         string  `json:"id"`     // Klass#test_name -> TestID
 	FilePath   string  `json:"file_path"`
 	LineNumber int     `json:"line_number"`
-	RunTime    float64 `json:"run_time"`
+	RunTime    float64 `json:"run_time"` // seconds -> Duration
 
-	// dump_failures field
+	// dump_failures field -> FormattedFailuresNotification
 	FormattedOutput string `json:"formatted_output"`
 
-	// summary fields (assertions is shared with test_result)
-	Count      int `json:"count"`
-	Assertions int `json:"assertions"`
-	Failures   int `json:"failures"`
-	Errors     int `json:"errors"`
-	Skips      int `json:"skips"`
+	// suite_finished fields -> SuiteNotification
+	TestCount      int `json:"test_count"`
+	AssertionCount int `json:"assertion_count"`
+	FailureCount   int `json:"failure_count"`
+	ErrorCount     int `json:"error_count"`
+	PendingCount   int `json:"pending_count"`
 }
 
 // outputParser parses the embedded reporter's JSON rows into notifications.
@@ -91,14 +93,14 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 			return prefix, true
 		}
 		return append(prefix, types.FormattedFailuresNotification{Content: row.FormattedOutput}), true
-	case "summary":
+	case "suite_finished":
 		return append(prefix, types.SuiteNotification{
 			Event:          types.SuiteFinished,
-			TestCount:      row.Count,
-			AssertionCount: row.Assertions,
-			FailureCount:   row.Failures,
-			ErrorCount:     row.Errors,
-			PendingCount:   row.Skips,
+			TestCount:      row.TestCount,
+			AssertionCount: row.AssertionCount,
+			FailureCount:   row.FailureCount,
+			ErrorCount:     row.ErrorCount,
+			PendingCount:   row.PendingCount,
 		}), true
 	}
 
@@ -109,16 +111,13 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 // FilePath and Duration feed runtime-based distribution via the tracker.
 func testNotification(row streamRow) types.TestCaseNotification {
 	var event types.TestEvent
-	var status string
-	switch row.Code {
-	case ".":
-		event, status = types.TestPassed, "passed"
-	case "S":
-		event, status = types.TestPending, "skipped"
-	case "E":
-		event, status = types.TestFailed, "error"
-	default: // "F" and any result code minitest adds later
-		event, status = types.TestFailed, "failed"
+	switch row.Status {
+	case "passed":
+		event = types.TestPassed
+	case "skipped":
+		event = types.TestPending
+	default: // "failed", "error", and anything minitest adds later
+		event = types.TestFailed
 	}
 
 	notification := types.TestCaseNotification{
@@ -128,7 +127,7 @@ func testNotification(row streamRow) types.TestCaseNotification {
 		FullDescription: row.ID,
 		FilePath:        row.FilePath,
 		LineNumber:      row.LineNumber,
-		Status:          status,
+		Status:          row.Status,
 		Duration:        time.Duration(row.RunTime * float64(time.Second)),
 	}
 	if row.FilePath != "" {
