@@ -32,10 +32,8 @@ func CommandString(cmd *exec.Cmd, addedEnv []string) string {
 }
 
 // ExecuteJob runs a job run from cwd, streaming output to the terminal.
-// It brackets the run with a matching pair of log lines: watch fires runs on
-// their own goroutines, so the start line alone cannot tell an in-flight run
-// from a finished one. Both lines carry the same job and targets at the same
-// level so a log reads as a timeline. Failures are logged by the caller.
+// Watch runs jobs concurrently, so matching start/finish lines make overlap
+// visible in log order. The caller logs failures.
 func ExecuteJob(run JobRun, cwd string) error {
 	if len(run.Job.Cmd) == 0 {
 		return fmt.Errorf("job %q must define a command", run.Job.Name)

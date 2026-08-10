@@ -24,18 +24,14 @@ module PlurWatchHelper
   # Runs plur watch via Open3 with process lifecycle control.
   #
   # When a block is given, it fires after the watcher emits its ready signal.
-  # stop_on is effectively an "until" condition; it uses a different name
-  # because Ruby keyword arguments make until cumbersome to work with.
-  # When stop_on is a string, the process is killed as soon as that string
-  # appears in stdout or stderr. When it is callable, the process is killed
-  # when the callable returns truthy (early exit for faster tests).
+  # stop_on is an "until" condition; until is awkward as a Ruby keyword
+  # argument. Strings match either output stream; callables receive WatchProcess.
   #
   # @param dir [Pathname, String] directory to run in
   # @param timeout [Integer] plur --timeout value in seconds
   # @param debounce [Integer] debounce delay in milliseconds
   # @param env [Hash] environment variables
-  # @param stop_on [String, #call, nil] kill process when the string appears in
-  #   output or when the callable returns truthy; callable receives WatchProcess
+  # @param stop_on [String, #call, nil] output substring or predicate
   # @param ready_dirs [Array<String>, Symbol, nil] watcher directories to wait for, or :detected to infer from startup logs
   # @return [WatchResult]
   def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT,

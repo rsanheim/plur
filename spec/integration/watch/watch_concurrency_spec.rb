@@ -1,20 +1,8 @@
 require "spec_helper"
 
-# Characterization specs for how plur watch schedules runs today.
-#
-# The debouncer batches by source path inside a single window, then fires each
-# batch on its own goroutine with nothing serializing them. That produces two
-# distinct behaviors depending on whether saves land inside the debounce
-# window, and the cross-window case runs jobs concurrently regardless of
-# whether their targets overlap.
-#
-# These specs pin all of it -- the concurrency we want to keep and the
-# overlapping runs we want to stop -- so a scheduling change has a baseline to
-# diff against. Specs describing behavior slated to change say so inline.
-#
-# Overlap is read from the "Executing job" / "Finished job" pair plur logs
-# around each run. Two starts before either finish is what overlap looks like;
-# no timestamp math, just ordering.
+# Characterization specs for the surprising scheduling boundary: saves in one
+# debounce window batch, but later batches run concurrently—even on one target.
+# They use log ordering to detect overlap, not timestamps.
 RSpec.describe "plur watch run scheduling" do
   include PlurWatchHelper
 
@@ -42,8 +30,7 @@ RSpec.describe "plur watch run scheduling" do
     end
   end
 
-  # Behavior slated to change: these two runs share every target, so the second
-  # should wait for the first rather than run the same spec file twice at once.
+  # These two events select one target; today they run concurrently.
   it "runs the same target concurrently when two sources map to it" do
     overlapping_watch = <<~TOML
       [[watch]]
@@ -70,8 +57,7 @@ RSpec.describe "plur watch run scheduling" do
     end
   end
 
-  # Behavior slated to change: saving one file twice while its run is still in
-  # flight starts a second identical run alongside the first.
+  # A second save of an in-flight file starts a duplicate run today.
   it "runs the same target concurrently when one file is saved twice" do
     with_slow_job_project do |project|
       spec_file = project.join("spec/calculator_spec.rb")
@@ -87,9 +73,7 @@ RSpec.describe "plur watch run scheduling" do
     end
   end
 
-  # Copies the default-ruby fixture and swaps its rspec job for one that just
-  # sleeps, so runs last long enough to observe whether they overlap. Targets
-  # are appended as argv and ignored.
+  # Sleep makes overlap observable; the command ignores its target arguments.
   def with_slow_job_project(extra_config: "")
     with_temp_watch_project do |project|
       project.join(".plur.toml").write(<<~TOML)
@@ -105,8 +89,7 @@ RSpec.describe "plur watch run scheduling" do
     end
   end
 
-  # Runs watch until plur has logged expected_runs completions, so a spec never
-  # depends on --timeout landing after the last run.
+  # Count completions so tests do not rely on --timeout after the last run.
   def run_watch_until_finished(project, expected_runs:, debounce: nil, &block)
     run_plur_watch(
       dir: project,
@@ -117,7 +100,7 @@ RSpec.describe "plur watch run scheduling" do
     )
   end
 
-  # The start and finish lines each run logs, in the order plur emitted them.
+  # Log order is enough to detect overlap; timestamps are not.
   def run_events(result)
     pattern = /- INFO\s+- (Executing job|Finished job) .*targets="\[([^\]]*)\]"/
     result.err.scan(pattern).map do |event, targets|
@@ -143,16 +126,12 @@ RSpec.describe "plur watch run scheduling" do
     "run timeline was:\n#{lines.join("\n")}"
   end
 
-  # Watch only reacts to create and modify, not bare mtime bumps, so a
-  # recorded save has to change content.
+  # Watch ignores mtime-only updates, so each recorded save changes content.
   def touch(path)
     path.write(path.read + "\n# touched by spec\n")
   end
 
-  # A run has to outlast the gap between saves for overlap to be observable at
-  # all; the margin between the two is the slack these specs run on. Kept as
-  # short as that slack allows, since the suite runs specs in parallel and
-  # these hold watch processes open for their whole duration.
+  # Keep the job longer than the save gap, but short because these run in parallel.
   def job_sleep_seconds
     ENV["CI"] ? 3.0 : 0.8
   end
