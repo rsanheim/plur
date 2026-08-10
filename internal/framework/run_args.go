@@ -45,11 +45,15 @@ func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []
 // than script arguments, so the script can end with the plugin epilogue:
 // minitest 5.x discovers plur's plugin automatically inside Minitest.run,
 // but minitest 6 made plugin loading opt-in, so the worker asks for it via
-// the documented Minitest.load_plugins. Minitest.load is 6-only (added with
-// the opt-in redesign), which makes it the capability gate; on 5.x minitest
-// still owns plugin loading itself. MT_NO_PLUGINS is minitest's own opt-out
+// the documented Minitest.load - which loads only the named plugin. Using
+// Minitest.load rather than Minitest.load_plugins matters: load_plugins
+// re-enables the autodiscovery of every installed minitest/*_plugin.rb that
+// minitest 6 deliberately retired, activating plugins the project left off
+// by upgrading. Minitest.load is 6-only (added with the opt-in redesign),
+// which makes respond_to?(:load) the capability gate; on 5.x minitest still
+// discovers and loads plur itself. MT_NO_PLUGINS is minitest's own opt-out
 // convention and doubles as plur's escape hatch.
-const minitestPluginEpilogue = `Minitest.load_plugins if defined?(Minitest) && Minitest.respond_to?(:load) && !ENV["MT_NO_PLUGINS"]`
+const minitestPluginEpilogue = `Minitest.load "plur" if defined?(Minitest) && Minitest.respond_to?(:load) && !ENV["MT_NO_PLUGINS"]`
 
 func appendMinitestRequireArgs(args []string, files []string) []string {
 	requires := make([]string, 0, len(files))

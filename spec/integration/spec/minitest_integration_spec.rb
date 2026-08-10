@@ -24,7 +24,7 @@ require_relative "../../spec_helper"
 # rather than on any single line.
 RSpec.describe "Minitest integration" do
   before(:all) do
-    %w[minitest-outcomes minitest-failures].each do |fixture|
+    %w[minitest-outcomes minitest-failures minitest-extra-plugin].each do |fixture|
       chdir(project_fixture!(fixture)) do
         Bundler.with_unbundled_env do
           system("bundle check", out: File::NULL, err: File::NULL) ||
@@ -194,6 +194,26 @@ RSpec.describe "Minitest integration" do
           %w[OUT_MID_RUN OUT_GLOBAL_IO OUT_B4_KABOOM MULTI_1].each do |token|
             expect(result.out.scan(token).length).to eq(1), "expected #{token} exactly once"
           end
+        end
+      end
+    end
+  end
+
+  context "plugin loading" do
+    # minitest 6 made plugin loading opt-in. plur must load only its own
+    # plugin, not re-enable autodiscovery of every minitest/*_plugin.rb on
+    # the load path - which would activate plugins the project deliberately
+    # left off by upgrading to minitest 6, and can corrupt plur's own output.
+    it "does not activate other minitest plugins on the project's behalf" do
+      chdir(project_fixture!("minitest-extra-plugin")) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "1", "--color=never")
+          expect(result).to be_success
+
+          # A stock `ruby -Itest` run on minitest 6 does not load this plugin;
+          # neither should plur.
+          expect(result.out).not_to include("NOISY_PLUGIN_LOADED")
+          expect(result.out).to include("1 run, 1 assertion, 0 failures, 0 errors, 0 skips")
         end
       end
     end
