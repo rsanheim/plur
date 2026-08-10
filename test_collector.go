@@ -106,24 +106,25 @@ func (collector *TestCollector) BuildResult(duration time.Duration) WorkerResult
 		result.State = types.StateFailed
 	}
 
-	// If we have suite info, use its values
+	// Suite info counts are authoritative when present, but only override
+	// the per-test tallies when nonzero: a suite_started row carries zero
+	// counts, and if the worker crashed before suite_finished arrived those
+	// zeros must not discard the tests that already reported.
 	if collector.suiteInfo != nil {
 		result.FileLoadTime = collector.suiteInfo.LoadTime
-		if collector.suiteInfo.TestCount >= 0 {
+		if collector.suiteInfo.TestCount > 0 {
 			result.ExampleCount = collector.suiteInfo.TestCount
 		}
-		if collector.suiteInfo.AssertionCount >= 0 {
+		if collector.suiteInfo.AssertionCount > 0 {
 			result.AssertionCount = collector.suiteInfo.AssertionCount
 		}
-		// Use suite's failure count if available
-		if collector.suiteInfo.FailureCount >= 0 {
+		if collector.suiteInfo.FailureCount > 0 {
 			result.FailureCount = collector.suiteInfo.FailureCount
 		}
-		if collector.suiteInfo.ErrorCount >= 0 {
+		if collector.suiteInfo.ErrorCount > 0 {
 			result.ErrorCount = collector.suiteInfo.ErrorCount
 		}
-		// Use suite's pending count if available
-		if collector.suiteInfo.PendingCount >= 0 {
+		if collector.suiteInfo.PendingCount > 0 {
 			result.PendingCount = collector.suiteInfo.PendingCount
 		}
 	}

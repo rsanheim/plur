@@ -99,19 +99,15 @@ func streamTestOutput(
 			}
 
 			// If line wasn't consumed by parser, it's test-written output:
-			// collect it and stream it in real-time (structured rows carry
-			// everything the frameworks themselves emit)
-			if !consumed {
-				collector.AddNotification(types.OutputNotification{
-					Event:   types.RawOutput,
-					Content: line,
-				})
-				if outputChan != nil {
-					outputChan <- OutputMessage{
-						Type:        "stdout",
-						Content:     line,
-						CurrentFile: parser.CurrentFile(),
-					}
+			// stream it in real-time. It is deliberately NOT collected, so
+			// rawOutput holds only consumed framework messages (e.g. RSpec
+			// syntax errors) and re-printing it for errored workers cannot
+			// duplicate lines that already streamed.
+			if !consumed && outputChan != nil {
+				outputChan <- OutputMessage{
+					Type:        "stdout",
+					Content:     line,
+					CurrentFile: parser.CurrentFile(),
 				}
 			}
 
