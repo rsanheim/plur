@@ -171,6 +171,30 @@ RSpec.describe "Minitest integration" do
         end
       end
     end
+
+    it "shows an errored worker's output once, not duplicated at the end" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          error_file = "test/error_load_test.rb"
+          File.write(error_file, <<~RUBY)
+            puts "STDOUT_BEFORE_CRASH"
+            require "minitest/autorun"
+            require "this_gem_does_not_exist_surely"
+          RUBY
+
+          result = run_plur("-v", "--use", "minitest", "-n", "2", "--color=never",
+            "test/passing_test.rb", error_file, allow_error: true)
+          expect(result).to be_failure
+          puts result.out
+          puts result.err
+
+          expect(result.out.scan("STDOUT_BEFORE_CRASH").length).to eq(1),
+            "errored worker stdout should appear once (streamed live), not twice (re-dumped)"
+        ensure
+          FileUtils.rm_f(error_file)
+        end
+      end
+    end
   end
 
   context "plugin loading" do

@@ -211,6 +211,34 @@ func TestTestCollector_SuiteStartedPreservesLoadTime(t *testing.T) {
 	assert.Equal(t, 2, result.ExampleCount)
 }
 
+// Item 3: suite_started carries zero counts (no tests have run yet).
+// If the worker crashes before suite_finished arrives, BuildResult must
+// use the counts derived from individual test_result rows, not the zeros
+// from suite_started.
+func TestTestCollector_BuildResult_SuiteStartedWithoutFinished(t *testing.T) {
+	collector := NewTestCollector()
+
+	collector.AddNotification(types.SuiteNotification{
+		Event:    types.SuiteStarted,
+		LoadTime: 50 * time.Millisecond,
+	})
+
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestPassed,
+		TestID: "PassingTest#test_one",
+	})
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestFailed,
+		TestID: "FailingTest#test_two",
+	})
+
+	result := collector.BuildResult(100 * time.Millisecond)
+
+	assert.Equal(t, 2, result.ExampleCount, "should count from test_result rows, not suite_started zeros")
+	assert.Equal(t, 1, result.FailureCount, "should count from test_result rows, not suite_started zeros")
+	assert.Equal(t, 50*time.Millisecond, result.FileLoadTime, "LoadTime from suite_started should be preserved")
+}
+
 func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {
 	collector := NewTestCollector()
 
