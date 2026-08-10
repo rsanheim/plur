@@ -42,6 +42,15 @@ func TestOutputParser_FormatSummaryIncludesErrorCount(t *testing.T) {
 	})
 }
 
+func TestOutputParser_ParseLine_NonJsonLineIsUnconsumedWithoutNotifications(t *testing.T) {
+	parser := &outputParser{}
+
+	notifications, consumed := parser.ParseLine("Seeding test database...")
+
+	require.False(t, consumed)
+	assert.Empty(t, notifications)
+}
+
 func TestOutputParser_ParseLine_GroupStartedTracksCurrentFileWithoutNotification(t *testing.T) {
 	parser := &outputParser{}
 	line := `PLUR_JSON:{"type":"group_started","group":{"description":"Calculator","file_path":"./spec/calculator_spec.rb","line_number":3}}`
