@@ -112,7 +112,7 @@ RSpec.describe "plur watch run scheduling" do
       dir: project,
       timeout: watch_timeout_seconds,
       debounce: debounce,
-      until_condition: ->(process) { process.err.scan("Finished job").count >= expected_runs },
+      stop_on: ->(process) { process.err.scan("Finished job").count >= expected_runs },
       &block
     )
   end
