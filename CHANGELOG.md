@@ -1,5 +1,8 @@
 # plur CHANGELOG
 
+## Unreleased
+* Fix RSpec errored-worker stdout being printed three times — unconsumed lines now have exactly one display path [#122](https://github.com/rsanheim/plur/pull/122)
+
 ## v0.80.0-rc.1 - 2026-08-03
 * Build with Go 1.26.5 #108
 * Update e-dant/watcher to 0.14.5 - #99

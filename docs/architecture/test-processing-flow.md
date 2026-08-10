@@ -49,9 +49,10 @@ sequenceDiagram
                     Parser-->>Stream: notifications, consumed
 
                     alt !consumed (raw output like puts)
-                        Stream->>Collector: AddNotification(RawOutput)
                         alt RSpec (streamStdout=true)
                             Stream->>OutChan: {Type: "stdout", Content: line}
+                        else Minitest (streamStdout=false)
+                            Stream->>Collector: AddNotification(RawOutput)
                         end
                     end
 
@@ -110,9 +111,10 @@ Orchestrates the entire test execution:
 
 ### 2. **streamTestOutput** (stream_helper.go)
 Handles real-time output processing with two concurrent goroutines:
-* **stdout goroutine**: Parses lines via `parser.ParseLine()`, sends progress to `outputChan`, collects raw output
-  * For RSpec: Also streams unconsumed stdout (puts/pp) in real-time via `outputChan`
-  * For Minitest: Raw stdout is collected but NOT streamed (Minitest returns consumed=false for all lines)
+* **stdout goroutine**: Parses lines via `parser.ParseLine()`, sends progress to `outputChan`
+  * Unconsumed lines (puts/pp) have exactly one display path - streamed OR collected, never both
+  * For RSpec: Streamed in real-time via `outputChan` (the JSON formatter makes this safe)
+  * For Minitest: Collected for the errored-worker re-print, NOT streamed (Minitest returns consumed=false for all lines)
 * **stderr goroutine**: Passes through to `outputChan` with type "stderr"
 
 ### 3. **Parser** (`internal/framework/rspec/` or `internal/framework/minitest/`)

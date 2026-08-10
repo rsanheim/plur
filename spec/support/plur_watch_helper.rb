@@ -24,18 +24,18 @@ module PlurWatchHelper
   # Runs plur watch via Open3 with process lifecycle control.
   #
   # When a block is given, it fires after the watcher emits its ready signal.
-  # When until_output is set, the process is killed as soon as that string
-  # appears in stdout or stderr (early exit for faster tests).
+  # stop_on is an "until" condition; until is awkward as a Ruby keyword
+  # argument. Strings match either output stream; callables receive WatchProcess.
   #
   # @param dir [Pathname, String] directory to run in
   # @param timeout [Integer] plur --timeout value in seconds
   # @param debounce [Integer] debounce delay in milliseconds
   # @param env [Hash] environment variables
-  # @param until_output [String, nil] kill process when this string appears in output
+  # @param stop_on [String, #call, nil] output substring or predicate
   # @param ready_dirs [Array<String>, Symbol, nil] watcher directories to wait for, or :detected to infer from startup logs
   # @return [WatchResult]
   def run_plur_watch(dir: default_ruby_dir, timeout: DEFAULT_PLUR_WATCH_TIMEOUT,
-    debounce: nil, env: {}, until_output: nil, ready_dirs: :detected, &block)
+    debounce: nil, env: {}, stop_on: nil, ready_dirs: :detected, &block)
     block_fired = false
 
     capture_plur_watch_process(dir: dir, timeout: timeout, debounce: debounce, env: env) do |process|
@@ -46,7 +46,9 @@ module PlurWatchHelper
         block_fired = true
       end
 
-      if until_output && (process.err.include?(until_output) || process.out.include?(until_output))
+      if stop_on.is_a?(String) && (process.err.include?(stop_on) || process.out.include?(stop_on))
+        :terminate
+      elsif stop_on.respond_to?(:call) && stop_on.call(process)
         :terminate
       end
     end

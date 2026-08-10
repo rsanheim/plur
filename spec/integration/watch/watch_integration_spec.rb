@@ -7,7 +7,7 @@ RSpec.describe "plur watch integration" do
   include PlurWatchHelper
 
   it "starts watching the correct directories" do
-    result = run_plur_watch(until_output: "directories=[lib spec]")
+    result = run_plur_watch(stop_on: "directories=[lib spec]")
 
     expect(result.err).to include("plur watch starting!")
     expect(result.err).to include("Watch configuration loaded")
@@ -40,7 +40,7 @@ RSpec.describe "plur watch integration" do
           dir: project_dir,
           timeout: 10,
           env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_HOME" => plur_home},
-          until_output: "targets=\"[spec/calculator_spec.rb]\""
+          stop_on: "targets=\"[spec/calculator_spec.rb]\""
         ) do
           calculator_file.write(original_content + "\n# Modified by test")
         end
@@ -63,7 +63,7 @@ RSpec.describe "plur watch integration" do
       calculator_file = project_dir.join("lib/calculator.rb")
       original_content = calculator_file.read
 
-      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "Executing job") do
+      result = run_plur_watch(dir: project_dir, timeout: 10, stop_on: "Executing job") do
         calculator_file.write(original_content + "\n# test")
       end
 
@@ -78,7 +78,7 @@ RSpec.describe "plur watch integration" do
       spec_helper = project_dir.join("spec/spec_helper.rb")
       original_content = spec_helper.read
 
-      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "No existing targets") do
+      result = run_plur_watch(dir: project_dir, timeout: 10, stop_on: "No existing targets") do
         spec_helper.write(original_content + "\n# Modified by test")
       end
 
@@ -93,7 +93,7 @@ RSpec.describe "plur watch integration" do
       spec_path = project_dir.join("spec/calculator_spec.rb")
       contents = spec_path.read
 
-      result = run_plur_watch(dir: project_dir, timeout: 10, until_output: "Executing job") do
+      result = run_plur_watch(dir: project_dir, timeout: 10, stop_on: "Executing job") do
         File.write(spec_path, "# Modified\n" + contents)
       end
 
@@ -120,7 +120,7 @@ RSpec.describe "plur watch integration" do
   end
 
   it "respects custom debounce delay" do
-    result = run_plur_watch(timeout: 10, debounce: 250, until_output: "Debounce delay ms=250")
+    result = run_plur_watch(timeout: 10, debounce: 250, stop_on: "Debounce delay ms=250")
 
     output = result.out + result.err
 
@@ -129,7 +129,7 @@ RSpec.describe "plur watch integration" do
 
   it "detects multiple file changes with debouncing" do
     with_temp_watch_project do |project_dir|
-      result = run_plur_watch(dir: project_dir, timeout: 10, debounce: 200, until_output: "Executing job") do
+      result = run_plur_watch(dir: project_dir, timeout: 10, debounce: 200, stop_on: "Executing job") do
         calc_file = project_dir.join("lib/calculator.rb")
         calc_file.write(calc_file.read + "\n# test")
 
