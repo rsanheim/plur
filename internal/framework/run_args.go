@@ -8,7 +8,9 @@ import (
 )
 
 // BuildRunArgs builds command arguments for run mode (plur spec).
-// extraArgs are inserted after framework defaults and before target files.
+// extraArgs follow the framework defaults: before the target files for
+// frameworks that take files as arguments, and after the -e script that
+// embeds them for TargetModeRubyRequire.
 func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
 	fw := j.Framework
 	if fw.Name == "" {

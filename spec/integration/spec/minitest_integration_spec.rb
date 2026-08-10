@@ -4,10 +4,10 @@ require_relative "../../spec_helper"
 # error, 1 skip) with mid-run stdout in the styles that stress line handling.
 # minitest-failures covers what outcomes cannot: failures across two files.
 #
-# minitest randomizes test order unless a --seed is passed through, so every
-# expectation holds for ANY order. Fixture stdout tokens avoid
-# ".FES" and counts are asserted across the whole progress region, so live
-# interleaving of output and progress characters cannot skew them.
+# minitest randomizes test order, so every expectation holds for ANY order.
+# Fixture stdout tokens avoid ".FES" and counts are asserted across the whole
+# progress region, so live interleaving of output and progress characters
+# cannot skew them.
 RSpec.describe "Minitest integration" do
   before(:all) do
     %w[minitest-outcomes minitest-failures minitest-extra-plugin].each do |fixture|
@@ -80,12 +80,13 @@ RSpec.describe "Minitest integration" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "2", "--color=never",
-            "test/passing_test.rb", "test/output_test.rb", "--", "--seed", "1234")
+            "test/passing_test.rb", "test/output_test.rb",
+            "--", "--seed", "1234", "--name", "test_addition")
           expect(result).to be_success
 
-          # Without the -- terminator in the worker command, ruby aborts on
-          # "invalid option --seed" and zero tests run.
-          expect(result.out).to include("8 runs, 9 assertions, 0 failures, 0 errors, 0 skips")
+          # --seed is what crashes ruby without the terminator; --name proves
+          # minitest actually parsed ARGV rather than the args being dropped.
+          expect(result.out).to include("1 run, 1 assertion, 0 failures, 0 errors, 0 skips")
         end
       end
     end

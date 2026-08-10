@@ -1,6 +1,7 @@
 # plur CHANGELOG
 
 ## Unreleased
+* Fix minitest passthrough args after `--` (e.g. `plur -- --seed 1234`) being eaten by `ruby` instead of reaching minitest — every worker died on `invalid option` and no tests ran [#121](https://github.com/rsanheim/plur/pull/121)
 * Fix RSpec errored-worker stdout being printed three times — unconsumed lines now have exactly one display path [#122](https://github.com/rsanheim/plur/pull/122)
 
 ## v0.80.0-rc.1 - 2026-08-03
