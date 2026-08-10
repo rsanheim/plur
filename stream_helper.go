@@ -87,21 +87,23 @@ func streamTestOutput(
 				collector.AddNotification(notification)
 			}
 
-			// If line wasn't consumed by parser, add it as raw output
+			// If line wasn't consumed by parser, it's test-written output.
+			// Stream it live (RSpec: the JSON formatter makes this safe) OR
+			// collect it for the errored-worker re-print (Minitest: returns
+			// consumed=false for everything, so streaming would duplicate all
+			// output) - never both, so a line can only ever display once.
 			if !consumed {
-				collector.AddNotification(types.OutputNotification{
-					Event:   types.RawOutput,
-					Content: line,
-				})
-				// Stream stdout in real-time for RSpec (JSON formatter makes this safe)
-				// Don't stream for Minitest - it returns consumed=false for everything,
-				// so streaming would duplicate all output
 				if outputChan != nil && streamStdout {
 					outputChan <- OutputMessage{
 						Type:        "stdout",
 						Content:     line,
 						CurrentFile: parser.CurrentFile(),
 					}
+				} else {
+					collector.AddNotification(types.OutputNotification{
+						Event:   types.RawOutput,
+						Content: line,
+					})
 				}
 			}
 
