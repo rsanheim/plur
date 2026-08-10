@@ -1,27 +1,13 @@
 require_relative "../../spec_helper"
 
-# All minitest-specific run behavior lives here, grouped by aspect; framework
-# selection, args, and configuration live with their own specs.
+# minitest-outcomes is the canonical fixture: 12 tests (8 pass, 2 fail, 1
+# error, 1 skip) with mid-run stdout in the styles that stress line handling.
+# minitest-failures covers what outcomes cannot: failures across two files.
 #
-# minitest-outcomes is the canonical minitest fixture: every outcome the
-# progress line can show (pass, failure, error, skip), stdout written mid-run
-# in the styles that stress line handling (interleaved puts, unterminated
-# print, multi-line), and a unique greppable token for every case.
-#
-# 12 tests: 8 pass, 2 fail, 1 error, 1 skip. Tokens written to stdout during
-# the run avoid the characters ".FES" so progress characters can be counted
-# exactly even when test output interleaves with the progress stream.
-#
-# minitest-failures is kept for the one thing outcomes cannot express: failures
-# in more than one file, so a parallel run has two *failing* workers to
-# aggregate.
-#
-# Determinism: minitest randomizes test order per run, and plur cannot
-# currently forward --seed to the multi-file run form, so every expectation
-# here holds for ANY order. Test stdout streams live, so progress characters
-# and output lines interleave order-dependently; counts are asserted across
-# the whole progress region (everything before the failure details/summary)
-# rather than on any single line.
+# minitest randomizes test order and plur cannot forward --seed to multi-file
+# runs, so every expectation holds for ANY order. Fixture stdout tokens avoid
+# ".FES" and counts are asserted across the whole progress region, so live
+# interleaving of output and progress characters cannot skew them.
 RSpec.describe "Minitest integration" do
   before(:all) do
     %w[minitest-outcomes minitest-failures minitest-extra-plugin].each do |fixture|
@@ -36,20 +22,14 @@ RSpec.describe "Minitest integration" do
 
   let(:project_dir) { project_fixture!("minitest-outcomes") }
 
-  # Occurrences of each progress character plur can render, counted across the
-  # progress region (everything before failure details and the summary, which
-  # legitimately contain F/E/dots). Fixture stdout tokens avoid ".FES*" so
-  # interleaved test output cannot skew the counts. Skips show as "*"
-  # (matching RSpec pending), never "S".
+  # Counts each progress character across the progress region only - failure
+  # details and the summary legitimately contain F/E/dots. Skips render "*".
   def progress_alphabet(out)
     region = out.split("\nFailures:").first.split("\nFinished in").first
     %w[. F E S *].to_h { |char| [char, region.count(char)] }
   end
 
-  # Reduces a run to the facts that must not depend on which runner printed
-  # them or what order the tests ran in: the outcome counts (normalized across
-  # plur's correct pluralization vs minitest's naive one) and which tests
-  # failed or errored.
+  # Order- and runner-independent facts: outcome counts and which tests failed.
   def outcome_facts(snapshot)
     stdout = snapshot.fetch("stdout", "")
     counts = stdout.scan(/(\d+) runs?, (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?/).last
@@ -61,8 +41,7 @@ RSpec.describe "Minitest integration" do
     it "reports a green run with full progress, live stdout, and RSpec-style duration" do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          # No --use: this is the one real (non-dry-run) exercise of framework
-          # auto-detection, proven by the [minitest] tag below.
+          # No --use: the one real exercise of framework auto-detection.
           result = run_plur("-n", "1", "--color=never", "test/passing_test.rb")
           expect(result).to be_success
 
@@ -74,11 +53,11 @@ RSpec.describe "Minitest integration" do
           )
           expect(result.out).to include("5 runs, 6 assertions, 0 failures, 0 errors, 0 skips")
 
-          # Duration uses RSpec's "seconds" wording, not minitest's bare "Xs."
+          # RSpec's "seconds" wording, not minitest's bare "Xs."
           expect(result.out).to match(/Finished in \d+(?:\.\d{1,5})? seconds/)
           expect(result.out).not_to match(/Finished in [\d.]+s\./)
 
-          # Test stdout streams live, even on a passing run.
+          # Stdout streams live even on a passing run.
           expect(result.out.scan("OUT_MID_RUN").length).to eq(1)
           expect(result.out.scan("OUT_GLOBAL_IO").length).to eq(1)
         end
@@ -92,9 +71,6 @@ RSpec.describe "Minitest integration" do
             "test/passing_test.rb", "test/output_test.rb")
           expect(result).to be_success
 
-          # The progress line is not asserted here: output_test's unterminated
-          # print glues progress characters order-dependently (see the
-          # characterization below). The summed counts and exit are the point.
           expect(result.out).to include("8 runs, 9 assertions, 0 failures, 0 errors, 0 skips")
         end
       end
@@ -120,9 +96,8 @@ RSpec.describe "Minitest integration" do
         Bundler.with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "1", "--color=never", allow_error: true)
 
-          # The unterminated `print` test's output lands on the same physical
-          # line as the reporter's structured row; the parser splits them, so
-          # neither the progress character nor the partial text is lost.
+          # An unterminated print shares a physical line with the next row;
+          # the parser splits them, losing neither the dot nor the text.
           expect(progress_alphabet(result.out)).to eq(
             "." => 8, "F" => 2, "E" => 1, "S" => 0, "*" => 1
           )
@@ -141,9 +116,9 @@ RSpec.describe "Minitest integration" do
           expect(result.out).to include("12 runs, 11 assertions, 2 failures, 1 error, 1 skip")
 
           # Every worker's stdout streams, passing and failing alike.
-          expect(result.out).to include("OUT_B4_KABOOM")
-          expect(result.out).to include("OUT_MID_RUN")
-          expect(result.out).to include("PARTIAL_A")
+          %w[OUT_B4_KABOOM OUT_MID_RUN PARTIAL_A].each do |token|
+            expect(result.out).to include(token)
+          end
         end
       end
     end
@@ -173,8 +148,7 @@ RSpec.describe "Minitest integration" do
 
           expect(result.out).to include("13 runs, 16 assertions, 6 failures, 1 error, 0 skips")
 
-          # Both failing workers' detail blocks survive under one "Failures:"
-          # header, renumbered sequentially across workers.
+          # Both workers' failures land under one header, renumbered across them.
           expect(result.out).to include("Failures:")
           expect(result.out.scan(/^ {2}(\d+)\) /).flatten).to eq(%w[1 2 3 4 5 6 7])
           expect(result.out).to include("MixedResultsTest#test_display_name_failure")
@@ -200,18 +174,15 @@ RSpec.describe "Minitest integration" do
   end
 
   context "plugin loading" do
-    # minitest 6 made plugin loading opt-in. plur must load only its own
-    # plugin, not re-enable autodiscovery of every minitest/*_plugin.rb on
-    # the load path - which would activate plugins the project deliberately
-    # left off by upgrading to minitest 6, and can corrupt plur's own output.
+    # On minitest 6 (opt-in plugin loading) plur loads only its own plugin.
+    # The fixture ships a discoverable minitest/noisy_plugin.rb that a stock
+    # `ruby -Itest` run would not activate; neither should plur.
     it "does not activate other minitest plugins on the project's behalf" do
       chdir(project_fixture!("minitest-extra-plugin")) do
         Bundler.with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "1", "--color=never")
           expect(result).to be_success
 
-          # A stock `ruby -Itest` run on minitest 6 does not load this plugin;
-          # neither should plur.
           expect(result.out).not_to include("NOISY_PLUGIN_LOADED")
           expect(result.out).to include("1 run, 1 assertion, 0 failures, 0 errors, 0 skips")
         end
