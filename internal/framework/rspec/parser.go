@@ -156,15 +156,9 @@ func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
 		return notifications, true // Line was consumed
 	}
 
-	// Not a JSON line - return as raw output
-	if line != "" {
-		notifications = append(notifications, types.OutputNotification{
-			Event:   types.RawOutput,
-			Content: line,
-		})
-	}
-
-	return notifications, false // Line was not consumed
+	// Not a JSON line: test-written stdout, handled by the caller
+	// (same contract as the minitest parser)
+	return nil, false
 }
 
 // parseStreamExample converts a StreamExample to a TestCaseNotification.
