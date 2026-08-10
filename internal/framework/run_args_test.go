@@ -95,7 +95,7 @@ func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 		"bundle", "exec", "ruby", "-Itest",
 		"-I" + cfg.ConfigPaths.RubyLibDir,
 		"-e", `["test/foo_test.rb"].each { |f| require File.expand_path(f) }; ` + minitestPluginEpilogue,
-		"--seed", "1234",
+		"--", "--seed", "1234",
 	}
 	assert.Equal(t, expected, args)
 }
@@ -117,7 +117,7 @@ func TestBuildRunArgsMinitestRubyRequireWithExtraArgs(t *testing.T) {
 		"bundle", "exec", "ruby", "-Itest",
 		"-I" + cfg.ConfigPaths.RubyLibDir,
 		"-e", `["test/foo_test.rb", "test/bar_test.rb"].each { |f| require File.expand_path(f) }; ` + minitestPluginEpilogue,
-		"--seed", "1234",
+		"--", "--seed", "1234",
 	}
 	assert.Equal(t, expected, args)
 }

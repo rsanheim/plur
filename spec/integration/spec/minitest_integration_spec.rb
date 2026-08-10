@@ -4,8 +4,8 @@ require_relative "../../spec_helper"
 # error, 1 skip) with mid-run stdout in the styles that stress line handling.
 # minitest-failures covers what outcomes cannot: failures across two files.
 #
-# minitest randomizes test order and plur cannot forward --seed to multi-file
-# runs, so every expectation holds for ANY order. Fixture stdout tokens avoid
+# minitest randomizes test order unless a --seed is passed through, so every
+# expectation holds for ANY order. Fixture stdout tokens avoid
 # ".FES" and counts are asserted across the whole progress region, so live
 # interleaving of output and progress characters cannot skew them.
 RSpec.describe "Minitest integration" do
@@ -71,6 +71,20 @@ RSpec.describe "Minitest integration" do
             "test/passing_test.rb", "test/output_test.rb")
           expect(result).to be_success
 
+          expect(result.out).to include("8 runs, 9 assertions, 0 failures, 0 errors, 0 skips")
+        end
+      end
+    end
+
+    it "forwards passthrough args after -- to minitest instead of ruby" do
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          result = run_plur("--use", "minitest", "-n", "2", "--color=never",
+            "test/passing_test.rb", "test/output_test.rb", "--", "--seed", "1234")
+          expect(result).to be_success
+
+          # Without the -- terminator in the worker command, ruby aborts on
+          # "invalid option --seed" and zero tests run.
           expect(result.out).to include("8 runs, 9 assertions, 0 failures, 0 errors, 0 skips")
         end
       end

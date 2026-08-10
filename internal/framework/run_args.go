@@ -29,6 +29,9 @@ func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []
 	case TargetModeRubyRequire:
 		args = appendMinitestRequireArgs(args, files)
 		if len(extraArgs) > 0 {
+			// ruby keeps parsing its own options after "-e script"; "--"
+			// ends that so the extra args reach ARGV for minitest.
+			args = append(args, "--")
 			args = append(args, extraArgs...)
 		}
 	default:
