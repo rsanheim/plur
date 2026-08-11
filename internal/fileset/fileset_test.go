@@ -235,3 +235,13 @@ func TestDiscover_DedupsAcrossInputs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"spec/a_spec.rb"}, discovery.Files)
 }
+
+func TestDiscover_MissingBareTestTargetExplainsTargetPath(t *testing.T) {
+	discoverChdir(t)
+	j := framework.Job{Name: "rspec", FrameworkName: "rspec"}
+
+	_, err := Discover(j, []string{"test"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "`test` is a target path, not a Plur command")
+	assert.Contains(t, err.Error(), "test/calculator_test.rb")
+}

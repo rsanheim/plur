@@ -12,8 +12,8 @@ It uses a [fast, lean embedded C++ watcher](https://github.com/e-dant/watcher) t
 # Start watching for file changes
 plur watch
 
-# Dry run to see what would be watched
-plur watch --dry-run
+# Preview what a changed file would run
+plur watch find spec/models/user_spec.rb
 
 # Set custom debounce delay (milliseconds)
 plur watch --debounce 250

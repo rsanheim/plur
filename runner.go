@@ -78,6 +78,33 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 	return results, wallTime, nil
 }
 
+// DryRunPlan builds the structured plan for --dry-run --dry-run-format=json:
+// every target and, per worker, the argv, env, and shell string that would run.
+func (r *Runner) DryRunPlan() (*RunnerDryRunPlan, error) {
+	groups := r.groupFiles()
+	commands, err := r.buildCommands(groups)
+	if err != nil {
+		return nil, err
+	}
+
+	var targets []string
+	workers := make([]DryRunPlanWorker, 0, len(commands))
+	for i, cmd := range commands {
+		groupTargets := append([]string(nil), groups[i].Files...)
+		targets = append(targets, groupTargets...)
+		env := planEnv(cmd)
+		workers = append(workers, DryRunPlanWorker{
+			Index:   i,
+			Targets: groupTargets,
+			Argv:    append([]string(nil), cmd.Args...),
+			Env:     env,
+			Shell:   strings.Join(append(append([]string{}, env...), cmd.Args...), " "),
+		})
+	}
+
+	return &RunnerDryRunPlan{Targets: targets, Workers: workers}, nil
+}
+
 func (r *Runner) RunArgsPerWorker(args []string) error {
 	commands, err := r.buildArgsPerWorkerCommands(context.Background(), args)
 	if err != nil {

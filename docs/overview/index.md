@@ -1,12 +1,13 @@
 # Project Overview
 
-Plur is a fast parallel test runner and watcher for Ruby projects, with
-zero-configuration defaults for RSpec and Minitest plus optional TOML
-configuration for custom jobs.
+Plur is a standalone CLI for running Ruby tests in parallel and previewing or
+watching test targets with minimal setup. The current public docs are organized
+around daily use first, then deeper reference and implementation material.
 
-## Start Here
+## Contents
 
-- [Getting Started](../getting-started.md) - Installation and first run
-- [Usage](../usage.md) - Command reference
-- [Configuration](../configuration.md) - Jobs, frameworks, and watch mappings
-- [Benchmarks](../benchmarks/oss-benchmarks.md) - Performance data
+- [Getting Started](../getting-started.md) - Install Plur and run the first commands
+- [Usage](../usage.md) - Common command workflows
+- [Configuration](../configuration.md) - TOML configuration reference
+- [Output Contracts](../output-contracts.md) - Stable output, streams, and exit codes
+- [Benchmarks](../benchmarks/oss-benchmarks.md) - Performance evidence

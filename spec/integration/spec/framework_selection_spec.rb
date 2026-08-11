@@ -1,12 +1,15 @@
 require "spec_helper"
-require "tempfile"
 require "fileutils"
+require "tmpdir"
 
 RSpec.describe "Framework Selection" do
-  let(:test_dir) { Dir.mktmpdir("plur-framework-test") }
+  let(:test_dir) { @test_dir }
 
-  after do
-    FileUtils.rm_rf(test_dir) if test_dir && Dir.exist?(test_dir)
+  around do |example|
+    Dir.mktmpdir("plur-framework-test") do |dir|
+      @test_dir = dir
+      example.run
+    end
   end
 
   describe "with both spec/ and test/ directories" do
@@ -27,6 +30,7 @@ RSpec.describe "Framework Selection" do
         Bundler.with_unbundled_env do
           result = run_plur("--dry-run")
           expect(result).to be_success
+          expect(result.err).to include("[dry-run] Selected job: rspec (framework: rspec, reason: autodetect)")
           expect(result.err).to include("spec/example_spec.rb")
           expect(result.err).not_to include("test/example_test.rb")
         end
@@ -49,6 +53,7 @@ RSpec.describe "Framework Selection" do
         Bundler.with_unbundled_env do
           result = run_plur("spec", "-u", "minitest", "--dry-run")
           expect(result).to be_success
+          expect(result.err).to include("[dry-run] Selected job: minitest (framework: minitest, reason: explicit name)")
           expect(result.err).to include("test/example_test.rb")
           expect(result.err).not_to include("spec/example_spec.rb")
         end
@@ -126,7 +131,33 @@ RSpec.describe "Framework Selection" do
     it "detects and runs Minitest tests" do
       output = run_plur_in_dir(test_dir, "--dry-run")
 
+      expect(output).to include("[dry-run] Selected job: minitest (framework: minitest, reason: autodetect)")
       expect(output).to include("test/example_test.rb")
+    end
+  end
+
+  describe "with an explicit target directory" do
+    before do
+      FileUtils.mkdir_p(File.join(test_dir, "spec"))
+      FileUtils.mkdir_p(File.join(test_dir, "test"))
+      File.write(File.join(test_dir, "spec", "example_spec.rb"), "RSpec.describe('Example') { it('passes') { expect(1).to eq(1) } }\n")
+      File.write(File.join(test_dir, "test", "example_test.rb"), <<~RUBY)
+        require 'minitest/autorun'
+
+        class ExampleTest < Minitest::Test
+          def test_passes
+            assert_equal 1, 1
+          end
+        end
+      RUBY
+    end
+
+    it "explains framework selection from explicit patterns" do
+      output = run_plur_in_dir(test_dir, "--dry-run test")
+
+      expect(output).to include("[dry-run] Selected job: minitest (framework: minitest, reason: explicit patterns)")
+      expect(output).to include("test/example_test.rb")
+      expect(output).not_to include("spec/example_spec.rb")
     end
   end
 

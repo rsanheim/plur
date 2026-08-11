@@ -8,6 +8,8 @@ import (
 )
 
 // BuildRunArgs builds command arguments for run mode (plur spec).
+// User-supplied {{target}} tokens are rejected by the CLI before this helper.
+// The strip step remains for inherited built-in commands shared with watch mode.
 // extraArgs are inserted after framework defaults and before target files.
 func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []string) ([]string, error) {
 	fw := j.Framework

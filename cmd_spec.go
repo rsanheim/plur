@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -57,6 +58,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
+	if cfg.DryRun && cfg.DryRunFormat == "text" {
+		fmt.Fprintf(os.Stderr, "[dry-run] Selected job: %s (framework: %s, reason: %s)\n",
+			selected.Name, currentJob.FrameworkName, dryRunReasonLabel(selected.Reason))
+	}
+
 	if r.Auto {
 		depManager := NewDependencyManager(cfg.DryRun)
 		if err := depManager.InstallDependencies(); err != nil {
@@ -73,6 +79,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	if err != nil {
 		return err
 	}
+
+	if cfg.DryRun && cfg.DryRunFormat == "json" {
+		return writeSpecDryRunPlan(runner, selected.Name, currentJob.FrameworkName, selected.Reason)
+	}
+
 	results, wallTime, err := runner.Run()
 	if err != nil {
 		return err
@@ -111,6 +122,32 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	}
 
 	return nil
+}
+
+func dryRunReasonLabel(reason runtime.ResolveReason) string {
+	return strings.ReplaceAll(string(reason), "_", " ")
+}
+
+func writeSpecDryRunPlan(runner *Runner, jobName, frameworkName string, reason runtime.ResolveReason) error {
+	runnerPlan, err := runner.DryRunPlan()
+	if err != nil {
+		return err
+	}
+	plan := DryRunPlan{
+		Version: 1,
+		Mode:    "spec",
+		Job: DryRunPlanJob{
+			Name:      jobName,
+			Framework: frameworkName,
+			Reason:    string(reason),
+		},
+		Targets:  runnerPlan.Targets,
+		Warnings: []string{},
+		Workers:  runnerPlan.Workers,
+	}
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(plan)
 }
 
 func normalizeSpecPatterns(patterns []string) []string {

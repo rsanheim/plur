@@ -75,6 +75,12 @@ func buildWatchPlanner(globals *PlurCLI, watchCmd *WatchCmd) (watch.Planner, err
 	}, nil
 }
 
+func printWatchDryRunGuidance() {
+	fmt.Fprintln(os.Stderr, "Error: plur watch does not support --dry-run yet.")
+	fmt.Fprintln(os.Stderr, "Use `plur watch find <changed-file>` to preview which tests a file change would run.")
+	fmt.Fprintln(os.Stderr, "Use `plur --dry-run [patterns...]` to preview a one-shot test run.")
+}
+
 func printHelp() {
 	cmdWidth := 20
 	fmt.Println("Available commands")

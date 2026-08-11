@@ -35,9 +35,9 @@ func toStdErr(dryRun bool, format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format, args...)
 }
 
-// dryRunString returns a shell-executable representation of the command,
-// including only the env vars that plur sets (not the full inherited env).
-func dryRunString(cmd *exec.Cmd) string {
+// dryRunEnv returns only the env vars that plur sets on the command
+// (not the full inherited env).
+func dryRunEnv(cmd *exec.Cmd) []string {
 	var envs []string
 	if cmd.Env != nil {
 		envs = cmd.Environ()
@@ -50,6 +50,13 @@ func dryRunString(cmd *exec.Cmd) string {
 			extras = append(extras, env)
 		}
 	}
+	return extras
+}
+
+// dryRunString returns a shell-executable representation of the command,
+// including only the env vars that plur sets (not the full inherited env).
+func dryRunString(cmd *exec.Cmd) string {
+	extras := dryRunEnv(cmd)
 	cmdStr := strings.Join(cmd.Args, " ")
 	if len(extras) > 0 {
 		return strings.Join(extras, " ") + " " + cmdStr
