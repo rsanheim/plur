@@ -82,7 +82,6 @@ func streamTestOutput(
 					}
 				}
 
-				// Add all notifications to collector (ProgressEvents will be ignored)
 				collector.AddNotification(notification)
 
 				// Test output the parser split off a consumed line (e.g. a
