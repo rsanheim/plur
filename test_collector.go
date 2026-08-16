@@ -12,7 +12,9 @@ type TestCollector struct {
 	tests             []types.TestCaseNotification
 	failures          []types.TestCaseNotification
 	pending           []types.TestCaseNotification
-	suiteInfo         *types.SuiteNotification
+	loadTime          time.Duration           // from suite_started, else suite_finished
+	suiteFinished     bool
+	suiteCounts       types.SuiteNotification // counts from suite_finished; authoritative once suiteFinished
 	rawOutput         strings.Builder
 	formattedFailures string
 	formattedPending  string
@@ -48,26 +50,15 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 		}
 	case types.SuiteStarted:
 		if suite, ok := n.(types.SuiteNotification); ok {
-			// Store the suite info from SuiteStarted which contains the load time
-			if collector.suiteInfo == nil {
-				collector.suiteInfo = &suite
-			} else {
-				// Preserve the load time from SuiteStarted
-				collector.suiteInfo.LoadTime = suite.LoadTime
-				if suite.TestCount > 0 {
-					collector.suiteInfo.TestCount = suite.TestCount
-				}
-			}
+			collector.loadTime = suite.LoadTime
 		}
 	case types.SuiteFinished:
 		if suite, ok := n.(types.SuiteNotification); ok {
-			if collector.suiteInfo == nil {
-				collector.suiteInfo = &suite
-			} else {
-				// Update suite info with finish data, but preserve LoadTime from SuiteStarted
-				loadTime := collector.suiteInfo.LoadTime
-				collector.suiteInfo = &suite
-				collector.suiteInfo.LoadTime = loadTime
+			collector.suiteFinished = true
+			collector.suiteCounts = suite
+			// suite_started's load time wins when it reported one
+			if collector.loadTime == 0 {
+				collector.loadTime = suite.LoadTime
 			}
 		}
 	case types.RawOutput, types.TestStdout:
@@ -106,27 +97,19 @@ func (collector *TestCollector) BuildResult(duration time.Duration) WorkerResult
 		result.State = types.StateFailed
 	}
 
-	// Suite info counts are authoritative when present, but only override
-	// the per-test tallies when nonzero: a suite_started row carries zero
-	// counts, and if the worker crashed before suite_finished arrived those
-	// zeros must not discard the tests that already reported.
-	if collector.suiteInfo != nil {
-		result.FileLoadTime = collector.suiteInfo.LoadTime
-		if collector.suiteInfo.TestCount > 0 {
-			result.ExampleCount = collector.suiteInfo.TestCount
-		}
-		if collector.suiteInfo.AssertionCount > 0 {
-			result.AssertionCount = collector.suiteInfo.AssertionCount
-		}
-		if collector.suiteInfo.FailureCount > 0 {
-			result.FailureCount = collector.suiteInfo.FailureCount
-		}
-		if collector.suiteInfo.ErrorCount > 0 {
-			result.ErrorCount = collector.suiteInfo.ErrorCount
-		}
-		if collector.suiteInfo.PendingCount > 0 {
-			result.PendingCount = collector.suiteInfo.PendingCount
-		}
+	result.FileLoadTime = collector.loadTime
+
+	// Counts from suite_finished are authoritative, zeros included: minitest
+	// reports errors separately from failures, so an error-only run has a
+	// genuine failure_count of 0 while the per-test tallies above count every
+	// non-passing test as a failure. If the worker died before suite_finished
+	// arrived, the per-test tallies stand.
+	if collector.suiteFinished {
+		result.ExampleCount = collector.suiteCounts.TestCount
+		result.AssertionCount = collector.suiteCounts.AssertionCount
+		result.FailureCount = collector.suiteCounts.FailureCount
+		result.ErrorCount = collector.suiteCounts.ErrorCount
+		result.PendingCount = collector.suiteCounts.PendingCount
 	}
 
 	return result

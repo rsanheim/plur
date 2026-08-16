@@ -73,7 +73,7 @@ func TestTestCollector_AddNotification(t *testing.T) {
 	assert.Len(t, collector.tests, 3)
 	assert.Len(t, collector.failures, 1)
 	assert.Len(t, collector.pending, 1)
-	assert.NotNil(t, collector.suiteInfo)
+	assert.True(t, collector.suiteFinished)
 	assert.Equal(t, "Some test output\n", collector.rawOutput.String())
 }
 
@@ -237,6 +237,38 @@ func TestTestCollector_BuildResult_SuiteStartedWithoutFinished(t *testing.T) {
 	assert.Equal(t, 2, result.ExampleCount, "should count from test_result rows, not suite_started zeros")
 	assert.Equal(t, 1, result.FailureCount, "should count from test_result rows, not suite_started zeros")
 	assert.Equal(t, 50*time.Millisecond, result.FileLoadTime, "LoadTime from suite_started should be preserved")
+}
+
+// Minitest reports errors separately from failures: an error-only run's
+// suite_finished carries a genuine failure_count of 0, which must override
+// the per-test tally (errors arrive as TestFailed rows and would otherwise
+// be double-counted as failures).
+func TestTestCollector_BuildResult_SuiteFinishedZerosAreAuthoritative(t *testing.T) {
+	collector := NewTestCollector()
+
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestFailed,
+		TestID: "ErrorsOnlyTest#test_raises",
+		Status: "error",
+	})
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestFailed,
+		TestID: "ErrorsOnlyTest#test_also_raises",
+		Status: "error",
+	})
+	collector.AddNotification(types.SuiteNotification{
+		Event:      types.SuiteFinished,
+		TestCount:  2,
+		ErrorCount: 2,
+	})
+
+	result := collector.BuildResult(100 * time.Millisecond)
+
+	assert.Equal(t, 2, result.ExampleCount)
+	assert.Equal(t, 0, result.AssertionCount)
+	assert.Equal(t, 0, result.FailureCount)
+	assert.Equal(t, 2, result.ErrorCount)
+	assert.Equal(t, types.StateFailed, result.State)
 }
 
 func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {

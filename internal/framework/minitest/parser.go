@@ -163,7 +163,7 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 	}
 
 	assertionCount := totalExamples
-	if suite != nil && suite.AssertionCount > 0 {
+	if suite != nil {
 		assertionCount = suite.AssertionCount
 	}
 	assertionText := "1 assertion"
