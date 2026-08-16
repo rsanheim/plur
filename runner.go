@@ -338,8 +338,7 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 
 	parser := r.job.Framework.Parser()
 	collector := NewTestCollector()
-	// Only stream unconsumed stdout for RSpec - Minitest returns consumed=false for everything
-	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx, r.job.Framework.Name != "minitest")
+	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx)
 	err = cmd.Wait()
 	result := collector.BuildResult(time.Since(start))
 

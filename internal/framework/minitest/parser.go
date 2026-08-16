@@ -1,33 +1,51 @@
 package minitest
 
 import (
+	"encoding/json"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rsanheim/plur/internal/format"
-	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/types"
 )
 
-var (
-	summaryRegex           = regexp.MustCompile(`(\d+) (?:runs?|tests?), (\d+) assertions?, (\d+) failures?, (\d+) errors?, (\d+) skips?`)
-	failureHeaderLineRegex = regexp.MustCompile(`^\s*\d+\)\s+(Failure|Error):`)
-)
+const jsonPrefix string = "PLUR_JSON:"
+const jsonPrefixLen int = len(jsonPrefix)
 
-// outputParser parses minitest text output into notifications
-type outputParser struct {
-	collectingFailures bool                         // Whether we're collecting failure text
-	failureBuffer      strings.Builder              // Accumulates failure section
-	failures           []types.TestCaseNotification // Extracted failures for runtime tracking
-	progressCount      int                          // Track progress index
-	startTime          time.Time                    // When the parser was created (for load time calculation)
-	inRunningPhase     bool                         // true between "# Running:" and summary/failure sections
+// streamRow represents a single PLUR_JSON line from the embedded plugin
+// (see plur_plugin.rb). Field names mirror the canonical notification types
+// in types/notifications.go that each row feeds: test_result rows fill
+// TestCaseNotification, suite_finished rows fill SuiteNotification.
+type streamRow struct {
+	Type string `json:"type"`
+
+	// test_result fields -> TestCaseNotification
+	Status     string  `json:"status"` // "passed", "failed", "error", "skipped"
+	ID         string  `json:"id"`     // Klass#test_name -> TestID
+	FilePath   string  `json:"file_path"`
+	LineNumber int     `json:"line_number"`
+	RunTime    float64 `json:"run_time"` // seconds -> Duration
+
+	// dump_failures field -> FormattedFailuresNotification
+	FormattedOutput string `json:"formatted_output"`
+
+	// suite_finished fields -> SuiteNotification
+	TestCount      int `json:"test_count"`
+	AssertionCount int `json:"assertion_count"`
+	FailureCount   int `json:"failure_count"`
+	ErrorCount     int `json:"error_count"`
+	PendingCount   int `json:"pending_count"`
 }
 
-// NewOutputParser creates a new minitest output parser with proper initialization
+// outputParser parses the embedded reporter's JSON rows into notifications.
+// Any line without the row prefix is test-written stdout: with minitest's own
+// reporters replaced, nothing else writes to the pipe.
+type outputParser struct {
+	startTime time.Time // When the parser was created (for load time calculation)
+}
+
+// NewOutputParser creates a new minitest output parser
 func NewOutputParser() types.TestOutputParser {
 	return &outputParser{
 		startTime: time.Now(),
@@ -39,23 +57,99 @@ func (p *outputParser) CurrentFile() string {
 	return ""
 }
 
+// ParseLine parses a single line of output from our Ruby based Plur::MinitestReporter
+func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
+	idx := strings.Index(line, jsonPrefix)
+	if idx == -1 {
+		return nil, false // test-written output: preserved and streamed by the caller
+	}
+
+	var row streamRow
+	if err := json.Unmarshal([]byte(line[idx+jsonPrefixLen:]), &row); err != nil {
+		return nil, false
+	}
+
+	var prefix []types.TestNotification
+	if idx > 0 {
+		// A test wrote a partial line (print with no trailing newline), so the
+		// reporter's row landed on the same physical line. The bytes before
+		// the marker are that test's output.
+		prefix = append(prefix, types.OutputNotification{
+			Event:   types.TestStdout,
+			Content: line[:idx],
+		})
+	}
+
+	switch row.Type {
+	case "suite_started":
+		return append(prefix, types.SuiteNotification{
+			Event:    types.SuiteStarted,
+			LoadTime: time.Since(p.startTime),
+		}), true
+	case "test_result":
+		return append(prefix, testNotification(row)), true
+	case "dump_failures":
+		if row.FormattedOutput == "" {
+			return prefix, true
+		}
+		return append(prefix, types.FormattedFailuresNotification{Content: row.FormattedOutput}), true
+	case "suite_finished":
+		return append(prefix, types.SuiteNotification{
+			Event:          types.SuiteFinished,
+			TestCount:      row.TestCount,
+			AssertionCount: row.AssertionCount,
+			FailureCount:   row.FailureCount,
+			ErrorCount:     row.ErrorCount,
+			PendingCount:   row.PendingCount,
+		}), true
+	}
+
+	return prefix, true // unknown row types are reporter-internal, never test output
+}
+
+// testNotification converts a test_result row to a TestCaseNotification.
+// FilePath and Duration feed runtime-based distribution via the tracker.
+func testNotification(row streamRow) types.TestCaseNotification {
+	var event types.TestEvent
+	switch row.Status {
+	case "passed":
+		event = types.TestPassed
+	case "skipped":
+		event = types.TestPending
+	default: // "failed", "error", and anything minitest adds later
+		event = types.TestFailed
+	}
+
+	notification := types.TestCaseNotification{
+		Event:           event,
+		TestID:          row.ID,
+		Description:     row.ID,
+		FullDescription: row.ID,
+		FilePath:        row.FilePath,
+		LineNumber:      row.LineNumber,
+		Status:          row.Status,
+		Duration:        time.Duration(row.RunTime * float64(time.Second)),
+	}
+	if row.FilePath != "" {
+		notification.Location = fmt.Sprintf("%s:%d", row.FilePath, row.LineNumber)
+	}
+	return notification
+}
+
 // Converts a TestNotification to a progress type (just a string for now) for streaming to output
 func (p *outputParser) NotificationToProgress(notification types.TestNotification) (string, bool) {
-	if notification.GetEvent() != types.Progress {
-		return "", false
-	}
-	event := notification.(types.ProgressEvent)
-	switch event.Character {
-	case ".":
+	switch notification.GetEvent() {
+	case types.TestPassed:
 		return "dot", true
-	case "F":
+	case types.TestFailed:
+		if test, ok := notification.(types.TestCaseNotification); ok && test.Status == "error" {
+			return "error_progress", true
+		}
 		return "failure", true
-	case "E":
-		return "error_progress", true
-	case "S":
+	case types.TestPending:
 		return "pending", true
 	}
-	return "", true
+	return "", false
 }
 
 // FormatSummary formats a test summary in minitest style
@@ -69,7 +163,7 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 	}
 
 	assertionCount := totalExamples
-	if suite != nil && suite.AssertionCount > 0 {
+	if suite != nil {
 		assertionCount = suite.AssertionCount
 	}
 	assertionText := "1 assertion"
@@ -107,170 +201,6 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 	summary += fmt.Sprintf("%s, %s, %s, %s, %s", runText, assertionText, failureText, errorText, skipText)
 
 	return summary
-}
-
-// ParseLine parses a single line of minitest output
-func (p *outputParser) ParseLine(line string) ([]types.TestNotification, bool) {
-	logger.Logger.Debug("[ParseLine]", "line", line)
-
-	// Emit suite started on "# Running:" with load time
-	if strings.HasPrefix(line, "# Running:") {
-		p.inRunningPhase = true
-		loadTime := time.Duration(0)
-		if !p.startTime.IsZero() {
-			loadTime = time.Since(p.startTime)
-		}
-		return []types.TestNotification{types.SuiteNotification{
-			Event:    types.SuiteStarted,
-			LoadTime: loadTime,
-		}}, false
-	}
-
-	// Parse progress indicators (., F, E, S)
-	if containsProgressChars(line) {
-		return p.parseProgressLine(line), false
-	}
-
-	// "Finished in" timing line ends the progress section
-	if p.inRunningPhase && strings.HasPrefix(line, "Finished in ") {
-		p.inRunningPhase = false
-	}
-
-	// Extract leading progress chars from mixed lines (e.g. "..in test_foo")
-	// Only during the running phase to avoid false positives in failure details
-	// or the "Finished in" timing line (which starts with 'F')
-	if p.inRunningPhase {
-		if count := countLeadingProgressChars(line); count > 0 {
-			return p.parseProgressLine(line[:count]), false
-		}
-	}
-
-	// Start collecting failures on first failure header
-	if !p.collectingFailures && isFailureHeaderLine(line) {
-		p.inRunningPhase = false
-		p.collectingFailures = true
-		p.failureBuffer.WriteString(line + "\n")
-		return nil, false // Preserve the line in output
-	}
-
-	// Continue collecting failure text until summary
-	if p.collectingFailures {
-		if isSummaryLine(line) {
-			// Extract failures for runtime tracking
-			p.failures = ExtractFailures(p.failureBuffer.String())
-			return p.parseSummaryLine(line), false
-		}
-		p.failureBuffer.WriteString(line + "\n")
-		return nil, false // Preserve the line in output
-	}
-
-	// Check for summary without failures
-	if isSummaryLine(line) {
-		p.inRunningPhase = false
-		return p.parseSummaryLine(line), false
-	}
-
-	return nil, false // Minitest output is always preserved
-}
-
-func (p *outputParser) parseSummaryLine(line string) []types.TestNotification {
-	// Check for summary line
-	if match := summaryRegex.FindStringSubmatch(line); match != nil {
-		runs, _ := strconv.Atoi(match[1])
-		assertions, _ := strconv.Atoi(match[2])
-		failures, _ := strconv.Atoi(match[3])
-		errors, _ := strconv.Atoi(match[4])
-		skips, _ := strconv.Atoi(match[5])
-
-		notifications := []types.TestNotification{}
-
-		// Emit individual TestCaseNotifications for runtime tracking
-		for _, failure := range p.failures {
-			notifications = append(notifications, failure)
-		}
-
-		// Create the suite finished notification
-		finishNotification := types.SuiteNotification{
-			Event:          types.SuiteFinished,
-			TestCount:      runs,
-			AssertionCount: assertions,
-			FailureCount:   failures,
-			ErrorCount:     errors,
-			PendingCount:   skips,
-		}
-		notifications = append(notifications, finishNotification)
-
-		return notifications
-	}
-	return nil // Return nil if not a summary line
-}
-
-func (p *outputParser) parseProgressLine(line string) []types.TestNotification {
-	notifications := []types.TestNotification{}
-
-	// Check for progress indicators and create progress events
-	for _, char := range line {
-		switch char {
-		case '.', 'F', 'E', 'S':
-			notifications = append(notifications, types.ProgressEvent{
-				Event:     types.Progress,
-				Character: string(char),
-				Index:     p.progressCount,
-			})
-			p.progressCount++
-			logger.Logger.Debug("Progress", "char", string(char), "index", p.progressCount-1)
-		default:
-			// Ignore other characters
-			continue
-		}
-	}
-
-	return notifications
-}
-
-// Helper methods for line classification
-func containsProgressChars(line string) bool {
-	// Progress lines are typically just progress indicators without other text
-	// Avoid matching lines that happen to contain these characters in other contexts
-	trimmed := strings.TrimSpace(line)
-	if trimmed == "" {
-		return false
-	}
-
-	// Check if line consists only of progress characters
-	for _, char := range trimmed {
-		switch char {
-		case '.', 'F', 'E', 'S':
-			continue
-		default:
-			return false
-		}
-	}
-	return true
-}
-
-// countLeadingProgressChars returns the number of consecutive progress characters
-// (., F, E, S) at the start of a line. Returns 0 if the line doesn't start with
-// a progress character. Does not trim whitespace since minitest never indents
-// progress output.
-func countLeadingProgressChars(line string) int {
-	for i, char := range line {
-		switch char {
-		case '.', 'F', 'E', 'S':
-			continue
-		default:
-			return i
-		}
-	}
-	return len(line)
-}
-
-func isFailureHeaderLine(line string) bool {
-	return failureHeaderLineRegex.MatchString(line)
-}
-
-func isSummaryLine(line string) bool {
-	return summaryRegex.MatchString(line)
 }
 
 // FormatFailuresList returns empty string since minitest doesn't use failure lists

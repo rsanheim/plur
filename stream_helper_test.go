@@ -22,7 +22,7 @@ import (
 func drainStderr(stdout, stderr io.Reader, parser types.TestOutputParser, collector *TestCollector) []string {
 	ch := make(chan OutputMessage)
 	go func() {
-		streamTestOutput(stdout, stderr, parser, collector, ch, 0, false)
+		streamTestOutput(stdout, stderr, parser, collector, ch, 0)
 		close(ch)
 	}()
 
@@ -120,7 +120,7 @@ func TestStreamTestOutput_LongLineDoesNotHang(t *testing.T) {
 	// Run streamTestOutput - this should NOT hang
 	done := make(chan struct{})
 	go func() {
-		streamTestOutput(stdout, stderr, parser, collector, nil, 0, false)
+		streamTestOutput(stdout, stderr, parser, collector, nil, 0)
 		done <- struct{}{}
 	}()
 
@@ -164,7 +164,7 @@ func TestStreamTestOutput_LineWithoutTrailingNewline(t *testing.T) {
 	parser := &mockParser{}
 	collector := NewTestCollector()
 
-	streamTestOutput(stdout, stderr, parser, collector, nil, 0, false)
+	streamTestOutput(stdout, stderr, parser, collector, nil, 0)
 
 	assert.Len(t, parser.linesReceived, 2)
 	assert.Equal(t, []string{"line1", "final"}, parser.linesReceived)

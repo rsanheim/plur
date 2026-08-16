@@ -32,20 +32,12 @@ func TestBuildTestSummary(t *testing.T) {
 					TestID:          "test-1",
 					FullDescription: "Controller GET /index returns 200",
 					LineNumber:      10,
-					Exception: &types.TestException{
-						Message:   "expected 200, got 404",
-						Backtrace: []string{"spec/controller_spec.rb:10"},
-					},
 				},
 				{
 					Event:           types.TestFailed,
 					TestID:          "test-2",
 					FullDescription: "Controller POST /create creates resource",
 					LineNumber:      20,
-					Exception: &types.TestException{
-						Message:   "expected resource to be created",
-						Backtrace: []string{"spec/controller_spec.rb:20"},
-					},
 				},
 			},
 		},

@@ -37,6 +37,7 @@ var registry = map[string]Framework{
 	"minitest": {
 		Name:           "minitest",
 		Parser:         minitest.NewOutputParser,
+		DefaultArgs:    minitestDefaultArgs,
 		DetectPatterns: []string{"**/*_test.rb"},
 		TargetMode:     TargetModeRubyRequire,
 	},
@@ -80,6 +81,25 @@ func DetectPatterns(name string) []string {
 		return nil
 	}
 	return fw.DetectPatterns
+}
+
+// minitestDefaultArgs extends ruby's $LOAD_PATH with plur's plugin dir so
+// minitest's own plugin discovery (Gem.find_files, which searches the load
+// path) finds minitest/plur_plugin.rb - the extension mechanism prescribed
+// by minitest's "Writing Extensions" docs. Discovery is automatic on
+// minitest 5.x; on 6.x the worker script calls Minitest.load_plugins
+// (see BuildRunArgs).
+func minitestDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
+	if cfg == nil || cfg.ConfigPaths == nil {
+		return nil, fmt.Errorf("config paths are required for minitest plugin")
+	}
+
+	loadPath, err := minitest.GetPluginLoadPath(cfg.ConfigPaths.RubyLibDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize minitest plugin: %w", err)
+	}
+
+	return []string{"-I" + loadPath}, nil
 }
 
 func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {

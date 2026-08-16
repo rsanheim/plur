@@ -41,7 +41,6 @@ func streamTestOutput(
 	collector *TestCollector,
 	outputChan chan<- OutputMessage,
 	workerIndex int,
-	streamStdout bool, // Only stream unconsumed stdout for RSpec (JSON makes it safe)
 ) {
 	var wg sync.WaitGroup
 
@@ -83,27 +82,31 @@ func streamTestOutput(
 					}
 				}
 
-				// Add all notifications to collector (ProgressEvents will be ignored)
 				collector.AddNotification(notification)
+
+				// Test output the parser split off a consumed line (e.g. a
+				// partial write glued to a structured row) still streams live
+				if notification.GetEvent() == types.TestStdout && outputChan != nil {
+					if out, ok := notification.(types.OutputNotification); ok {
+						outputChan <- OutputMessage{
+							Type:        "stdout",
+							Content:     out.Content,
+							CurrentFile: parser.CurrentFile(),
+						}
+					}
+				}
 			}
 
-			// If line wasn't consumed by parser, it's test-written output.
-			// Stream it live (RSpec: the JSON formatter makes this safe) OR
-			// collect it for the errored-worker re-print (Minitest: returns
-			// consumed=false for everything, so streaming would duplicate all
-			// output) - never both, so a line can only ever display once.
-			if !consumed {
-				if outputChan != nil && streamStdout {
-					outputChan <- OutputMessage{
-						Type:        "stdout",
-						Content:     line,
-						CurrentFile: parser.CurrentFile(),
-					}
-				} else {
-					collector.AddNotification(types.OutputNotification{
-						Event:   types.RawOutput,
-						Content: line,
-					})
+			// If line wasn't consumed by parser, it's test-written output:
+			// stream it in real-time. It is deliberately NOT collected, so
+			// rawOutput holds only consumed framework messages (e.g. RSpec
+			// syntax errors) and re-printing it for errored workers cannot
+			// duplicate lines that already streamed.
+			if !consumed && outputChan != nil {
+				outputChan <- OutputMessage{
+					Type:        "stdout",
+					Content:     line,
+					CurrentFile: parser.CurrentFile(),
 				}
 			}
 

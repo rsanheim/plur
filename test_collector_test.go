@@ -35,11 +35,6 @@ func TestTestCollector_AddNotification(t *testing.T) {
 		FilePath:        "spec/example_spec.rb",
 		LineNumber:      20,
 		Duration:        50 * time.Millisecond,
-		Exception: &types.TestException{
-			Class:     "RSpec::Expectations::ExpectationNotMetError",
-			Message:   "expected true to be false",
-			Backtrace: []string{"spec/example_spec.rb:20:in `block (2 levels) in <top (required)>'"},
-		},
 	}
 	collector.AddNotification(failedTest)
 
@@ -78,7 +73,7 @@ func TestTestCollector_AddNotification(t *testing.T) {
 	assert.Len(t, collector.tests, 3)
 	assert.Len(t, collector.failures, 1)
 	assert.Len(t, collector.pending, 1)
-	assert.NotNil(t, collector.suiteInfo)
+	assert.True(t, collector.suiteFinished)
 	assert.Equal(t, "Some test output\n", collector.rawOutput.String())
 }
 
@@ -99,10 +94,6 @@ func TestTestCollector_BuildResult(t *testing.T) {
 		TestID:          "test-2",
 		FullDescription: "Example fails",
 		LineNumber:      20,
-		Exception: &types.TestException{
-			Message:   "Expected true to be false",
-			Backtrace: []string{"spec/example_spec.rb:20"},
-		},
 	})
 
 	// Add suite info
@@ -151,8 +142,6 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	failure := failures[0]
 	assert.Equal(t, "Example fails", failure.FullDescription)
 	assert.Equal(t, 20, failure.LineNumber)
-	assert.Equal(t, "Expected true to be false", failure.Exception.Message)
-	assert.Equal(t, []string{"spec/example_spec.rb:20"}, failure.Exception.Backtrace)
 }
 
 func TestTestCollector_BuildResult_Success(t *testing.T) {
@@ -220,6 +209,66 @@ func TestTestCollector_SuiteStartedPreservesLoadTime(t *testing.T) {
 	assert.Equal(t, 1500*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should be preserved")
 	assert.Equal(t, types.StateSuccess, result.State)
 	assert.Equal(t, 2, result.ExampleCount)
+}
+
+// Item 3: suite_started carries zero counts (no tests have run yet).
+// If the worker crashes before suite_finished arrives, BuildResult must
+// use the counts derived from individual test_result rows, not the zeros
+// from suite_started.
+func TestTestCollector_BuildResult_SuiteStartedWithoutFinished(t *testing.T) {
+	collector := NewTestCollector()
+
+	collector.AddNotification(types.SuiteNotification{
+		Event:    types.SuiteStarted,
+		LoadTime: 50 * time.Millisecond,
+	})
+
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestPassed,
+		TestID: "PassingTest#test_one",
+	})
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestFailed,
+		TestID: "FailingTest#test_two",
+	})
+
+	result := collector.BuildResult(100 * time.Millisecond)
+
+	assert.Equal(t, 2, result.ExampleCount, "should count from test_result rows, not suite_started zeros")
+	assert.Equal(t, 1, result.FailureCount, "should count from test_result rows, not suite_started zeros")
+	assert.Equal(t, 50*time.Millisecond, result.FileLoadTime, "LoadTime from suite_started should be preserved")
+}
+
+// Minitest reports errors separately from failures: an error-only run's
+// suite_finished carries a genuine failure_count of 0, which must override
+// the per-test tally (errors arrive as TestFailed rows and would otherwise
+// be double-counted as failures).
+func TestTestCollector_BuildResult_SuiteFinishedZerosAreAuthoritative(t *testing.T) {
+	collector := NewTestCollector()
+
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestFailed,
+		TestID: "ErrorsOnlyTest#test_raises",
+		Status: "error",
+	})
+	collector.AddNotification(types.TestCaseNotification{
+		Event:  types.TestFailed,
+		TestID: "ErrorsOnlyTest#test_also_raises",
+		Status: "error",
+	})
+	collector.AddNotification(types.SuiteNotification{
+		Event:      types.SuiteFinished,
+		TestCount:  2,
+		ErrorCount: 2,
+	})
+
+	result := collector.BuildResult(100 * time.Millisecond)
+
+	assert.Equal(t, 2, result.ExampleCount)
+	assert.Equal(t, 0, result.AssertionCount)
+	assert.Equal(t, 0, result.FailureCount)
+	assert.Equal(t, 2, result.ErrorCount)
+	assert.Equal(t, types.StateFailed, result.State)
 }
 
 func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {

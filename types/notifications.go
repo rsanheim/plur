@@ -22,13 +22,12 @@ const (
 	SuiteStarted  TestEvent = "suite_started"
 	SuiteFinished TestEvent = "suite_finished"
 	RawOutput     TestEvent = "raw_output"
-	Progress      TestEvent = "progress" // Progress indicator for real-time display
+	TestStdout    TestEvent = "test_stdout" // Test-written stdout split off a consumed line; streamed live
 )
 
 // TestNotification is the interface that all notifications implement
 type TestNotification interface {
 	GetEvent() TestEvent
-	GetTestID() string
 }
 
 // TestCaseNotification represents events for individual test cases
@@ -48,22 +47,11 @@ type TestCaseNotification struct {
 	LocationRerunArgument string // file:line argument RSpec recommends for re-running
 	ScopedID              string // RSpec metadata[:scoped_id]
 
-	// Only populated for failures
-	Exception *TestException
-
 	// Only populated for pending tests
 	PendingMessage string
 }
 
 func (n TestCaseNotification) GetEvent() TestEvent { return n.Event }
-func (n TestCaseNotification) GetTestID() string   { return n.TestID }
-
-// TestException contains failure information
-type TestException struct {
-	Class     string
-	Message   string
-	Backtrace []string
-}
 
 // SuiteNotification represents suite-level events
 type SuiteNotification struct {
@@ -78,16 +66,14 @@ type SuiteNotification struct {
 }
 
 func (n SuiteNotification) GetEvent() TestEvent { return n.Event }
-func (n SuiteNotification) GetTestID() string   { return "" } // Suite events don't have test IDs
 
 // OutputNotification represents raw output that doesn't match patterns
 type OutputNotification struct {
-	Event   TestEvent // Always RawOutput
+	Event   TestEvent // RawOutput, or TestStdout for output split off a consumed line
 	Content string
 }
 
 func (n OutputNotification) GetEvent() TestEvent { return n.Event }
-func (n OutputNotification) GetTestID() string   { return "" }
 
 // FormattedFailuresNotification is a special notification for RSpec's formatted failure output
 type FormattedFailuresNotification struct {
@@ -95,7 +81,6 @@ type FormattedFailuresNotification struct {
 }
 
 func (n FormattedFailuresNotification) GetEvent() TestEvent { return RawOutput }
-func (n FormattedFailuresNotification) GetTestID() string   { return "" }
 
 // FormattedPendingNotification is a special notification for RSpec's formatted pending output
 type FormattedPendingNotification struct {
@@ -103,7 +88,6 @@ type FormattedPendingNotification struct {
 }
 
 func (n FormattedPendingNotification) GetEvent() TestEvent { return RawOutput }
-func (n FormattedPendingNotification) GetTestID() string   { return "" }
 
 // FormattedSummaryNotification is a special notification for RSpec's formatted summary
 type FormattedSummaryNotification struct {
@@ -111,15 +95,3 @@ type FormattedSummaryNotification struct {
 }
 
 func (n FormattedSummaryNotification) GetEvent() TestEvent { return RawOutput }
-func (n FormattedSummaryNotification) GetTestID() string   { return "" }
-
-// ProgressEvent represents a progress indicator for real-time display only
-// This is not a test result, just a display notification
-type ProgressEvent struct {
-	Event     TestEvent // Always Progress
-	Character string    // '.', 'F', 'E', 'S'
-	Index     int       // Position in test run (0-based)
-}
-
-func (n ProgressEvent) GetEvent() TestEvent { return n.Event }
-func (n ProgressEvent) GetTestID() string   { return "" }
