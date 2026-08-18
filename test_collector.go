@@ -12,7 +12,7 @@ type TestCollector struct {
 	tests             []types.TestCaseNotification
 	failures          []types.TestCaseNotification
 	pending           []types.TestCaseNotification
-	loadTime          time.Duration           // from suite_started, else suite_finished
+	loadTime          time.Duration // from suite_started, else suite_finished
 	suiteFinished     bool
 	suiteCounts       types.SuiteNotification // counts from suite_finished; authoritative once suiteFinished
 	rawOutput         strings.Builder
