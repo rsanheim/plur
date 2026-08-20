@@ -218,10 +218,10 @@ RSpec.describe "Plur Rails and Rake commands" do
           expect(result.status).to eq(0), "rails db:test:prepare failed: #{result.err}"
 
           test_dbs = default_rails_dir.glob("storage/test?.sqlite3")
-          test_dbs.each do |db|
-            sqlite_tables(db)
-          end
           expect(test_dbs.count).to eq(7)
+          test_dbs.each do |db|
+            expect(sqlite_tables(db)).to include("users", "posts"), "expected schema tables in #{db}"
+          end
         end
       end
     end
