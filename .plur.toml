@@ -4,14 +4,24 @@ cmd = ["bin/rake", "install"]
 [job.rspec]
 cmd = ["bin/rspec"]
 
-# Go source files -> rebuild plur and reload
+# Go source files -> test their package
 [[watch]]
-name = "plur-go-build"
+name = "go-source"
 source = "**/*.go"
-jobs = ["build"]
-no_targets = true
-reload = true
+targets = ["./{{dir_relative}}"]
+jobs = ["go-test"]
 ignore = ["**/*_test.go", "vendor/**", "**/vendor/**", "**/testdata/**"]
+
+# Go source files -> rebuild plur and reload
+# disable for now, too clunky
+#
+# [[watch]]
+# name = "plur-go-build"
+# source = "**/*.go"
+# jobs = ["build"]
+# no_targets = true
+# reload = true
+# ignore = ["**/*_test.go", "vendor/**", "**/vendor/**", "**/testdata/**"]
 
 # Go test files -> run tests
 [[watch]]
