@@ -121,15 +121,22 @@ fresh project.
 ### Rails And Rake Commands
 
 ```bash
-plur rails db:prepare -n 4
-plur rails db:migrate VERSION=20260429000000 -n 4
-plur rails db:migrate -n 4 -- --trace
-plur rake db:setup -n 4
-plur rake db:create db:migrate -n 4
-plur rake -n 1 -- --tasks
+plur rails db:test:prepare      # Prepare test DBs for your configured worker count
+plur rails db:test:prepare -n 8 # Prepare test DBs for eight test databases
+plur rails db:drop db:create RAILS_ENV=test   # drop and re-create your test DBs
+plur rails app:my_task  # Run your app specific rake task across all DBs
+plur rake app:my_task   # Same as above - run app sepecific rake tasks
+plur rake app:my_taskl -n 1 -- --option1     # Pass Rake-specific flags after --
 ```
 
-These commands run the configured job once per worker, with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set. Arguments are appended literally — they're not treated as test file patterns. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake.
+These commands run the configured job once per worker, with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set
+
+```
+
+
+: Arguments are appended literally — they're not treated as test file patterns. Put Plur flags like `-n` before `--`; arguments after `--` are passed through to Rails/Rake
+
+
 
 ## Command Line Options
 
