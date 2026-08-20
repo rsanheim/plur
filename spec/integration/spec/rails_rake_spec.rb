@@ -188,6 +188,12 @@ RSpec.describe "Plur Rails and Rake commands" do
   end
 
   context "rails database commands with default rails fixture project" do
+    around do |ex|
+      Pathname(default_rails_dir.expand_path).glob("storage/test?.sqlite3").map(&:delete)
+      ex.run
+      Pathname(default_rails_dir.expand_path).glob("storage/test?.sqlite3").map(&:delete)
+    end
+
     def ensure_default_rails_bundle_installed
       _, _, check_status = Open3.capture3("bundle check")
       return if check_status.success?
@@ -198,6 +204,26 @@ RSpec.describe "Plur Rails and Rake commands" do
 
     def sqlite_tables(db_path)
       `sqlite3 #{db_path} ".tables"`.split
+    end
+
+    it "correctly sets up test dbs using standard db:test:prepare" do
+      Dir.chdir(default_rails_dir) do
+        Bundler.with_unbundled_env do
+          ensure_default_rails_bundle_installed
+
+          test_dbs = default_rails_dir.glob("storage/test?.sqlite3")
+          expect(test_dbs.count).to eq(0)
+
+          result = run_plur("rails", "db:test:prepare", "-n", "7", allow_error: true)
+          expect(result.status).to eq(0), "rails db:test:prepare failed: #{result.err}"
+
+          test_dbs = default_rails_dir.glob("storage/test?.sqlite3")
+          test_dbs.each do |db|
+            sqlite_tables(db)
+          end
+          expect(test_dbs.count).to eq(7)
+        end
+      end
     end
 
     it "creates and migrates databases for parallel testing" do
