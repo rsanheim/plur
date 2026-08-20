@@ -126,7 +126,6 @@ func transformDatabaseYml(content string) (string, bool) {
 		return content, true
 	}
 
-	// Now do the actual transformation
 	iterateTestSection(lines, func(i int, line, trimmed string) {
 		if isDatabaseLine(trimmed) {
 			lines[i] = transformDatabaseLine(line)
@@ -568,17 +567,16 @@ func printInitSummary(cfg *config.GlobalConfig, result *initResult) {
 	if result.changesApplied > 0 && !cfg.DryRun {
 		fmt.Println("Next steps:")
 		fmt.Println("  1. Review the changes above")
-		fmt.Println("  2. plur rails db:create    - Create parallel databases")
-		fmt.Println("  3. plur rails db:migrate   - Run migrations on all databases")
-		fmt.Println("  4. plur spec         - Run your tests in parallel")
+		fmt.Println("  2. plur rails db:test:prepare # Setup parallel test databases for existing schema")
+		fmt.Println("  3. plur spec         # Run your tests in parallel")
 	} else if cfg.DryRun {
 		fmt.Println("Run 'plur rails:init' without --dry-run to apply these changes.")
 	} else if result.changesApplied == 0 && len(result.alreadyDone) > 0 {
 		fmt.Println("Your project appears ready for parallel testing.")
 		fmt.Println()
 		fmt.Println("Next steps:")
-		fmt.Println("  1. plur rails db:create    - Create parallel databases")
-		fmt.Println("  2. plur rails db:migrate   - Run migrations on all databases")
-		fmt.Println("  3. plur spec         - Run your tests in parallel")
+		fmt.Println("  1. plur rails db:test:prepare  # Setup parallel test databases for existing schema")
+		fmt.Println("  2. plur spec         # Run your tests in parallel")
+		fmt.Println("  3. there is no step 3")
 	}
 }
