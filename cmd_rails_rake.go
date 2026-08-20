@@ -20,11 +20,10 @@ to rails/rake unchanged.
 
 Examples:
 
-	plur rails db:prepare -n 4
-	plur rails db:migrate VERSION=20260429000000 -n 4
+	plur rails db:test:prepare
+	plur rails db:test:prepare -n 4
 	plur rails db:migrate -n 4 -- --trace
 	plur rake db:setup -n 4
-	plur rake db:create db:migrate -n 4
 	plur rake -n 1 -- --tasks`
 }
 
@@ -61,8 +60,7 @@ func (r *RailsCmd) Run(parent *PlurCLI, ctx *kong.Context) error {
 //	commandPos = len(ctx.Args) - len(path.Remainder()) - 1
 //
 // where path.Remainder() is the slice of unparsed args appearing after this
-// Path element. This correctly distinguishes the command token from a flag
-// value that happens to be "rake" (e.g. `plur -C rake rails db:prepare`).
+// Path element.
 func railsCommandJobName(ctx *kong.Context) string {
 	if ctx == nil {
 		return "rails"
