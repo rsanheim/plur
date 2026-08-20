@@ -120,20 +120,20 @@ fresh project.
 
 ### Rails And Rake Commands
 
-You can use the standard [`db:test:prepare`](https://github.com/rails/rails/blob/c8d223147de1907b4bd3779b5733a55ab9ba9858/activerecord/lib/active_record/railties/databases.rake#L535-L557) task via plur to recreate test DBs for all workers.
+You can use the standard [`db:test:prepare`](https://github.com/rails/rails/blob/c8d223147de1907b4bd3779b5733a55ab9ba9858/activerecord/lib/active_record/railties/databases.rake#L535-L557) task via plur to recreate test DBs for all workers - note that Rails itself does the 'test' DB targetting, so no
+RAILS_ENV=test is required.
 
 ```bash
-plur rails db:test:prepare      # Prepare $PLUR_WORKERS parallel test DBs
-plur rails db:test:prepare -n 8 # Prepare _8_ parallel test DBs
+plur rails db:test:prepare      # Run db:test:prepare n times
+plur rails db:test:prepare -n 8 # Run db:test:prepare 8 times 
 ```  
 
-*NOTE:* If you are running regular rails/rake tasks, you should set whatever env vars you need,
-otherwise standard tasks will default RAILS_ENV to `development`, like normal.
+*NOTE:* plur rails and rake run the command once per worker and set PARALLEL_TEST_GROUPS / TEST_ENV_NUMBER. Plur does not change RAILS_ENV; normal Rails/Rake task semantics still apply.
 
 ```
-plur rails db:setup                           # this runs `db:setup` across n _development_ databases
+plur rails db:setup                           # runs `db:setup` n times with TEST_ENV_NUMBER set for each invocation
 ulur rails db:drop db:create RAILS_ENV=test   # drop and re-create your test DBs
-plur rails app:my_task                        # Run your app specific rake task across all DBs
+plur rails app:my_task                        # Run your app specific rake task n times
 plur rake app:my_task                         # Same as above - run app sepecific rake tasks
 plur rake app:my_taskl -n 1 -- --my-flag      # Pass Rake-specific flags after --
 ```

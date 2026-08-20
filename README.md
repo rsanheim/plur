@@ -59,16 +59,19 @@ plur --dry-run               # Preview execution plan
 ```
 
 ### Rake (and Rails) Tasks
+
 ```bash
 plur rails db:test:prepare      # Prepare test DBs for your configured worker count
 plur rails db:test:prepare -n 8 # Prepare test DBs for eight test databases
-plur rails db:drop db:create RAILS_ENV=test   # drop and re-create your test DBs
-plur rails app:my_task  # Run your app specific rake task across all DBs
+plur rails db:drop db:create RAILS_ENV=test   # Run drop and create n times for our test env
+plur rails app:my_task  # Run your app specific rake task n times
 plur rake app:my_task   # Same as above - run app sepecific rake tasks
 plur rake app:my_taskl -n 1 -- --option1     # Pass Rake-specific flags after --
 ```
 
-`plur rails <args>` and `plur rake <args>` run the configured command once per worker with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set. Arguments are appended literally; put Plur flags like `-n` before `--`, and use `--` to pass flags through to Rails/Rake.
+`plur rails <args>` and `plur rake <args>` run the task once per worker and set `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER`. Plur does not set or alter RAILS_ENV. 
+
+Arguments are appended literally; put Plur flags like `-n` before `--`, and use `--` to pass flags through to Rails/Rake.
 
 ### Explicit Framework Selection
 
