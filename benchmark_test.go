@@ -325,7 +325,7 @@ func BenchmarkTestCollector(b *testing.B) {
 				for _, n := range notifications {
 					collector.AddNotification(n)
 				}
-				collector.BuildResult(5 * time.Second)
+				collector.BuildResult()
 			}
 		})
 	}

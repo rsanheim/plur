@@ -208,9 +208,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	}
 
 	watcherConfig := &watch.ManagerConfig{
-		Directories:    watchDirs,
-		DebounceDelay:  debounceDelay,
-		TimeoutSeconds: runCmd.Timeout,
+		Directories: watchDirs,
 	}
 
 	manager := watch.NewWatcherManager(watcherConfig, watcherPath)

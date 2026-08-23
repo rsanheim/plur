@@ -103,7 +103,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	summary := BuildTestSummary(results, wallTime, currentJob)
+	summary := BuildTestSummary(results, wallTime)
 	PrintResults(summary, cfg.ColorOutput, currentJob)
 
 	if !summary.Success {

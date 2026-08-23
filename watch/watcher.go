@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/rsanheim/plur/logger"
 )
@@ -30,9 +29,7 @@ type Event struct {
 
 // WatcherConfig holds configuration for a single watcher
 type WatcherConfig struct {
-	Directory      string // Single directory to watch
-	DebounceDelay  time.Duration
-	TimeoutSeconds int
+	Directory string // Single directory to watch
 }
 
 // Watcher manages the file watching process

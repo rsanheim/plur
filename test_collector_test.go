@@ -118,11 +118,9 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	})
 
 	// Build result
-	duration := 500 * time.Millisecond
-	result := collector.BuildResult(duration)
+	result := collector.BuildResult()
 
 	// Verify result
-	assert.Equal(t, duration, result.Duration)
 	assert.Equal(t, 2, result.ExampleCount)
 	assert.Equal(t, 5, result.AssertionCount)
 	assert.Equal(t, 1, result.FailureCount)
@@ -157,7 +155,7 @@ func TestTestCollector_BuildResult_Success(t *testing.T) {
 		TestID: "test-2",
 	})
 
-	result := collector.BuildResult(100 * time.Millisecond)
+	result := collector.BuildResult()
 
 	assert.Equal(t, types.StateSuccess, result.State)
 	assert.Equal(t, 2, result.ExampleCount)
@@ -203,7 +201,7 @@ func TestTestCollector_SuiteStartedPreservesLoadTime(t *testing.T) {
 	})
 
 	// Build result
-	result := collector.BuildResult(2 * time.Second)
+	result := collector.BuildResult()
 
 	// Verify that LoadTime from SuiteStarted is preserved
 	assert.Equal(t, 1500*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should be preserved")
@@ -232,7 +230,7 @@ func TestTestCollector_BuildResult_SuiteStartedWithoutFinished(t *testing.T) {
 		TestID: "FailingTest#test_two",
 	})
 
-	result := collector.BuildResult(100 * time.Millisecond)
+	result := collector.BuildResult()
 
 	assert.Equal(t, 2, result.ExampleCount, "should count from test_result rows, not suite_started zeros")
 	assert.Equal(t, 1, result.FailureCount, "should count from test_result rows, not suite_started zeros")
@@ -262,7 +260,7 @@ func TestTestCollector_BuildResult_SuiteFinishedZerosAreAuthoritative(t *testing
 		ErrorCount: 2,
 	})
 
-	result := collector.BuildResult(100 * time.Millisecond)
+	result := collector.BuildResult()
 
 	assert.Equal(t, 2, result.ExampleCount)
 	assert.Equal(t, 0, result.AssertionCount)
@@ -289,7 +287,7 @@ func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {
 		LoadTime:     500 * time.Millisecond, // Different value
 	})
 
-	result := collector.BuildResult(1 * time.Second)
+	result := collector.BuildResult()
 
 	// Should preserve LoadTime from SuiteStarted, not SuiteFinished
 	assert.Equal(t, 800*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should take precedence")

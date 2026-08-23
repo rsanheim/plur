@@ -94,7 +94,6 @@ type PlurCLI struct {
 	Debug     bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
 	DryRun    bool        `help:"Print what would be executed without running" default:"false"`
 	FirstIs1  bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
-	JSON      string      `help:"Save detailed test results as JSON to the specified file" default:"" hidden:""`
 	Use       string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
 	Verbose   bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
 	Version   bool        `help:"Show version information"`
@@ -162,7 +161,6 @@ func (cli *PlurCLI) AfterApply() error {
 		DryRun:        cli.DryRun,
 		WorkerCount:   int(cli.Workers),
 		RuntimeDir:    configPaths.RuntimeDir,
-		JSON:          cli.JSON,
 		FirstIs1:      cli.FirstIs1,
 		RspecSplit:    cli.Spec.RspecSplit,
 		LoadedConfigs: loadedConfigs,

@@ -320,27 +320,25 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 }
 
 func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
-	start := time.Now()
-
 	logger.Logger.Info("running", "cmd", dryRunString(cmd), "worker", workerIdx)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return errorResult(fmt.Errorf("failed to create stdout pipe: %w", err), start)
+		return errorResult(fmt.Errorf("failed to create stdout pipe: %w", err))
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return errorResult(fmt.Errorf("failed to create stderr pipe: %w", err), start)
+		return errorResult(fmt.Errorf("failed to create stderr pipe: %w", err))
 	}
 	if err := cmd.Start(); err != nil {
-		return errorResult(err, start)
+		return errorResult(err)
 	}
 
 	parser := r.job.Framework.Parser()
 	collector := NewTestCollector()
 	streamTestOutput(stdout, stderr, parser, collector, outputChan, workerIdx)
 	err = cmd.Wait()
-	result := collector.BuildResult(time.Since(start))
+	result := collector.BuildResult()
 
 	logger.Logger.Debug("finished", "worker", workerIdx, "success", err == nil)
 
@@ -359,7 +357,6 @@ func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, o
 		State:             state,
 		Output:            output,
 		Error:             err,
-		Duration:          result.Duration,
 		FileLoadTime:      result.FileLoadTime,
 		ExampleCount:      result.ExampleCount,
 		AssertionCount:    result.AssertionCount,
@@ -444,10 +441,9 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 	}
 }
 
-func errorResult(err error, start time.Time) WorkerResult {
+func errorResult(err error) WorkerResult {
 	return WorkerResult{
-		State:    types.StateError,
-		Error:    err,
-		Duration: time.Since(start),
+		State: types.StateError,
+		Error: err,
 	}
 }

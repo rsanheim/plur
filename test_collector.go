@@ -76,10 +76,9 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 	}
 }
 
-func (collector *TestCollector) BuildResult(duration time.Duration) WorkerResult {
+func (collector *TestCollector) BuildResult() WorkerResult {
 	result := WorkerResult{
 		Output:            collector.rawOutput.String(),
-		Duration:          duration,
 		ExampleCount:      len(collector.tests),
 		AssertionCount:    0,
 		FailureCount:      len(collector.failures),
