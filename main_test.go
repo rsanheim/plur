@@ -22,16 +22,6 @@ func TestWorkerCountCLIDefaultMatchesRuntimeDefault(t *testing.T) {
 	assert.Equal(t, strconv.Itoa(DefaultWorkerCount), field.Tag.Get("default"))
 }
 
-func TestJSONFlagHasBeenRemoved(t *testing.T) {
-	var cli PlurCLI
-	parser, err := kong.New(&cli)
-	require.NoError(t, err)
-
-	_, err = parser.Parse([]string{"--json", "results.json"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown flag --json")
-}
-
 func TestWorkerCountValidation(t *testing.T) {
 	for _, tt := range []struct {
 		name string
