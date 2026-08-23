@@ -133,13 +133,13 @@ func (cli *PlurCLI) AfterApply() error {
 	logger.Init(level)
 
 	if cli.Version {
-		err := (&cmd.VersionCmd{}).Run()
-		if err != nil {
-			return err
-		}
+		return nil
 	}
 
-	configPaths := config.InitConfigPaths()
+	configPaths, err := config.InitConfigPaths()
+	if err != nil {
+		return fmt.Errorf("initialize configuration paths: %w", err)
+	}
 
 	var loadedConfigs []string
 	for _, configFile := range cli.configFiles {
@@ -301,6 +301,13 @@ func main() {
 
 	ctx, err := parser.Parse(args)
 	parser.FatalIfErrorf(colorFlagHint(err))
+	if cli.Version {
+		if err := cli.VersionCmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	if len(cli.passthroughArgs) > 0 && !commandSupportsPassthrough(ctx.Command()) {
 		fmt.Fprintln(os.Stderr, "Error: passthrough args via -- are only supported for the spec, rails, and rake commands")

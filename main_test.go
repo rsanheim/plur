@@ -194,6 +194,25 @@ func TestValidateUniqueWatchNames(t *testing.T) {
 	})
 }
 
+func TestVersionFlagSkipsConfigPathInitialization(t *testing.T) {
+	plurHome := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(plurHome, []byte("file"), 0644))
+	setTestEnv(t, "PLUR_HOME", plurHome, true)
+
+	cli := PlurCLI{Version: true}
+	require.NoError(t, cli.AfterApply())
+}
+
+func TestAfterApplyReturnsConfigPathError(t *testing.T) {
+	plurHome := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(plurHome, []byte("file"), 0644))
+	setTestEnv(t, "PLUR_HOME", plurHome, true)
+
+	err := (&PlurCLI{}).AfterApply()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "initialize configuration paths")
+}
+
 func TestRailsCommandAliasSelectsRakeJob(t *testing.T) {
 	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
 

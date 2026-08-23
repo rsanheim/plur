@@ -40,21 +40,18 @@ type ConfigPaths struct {
 
 // InitConfigPaths initializes PLUR_HOME if necessary, as well as subdirs inside it.
 // By default this will be ~/.plur unless PLUR_HOME is set by the user.
-func InitConfigPaths() *ConfigPaths {
+func InitConfigPaths() (*ConfigPaths, error) {
 	plurHome, ok := os.LookupEnv("PLUR_HOME")
 	if !ok {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Fatal error: cannot find home directory and PLUR_HOME not set: %v\n", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("find home directory with PLUR_HOME unset: %w", err)
 		}
 		plurHome = filepath.Join(homeDir, ".plur")
 	}
 
-	err := os.MkdirAll(plurHome, 0755)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Fatal error: failed to create PLUR_HOME directory: %v\n", err)
-		os.Exit(1)
+	if err := os.MkdirAll(plurHome, 0755); err != nil {
+		return nil, fmt.Errorf("create PLUR_HOME directory %q: %w", plurHome, err)
 	}
 
 	binDir := filepath.Join(plurHome, "bin")
@@ -66,8 +63,7 @@ func InitConfigPaths() *ConfigPaths {
 	paths := []string{binDir, cacheDir, runtimeDir, formatterDir, rubyLibDir}
 	for _, path := range paths {
 		if err := os.MkdirAll(path, 0755); err != nil {
-			fmt.Fprintf(os.Stderr, "Fatal error: failed to create %s directory: %v\n", path, err)
-			os.Exit(1)
+			return nil, fmt.Errorf("create %s directory: %w", path, err)
 		}
 	}
 
@@ -80,5 +76,5 @@ func InitConfigPaths() *ConfigPaths {
 		RubyLibDir:   rubyLibDir,
 	}
 
-	return &configPaths
+	return &configPaths, nil
 }
