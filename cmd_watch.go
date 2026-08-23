@@ -339,6 +339,22 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			})
 
 		case paths := <-batchChan:
+			// Drain any pending completions before claiming the batch so the
+			// scheduler has released finished runs. This prevents the race where
+			// a run finishes just before a debounce flush, select picks the batch
+			// case, and Claim incorrectly reports the target as running.
+			for {
+				select {
+				case done := <-doneChan:
+					sched.Release(done.id)
+					if done.err != nil {
+						logger.Logger.Warn("Job execution error", "error", done.err)
+					}
+				default:
+					goto claimBatch
+				}
+			}
+		claimBatch:
 			plan := planner.Plan(paths)
 			startedAny := false
 			for _, run := range plan.Runs {
