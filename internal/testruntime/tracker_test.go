@@ -21,7 +21,7 @@ func TestRuntimeTracker(t *testing.T) {
 		rt.AddRuntime("spec/bar_spec.rb", 2.0)
 		rt.AddRuntime("spec/foo_spec.rb", 0.5)
 
-		pending := rt.PendingFileRuntimes()
+		pending := rt.fileRuntimes
 		assert.Equal(t, 2.0, pending["spec/foo_spec.rb"])
 		assert.Equal(t, 2.0, pending["spec/bar_spec.rb"])
 	})
@@ -38,7 +38,7 @@ func TestRuntimeTracker(t *testing.T) {
 
 		rt.AddTestNotification(notification)
 
-		assert.InDelta(t, 0.123, rt.PendingFileRuntimes()["spec/test_spec.rb"], 0.001)
+		assert.InDelta(t, 0.123, rt.fileRuntimes["spec/test_spec.rb"], 0.001)
 	})
 
 	t.Run("SaveToFile creates runtime file under returned path", func(t *testing.T) {
@@ -210,7 +210,7 @@ func TestAddTestNotification_AttributesSharedExampleToOwner(t *testing.T) {
 		Duration:              500 * time.Millisecond,
 	})
 
-	pending := rt.PendingFileRuntimes()
+	pending := rt.fileRuntimes
 	assert.Equal(t, 0.5, pending["spec/models/user_spec.rb"])
 	_, supportFilePresent := pending["spec/support/shared_examples/user_role.rb"]
 	assert.False(t, supportFilePresent, "shared support file must not accumulate phantom runtime")

@@ -117,7 +117,7 @@ func TestTestCollectorComplexity(t *testing.T) {
 			for _, n := range notifications {
 				collector.AddNotification(n)
 			}
-			collector.BuildResult(5 * time.Second)
+			collector.BuildResult()
 		}
 		times[idx] = time.Since(start) / time.Duration(iterations)
 

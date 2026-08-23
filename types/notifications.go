@@ -18,7 +18,6 @@ const (
 	TestPassed    TestEvent = "test_passed"
 	TestFailed    TestEvent = "test_failed"
 	TestPending   TestEvent = "test_pending"
-	TestStarted   TestEvent = "test_started"
 	SuiteStarted  TestEvent = "suite_started"
 	SuiteFinished TestEvent = "suite_finished"
 	RawOutput     TestEvent = "raw_output"

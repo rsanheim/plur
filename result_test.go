@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +15,6 @@ func TestBuildTestSummary(t *testing.T) {
 			State:        types.StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
-			Duration:     100 * time.Millisecond,
 			FileLoadTime: 50 * time.Millisecond,
 			Tests:        []types.TestCaseNotification{},
 		},
@@ -24,7 +22,6 @@ func TestBuildTestSummary(t *testing.T) {
 			State:        types.StateFailed,
 			ExampleCount: 5,
 			FailureCount: 2,
-			Duration:     200 * time.Millisecond,
 			FileLoadTime: 75 * time.Millisecond,
 			Tests: []types.TestCaseNotification{
 				{
@@ -45,22 +42,19 @@ func TestBuildTestSummary(t *testing.T) {
 			State:        types.StateError,
 			ExampleCount: 0,
 			FailureCount: 0,
-			Duration:     50 * time.Millisecond,
 			FileLoadTime: 25 * time.Millisecond,
 			Error:        fmt.Errorf("Failed to load spec file"),
 		},
 	}
 
 	wallTime := 250 * time.Millisecond
-	testJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
-	summary := BuildTestSummary(results, wallTime, testJob)
+	summary := BuildTestSummary(results, wallTime)
 
 	assert := assert.New(t)
 	assert.Equal(15, summary.TotalExamples)
 	assert.Equal(2, summary.TotalFailures, "total failures")
 	assert.Equal(2, len(summary.AllFailures), "failure details")
 
-	assert.Equal(350*time.Millisecond, summary.TotalCPUTime, "total CPU time")
 	assert.Equal(wallTime, summary.WallTime, "wall time")
 	assert.Equal(75*time.Millisecond, summary.TotalFileLoadTime, "file load time should be the max of all workers")
 
@@ -76,20 +70,17 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 			State:        types.StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
-			Duration:     100 * time.Millisecond,
 			FileLoadTime: 40 * time.Millisecond,
 		},
 		{
 			State:        types.StateSuccess,
 			ExampleCount: 5,
 			FailureCount: 0,
-			Duration:     200 * time.Millisecond,
 			FileLoadTime: 60 * time.Millisecond,
 		},
 	}
 
-	testJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
-	summary := BuildTestSummary(results, 250*time.Millisecond, testJob)
+	summary := BuildTestSummary(results, 250*time.Millisecond)
 
 	assert.Equal(t, 15, summary.TotalExamples)
 	assert.Equal(t, 0, summary.TotalFailures)
@@ -106,14 +97,12 @@ func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 			State:            types.StateSuccess,
 			ExampleCount:     10,
 			FailureCount:     0,
-			Duration:         100 * time.Millisecond,
 			FileLoadTime:     30 * time.Millisecond,
 			FormattedSummary: "10 examples, 0 failures",
 		},
 	}
 
-	testJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
-	summary := BuildTestSummary(results, 100*time.Millisecond, testJob)
+	summary := BuildTestSummary(results, 100*time.Millisecond)
 
 	assert.Equal(t, 10, summary.TotalExamples)
 	assert.True(t, summary.Success)

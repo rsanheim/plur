@@ -16,7 +16,6 @@ type WorkerResult struct {
 	State          types.TestState
 	Output         string
 	Error          error
-	Duration       time.Duration
 	FileLoadTime   time.Duration
 	ExampleCount   int
 	AssertionCount int
@@ -50,14 +49,12 @@ type TestSummary struct {
 	TotalFailures     int
 	TotalErrors       int
 	AllFailures       []types.TestCaseNotification
-	TotalCPUTime      time.Duration
 	WallTime          time.Duration
 	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
 	HasFailures       bool
 	Success           bool           // True if no failures and no errors
 	ErroredFiles      []WorkerResult // Workers that had errors running tests
 	TotalPending      int            // Total pending/skipped tests
-	AllResults        []WorkerResult // All worker results for accessing raw output
 
 	// Formatted output from RSpec
 	FormattedFailures string
@@ -66,19 +63,17 @@ type TestSummary struct {
 }
 
 // BuildTestSummary collects and calculates summary data from test results
-func BuildTestSummary(results []WorkerResult, wallTime time.Duration, currentJob framework.Job) TestSummary {
+func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
-		AllResults:   results, // Store all results for raw output access
-		Success:      true,    // Start assuming success
+		Success:      true, // Start assuming success
 	}
 
 	// Track if we're in single-file mode (single worker)
 	singleWorkerMode := len(results) == 1
 
 	for _, result := range results {
-		summary.TotalCPUTime += result.Duration
 		summary.TotalExamples += result.ExampleCount
 		summary.TotalAssertions += result.AssertionCount
 		summary.TotalFailures += result.FailureCount

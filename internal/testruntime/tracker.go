@@ -3,7 +3,6 @@ package testruntime
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -137,12 +136,6 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 	}
 
 	return SaveCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
-}
-
-// PendingFileRuntimes returns a copy of the file-runtime observations
-// accumulated this run. Useful for tests and diagnostics.
-func (rt *RuntimeTracker) PendingFileRuntimes() map[string]float64 {
-	return maps.Clone(rt.fileRuntimes)
 }
 
 func computeRuntimeFilePath(runtimeDir string) (string, string, error) {
