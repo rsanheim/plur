@@ -4,7 +4,7 @@ set -euo pipefail
 # Install plur globally then run integration specs.
 # Usage:
 #   script/spec                              # run all integration specs
-#   script/spec spec/integration/plur_spec/  # run specific specs
+#   script/spec spec/integration/spec/       # run specific specs
 
 bin/rake install
 

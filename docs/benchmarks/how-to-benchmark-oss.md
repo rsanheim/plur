@@ -72,7 +72,6 @@ grep -E "Finished in" $BENCH_DIR/*.log
 * **grape** - 2,214 examples, 117 spec files
 
 ### Known issues
-* **capistrano** - Uses RSpec 3.4.0 which doesn't support `--force-color`
 * **graphql-ruby** - Bundle issues (missing rspec-core in Gemfile)
 * **rspec** - Meta-gem with no specs
 
@@ -112,7 +111,9 @@ bundle _2.7.2_ exec rspec
 ```
 
 ### RSpec version compatibility
-Projects using RSpec < 3.6 will fail because `--force-color` was added in RSpec 3.6. This is a known limitation.
+In non-TTY benchmark runs, Plur passes `--no-color` instead of `--force-color`,
+so projects using RSpec < 3.6 work without that unsupported option. Explicit
+color output still requires an RSpec version that supports `--force-color`.
 
 ### Missing specs
 Some meta-gems (like `rspec` itself) have no spec directory - skip these.
