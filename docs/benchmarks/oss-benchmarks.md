@@ -4,6 +4,9 @@
 *Plur version: 0.13.0-dev-9dc2f9d6*
 *Workers: 18 (auto-detected)*
 
+> This is a historical benchmark snapshot. The RSpec < 3.6 color failure
+> recorded for capistrano was fixed in v0.72.0 for non-TTY runs.
+
 ## Summary
 
 | Project | Examples | Spec Files | RSpec Avg | Plur (default) | Plur (-n 4) | Notes |
@@ -13,7 +16,7 @@
 | simplecov | 391 | 26 | 6.11s | 4.96s (1.2x) | **3.76s (1.6x)** | -n 4 helps |
 | grape | 2,214 | 117 | 2.75s | 4.43s (slower) | **2.11s (1.3x)** | -n 4 helps |
 | factory_bot | 737 | 82 | 5.37s | 8.53s (slower) | **4.82s (1.1x)** | -n 4 helps |
-| capistrano | 400 | 30 | 1.51s | FAILED | FAILED | Bug: `--force-color` |
+| capistrano | 400 | 30 | 1.51s | FAILED | FAILED | Historical color failure, fixed in v0.72.0 |
 
 ## Key Findings
 
@@ -71,15 +74,17 @@ Testing with reduced worker counts shows significant improvements on small/fast 
 
 This suggests plur could benefit from smarter worker count auto-detection based on suite size.
 
-### 5. Bug Discovered: RSpec Version Compatibility
+### 5. Resolved: RSpec < 3.6 Color Compatibility
 
 **capistrano** (400 examples, 30 spec files, RSpec 3.4.0):
 * RSpec: 1.55s, 1.50s, 1.47s (avg **1.51s**)
-* Plur: **FAILED** - `invalid option: --force-color`
+* Historical Plur result: **FAILED** - `invalid option: --force-color`
 
-**Root cause**: `--force-color` was added in RSpec 3.6. Plur passes this flag unconditionally.
+At the time of this benchmark, Plur passed `--force-color` unconditionally.
+That flag was added in RSpec 3.6.
 
-**Fix needed**: Detect RSpec version and only use `--force-color` on RSpec >= 3.6.
+**Current behavior**: In non-TTY runs, Plur passes `--no-color`, which predates
+RSpec 3.6, so older RSpec versions no longer fail with this error.
 
 ### 6. Test Suite Compatibility: rspec-core
 
@@ -152,16 +157,16 @@ Plur Run 2: 4.40s
 Plur Run 3: 4.45s
 ```
 
-### capistrano
+### capistrano (historical pre-v0.72.0 result)
 
 ```
 RSpec Run 1: 1.55s  (400 examples, 0 failures, 2 pending)
 RSpec Run 2: 1.50s
 RSpec Run 3: 1.47s
 
-Plur Run 1: FAILED (--force-color not supported on RSpec 3.4.0)
-Plur Run 2: FAILED
-Plur Run 3: FAILED
+Historical Plur Run 1: FAILED (--force-color not supported on RSpec 3.4.0)
+Historical Plur Run 2: FAILED
+Historical Plur Run 3: FAILED
 ```
 
 ## When to Use Plur
@@ -177,14 +182,12 @@ Based on these benchmarks:
 
 ## Recommendations
 
-1. **Fix RSpec version detection** - Add logic to detect RSpec < 3.6 and avoid `--force-color`
-
-2. **Smart worker count auto-detection** - Consider automatically capping workers based on spec file count:
+1. **Smart worker count auto-detection** - Consider automatically capping workers based on spec file count:
    * <50 spec files: use 4 workers max
    * 50-200 spec files: use 8 workers max
    * 200+ spec files: use all available cores
 
-3. **User guidance** - For small/fast suites, recommend `plur -n 4` in documentation
+2. **User guidance** - For small/fast suites, recommend `plur -n 4` in documentation
 
 ## Environment
 

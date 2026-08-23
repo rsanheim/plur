@@ -23,13 +23,6 @@ bin/rake install
 4. Fix any issues with `bin/rake standard:fix`
 5. Commit your changes
 
-## Testing
-
-Always test from outside-in using integration specs:
-- `spec/general_integration_spec.rb` - Core functionality
-- `spec/parallel_execution_spec.rb` - Parallelism
-- `spec/error_handling_spec.rb` - Error cases
-
 ## Pull Request Process
 
 1. Fork the repository

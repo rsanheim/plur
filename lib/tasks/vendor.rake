@@ -1,16 +1,18 @@
 # require_relative "../plur"
 
 # Helper method to determine platform
-def watcher_platform
-  case RUBY_PLATFORM
+def watcher_platform(ruby_platform = RUBY_PLATFORM)
+  case ruby_platform
   when /aarch64-darwin/, /arm64-darwin/
     "aarch64-apple-darwin"
   when /linux.*aarch64/, /linux.*arm64/, /aarch64.*linux/
     "aarch64-unknown-linux-gnu"
   when /linux/
     "x86_64-unknown-linux-gnu"
+  when /mswin|mingw/
+    "x86_64-pc-windows-msvc"
   else
-    raise "Unsupported platform: #{RUBY_PLATFORM}"
+    raise "Unsupported platform: #{ruby_platform}"
   end
 end
 

@@ -16,8 +16,6 @@ Visit http://localhost:8000
 * mise - Python version management
 * uv - Python dependency management
 
-Both are installed automatically by `script/docs` if missing.
-
 ### Configuration Files
 * `.mise.toml` - Python version and auto-venv setup
 * `pyproject.toml` - Python dependencies

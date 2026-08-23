@@ -28,6 +28,12 @@ def worktree_path(ref)
   WORKTREE_BASE.join("bench-#{sanitize_ref(ref)}")
 end
 
+def watcher_download_task
+  %w[vendor:download:current vendor:build].find do |task|
+    system("bin/rake", "-n", task, out: File::NULL, err: File::NULL)
+  end || raise("No watcher download task found in this worktree")
+end
+
 # Build plur at the given ref
 #
 # Inject version via ldflags since detached worktrees don't have VCS info
@@ -48,7 +54,8 @@ def build_plur(worktree, ref)
     puts "  watcher binaries missing; download them..."
     Dir.chdir(worktree) do
       system("bundle check || bundle install")
-      system("bin/rake vendor:download:current") || system("bin/rake vendor:build", exception: true)
+      # Older refs use vendor:build; current refs use vendor:download:current.
+      system("bin/rake", watcher_download_task, exception: true)
     end
   end
 
