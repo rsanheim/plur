@@ -83,8 +83,12 @@ RSpec.describe "plur watch run scheduling" do
         touch(spec_file)
         sleep save_gap_seconds
         touch(spec_file)
-        # Wait for first run to finish (longer than job_sleep_seconds to ensure completion)
-        sleep(job_sleep_seconds + 0.5)
+        # Wait for the first run to finish and release its claim. Doubling
+        # job_sleep_seconds (rather than a small fixed addition) gives real
+        # headroom under CPU contention -- e.g. CI running this suite's own
+        # workers concurrently -- while still leaving the overall example
+        # comfortably inside watch_timeout_seconds.
+        sleep(job_sleep_seconds * 2)
         touch(spec_file)
       end
 
