@@ -51,6 +51,7 @@ func TestPlannerPlan_RendersTargetsAndBuildsRun(t *testing.T) {
 		require.Len(t, plan.Runs, 1)
 		assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
 		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Runs[0].Targets)
+		assert.False(t, plan.Runs[0].NoTargets)
 		assert.False(t, plan.Reload)
 	})
 
@@ -103,6 +104,7 @@ func TestPlannerPlan_NoTargetsRuleRunsJobBare(t *testing.T) {
 	require.Len(t, plan.Runs, 1)
 	assert.Equal(t, "build", plan.Runs[0].Job.Name)
 	assert.Empty(t, plan.Runs[0].Targets)
+	assert.True(t, plan.Runs[0].NoTargets)
 }
 
 func TestPlannerPlan_NoTargetsRunsEvenWhenOtherRuleTargetsMissing(t *testing.T) {
@@ -121,6 +123,7 @@ func TestPlannerPlan_NoTargetsRunsEvenWhenOtherRuleTargetsMissing(t *testing.T) 
 
 	require.Len(t, plan.Runs, 1)
 	assert.Empty(t, plan.Runs[0].Targets)
+	assert.True(t, plan.Runs[0].NoTargets)
 }
 
 func TestPlannerPlan_MissingTargetRecordedButJobDoesNotRun(t *testing.T) {
