@@ -1,5 +1,7 @@
 package watch
 
+import "slices"
+
 // Scheduler tracks which JobRuns are executing so duplicate work can be
 // skipped. Not goroutine-safe by design: it is owned by the watch event
 // loop and must only be touched from it.
@@ -8,6 +10,7 @@ type Scheduler struct {
 	inFlight map[int]JobRun // the runs actually executing, by run id
 }
 
+// NewScheduler creates an empty Scheduler ready to Claim runs.
 func NewScheduler() *Scheduler {
 	return &Scheduler{inFlight: make(map[int]JobRun)}
 }
@@ -75,12 +78,8 @@ func (s *Scheduler) noTargetsInFlight(jobName string) bool {
 // Ignores no-targets runs per the two-lane rules.
 func (s *Scheduler) targetInFlight(jobName string, target string) bool {
 	for _, r := range s.inFlight {
-		if r.Job.Name == jobName && !r.NoTargets {
-			for _, t := range r.Targets {
-				if t == target {
-					return true
-				}
-			}
+		if r.Job.Name == jobName && !r.NoTargets && slices.Contains(r.Targets, target) {
+			return true
 		}
 	}
 	return false

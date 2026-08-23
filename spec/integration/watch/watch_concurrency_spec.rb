@@ -1,8 +1,9 @@
 require "spec_helper"
 
-# Characterization specs for the surprising scheduling boundary: saves in one
-# debounce window batch, but later batches run concurrently—even on one target.
-# They use log ordering to detect overlap, not timestamps.
+# Specification for watch's in-flight guard: saves in one debounce window
+# batch merge into one run; a save of an already-running target is skipped
+# and reported, while disjoint targets across debounce windows still run
+# concurrently. They use log ordering to detect overlap, not timestamps.
 RSpec.describe "plur watch run scheduling" do
   include PlurWatchHelper
 
@@ -53,7 +54,7 @@ RSpec.describe "plur watch run scheduling" do
       end
 
       expect(started_targets(result)).to eq([["spec/models/user_spec.rb"]])
-      expect(result.err).to include("skipped spec/models/user_spec.rb reason=running")
+      expect(result.out).to include("[plur] skipped spec/models/user_spec.rb reason=running")
     end
   end
 
@@ -69,7 +70,7 @@ RSpec.describe "plur watch run scheduling" do
       end
 
       expect(started_targets(result)).to eq([["spec/calculator_spec.rb"]])
-      expect(result.err).to include("skipped spec/calculator_spec.rb reason=running")
+      expect(result.out).to include("[plur] skipped spec/calculator_spec.rb reason=running")
     end
   end
 
@@ -97,26 +98,79 @@ RSpec.describe "plur watch run scheduling" do
     end
   end
 
-  # When one target is saved while overlapping saves run, only the non-overlapping part starts.
-  it "partially narrows run with overlapping saves" do
+  # A batch that re-saves an in-flight target alongside a new one narrows to
+  # just the new target; the in-flight one is dropped and reported.
+  it "partially narrows a batch that overlaps an in-flight run" do
     with_slow_job_project do |project|
       calc = project.join("lib/calculator.rb")
       validator = project.join("lib/validator.rb")
 
       result = run_watch_until_finished(project, expected_runs: 2) do
-        # First batch: both files
+        # First batch: calculator only.
         touch(calc)
-        touch(validator)
         sleep save_gap_seconds
-        # Second batch: only the second one, but calculator is in flight
+        # Second batch: calculator (already in flight) plus validator (new).
+        touch(calc)
         touch(validator)
       end
 
-      # First run should have both; second run should have only validator's spec.
       started = started_targets(result)
-      expect(started[0].sort).to eq(["spec/calculator_spec.rb", "spec/validator_spec.rb"])
+      expect(started[0]).to eq(["spec/calculator_spec.rb"])
       expect(started[1]).to eq(["spec/validator_spec.rb"])
-      expect(result.err).to include("skipped spec/calculator_spec.rb reason=running")
+      expect(result.out).to include("[plur] skipped spec/calculator_spec.rb reason=running")
+    end
+  end
+
+  # The no-targets lane is independent of the targeted lane: a no-targets run
+  # only suppresses a duplicate no-targets run of the same job.
+  it "skips a duplicate no-targets run of the same job" do
+    no_targets_watch = <<~TOML
+      [[watch]]
+      name = "readme-triggers-full"
+      source = "README.md"
+      no_targets = true
+      jobs = ["rspec"]
+    TOML
+
+    with_slow_job_project(extra_config: no_targets_watch) do |project|
+      readme = project.join("README.md")
+
+      result = run_watch_until_finished(project, expected_runs: 1) do
+        touch(readme)
+        sleep save_gap_seconds
+        touch(readme)
+      end
+
+      expect(started_targets(result)).to eq([[]])
+      expect(result.out).to include("[plur] skipped rspec reason=running")
+    end
+  end
+
+  # A no-targets run in flight never blocks a targeted run of the same job,
+  # and a targeted run in flight never blocks a no-targets run.
+  it "runs a no-targets run and a targeted run of the same job concurrently" do
+    no_targets_watch = <<~TOML
+      [[watch]]
+      name = "readme-triggers-full"
+      source = "README.md"
+      no_targets = true
+      jobs = ["rspec"]
+    TOML
+
+    with_slow_job_project(extra_config: no_targets_watch) do |project|
+      readme = project.join("README.md")
+      calc = project.join("lib/calculator.rb")
+
+      result = run_watch_until_finished(project, expected_runs: 2) do
+        touch(readme)
+        sleep save_gap_seconds
+        touch(calc)
+      end
+
+      started = started_targets(result)
+      expect(started).to contain_exactly([], ["spec/calculator_spec.rb"])
+      expect(overlapped?(result)).to be(true), timeline(result)
+      expect(result.out).not_to include("skipped")
     end
   end
 

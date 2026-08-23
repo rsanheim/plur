@@ -34,21 +34,24 @@ func stripTerminalReports(line string) string {
 }
 
 // printSkips prints skip messages and logs for targets that could not start
-// due to in-flight runs. Called when start == nil or after narrowing targets.
+// due to in-flight runs. A no-targets run has no skipped slice (Claim never
+// populates one for that lane), so its suppression is detected by start == nil
+// instead — checking len(skipped) first would silently drop the notice.
 func printSkips(run watch.JobRun, start *watch.JobRun, skipped []string) {
+	if run.NoTargets {
+		if start != nil {
+			return
+		}
+		fmt.Printf("[plur] skipped %s reason=running\n", run.Job.Name)
+		logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", run.Targets))
+		return
+	}
 	if len(skipped) == 0 {
 		return
 	}
-	if run.NoTargets {
-		// No-targets run was skipped as a whole.
-		fmt.Printf("[plur] skipped %s reason=running\n", run.Job.Name)
-		logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", skipped))
-	} else {
-		// Targeted run had some targets narrowed away.
-		targets := strings.Join(skipped, " ")
-		fmt.Printf("[plur] skipped %s reason=running\n", targets)
-		logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", skipped))
-	}
+	targets := strings.Join(skipped, " ")
+	fmt.Printf("[plur] skipped %s reason=running\n", targets)
+	logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", skipped))
 }
 
 func runWatchInstall(force bool) error {
@@ -186,10 +189,17 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	batchChan := make(chan []string, 16)
 	type runDone struct {
 		id  int
+		job string
 		err error
 	}
 	doneChan := make(chan runDone, 16)
 	sched := watch.NewScheduler()
+	releaseDone := func(done runDone) {
+		sched.Release(done.id)
+		if done.err != nil {
+			logger.Logger.Warn("Job execution error", "job", done.job, "error", done.err)
+		}
+	}
 
 	var watchDirs []string
 	for _, mapping := range planner.Watches {
@@ -343,18 +353,15 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			// scheduler has released finished runs. This prevents the race where
 			// a run finishes just before a debounce flush, select picks the batch
 			// case, and Claim incorrectly reports the target as running.
+		drain:
 			for {
 				select {
 				case done := <-doneChan:
-					sched.Release(done.id)
-					if done.err != nil {
-						logger.Logger.Warn("Job execution error", "error", done.err)
-					}
+					releaseDone(done)
 				default:
-					goto claimBatch
+					break drain
 				}
 			}
-		claimBatch:
 			plan := planner.Plan(paths)
 			startedAny := false
 			for _, run := range plan.Runs {
@@ -366,7 +373,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 				startedAny = true
 				go func(id int, jobRun watch.JobRun) {
 					err := watch.ExecuteJob(jobRun, planner.CWD)
-					doneChan <- runDone{id: id, err: err}
+					doneChan <- runDone{id: id, job: jobRun.Job.Name, err: err}
 				}(id, *start)
 			}
 			if !startedAny && len(plan.Runs) > 0 {
@@ -378,10 +385,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			}
 
 		case done := <-doneChan:
-			sched.Release(done.id)
-			if done.err != nil {
-				logger.Logger.Warn("Job execution error", "error", done.err)
-			}
+			releaseDone(done)
 			if sched.Idle() {
 				fmt.Println()
 				showPrompt()
