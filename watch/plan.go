@@ -31,10 +31,12 @@ type Match struct {
 }
 
 // JobRun is one job a plan executes, with merged, deduplicated existing
-// targets. Empty Targets means the job runs with no target arguments.
+// targets. When NoTargets is true, the job runs with no target arguments
+// (Targets is empty and ignored); when false, the job receives Targets.
 type JobRun struct {
-	Job     framework.Job
-	Targets []string
+	Job       framework.Job
+	Targets   []string
+	NoTargets bool
 }
 
 // Plan is the complete answer to "what would watch do for these paths?"
@@ -163,7 +165,11 @@ func (p Planner) buildRuns(matches []Match) []JobRun {
 				logger.Logger.Error("watch rule references unknown job", "job", jobName)
 				continue
 			}
-			runs = append(runs, JobRun{Job: job, Targets: targets})
+			runs = append(runs, JobRun{
+				Job:       job,
+				Targets:   targets,
+				NoTargets: len(targets) == 0,
+			})
 		}
 	}
 	return runs

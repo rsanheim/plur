@@ -33,6 +33,24 @@ func stripTerminalReports(line string) string {
 	return csiSequence.ReplaceAllString(line, "")
 }
 
+// printSkips prints skip messages and logs for targets that could not start
+// due to in-flight runs. Called when start == nil or after narrowing targets.
+func printSkips(run watch.JobRun, start *watch.JobRun, skipped []string) {
+	if len(skipped) == 0 {
+		return
+	}
+	if run.NoTargets {
+		// No-targets run was skipped as a whole.
+		fmt.Printf("[plur] skipped %s reason=running\n", run.Job.Name)
+		logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", skipped))
+	} else {
+		// Targeted run had some targets narrowed away.
+		targets := strings.Join(skipped, " ")
+		fmt.Printf("[plur] skipped %s reason=running\n", targets)
+		logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", skipped))
+	}
+}
+
 func runWatchInstall(force bool) error {
 	configPaths := config.InitConfigPaths()
 	return watch.InstallBinary(
@@ -164,6 +182,14 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	debounceDelay := time.Duration(runCmd.Debounce) * time.Millisecond
 	debouncer := watch.NewDebouncer(debounceDelay)
 	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
+
+	batchChan := make(chan []string, 16)
+	type runDone struct {
+		id  int
+		err error
+	}
+	doneChan := make(chan runDone, 16)
+	sched := watch.NewScheduler()
 
 	var watchDirs []string
 	for _, mapping := range planner.Watches {
@@ -309,20 +335,41 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
 			debouncer.Debounce([]string{path}, func(paths []string) {
-				plan := planner.Plan(paths)
-				for _, run := range plan.Runs {
-					if err := watch.ExecuteJob(run, planner.CWD); err != nil {
-						logger.Logger.Warn("Job execution error", "job", run.Job.Name, "error", err)
-					}
-				}
-				if plan.Reload {
-					triggerReload()
-				}
-				if len(plan.Runs) > 0 {
-					fmt.Println()
-					showPrompt()
-				}
+				batchChan <- paths
 			})
+
+		case paths := <-batchChan:
+			plan := planner.Plan(paths)
+			startedAny := false
+			for _, run := range plan.Runs {
+				id, start, skipped := sched.Claim(run)
+				printSkips(run, start, skipped)
+				if start == nil {
+					continue
+				}
+				startedAny = true
+				go func(id int, jobRun watch.JobRun) {
+					err := watch.ExecuteJob(jobRun, planner.CWD)
+					doneChan <- runDone{id: id, err: err}
+				}(id, *start)
+			}
+			if !startedAny && len(plan.Runs) > 0 {
+				fmt.Println()
+				showPrompt()
+			}
+			if plan.Reload {
+				triggerReload()
+			}
+
+		case done := <-doneChan:
+			sched.Release(done.id)
+			if done.err != nil {
+				logger.Logger.Warn("Job execution error", "error", done.err)
+			}
+			if sched.Idle() {
+				fmt.Println()
+				showPrompt()
+			}
 
 		case err := <-manager.Errors():
 			return fmt.Errorf("watcher error: %v", err)

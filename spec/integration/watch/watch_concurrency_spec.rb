@@ -30,8 +30,8 @@ RSpec.describe "plur watch run scheduling" do
     end
   end
 
-  # These two events select one target; today they run concurrently.
-  it "runs the same target concurrently when two sources map to it" do
+  # These two events select one target; the second is skipped while the first runs.
+  it "skips in-flight target when two sources map to it" do
     overlapping_watch = <<~TOML
       [[watch]]
       name = "user-overlap"
@@ -46,19 +46,35 @@ RSpec.describe "plur watch run scheduling" do
       user.write("class User; end\n")
       user_service.write("class UserService; end\n")
 
-      result = run_watch_until_finished(project, expected_runs: 2) do
+      result = run_watch_until_finished(project, expected_runs: 1) do
         touch(user)
         sleep save_gap_seconds
         touch(user_service)
       end
 
-      expect(started_targets(result)).to eq([["spec/models/user_spec.rb"], ["spec/models/user_spec.rb"]])
-      expect(overlapped?(result)).to be(true), timeline(result)
+      expect(started_targets(result)).to eq([["spec/models/user_spec.rb"]])
+      expect(result.err).to include("skipped spec/models/user_spec.rb reason=running")
     end
   end
 
-  # A second save of an in-flight file starts a duplicate run today.
-  it "runs the same target concurrently when one file is saved twice" do
+  # A second save of an in-flight file is skipped, not run concurrently.
+  it "skips in-flight target when one file is saved twice" do
+    with_slow_job_project do |project|
+      spec_file = project.join("spec/calculator_spec.rb")
+
+      result = run_watch_until_finished(project, expected_runs: 1) do
+        touch(spec_file)
+        sleep save_gap_seconds
+        touch(spec_file)
+      end
+
+      expect(started_targets(result)).to eq([["spec/calculator_spec.rb"]])
+      expect(result.err).to include("skipped spec/calculator_spec.rb reason=running")
+    end
+  end
+
+  # After a run finishes, a fresh save should start a new run.
+  it "runs the same target again after in-flight run finishes" do
     with_slow_job_project do |project|
       spec_file = project.join("spec/calculator_spec.rb")
 
@@ -66,10 +82,41 @@ RSpec.describe "plur watch run scheduling" do
         touch(spec_file)
         sleep save_gap_seconds
         touch(spec_file)
+        # Wait for first run to finish (longer than job_sleep_seconds to ensure completion)
+        sleep(job_sleep_seconds + 0.5)
+        touch(spec_file)
       end
 
       expect(started_targets(result)).to eq([["spec/calculator_spec.rb"], ["spec/calculator_spec.rb"]])
-      expect(overlapped?(result)).to be(true), timeline(result)
+      # Verify the skip happened between first and second successful run
+      events = run_events(result)
+      expect(events[0][:event]).to eq("Executing job")
+      expect(events[1][:event]).to eq("Skipped in-flight")
+      expect(events[2][:event]).to eq("Finished job")
+      expect(events[3][:event]).to eq("Executing job")
+    end
+  end
+
+  # When one target is saved while overlapping saves run, only the non-overlapping part starts.
+  it "partially narrows run with overlapping saves" do
+    with_slow_job_project do |project|
+      calc = project.join("lib/calculator.rb")
+      validator = project.join("lib/validator.rb")
+
+      result = run_watch_until_finished(project, expected_runs: 2) do
+        # First batch: both files
+        touch(calc)
+        touch(validator)
+        sleep save_gap_seconds
+        # Second batch: only the second one, but calculator is in flight
+        touch(validator)
+      end
+
+      # First run should have both; second run should have only validator's spec.
+      started = started_targets(result)
+      expect(started[0].sort).to eq(["spec/calculator_spec.rb", "spec/validator_spec.rb"])
+      expect(started[1]).to eq(["spec/validator_spec.rb"])
+      expect(result.err).to include("skipped spec/calculator_spec.rb reason=running")
     end
   end
 
@@ -102,7 +149,7 @@ RSpec.describe "plur watch run scheduling" do
 
   # Log order is enough to detect overlap; timestamps are not.
   def run_events(result)
-    pattern = /- INFO\s+- (Executing job|Finished job) .*targets="\[([^\]]*)\]"/
+    pattern = /- INFO\s+- (Executing job|Finished job|Skipped in-flight) .*targets="\[([^\]]*)\]"/
     result.err.scan(pattern).map do |event, targets|
       {event: event, targets: targets.split(" ").sort}
     end
