@@ -18,8 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeWatcher satisfies WatcherSource with plain channels, so controller
-// tests never spawn the real watcher binary.
+// fakeWatcher satisfies WatcherSource with plain channels — no watcher binary.
 type fakeWatcher struct {
 	events  chan Event
 	errors  chan error
@@ -81,9 +80,8 @@ func echoJob() JobRun {
 	return JobRun{Job: framework.Job{Name: "rspec", Cmd: []string{"echo", "ok"}}}
 }
 
-// controllerHarness runs a Controller in a goroutine with fakes on every
-// seam and blocks until the first prompt, so tests type against a settled
-// session.
+// controllerHarness runs a Controller against fakes and blocks until the
+// first prompt, so tests type against a settled session.
 type controllerHarness struct {
 	stdout  *syncBuffer
 	stderr  *syncBuffer
@@ -258,7 +256,6 @@ func TestControllerRun_ReloadFailureKeepsSessionAlive(t *testing.T) {
 	h.typeLine(t, "reload")
 	waitForOutput(t, h.stdout, "Failed to reload: exec failed")
 
-	// The session must stay usable after a failed reload.
 	h.typeLine(t, "exit")
 	require.NoError(t, waitForReturn(t, h.done))
 	assert.Equal(t, int32(1), reloads.Load())
@@ -307,7 +304,6 @@ func TestControllerRun_FileEventTriggersPlannedRun(t *testing.T) {
 	h.watcher.events <- Event{PathType: "file", PathName: "lib/user.rb", EffectType: "modify"}
 
 	waitForFile(t, marker)
-	// A batch that ran jobs re-shows the prompt after a blank line.
 	waitForOutput(t, h.stdout, "\n[plur] > ")
 
 	h.typeLine(t, "exit")

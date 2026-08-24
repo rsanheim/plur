@@ -26,8 +26,7 @@ func stripTerminalReports(line string) string {
 }
 
 // WatcherSource is the watcher lifecycle as the Controller drives it.
-// *WatcherManager satisfies it; tests substitute a fake over plain channels
-// so no watcher binary is involved.
+// *WatcherManager satisfies it.
 type WatcherSource interface {
 	Start() error
 	Stop()
@@ -36,9 +35,7 @@ type WatcherSource interface {
 }
 
 // ControllerConfig carries everything a watch session needs from the
-// process that hosts it. Job selection stays with the caller (the runtime
-// package imports watch, so watch cannot select jobs); RunAllJob arrives
-// as a ready-to-execute run with no targets — the domain's "run all".
+// process that hosts it.
 type ControllerConfig struct {
 	Planner       Planner
 	RunAllJob     JobRun // executed as-is on Enter; empty targets means run all
@@ -49,67 +46,46 @@ type ControllerConfig struct {
 	Stdin         io.Reader
 	Stdout        io.Writer
 	Stderr        io.Writer
-	// Reload replaces the process (terminal reset + exec); it returns only
-	// on failure, and the session keeps running when it does.
+	// Reload replaces the process; it returns only on failure, and the
+	// session keeps running when it does.
 	Reload func() error
 }
 
 // Controller owns a watch session: the event loop, the REPL, prompt state,
 // and the watcher's start/stop. Process-level concerns (signal
-// registration, the exec that Reload performs, exit codes) stay with the
-// caller.
+// registration, the exec behind Reload, exit codes) stay with the caller.
 type Controller struct {
-	planner       Planner
-	runAllJob     JobRun
-	debounceDelay time.Duration
-	timeout       time.Duration
-	watcher       WatcherSource
-	signals       <-chan os.Signal
-	stdin         io.Reader
-	stdout        io.Writer
-	stderr        io.Writer
-	reloadFn      func() error
-
+	cfg        ControllerConfig
 	promptChan chan struct{}
 	reloadChan chan struct{}
 }
 
 func NewController(cfg ControllerConfig) *Controller {
 	return &Controller{
-		planner:       cfg.Planner,
-		runAllJob:     cfg.RunAllJob,
-		debounceDelay: cfg.DebounceDelay,
-		timeout:       cfg.Timeout,
-		watcher:       cfg.Watcher,
-		signals:       cfg.Signals,
-		stdin:         cfg.Stdin,
-		stdout:        cfg.Stdout,
-		stderr:        cfg.Stderr,
-		reloadFn:      cfg.Reload,
-		promptChan:    make(chan struct{}, 1),
-		reloadChan:    make(chan struct{}, 1),
+		cfg:        cfg,
+		promptChan: make(chan struct{}, 1),
+		reloadChan: make(chan struct{}, 1),
 	}
 }
 
-// Run blocks for the whole session: it starts the watcher, serves the
-// REPL and file events, and returns nil on exit/timeout/signal or an
-// error when the watcher fails.
+// Run blocks for the whole session: nil on exit/timeout/signal, an error
+// when the watcher fails.
 func (c *Controller) Run() error {
-	if err := c.watcher.Start(); err != nil {
+	if err := c.cfg.Watcher.Start(); err != nil {
 		return err
 	}
-	defer c.watcher.Stop()
+	defer c.cfg.Watcher.Stop()
 
-	debouncer := NewDebouncer(c.debounceDelay)
+	debouncer := NewDebouncer(c.cfg.DebounceDelay)
 
 	var timeoutChan <-chan time.Time
-	if c.timeout > 0 {
-		timeoutChan = time.After(c.timeout)
+	if c.cfg.Timeout > 0 {
+		timeoutChan = time.After(c.cfg.Timeout)
 	}
 
 	stdinChan := make(chan string, 10)
 	go func() {
-		scanner := bufio.NewScanner(c.stdin)
+		scanner := bufio.NewScanner(c.cfg.Stdin)
 		for scanner.Scan() {
 			stdinChan <- strings.TrimSpace(stripTerminalReports(scanner.Text()))
 		}
@@ -124,11 +100,11 @@ func (c *Controller) Run() error {
 			logger.Logger.Debug("received via stdin", "input", input)
 			switch input {
 			case "":
-				fmt.Fprintln(c.stdout, "Running all tests...")
-				if err := ExecuteJob(c.runAllJob, c.planner.CWD); err != nil {
-					fmt.Fprintf(c.stderr, "Failed to run: %v\n", err)
+				fmt.Fprintln(c.cfg.Stdout, "Running all tests...")
+				if err := ExecuteJob(c.cfg.RunAllJob, c.cfg.Planner.CWD); err != nil {
+					fmt.Fprintf(c.cfg.Stderr, "Failed to run: %v\n", err)
 				}
-				fmt.Fprintln(c.stdout)
+				fmt.Fprintln(c.cfg.Stdout)
 				c.showPrompt()
 			case "help":
 				c.printHelp()
@@ -139,21 +115,21 @@ func (c *Controller) Run() error {
 			case "debug":
 				logger.ToggleDebug()
 				if logger.IsDebugEnabled() {
-					fmt.Fprintln(c.stdout, "Debug output enabled")
+					fmt.Fprintln(c.cfg.Stdout, "Debug output enabled")
 				} else {
-					fmt.Fprintln(c.stdout, "Debug output disabled")
+					fmt.Fprintln(c.cfg.Stdout, "Debug output disabled")
 				}
 				c.showPrompt()
 			case "exit":
-				fmt.Fprintln(c.stdout, "Exiting watch mode...")
+				fmt.Fprintln(c.cfg.Stdout, "Exiting watch mode...")
 				return nil
 			default:
-				fmt.Fprintf(c.stdout, "Unknown command: '%s'\n", input)
+				fmt.Fprintf(c.cfg.Stdout, "Unknown command: '%s'\n", input)
 				c.printHelp()
 				c.showPrompt()
 			}
 
-		case event := <-c.watcher.Events():
+		case event := <-c.cfg.Watcher.Events():
 			if event.PathType == "watcher" {
 				logger.Logger.Debug("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
 				continue
@@ -163,7 +139,7 @@ func (c *Controller) Run() error {
 				continue
 			}
 
-			path, ok := c.planner.Admit(event.PathName)
+			path, ok := c.cfg.Planner.Admit(event.PathName)
 			if !ok {
 				continue
 			}
@@ -171,9 +147,9 @@ func (c *Controller) Run() error {
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
 			debouncer.Debounce([]string{path}, func(paths []string) {
-				plan := c.planner.Plan(paths)
+				plan := c.cfg.Planner.Plan(paths)
 				for _, run := range plan.Runs {
-					if err := ExecuteJob(run, c.planner.CWD); err != nil {
+					if err := ExecuteJob(run, c.cfg.Planner.CWD); err != nil {
 						logger.Logger.Warn("Job execution error", "job", run.Job.Name, "error", err)
 					}
 				}
@@ -181,42 +157,42 @@ func (c *Controller) Run() error {
 					c.triggerReload()
 				}
 				if len(plan.Runs) > 0 {
-					fmt.Fprintln(c.stdout)
+					fmt.Fprintln(c.cfg.Stdout)
 					c.showPrompt()
 				}
 			})
 
-		case err := <-c.watcher.Errors():
+		case err := <-c.cfg.Watcher.Errors():
 			return fmt.Errorf("watcher error: %v", err)
 
 		case <-timeoutChan:
-			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", int(c.timeout.Seconds()))
-			fmt.Fprintln(c.stdout, "Timeout reached, exiting!")
+			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", int(c.cfg.Timeout.Seconds()))
+			fmt.Fprintln(c.cfg.Stdout, "Timeout reached, exiting!")
 			return nil
 
-		case sig := <-c.signals:
+		case sig := <-c.cfg.Signals:
 			switch sig {
 			case syscall.SIGINT:
-				fmt.Fprintln(c.stdout, "Received SIGINT, shutting down gracefully...")
+				fmt.Fprintln(c.cfg.Stdout, "Received SIGINT, shutting down gracefully...")
 				return nil
 			case syscall.SIGTERM:
-				fmt.Fprintln(c.stdout, "Received SIGTERM, shutting down gracefully...")
+				fmt.Fprintln(c.cfg.Stdout, "Received SIGTERM, shutting down gracefully...")
 				return nil
 			case syscall.SIGHUP:
-				fmt.Fprintln(c.stdout, "Received SIGHUP, reloading plur...")
+				fmt.Fprintln(c.cfg.Stdout, "Received SIGHUP, reloading plur...")
 				if err := c.attemptReload(); err != nil {
 					continue
 				}
-				// Reload execs a new process, so success never reaches here;
-				// this return mirrors the original flow for completeness.
+				// Reload execs a new process on success, so this is reached
+				// only in tests with a fake Reload.
 				return nil
 			default:
-				fmt.Fprintf(c.stdout, "Received signal %v, shutting down gracefully...\n", sig)
+				fmt.Fprintf(c.cfg.Stdout, "Received signal %v, shutting down gracefully...\n", sig)
 				return nil
 			}
 
 		case <-c.promptChan:
-			fmt.Fprint(c.stdout, "[plur] > ")
+			fmt.Fprint(c.cfg.Stdout, "[plur] > ")
 
 		case <-c.reloadChan:
 			c.attemptReload()
@@ -224,21 +200,19 @@ func (c *Controller) Run() error {
 	}
 }
 
-// attemptReload invokes the process-level reload. It returns only on
-// failure — success execs a new process — and keeps the session usable:
-// the error is reported and the prompt comes back.
+// attemptReload returns only on failure — success execs a new process —
+// and the session keeps running: the error is reported and the prompt
+// comes back.
 func (c *Controller) attemptReload() error {
-	err := c.reloadFn()
+	err := c.cfg.Reload()
 	if err != nil {
 		logger.Logger.Error("Failed to reload", "error", err)
-		fmt.Fprintln(c.stdout, "Failed to reload:", err)
+		fmt.Fprintln(c.cfg.Stdout, "Failed to reload:", err)
 		c.showPrompt()
 	}
 	return err
 }
 
-// showPrompt queues a prompt without blocking; a queued prompt is not
-// duplicated.
 func (c *Controller) showPrompt() {
 	select {
 	case c.promptChan <- struct{}{}:
@@ -246,8 +220,6 @@ func (c *Controller) showPrompt() {
 	}
 }
 
-// triggerReload queues a reload without blocking; a queued reload is not
-// duplicated.
 func (c *Controller) triggerReload() {
 	select {
 	case c.reloadChan <- struct{}{}:
@@ -257,11 +229,11 @@ func (c *Controller) triggerReload() {
 
 func (c *Controller) printHelp() {
 	cmdWidth := 20
-	fmt.Fprintln(c.stdout, "Available commands")
-	fmt.Fprintf(c.stdout, "  %-*s %s\n", cmdWidth, "[Enter]", "Run all tests")
-	fmt.Fprintf(c.stdout, "  %-*s %s\n", cmdWidth, "debug", "Toggle debug mode")
-	fmt.Fprintf(c.stdout, "  %-*s %s\n", cmdWidth, "help", "Show this help")
-	fmt.Fprintf(c.stdout, "  %-*s %s\n", cmdWidth, "reload", "Reload plur")
-	fmt.Fprintf(c.stdout, "  %-*s %s\n", cmdWidth, "exit (Ctrl-C)", "Exit watch mode")
-	fmt.Fprintln(c.stdout)
+	fmt.Fprintln(c.cfg.Stdout, "Available commands")
+	fmt.Fprintf(c.cfg.Stdout, "  %-*s %s\n", cmdWidth, "[Enter]", "Run all tests")
+	fmt.Fprintf(c.cfg.Stdout, "  %-*s %s\n", cmdWidth, "debug", "Toggle debug mode")
+	fmt.Fprintf(c.cfg.Stdout, "  %-*s %s\n", cmdWidth, "help", "Show this help")
+	fmt.Fprintf(c.cfg.Stdout, "  %-*s %s\n", cmdWidth, "reload", "Reload plur")
+	fmt.Fprintf(c.cfg.Stdout, "  %-*s %s\n", cmdWidth, "exit (Ctrl-C)", "Exit watch mode")
+	fmt.Fprintln(c.cfg.Stdout)
 }
