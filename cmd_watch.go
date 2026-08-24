@@ -61,9 +61,6 @@ func buildWatchPlanner(globals *PlurCLI, watchCmd *WatchCmd) (watch.Planner, err
 	}, nil
 }
 
-// resetTerminal restores terminal to a known good state.
-// This handles cases where jobs (like goreleaser with progress bars) may have
-// left the terminal in raw mode with echo disabled.
 func resetTerminal() {
 	cmd := exec.Command("stty", "sane")
 	cmd.Stdin = os.Stdin
@@ -72,8 +69,6 @@ func resetTerminal() {
 	_ = cmd.Run() // Best effort, ignore errors
 }
 
-// reload performs an atomic process replacement (Unix/Linux/macOS only)
-// and also maintains same args & env, including the debug state from previous process
 func reload(manager *watch.WatcherManager) error {
 	fmt.Println("Reloading plur...")
 	fmt.Println()
@@ -114,6 +109,19 @@ func printWatchInfo(watchDirs []string) {
 	}
 	fmt.Printf("plur %s ready and watching %v\n", buildinfo.GetVersionInfo(), strings.Join(absoluteWatchDirs, ", "))
 	fmt.Println()
+}
+
+func watchStdin() (*os.File, error) {
+	fd, err := syscall.Dup(int(os.Stdin.Fd()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to duplicate stdin: %w", err)
+	}
+	syscall.CloseOnExec(fd)
+	if err := syscall.SetNonblock(fd, true); err != nil {
+		_ = syscall.Close(fd)
+		return nil, fmt.Errorf("failed to configure stdin: %w", err)
+	}
+	return os.NewFile(uintptr(fd), os.Stdin.Name()), nil
 }
 
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
@@ -181,26 +189,28 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		return fmt.Errorf("failed to find watcher binary: %v", err)
 	}
 
-	watcherConfig := &watch.ManagerConfig{
+	manager := watch.NewWatcherManager(&watch.ManagerConfig{
 		Directories: watchDirs,
-	}
-	manager := watch.NewWatcherManager(watcherConfig, watcherPath)
+	}, watcherPath)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	stdin, err := watchStdin()
+	if err != nil {
+		return err
+	}
 
-	ctrl := watch.NewController(watch.ControllerConfig{
+	return watch.NewController(watch.ControllerConfig{
 		Planner:       planner,
 		RunAllJob:     watch.JobRun{Job: selected.Job},
 		DebounceDelay: debounceDelay,
 		Timeout:       time.Duration(runCmd.Timeout) * time.Second,
 		Watcher:       manager,
 		Signals:       sigChan,
-		Stdin:         os.Stdin,
+		Stdin:         stdin,
 		Stdout:        os.Stdout,
 		Stderr:        os.Stderr,
 		OnStarted:     func() { printWatchInfo(watchDirs) },
 		Reload:        func() error { return reload(manager) },
-	})
-	return ctrl.Run()
+	}).Run()
 }

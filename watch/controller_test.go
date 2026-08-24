@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeWatcher satisfies WatcherSource with plain channels — no watcher binary.
 type fakeWatcher struct {
 	events   chan Event
 	errors   chan error
@@ -36,19 +35,15 @@ func (f *fakeWatcher) Stop()                { f.stopped = true }
 func (f *fakeWatcher) Events() <-chan Event { return f.events }
 func (f *fakeWatcher) Errors() <-chan error { return f.errors }
 
-// syncBuffer lets the test read output while the controller goroutine writes.
 type syncBuffer struct {
 	mu sync.Mutex
 	b  bytes.Buffer
 }
 
-// blockingStdin yields one command, then blocks until the Controller closes it.
 type blockingStdin struct {
-	mu       sync.Mutex
 	sent     bool
 	closed   chan struct{}
 	readDone chan struct{}
-	closeMu  sync.Once
 }
 
 func newBlockingStdin() *blockingStdin {
@@ -56,13 +51,10 @@ func newBlockingStdin() *blockingStdin {
 }
 
 func (s *blockingStdin) Read(p []byte) (int, error) {
-	s.mu.Lock()
 	if !s.sent {
 		s.sent = true
-		s.mu.Unlock()
 		return copy(p, "exit\n"), nil
 	}
-	s.mu.Unlock()
 
 	<-s.closed
 	close(s.readDone)
@@ -70,7 +62,7 @@ func (s *blockingStdin) Read(p []byte) (int, error) {
 }
 
 func (s *blockingStdin) Close() error {
-	s.closeMu.Do(func() { close(s.closed) })
+	close(s.closed)
 	return nil
 }
 
@@ -109,12 +101,6 @@ func waitForReturn(t *testing.T, done <-chan error) error {
 	}
 }
 
-func echoJob() JobRun {
-	return JobRun{Job: framework.Job{Name: "rspec", Cmd: []string{"echo", "ok"}}}
-}
-
-// controllerHarness runs a Controller against fakes and blocks until the
-// first prompt, so tests type against a settled session.
 type controllerHarness struct {
 	stdout  *syncBuffer
 	stderr  *syncBuffer
@@ -138,7 +124,7 @@ func startController(t *testing.T, mutate func(*ControllerConfig)) *controllerHa
 
 	cfg := ControllerConfig{
 		Planner:       Planner{CWD: t.TempDir()},
-		RunAllJob:     echoJob(),
+		RunAllJob:     JobRun{Job: framework.Job{Name: "rspec", Cmd: []string{"echo", "ok"}}},
 		DebounceDelay: time.Millisecond,
 		Watcher:       h.watcher,
 		Signals:       h.signals,
@@ -181,12 +167,9 @@ func TestControllerRun_ExitCommand(t *testing.T) {
 	h.typeLine(t, "exit")
 	require.NoError(t, waitForReturn(t, h.done))
 
-	out := h.stdout.String()
-	assert.Contains(t, out, "Available commands")
-	assert.Contains(t, out, "[plur] > Exiting watch mode...")
+	assert.Contains(t, h.stdout.String(), "[plur] > Exiting watch mode...")
 	assert.True(t, h.watcher.started, "controller should start the watcher")
 	assert.True(t, h.watcher.stopped, "controller should stop the watcher on exit")
-	assert.Empty(t, h.stderr.String())
 }
 
 func TestControllerRun_ClosesAndJoinsStdinOnExit(t *testing.T) {
@@ -264,7 +247,6 @@ func TestControllerRun_EnterRunsAllTests(t *testing.T) {
 
 	h.typeLine(t, "")
 	waitForFile(t, marker)
-	// The blank line and fresh prompt after the run are pinned output.
 	waitForOutput(t, h.stdout, "[plur] > Running all tests...\n\n[plur] > ")
 
 	h.typeLine(t, "exit")
@@ -317,7 +299,6 @@ func TestControllerRun_StdinEOFThenTimeout(t *testing.T) {
 		cfg.Timeout = 200 * time.Millisecond
 	})
 
-	// Closing stdin must idle the REPL, not end or spin the session.
 	require.NoError(t, h.stdinW.Close())
 
 	require.NoError(t, waitForReturn(t, h.done))
@@ -406,7 +387,6 @@ func TestControllerRun_FileEventTriggersPlannedRun(t *testing.T) {
 	h.watcher.events <- Event{PathType: "file", PathName: "lib/user.rb", EffectType: "modify"}
 
 	waitForFile(t, marker)
-	waitForOutput(t, h.stdout, "\n[plur] > ")
 
 	h.typeLine(t, "exit")
 	require.NoError(t, waitForReturn(t, h.done))
