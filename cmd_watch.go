@@ -189,8 +189,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	printWatchInfo(watchDirs)
-
 	ctrl := watch.NewController(watch.ControllerConfig{
 		Planner:       planner,
 		RunAllJob:     watch.JobRun{Job: selected.Job},
@@ -201,6 +199,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		Stdin:         os.Stdin,
 		Stdout:        os.Stdout,
 		Stderr:        os.Stderr,
+		OnStarted:     func() { printWatchInfo(watchDirs) },
 		Reload:        func() error { return reload(manager) },
 	})
 	return ctrl.Run()

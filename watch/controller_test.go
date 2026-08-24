@@ -21,17 +21,18 @@ import (
 // fakeWatcher satisfies WatcherSource with plain channels, so controller
 // tests never spawn the real watcher binary.
 type fakeWatcher struct {
-	events  chan Event
-	errors  chan error
-	started bool
-	stopped bool
+	events   chan Event
+	errors   chan error
+	startErr error
+	started  bool
+	stopped  bool
 }
 
 func newFakeWatcher() *fakeWatcher {
 	return &fakeWatcher{events: make(chan Event, 10), errors: make(chan error, 1)}
 }
 
-func (f *fakeWatcher) Start() error         { f.started = true; return nil }
+func (f *fakeWatcher) Start() error         { f.started = true; return f.startErr }
 func (f *fakeWatcher) Stop()                { f.stopped = true }
 func (f *fakeWatcher) Events() <-chan Event { return f.events }
 func (f *fakeWatcher) Errors() <-chan error { return f.errors }
@@ -40,6 +41,38 @@ func (f *fakeWatcher) Errors() <-chan error { return f.errors }
 type syncBuffer struct {
 	mu sync.Mutex
 	b  bytes.Buffer
+}
+
+// blockingStdin yields one command, then blocks until the Controller closes it.
+type blockingStdin struct {
+	mu       sync.Mutex
+	sent     bool
+	closed   chan struct{}
+	readDone chan struct{}
+	closeMu  sync.Once
+}
+
+func newBlockingStdin() *blockingStdin {
+	return &blockingStdin{closed: make(chan struct{}), readDone: make(chan struct{})}
+}
+
+func (s *blockingStdin) Read(p []byte) (int, error) {
+	s.mu.Lock()
+	if !s.sent {
+		s.sent = true
+		s.mu.Unlock()
+		return copy(p, "exit\n"), nil
+	}
+	s.mu.Unlock()
+
+	<-s.closed
+	close(s.readDone)
+	return 0, io.EOF
+}
+
+func (s *blockingStdin) Close() error {
+	s.closeMu.Do(func() { close(s.closed) })
+	return nil
 }
 
 func (s *syncBuffer) Write(p []byte) (int, error) {
@@ -158,6 +191,73 @@ func TestControllerRun_ExitCommand(t *testing.T) {
 	assert.Empty(t, h.stderr.String())
 }
 
+func TestControllerRun_ClosesAndJoinsStdinOnExit(t *testing.T) {
+	stdin := newBlockingStdin()
+	watcher := newFakeWatcher()
+	ctrl := NewController(ControllerConfig{
+		Planner: Planner{CWD: t.TempDir()},
+		Watcher: watcher,
+		Signals: make(chan os.Signal),
+		Stdin:   stdin,
+		Stdout:  io.Discard,
+		Stderr:  io.Discard,
+		Reload:  func() error { return nil },
+	})
+
+	require.NoError(t, ctrl.Run())
+	select {
+	case <-stdin.closed:
+	default:
+		t.Fatal("Controller.Run returned without closing stdin")
+	}
+	select {
+	case <-stdin.readDone:
+	default:
+		t.Fatal("Controller.Run returned before the stdin reader stopped")
+	}
+}
+
+func TestControllerRun_AnnouncesStartedOnlyAfterWatcherStarts(t *testing.T) {
+	t.Run("successful start", func(t *testing.T) {
+		var announced atomic.Bool
+		h := startController(t, func(cfg *ControllerConfig) {
+			cfg.OnStarted = func() { announced.Store(true) }
+		})
+
+		assert.True(t, announced.Load())
+		h.typeLine(t, "exit")
+		require.NoError(t, waitForReturn(t, h.done))
+	})
+
+	t.Run("failed start", func(t *testing.T) {
+		watcher := newFakeWatcher()
+		watcher.startErr = errors.New("watcher failed to start")
+		stdin := newBlockingStdin()
+		var announced atomic.Bool
+		ctrl := NewController(ControllerConfig{
+			Planner:   Planner{CWD: t.TempDir()},
+			Watcher:   watcher,
+			Signals:   make(chan os.Signal),
+			Stdin:     stdin,
+			Stdout:    io.Discard,
+			Stderr:    io.Discard,
+			Reload:    func() error { return nil },
+			OnStarted: func() { announced.Store(true) },
+		})
+
+		err := ctrl.Run()
+
+		require.EqualError(t, err, "watcher failed to start")
+		assert.False(t, announced.Load())
+		assert.False(t, watcher.stopped)
+		select {
+		case <-stdin.closed:
+		default:
+			t.Fatal("Controller.Run returned without closing stdin")
+		}
+	})
+}
+
 func TestControllerRun_EnterRunsAllTests(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
 	h := startController(t, func(cfg *ControllerConfig) {
@@ -246,7 +346,7 @@ func TestControllerRun_SignalsEndSession(t *testing.T) {
 	}
 }
 
-func TestControllerRun_ReloadFailureKeepsSessionAlive(t *testing.T) {
+func TestControllerRun_ReloadFailureEndsSession(t *testing.T) {
 	var reloads atomic.Int32
 	h := startController(t, func(cfg *ControllerConfig) {
 		cfg.Reload = func() error {
@@ -256,25 +356,26 @@ func TestControllerRun_ReloadFailureKeepsSessionAlive(t *testing.T) {
 	})
 
 	h.typeLine(t, "reload")
-	waitForOutput(t, h.stdout, "Failed to reload: exec failed")
+	err := waitForReturn(t, h.done)
 
-	// The session must stay usable after a failed reload.
-	h.typeLine(t, "exit")
-	require.NoError(t, waitForReturn(t, h.done))
+	require.EqualError(t, err, "exec failed")
+	assert.Contains(t, h.stdout.String(), "Failed to reload: exec failed")
 	assert.Equal(t, int32(1), reloads.Load())
+	assert.True(t, h.watcher.stopped)
 }
 
-func TestControllerRun_SighupReloadFailureKeepsSessionAlive(t *testing.T) {
+func TestControllerRun_SighupReloadFailureEndsSession(t *testing.T) {
 	h := startController(t, func(cfg *ControllerConfig) {
 		cfg.Reload = func() error { return errors.New("exec failed") }
 	})
 
 	h.signals <- syscall.SIGHUP
-	waitForOutput(t, h.stdout, "Received SIGHUP, reloading plur...")
-	waitForOutput(t, h.stdout, "Failed to reload: exec failed")
+	err := waitForReturn(t, h.done)
 
-	h.typeLine(t, "exit")
-	require.NoError(t, waitForReturn(t, h.done))
+	require.EqualError(t, err, "exec failed")
+	assert.Contains(t, h.stdout.String(), "Received SIGHUP, reloading plur...")
+	assert.Contains(t, h.stdout.String(), "Failed to reload: exec failed")
+	assert.True(t, h.watcher.stopped)
 }
 
 func TestControllerRun_WatcherErrorEndsSession(t *testing.T) {
