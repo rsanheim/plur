@@ -26,8 +26,6 @@ func stripTerminalReports(line string) string {
 	return csiSequence.ReplaceAllString(line, "")
 }
 
-// WatcherSource is the watcher lifecycle as the Controller drives it.
-// *WatcherManager satisfies it.
 type WatcherSource interface {
 	Start() error
 	Stop()
@@ -42,28 +40,20 @@ type InterruptibleReader interface {
 	io.Closer
 }
 
-// ControllerConfig carries everything a watch session needs from the
-// process that hosts it.
 type ControllerConfig struct {
 	Planner       Planner
-	RunAllJob     JobRun // executed as-is on Enter; empty targets means run all
+	RunAllJob     JobRun
 	DebounceDelay time.Duration
-	Timeout       time.Duration // 0 = no timeout
+	Timeout       time.Duration
 	Watcher       WatcherSource
-	Signals       <-chan os.Signal    // caller registers signal.Notify
-	Stdin         InterruptibleReader // Controller closes stdin when Run returns
+	Signals       <-chan os.Signal
+	Stdin         InterruptibleReader
 	Stdout        io.Writer
 	Stderr        io.Writer
-	// OnStarted runs after the watcher starts successfully.
-	OnStarted func()
-	// Reload replaces the process (terminal reset + exec); it returns only
-	// on failure, which ends the session because the watcher has stopped.
-	Reload func() error
+	OnStarted     func()
+	Reload        func() error
 }
 
-// Controller owns a watch session: the event loop, the REPL, prompt state,
-// and the watcher's start/stop. Process-level concerns (signal
-// registration, the exec behind Reload, exit codes) stay with the caller.
 type Controller struct {
 	cfg        ControllerConfig
 	promptChan chan struct{}
@@ -78,8 +68,6 @@ func NewController(cfg ControllerConfig) *Controller {
 	}
 }
 
-// Run blocks for the whole session: nil on exit/timeout/signal, an error
-// when the watcher fails.
 func (c *Controller) Run() error {
 	stdinDone := make(chan struct{})
 	var stdinWG sync.WaitGroup
@@ -211,12 +199,7 @@ func (c *Controller) Run() error {
 				return nil
 			case syscall.SIGHUP:
 				fmt.Fprintln(c.cfg.Stdout, "Received SIGHUP, reloading plur...")
-				if err := c.attemptReload(); err != nil {
-					return err
-				}
-				// Reload execs a new process on success, so this is reached
-				// only in tests with a fake Reload.
-				return nil
+				return c.attemptReload()
 			default:
 				fmt.Fprintf(c.cfg.Stdout, "Received signal %v, shutting down gracefully...\n", sig)
 				return nil
@@ -226,18 +209,11 @@ func (c *Controller) Run() error {
 			fmt.Fprint(c.cfg.Stdout, "[plur] > ")
 
 		case <-c.reloadChan:
-			if err := c.attemptReload(); err != nil {
-				return err
-			}
-			// Reload execs a new process, so success never reaches here.
-			return nil
+			return c.attemptReload()
 		}
 	}
 }
 
-// attemptReload invokes the process-level reload. It returns only on
-// failure — success execs a new process. A failure ends the session because
-// the production reload stops the watcher before attempting the exec.
 func (c *Controller) attemptReload() error {
 	err := c.cfg.Reload()
 	if err != nil {
