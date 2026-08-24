@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"syscall"
@@ -20,18 +18,6 @@ import (
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
-
-// Terminals send in-band reports on stdin — focus in/out after a window
-// switch, replies to queries a job asked (cursor position, device
-// attributes), SGR mouse events — and those bytes arrive glued to whatever
-// the user types next. All of them are CSI sequences (ESC [ parameters
-// intermediates final), so strip complete CSI sequences before matching
-// commands.
-var csiSequence = regexp.MustCompile(`\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]`)
-
-func stripTerminalReports(line string) string {
-	return csiSequence.ReplaceAllString(line, "")
-}
 
 func runWatchInstall(force bool) error {
 	configPaths := config.InitConfigPaths()
@@ -73,17 +59,6 @@ func buildWatchPlanner(globals *PlurCLI, watchCmd *WatchCmd) (watch.Planner, err
 		IgnorePatterns: ignorePatterns,
 		CWD:            cwd,
 	}, nil
-}
-
-func printHelp() {
-	cmdWidth := 20
-	fmt.Println("Available commands")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "[Enter]", "Run all tests")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "debug", "Toggle debug mode")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "help", "Show this help")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "reload", "Reload plur")
-	fmt.Printf("  %-*s %s\n", cmdWidth, "exit (Ctrl-C)", "Exit watch mode")
-	fmt.Println()
 }
 
 // resetTerminal restores terminal to a known good state.
@@ -162,7 +137,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	}
 
 	debounceDelay := time.Duration(runCmd.Debounce) * time.Millisecond
-	debouncer := watch.NewDebouncer(debounceDelay)
 	logger.Logger.Debug("Debounce delay", "ms", runCmd.Debounce)
 
 	var watchDirs []string
@@ -210,158 +184,24 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	watcherConfig := &watch.ManagerConfig{
 		Directories: watchDirs,
 	}
-
 	manager := watch.NewWatcherManager(watcherConfig, watcherPath)
-	if err := manager.Start(); err != nil {
-		return err
-	}
-	defer manager.Stop()
-
-	var timeoutChan <-chan time.Time
-	if runCmd.Timeout > 0 {
-		timeoutChan = time.After(time.Duration(runCmd.Timeout) * time.Second)
-	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	stdinChan := make(chan string, 10)
-	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			line := strings.TrimSpace(stripTerminalReports(scanner.Text()))
-			stdinChan <- line
-		}
-	}()
-
-	promptChan := make(chan struct{}, 1)
-	showPrompt := func() {
-		select {
-		case promptChan <- struct{}{}:
-		default: // already queued, skip
-		}
-	}
-
-	reloadChan := make(chan struct{}, 1)
-	triggerReload := func() {
-		select {
-		case reloadChan <- struct{}{}:
-		default: // already queued, skip
-		}
-	}
-
 	printWatchInfo(watchDirs)
-	printHelp()
-	showPrompt()
 
-	for {
-		select {
-		case input := <-stdinChan:
-			logger.Logger.Debug("received via stdin", "input", input)
-			switch input {
-			case "":
-				fmt.Println("Running all tests...")
-				if err := watch.ExecuteJob(watch.JobRun{Job: selected.Job}, planner.CWD); err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to run: %v\n", err)
-				}
-				fmt.Println()
-				showPrompt()
-			case "help":
-				printHelp()
-				showPrompt()
-			case "reload":
-				logger.Logger.Debug("User requested process reload")
-				triggerReload()
-			case "debug":
-				logger.ToggleDebug()
-				if logger.IsDebugEnabled() {
-					fmt.Println("Debug output enabled")
-				} else {
-					fmt.Println("Debug output disabled")
-				}
-				showPrompt()
-			case "exit":
-				fmt.Println("Exiting watch mode...")
-				return nil
-			default:
-				fmt.Printf("Unknown command: '%s'\n", input)
-				printHelp()
-				showPrompt()
-			}
-
-		case event := <-manager.Events():
-			if event.PathType == "watcher" {
-				logger.Logger.Debug("watch", "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType, "associated", fmt.Sprintf("%v", event.Associated))
-				continue
-			}
-
-			if event.EffectType != "modify" && event.EffectType != "create" {
-				continue
-			}
-
-			path, ok := planner.Admit(event.PathName)
-			if !ok {
-				continue
-			}
-
-			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
-
-			debouncer.Debounce([]string{path}, func(paths []string) {
-				plan := planner.Plan(paths)
-				for _, run := range plan.Runs {
-					if err := watch.ExecuteJob(run, planner.CWD); err != nil {
-						logger.Logger.Warn("Job execution error", "job", run.Job.Name, "error", err)
-					}
-				}
-				if plan.Reload {
-					triggerReload()
-				}
-				if len(plan.Runs) > 0 {
-					fmt.Println()
-					showPrompt()
-				}
-			})
-
-		case err := <-manager.Errors():
-			return fmt.Errorf("watcher error: %v", err)
-
-		case <-timeoutChan:
-			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", runCmd.Timeout)
-			fmt.Println("Timeout reached, exiting!")
-			return nil
-
-		case sig := <-sigChan:
-			switch sig {
-			case syscall.SIGINT:
-				fmt.Println("Received SIGINT, shutting down gracefully...")
-				return nil
-			case syscall.SIGTERM:
-				fmt.Println("Received SIGTERM, shutting down gracefully...")
-				return nil
-			case syscall.SIGHUP:
-				fmt.Println("Received SIGHUP, reloading plur...")
-				if err := reload(manager); err != nil {
-					logger.Logger.Error("Failed to reload", "error", err)
-					fmt.Println("Failed to reload:", err)
-					showPrompt()
-					continue
-				}
-				// reload() calls syscall.Exec which replaces process, so we never reach here on success
-				return nil
-			default:
-				fmt.Printf("Received signal %v, shutting down gracefully...\n", sig)
-				return nil
-			}
-
-		case <-promptChan:
-			fmt.Print("[plur] > ")
-
-		case <-reloadChan:
-			if err := reload(manager); err != nil {
-				logger.Logger.Error("Failed to reload", "error", err)
-				fmt.Println("Failed to reload:", err)
-				showPrompt()
-			}
-		}
-	}
+	ctrl := watch.NewController(watch.ControllerConfig{
+		Planner:       planner,
+		RunAllJob:     watch.JobRun{Job: selected.Job},
+		DebounceDelay: debounceDelay,
+		Timeout:       time.Duration(runCmd.Timeout) * time.Second,
+		Watcher:       manager,
+		Signals:       sigChan,
+		Stdin:         os.Stdin,
+		Stdout:        os.Stdout,
+		Stderr:        os.Stderr,
+		Reload:        func() error { return reload(manager) },
+	})
+	return ctrl.Run()
 }
