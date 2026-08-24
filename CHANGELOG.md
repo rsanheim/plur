@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.80.0-rc.3 - 2026-08-24
+* Extract watch.Controller: the watch session loop as a testable type [#129](https://github.com/rsanheim/plur/pull/129)
+
 ## v0.80.0-rc.2 - 2026-08-16
 * Minitest support now uses a standard minitest plugin instead of scraping minitest's prose output; this fixes multiple issues [#121](https://github.com/rsanheim/plur/pull/121)
   * proper stdout streaming from the tests or code under test
