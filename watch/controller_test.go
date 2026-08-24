@@ -2,10 +2,14 @@ package watch
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -77,37 +81,235 @@ func echoJob() JobRun {
 	return JobRun{Job: framework.Job{Name: "rspec", Cmd: []string{"echo", "ok"}}}
 }
 
-func TestControllerRun_ExitCommand(t *testing.T) {
-	stdout := &syncBuffer{}
-	stderr := &syncBuffer{}
-	watcher := newFakeWatcher()
-	stdinR, stdinW := io.Pipe()
+// controllerHarness runs a Controller in a goroutine with fakes on every
+// seam and blocks until the first prompt, so tests type against a settled
+// session.
+type controllerHarness struct {
+	stdout  *syncBuffer
+	stderr  *syncBuffer
+	watcher *fakeWatcher
+	stdinW  *io.PipeWriter
+	signals chan os.Signal
+	done    chan error
+}
 
-	ctrl := NewController(ControllerConfig{
+func startController(t *testing.T, mutate func(*ControllerConfig)) *controllerHarness {
+	t.Helper()
+	h := &controllerHarness{
+		stdout:  &syncBuffer{},
+		stderr:  &syncBuffer{},
+		watcher: newFakeWatcher(),
+		signals: make(chan os.Signal, 1),
+		done:    make(chan error, 1),
+	}
+	stdinR, stdinW := io.Pipe()
+	h.stdinW = stdinW
+
+	cfg := ControllerConfig{
 		Planner:       Planner{CWD: t.TempDir()},
 		RunAllJob:     echoJob(),
 		DebounceDelay: time.Millisecond,
-		Watcher:       watcher,
-		Signals:       make(chan os.Signal),
+		Watcher:       h.watcher,
+		Signals:       h.signals,
 		Stdin:         stdinR,
-		Stdout:        stdout,
-		Stderr:        stderr,
+		Stdout:        h.stdout,
+		Stderr:        h.stderr,
 		Reload:        func() error { return nil },
-	})
+	}
+	if mutate != nil {
+		mutate(&cfg)
+	}
 
-	done := make(chan error, 1)
-	go func() { done <- ctrl.Run() }()
+	ctrl := NewController(cfg)
+	go func() { h.done <- ctrl.Run() }()
+	waitForOutput(t, h.stdout, "[plur] > ")
+	return h
+}
 
-	waitForOutput(t, stdout, "[plur] > ")
-	_, err := stdinW.Write([]byte("exit\n"))
+func (h *controllerHarness) typeLine(t *testing.T, line string) {
+	t.Helper()
+	_, err := h.stdinW.Write([]byte(line + "\n"))
 	require.NoError(t, err)
+}
 
-	require.NoError(t, waitForReturn(t, done))
+func waitForFile(t *testing.T, path string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); err == nil {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for file %s", path)
+}
 
-	out := stdout.String()
+func TestControllerRun_ExitCommand(t *testing.T) {
+	h := startController(t, nil)
+
+	h.typeLine(t, "exit")
+	require.NoError(t, waitForReturn(t, h.done))
+
+	out := h.stdout.String()
 	assert.Contains(t, out, "Available commands")
 	assert.Contains(t, out, "[plur] > Exiting watch mode...")
-	assert.True(t, watcher.started, "controller should start the watcher")
-	assert.True(t, watcher.stopped, "controller should stop the watcher on exit")
-	assert.Empty(t, stderr.String())
+	assert.True(t, h.watcher.started, "controller should start the watcher")
+	assert.True(t, h.watcher.stopped, "controller should stop the watcher on exit")
+	assert.Empty(t, h.stderr.String())
+}
+
+func TestControllerRun_EnterRunsAllTests(t *testing.T) {
+	marker := filepath.Join(t.TempDir(), "ran")
+	h := startController(t, func(cfg *ControllerConfig) {
+		cfg.RunAllJob = JobRun{Job: framework.Job{Name: "rspec", Cmd: []string{"touch", marker}}}
+	})
+
+	h.typeLine(t, "")
+	waitForFile(t, marker)
+	// The blank line and fresh prompt after the run are pinned output.
+	waitForOutput(t, h.stdout, "[plur] > Running all tests...\n\n[plur] > ")
+
+	h.typeLine(t, "exit")
+	require.NoError(t, waitForReturn(t, h.done))
+	assert.Empty(t, h.stderr.String())
+}
+
+func TestControllerRun_EnterReportsRunFailureOnStderr(t *testing.T) {
+	h := startController(t, func(cfg *ControllerConfig) {
+		cfg.RunAllJob = JobRun{Job: framework.Job{Name: "rspec", Cmd: []string{"false"}}}
+	})
+
+	h.typeLine(t, "")
+	waitForOutput(t, h.stderr, "Failed to run:")
+	waitForOutput(t, h.stdout, "Running all tests...\n\n[plur] > ")
+
+	h.typeLine(t, "exit")
+	require.NoError(t, waitForReturn(t, h.done))
+}
+
+func TestControllerRun_HelpAndUnknownCommands(t *testing.T) {
+	h := startController(t, nil)
+
+	h.typeLine(t, "help")
+	waitForOutput(t, h.stdout, "[plur] > Available commands")
+
+	h.typeLine(t, "wat")
+	waitForOutput(t, h.stdout, "Unknown command: 'wat'")
+
+	h.typeLine(t, "exit")
+	require.NoError(t, waitForReturn(t, h.done))
+	assert.Equal(t, 3, strings.Count(h.stdout.String(), "Available commands"),
+		"startup, help, and unknown-command should each print the table")
+}
+
+func TestControllerRun_DebugToggle(t *testing.T) {
+	h := startController(t, nil)
+
+	h.typeLine(t, "debug")
+	h.typeLine(t, "debug") // toggle back so global logger state is restored
+	waitForOutput(t, h.stdout, "Debug output enabled")
+	waitForOutput(t, h.stdout, "Debug output disabled")
+
+	h.typeLine(t, "exit")
+	require.NoError(t, waitForReturn(t, h.done))
+}
+
+func TestControllerRun_StdinEOFThenTimeout(t *testing.T) {
+	h := startController(t, func(cfg *ControllerConfig) {
+		cfg.Timeout = 200 * time.Millisecond
+	})
+
+	// Closing stdin must idle the REPL, not end or spin the session.
+	require.NoError(t, h.stdinW.Close())
+
+	require.NoError(t, waitForReturn(t, h.done))
+	assert.Contains(t, h.stdout.String(), "Timeout reached, exiting!")
+}
+
+func TestControllerRun_SignalsEndSession(t *testing.T) {
+	cases := []struct {
+		sig     os.Signal
+		message string
+	}{
+		{syscall.SIGINT, "Received SIGINT, shutting down gracefully..."},
+		{syscall.SIGTERM, "Received SIGTERM, shutting down gracefully..."},
+	}
+	for _, tc := range cases {
+		t.Run(tc.message, func(t *testing.T) {
+			h := startController(t, nil)
+
+			h.signals <- tc.sig
+
+			require.NoError(t, waitForReturn(t, h.done))
+			assert.Contains(t, h.stdout.String(), tc.message)
+		})
+	}
+}
+
+func TestControllerRun_ReloadFailureKeepsSessionAlive(t *testing.T) {
+	var reloads atomic.Int32
+	h := startController(t, func(cfg *ControllerConfig) {
+		cfg.Reload = func() error {
+			reloads.Add(1)
+			return errors.New("exec failed")
+		}
+	})
+
+	h.typeLine(t, "reload")
+	waitForOutput(t, h.stdout, "Failed to reload: exec failed")
+
+	// The session must stay usable after a failed reload.
+	h.typeLine(t, "exit")
+	require.NoError(t, waitForReturn(t, h.done))
+	assert.Equal(t, int32(1), reloads.Load())
+}
+
+func TestControllerRun_SighupReloadFailureKeepsSessionAlive(t *testing.T) {
+	h := startController(t, func(cfg *ControllerConfig) {
+		cfg.Reload = func() error { return errors.New("exec failed") }
+	})
+
+	h.signals <- syscall.SIGHUP
+	waitForOutput(t, h.stdout, "Received SIGHUP, reloading plur...")
+	waitForOutput(t, h.stdout, "Failed to reload: exec failed")
+
+	h.typeLine(t, "exit")
+	require.NoError(t, waitForReturn(t, h.done))
+}
+
+func TestControllerRun_WatcherErrorEndsSession(t *testing.T) {
+	h := startController(t, nil)
+
+	h.watcher.errors <- errors.New("watcher died")
+
+	err := waitForReturn(t, h.done)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "watcher error: watcher died")
+	assert.True(t, h.watcher.stopped)
+}
+
+func TestControllerRun_FileEventTriggersPlannedRun(t *testing.T) {
+	projectDir := t.TempDir()
+	writeFileTree(t, projectDir, "spec/user_spec.rb")
+	marker := filepath.Join(projectDir, "ran")
+
+	h := startController(t, func(cfg *ControllerConfig) {
+		cfg.Planner = Planner{
+			Jobs: map[string]framework.Job{
+				"rspec": {Name: "rspec", Cmd: []string{"touch", marker}},
+			},
+			Watches: []WatchMapping{libToSpec()},
+			CWD:     projectDir,
+		}
+		cfg.DebounceDelay = 5 * time.Millisecond
+	})
+
+	h.watcher.events <- Event{PathType: "file", PathName: "lib/user.rb", EffectType: "modify"}
+
+	waitForFile(t, marker)
+	// A batch that ran jobs re-shows the prompt after a blank line.
+	waitForOutput(t, h.stdout, "\n[plur] > ")
+
+	h.typeLine(t, "exit")
+	require.NoError(t, waitForReturn(t, h.done))
 }
