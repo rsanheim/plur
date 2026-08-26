@@ -22,7 +22,6 @@ builds:
     goos:
       - darwin
       - linux
-      - windows
 
     goarch:
       - amd64
@@ -32,8 +31,6 @@ builds:
     ignore:
       - goos: darwin
         goarch: amd64 # No Intel Mac support
-      - goos: windows
-        goarch: arm64 # Not supporting Windows ARM64
 
     # Set module mode; trimpath for reproducible builds and smaller binaries
     flags:
@@ -58,12 +55,8 @@ archives:
   - id: plur-archive
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
-    # Use tar.gz for Unix, zip for Windows
     formats:
       - tar.gz
-    format_overrides:
-      - goos: windows
-        formats: ["zip"]
     wrap_in_directory: true
 
     # Include these files in the archive
