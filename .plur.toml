@@ -12,17 +12,6 @@ targets = ["./{{dir_relative}}"]
 jobs = ["go-test"]
 ignore = ["**/*_test.go", "vendor/**", "**/vendor/**", "**/testdata/**"]
 
-# Go source files -> rebuild plur and reload
-# disable for now, too clunky
-#
-# [[watch]]
-# name = "plur-go-build"
-# source = "**/*.go"
-# jobs = ["build"]
-# no_targets = true
-# reload = true
-# ignore = ["**/*_test.go", "vendor/**", "**/vendor/**", "**/testdata/**"]
-
 # Go test files -> run tests
 [[watch]]
 name = "go-tests"

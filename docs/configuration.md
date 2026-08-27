@@ -249,7 +249,6 @@ Watch mode uses `[[watch]]` entries to define file-to-test mappings. When a sour
 | `no_targets` | bool | Run matching jobs without appending any target args. Must not be combined with `targets`. | No |
 | `jobs` | string[] | Jobs to trigger when source matches | Yes |
 | `ignore` | string[] | Patterns to ignore from watching | No |
-| `reload` | bool | Reload plur after jobs complete | No |
 
 **Note**: `ignore` is per-watch mapping. For global ignore patterns, use `watch-ignore` in `.plur.toml` or the `plur watch --ignore` flag for one session.
 

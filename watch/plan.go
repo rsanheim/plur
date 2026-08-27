@@ -43,7 +43,6 @@ type JobRun struct {
 type Plan struct {
 	Matches []Match
 	Runs    []JobRun
-	Reload  bool
 }
 
 // Admit normalizes a changed path to be relative to CWD and applies the
@@ -99,14 +98,6 @@ func (p Planner) Plan(paths []string) Plan {
 			logger.Logger.Debug("No existing targets for file", "path", path)
 		}
 		plan.Matches = append(plan.Matches, matches...)
-	}
-
-	for _, m := range plan.Matches {
-		if m.Rule.Reload {
-			logger.Logger.Info("Watch rule triggered reload", "source", m.Rule.Source)
-			plan.Reload = true
-			break
-		}
 	}
 
 	plan.Runs = p.buildRuns(plan.Matches)

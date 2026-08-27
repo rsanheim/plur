@@ -92,7 +92,6 @@ Fields and meaning:
 - `Targets` ([]string, optional): mapping tokens for target generation.
 - `Jobs` ([]string, required): list of job names to run.
 - `Ignore` ([]string, optional): ignore globs.
-- `Reload` (bool, optional): reload plur after jobs complete.
 
 Watch mappings apply only in watch mode. They do not affect run mode
 autodetection or job resolution.

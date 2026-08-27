@@ -51,7 +51,6 @@ func TestPlannerPlan_RendersTargetsAndBuildsRun(t *testing.T) {
 		require.Len(t, plan.Runs, 1)
 		assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
 		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Runs[0].Targets)
-		assert.False(t, plan.Reload)
 	})
 
 	t.Run("nested lib file", func(t *testing.T) {
@@ -263,38 +262,6 @@ func TestPlannerPlan_JobWithOnlyMissingTargetsDoesNotRun(t *testing.T) {
 	assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
 }
 
-func TestPlannerPlan_ReloadRuleWithJobs(t *testing.T) {
-	tmpDir := t.TempDir()
-	writeFileTree(t, tmpDir, "spec/user_spec.rb")
-
-	rule := libToSpec()
-	rule.Reload = true
-	planner := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{rule}, CWD: tmpDir}
-
-	plan := planner.Plan([]string{"lib/user.rb"})
-
-	assert.True(t, plan.Reload)
-	require.Len(t, plan.Runs, 1)
-	assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
-}
-
-func TestPlannerPlan_ReloadRuleWithoutJobs(t *testing.T) {
-	planner := Planner{
-		Jobs: map[string]framework.Job{},
-		Watches: []WatchMapping{
-			{Name: "config-reload", Source: "config/**/*.yml", Reload: true, Jobs: []string{}},
-		},
-		CWD: t.TempDir(),
-	}
-
-	plan := planner.Plan([]string{"config/settings.yml"})
-
-	assert.True(t, plan.Reload)
-	assert.Empty(t, plan.Runs)
-	require.Len(t, plan.Matches, 1)
-	assert.Empty(t, plan.Matches[0].Missing, "jobless rules should not render or stat targets")
-}
-
 func TestPlannerPlan_EmptyWatches(t *testing.T) {
 	planner := Planner{Jobs: map[string]framework.Job{}, CWD: t.TempDir()}
 
@@ -302,7 +269,6 @@ func TestPlannerPlan_EmptyWatches(t *testing.T) {
 
 	assert.Empty(t, plan.Matches)
 	assert.Empty(t, plan.Runs)
-	assert.False(t, plan.Reload)
 }
 
 func TestPlannerPlan_MultipleTargetsPerRule(t *testing.T) {
