@@ -45,19 +45,19 @@ func TestPlannerPlan_RendersTargetsAndBuildsRun(t *testing.T) {
 
 		require.Len(t, plan.Matches, 1)
 		assert.Equal(t, "lib-to-spec", plan.Matches[0].Rule.Name)
-		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Matches[0].Existing)
-		assert.Empty(t, plan.Matches[0].Missing)
+		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Matches[0].Existing.Values())
+		assert.Empty(t, plan.Matches[0].Missing.Values())
 
 		require.Len(t, plan.Runs, 1)
 		assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
-		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Runs[0].Targets)
+		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Runs[0].Targets.Values())
 	})
 
 	t.Run("nested lib file", func(t *testing.T) {
 		plan := planner.Plan([]string{"lib/models/post.rb"})
 
 		require.Len(t, plan.Runs, 1)
-		assert.Equal(t, []string{filepath.FromSlash("spec/models/post_spec.rb")}, plan.Runs[0].Targets)
+		assert.Equal(t, []string{filepath.FromSlash("spec/models/post_spec.rb")}, plan.Runs[0].Targets.Values())
 	})
 
 	t.Run("non-matching file", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestPlannerPlan_SourceFileAsTargetWhenNoTargetsConfigured(t *testing.T) {
 	plan := planner.Plan([]string{"spec/models/user_spec.rb"})
 
 	require.Len(t, plan.Runs, 1)
-	assert.Equal(t, []string{filepath.FromSlash("spec/models/user_spec.rb")}, plan.Runs[0].Targets)
+	assert.Equal(t, []string{filepath.FromSlash("spec/models/user_spec.rb")}, plan.Runs[0].Targets.Values())
 	assert.False(t, plan.Runs[0].NoTargets)
 }
 
@@ -102,7 +102,7 @@ func TestPlannerPlan_NoTargetsRuleRunsJobBare(t *testing.T) {
 
 	require.Len(t, plan.Runs, 1)
 	assert.Equal(t, "build", plan.Runs[0].Job.Name)
-	assert.Empty(t, plan.Runs[0].Targets)
+	assert.Empty(t, plan.Runs[0].Targets.Values())
 	assert.True(t, plan.Runs[0].NoTargets)
 }
 
@@ -121,7 +121,7 @@ func TestPlannerPlan_NoTargetsRunsEvenWhenOtherRuleTargetsMissing(t *testing.T) 
 	plan := planner.Plan([]string{"runner.go"})
 
 	require.Len(t, plan.Runs, 1)
-	assert.Empty(t, plan.Runs[0].Targets)
+	assert.Empty(t, plan.Runs[0].Targets.Values())
 	assert.True(t, plan.Runs[0].NoTargets)
 }
 
@@ -131,8 +131,8 @@ func TestPlannerPlan_MissingTargetRecordedButJobDoesNotRun(t *testing.T) {
 	plan := planner.Plan([]string{"lib/user.rb"})
 
 	require.Len(t, plan.Matches, 1)
-	assert.Empty(t, plan.Matches[0].Existing)
-	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Matches[0].Missing)
+	assert.Empty(t, plan.Matches[0].Existing.Values())
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Matches[0].Missing.Values())
 	assert.Empty(t, plan.Runs)
 }
 
@@ -204,7 +204,7 @@ func TestPlannerPlan_BatchMergesAndDeduplicatesTargets(t *testing.T) {
 		assert.Equal(t, []string{
 			filepath.FromSlash("spec/user_spec.rb"),
 			filepath.FromSlash("spec/post_spec.rb"),
-		}, plan.Runs[0].Targets)
+		}, plan.Runs[0].Targets.Values())
 	})
 
 	t.Run("same target from two files is deduplicated", func(t *testing.T) {
@@ -219,7 +219,7 @@ func TestPlannerPlan_BatchMergesAndDeduplicatesTargets(t *testing.T) {
 		plan := p.Plan([]string{"lib/a.rb", "lib/b.rb"})
 
 		require.Len(t, plan.Runs, 1)
-		assert.Equal(t, []string{"spec/user_spec.rb"}, plan.Runs[0].Targets)
+		assert.Equal(t, []string{"spec/user_spec.rb"}, plan.Runs[0].Targets.Values())
 	})
 
 	t.Run("duplicate targets within one rule are deduplicated", func(t *testing.T) {
@@ -234,9 +234,9 @@ func TestPlannerPlan_BatchMergesAndDeduplicatesTargets(t *testing.T) {
 		plan := p.Plan([]string{"lib/user.rb"})
 
 		require.Len(t, plan.Runs, 1)
-		assert.Len(t, plan.Runs[0].Targets, 1)
+		assert.Equal(t, 1, plan.Runs[0].Targets.Len())
 		require.Len(t, plan.Matches, 1)
-		assert.Len(t, plan.Matches[0].Existing, 1)
+		assert.Equal(t, 1, plan.Matches[0].Existing.Len())
 	})
 }
 
@@ -285,7 +285,7 @@ func TestPlannerPlan_MultipleTargetsPerRule(t *testing.T) {
 	assert.Equal(t, []string{
 		filepath.FromSlash("spec/user_spec.rb"),
 		filepath.FromSlash("spec/lib/user_spec.rb"),
-	}, plan.Runs[0].Targets)
+	}, plan.Runs[0].Targets.Values())
 }
 
 func TestPlannerAdmit(t *testing.T) {

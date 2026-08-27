@@ -63,10 +63,11 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 	var allFiles []string
 	for _, run := range plan.Runs {
-		allFiles = append(allFiles, run.Targets...)
+		allFiles = append(allFiles, run.Targets.Values()...)
 	}
-	if len(allFiles) > 0 {
-		out.Info("found files", "files", strings.Join(allFiles, ", "))
+	found := watch.NewTargetSet(allFiles...)
+	if found.Len() > 0 {
+		out.Info("found files", "files", strings.Join(found.Values(), ", "))
 	}
 
 	for _, run := range plan.Runs {
@@ -77,7 +78,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 	warned := make(map[string]bool)
 	for _, m := range plan.Matches {
-		for _, target := range m.Missing {
+		for target := range m.Missing.All() {
 			if warned[target] {
 				continue
 			}
