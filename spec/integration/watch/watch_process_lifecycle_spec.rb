@@ -78,7 +78,7 @@ RSpec.describe "plur watch process lifecycle" do
   def process_pids(project)
     %w[runner.pid child.pid].filter_map do |name|
       path = project.join(name)
-      Integer(path.read) if path.exist?
+      Integer(path.read, exception: false) if path.exist?
     end
   end
 
