@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -28,13 +27,6 @@ type WatcherSource interface {
 	Errors() <-chan error
 }
 
-// InterruptibleReader is an input stream whose Close method unblocks any
-// active Read. Implementations must allow Read and Close to run concurrently.
-type InterruptibleReader interface {
-	io.Reader
-	io.Closer
-}
-
 type ControllerConfig struct {
 	Planner       Planner
 	RunAllJob     JobRun
@@ -42,7 +34,7 @@ type ControllerConfig struct {
 	Timeout       time.Duration
 	Watcher       WatcherSource
 	Signals       <-chan os.Signal
-	Stdin         InterruptibleReader
+	Stdin         io.Reader
 	Stdout        io.Writer
 	Stderr        io.Writer
 	OnStarted     func()
@@ -64,14 +56,6 @@ func NewController(cfg ControllerConfig) *Controller {
 }
 
 func (c *Controller) Run() error {
-	stdinDone := make(chan struct{})
-	var stdinWG sync.WaitGroup
-	defer func() {
-		close(stdinDone)
-		_ = c.cfg.Stdin.Close()
-		stdinWG.Wait()
-	}()
-
 	if err := c.cfg.Watcher.Start(); err != nil {
 		return err
 	}
@@ -88,18 +72,14 @@ func (c *Controller) Run() error {
 	}
 
 	stdinChan := make(chan string, 10)
-	stdinWG.Go(func() {
+	go func() {
 		defer close(stdinChan)
 		scanner := bufio.NewScanner(c.cfg.Stdin)
 		for scanner.Scan() {
 			input := strings.TrimSpace(stripTerminalReports(scanner.Text()))
-			select {
-			case stdinChan <- input:
-			case <-stdinDone:
-				return
-			}
+			stdinChan <- input
 		}
-	})
+	}()
 
 	c.printHelp()
 	c.showPrompt()
