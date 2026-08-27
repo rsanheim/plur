@@ -128,7 +128,7 @@ RSpec.describe "plur watch run scheduling" do
           process.err.scan("Skipped in-flight").count >= expected_skips
       },
       &block
-    )
+    ).tap { |result| warn result.err if ENV["DEBUG"] }
   end
 
   # Log order is enough to detect overlap; timestamps are not.
