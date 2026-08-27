@@ -168,7 +168,7 @@ RSpec.describe "plur watch run scheduling" do
 
   def wait_for_job_start(project)
     marker = project.join(".plur-watch-job-started")
-    Timeout.timeout(5) { sleep 0.01 until marker.exist? }
+    Timeout.timeout(watch_timeout_seconds) { sleep 0.01 until marker.exist? }
   end
 
   # Keep the job longer than the save gap, but short because these run in parallel.
