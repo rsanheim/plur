@@ -9,7 +9,6 @@ require github.com/bmatcuk/doublestar/v4 v4.9.1
 require github.com/BurntSushi/toml v1.6.0
 
 require (
-	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/goccy/go-json v0.10.6
 	golang.org/x/term v0.45.0
 )

@@ -17,7 +17,7 @@ import (
 // here so what plur prints is exactly what it runs.
 // Job.Cmd must be non-empty; config-load validation and ExecuteJob enforce this.
 func (r JobRun) Command(cwd string) *exec.Cmd {
-	argv := append(slices.Clone(r.Job.Cmd), r.Targets...)
+	argv := append(slices.Clone(r.Job.Cmd), r.Targets.Values()...)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), r.Job.Env...)
@@ -54,7 +54,7 @@ func StartJob(run JobRun, cwd string) (*RunningJob, error) {
 	if len(run.Job.Cmd) == 0 {
 		return nil, fmt.Errorf("job %q must define a command", run.Job.Name)
 	}
-	targets := fmt.Sprintf("%+v", run.Targets)
+	targets := fmt.Sprintf("%+v", run.Targets.Values())
 	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", targets)
 
 	cmd := run.Command(cwd)
