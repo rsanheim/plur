@@ -15,7 +15,6 @@ type WatchMapping struct {
 	NoTargets bool     `toml:"no_targets,omitempty" json:"no_targets,omitempty"`
 	Jobs      []string `toml:"jobs" json:"jobs"`
 	Ignore    []string `toml:"ignore,omitempty" json:"ignore,omitempty"`
-	Reload    bool     `toml:"reload,omitempty" json:"reload,omitempty"` // Reload plur after jobs complete
 }
 
 // ValidatePattern reports whether a doublestar glob pattern is well-formed.
@@ -32,14 +31,14 @@ func (w WatchMapping) SourceDir() string {
 }
 
 func (w WatchMapping) String() string {
-	return fmt.Sprintf("WatchMapping{Name: %s, Source: %s, Targets: %s, NoTargets: %t, Jobs: %s, Ignore: %s, Reload: %t, SourceDir: %s}", w.Name, w.Source, w.Targets, w.NoTargets, w.Jobs, w.Ignore, w.Reload, w.SourceDir())
+	return fmt.Sprintf("WatchMapping{Name: %s, Source: %s, Targets: %s, NoTargets: %t, Jobs: %s, Ignore: %s, SourceDir: %s}", w.Name, w.Source, w.Targets, w.NoTargets, w.Jobs, w.Ignore, w.SourceDir())
 }
 
 func (w WatchMapping) mergeKey() string {
 	if w.Name != "" {
 		return "name:" + w.Name
 	}
-	return fmt.Sprintf("source:%s|targets:%v|no_targets:%t|jobs:%v|ignore:%v|reload:%t", w.Source, w.Targets, w.NoTargets, w.Jobs, w.Ignore, w.Reload)
+	return fmt.Sprintf("source:%s|targets:%v|no_targets:%t|jobs:%v|ignore:%v", w.Source, w.Targets, w.NoTargets, w.Jobs, w.Ignore)
 }
 
 // MergeWatches combines built-in and user watch mappings.
