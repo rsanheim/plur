@@ -90,9 +90,9 @@ func (p Planner) Admit(path string) (string, bool) {
 
 // Plan decides which jobs run, with which targets, for a batch of changed
 // paths. Paths must already be CWD-relative (see Admit).
-func (p Planner) Plan(paths []string) Plan {
+func (p Planner) Plan(paths TargetSet) Plan {
 	plan := Plan{}
-	for _, path := range paths {
+	for path := range paths.All() {
 		matches := p.matchPath(path)
 		if !anyRunnable(matches) {
 			logger.Logger.Debug("No existing targets for file", "path", path)

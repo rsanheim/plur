@@ -5,8 +5,9 @@ import (
 	"slices"
 )
 
-// TargetSet is a duplicate-free collection of targets in insertion order.
-// It is immutable after construction and safe to copy between JobRuns.
+// TargetSet is an immutable, duplicate-free collection of watch paths or job
+// targets in insertion order. It is safe to share across debounce, planning,
+// and JobRun boundaries.
 type TargetSet struct {
 	values []string
 	index  map[string]struct{}
@@ -38,6 +39,19 @@ func (s TargetSet) Len() int {
 func (s TargetSet) Contains(target string) bool {
 	_, exists := s.index[target]
 	return exists
+}
+
+// Union returns the targets in either set. Targets from s come first, followed
+// by targets unique to other in their insertion order.
+func (s TargetSet) Union(other TargetSet) TargetSet {
+	values := make([]string, 0, s.Len()+other.Len())
+	values = append(values, s.values...)
+	for target := range other.All() {
+		if !s.Contains(target) {
+			values = append(values, target)
+		}
+	}
+	return NewTargetSet(values...)
 }
 
 // Difference returns the targets in s that are not in other, preserving the

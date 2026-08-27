@@ -16,19 +16,19 @@ func TestDebouncer_BasicDebounce(t *testing.T) {
 	var mu sync.Mutex
 
 	// Call debounce multiple times rapidly
-	d.Debounce([]string{"a.rb"}, func(files []string) {
+	d.Debounce([]string{"a.rb"}, func(files TargetSet) {
 		mu.Lock()
-		calls = append(calls, files)
+		calls = append(calls, files.Values())
 		mu.Unlock()
 	})
-	d.Debounce([]string{"b.rb"}, func(files []string) {
+	d.Debounce([]string{"b.rb"}, func(files TargetSet) {
 		mu.Lock()
-		calls = append(calls, files)
+		calls = append(calls, files.Values())
 		mu.Unlock()
 	})
-	d.Debounce([]string{"c.rb"}, func(files []string) {
+	d.Debounce([]string{"c.rb"}, func(files TargetSet) {
 		mu.Lock()
-		calls = append(calls, files)
+		calls = append(calls, files.Values())
 		mu.Unlock()
 	})
 
@@ -38,7 +38,7 @@ func TestDebouncer_BasicDebounce(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	require.Len(t, calls, 1, "Should only call callback once")
-	assert.ElementsMatch(t, []string{"a.rb", "b.rb", "c.rb"}, calls[0])
+	assert.Equal(t, []string{"a.rb", "b.rb", "c.rb"}, calls[0])
 }
 
 func TestDebouncer_FileDeduplication(t *testing.T) {
@@ -48,19 +48,19 @@ func TestDebouncer_FileDeduplication(t *testing.T) {
 	var mu sync.Mutex
 
 	// Add the same file multiple times
-	d.Debounce([]string{"user.rb"}, func(files []string) {
+	d.Debounce([]string{"user.rb"}, func(files TargetSet) {
 		mu.Lock()
-		receivedFiles = files
+		receivedFiles = files.Values()
 		mu.Unlock()
 	})
-	d.Debounce([]string{"user.rb"}, func(files []string) {
+	d.Debounce([]string{"user.rb"}, func(files TargetSet) {
 		mu.Lock()
-		receivedFiles = files
+		receivedFiles = files.Values()
 		mu.Unlock()
 	})
-	d.Debounce([]string{"user.rb"}, func(files []string) {
+	d.Debounce([]string{"user.rb"}, func(files TargetSet) {
 		mu.Lock()
-		receivedFiles = files
+		receivedFiles = files.Values()
 		mu.Unlock()
 	})
 
@@ -80,7 +80,7 @@ func TestDebouncer_TimerReset(t *testing.T) {
 	startTime := time.Now()
 
 	// First call
-	d.Debounce([]string{"a.rb"}, func(files []string) {
+	d.Debounce([]string{"a.rb"}, func(files TargetSet) {
 		mu.Lock()
 		callTime = time.Now()
 		mu.Unlock()
@@ -88,7 +88,7 @@ func TestDebouncer_TimerReset(t *testing.T) {
 
 	// Wait a bit, then call again (should reset timer)
 	time.Sleep(30 * time.Millisecond)
-	d.Debounce([]string{"b.rb"}, func(files []string) {
+	d.Debounce([]string{"b.rb"}, func(files TargetSet) {
 		mu.Lock()
 		callTime = time.Now()
 		mu.Unlock()
@@ -112,7 +112,7 @@ func TestDebouncer_NoCallbackIfEmpty(t *testing.T) {
 	var mu sync.Mutex
 
 	// Call with empty slice
-	d.Debounce([]string{}, func(files []string) {
+	d.Debounce([]string{}, func(files TargetSet) {
 		mu.Lock()
 		callCount++
 		mu.Unlock()
@@ -133,12 +133,12 @@ func TestDebouncer_MultipleDelays(t *testing.T) {
 	var d1Called, d2Called bool
 	var mu sync.Mutex
 
-	d1.Debounce([]string{"a.rb"}, func(files []string) {
+	d1.Debounce([]string{"a.rb"}, func(files TargetSet) {
 		mu.Lock()
 		d1Called = true
 		mu.Unlock()
 	})
-	d2.Debounce([]string{"b.rb"}, func(files []string) {
+	d2.Debounce([]string{"b.rb"}, func(files TargetSet) {
 		mu.Lock()
 		d2Called = true
 		mu.Unlock()
