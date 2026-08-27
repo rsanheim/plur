@@ -1,14 +1,22 @@
 package watch
 
+import mapset "github.com/deckarep/golang-set/v2"
+
 // Scheduler tracks the runs currently executing. Controller owns it; callers
 // must not use it from job goroutines.
 type Scheduler struct {
 	nextID   int
-	inFlight map[int]JobRun
+	inFlight map[int]scheduledRun
+}
+
+type scheduledRun struct {
+	jobName   string
+	noTargets bool
+	targets   mapset.Set[string]
 }
 
 func NewScheduler() *Scheduler {
-	return &Scheduler{inFlight: make(map[int]JobRun)}
+	return &Scheduler{inFlight: make(map[int]scheduledRun)}
 }
 
 // Claim returns the part of run that may start. Targeted runs drop targets
@@ -17,7 +25,7 @@ func NewScheduler() *Scheduler {
 func (s *Scheduler) Claim(run JobRun) (id int, start *JobRun, skipped []string) {
 	if run.NoTargets {
 		for _, active := range s.inFlight {
-			if active.NoTargets && active.Job.Name == run.Job.Name {
+			if active.noTargets && active.jobName == run.Job.Name {
 				return 0, nil, nil
 			}
 		}
@@ -51,18 +59,18 @@ func (s *Scheduler) Idle() bool {
 
 func (s *Scheduler) start(run JobRun) int {
 	s.nextID++
-	s.inFlight[s.nextID] = run
+	s.inFlight[s.nextID] = scheduledRun{
+		jobName:   run.Job.Name,
+		noTargets: run.NoTargets,
+		targets:   mapset.NewThreadUnsafeSet(run.Targets...),
+	}
 	return s.nextID
 }
 
 func (s *Scheduler) targetInFlight(jobName, target string) bool {
 	for _, active := range s.inFlight {
-		if !active.NoTargets && active.Job.Name == jobName {
-			for _, activeTarget := range active.Targets {
-				if activeTarget == target {
-					return true
-				}
-			}
+		if !active.noTargets && active.jobName == jobName && active.targets.ContainsOne(target) {
+			return true
 		}
 	}
 	return false
