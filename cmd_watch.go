@@ -111,19 +111,6 @@ func printWatchInfo(watchDirs []string) {
 	fmt.Println()
 }
 
-func watchStdin() (*os.File, error) {
-	fd, err := syscall.Dup(int(os.Stdin.Fd()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to duplicate stdin: %w", err)
-	}
-	syscall.CloseOnExec(fd)
-	if err := syscall.SetNonblock(fd, true); err != nil {
-		_ = syscall.Close(fd)
-		return nil, fmt.Errorf("failed to configure stdin: %w", err)
-	}
-	return os.NewFile(uintptr(fd), os.Stdin.Name()), nil
-}
-
 func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, watchCmd *WatchCmd, cli *PlurCLI) error {
 	logger.Logger.Info("plur watch starting!", "version", buildinfo.GetVersionInfo())
 
@@ -195,10 +182,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	stdin, err := watchStdin()
-	if err != nil {
-		return err
-	}
 
 	return watch.NewController(watch.ControllerConfig{
 		Planner:       planner,
@@ -207,7 +190,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		Timeout:       time.Duration(runCmd.Timeout) * time.Second,
 		Watcher:       manager,
 		Signals:       sigChan,
-		Stdin:         stdin,
+		Stdin:         os.Stdin,
 		Stdout:        os.Stdout,
 		Stderr:        os.Stderr,
 		OnStarted:     func() { printWatchInfo(watchDirs) },

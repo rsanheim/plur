@@ -40,32 +40,6 @@ type syncBuffer struct {
 	b  bytes.Buffer
 }
 
-type blockingStdin struct {
-	sent     bool
-	closed   chan struct{}
-	readDone chan struct{}
-}
-
-func newBlockingStdin() *blockingStdin {
-	return &blockingStdin{closed: make(chan struct{}), readDone: make(chan struct{})}
-}
-
-func (s *blockingStdin) Read(p []byte) (int, error) {
-	if !s.sent {
-		s.sent = true
-		return copy(p, "exit\n"), nil
-	}
-
-	<-s.closed
-	close(s.readDone)
-	return 0, io.EOF
-}
-
-func (s *blockingStdin) Close() error {
-	close(s.closed)
-	return nil
-}
-
 func (s *syncBuffer) Write(p []byte) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -172,32 +146,6 @@ func TestControllerRun_ExitCommand(t *testing.T) {
 	assert.True(t, h.watcher.stopped, "controller should stop the watcher on exit")
 }
 
-func TestControllerRun_ClosesAndJoinsStdinOnExit(t *testing.T) {
-	stdin := newBlockingStdin()
-	watcher := newFakeWatcher()
-	ctrl := NewController(ControllerConfig{
-		Planner: Planner{CWD: t.TempDir()},
-		Watcher: watcher,
-		Signals: make(chan os.Signal),
-		Stdin:   stdin,
-		Stdout:  io.Discard,
-		Stderr:  io.Discard,
-		Reload:  func() error { return nil },
-	})
-
-	require.NoError(t, ctrl.Run())
-	select {
-	case <-stdin.closed:
-	default:
-		t.Fatal("Controller.Run returned without closing stdin")
-	}
-	select {
-	case <-stdin.readDone:
-	default:
-		t.Fatal("Controller.Run returned before the stdin reader stopped")
-	}
-}
-
 func TestControllerRun_AnnouncesStartedOnlyAfterWatcherStarts(t *testing.T) {
 	t.Run("successful start", func(t *testing.T) {
 		var announced atomic.Bool
@@ -213,13 +161,12 @@ func TestControllerRun_AnnouncesStartedOnlyAfterWatcherStarts(t *testing.T) {
 	t.Run("failed start", func(t *testing.T) {
 		watcher := newFakeWatcher()
 		watcher.startErr = errors.New("watcher failed to start")
-		stdin := newBlockingStdin()
 		var announced atomic.Bool
 		ctrl := NewController(ControllerConfig{
 			Planner:   Planner{CWD: t.TempDir()},
 			Watcher:   watcher,
 			Signals:   make(chan os.Signal),
-			Stdin:     stdin,
+			Stdin:     strings.NewReader(""),
 			Stdout:    io.Discard,
 			Stderr:    io.Discard,
 			Reload:    func() error { return nil },
@@ -231,11 +178,6 @@ func TestControllerRun_AnnouncesStartedOnlyAfterWatcherStarts(t *testing.T) {
 		require.EqualError(t, err, "watcher failed to start")
 		assert.False(t, announced.Load())
 		assert.False(t, watcher.stopped)
-		select {
-		case <-stdin.closed:
-		default:
-			t.Fatal("Controller.Run returned without closing stdin")
-		}
 	})
 }
 

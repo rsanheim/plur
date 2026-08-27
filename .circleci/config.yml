@@ -65,7 +65,7 @@ jobs:
       - run:
           name: Test GoReleaser snapshot build
           command: |
-            goreleaser build --snapshot --single-target --clean
+            goreleaser build --snapshot --clean
       - run:
           name: Test Linux binary
           command: |
