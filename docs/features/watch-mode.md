@@ -143,9 +143,11 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 
 ### Process Lifecycle
 
-- Each watcher process is kept via standard *nix pipes
-- Graceful shutdown on SIGINT/SIGTERM
-- Automatic cleanup ensures no zombie processes
+- Each watcher process is kept alive via standard pipes
+- On macOS and Linux, every active job runs in its own process group
+- Ctrl-C is forwarded to each active job so test runners can report their normal interrupted result
+- `exit`, timeout, reload, SIGINT, and SIGTERM stop and reap active jobs before watch exits
+- SIGKILL cannot run cleanup; kill the process group when a hard stop must include descendants
 
 ### Event Types
 

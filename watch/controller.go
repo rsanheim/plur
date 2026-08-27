@@ -54,6 +54,8 @@ type runDone struct {
 	err    error
 }
 
+const jobShutdownGrace = 2 * time.Second
+
 func NewController(cfg ControllerConfig) *Controller {
 	return &Controller{
 		cfg:        cfg,
@@ -75,6 +77,8 @@ func (c *Controller) Run() error {
 	scheduler := NewScheduler()
 	batchChan := make(chan []string, 16)
 	doneChan := make(chan runDone, 16)
+	active := make(map[int]*RunningJob)
+	defer c.stopRuns(active, scheduler, doneChan)
 
 	var timeoutChan <-chan time.Time
 	if c.cfg.Timeout > 0 {
@@ -95,7 +99,7 @@ func (c *Controller) Run() error {
 	c.showPrompt()
 
 	for {
-		c.drainRunCompletions(scheduler, doneChan)
+		c.drainRunCompletions(active, scheduler, doneChan)
 
 		select {
 		case input, ok := <-stdinChan:
@@ -109,7 +113,7 @@ func (c *Controller) Run() error {
 				fmt.Fprintln(c.cfg.Stdout, "Running all tests...")
 				run := c.cfg.RunAllJob
 				run.NoTargets = true
-				if !c.startRun(scheduler, doneChan, run, true) {
+				if !c.startRun(active, scheduler, doneChan, run, true) {
 					c.showPrompt()
 				}
 			case "help":
@@ -117,7 +121,7 @@ func (c *Controller) Run() error {
 				c.showPrompt()
 			case "reload":
 				logger.Logger.Debug("User requested process reload")
-				return c.attemptReload()
+				return c.attemptReload(active, scheduler, doneChan)
 			case "debug":
 				logger.ToggleDebug()
 				if logger.IsDebugEnabled() {
@@ -157,11 +161,11 @@ func (c *Controller) Run() error {
 			})
 
 		case paths := <-batchChan:
-			c.drainRunCompletions(scheduler, doneChan)
+			c.drainRunCompletions(active, scheduler, doneChan)
 			plan := c.cfg.Planner.Plan(paths)
 			started := false
 			for _, run := range plan.Runs {
-				if c.startRun(scheduler, doneChan, run, false) {
+				if c.startRun(active, scheduler, doneChan, run, false) {
 					started = true
 				}
 			}
@@ -174,7 +178,7 @@ func (c *Controller) Run() error {
 			}
 
 		case done := <-doneChan:
-			c.finishRun(scheduler, done)
+			c.finishRun(active, scheduler, done)
 
 		case err := <-c.cfg.Watcher.Errors():
 			return fmt.Errorf("watcher error: %v", err)
@@ -194,7 +198,7 @@ func (c *Controller) Run() error {
 				return nil
 			case syscall.SIGHUP:
 				fmt.Fprintln(c.cfg.Stdout, "Received SIGHUP, reloading plur...")
-				return c.attemptReload()
+				return c.attemptReload(active, scheduler, doneChan)
 			default:
 				fmt.Fprintf(c.cfg.Stdout, "Received signal %v, shutting down gracefully...\n", sig)
 				return nil
@@ -204,51 +208,94 @@ func (c *Controller) Run() error {
 			fmt.Fprint(c.cfg.Stdout, "[plur] > ")
 
 		case <-c.reloadChan:
-			return c.attemptReload()
+			return c.attemptReload(active, scheduler, doneChan)
 		}
 	}
 }
 
-func (c *Controller) startRun(scheduler *Scheduler, doneChan chan<- runDone, run JobRun, manual bool) bool {
+func (c *Controller) startRun(active map[int]*RunningJob, scheduler *Scheduler, doneChan chan<- runDone, run JobRun, manual bool) bool {
 	id, start, skipped := scheduler.Claim(run)
 	c.printSkips(run, start, skipped)
 	if start == nil {
 		return false
 	}
 
+	job, err := StartJob(*start, c.cfg.Planner.CWD)
+	if err != nil {
+		scheduler.Release(id)
+		c.reportRunError(*start, manual, err)
+		return false
+	}
+	active[id] = job
+
 	go func() {
 		doneChan <- runDone{
 			id:     id,
 			run:    *start,
 			manual: manual,
-			err:    ExecuteJob(*start, c.cfg.Planner.CWD),
+			err:    job.Wait(),
 		}
 	}()
 	return true
 }
 
-func (c *Controller) finishRun(scheduler *Scheduler, done runDone) {
+func (c *Controller) finishRun(active map[int]*RunningJob, scheduler *Scheduler, done runDone) {
+	delete(active, done.id)
 	scheduler.Release(done.id)
-	if done.err != nil {
-		if done.manual {
-			fmt.Fprintf(c.cfg.Stderr, "Failed to run: %v\n", done.err)
-		} else {
-			logger.Logger.Warn("Job execution error", "job", done.run.Job.Name, "error", done.err)
-		}
-	}
+	c.reportRunError(done.run, done.manual, done.err)
 	if scheduler.Idle() {
 		fmt.Fprintln(c.cfg.Stdout)
 		c.showPrompt()
 	}
 }
 
-func (c *Controller) drainRunCompletions(scheduler *Scheduler, doneChan <-chan runDone) {
+func (c *Controller) drainRunCompletions(active map[int]*RunningJob, scheduler *Scheduler, doneChan <-chan runDone) {
 	for {
 		select {
 		case done := <-doneChan:
-			c.finishRun(scheduler, done)
+			c.finishRun(active, scheduler, done)
 		default:
 			return
+		}
+	}
+}
+
+func (c *Controller) reportRunError(run JobRun, manual bool, err error) {
+	if err == nil {
+		return
+	}
+	if manual {
+		fmt.Fprintf(c.cfg.Stderr, "Failed to run: %v\n", err)
+	} else {
+		logger.Logger.Warn("Job execution error", "job", run.Job.Name, "error", err)
+	}
+}
+
+func (c *Controller) stopRuns(active map[int]*RunningJob, scheduler *Scheduler, doneChan <-chan runDone) {
+	if len(active) == 0 {
+		return
+	}
+
+	for _, job := range active {
+		_ = job.Signal(syscall.SIGINT)
+	}
+
+	timer := time.NewTimer(jobShutdownGrace)
+	defer timer.Stop()
+	for len(active) > 0 {
+		select {
+		case done := <-doneChan:
+			delete(active, done.id)
+			scheduler.Release(done.id)
+		case <-timer.C:
+			for _, job := range active {
+				_ = job.Signal(syscall.SIGKILL)
+			}
+			for len(active) > 0 {
+				done := <-doneChan
+				delete(active, done.id)
+				scheduler.Release(done.id)
+			}
 		}
 	}
 }
@@ -267,7 +314,8 @@ func (c *Controller) printSkips(run JobRun, start *JobRun, skipped []string) {
 	logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", skipped))
 }
 
-func (c *Controller) attemptReload() error {
+func (c *Controller) attemptReload(active map[int]*RunningJob, scheduler *Scheduler, doneChan <-chan runDone) error {
+	c.stopRuns(active, scheduler, doneChan)
 	err := c.cfg.Reload()
 	if err != nil {
 		logger.Logger.Error("Failed to reload", "error", err)

@@ -35,8 +35,24 @@ func CommandString(cmd *exec.Cmd, addedEnv []string) string {
 // Watch runs jobs concurrently, so matching start/finish lines make overlap
 // visible in log order. The caller logs failures.
 func ExecuteJob(run JobRun, cwd string) error {
+	job, err := StartJob(run, cwd)
+	if err != nil {
+		return err
+	}
+	return job.Wait()
+}
+
+// RunningJob is one started watch subprocess. The goroutine that calls Wait
+// owns process reaping.
+type RunningJob struct {
+	cmd     *exec.Cmd
+	run     JobRun
+	started time.Time
+}
+
+func StartJob(run JobRun, cwd string) (*RunningJob, error) {
 	if len(run.Job.Cmd) == 0 {
-		return fmt.Errorf("job %q must define a command", run.Job.Name)
+		return nil, fmt.Errorf("job %q must define a command", run.Job.Name)
 	}
 	targets := fmt.Sprintf("%+v", run.Targets)
 	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", targets)
@@ -45,9 +61,20 @@ func ExecuteJob(run JobRun, cwd string) error {
 	fmt.Printf("\n[plur] %s\n", CommandString(cmd, run.Job.Env))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	configureProcessGroup(cmd)
 
-	started := time.Now()
-	err := cmd.Run()
-	logger.Logger.Info("Finished job", "job", run.Job.Name, "targets", targets, "duration", time.Since(started).Round(time.Millisecond))
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	return &RunningJob{cmd: cmd, run: run, started: time.Now()}, nil
+}
+
+func (j *RunningJob) Wait() error {
+	err := j.cmd.Wait()
+	logger.Logger.Info("Finished job", "job", j.run.Job.Name, "targets", fmt.Sprintf("%+v", j.run.Targets), "duration", time.Since(j.started).Round(time.Millisecond))
 	return err
+}
+
+func (j *RunningJob) Signal(sig os.Signal) error {
+	return signalProcessGroup(j.cmd.Process, sig)
 }

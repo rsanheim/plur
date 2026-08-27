@@ -33,6 +33,8 @@ PtyWatchTerminal = Struct.new(:reader, :writer, :screen) do
 end
 
 RSpec.describe "plur watch exit" do
+  include PlurWatchHelper
+
   context "in a real terminal", :tmux do
     it "exits on the first exit typed after the window loses and regains focus" do
       tmux_terminal(dir: default_ruby_dir) do |terminal|
@@ -87,6 +89,31 @@ RSpec.describe "plur watch exit" do
 
         expect(terminal.wait_for("Exiting watch mode...")).to be(true), "screen was:\n#{terminal.screen}"
         expect(terminal.screen).not_to include("Unknown command")
+      end
+    end
+
+    it "forwards Ctrl-C to the active job" do
+      with_temp_watch_project do |project|
+        project.join(".plur.toml").write(<<~TOML)
+          use = "rspec"
+
+          [job.rspec]
+          cmd = ["ruby", "-e", "trap('INT') { puts 'job interrupted'; exit 130 }; puts 'job started'; STDOUT.flush; sleep 60"]
+
+          [[watch]]
+          source = "spec/**/*_spec.rb"
+          jobs = ["rspec"]
+        TOML
+
+        watch_terminal(dir: project) do |terminal|
+          terminal.type("\n")
+          expect(terminal.wait_for("job started")).to be(true), "screen was:\n#{terminal.screen}"
+
+          terminal.type("\u0003")
+
+          expect(terminal.wait_for("job interrupted")).to be(true), "screen was:\n#{terminal.screen}"
+          expect(terminal.wait_for("Received SIGINT")).to be(true), "screen was:\n#{terminal.screen}"
+        end
       end
     end
   end
