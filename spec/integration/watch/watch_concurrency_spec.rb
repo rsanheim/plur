@@ -173,7 +173,7 @@ RSpec.describe "plur watch run scheduling" do
 
   # Keep the job longer than the save gap, but short because these run in parallel.
   def job_sleep_seconds
-    5.0
+    ENV["CI"] ? 3.0 : 0.8
   end
 
   def watch_timeout_seconds
