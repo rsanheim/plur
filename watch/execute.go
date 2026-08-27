@@ -71,7 +71,7 @@ func StartJob(run JobRun, cwd string) (*RunningJob, error) {
 
 func (j *RunningJob) Wait() error {
 	err := j.cmd.Wait()
-	logger.Logger.Info("Finished job", "job", j.run.Job.Name, "targets", fmt.Sprintf("%+v", j.run.Targets), "duration", time.Since(j.started).Round(time.Millisecond))
+	logger.Logger.Info("Finished job", "job", j.run.Job.Name, "targets", fmt.Sprintf("%+v", j.run.Targets.Values()), "duration", time.Since(j.started).Round(time.Millisecond))
 	return err
 }
 
