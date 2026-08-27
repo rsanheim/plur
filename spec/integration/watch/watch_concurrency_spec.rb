@@ -20,7 +20,7 @@ RSpec.describe "plur watch run scheduling" do
     with_slow_job_project do |project|
       result = run_watch_until_finished(project, expected_runs: 2) do
         touch(project.join("lib/calculator.rb"))
-        sleep save_gap_seconds
+        wait_for_job_start(project)
         touch(project.join("lib/validator.rb"))
       end
 
@@ -46,7 +46,7 @@ RSpec.describe "plur watch run scheduling" do
 
       result = run_watch_until_finished(project, expected_runs: 1, expected_skips: 1) do
         touch(user)
-        sleep save_gap_seconds
+        wait_for_job_start(project)
         touch(user_service)
       end
 
@@ -63,7 +63,7 @@ RSpec.describe "plur watch run scheduling" do
 
       result = run_watch_until_finished(project, expected_runs: 1, expected_skips: 1) do
         touch(spec_file)
-        sleep save_gap_seconds
+        wait_for_job_start(project)
         touch(spec_file)
       end
 
@@ -88,7 +88,7 @@ RSpec.describe "plur watch run scheduling" do
 
       result = run_watch_until_finished(project, expected_runs: 2, expected_skips: 1) do
         touch(project.join("spec/calculator_spec.rb"))
-        sleep save_gap_seconds
+        wait_for_job_start(project)
         touch(combined)
       end
 
@@ -108,7 +108,7 @@ RSpec.describe "plur watch run scheduling" do
         use = "rspec"
 
         [job.rspec]
-        cmd = ["ruby", "-e", "sleep #{job_sleep_seconds}"]
+        cmd = ["ruby", "-e", "File.write('.plur-watch-job-started', 'started'); sleep #{job_sleep_seconds}"]
 
         #{extra_config}
       TOML
@@ -166,13 +166,14 @@ RSpec.describe "plur watch run scheduling" do
     path.write(path.read + "\n# touched by spec\n")
   end
 
-  # Keep the job longer than the save gap, but short because these run in parallel.
-  def job_sleep_seconds
-    ENV["CI"] ? 3.0 : 2.0
+  def wait_for_job_start(project)
+    marker = project.join(".plur-watch-job-started")
+    Timeout.timeout(5) { sleep 0.01 until marker.exist? }
   end
 
-  def save_gap_seconds
-    0.15
+  # Keep the job longer than the save gap, but short because these run in parallel.
+  def job_sleep_seconds
+    ENV["CI"] ? 3.0 : 0.8
   end
 
   def watch_timeout_seconds
