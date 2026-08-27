@@ -71,7 +71,7 @@ func (c *Controller) Run() error {
 
 	debouncer := NewDebouncer(c.cfg.DebounceDelay)
 	scheduler := NewScheduler()
-	batchChan := make(chan []string, 16)
+	batchChan := make(chan TargetSet, 16)
 	doneChan := make(chan runDone, 16)
 	active := make(map[int]*RunningJob)
 	defer c.stopRuns(active, scheduler, doneChan)
@@ -152,7 +152,7 @@ func (c *Controller) Run() error {
 
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
-			debouncer.Debounce([]string{path}, func(paths []string) {
+			debouncer.Debounce([]string{path}, func(paths TargetSet) {
 				batchChan <- paths
 			})
 

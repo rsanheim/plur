@@ -36,7 +36,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 		return ExitCode{Code: 2}
 	}
 
-	plan := planner.Plan([]string{path})
+	plan := planner.Plan(watch.NewTargetSet(path))
 
 	if len(plan.Matches) == 0 {
 		out.Info("found rules", "count", 0)
@@ -61,11 +61,10 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 			"target", targetTemplate)
 	}
 
-	var allFiles []string
+	found := watch.TargetSet{}
 	for _, run := range plan.Runs {
-		allFiles = append(allFiles, run.Targets.Values()...)
+		found = found.Union(run.Targets)
 	}
-	found := watch.NewTargetSet(allFiles...)
 	if found.Len() > 0 {
 		out.Info("found files", "files", strings.Join(found.Values(), ", "))
 	}

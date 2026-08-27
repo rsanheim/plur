@@ -28,6 +28,7 @@ func TestTargetSetOperationsPreserveReceiverOrder(t *testing.T) {
 	targets := NewTargetSet("b_spec.rb", "a_spec.rb", "c_spec.rb")
 	other := NewTargetSet("c_spec.rb", "b_spec.rb", "d_spec.rb")
 
+	assert.Equal(t, []string{"b_spec.rb", "a_spec.rb", "c_spec.rb", "d_spec.rb"}, targets.Union(other).Values())
 	assert.Equal(t, []string{"a_spec.rb"}, targets.Difference(other).Values())
 	assert.Equal(t, []string{"b_spec.rb", "c_spec.rb"}, targets.Intersection(other).Values())
 }
