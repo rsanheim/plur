@@ -20,30 +20,25 @@ func NewScheduler() *Scheduler {
 // Claim returns the part of run that may start. Targeted runs drop targets
 // already running in the same job. No-targets runs conflict only with another
 // no-targets run in the same job.
-func (s *Scheduler) Claim(run JobRun) (id int, start *JobRun, skipped []string) {
+func (s *Scheduler) Claim(run JobRun) (id int, start *JobRun, skipped TargetSet) {
 	if run.NoTargets {
 		for _, active := range s.inFlight {
 			if active.noTargets && active.jobName == run.Job.Name {
-				return 0, nil, nil
+				return 0, nil, skipped
 			}
 		}
-		return s.start(run), &run, nil
+		return s.start(run), &run, skipped
 	}
 
-	free := make([]string, 0, run.Targets.Len())
-	for target := range run.Targets.All() {
-		if s.targetInFlight(run.Job.Name, target) {
-			skipped = append(skipped, target)
-		} else {
-			free = append(free, target)
-		}
-	}
-	if len(free) == 0 {
+	inFlight := s.targetsInFlight(run.Job.Name)
+	free := run.Targets.Difference(inFlight)
+	skipped = run.Targets.Intersection(inFlight)
+	if free.Len() == 0 {
 		return 0, nil, skipped
 	}
 
 	narrowed := run
-	narrowed.Targets = NewTargetSet(free...)
+	narrowed.Targets = free
 	return s.start(narrowed), &narrowed, skipped
 }
 
@@ -65,11 +60,14 @@ func (s *Scheduler) start(run JobRun) int {
 	return s.nextID
 }
 
-func (s *Scheduler) targetInFlight(jobName, target string) bool {
+func (s *Scheduler) targetsInFlight(jobName string) TargetSet {
+	var targets []string
 	for _, active := range s.inFlight {
-		if !active.noTargets && active.jobName == jobName && active.targets.Contains(target) {
-			return true
+		if !active.noTargets && active.jobName == jobName {
+			for target := range active.targets.All() {
+				targets = append(targets, target)
+			}
 		}
 	}
-	return false
+	return NewTargetSet(targets...)
 }

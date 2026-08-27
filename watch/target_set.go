@@ -40,6 +40,30 @@ func (s TargetSet) Contains(target string) bool {
 	return exists
 }
 
+// Difference returns the targets in s that are not in other, preserving the
+// insertion order of s.
+func (s TargetSet) Difference(other TargetSet) TargetSet {
+	values := make([]string, 0, s.Len())
+	for target := range s.All() {
+		if !other.Contains(target) {
+			values = append(values, target)
+		}
+	}
+	return NewTargetSet(values...)
+}
+
+// Intersection returns the targets shared by s and other, preserving the
+// insertion order of s.
+func (s TargetSet) Intersection(other TargetSet) TargetSet {
+	values := make([]string, 0, s.Len())
+	for target := range s.All() {
+		if other.Contains(target) {
+			values = append(values, target)
+		}
+	}
+	return NewTargetSet(values...)
+}
+
 // All yields targets in insertion order.
 func (s TargetSet) All() iter.Seq[string] {
 	return slices.Values(s.values)

@@ -290,18 +290,19 @@ func (c *Controller) stopRuns(active map[int]*RunningJob, scheduler *Scheduler, 
 	}
 }
 
-func (c *Controller) printSkips(run JobRun, start *JobRun, skipped []string) {
+func (c *Controller) printSkips(run JobRun, start *JobRun, skipped TargetSet) {
 	if run.NoTargets && start == nil {
 		fmt.Fprintf(c.cfg.Stdout, "\n[plur] skipped %s reason=running\n", run.Job.Name)
 		logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", "[]")
 		return
 	}
-	if len(skipped) == 0 {
+	if skipped.Len() == 0 {
 		return
 	}
 
-	fmt.Fprintf(c.cfg.Stdout, "\n[plur] skipped %s reason=running\n", strings.Join(skipped, " "))
-	logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", skipped))
+	values := skipped.Values()
+	fmt.Fprintf(c.cfg.Stdout, "\n[plur] skipped %s reason=running\n", strings.Join(values, " "))
+	logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", values))
 }
 
 func (c *Controller) attemptReload(active map[int]*RunningJob, scheduler *Scheduler, doneChan <-chan runDone) error {

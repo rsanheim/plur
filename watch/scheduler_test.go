@@ -21,11 +21,15 @@ func TestScheduler_TargetClaims(t *testing.T) {
 	require.NotNil(t, second)
 	assert.Positive(t, secondID)
 	assert.Equal(t, []string{"c_spec.rb"}, second.Targets.Values())
-	assert.Equal(t, []string{"b_spec.rb"}, skipped)
+	assert.Equal(t, []string{"b_spec.rb"}, skipped.Values())
+
+	_, duplicateSecondRun, skipped := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("c_spec.rb")})
+	assert.Nil(t, duplicateSecondRun)
+	assert.Equal(t, []string{"c_spec.rb"}, skipped.Values())
 
 	_, duplicate, skipped := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("a_spec.rb")})
 	assert.Nil(t, duplicate)
-	assert.Equal(t, []string{"a_spec.rb"}, skipped)
+	assert.Equal(t, []string{"a_spec.rb"}, skipped.Values())
 
 	scheduler.Release(firstID)
 	_, afterRelease, skipped := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("a_spec.rb")})
