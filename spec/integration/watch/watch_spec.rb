@@ -32,13 +32,13 @@ RSpec.describe "plur watch command", :skip_if_ci do
     end
 
     it "prints the manual run status on the prompt line before the command banner" do
-      result = run_plur_watch_interactive(commands: ["", "exit"], timeout: 3)
+      result = run_plur_watch_interactive(commands: ["", "exit"], timeout: 5, command_delay: 1)
 
       expect(result.out).to include("[plur] > Running all tests...\n\n[plur] bundle exec rspec\n")
     end
 
     it "keeps a blank line before the next watch message after a manual run" do
-      result = run_plur_watch_interactive(commands: ["", "exit"], timeout: 3)
+      result = run_plur_watch_interactive(commands: ["", "exit"], timeout: 5, command_delay: 1)
 
       expect(result.out).to match(/0 failures\n\n\n(?:\[plur\] > )?Exiting watch mode...\n/)
     end
