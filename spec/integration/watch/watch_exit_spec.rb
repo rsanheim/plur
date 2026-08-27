@@ -92,13 +92,13 @@ RSpec.describe "plur watch exit" do
       end
     end
 
-    it "forwards Ctrl-C to the active job" do
+    it "waits after the first Ctrl-C and forces the active job after the second" do
       with_temp_watch_project do |project|
         project.join(".plur.toml").write(<<~TOML)
           use = "rspec"
 
           [job.rspec]
-          cmd = ["ruby", "-e", "trap('INT') { puts 'job interrupted'; exit 130 }; puts 'job started'; STDOUT.flush; sleep 60"]
+          cmd = ["ruby", "-e", "trap('INT') { puts 'job interrupted'; STDOUT.flush }; puts 'job started'; STDOUT.flush; sleep 60"]
 
           [[watch]]
           source = "spec/**/*_spec.rb"
@@ -113,6 +113,11 @@ RSpec.describe "plur watch exit" do
 
           expect(terminal.wait_for("job interrupted")).to be(true), "screen was:\n#{terminal.screen}"
           expect(terminal.wait_for("Received SIGINT")).to be(true), "screen was:\n#{terminal.screen}"
+
+          sleep 3
+          terminal.type("\u0003")
+
+          expect(terminal.wait_for("forcing active jobs to stop")).to be(true), "screen was:\n#{terminal.screen}"
         end
       end
     end

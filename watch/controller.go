@@ -54,8 +54,6 @@ type runDone struct {
 	err    error
 }
 
-const jobShutdownGrace = 2 * time.Second
-
 func NewController(cfg ControllerConfig) *Controller {
 	return &Controller{
 		cfg:        cfg,
@@ -280,14 +278,13 @@ func (c *Controller) stopRuns(active map[int]*RunningJob, scheduler *Scheduler, 
 		_ = job.Signal(syscall.SIGINT)
 	}
 
-	timer := time.NewTimer(jobShutdownGrace)
-	defer timer.Stop()
 	for len(active) > 0 {
 		select {
 		case done := <-doneChan:
 			delete(active, done.id)
 			scheduler.Release(done.id)
-		case <-timer.C:
+		case sig := <-c.cfg.Signals:
+			fmt.Fprintf(c.cfg.Stdout, "Received %v during shutdown, forcing active jobs to stop...\n", sig)
 			for _, job := range active {
 				_ = job.Signal(syscall.SIGKILL)
 			}
@@ -296,6 +293,7 @@ func (c *Controller) stopRuns(active map[int]*RunningJob, scheduler *Scheduler, 
 				delete(active, done.id)
 				scheduler.Release(done.id)
 			}
+			return
 		}
 	}
 }

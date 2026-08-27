@@ -145,9 +145,10 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 
 - Each watcher process is kept alive via standard pipes
 - On macOS and Linux, every active job runs in its own process group
-- Ctrl-C is forwarded to each active job so test runners can report their normal interrupted result
+- The first Ctrl-C is forwarded to each active job so test runners can report their normal interrupted result
+- A second Ctrl-C force-stops any jobs that are still running
 - `exit`, timeout, reload, SIGINT, and SIGTERM stop and reap active jobs before watch exits
-- SIGKILL cannot run cleanup; kill the process group when a hard stop must include descendants
+- SIGKILL cannot run cleanup and may leave active jobs running
 
 ### Event Types
 
