@@ -1,6 +1,7 @@
 # plur CHANGELOG
 
 ## Unreleased
+* Make watch scheduling target-aware: independent targets can run concurrently while duplicate in-flight targets are skipped.
 
 ## v0.80.0-rc.3 - 2026-08-24
 * Extract watch.Controller: the watch session loop as a testable type [#129](https://github.com/rsanheim/plur/pull/129)

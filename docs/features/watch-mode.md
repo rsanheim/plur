@@ -109,7 +109,8 @@ to prevent duplicate events):
 2. **Watcher**: Wrapper around the external C++ watcher binary, one per directory
 3. **Planner**: Matches changed files against watch mappings and renders the targets each job runs
 4. **Debouncer**: Batches rapid changes to prevent duplicate test runs
-5. **Embedded Binary**: Platform-specific watcher binaries embedded at compile time
+5. **Scheduler**: Prevents the same job target from running twice while allowing unrelated runs to overlap
+6. **Embedded Binary**: Platform-specific watcher binaries embedded at compile time
 
 ### Event Processing
 
@@ -119,7 +120,8 @@ to prevent duplicate events):
 4. Events filtered by file type and effect, then admitted by the planner (paths outside the project or matching ignore patterns are dropped)
 5. Debouncer batches changes (default 30ms window)
 6. Planner maps the batched files to job runs via watch mappings
-7. Each job run executes, streaming output to the terminal
+7. The scheduler drops targets already running in the same job
+8. Runs with remaining targets execute concurrently, streaming output to the terminal
 
 ### Platform Support
 
@@ -167,17 +169,28 @@ far too noisy.
 ## Known Issues and Limitations
 
 ### Concurrent Output
-When multiple file changes occur rapidly, concurrent test runs can execute, leading to:
+Watch runs independent work concurrently. A target already running in the same
+job is skipped and reported:
+
+```text
+[plur] skipped spec/user_spec.rb reason=running
+```
+
+When only part of a run overlaps, the free targets still start. Different jobs
+do not block each other. A `no_targets = true` run only blocks another
+no-targets run of the same job.
+
+Concurrent runs currently share the terminal, which can lead to:
 
 - Interleaved output from different test runs
-- Multiple "plur> " prompts appearing
-- Generally "janky" terminal experience
+- Output that is harder to attribute to one run
 
-This is a known issue currently. The functionality works correctly despite the output confusion.
+The run and completion log lines identify the job and targets when debug output
+is enabled.
 
 ### Current Limitations
 
-- Serial test execution only (no parallel mode in watch)
+- No output panes or per-run output grouping
 - Limited to Ruby/Rails conventions by default (custom mappings available via `[[watch]]` config)
 
 See [Watch Configuration](../configuration.md#watch-configuration) for custom file mapping options.

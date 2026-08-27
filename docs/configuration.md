@@ -313,7 +313,8 @@ Plur uses intelligent distribution of specs/tests across workers:
 * **Runtime-based**: When historical runtime data exists, tests are distributed based on previous execution times for optimal load balancing
 * **Size-based**: When no runtime data exists, tests are distributed based on file sizes as a heuristic for complexity
 
-Note: Watch mode (`plur watch`) runs tests serially without parallel execution.
+Note: Watch mode (`plur watch`) can run independent job targets concurrently.
+It skips a target that is already running in the same job.
 
 ### Specifying Number of Workers
 

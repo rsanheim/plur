@@ -185,7 +185,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 
 	return watch.NewController(watch.ControllerConfig{
 		Planner:       planner,
-		RunAllJob:     watch.JobRun{Job: selected.Job},
+		RunAllJob:     watch.JobRun{Job: selected.Job, NoTargets: true},
 		DebounceDelay: debounceDelay,
 		Timeout:       time.Duration(runCmd.Timeout) * time.Second,
 		Watcher:       manager,

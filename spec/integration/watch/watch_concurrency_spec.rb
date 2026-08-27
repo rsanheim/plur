@@ -1,8 +1,7 @@
 require "spec_helper"
 
-# Characterization specs for the surprising scheduling boundary: saves in one
-# debounce window batch, but later batches run concurrently—even on one target.
-# They use log ordering to detect overlap, not timestamps.
+# Watch runs disjoint work concurrently but does not run one target twice at
+# the same time. These use log ordering to detect overlap, not timestamps.
 RSpec.describe "plur watch run scheduling" do
   include PlurWatchHelper
 
@@ -30,8 +29,7 @@ RSpec.describe "plur watch run scheduling" do
     end
   end
 
-  # These two events select one target; today they run concurrently.
-  it "runs the same target concurrently when two sources map to it" do
+  it "skips an in-flight target when two sources map to it" do
     overlapping_watch = <<~TOML
       [[watch]]
       name = "user-overlap"
@@ -46,29 +44,59 @@ RSpec.describe "plur watch run scheduling" do
       user.write("class User; end\n")
       user_service.write("class UserService; end\n")
 
-      result = run_watch_until_finished(project, expected_runs: 2) do
+      result = run_watch_until_finished(project, expected_runs: 1, expected_skips: 1) do
         touch(user)
         sleep save_gap_seconds
         touch(user_service)
       end
 
-      expect(started_targets(result)).to eq([["spec/models/user_spec.rb"], ["spec/models/user_spec.rb"]])
-      expect(overlapped?(result)).to be(true), timeline(result)
+      expect(started_targets(result)).to eq([["spec/models/user_spec.rb"]])
+      expect(skipped_targets(result)).to eq([["spec/models/user_spec.rb"]])
+      expect(overlapped?(result)).to be(false), timeline(result)
+      expect(result.out).to include("[plur] skipped spec/models/user_spec.rb reason=running")
     end
   end
 
-  # A second save of an in-flight file starts a duplicate run today.
-  it "runs the same target concurrently when one file is saved twice" do
+  it "skips an in-flight target when one file is saved twice" do
     with_slow_job_project do |project|
       spec_file = project.join("spec/calculator_spec.rb")
 
-      result = run_watch_until_finished(project, expected_runs: 2) do
+      result = run_watch_until_finished(project, expected_runs: 1, expected_skips: 1) do
         touch(spec_file)
         sleep save_gap_seconds
         touch(spec_file)
       end
 
-      expect(started_targets(result)).to eq([["spec/calculator_spec.rb"], ["spec/calculator_spec.rb"]])
+      expect(started_targets(result)).to eq([["spec/calculator_spec.rb"]])
+      expect(skipped_targets(result)).to eq([["spec/calculator_spec.rb"]])
+      expect(overlapped?(result)).to be(false), timeline(result)
+    end
+  end
+
+  it "runs only the free targets from a partially overlapping batch" do
+    combined_watch = <<~TOML
+      [[watch]]
+      name = "combined"
+      source = "lib/combined.rb"
+      targets = ["spec/calculator_spec.rb", "spec/validator_spec.rb"]
+      jobs = ["rspec"]
+    TOML
+
+    with_slow_job_project(extra_config: combined_watch) do |project|
+      combined = project.join("lib/combined.rb")
+      combined.write("# combined\n")
+
+      result = run_watch_until_finished(project, expected_runs: 2, expected_skips: 1) do
+        touch(project.join("spec/calculator_spec.rb"))
+        sleep save_gap_seconds
+        touch(combined)
+      end
+
+      expect(started_targets(result)).to contain_exactly(
+        ["spec/calculator_spec.rb"],
+        ["spec/validator_spec.rb"]
+      )
+      expect(skipped_targets(result)).to eq([["spec/calculator_spec.rb"]])
       expect(overlapped?(result)).to be(true), timeline(result)
     end
   end
@@ -90,19 +118,22 @@ RSpec.describe "plur watch run scheduling" do
   end
 
   # Count completions so tests do not rely on --timeout after the last run.
-  def run_watch_until_finished(project, expected_runs:, debounce: nil, &block)
+  def run_watch_until_finished(project, expected_runs:, expected_skips: 0, debounce: nil, &block)
     run_plur_watch(
       dir: project,
       timeout: watch_timeout_seconds,
       debounce: debounce,
-      stop_on: ->(process) { process.err.scan("Finished job").count >= expected_runs },
+      stop_on: lambda { |process|
+        process.err.scan("Finished job").count >= expected_runs &&
+          process.err.scan("Skipped in-flight").count >= expected_skips
+      },
       &block
     )
   end
 
   # Log order is enough to detect overlap; timestamps are not.
   def run_events(result)
-    pattern = /- INFO\s+- (Executing job|Finished job) .*targets="\[([^\]]*)\]"/
+    pattern = /- INFO\s+- (Executing job|Finished job|Skipped in-flight) .*targets="\[([^\]]*)\]"/
     result.err.scan(pattern).map do |event, targets|
       {event: event, targets: targets.split(" ").sort}
     end
@@ -112,9 +143,13 @@ RSpec.describe "plur watch run scheduling" do
     run_events(result).select { |e| e[:event] == "Executing job" }.map { |e| e[:targets] }
   end
 
+  def skipped_targets(result)
+    run_events(result).select { |e| e[:event] == "Skipped in-flight" }.map { |e| e[:targets] }
+  end
+
   def overlapped?(result)
     live = 0
-    run_events(result).each do |event|
+    run_events(result).select { |event| ["Executing job", "Finished job"].include?(event[:event]) }.each do |event|
       live += (event[:event] == "Executing job") ? 1 : -1
       return true if live > 1
     end

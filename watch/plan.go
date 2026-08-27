@@ -30,11 +30,12 @@ type Match struct {
 	Missing  []string
 }
 
-// JobRun is one job a plan executes, with merged, deduplicated existing
-// targets. Empty Targets means the job runs with no target arguments.
+// JobRun is one job a plan executes. NoTargets records the explicit watch rule
+// that runs the job without target arguments.
 type JobRun struct {
-	Job     framework.Job
-	Targets []string
+	Job       framework.Job
+	Targets   []string
+	NoTargets bool
 }
 
 // Plan is the complete answer to "what would watch do for these paths?"
@@ -152,7 +153,7 @@ func (p Planner) buildRuns(matches []Match) []JobRun {
 			}
 			seen[jobName] = true
 
-			targets, runnable := collectJobTargets(matches, jobName)
+			targets, noTargets, runnable := collectJobTargets(matches, jobName)
 			if !runnable {
 				continue
 			}
@@ -163,7 +164,7 @@ func (p Planner) buildRuns(matches []Match) []JobRun {
 				logger.Logger.Error("watch rule references unknown job", "job", jobName)
 				continue
 			}
-			runs = append(runs, JobRun{Job: job, Targets: targets})
+			runs = append(runs, JobRun{Job: job, Targets: targets, NoTargets: noTargets})
 		}
 	}
 	return runs
@@ -186,21 +187,23 @@ func anyRunnable(matches []Match) bool {
 // collectJobTargets gathers deduplicated existing targets for a job across
 // all matches. runnable is true when targets exist or a no_targets rule
 // matched for the job.
-func collectJobTargets(matches []Match, jobName string) (targets []string, runnable bool) {
+func collectJobTargets(matches []Match, jobName string) (targets []string, noTargets, runnable bool) {
 	for _, m := range matches {
 		if !slices.Contains(m.Rule.Jobs, jobName) {
 			continue
 		}
 		if m.Rule.NoTargets {
+			noTargets = true
 			runnable = true
 		}
 		targets = append(targets, m.Existing...)
 	}
 	targets = deduplicate(targets)
 	if len(targets) > 0 {
+		noTargets = false
 		runnable = true
 	}
-	return targets, runnable
+	return targets, noTargets, runnable
 }
 
 // renderRuleTargets renders a rule's target templates for a matched path.
