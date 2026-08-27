@@ -31,13 +31,7 @@ RSpec.describe "plur watch command", :skip_if_ci do
       expect(result.out).to include("exit (Ctrl-C)        Exit watch mode\n\n[plur] > Exiting watch mode...\n")
     end
 
-    it "prints the manual run status on the prompt line before the command banner" do
-      result = run_plur_watch_interactive(commands: ["", "exit"], timeout: 3)
-
-      expect(result.out).to include("[plur] > Running all tests...\n\n[plur] bundle exec rspec\n")
-    end
-
-    it "keeps a blank line before the next watch message after a manual run" do
+    it "separates the manual run status, command, and next prompt" do
       with_temp_watch_project do |project|
         project.join(".plur.toml").write(<<~TOML)
           use = "manual"
@@ -50,9 +44,23 @@ RSpec.describe "plur watch command", :skip_if_ci do
           jobs = ["manual"]
         TOML
 
-        result = run_plur_watch_interactive(commands: [""], dir: project, timeout: 2)
+        requested = false
+        exited = false
+        result = capture_plur_watch_process(dir: project, timeout: 10) do |process|
+          if !requested && watch_ready?(process.err, process.ready_state, ready_dirs: :detected)
+            process.stdin.puts("")
+            requested = true
+          elsif requested && !exited && process.out.include?("manual done\n\n[plur] > ")
+            process.stdin.puts("exit")
+            process.close_stdin
+            exited = true
+          end
+        end
 
-        expect(result.out).to match(/manual done\n\n\[plur\] > Timeout reached/)
+        expect(result.out).to include(
+          "[plur] > Running all tests...\n\n[plur] ruby -e puts 'manual done'\n" \
+          "manual done\n\n[plur] > Exiting watch mode..."
+        )
       end
     end
   end
