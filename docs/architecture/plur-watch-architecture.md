@@ -66,7 +66,7 @@ Planner.Plan() (match rules, render targets, merge job runs)
     ↓
 watch.ExecuteJob() (run each job)
     ↓
-promptChan / reloadChan (coordinate output and process reload)
+promptChan (coordinate prompt output)
 ```
 
 ## Multi-Process Design
@@ -187,16 +187,8 @@ Rendered targets that do not exist on disk are skipped.
 
 ## Reload Functionality
 
-Watch mappings can specify `reload = true` to trigger a process reload after jobs complete:
-
-```toml
-[[watch]]
-source = "**/*.go"
-jobs = ["build"]
-reload = true  # Reload plur after build completes
-```
-
-This is useful for development workflows where plur rebuilds itself.
+The `reload` command and SIGHUP re-exec plur with the same arguments after
+stopping its watcher processes and restoring the terminal state.
 
 ## Goroutine Architecture
 
@@ -207,7 +199,7 @@ This is useful for development workflows where plur rebuilds itself.
 │                                                                             │
 │  ┌─────────────────┐                                                        │
 │  │ Main Goroutine  │  runWatchWithConfig() - main select loop               │
-│  │ (cmd_watch.go)  │  Owns: sigChan, timeoutChan, promptChan, reloadChan    │
+│  │ (cmd_watch.go)  │  Owns: sigChan, timeoutChan, promptChan                │
 │  └────────┬────────┘                                                        │
 │           │                                                                 │
 │           │ select {                                                        │
@@ -217,7 +209,6 @@ This is useful for development workflows where plur rebuilds itself.
 │           │   case <-sigChan:          // SIGINT/SIGTERM/SIGHUP             │
 │           │   case <-timeoutChan:      // timeout (if set)                  │
 │           │   case <-promptChan:       // display prompt                    │
-│           │   case <-reloadChan:       // trigger process reload            │
 │           │ }                                                               │
 │           │                                                                 │
 │  ┌────────▼────────┐                                                        │
@@ -310,7 +301,7 @@ lifecycle goroutine:
 Process exits cleanly
 ```
 
-### Reload (SIGHUP, "reload" command, or rule.Reload)
+### Reload (SIGHUP or `reload` command)
 
 ```
 Reload triggered

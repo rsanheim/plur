@@ -92,7 +92,6 @@ name = "go-build"
 source = "**/*.go"
 no_targets = true
 jobs = ["build"]
-reload = true
 
 # Watch app files (Rails) and run corresponding specs
 [[watch]]

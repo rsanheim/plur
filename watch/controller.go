@@ -44,7 +44,6 @@ type ControllerConfig struct {
 type Controller struct {
 	cfg        ControllerConfig
 	promptChan chan struct{}
-	reloadChan chan struct{}
 }
 
 type runDone struct {
@@ -58,7 +57,6 @@ func NewController(cfg ControllerConfig) *Controller {
 	return &Controller{
 		cfg:        cfg,
 		promptChan: make(chan struct{}, 1),
-		reloadChan: make(chan struct{}, 1),
 	}
 }
 
@@ -167,9 +165,6 @@ func (c *Controller) Run() error {
 					started = true
 				}
 			}
-			if plan.Reload {
-				c.triggerReload()
-			}
 			if !started && len(plan.Runs) > 0 {
 				fmt.Fprintln(c.cfg.Stdout)
 				c.showPrompt()
@@ -204,9 +199,6 @@ func (c *Controller) Run() error {
 
 		case <-c.promptChan:
 			fmt.Fprint(c.cfg.Stdout, "[plur] > ")
-
-		case <-c.reloadChan:
-			return c.attemptReload(active, scheduler, doneChan)
 		}
 	}
 }
@@ -325,13 +317,6 @@ func (c *Controller) attemptReload(active map[int]*RunningJob, scheduler *Schedu
 func (c *Controller) showPrompt() {
 	select {
 	case c.promptChan <- struct{}{}:
-	default: // already queued, skip
-	}
-}
-
-func (c *Controller) triggerReload() {
-	select {
-	case c.reloadChan <- struct{}{}:
 	default: // already queued, skip
 	}
 }
