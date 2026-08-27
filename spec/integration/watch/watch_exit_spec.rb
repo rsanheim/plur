@@ -98,7 +98,7 @@ RSpec.describe "plur watch exit" do
           use = "rspec"
 
           [job.rspec]
-          cmd = ["ruby", "-e", "trap('INT') { puts 'job interrupted'; STDOUT.flush }; puts 'job started'; STDOUT.flush; sleep 60"]
+          cmd = ["ruby", "-e", "trap('INT') { puts 'job interrupted'; STDOUT.flush }; puts 'job started'; STDOUT.flush; loop { sleep 1 }"]
 
           [[watch]]
           source = "spec/**/*_spec.rb"
