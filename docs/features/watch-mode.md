@@ -143,12 +143,9 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 
 ### Process Lifecycle
 
-- Watch jobs run as direct child processes
-- The scheduler keeps a handle to every active job and Plur waits for each one to exit
-- The terminal delivers the first Ctrl-C to Plur and its active jobs so test runners can report their normal interrupted result
-- A second Ctrl-C force-stops any direct child jobs that are still running
-- `exit`, timeout, reload, SIGINT, and SIGTERM stop and reap active jobs before watch exits
-- SIGKILL cannot run cleanup and may leave active jobs running
+- Plur tracks direct child jobs and waits for them to exit
+- The first Ctrl-C lets Plur and test runners stop normally; a second force-stops remaining jobs
+- All ordinary shutdown paths reap active jobs; SIGKILL cannot and may leave jobs running
 
 ### Event Types
 
