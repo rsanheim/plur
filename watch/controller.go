@@ -74,7 +74,10 @@ func (c *Controller) Run() error {
 	batchChan := make(chan TargetSet, 16)
 	doneChan := make(chan runDone, 16)
 	active := make(map[int]*RunningJob)
-	defer c.stopRuns(active, scheduler, doneChan)
+	interruptAlreadyDelivered := false
+	defer func() {
+		c.stopRuns(active, scheduler, doneChan, !interruptAlreadyDelivered)
+	}()
 
 	var timeoutChan <-chan time.Time
 	if c.cfg.Timeout > 0 {
@@ -182,6 +185,9 @@ func (c *Controller) Run() error {
 		case sig := <-c.cfg.Signals:
 			switch sig {
 			case syscall.SIGINT:
+				// Watch is interactive, so treat SIGINT as terminal Ctrl-C.
+				// Active jobs already received it with the foreground group.
+				interruptAlreadyDelivered = true
 				fmt.Fprintln(c.cfg.Stdout, "Received SIGINT, shutting down gracefully...")
 				return nil
 			case syscall.SIGTERM:
@@ -259,13 +265,15 @@ func (c *Controller) reportRunError(run JobRun, manual bool, err error) {
 	}
 }
 
-func (c *Controller) stopRuns(active map[int]*RunningJob, scheduler *Scheduler, doneChan <-chan runDone) {
+func (c *Controller) stopRuns(active map[int]*RunningJob, scheduler *Scheduler, doneChan <-chan runDone, interrupt bool) {
 	if len(active) == 0 {
 		return
 	}
 
-	for _, job := range active {
-		_ = job.Signal(syscall.SIGINT)
+	if interrupt {
+		for _, job := range active {
+			_ = job.Interrupt()
+		}
 	}
 
 	for len(active) > 0 {
@@ -276,7 +284,7 @@ func (c *Controller) stopRuns(active map[int]*RunningJob, scheduler *Scheduler, 
 		case sig := <-c.cfg.Signals:
 			fmt.Fprintf(c.cfg.Stdout, "Received %v during shutdown, forcing active jobs to stop...\n", sig)
 			for _, job := range active {
-				_ = job.Signal(syscall.SIGKILL)
+				_ = job.Kill()
 			}
 			for len(active) > 0 {
 				done := <-doneChan
@@ -304,7 +312,7 @@ func (c *Controller) printSkips(run JobRun, start *JobRun, skipped TargetSet) {
 }
 
 func (c *Controller) attemptReload(active map[int]*RunningJob, scheduler *Scheduler, doneChan <-chan runDone) error {
-	c.stopRuns(active, scheduler, doneChan)
+	c.stopRuns(active, scheduler, doneChan, true)
 	err := c.cfg.Reload()
 	if err != nil {
 		logger.Logger.Error("Failed to reload", "error", err)

@@ -61,7 +61,6 @@ func StartJob(run JobRun, cwd string) (*RunningJob, error) {
 	fmt.Printf("\n[plur] %s\n", CommandString(cmd, run.Job.Env))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	configureProcessGroup(cmd)
 
 	if err := cmd.Start(); err != nil {
 		return nil, err
@@ -75,6 +74,10 @@ func (j *RunningJob) Wait() error {
 	return err
 }
 
-func (j *RunningJob) Signal(sig os.Signal) error {
-	return signalProcessGroup(j.cmd.Process, sig)
+func (j *RunningJob) Interrupt() error {
+	return j.cmd.Process.Signal(os.Interrupt)
+}
+
+func (j *RunningJob) Kill() error {
+	return j.cmd.Process.Kill()
 }

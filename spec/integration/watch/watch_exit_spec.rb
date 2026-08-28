@@ -98,7 +98,7 @@ RSpec.describe "plur watch exit" do
           use = "rspec"
 
           [job.rspec]
-          cmd = ["ruby", "-e", "trap('INT') { File.write('job-interrupted', 'yes') }; File.write('job-ready', 'yes'); loop { sleep 1 }"]
+          cmd = ["ruby", "-e", "trap('INT') { File.open('job-interrupted', 'a') { |f| f.write('x') } }; File.write('job-ready', 'yes'); loop { sleep 1 }"]
 
           [[watch]]
           source = "spec/**/*_spec.rb"
@@ -113,6 +113,8 @@ RSpec.describe "plur watch exit" do
 
           Timeout.timeout(5) { sleep 0.01 until project.join("job-interrupted").exist? }
           expect(terminal.wait_for("Received SIGINT")).to be(true), "screen was:\n#{terminal.screen}"
+          sleep 0.2
+          expect(project.join("job-interrupted").read).to eq("x")
 
           sleep 3
           terminal.type("\u0003")
