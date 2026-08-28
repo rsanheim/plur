@@ -10,6 +10,7 @@ type Scheduler struct {
 type scheduledRun struct {
 	jobName string
 	targets TargetSet
+	job     *RunningJob
 }
 
 func NewScheduler() *Scheduler {
@@ -43,6 +44,22 @@ func (s *Scheduler) Claim(run JobRun) (id int, start *JobRun, skipped TargetSet)
 
 func (s *Scheduler) Release(id int) {
 	delete(s.inFlight, id)
+}
+
+func (s *Scheduler) Attach(id int, job *RunningJob) {
+	run := s.inFlight[id]
+	run.job = job
+	s.inFlight[id] = run
+}
+
+func (s *Scheduler) RunningJobs() []*RunningJob {
+	jobs := make([]*RunningJob, 0, len(s.inFlight))
+	for _, run := range s.inFlight {
+		if run.job != nil {
+			jobs = append(jobs, run.job)
+		}
+	}
+	return jobs
 }
 
 func (s *Scheduler) Idle() bool {

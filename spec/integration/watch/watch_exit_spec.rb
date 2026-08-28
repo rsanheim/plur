@@ -116,10 +116,50 @@ RSpec.describe "plur watch exit" do
           sleep 0.2
           expect(project.join("job-interrupted").read).to eq("x")
 
-          sleep 3
           terminal.type("\u0003")
 
           expect(terminal.wait_for("forcing active jobs to stop")).to be(true), "screen was:\n#{terminal.screen}"
+        end
+      end
+    end
+
+    it "lets RSpec finish its current example and print a summary after Ctrl-C" do
+      with_temp_watch_project do |project|
+        project.join(".plur.toml").write(<<~TOML)
+          use = "rspec"
+
+          [job.rspec]
+          cmd = ["bundle", "exec", "rspec", "spec/interrupt_spec.rb"]
+
+          [[watch]]
+          source = "spec/**/*_spec.rb"
+          jobs = ["rspec"]
+        TOML
+
+        project.join("spec/interrupt_spec.rb").write(<<~RUBY)
+          RSpec.describe "interrupt handling" do
+            it "finishes the current example" do
+              File.write("example-ready", "yes")
+              sleep 1
+              File.write("example-finished", "yes")
+            end
+
+            it "does not start another example" do
+              File.write("second-example-started", "yes")
+            end
+          end
+        RUBY
+
+        watch_terminal(dir: project) do |terminal|
+          terminal.type("\n")
+          Timeout.timeout(5) { sleep 0.01 until project.join("example-ready").exist? }
+
+          terminal.type("\u0003")
+
+          expect(terminal.wait_for("RSpec is shutting down and will print the summary report")).to be(true), "screen was:\n#{terminal.screen}"
+          expect(terminal.wait_for("1 example, 0 failures")).to be(true), "screen was:\n#{terminal.screen}"
+          expect(project.join("example-finished")).to exist
+          expect(project.join("second-example-started")).not_to exist
         end
       end
     end
