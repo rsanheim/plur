@@ -105,9 +105,7 @@ func (c *Controller) Run() error {
 			switch input {
 			case "":
 				fmt.Fprintln(c.cfg.Stdout, "Running all tests...")
-				run := c.cfg.RunAllJob
-				run.NoTargets = true
-				if !c.startRun(scheduler, doneChan, run, true) {
+				if !c.startRun(scheduler, doneChan, c.cfg.RunAllJob, true) {
 					c.showPrompt()
 				}
 			case "help":
@@ -247,7 +245,7 @@ func (c *Controller) drainRunCompletions(scheduler *Scheduler, doneChan <-chan r
 }
 
 func (c *Controller) printSkips(run JobRun, start *JobRun, skipped TargetSet) {
-	if run.NoTargets && start == nil {
+	if run.Targets.Len() == 0 && start == nil {
 		fmt.Fprintf(c.cfg.Stdout, "\n[plur] skipped %s reason=running\n", run.Job.Name)
 		logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", "[]")
 		return

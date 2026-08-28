@@ -30,12 +30,11 @@ type Match struct {
 	Missing  TargetSet
 }
 
-// JobRun is one job a plan executes. NoTargets records the explicit watch rule
-// that runs the job without target arguments.
+// JobRun is one job a plan executes. An empty target set runs the job without
+// target arguments.
 type JobRun struct {
-	Job       framework.Job
-	Targets   TargetSet
-	NoTargets bool
+	Job     framework.Job
+	Targets TargetSet
 }
 
 // Plan is the complete answer to "what would watch do for these paths?"
@@ -147,7 +146,7 @@ func (p Planner) buildRuns(matches []Match) []JobRun {
 			}
 			seen[jobName] = true
 
-			targets, noTargets, runnable := collectJobTargets(matches, jobName)
+			targets, runnable := collectJobTargets(matches, jobName)
 			if !runnable {
 				continue
 			}
@@ -158,7 +157,7 @@ func (p Planner) buildRuns(matches []Match) []JobRun {
 				logger.Logger.Error("watch rule references unknown job", "job", jobName)
 				continue
 			}
-			runs = append(runs, JobRun{Job: job, Targets: targets, NoTargets: noTargets})
+			runs = append(runs, JobRun{Job: job, Targets: targets})
 		}
 	}
 	return runs
@@ -181,14 +180,13 @@ func anyRunnable(matches []Match) bool {
 // collectJobTargets gathers deduplicated existing targets for a job across
 // all matches. runnable is true when targets exist or a no_targets rule
 // matched for the job.
-func collectJobTargets(matches []Match, jobName string) (targets TargetSet, noTargets, runnable bool) {
+func collectJobTargets(matches []Match, jobName string) (targets TargetSet, runnable bool) {
 	var collected []string
 	for _, m := range matches {
 		if !slices.Contains(m.Rule.Jobs, jobName) {
 			continue
 		}
 		if m.Rule.NoTargets {
-			noTargets = true
 			runnable = true
 		}
 		for target := range m.Existing.All() {
@@ -197,10 +195,9 @@ func collectJobTargets(matches []Match, jobName string) (targets TargetSet, noTa
 	}
 	targets = NewTargetSet(collected...)
 	if targets.Len() > 0 {
-		noTargets = false
 		runnable = true
 	}
-	return targets, noTargets, runnable
+	return targets, runnable
 }
 
 // renderRuleTargets renders a rule's target templates for a matched path.
