@@ -37,7 +37,7 @@ func TestScheduler_TargetClaims(t *testing.T) {
 	assert.Empty(t, skipped)
 }
 
-func TestScheduler_IndependentJobsAndNoTargetsLane(t *testing.T) {
+func TestScheduler_IndependentJobsAndBareLane(t *testing.T) {
 	scheduler := NewScheduler()
 	rspec := framework.Job{Name: "rspec"}
 	rubocop := framework.Job{Name: "rubocop"}
@@ -48,14 +48,14 @@ func TestScheduler_IndependentJobsAndNoTargetsLane(t *testing.T) {
 	_, otherJob, _ := scheduler.Claim(JobRun{Job: rubocop, Targets: NewTargetSet("user.rb")})
 	require.NotNil(t, otherJob)
 
-	noTargetsID, noTargets, _ := scheduler.Claim(JobRun{Job: rspec, NoTargets: true})
-	require.NotNil(t, noTargets)
-	assert.Positive(t, noTargetsID)
+	bareID, bare, _ := scheduler.Claim(JobRun{Job: rspec})
+	require.NotNil(t, bare)
+	assert.Positive(t, bareID)
 
-	_, duplicate, skipped := scheduler.Claim(JobRun{Job: rspec, NoTargets: true})
+	_, duplicate, skipped := scheduler.Claim(JobRun{Job: rspec})
 	assert.Nil(t, duplicate)
 	assert.Empty(t, skipped)
 
-	_, besideNoTargets, _ := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("account.rb")})
-	require.NotNil(t, besideNoTargets)
+	_, besideBare, _ := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("account.rb")})
+	require.NotNil(t, besideBare)
 }

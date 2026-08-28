@@ -8,9 +8,8 @@ type Scheduler struct {
 }
 
 type scheduledRun struct {
-	jobName   string
-	noTargets bool
-	targets   TargetSet
+	jobName string
+	targets TargetSet
 }
 
 func NewScheduler() *Scheduler {
@@ -18,12 +17,12 @@ func NewScheduler() *Scheduler {
 }
 
 // Claim returns the part of run that may start. Targeted runs drop targets
-// already running in the same job. No-targets runs conflict only with another
-// no-targets run in the same job.
+// already running in the same job. Bare runs conflict only with another bare
+// run in the same job.
 func (s *Scheduler) Claim(run JobRun) (id int, start *JobRun, skipped TargetSet) {
-	if run.NoTargets {
+	if run.Targets.Len() == 0 {
 		for _, active := range s.inFlight {
-			if active.noTargets && active.jobName == run.Job.Name {
+			if active.targets.Len() == 0 && active.jobName == run.Job.Name {
 				return 0, nil, skipped
 			}
 		}
@@ -53,9 +52,8 @@ func (s *Scheduler) Idle() bool {
 func (s *Scheduler) start(run JobRun) int {
 	s.nextID++
 	s.inFlight[s.nextID] = scheduledRun{
-		jobName:   run.Job.Name,
-		noTargets: run.NoTargets,
-		targets:   run.Targets,
+		jobName: run.Job.Name,
+		targets: run.Targets,
 	}
 	return s.nextID
 }
@@ -63,7 +61,7 @@ func (s *Scheduler) start(run JobRun) int {
 func (s *Scheduler) targetsInFlight(jobName string) TargetSet {
 	var targets []string
 	for _, active := range s.inFlight {
-		if !active.noTargets && active.jobName == jobName {
+		if active.jobName == jobName {
 			for target := range active.targets.All() {
 				targets = append(targets, target)
 			}

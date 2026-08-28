@@ -29,7 +29,7 @@ func TestJobRunCommand(t *testing.T) {
 	assert.GreaterOrEqual(t, len(cmd.Env), len(os.Environ()), "inherited environment is preserved")
 }
 
-func TestJobRunCommand_NoTargets(t *testing.T) {
+func TestJobRunCommand_Bare(t *testing.T) {
 	run := JobRun{Job: framework.Job{Name: "build", Cmd: []string{"bin/rake", "install"}}}
 
 	cmd := run.Command(t.TempDir())
@@ -100,7 +100,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 	assert.Contains(t, output, "file3.rb")
 }
 
-func TestExecuteJob_NoTargets(t *testing.T) {
+func TestExecuteJob_Bare(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "args.txt")
 
