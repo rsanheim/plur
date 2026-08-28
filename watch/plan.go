@@ -26,15 +26,15 @@ type Planner struct {
 // for reload and reporting purposes but never render targets.
 type Match struct {
 	Rule     WatchMapping
-	Existing []string
-	Missing  []string
+	Existing TargetSet
+	Missing  TargetSet
 }
 
-// JobRun is one job a plan executes, with merged, deduplicated existing
-// targets. Empty Targets means the job runs with no target arguments.
+// JobRun is one job a plan executes. An empty target set runs the job without
+// target arguments.
 type JobRun struct {
 	Job     framework.Job
-	Targets []string
+	Targets TargetSet
 }
 
 // Plan is the complete answer to "what would watch do for these paths?"
@@ -89,9 +89,9 @@ func (p Planner) Admit(path string) (string, bool) {
 
 // Plan decides which jobs run, with which targets, for a batch of changed
 // paths. Paths must already be CWD-relative (see Admit).
-func (p Planner) Plan(paths []string) Plan {
+func (p Planner) Plan(paths TargetSet) Plan {
 	plan := Plan{}
-	for _, path := range paths {
+	for path := range paths.All() {
 		matches := p.matchPath(path)
 		if !anyRunnable(matches) {
 			logger.Logger.Debug("No existing targets for file", "path", path)
@@ -115,14 +115,17 @@ func (p Planner) matchPath(path string) []Match {
 
 		m := Match{Rule: rule}
 		if len(rule.Jobs) > 0 {
-			for _, target := range renderRuleTargets(rule, normalized) {
+			var existing, missing []string
+			for target := range renderRuleTargets(rule, normalized).All() {
 				if targetExists(target, p.CWD) {
-					m.Existing = append(m.Existing, target)
+					existing = append(existing, target)
 				} else {
 					logger.Logger.Info("Skipping non-existent target", "target", target, "rule", rule.Name, "source", rule.Source)
-					m.Missing = append(m.Missing, target)
+					missing = append(missing, target)
 				}
 			}
+			m.Existing = NewTargetSet(existing...)
+			m.Missing = NewTargetSet(missing...)
 		}
 		matches = append(matches, m)
 	}
@@ -164,7 +167,7 @@ func (p Planner) buildRuns(matches []Match) []JobRun {
 // existing targets or is a no_targets rule that runs its jobs bare.
 func anyRunnable(matches []Match) bool {
 	for _, m := range matches {
-		if len(m.Existing) > 0 {
+		if m.Existing.Len() > 0 {
 			return true
 		}
 		if m.Rule.NoTargets && len(m.Rule.Jobs) > 0 {
@@ -177,7 +180,8 @@ func anyRunnable(matches []Match) bool {
 // collectJobTargets gathers deduplicated existing targets for a job across
 // all matches. runnable is true when targets exist or a no_targets rule
 // matched for the job.
-func collectJobTargets(matches []Match, jobName string) (targets []string, runnable bool) {
+func collectJobTargets(matches []Match, jobName string) (targets TargetSet, runnable bool) {
+	var collected []string
 	for _, m := range matches {
 		if !slices.Contains(m.Rule.Jobs, jobName) {
 			continue
@@ -185,10 +189,12 @@ func collectJobTargets(matches []Match, jobName string) (targets []string, runna
 		if m.Rule.NoTargets {
 			runnable = true
 		}
-		targets = append(targets, m.Existing...)
+		for target := range m.Existing.All() {
+			collected = append(collected, target)
+		}
 	}
-	targets = deduplicate(targets)
-	if len(targets) > 0 {
+	targets = NewTargetSet(collected...)
+	if targets.Len() > 0 {
 		runnable = true
 	}
 	return targets, runnable
@@ -197,12 +203,12 @@ func collectJobTargets(matches []Match, jobName string) (targets []string, runna
 // renderRuleTargets renders a rule's target templates for a matched path.
 // no_targets rules render nothing; rules without targets use the source
 // file itself.
-func renderRuleTargets(rule WatchMapping, normalizedPath string) []string {
+func renderRuleTargets(rule WatchMapping, normalizedPath string) TargetSet {
 	if rule.NoTargets {
-		return nil
+		return TargetSet{}
 	}
 	if len(rule.Targets) == 0 {
-		return []string{filepath.FromSlash(normalizedPath)}
+		return NewTargetSet(filepath.FromSlash(normalizedPath))
 	}
 
 	tokens := BuildTokens(normalizedPath, rule.Source)
@@ -217,7 +223,7 @@ func renderRuleTargets(rule WatchMapping, normalizedPath string) []string {
 		}
 		targets = append(targets, rendered)
 	}
-	return deduplicate(targets)
+	return NewTargetSet(targets...)
 }
 
 func targetExists(target, cwd string) bool {
@@ -241,19 +247,4 @@ func matchesAny(normalizedPath string, patterns []string) bool {
 		}
 	}
 	return false
-}
-
-// deduplicate removes duplicate strings from a slice while preserving order
-func deduplicate(items []string) []string {
-	seen := make(map[string]bool)
-	result := make([]string, 0, len(items))
-
-	for _, item := range items {
-		if !seen[item] {
-			seen[item] = true
-			result = append(result, item)
-		}
-	}
-
-	return result
 }

@@ -18,7 +18,7 @@ func TestJobRunCommand(t *testing.T) {
 			Cmd:  []string{"bundle", "exec", "rspec"},
 			Env:  []string{"RAILS_ENV=test"},
 		},
-		Targets: []string{"spec/user_spec.rb", "spec/post_spec.rb"},
+		Targets: NewTargetSet("spec/user_spec.rb", "spec/post_spec.rb", "spec/user_spec.rb"),
 	}
 
 	cmd := run.Command(cwd)
@@ -29,7 +29,7 @@ func TestJobRunCommand(t *testing.T) {
 	assert.GreaterOrEqual(t, len(cmd.Env), len(os.Environ()), "inherited environment is preserved")
 }
 
-func TestJobRunCommand_NoTargets(t *testing.T) {
+func TestJobRunCommand_Bare(t *testing.T) {
 	run := JobRun{Job: framework.Job{Name: "build", Cmd: []string{"bin/rake", "install"}}}
 
 	cmd := run.Command(t.TempDir())
@@ -61,7 +61,7 @@ func TestCommandString(t *testing.T) {
 			Cmd:  []string{"bundle", "exec", "rspec"},
 			Env:  []string{"RAILS_ENV=test"},
 		},
-		Targets: []string{"spec/user_spec.rb"},
+		Targets: NewTargetSet("spec/user_spec.rb"),
 	}
 	cmd := run.Command(t.TempDir())
 
@@ -86,7 +86,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 			Name: "test-batch",
 			Cmd:  []string{"sh", "-c", "echo \"$@\" > " + outputFile, "--"},
 		},
-		Targets: []string{"file1.rb", "file2.rb", "file3.rb"},
+		Targets: NewTargetSet("file1.rb", "file2.rb", "file3.rb"),
 	}
 
 	err := ExecuteJob(run, tmpDir)
@@ -100,7 +100,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 	assert.Contains(t, output, "file3.rb")
 }
 
-func TestExecuteJob_NoTargets(t *testing.T) {
+func TestExecuteJob_Bare(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "args.txt")
 

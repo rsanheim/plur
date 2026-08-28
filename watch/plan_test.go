@@ -41,27 +41,27 @@ func TestPlannerPlan_RendersTargetsAndBuildsRun(t *testing.T) {
 	planner := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{libToSpec()}, CWD: tmpDir}
 
 	t.Run("simple lib file", func(t *testing.T) {
-		plan := planner.Plan([]string{"lib/user.rb"})
+		plan := planner.Plan(NewTargetSet("lib/user.rb"))
 
 		require.Len(t, plan.Matches, 1)
 		assert.Equal(t, "lib-to-spec", plan.Matches[0].Rule.Name)
-		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Matches[0].Existing)
-		assert.Empty(t, plan.Matches[0].Missing)
+		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Matches[0].Existing.Values())
+		assert.Empty(t, plan.Matches[0].Missing.Values())
 
 		require.Len(t, plan.Runs, 1)
 		assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
-		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Runs[0].Targets)
+		assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Runs[0].Targets.Values())
 	})
 
 	t.Run("nested lib file", func(t *testing.T) {
-		plan := planner.Plan([]string{"lib/models/post.rb"})
+		plan := planner.Plan(NewTargetSet("lib/models/post.rb"))
 
 		require.Len(t, plan.Runs, 1)
-		assert.Equal(t, []string{filepath.FromSlash("spec/models/post_spec.rb")}, plan.Runs[0].Targets)
+		assert.Equal(t, []string{filepath.FromSlash("spec/models/post_spec.rb")}, plan.Runs[0].Targets.Values())
 	})
 
 	t.Run("non-matching file", func(t *testing.T) {
-		plan := planner.Plan([]string{"app/models/user.rb"})
+		plan := planner.Plan(NewTargetSet("app/models/user.rb"))
 
 		assert.Empty(t, plan.Matches)
 		assert.Empty(t, plan.Runs)
@@ -80,10 +80,10 @@ func TestPlannerPlan_SourceFileAsTargetWhenNoTargetsConfigured(t *testing.T) {
 		CWD: tmpDir,
 	}
 
-	plan := planner.Plan([]string{"spec/models/user_spec.rb"})
+	plan := planner.Plan(NewTargetSet("spec/models/user_spec.rb"))
 
 	require.Len(t, plan.Runs, 1)
-	assert.Equal(t, []string{filepath.FromSlash("spec/models/user_spec.rb")}, plan.Runs[0].Targets)
+	assert.Equal(t, []string{filepath.FromSlash("spec/models/user_spec.rb")}, plan.Runs[0].Targets.Values())
 }
 
 func TestPlannerPlan_NoTargetsRuleRunsJobBare(t *testing.T) {
@@ -97,11 +97,11 @@ func TestPlannerPlan_NoTargetsRuleRunsJobBare(t *testing.T) {
 		CWD: t.TempDir(),
 	}
 
-	plan := planner.Plan([]string{"runner.go"})
+	plan := planner.Plan(NewTargetSet("runner.go"))
 
 	require.Len(t, plan.Runs, 1)
 	assert.Equal(t, "build", plan.Runs[0].Job.Name)
-	assert.Empty(t, plan.Runs[0].Targets)
+	assert.Empty(t, plan.Runs[0].Targets.Values())
 }
 
 func TestPlannerPlan_NoTargetsRunsEvenWhenOtherRuleTargetsMissing(t *testing.T) {
@@ -116,20 +116,20 @@ func TestPlannerPlan_NoTargetsRunsEvenWhenOtherRuleTargetsMissing(t *testing.T) 
 		CWD: t.TempDir(),
 	}
 
-	plan := planner.Plan([]string{"runner.go"})
+	plan := planner.Plan(NewTargetSet("runner.go"))
 
 	require.Len(t, plan.Runs, 1)
-	assert.Empty(t, plan.Runs[0].Targets)
+	assert.Empty(t, plan.Runs[0].Targets.Values())
 }
 
 func TestPlannerPlan_MissingTargetRecordedButJobDoesNotRun(t *testing.T) {
 	planner := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{libToSpec()}, CWD: t.TempDir()}
 
-	plan := planner.Plan([]string{"lib/user.rb"})
+	plan := planner.Plan(NewTargetSet("lib/user.rb"))
 
 	require.Len(t, plan.Matches, 1)
-	assert.Empty(t, plan.Matches[0].Existing)
-	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Matches[0].Missing)
+	assert.Empty(t, plan.Matches[0].Existing.Values())
+	assert.Equal(t, []string{filepath.FromSlash("spec/user_spec.rb")}, plan.Matches[0].Missing.Values())
 	assert.Empty(t, plan.Runs)
 }
 
@@ -138,9 +138,9 @@ func TestPlannerPlan_RuleIgnorePatterns(t *testing.T) {
 	rule.Ignore = []string{"lib/generators/**", "lib/vendor/**"}
 	planner := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{rule}, CWD: t.TempDir()}
 
-	assert.Empty(t, planner.Plan([]string{"lib/generators/model.rb"}).Matches)
-	assert.Empty(t, planner.Plan([]string{"lib/vendor/gem.rb"}).Matches)
-	assert.Len(t, planner.Plan([]string{"lib/user.rb"}).Matches, 1)
+	assert.Empty(t, planner.Plan(NewTargetSet("lib/generators/model.rb")).Matches)
+	assert.Empty(t, planner.Plan(NewTargetSet("lib/vendor/gem.rb")).Matches)
+	assert.Len(t, planner.Plan(NewTargetSet("lib/user.rb")).Matches, 1)
 }
 
 func TestPlannerPlan_MultipleJobsPreserveRuleOrder(t *testing.T) {
@@ -158,7 +158,7 @@ func TestPlannerPlan_MultipleJobsPreserveRuleOrder(t *testing.T) {
 		CWD:     tmpDir,
 	}
 
-	plan := planner.Plan([]string{"lib/user.rb"})
+	plan := planner.Plan(NewTargetSet("lib/user.rb"))
 
 	require.Len(t, plan.Runs, 2)
 	assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
@@ -181,7 +181,7 @@ func TestPlannerPlan_JobOrderAcrossRules(t *testing.T) {
 		CWD: tmpDir,
 	}
 
-	plan := planner.Plan([]string{"lib/user.rb"})
+	plan := planner.Plan(NewTargetSet("lib/user.rb"))
 
 	require.Len(t, plan.Runs, 2)
 	assert.Equal(t, "lint", plan.Runs[0].Job.Name)
@@ -195,13 +195,13 @@ func TestPlannerPlan_BatchMergesAndDeduplicatesTargets(t *testing.T) {
 	planner := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{libToSpec()}, CWD: tmpDir}
 
 	t.Run("two files merge into one run, batch order", func(t *testing.T) {
-		plan := planner.Plan([]string{"lib/user.rb", "lib/post.rb"})
+		plan := planner.Plan(NewTargetSet("lib/user.rb", "lib/post.rb"))
 
 		require.Len(t, plan.Runs, 1)
 		assert.Equal(t, []string{
 			filepath.FromSlash("spec/user_spec.rb"),
 			filepath.FromSlash("spec/post_spec.rb"),
-		}, plan.Runs[0].Targets)
+		}, plan.Runs[0].Targets.Values())
 	})
 
 	t.Run("same target from two files is deduplicated", func(t *testing.T) {
@@ -213,10 +213,10 @@ func TestPlannerPlan_BatchMergesAndDeduplicatesTargets(t *testing.T) {
 		}
 		p := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{shared}, CWD: tmpDir}
 
-		plan := p.Plan([]string{"lib/a.rb", "lib/b.rb"})
+		plan := p.Plan(NewTargetSet("lib/a.rb", "lib/b.rb"))
 
 		require.Len(t, plan.Runs, 1)
-		assert.Equal(t, []string{"spec/user_spec.rb"}, plan.Runs[0].Targets)
+		assert.Equal(t, []string{"spec/user_spec.rb"}, plan.Runs[0].Targets.Values())
 	})
 
 	t.Run("duplicate targets within one rule are deduplicated", func(t *testing.T) {
@@ -228,12 +228,12 @@ func TestPlannerPlan_BatchMergesAndDeduplicatesTargets(t *testing.T) {
 		}
 		p := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{dup}, CWD: tmpDir}
 
-		plan := p.Plan([]string{"lib/user.rb"})
+		plan := p.Plan(NewTargetSet("lib/user.rb"))
 
 		require.Len(t, plan.Runs, 1)
-		assert.Len(t, plan.Runs[0].Targets, 1)
+		assert.Equal(t, 1, plan.Runs[0].Targets.Len())
 		require.Len(t, plan.Matches, 1)
-		assert.Len(t, plan.Matches[0].Existing, 1)
+		assert.Equal(t, 1, plan.Matches[0].Existing.Len())
 	})
 }
 
@@ -253,7 +253,7 @@ func TestPlannerPlan_JobWithOnlyMissingTargetsDoesNotRun(t *testing.T) {
 		CWD: tmpDir,
 	}
 
-	plan := planner.Plan([]string{"lib/user.rb"})
+	plan := planner.Plan(NewTargetSet("lib/user.rb"))
 
 	require.Len(t, plan.Runs, 1, "job with only missing targets must not run bare")
 	assert.Equal(t, "rspec", plan.Runs[0].Job.Name)
@@ -262,7 +262,7 @@ func TestPlannerPlan_JobWithOnlyMissingTargetsDoesNotRun(t *testing.T) {
 func TestPlannerPlan_EmptyWatches(t *testing.T) {
 	planner := Planner{Jobs: map[string]framework.Job{}, CWD: t.TempDir()}
 
-	plan := planner.Plan([]string{"foo.rb"})
+	plan := planner.Plan(NewTargetSet("foo.rb"))
 
 	assert.Empty(t, plan.Matches)
 	assert.Empty(t, plan.Runs)
@@ -276,13 +276,13 @@ func TestPlannerPlan_MultipleTargetsPerRule(t *testing.T) {
 	rule.Targets = []string{"spec/{{match}}_spec.rb", "spec/lib/{{match}}_spec.rb"}
 	planner := Planner{Jobs: rspecJobs(), Watches: []WatchMapping{rule}, CWD: tmpDir}
 
-	plan := planner.Plan([]string{"lib/user.rb"})
+	plan := planner.Plan(NewTargetSet("lib/user.rb"))
 
 	require.Len(t, plan.Runs, 1)
 	assert.Equal(t, []string{
 		filepath.FromSlash("spec/user_spec.rb"),
 		filepath.FromSlash("spec/lib/user_spec.rb"),
-	}, plan.Runs[0].Targets)
+	}, plan.Runs[0].Targets.Values())
 }
 
 func TestPlannerAdmit(t *testing.T) {

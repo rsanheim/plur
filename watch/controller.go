@@ -46,6 +46,13 @@ type Controller struct {
 	promptChan chan struct{}
 }
 
+type runDone struct {
+	id     int
+	run    JobRun
+	manual bool
+	err    error
+}
+
 func NewController(cfg ControllerConfig) *Controller {
 	return &Controller{
 		cfg:        cfg,
@@ -63,6 +70,9 @@ func (c *Controller) Run() error {
 	}
 
 	debouncer := NewDebouncer(c.cfg.DebounceDelay)
+	scheduler := NewScheduler()
+	batchChan := make(chan TargetSet, 16)
+	doneChan := make(chan runDone, 16)
 
 	var timeoutChan <-chan time.Time
 	if c.cfg.Timeout > 0 {
@@ -83,6 +93,8 @@ func (c *Controller) Run() error {
 	c.showPrompt()
 
 	for {
+		c.drainRunCompletions(scheduler, doneChan)
+
 		select {
 		case input, ok := <-stdinChan:
 			if !ok {
@@ -93,11 +105,9 @@ func (c *Controller) Run() error {
 			switch input {
 			case "":
 				fmt.Fprintln(c.cfg.Stdout, "Running all tests...")
-				if err := ExecuteJob(c.cfg.RunAllJob, c.cfg.Planner.CWD); err != nil {
-					fmt.Fprintf(c.cfg.Stderr, "Failed to run: %v\n", err)
+				if !c.startRun(scheduler, doneChan, c.cfg.RunAllJob, true) {
+					c.showPrompt()
 				}
-				fmt.Fprintln(c.cfg.Stdout)
-				c.showPrompt()
 			case "help":
 				c.printHelp()
 				c.showPrompt()
@@ -138,18 +148,26 @@ func (c *Controller) Run() error {
 
 			logger.Logger.Debug("watch", "path", path, "fullPath", event.PathName, "event", event.EffectType, "type", event.PathType)
 
-			debouncer.Debounce([]string{path}, func(paths []string) {
-				plan := c.cfg.Planner.Plan(paths)
-				for _, run := range plan.Runs {
-					if err := ExecuteJob(run, c.cfg.Planner.CWD); err != nil {
-						logger.Logger.Warn("Job execution error", "job", run.Job.Name, "error", err)
-					}
-				}
-				if len(plan.Runs) > 0 {
-					fmt.Fprintln(c.cfg.Stdout)
-					c.showPrompt()
-				}
+			debouncer.Debounce([]string{path}, func(paths TargetSet) {
+				batchChan <- paths
 			})
+
+		case paths := <-batchChan:
+			c.drainRunCompletions(scheduler, doneChan)
+			plan := c.cfg.Planner.Plan(paths)
+			started := false
+			for _, run := range plan.Runs {
+				if c.startRun(scheduler, doneChan, run, false) {
+					started = true
+				}
+			}
+			if !started && len(plan.Runs) > 0 {
+				fmt.Fprintln(c.cfg.Stdout)
+				c.showPrompt()
+			}
+
+		case done := <-doneChan:
+			c.finishRun(scheduler, done)
 
 		case err := <-c.cfg.Watcher.Errors():
 			return fmt.Errorf("watcher error: %v", err)
@@ -180,6 +198,65 @@ func (c *Controller) Run() error {
 
 		}
 	}
+}
+
+func (c *Controller) startRun(scheduler *Scheduler, doneChan chan<- runDone, run JobRun, manual bool) bool {
+	id, start, skipped := scheduler.Claim(run)
+	c.printSkips(run, start, skipped)
+	if start == nil {
+		return false
+	}
+
+	go func() {
+		doneChan <- runDone{
+			id:     id,
+			run:    *start,
+			manual: manual,
+			err:    ExecuteJob(*start, c.cfg.Planner.CWD),
+		}
+	}()
+	return true
+}
+
+func (c *Controller) finishRun(scheduler *Scheduler, done runDone) {
+	scheduler.Release(done.id)
+	if done.err != nil {
+		if done.manual {
+			fmt.Fprintf(c.cfg.Stderr, "Failed to run: %v\n", done.err)
+		} else {
+			logger.Logger.Warn("Job execution error", "job", done.run.Job.Name, "error", done.err)
+		}
+	}
+	if scheduler.Idle() {
+		fmt.Fprintln(c.cfg.Stdout)
+		c.showPrompt()
+	}
+}
+
+func (c *Controller) drainRunCompletions(scheduler *Scheduler, doneChan <-chan runDone) {
+	for {
+		select {
+		case done := <-doneChan:
+			c.finishRun(scheduler, done)
+		default:
+			return
+		}
+	}
+}
+
+func (c *Controller) printSkips(run JobRun, start *JobRun, skipped TargetSet) {
+	if run.Targets.Len() == 0 && start == nil {
+		fmt.Fprintf(c.cfg.Stdout, "\n[plur] skipped %s reason=running\n", run.Job.Name)
+		logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", "[]")
+		return
+	}
+	if skipped.Len() == 0 {
+		return
+	}
+
+	values := skipped.Values()
+	fmt.Fprintf(c.cfg.Stdout, "\n[plur] skipped %s reason=running\n", strings.Join(values, " "))
+	logger.Logger.Info("Skipped in-flight", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", values))
 }
 
 func (c *Controller) attemptReload() error {
