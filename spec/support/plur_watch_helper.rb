@@ -15,7 +15,7 @@ module PlurWatchHelper
     end
   end
 
-  WatchProcess = Struct.new(:stdin, :out, :err, :ready_state) do
+  WatchProcess = Struct.new(:stdin, :out, :err, :ready_state, :pid) do
     def close_stdin
       stdin.close unless stdin.closed?
     end
@@ -92,7 +92,7 @@ module PlurWatchHelper
         deadline = Time.now + timeout + 5
         streams = [stdout, stderr]
         ready_state = {count: 0, stable_since: nil}
-        process = WatchProcess.new(stdin: stdin, out: out, err: err, ready_state: ready_state)
+        process = WatchProcess.new(stdin: stdin, out: out, err: err, ready_state: ready_state, pid: wait_thr.pid)
 
         while !streams.empty? && Time.now < deadline
           read_available_watch_output(streams, stdout, out, err)

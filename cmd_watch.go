@@ -15,6 +15,7 @@ import (
 	"github.com/rsanheim/plur/embedded"
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/runtime"
+	"github.com/rsanheim/plur/internal/term"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -191,6 +192,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		Watcher:       manager,
 		Signals:       sigChan,
 		Stdin:         os.Stdin,
+		StdinIsTTY:    term.IsStdinTTY(),
 		Stdout:        os.Stdout,
 		Stderr:        os.Stderr,
 		OnStarted:     func() { printWatchInfo(watchDirs) },

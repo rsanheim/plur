@@ -252,7 +252,7 @@ func TestControllerRun_SignalsEndSession(t *testing.T) {
 		sig     os.Signal
 		message string
 	}{
-		{syscall.SIGINT, "Received SIGINT, shutting down gracefully..."},
+		{syscall.SIGINT, "Received SIGINT, stopping active jobs..."},
 		{syscall.SIGTERM, "Received SIGTERM, shutting down gracefully..."},
 	}
 	for _, tc := range cases {

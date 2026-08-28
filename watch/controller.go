@@ -35,6 +35,7 @@ type ControllerConfig struct {
 	Watcher       WatcherSource
 	Signals       <-chan os.Signal
 	Stdin         io.Reader
+	StdinIsTTY    bool
 	Stdout        io.Writer
 	Stderr        io.Writer
 	OnStarted     func()
@@ -74,8 +75,9 @@ func (c *Controller) Run() error {
 	batchChan := make(chan TargetSet, 16)
 	doneChan := make(chan runDone, 16)
 	interruptAlreadyDelivered := false
+	var forceAfter time.Duration
 	defer func() {
-		c.stopRuns(scheduler, doneChan, !interruptAlreadyDelivered)
+		c.stopRuns(scheduler, doneChan, !interruptAlreadyDelivered, forceAfter)
 	}()
 
 	var timeoutChan <-chan time.Time
@@ -184,10 +186,13 @@ func (c *Controller) Run() error {
 		case sig := <-c.cfg.Signals:
 			switch sig {
 			case syscall.SIGINT:
-				// Watch is interactive, so treat SIGINT as terminal Ctrl-C.
-				// Active jobs already received it with the foreground group.
-				interruptAlreadyDelivered = true
-				fmt.Fprintln(c.cfg.Stdout, "Received SIGINT, shutting down gracefully...")
+				if c.cfg.StdinIsTTY {
+					interruptAlreadyDelivered = true
+					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT. Pausing new jobs and waiting for active jobs to finish. Press Ctrl-C again to terminate.")
+				} else {
+					forceAfter = 500 * time.Millisecond
+					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT, stopping active jobs...")
+				}
 				return nil
 			case syscall.SIGTERM:
 				fmt.Fprintln(c.cfg.Stdout, "Received SIGTERM, shutting down gracefully...")
@@ -263,7 +268,7 @@ func (c *Controller) reportRunError(run JobRun, manual bool, err error) {
 	}
 }
 
-func (c *Controller) stopRuns(scheduler *Scheduler, doneChan <-chan runDone, interrupt bool) {
+func (c *Controller) stopRuns(scheduler *Scheduler, doneChan <-chan runDone, interrupt bool, forceAfter time.Duration) {
 	if scheduler.Idle() {
 		return
 	}
@@ -274,19 +279,31 @@ func (c *Controller) stopRuns(scheduler *Scheduler, doneChan <-chan runDone, int
 		}
 	}
 
+	var forceChan <-chan time.Time
+	if forceAfter > 0 {
+		forceChan = time.After(forceAfter)
+	}
+	forceStop := func() {
+		for _, job := range scheduler.RunningJobs() {
+			_ = job.Kill()
+		}
+		for !scheduler.Idle() {
+			done := <-doneChan
+			scheduler.Release(done.id)
+		}
+	}
+
 	for !scheduler.Idle() {
 		select {
 		case done := <-doneChan:
 			scheduler.Release(done.id)
+		case <-forceChan:
+			fmt.Fprintln(c.cfg.Stdout, "Shutdown grace period elapsed, forcing active jobs to stop...")
+			forceStop()
+			return
 		case sig := <-c.cfg.Signals:
 			fmt.Fprintf(c.cfg.Stdout, "Received %v during shutdown, forcing active jobs to stop...\n", sig)
-			for _, job := range scheduler.RunningJobs() {
-				_ = job.Kill()
-			}
-			for !scheduler.Idle() {
-				done := <-doneChan
-				scheduler.Release(done.id)
-			}
+			forceStop()
 			return
 		}
 	}
@@ -308,7 +325,7 @@ func (c *Controller) printSkips(run JobRun, start *JobRun, skipped TargetSet) {
 }
 
 func (c *Controller) attemptReload(scheduler *Scheduler, doneChan <-chan runDone) error {
-	c.stopRuns(scheduler, doneChan, true)
+	c.stopRuns(scheduler, doneChan, true, 0)
 	err := c.cfg.Reload()
 	if err != nil {
 		logger.Logger.Error("Failed to reload", "error", err)

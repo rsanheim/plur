@@ -13,6 +13,11 @@ func IsStdoutTTY() bool {
 	return xterm.IsTerminal(int(os.Stdout.Fd()))
 }
 
+// IsStdinTTY reports whether stdin is attached to a terminal.
+func IsStdinTTY() bool {
+	return xterm.IsTerminal(int(os.Stdin.Fd()))
+}
+
 // ResolveColor turns a color mode (auto|always|never, plus true/false aliases)
 // into an on/off decision and a short source tag. In auto mode, NO_COLOR beats
 // TTY detection.

@@ -43,10 +43,33 @@ RSpec.describe "plur watch process lifecycle" do
     end
   end
 
-  def with_running_job_project
+  it "forwards a non-terminal SIGINT and exits without another signal" do
+    with_running_job_project(interrupt: "File.write('runner.interrupted', 'yes')") do |project|
+      entered = false
+      interrupted = false
+
+      result = capture_plur_watch_process(dir: project, timeout: 10) do |process|
+        if !entered && watch_ready?(process.err, process.ready_state, ready_dirs: :detected)
+          process.stdin.puts("")
+          entered = true
+        elsif entered && !interrupted && process_pid(project)
+          Process.kill("INT", process.pid)
+          interrupted = true
+        end
+      end
+
+      expect(result).to be_success
+      expect(result.out).to include("Received SIGINT, stopping active jobs...")
+      expect(result.out).to include("Shutdown grace period elapsed, forcing active jobs to stop...")
+      expect(project.join("runner.interrupted")).to exist
+      expect_process_gone(project)
+    end
+  end
+
+  def with_running_job_project(interrupt: "exit 130")
     with_temp_watch_project do |project|
       script = <<~RUBY.gsub("\n", "; ")
-        trap('INT') { exit 130 }
+        trap('INT') { #{interrupt} }
         File.write('runner.pid', Process.pid.to_s)
         loop { sleep 1 }
       RUBY

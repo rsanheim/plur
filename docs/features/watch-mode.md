@@ -145,6 +145,7 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 
 - Plur tracks direct child jobs and waits for them to exit
 - The first Ctrl-C lets Plur and test runners stop normally; a second force-stops remaining jobs
+- Without a terminal, SIGINT stops remaining jobs after a short grace period
 - All ordinary shutdown paths reap active jobs; SIGKILL cannot and may leave jobs running
 
 ### Event Types
