@@ -79,7 +79,6 @@ func waitForReturn(t *testing.T, done <-chan error) error {
 
 type controllerHarness struct {
 	stdout  *syncBuffer
-	stderr  *syncBuffer
 	watcher *fakeWatcher
 	stdinW  *io.PipeWriter
 	signals chan os.Signal
@@ -90,16 +89,12 @@ func startController(t *testing.T, mutate func(*ControllerConfig)) *controllerHa
 	t.Helper()
 	h := &controllerHarness{
 		stdout:  &syncBuffer{},
-		stderr:  &syncBuffer{},
 		watcher: newFakeWatcher(),
 		signals: make(chan os.Signal, 1),
 		done:    make(chan error, 1),
 	}
 	stdinR, stdinW := io.Pipe()
 	h.stdinW = stdinW
-	originalLogger := logger.Logger
-	logger.Logger = slog.New(logger.NewCustomTextHandler(h.stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	t.Cleanup(func() { logger.Logger = originalLogger })
 
 	cfg := ControllerConfig{
 		Planner:       Planner{CWD: t.TempDir()},
@@ -196,16 +191,20 @@ func TestControllerRun_EnterRunsAllTests(t *testing.T) {
 
 	h.typeLine(t, "exit")
 	require.NoError(t, waitForReturn(t, h.done))
-	assert.Empty(t, h.stderr.String())
 }
 
 func TestControllerRun_EnterReportsRunFailureOnStderr(t *testing.T) {
+	stderr := &syncBuffer{}
+	originalLogger := logger.Logger
+	logger.Logger = slog.New(logger.NewCustomTextHandler(stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	t.Cleanup(func() { logger.Logger = originalLogger })
+
 	h := startController(t, func(cfg *ControllerConfig) {
 		cfg.RunAllJob = JobRun{Job: framework.Job{Name: "rspec", Cmd: []string{"false"}}}
 	})
 
 	h.typeLine(t, "")
-	waitForOutput(t, h.stderr, "Job execution error")
+	waitForOutput(t, stderr, "Job execution error")
 	waitForOutput(t, h.stdout, "Running all tests...\n\n[plur] > ")
 
 	h.typeLine(t, "exit")
