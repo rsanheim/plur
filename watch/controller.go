@@ -47,7 +47,7 @@ type Controller struct {
 }
 
 type runResult struct {
-	job *RunningJob
+	job *runningJob
 	err error
 }
 
@@ -68,7 +68,7 @@ func (c *Controller) Run() error {
 	}
 
 	debouncer := NewDebouncer(c.cfg.DebounceDelay)
-	scheduler := NewScheduler()
+	scheduler := newScheduler()
 	batchChan := make(chan TargetSet, 16)
 	doneChan := make(chan runResult, 16)
 	interruptAlreadyDelivered := false
@@ -210,39 +210,39 @@ func (c *Controller) Run() error {
 	}
 }
 
-func (c *Controller) startRun(scheduler *Scheduler, doneChan chan<- runResult, run JobRun) bool {
-	ready, skipped := scheduler.Partition(run)
+func (c *Controller) startRun(scheduler *scheduler, doneChan chan<- runResult, run JobRun) bool {
+	ready, skipped := scheduler.partition(run)
 	c.printSkips(skipped)
 	if ready == nil {
 		return false
 	}
 
-	job, err := StartJob(*ready, c.cfg.Planner.CWD)
+	job, err := startJob(*ready, c.cfg.Planner.CWD)
 	if err != nil {
 		c.reportRunError(*ready, err)
 		return false
 	}
-	scheduler.Track(job)
+	scheduler.track(job)
 
 	go func() {
 		doneChan <- runResult{
 			job: job,
-			err: job.Wait(),
+			err: job.wait(),
 		}
 	}()
 	return true
 }
 
-func (c *Controller) finishRun(scheduler *Scheduler, result runResult) {
-	scheduler.Release(result.job)
+func (c *Controller) finishRun(scheduler *scheduler, result runResult) {
+	scheduler.release(result.job)
 	c.reportRunError(result.job.run, result.err)
-	if scheduler.Idle() {
+	if scheduler.idle() {
 		fmt.Fprintln(c.cfg.Stdout)
 		c.showPrompt()
 	}
 }
 
-func (c *Controller) drainRunCompletions(scheduler *Scheduler, doneChan <-chan runResult) {
+func (c *Controller) drainRunCompletions(scheduler *scheduler, doneChan <-chan runResult) {
 	for {
 		select {
 		case done := <-doneChan:
@@ -260,14 +260,14 @@ func (c *Controller) reportRunError(run JobRun, err error) {
 	logger.Logger.Warn("Job execution error", "job", run.Job.Name, "targets", run.Targets.Values(), "error", err)
 }
 
-func (c *Controller) stopRuns(scheduler *Scheduler, doneChan <-chan runResult, interrupt bool, forceAfter time.Duration) {
-	if scheduler.Idle() {
+func (c *Controller) stopRuns(scheduler *scheduler, doneChan <-chan runResult, interrupt bool, forceAfter time.Duration) {
+	if scheduler.idle() {
 		return
 	}
 
 	if interrupt {
-		for _, job := range scheduler.RunningJobs() {
-			_ = job.Interrupt()
+		for _, job := range scheduler.runningJobs() {
+			_ = job.interrupt()
 		}
 	}
 
@@ -276,19 +276,19 @@ func (c *Controller) stopRuns(scheduler *Scheduler, doneChan <-chan runResult, i
 		forceChan = time.After(forceAfter)
 	}
 	forceStop := func() {
-		for _, job := range scheduler.RunningJobs() {
-			_ = job.Kill()
+		for _, job := range scheduler.runningJobs() {
+			_ = job.kill()
 		}
-		for !scheduler.Idle() {
+		for !scheduler.idle() {
 			result := <-doneChan
-			scheduler.Release(result.job)
+			scheduler.release(result.job)
 		}
 	}
 
-	for !scheduler.Idle() {
+	for !scheduler.idle() {
 		select {
 		case result := <-doneChan:
-			scheduler.Release(result.job)
+			scheduler.release(result.job)
 		case <-forceChan:
 			fmt.Fprintln(c.cfg.Stdout, "Shutdown grace period elapsed, forcing active jobs to stop...")
 			forceStop()
@@ -319,7 +319,7 @@ func (c *Controller) printSkips(skipped *JobRun) {
 	logger.Logger.Info("Skipped in-flight", "job", skipped.Job.Name, "targets", fmt.Sprintf("%+v", values))
 }
 
-func (c *Controller) attemptReload(scheduler *Scheduler, doneChan <-chan runResult) error {
+func (c *Controller) attemptReload(scheduler *scheduler, doneChan <-chan runResult) error {
 	c.stopRuns(scheduler, doneChan, true, 0)
 	err := c.cfg.Reload()
 	if err != nil {

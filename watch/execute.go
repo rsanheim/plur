@@ -27,14 +27,14 @@ func CommandString(cmd *exec.Cmd, addedEnv []string) string {
 	return strings.Join(parts, " ")
 }
 
-// The goroutine calling Wait owns process reaping.
-type RunningJob struct {
+// Only the waiting goroutine reaps the child.
+type runningJob struct {
 	cmd     *exec.Cmd
 	run     JobRun
 	started time.Time
 }
 
-func StartJob(run JobRun, cwd string) (*RunningJob, error) {
+func startJob(run JobRun, cwd string) (*runningJob, error) {
 	if len(run.Job.Cmd) == 0 {
 		return nil, fmt.Errorf("job %q must define a command", run.Job.Name)
 	}
@@ -48,19 +48,19 @@ func StartJob(run JobRun, cwd string) (*RunningJob, error) {
 		return nil, err
 	}
 	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", run.Targets.Values()))
-	return &RunningJob{cmd: cmd, run: run, started: time.Now()}, nil
+	return &runningJob{cmd: cmd, run: run, started: time.Now()}, nil
 }
 
-func (j *RunningJob) Wait() error {
+func (j *runningJob) wait() error {
 	err := j.cmd.Wait()
 	logger.Logger.Info("Finished job", "job", j.run.Job.Name, "targets", fmt.Sprintf("%+v", j.run.Targets.Values()), "duration", time.Since(j.started).Round(time.Millisecond))
 	return err
 }
 
-func (j *RunningJob) Interrupt() error {
+func (j *runningJob) interrupt() error {
 	return j.cmd.Process.Signal(os.Interrupt)
 }
 
-func (j *RunningJob) Kill() error {
+func (j *runningJob) kill() error {
 	return j.cmd.Process.Kill()
 }

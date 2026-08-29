@@ -1,19 +1,17 @@
 package watch
 
-// Scheduler tracks the runs currently executing. Controller owns it; callers
-// must not use it from job goroutines.
-type Scheduler struct {
-	inFlight map[*RunningJob]struct{}
+// Controller owns this state; job goroutines must not access it.
+type scheduler struct {
+	inFlight map[*runningJob]struct{}
 }
 
-func NewScheduler() *Scheduler {
-	return &Scheduler{inFlight: make(map[*RunningJob]struct{})}
+func newScheduler() *scheduler {
+	return &scheduler{inFlight: make(map[*runningJob]struct{})}
 }
 
-// Partition returns the part of run that may start. Targeted runs drop targets
-// already running in the same job. Bare runs conflict only with another bare
-// run in the same job.
-func (s *Scheduler) Partition(run JobRun) (ready, skipped *JobRun) {
+// Targeted runs drop targets already running in the same job. Bare runs
+// conflict only with another bare run in the same job.
+func (s *scheduler) partition(run JobRun) (ready, skipped *JobRun) {
 	if run.Targets.Len() == 0 {
 		for active := range s.inFlight {
 			if active.run.Targets.Len() == 0 && active.run.Job.Name == run.Job.Name {
@@ -40,27 +38,27 @@ func (s *Scheduler) Partition(run JobRun) (ready, skipped *JobRun) {
 	return ready, skipped
 }
 
-func (s *Scheduler) Track(job *RunningJob) {
+func (s *scheduler) track(job *runningJob) {
 	s.inFlight[job] = struct{}{}
 }
 
-func (s *Scheduler) Release(job *RunningJob) {
+func (s *scheduler) release(job *runningJob) {
 	delete(s.inFlight, job)
 }
 
-func (s *Scheduler) RunningJobs() []*RunningJob {
-	jobs := make([]*RunningJob, 0, len(s.inFlight))
+func (s *scheduler) runningJobs() []*runningJob {
+	jobs := make([]*runningJob, 0, len(s.inFlight))
 	for job := range s.inFlight {
 		jobs = append(jobs, job)
 	}
 	return jobs
 }
 
-func (s *Scheduler) Idle() bool {
+func (s *scheduler) idle() bool {
 	return len(s.inFlight) == 0
 }
 
-func (s *Scheduler) targetsInFlight(jobName string) TargetSet {
+func (s *scheduler) targetsInFlight(jobName string) TargetSet {
 	var targets []string
 	for active := range s.inFlight {
 		if active.run.Job.Name == jobName {

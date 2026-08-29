@@ -89,9 +89,9 @@ func TestStartJob_BatchesMultipleTargets(t *testing.T) {
 		Targets: NewTargetSet("file1.rb", "file2.rb", "file3.rb"),
 	}
 
-	job, err := StartJob(run, tmpDir)
+	job, err := startJob(run, tmpDir)
 	require.NoError(t, err)
-	require.NoError(t, job.Wait())
+	require.NoError(t, job.wait())
 
 	content, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
@@ -112,9 +112,9 @@ func TestStartJob_Bare(t *testing.T) {
 		},
 	}
 
-	job, err := StartJob(run, tmpDir)
+	job, err := startJob(run, tmpDir)
 	require.NoError(t, err)
-	require.NoError(t, job.Wait())
+	require.NoError(t, job.wait())
 
 	content, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
@@ -133,9 +133,9 @@ func TestStartJob_JobEnvIsApplied(t *testing.T) {
 		},
 	}
 
-	job, err := StartJob(run, tmpDir)
+	job, err := startJob(run, tmpDir)
 	require.NoError(t, err)
-	require.NoError(t, job.Wait())
+	require.NoError(t, job.wait())
 
 	content, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestStartJob_JobEnvIsApplied(t *testing.T) {
 }
 
 func TestStartJob_EmptyCmdErrors(t *testing.T) {
-	_, err := StartJob(JobRun{Job: framework.Job{Name: "broken"}}, t.TempDir())
+	_, err := startJob(JobRun{Job: framework.Job{Name: "broken"}}, t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `job "broken" must define a command`)
 }
