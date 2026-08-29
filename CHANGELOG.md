@@ -1,9 +1,12 @@
 # plur CHANGELOG
 
 ## Unreleased
-* Make watch scheduling target-aware: independent targets can run concurrently while duplicate in-flight targets are skipped.
-* Reap active watch jobs on shutdown, with graceful first Ctrl-C and forced second Ctrl-C.
-* Remove automatic reload from watch rules; explicit `reload` and SIGHUP remain available.
+
+## v0.80.0-rc.4 - 2026-08-29
+* Watch runs independent targets concurrently and skips duplicate in-flight targets [#134](https://github.com/rsanheim/plur/pull/134).
+* Watch stops and reaps active children cleanly on Ctrl-C and other shutdown paths [#135](https://github.com/rsanheim/plur/pull/135).
+* Watch reload is now explicit through `reload` or SIGHUP [#136](https://github.com/rsanheim/plur/pull/136).
+* Windows release builds work again after removing the Unix-only stdin workaround [#133](https://github.com/rsanheim/plur/pull/133).
 
 ## v0.80.0-rc.3 - 2026-08-24
 * Extract watch.Controller: the watch session loop as a testable type [#129](https://github.com/rsanheim/plur/pull/129)
