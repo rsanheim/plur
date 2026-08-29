@@ -249,15 +249,19 @@ func TestControllerRun_StdinEOFThenTimeout(t *testing.T) {
 
 func TestControllerRun_SignalsEndSession(t *testing.T) {
 	cases := []struct {
-		sig     os.Signal
-		message string
+		sig        os.Signal
+		stdinIsTTY bool
+		message    string
 	}{
-		{syscall.SIGINT, "Received SIGINT, stopping active jobs..."},
-		{syscall.SIGTERM, "Received SIGTERM, shutting down gracefully..."},
+		{syscall.SIGINT, false, "Received SIGINT, stopping active jobs..."},
+		{syscall.SIGINT, true, "\nReceived SIGINT. Pausing new jobs and waiting for active jobs.\nPress Ctrl-C again to terminate.\n"},
+		{syscall.SIGTERM, false, "Received SIGTERM, shutting down gracefully..."},
 	}
 	for _, tc := range cases {
 		t.Run(tc.message, func(t *testing.T) {
-			h := startController(t, nil)
+			h := startController(t, func(cfg *ControllerConfig) {
+				cfg.StdinIsTTY = tc.stdinIsTTY
+			})
 
 			h.signals <- tc.sig
 

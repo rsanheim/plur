@@ -188,7 +188,9 @@ func (c *Controller) Run() error {
 			case syscall.SIGINT:
 				if c.cfg.StdinIsTTY {
 					interruptAlreadyDelivered = true
-					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT. Pausing new jobs and waiting for active jobs to finish. Press Ctrl-C again to terminate.")
+					fmt.Fprintln(c.cfg.Stdout)
+					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT. Pausing new jobs and waiting for active jobs.")
+					fmt.Fprintln(c.cfg.Stdout, "Press Ctrl-C again to terminate.")
 				} else {
 					forceAfter = 500 * time.Millisecond
 					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT, stopping active jobs...")
@@ -302,6 +304,9 @@ func (c *Controller) stopRuns(scheduler *Scheduler, doneChan <-chan runDone, int
 			forceStop()
 			return
 		case sig := <-c.cfg.Signals:
+			if c.cfg.StdinIsTTY {
+				fmt.Fprintln(c.cfg.Stdout)
+			}
 			fmt.Fprintf(c.cfg.Stdout, "Received %v during shutdown, forcing active jobs to stop...\n", sig)
 			forceStop()
 			return
