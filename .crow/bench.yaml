@@ -25,7 +25,7 @@ labels:
   platform: linux/amd64
 
 variables:
-  - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+  - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.27.0'
 
 steps:
   - name: bench
@@ -44,7 +44,7 @@ steps:
       # dedicated benchmark volume: targets + results live here, not on /cache
       BENCH_ROOT: /bench/plur
       BENCH_HOST: minibox
-      BENCH_CONTAINER_IMAGE: 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+      BENCH_CONTAINER_IMAGE: 'localhost/clarice-ci-ruby:ruby4.0.5-go1.27.0'
       # renovate: datasource=github-releases depName=goreleaser/goreleaser
       GORELEASER_VERSION: 2.16.0
       # renovate: datasource=github-releases depName=sharkdp/hyperfine
