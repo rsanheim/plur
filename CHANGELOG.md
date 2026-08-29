@@ -2,6 +2,7 @@
 
 ## Unreleased
 * Make watch scheduling target-aware: independent targets can run concurrently while duplicate in-flight targets are skipped.
+* Reap active watch jobs on shutdown, with graceful first Ctrl-C and forced second Ctrl-C.
 * Remove automatic reload from watch rules; explicit `reload` and SIGHUP remain available.
 
 ## v0.80.0-rc.3 - 2026-08-24

@@ -77,7 +77,7 @@ func TestCommandString_NoAddedEnv(t *testing.T) {
 	assert.Equal(t, "rspec", CommandString(cmd, nil))
 }
 
-func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
+func TestStartJob_BatchesMultipleTargets(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "args.txt")
 
@@ -89,8 +89,9 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 		Targets: NewTargetSet("file1.rb", "file2.rb", "file3.rb"),
 	}
 
-	err := ExecuteJob(run, tmpDir)
+	job, err := startJob(run, tmpDir)
 	require.NoError(t, err)
+	require.NoError(t, job.wait())
 
 	content, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
@@ -100,7 +101,7 @@ func TestExecuteJob_BatchesMultipleTargets(t *testing.T) {
 	assert.Contains(t, output, "file3.rb")
 }
 
-func TestExecuteJob_Bare(t *testing.T) {
+func TestStartJob_Bare(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "args.txt")
 
@@ -111,15 +112,16 @@ func TestExecuteJob_Bare(t *testing.T) {
 		},
 	}
 
-	err := ExecuteJob(run, tmpDir)
+	job, err := startJob(run, tmpDir)
 	require.NoError(t, err)
+	require.NoError(t, job.wait())
 
 	content, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
 	assert.Equal(t, "ran\n", string(content))
 }
 
-func TestExecuteJob_JobEnvIsApplied(t *testing.T) {
+func TestStartJob_JobEnvIsApplied(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "env.txt")
 
@@ -131,16 +133,11 @@ func TestExecuteJob_JobEnvIsApplied(t *testing.T) {
 		},
 	}
 
-	err := ExecuteJob(run, tmpDir)
+	job, err := startJob(run, tmpDir)
 	require.NoError(t, err)
+	require.NoError(t, job.wait())
 
 	content, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
 	assert.Equal(t, "from-job-config\n", string(content))
-}
-
-func TestExecuteJob_EmptyCmdErrors(t *testing.T) {
-	err := ExecuteJob(JobRun{Job: framework.Job{Name: "broken"}}, t.TempDir())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `job "broken" must define a command`)
 }

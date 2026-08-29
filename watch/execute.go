@@ -11,11 +11,8 @@ import (
 	"github.com/rsanheim/plur/logger"
 )
 
-// Command builds the ready-to-run command for this job run: argv is
-// Job.Cmd plus targets, env is the inherited environment plus Job.Env
-// (last entry wins), and Dir is cwd. Execution and display both start
-// here so what plur prints is exactly what it runs.
-// Job.Cmd must be non-empty; config-load validation and ExecuteJob enforce this.
+// Execution and display share this path so Plur prints exactly what it runs.
+// Job.Env wins over inherited variables. Job.Cmd must be non-empty.
 func (r JobRun) Command(cwd string) *exec.Cmd {
 	argv := append(slices.Clone(r.Job.Cmd), r.Targets.Values()...)
 	cmd := exec.Command(argv[0], argv[1:]...)
@@ -24,30 +21,42 @@ func (r JobRun) Command(cwd string) *exec.Cmd {
 	return cmd
 }
 
-// CommandString renders a command as a shell-style line: the env vars
-// plur adds (not the inherited environment), then the args.
+// Inherited environment variables are intentionally omitted from display.
 func CommandString(cmd *exec.Cmd, addedEnv []string) string {
 	parts := append(slices.Clone(addedEnv), cmd.Args...)
 	return strings.Join(parts, " ")
 }
 
-// ExecuteJob runs a job run from cwd, streaming output to the terminal.
-// Watch runs jobs concurrently, so matching start/finish lines make overlap
-// visible in log order. The caller logs failures.
-func ExecuteJob(run JobRun, cwd string) error {
-	if len(run.Job.Cmd) == 0 {
-		return fmt.Errorf("job %q must define a command", run.Job.Name)
-	}
-	targets := fmt.Sprintf("%+v", run.Targets.Values())
-	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", targets)
+// Only the waiting goroutine reaps the child.
+type runningJob struct {
+	cmd     *exec.Cmd
+	run     JobRun
+	started time.Time
+}
 
+func startJob(run JobRun, cwd string) (*runningJob, error) {
 	cmd := run.Command(cwd)
 	fmt.Printf("\n[plur] %s\n", CommandString(cmd, run.Job.Env))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	started := time.Now()
-	err := cmd.Run()
-	logger.Logger.Info("Finished job", "job", run.Job.Name, "targets", targets, "duration", time.Since(started).Round(time.Millisecond))
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", run.Targets.Values()))
+	return &runningJob{cmd: cmd, run: run, started: time.Now()}, nil
+}
+
+func (j *runningJob) wait() error {
+	err := j.cmd.Wait()
+	logger.Logger.Info("Finished job", "job", j.run.Job.Name, "targets", fmt.Sprintf("%+v", j.run.Targets.Values()), "duration", time.Since(j.started).Round(time.Millisecond))
 	return err
+}
+
+func (j *runningJob) interrupt() error {
+	return j.cmd.Process.Signal(os.Interrupt)
+}
+
+func (j *runningJob) kill() error {
+	return j.cmd.Process.Kill()
 }

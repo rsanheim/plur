@@ -8,54 +8,69 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestScheduler_TargetClaims(t *testing.T) {
-	scheduler := NewScheduler()
+func TestScheduler_TargetPartitioning(t *testing.T) {
+	scheduler := newScheduler()
 	rspec := framework.Job{Name: "rspec"}
 
-	firstID, first, skipped := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("a_spec.rb", "b_spec.rb")})
+	first, skipped := scheduler.partition(JobRun{Job: rspec, Targets: NewTargetSet("a_spec.rb", "b_spec.rb")})
 	require.NotNil(t, first)
-	assert.Positive(t, firstID)
-	assert.Empty(t, skipped)
+	assert.Nil(t, skipped)
+	firstJob := &runningJob{run: *first}
+	scheduler.track(firstJob)
 
-	secondID, second, skipped := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("b_spec.rb", "c_spec.rb")})
+	second, skipped := scheduler.partition(JobRun{Job: rspec, Targets: NewTargetSet("b_spec.rb", "c_spec.rb")})
 	require.NotNil(t, second)
-	assert.Positive(t, secondID)
+	require.NotNil(t, skipped)
 	assert.Equal(t, []string{"c_spec.rb"}, second.Targets.Values())
-	assert.Equal(t, []string{"b_spec.rb"}, skipped.Values())
+	assert.Equal(t, rspec, second.Job)
+	assert.Equal(t, []string{"b_spec.rb"}, skipped.Targets.Values())
+	assert.Equal(t, rspec, skipped.Job)
+	secondJob := &runningJob{run: *second}
+	scheduler.track(secondJob)
 
-	_, duplicateSecondRun, skipped := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("c_spec.rb")})
+	duplicateSecondRun, skipped := scheduler.partition(JobRun{Job: rspec, Targets: NewTargetSet("c_spec.rb")})
 	assert.Nil(t, duplicateSecondRun)
-	assert.Equal(t, []string{"c_spec.rb"}, skipped.Values())
+	require.NotNil(t, skipped)
+	assert.Equal(t, []string{"c_spec.rb"}, skipped.Targets.Values())
 
-	_, duplicate, skipped := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("a_spec.rb")})
+	duplicate, skipped := scheduler.partition(JobRun{Job: rspec, Targets: NewTargetSet("a_spec.rb")})
 	assert.Nil(t, duplicate)
-	assert.Equal(t, []string{"a_spec.rb"}, skipped.Values())
+	require.NotNil(t, skipped)
+	assert.Equal(t, []string{"a_spec.rb"}, skipped.Targets.Values())
 
-	scheduler.Release(firstID)
-	_, afterRelease, skipped := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("a_spec.rb")})
+	scheduler.release(firstJob)
+	afterRelease, skipped := scheduler.partition(JobRun{Job: rspec, Targets: NewTargetSet("a_spec.rb")})
 	require.NotNil(t, afterRelease)
-	assert.Empty(t, skipped)
+	assert.Nil(t, skipped)
 }
 
 func TestScheduler_IndependentJobsAndBareLane(t *testing.T) {
-	scheduler := NewScheduler()
+	scheduler := newScheduler()
 	rspec := framework.Job{Name: "rspec"}
 	rubocop := framework.Job{Name: "rubocop"}
 
-	_, targeted, _ := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("user.rb")})
+	targeted, skipped := scheduler.partition(JobRun{Job: rspec, Targets: NewTargetSet("user.rb")})
 	require.NotNil(t, targeted)
+	assert.Nil(t, skipped)
+	scheduler.track(&runningJob{run: *targeted})
 
-	_, otherJob, _ := scheduler.Claim(JobRun{Job: rubocop, Targets: NewTargetSet("user.rb")})
+	otherJob, skipped := scheduler.partition(JobRun{Job: rubocop, Targets: NewTargetSet("user.rb")})
 	require.NotNil(t, otherJob)
+	assert.Nil(t, skipped)
+	scheduler.track(&runningJob{run: *otherJob})
 
-	bareID, bare, _ := scheduler.Claim(JobRun{Job: rspec})
+	bare, skipped := scheduler.partition(JobRun{Job: rspec})
 	require.NotNil(t, bare)
-	assert.Positive(t, bareID)
+	assert.Nil(t, skipped)
+	scheduler.track(&runningJob{run: *bare})
 
-	_, duplicate, skipped := scheduler.Claim(JobRun{Job: rspec})
+	duplicate, skipped := scheduler.partition(JobRun{Job: rspec})
 	assert.Nil(t, duplicate)
-	assert.Empty(t, skipped)
+	require.NotNil(t, skipped)
+	assert.Equal(t, rspec, skipped.Job)
+	assert.Empty(t, skipped.Targets.Values())
 
-	_, besideBare, _ := scheduler.Claim(JobRun{Job: rspec, Targets: NewTargetSet("account.rb")})
+	besideBare, skipped := scheduler.partition(JobRun{Job: rspec, Targets: NewTargetSet("account.rb")})
 	require.NotNil(t, besideBare)
+	assert.Nil(t, skipped)
 }

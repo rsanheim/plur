@@ -8,14 +8,15 @@ import (
 	xterm "golang.org/x/term"
 )
 
-// IsStdoutTTY reports whether stdout is attached to a terminal.
 func IsStdoutTTY() bool {
 	return xterm.IsTerminal(int(os.Stdout.Fd()))
 }
 
-// ResolveColor turns a color mode (auto|always|never, plus true/false aliases)
-// into an on/off decision and a short source tag. In auto mode, NO_COLOR beats
-// TTY detection.
+func IsStdinTTY() bool {
+	return xterm.IsTerminal(int(os.Stdin.Fd()))
+}
+
+// In auto mode, NO_COLOR beats TTY detection.
 func ResolveColor(mode string, stdoutIsTTY bool) (bool, string) {
 	switch mode {
 	case "always", "true":

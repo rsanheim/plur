@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/internal/framework"
+	"github.com/rsanheim/plur/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,7 +79,6 @@ func waitForReturn(t *testing.T, done <-chan error) error {
 
 type controllerHarness struct {
 	stdout  *syncBuffer
-	stderr  *syncBuffer
 	watcher *fakeWatcher
 	stdinW  *io.PipeWriter
 	signals chan os.Signal
@@ -88,7 +89,6 @@ func startController(t *testing.T, mutate func(*ControllerConfig)) *controllerHa
 	t.Helper()
 	h := &controllerHarness{
 		stdout:  &syncBuffer{},
-		stderr:  &syncBuffer{},
 		watcher: newFakeWatcher(),
 		signals: make(chan os.Signal, 1),
 		done:    make(chan error, 1),
@@ -104,7 +104,6 @@ func startController(t *testing.T, mutate func(*ControllerConfig)) *controllerHa
 		Signals:       h.signals,
 		Stdin:         stdinR,
 		Stdout:        h.stdout,
-		Stderr:        h.stderr,
 		Reload:        func() error { return nil },
 	}
 	if mutate != nil {
@@ -168,7 +167,6 @@ func TestControllerRun_AnnouncesStartedOnlyAfterWatcherStarts(t *testing.T) {
 			Signals:   make(chan os.Signal),
 			Stdin:     strings.NewReader(""),
 			Stdout:    io.Discard,
-			Stderr:    io.Discard,
 			Reload:    func() error { return nil },
 			OnStarted: func() { announced.Store(true) },
 		})
@@ -193,16 +191,20 @@ func TestControllerRun_EnterRunsAllTests(t *testing.T) {
 
 	h.typeLine(t, "exit")
 	require.NoError(t, waitForReturn(t, h.done))
-	assert.Empty(t, h.stderr.String())
 }
 
 func TestControllerRun_EnterReportsRunFailureOnStderr(t *testing.T) {
+	stderr := &syncBuffer{}
+	originalLogger := logger.Logger
+	logger.Logger = slog.New(logger.NewCustomTextHandler(stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	t.Cleanup(func() { logger.Logger = originalLogger })
+
 	h := startController(t, func(cfg *ControllerConfig) {
 		cfg.RunAllJob = JobRun{Job: framework.Job{Name: "rspec", Cmd: []string{"false"}}}
 	})
 
 	h.typeLine(t, "")
-	waitForOutput(t, h.stderr, "Failed to run:")
+	waitForOutput(t, stderr, "Job execution error")
 	waitForOutput(t, h.stdout, "Running all tests...\n\n[plur] > ")
 
 	h.typeLine(t, "exit")
@@ -249,15 +251,19 @@ func TestControllerRun_StdinEOFThenTimeout(t *testing.T) {
 
 func TestControllerRun_SignalsEndSession(t *testing.T) {
 	cases := []struct {
-		sig     os.Signal
-		message string
+		sig        os.Signal
+		stdinIsTTY bool
+		message    string
 	}{
-		{syscall.SIGINT, "Received SIGINT, shutting down gracefully..."},
-		{syscall.SIGTERM, "Received SIGTERM, shutting down gracefully..."},
+		{syscall.SIGINT, false, "Received SIGINT, stopping active jobs..."},
+		{syscall.SIGINT, true, "\nReceived SIGINT. Pausing new jobs and waiting for active jobs.\nPress Ctrl-C again to terminate.\n"},
+		{syscall.SIGTERM, false, "Received SIGTERM, shutting down gracefully..."},
 	}
 	for _, tc := range cases {
 		t.Run(tc.message, func(t *testing.T) {
-			h := startController(t, nil)
+			h := startController(t, func(cfg *ControllerConfig) {
+				cfg.StdinIsTTY = tc.stdinIsTTY
+			})
 
 			h.signals <- tc.sig
 
