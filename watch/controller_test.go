@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/internal/framework"
+	"github.com/rsanheim/plur/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,6 +97,9 @@ func startController(t *testing.T, mutate func(*ControllerConfig)) *controllerHa
 	}
 	stdinR, stdinW := io.Pipe()
 	h.stdinW = stdinW
+	originalLogger := logger.Logger
+	logger.Logger = slog.New(logger.NewCustomTextHandler(h.stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	t.Cleanup(func() { logger.Logger = originalLogger })
 
 	cfg := ControllerConfig{
 		Planner:       Planner{CWD: t.TempDir()},
@@ -104,7 +109,6 @@ func startController(t *testing.T, mutate func(*ControllerConfig)) *controllerHa
 		Signals:       h.signals,
 		Stdin:         stdinR,
 		Stdout:        h.stdout,
-		Stderr:        h.stderr,
 		Reload:        func() error { return nil },
 	}
 	if mutate != nil {
@@ -168,7 +172,6 @@ func TestControllerRun_AnnouncesStartedOnlyAfterWatcherStarts(t *testing.T) {
 			Signals:   make(chan os.Signal),
 			Stdin:     strings.NewReader(""),
 			Stdout:    io.Discard,
-			Stderr:    io.Discard,
 			Reload:    func() error { return nil },
 			OnStarted: func() { announced.Store(true) },
 		})
@@ -202,7 +205,7 @@ func TestControllerRun_EnterReportsRunFailureOnStderr(t *testing.T) {
 	})
 
 	h.typeLine(t, "")
-	waitForOutput(t, h.stderr, "Failed to run:")
+	waitForOutput(t, h.stderr, "Job execution error")
 	waitForOutput(t, h.stdout, "Running all tests...\n\n[plur] > ")
 
 	h.typeLine(t, "exit")

@@ -27,15 +27,6 @@ func CommandString(cmd *exec.Cmd, addedEnv []string) string {
 	return strings.Join(parts, " ")
 }
 
-// Matching start/finish logs make concurrent overlap visible. The caller logs failures.
-func ExecuteJob(run JobRun, cwd string) error {
-	job, err := StartJob(run, cwd)
-	if err != nil {
-		return err
-	}
-	return job.Wait()
-}
-
 // The goroutine calling Wait owns process reaping.
 type RunningJob struct {
 	cmd     *exec.Cmd
@@ -47,8 +38,6 @@ func StartJob(run JobRun, cwd string) (*RunningJob, error) {
 	if len(run.Job.Cmd) == 0 {
 		return nil, fmt.Errorf("job %q must define a command", run.Job.Name)
 	}
-	targets := fmt.Sprintf("%+v", run.Targets.Values())
-	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", targets)
 
 	cmd := run.Command(cwd)
 	fmt.Printf("\n[plur] %s\n", CommandString(cmd, run.Job.Env))
@@ -58,6 +47,7 @@ func StartJob(run JobRun, cwd string) (*RunningJob, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
+	logger.Logger.Info("Executing job", "job", run.Job.Name, "targets", fmt.Sprintf("%+v", run.Targets.Values()))
 	return &RunningJob{cmd: cmd, run: run, started: time.Now()}, nil
 }
 

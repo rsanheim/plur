@@ -194,7 +194,6 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		Stdin:         os.Stdin,
 		StdinIsTTY:    term.IsStdinTTY(),
 		Stdout:        os.Stdout,
-		Stderr:        os.Stderr,
 		OnStarted:     func() { printWatchInfo(watchDirs) },
 		Reload:        func() error { return reload(manager) },
 	}).Run()
