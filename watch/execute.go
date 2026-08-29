@@ -35,10 +35,6 @@ type runningJob struct {
 }
 
 func startJob(run JobRun, cwd string) (*runningJob, error) {
-	if len(run.Job.Cmd) == 0 {
-		return nil, fmt.Errorf("job %q must define a command", run.Job.Name)
-	}
-
 	cmd := run.Command(cwd)
 	fmt.Printf("\n[plur] %s\n", CommandString(cmd, run.Job.Env))
 	cmd.Stdout = os.Stdout

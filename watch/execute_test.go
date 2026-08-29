@@ -141,9 +141,3 @@ func TestStartJob_JobEnvIsApplied(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "from-job-config\n", string(content))
 }
-
-func TestStartJob_EmptyCmdErrors(t *testing.T) {
-	_, err := startJob(JobRun{Job: framework.Job{Name: "broken"}}, t.TempDir())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `job "broken" must define a command`)
-}
