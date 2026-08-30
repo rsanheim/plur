@@ -4,7 +4,6 @@
 # ci.yaml to stay off the build path. It waits for the shared toolchain image;
 # the repo needs Crow's Volumes trust flag for this workflow and Security trust
 # for the image-builder workflow.
-#
 # Footgun: Crow substitutes dollar-brace vars over the whole file (comments too),
 # so commands use bare $VAR (shell-expanded); only Crow builtins use braces.
 when:
