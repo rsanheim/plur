@@ -1,0 +1,44 @@
+labels:
+  platform: linux/amd64
+
+when:
+  - event: pull_request
+  - event: push
+    branch: ${CI_REPO_DEFAULT_BRANCH}
+  - event: manual
+  - event: cron
+    cron: nightly-bench
+
+steps:
+  - name: build-ci-images
+    image: localhost/shared-ci-image-builder:v1
+    privileged: true
+    volumes:
+      - /run/user/1000/podman/podman.sock:/run/podman/podman.sock
+    settings:
+      rebuild_key: '1'
+    when:
+      - event: manual
+      - event: pull_request
+        evaluate: >-
+          CI_REPO == "rsanheim/plur" &&
+          CI_PIPELINE_AUTHOR == "rsanheim"
+        path:
+          include:
+            - .mise.toml
+            - ci/images/*.Containerfile
+            - .crow/ci-images.yaml
+          on_empty: false
+      - event: push
+        branch: ${CI_REPO_DEFAULT_BRANCH}
+        path:
+          include:
+            - .mise.toml
+            - ci/images/*.Containerfile
+            - .crow/ci-images.yaml
+          on_empty: false
+
+  - name: no-op
+    image: docker.io/library/busybox:1.37.0
+    commands:
+      - 'echo "no CI image change; base image already current"'
