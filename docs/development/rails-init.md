@@ -24,13 +24,13 @@ Supports `--dry-run` (shows diffs without writing) and is idempotent (detects al
 
 ### Regex-based YAML parsing
 
-The biggest architectural limitation. We parse `database.yml` and `cable.yml` line-by-line with regexes because these files contain ERB, which means we can't use a real YAML parser. This works well for the common cases but has known gaps:
+The biggest architectural limitation. We parse `database.yml` and `cable.yml` line-by-line with regexes because these files can contain ERB, which means we can't use a real YAML parser. This works well for the common cases but has known gaps:
 
 * Doesn't handle database names that span multiple lines or use YAML flow style
 * Doesn't handle cases where the database name is inherited from `&default` anchor with no explicit `database:` line in the test section -- we warn instead of trying to inject one
 * Can't reason about YAML structure deeply (e.g., distinguishing a `database:` key nested 3 levels deep from one nested 2 levels)
 
-For v1 this is fine because real-world `database.yml` files are extremely consistent in format (Rails generators produce them). But it's the thing most likely to bite us on weird edge cases.
+For v1 this is fine because most real-world `database.yml` files are extremely consistent in format. 
 
 ### No sqlite3 support
 
@@ -38,8 +38,7 @@ Deliberately skipped. Apps using sqlite3 for testing are typically small/new and
 
 ### No .env file modification
 
-`.env.test` and `.env.test.local` files are detected and warned about but not modified. The formats are too varied (dotenv, figaro, custom parsers) and the risk of breaking something is higher than the value of auto-fixing.
-
+`.env.test` and `.env.test.local` files are detected and warned about but not modified - too much risk with touching these.
 ### No initializer modification
 
 Ruby initializers for sidekiq, elasticsearch, searchkick, etc. are warned about but not touched. These are full Ruby files with arbitrary logic -- regex transformation would be fragile and dangerous.
@@ -49,20 +48,6 @@ Ruby initializers for sidekiq, elasticsearch, searchkick, etc. are warned about 
 ActiveStorage disk paths *can* collide in parallel testing, but it's uncommon in practice (most test suites use fake/stub storage or the collision is harmless). Low priority.
 
 ## Future Directions
-
-### Auto-transform REDIS_URL in .env.test
-
-The most impactful next addition. `.env.test` files have a predictable `KEY=value` format, and `REDIS_URL` transformation is straightforward:
-
-```
-# Before
-REDIS_URL=redis://localhost:6379/0
-
-# After
-REDIS_URL=redis://localhost:6379/<%= ENV.fetch('TEST_ENV_NUMBER', 0) %>
-```
-
-The main question is whether `.env.test` files support ERB. Standard dotenv does not -- it treats values as literal strings. So the transformation would need to be different, probably injecting shell-style interpolation or documenting that the app needs to handle this in code. This needs investigation into what dotenv gems actually support.
 
 ### Ruby parser-based approach
 
@@ -86,28 +71,6 @@ Things we could detect and offer guidance or auto-configuration for:
 
 * *Memcached* -- namespace per worker. Usually configured in `config/environments/test.rb` via `config.cache_store`
 * *MongoDB* (Mongoid) -- separate database name per worker, similar to database.yml pattern but in `config/mongoid.yml`
-* *Kafka* -- topic prefix per worker, but this is rare in test suites
 * *S3/ActiveStorage* -- bucket prefix or path prefix per worker
 
 Most of these follow the same pattern: find the config, append `TEST_ENV_NUMBER` to a name/path/prefix. The detection is easy; the transformation varies by config format.
-
-### Interactive mode
-
-Currently the command is fully non-interactive (consistent with plur's design). An interactive mode that walks through each change and asks "apply this? [y/n]" could be useful for cautious adopters, but it's a different UX paradigm than anything else in plur. Probably not worth it unless users ask for it.
-
-### Validation / verify mode
-
-A `plur rails:check` or `plur rails:init --check` that verifies the project is correctly configured without making changes. Would return exit code 0 if everything looks good, non-zero with specific messages about what's missing. Useful for CI to enforce that parallel config stays correct.
-
-### Smarter database.yml handling
-
-* Detect when the test section inherits `database:` from an anchor and there's no explicit override -- could suggest adding one
-* Handle `url:` style database configuration (common with `DATABASE_URL` pattern) in addition to `database:` key
-* Detect and handle the Rails `database.yml` pattern that uses `ENV.fetch("DATABASE_URL")` with fallback
-
-## Implementation Notes
-
-* Command is registered as a flat `name:"rails:init"` command, not a nested subcommand. This keeps the invocation as `plur rails:init` with a colon.
-* Core transformation functions (`transformDatabaseYml`, `insertTestEnvNumber`, etc.) are pure functions that take strings and return strings, making them easy to unit test without filesystem setup.
-* The two-pass approach in `transformDatabaseYml` (first pass checks if already configured, second pass transforms) keeps the idempotency logic clean.
-* Go unit tests cover the transformation logic; Ruby integration tests cover the full command behavior including file I/O, dry-run, and error cases.
