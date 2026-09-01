@@ -16,7 +16,8 @@ func TestParseLine_SuiteStarted(t *testing.T) {
 
 	assert.True(t, consumed)
 	require.Len(t, notifications, 1)
-	suite := notifications[0].(types.SuiteNotification)
+	suite, ok := notifications[0].(types.SuiteNotification)
+	require.True(t, ok)
 	assert.Equal(t, types.SuiteStarted, suite.Event)
 	assert.Greater(t, suite.LoadTime, time.Duration(0))
 }
@@ -67,7 +68,8 @@ func TestParseLine_TestResults(t *testing.T) {
 
 			assert.True(t, consumed)
 			require.Len(t, notifications, 1)
-			test := notifications[0].(types.TestCaseNotification)
+			test, ok := notifications[0].(types.TestCaseNotification)
+			require.True(t, ok)
 			assert.Equal(t, tc.event, test.Event)
 			assert.Equal(t, tc.status, test.Status)
 			assert.Equal(t, "test/foo_test.rb", test.FilePath)
@@ -87,7 +89,8 @@ func TestParseLine_TestResultCarriesIdentityAndLocation(t *testing.T) {
 	notifications, _ := parser.ParseLine(line)
 
 	require.Len(t, notifications, 1)
-	test := notifications[0].(types.TestCaseNotification)
+	test, ok := notifications[0].(types.TestCaseNotification)
+	require.True(t, ok)
 	assert.Equal(t, "FooTest#test_pass", test.TestID)
 	assert.Equal(t, "FooTest#test_pass", test.FullDescription)
 	assert.Equal(t, "test/foo_test.rb:5", test.Location)
@@ -104,9 +107,10 @@ func TestParseLine_TestResultWithoutSourceLocation(t *testing.T) {
 
 	assert.True(t, consumed)
 	require.Len(t, notifications, 1)
-	test := notifications[0].(types.TestCaseNotification)
-	assert.Equal(t, "", test.FilePath)
-	assert.Equal(t, "", test.Location)
+	test, ok := notifications[0].(types.TestCaseNotification)
+	require.True(t, ok)
+	assert.Empty(t, test.FilePath)
+	assert.Empty(t, test.Location)
 }
 
 func TestParseLine_DumpFailures(t *testing.T) {
@@ -117,7 +121,8 @@ func TestParseLine_DumpFailures(t *testing.T) {
 
 	assert.True(t, consumed)
 	require.Len(t, notifications, 1)
-	failures := notifications[0].(types.FormattedFailuresNotification)
+	failures, ok := notifications[0].(types.FormattedFailuresNotification)
+	require.True(t, ok)
 	assert.Contains(t, failures.Content, "‽) Failure:")
 	assert.Contains(t, failures.Content, "FooTest#test_fail [test/foo_test.rb:10]:")
 }
@@ -130,7 +135,8 @@ func TestParseLine_Summary(t *testing.T) {
 
 	assert.True(t, consumed)
 	require.Len(t, notifications, 1)
-	suite := notifications[0].(types.SuiteNotification)
+	suite, ok := notifications[0].(types.SuiteNotification)
+	require.True(t, ok)
 	assert.Equal(t, types.SuiteFinished, suite.Event)
 	assert.Equal(t, 9, suite.TestCount)
 	assert.Equal(t, 8, suite.AssertionCount)

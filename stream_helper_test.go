@@ -72,7 +72,7 @@ func TestStreamTestOutput_HelperProcess(t *testing.T) {
 
 	// Expect args: ... -test.run=TestStreamTestOutput_HelperProcess -- <size>
 	sizeStr := ""
-	for i := 0; i < len(os.Args); i++ {
+	for i := range len(os.Args) {
 		if os.Args[i] == "--" && i+1 < len(os.Args) {
 			sizeStr = os.Args[i+1]
 			break

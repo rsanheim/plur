@@ -20,10 +20,10 @@ func FormatFailedExamples(failures []FailureDetail) string {
 	var sb strings.Builder
 
 	for _, failure := range failures {
-		sb.WriteString(fmt.Sprintf("rspec %s:%d # %s\n",
+		fmt.Fprintf(&sb, "rspec %s:%d # %s\n",
 			failure.FilePath,
 			failure.LineNumber,
-			failure.Description))
+			failure.Description)
 	}
 
 	return sb.String()

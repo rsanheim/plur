@@ -246,7 +246,7 @@ func nestedConfigSpecForFlag(flag *kong.Flag) (nestedKeySpec, bool) {
 }
 
 func structFieldKeys(typ reflect.Type) map[string]struct{} {
-	for typ.Kind() == reflect.Ptr {
+	for typ.Kind() == reflect.Pointer {
 		typ = typ.Elem()
 	}
 	if typ.Kind() != reflect.Struct {
@@ -254,7 +254,7 @@ func structFieldKeys(typ reflect.Type) map[string]struct{} {
 	}
 
 	allowed := make(map[string]struct{})
-	for i := 0; i < typ.NumField(); i++ {
+	for i := range typ.NumField() {
 		field := typ.Field(i)
 		if field.PkgPath != "" && !field.Anonymous {
 			continue

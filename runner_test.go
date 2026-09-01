@@ -269,7 +269,7 @@ func TestRunner_DryRunReturnsNil(t *testing.T) {
 	require.NoError(t, err)
 	results, wallTime, err := runner.Run()
 
-	assert.Nil(t, err, "dry-run should not error")
+	require.NoError(t, err, "dry-run should not error")
 	assert.Nil(t, results, "dry-run should return nil results")
 	assert.Equal(t, int64(0), wallTime.Nanoseconds(), "dry-run should return zero wall time")
 }
@@ -292,7 +292,7 @@ func TestRunner_WorkerCountAdjustment(t *testing.T) {
 		runner, err := NewRunner(cfg, files, testJob, nil)
 		require.NoError(t, err)
 		groups := runner.groupFiles()
-		assert.Equal(t, 2, len(groups), "should have 2 groups")
+		assert.Len(t, groups, 2, "should have 2 groups")
 
 		// Run should work without error
 		_, _, err = runner.Run()
@@ -339,7 +339,7 @@ func TestRunner_EmptyFiles(t *testing.T) {
 	results, wallTime, err := runner.Run()
 
 	// Empty files should still work (no workers spawned)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, results)
 	assert.Equal(t, int64(0), wallTime.Nanoseconds())
 }
@@ -372,7 +372,7 @@ func TestRunner_RunCommandPreservesSuiteCounts(t *testing.T) {
 	}
 
 	cmd := exec.Command("sh", "-c", "echo suite:counts")
-	result := runner.runCommand(context.Background(), 0, cmd, nil)
+	result := runner.runCommand(0, cmd, nil)
 
 	assert.Equal(t, 5, result.ExampleCount)
 	assert.Equal(t, 23, result.AssertionCount)
@@ -555,19 +555,14 @@ func TestRunnerRunArgsPerWorkerReturnsErrorWhenWorkerFails(t *testing.T) {
 // Helper functions for env assertions
 func assertEnvContains(t *testing.T, env []string, expected string) {
 	t.Helper()
-	for _, e := range env {
-		if e == expected {
-			return
-		}
-	}
-	assert.Fail(t, "env should contain %q", expected)
+	assert.Contains(t, env, expected)
 }
 
 func assertEnvNotContains(t *testing.T, env []string, prefix string) {
 	t.Helper()
 	for _, e := range env {
-		if len(e) >= len(prefix) && e[:len(prefix)] == prefix {
-			assert.Fail(t, "env should not contain %q but found %q", prefix, e)
+		if strings.HasPrefix(e, prefix) {
+			t.Errorf("env should not contain %q but found %q", prefix, e)
 		}
 	}
 }

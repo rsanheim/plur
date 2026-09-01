@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -229,7 +230,7 @@ func (r *Runner) buildArgsPerWorkerCommands(ctx context.Context, args []string) 
 	}
 
 	commands := make([]*exec.Cmd, r.config.WorkerCount)
-	for i := 0; i < r.config.WorkerCount; i++ {
+	for i := range r.config.WorkerCount {
 		cmdArgs := make([]string, 0, len(r.job.Cmd)+len(args))
 		cmdArgs = append(cmdArgs, r.job.Cmd...)
 		cmdArgs = append(cmdArgs, args...)
@@ -278,7 +279,6 @@ func (r *Runner) frameworkLabel() string {
 
 func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
 	start := time.Now()
-	ctx := context.Background()
 
 	results := make(chan WorkerResult, len(commands))
 	outputChan := make(chan OutputMessage, len(commands)*10)
@@ -293,7 +293,7 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 		workerIdx := i
 		workerCmd := cmd
 		wg.Go(func() {
-			result := r.runCommand(ctx, workerIdx, workerCmd, outputChan)
+			result := r.runCommand(workerIdx, workerCmd, outputChan)
 			results <- result
 		})
 	}
@@ -319,7 +319,7 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	return allResults, time.Since(start)
 }
 
-func (r *Runner) runCommand(ctx context.Context, workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
+func (r *Runner) runCommand(workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
 	logger.Logger.Info("running", "cmd", dryRunString(cmd), "worker", workerIdx)
 
 	stdout, err := cmd.StdoutPipe()
@@ -387,14 +387,14 @@ func (r *Runner) Tracker() *testruntime.RuntimeTracker {
 // GetTestEnvNumber returns the TEST_ENV_NUMBER for a given worker index
 func GetTestEnvNumber(workerIndex int, config *config.GlobalConfig) string {
 	if config.FirstIs1 {
-		return fmt.Sprintf("%d", workerIndex+1)
+		return strconv.Itoa(workerIndex + 1)
 	}
 
 	// if first-is-1 is false, the first worker gets "", others get 2,3,4...
 	if workerIndex == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d", workerIndex+1)
+	return strconv.Itoa(workerIndex + 1)
 }
 
 // outputAggregator handles all output from workers to avoid lock contention

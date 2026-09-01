@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -57,7 +58,7 @@ var registry = map[string]Framework{
 func Get(name string) (Framework, error) {
 	normalized := Normalize(name)
 	if normalized == "" {
-		return Framework{}, fmt.Errorf("framework is required")
+		return Framework{}, errors.New("framework is required")
 	}
 	if fw, ok := registry[normalized]; ok {
 		return fw, nil
@@ -91,7 +92,7 @@ func DetectPatterns(name string) []string {
 // (see BuildRunArgs).
 func minitestDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
 	if cfg == nil || cfg.ConfigPaths == nil {
-		return nil, fmt.Errorf("config paths are required for minitest plugin")
+		return nil, errors.New("config paths are required for minitest plugin")
 	}
 
 	loadPath, err := minitest.GetPluginLoadPath(cfg.ConfigPaths.RubyLibDir)
@@ -104,7 +105,7 @@ func minitestDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
 
 func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
 	if cfg == nil || cfg.ConfigPaths == nil {
-		return nil, fmt.Errorf("config paths are required for rspec formatter")
+		return nil, errors.New("config paths are required for rspec formatter")
 	}
 
 	args := []string{}

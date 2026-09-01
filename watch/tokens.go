@@ -49,7 +49,7 @@ func BuildTokens(path string, sourcePattern string) Tokens {
 	if dir == "." {
 		dir = "./"
 	} else if !strings.HasSuffix(dir, "/") {
-		dir = dir + "/"
+		dir += "/"
 	}
 
 	// Calculate directory relative to source base
@@ -57,7 +57,7 @@ func BuildTokens(path string, sourcePattern string) Tokens {
 	if dirRelative == "." {
 		dirRelative = ""
 	} else if !strings.HasSuffix(dirRelative, "/") {
-		dirRelative = dirRelative + "/"
+		dirRelative += "/"
 	}
 
 	// Calculate match (relative path without extension)

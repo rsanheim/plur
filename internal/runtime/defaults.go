@@ -2,6 +2,7 @@ package runtime
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -69,7 +70,7 @@ func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("no default spec/test files found using default patterns")
+	return "", errors.New("no default spec/test files found using default patterns")
 }
 
 // detectIgnoredDirs are never descended into when checking for test file
@@ -96,7 +97,7 @@ func anyFileMatches(pattern string) (bool, error) {
 	found := false
 	err := filepath.WalkDir(base, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			return nil
+			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
 		}
 		if d.IsDir() {
 			if path != base && detectIgnoredDirs[d.Name()] {
@@ -106,7 +107,7 @@ func anyFileMatches(pattern string) (bool, error) {
 		}
 		rel, relErr := filepath.Rel(base, path)
 		if relErr != nil {
-			return nil
+			return nil //nolint:nilerr // a path that cannot be made relative cannot match
 		}
 		matched, matchErr := doublestar.Match(rest, filepath.ToSlash(rel))
 		if matchErr != nil {

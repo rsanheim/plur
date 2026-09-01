@@ -30,7 +30,7 @@ func (dm *DependencyManager) InstallDependencies() error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error running bundle install: %v", err)
+		return fmt.Errorf("error running bundle install: %w", err)
 	}
 
 	return nil

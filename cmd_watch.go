@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -148,7 +150,7 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 	logger.Logger.Debug("Watch directories after filtering", "dirs", watchDirs)
 
 	if len(watchDirs) == 0 {
-		return fmt.Errorf("no directories to watch found in watch mappings")
+		return errors.New("no directories to watch found in watch mappings")
 	}
 
 	logger.Logger.Debug("Global watch ignore patterns", "patterns", planner.IgnorePatterns)
@@ -169,12 +171,12 @@ func runWatchWithConfig(globalConfig *config.GlobalConfig, runCmd *WatchRunCmd, 
 		"debounce", runCmd.Debounce,
 		"timeout", runCmd.Timeout)
 	if runCmd.Timeout > 0 {
-		logger.Logger.Debug("plur in timeout mode - with auto exit after " + fmt.Sprintf("%d", runCmd.Timeout) + " seconds")
+		logger.Logger.Debug("plur in timeout mode - with auto exit after " + strconv.Itoa(runCmd.Timeout) + " seconds")
 	}
 
 	watcherPath, err := watch.GetWatcherBinaryPath(globalConfig.ConfigPaths.BinDir)
 	if err != nil {
-		return fmt.Errorf("failed to find watcher binary: %v", err)
+		return fmt.Errorf("failed to find watcher binary: %w", err)
 	}
 
 	manager := watch.NewWatcherManager(&watch.ManagerConfig{

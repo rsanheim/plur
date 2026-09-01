@@ -173,7 +173,7 @@ func (c *Controller) Run() error {
 			c.finishRun(scheduler, done)
 
 		case err := <-c.cfg.Watcher.Errors():
-			return fmt.Errorf("watcher error: %v", err)
+			return fmt.Errorf("watcher error: %w", err)
 
 		case <-timeoutChan:
 			logger.Logger.Info("plur timeout reached, exiting!", "event", "timeout", "timeout", int(c.cfg.Timeout.Seconds()))

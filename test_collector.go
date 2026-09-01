@@ -46,6 +46,7 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 				collector.failures = append(collector.failures, tc)
 			case types.TestPending:
 				collector.pending = append(collector.pending, tc)
+			default:
 			}
 		}
 	case types.SuiteStarted:

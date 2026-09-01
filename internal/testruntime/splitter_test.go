@@ -233,7 +233,7 @@ func assertLinesAscending(t *testing.T, target string) {
 func splitColons(s string) []string {
 	var out []string
 	start := 0
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] == ':' {
 			out = append(out, s[start:i])
 			start = i + 1
@@ -274,7 +274,7 @@ func TestSplitFile_DeterministicAcrossRepeatedCalls(t *testing.T) {
 		"f": {LineNumber: 30, RuntimeSeconds: 1.0},
 	})
 	first := c.SplitFile("spec/slow.rb", 3, 1.0)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		again := c.SplitFile("spec/slow.rb", 3, 1.0)
 		assert.Equal(t, first, again, "iteration %d diverged", i)
 	}

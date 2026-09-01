@@ -99,8 +99,8 @@ func (w *Watcher) Start() error {
 	go func() {
 		<-w.stopChan
 		stdinPipe.Close()
-		w.process.Process.Kill()
-		w.process.Wait()
+		_ = w.process.Process.Kill()
+		_ = w.process.Wait()
 		close(w.done) // Signal cleanup complete
 	}()
 

@@ -300,8 +300,8 @@ func TestBuildTokensWithComplexPaths(t *testing.T) {
 			sourcePattern: "scripts/*",
 			checkFunc: func(t *testing.T, tok Tokens) {
 				assert.Equal(t, "build", tok.Name)
-				assert.Equal(t, "", tok.Ext)
-				assert.Equal(t, "", tok.ExtNoDot)
+				assert.Empty(t, tok.Ext)
+				assert.Empty(t, tok.ExtNoDot)
 			},
 		},
 	}

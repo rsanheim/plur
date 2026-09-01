@@ -2,6 +2,7 @@ package watch
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,11 +33,11 @@ func GetWatcherBinaryPath(binDir string) (string, error) {
 func InstallBinary(watcherBinaries embed.FS, binDir, plurHome, expectedVersion string, force bool) error {
 	binaryPath, err := getBinaryPath(binDir)
 	if err != nil {
-		return fmt.Errorf("failed to determine binary path: %v", err)
+		return fmt.Errorf("failed to determine binary path: %w", err)
 	}
 	expectedVersion = strings.TrimSpace(expectedVersion)
 	if expectedVersion == "" {
-		return fmt.Errorf("embedded watcher version is empty")
+		return errors.New("embedded watcher version is empty")
 	}
 
 	if !force {
@@ -63,11 +64,11 @@ func InstallBinary(watcherBinaries embed.FS, binDir, plurHome, expectedVersion s
 
 	data, err := watcherBinaries.ReadFile(embeddedPath)
 	if err != nil {
-		return fmt.Errorf("watcher binary not embedded for this platform: %v", err)
+		return fmt.Errorf("watcher binary not embedded for this platform: %w", err)
 	}
 
 	if err := replaceBinary(binaryPath, data); err != nil {
-		return fmt.Errorf("failed to write watcher binary: %v", err)
+		return fmt.Errorf("failed to write watcher binary: %w", err)
 	}
 
 	// Ad-hoc sign on macOS to satisfy Gatekeeper
@@ -114,7 +115,7 @@ func installedWatcherVersion(binaryPath string) (string, error) {
 	}
 	version := strings.TrimSpace(string(output))
 	if version == "" {
-		return "", fmt.Errorf("installed watcher returned an empty version")
+		return "", errors.New("installed watcher returned an empty version")
 	}
 	return version, nil
 }
@@ -137,7 +138,7 @@ func getPlatformBinaryName() (string, error) {
 			return "watcher-aarch64-apple-darwin", nil
 		case "amd64":
 			// macOS Intel is not supported - no upstream binary available
-			return "", fmt.Errorf("macOS Intel (x86_64) is not supported for watch mode")
+			return "", errors.New("macOS Intel (x86_64) is not supported for watch mode")
 		default:
 			return "", fmt.Errorf("unsupported macOS architecture: %s", runtime.GOARCH)
 		}
@@ -155,7 +156,7 @@ func getPlatformBinaryName() (string, error) {
 		case "amd64":
 			return "watcher-x86_64-pc-windows-msvc", nil
 		case "arm64", "aarch64":
-			return "", fmt.Errorf("Windows ARM64 is not supported")
+			return "", errors.New("watch mode is not supported on Windows ARM64")
 		default:
 			return "", fmt.Errorf("unsupported Windows architecture: %s", runtime.GOARCH)
 		}

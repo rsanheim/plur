@@ -161,7 +161,7 @@ func formatTarget(filePath string, lines []int) string {
 	parts := make([]string, 0, len(lines)+1)
 	parts = append(parts, filePath)
 	for _, line := range lines {
-		parts = append(parts, fmt.Sprintf("%d", line))
+		parts = append(parts, strconv.Itoa(line))
 	}
 	return strings.Join(parts, ":")
 }

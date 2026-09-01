@@ -24,7 +24,7 @@ func TestPerWorkerBudget(t *testing.T) {
 }
 
 func TestPerWorkerBudget_ZeroWorkers(t *testing.T) {
-	assert.Equal(t, 0.0, perWorkerBudget(nil, []string{"a"}, 0))
+	assert.Zero(t, perWorkerBudget(nil, []string{"a"}, 0))
 }
 
 func TestCache_ExampleLines(t *testing.T) {

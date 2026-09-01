@@ -154,21 +154,10 @@ func (cli *workerCountTestCLI) Validate() error {
 
 func setTestEnv(t *testing.T, key string, value string, present bool) {
 	t.Helper()
-
-	original, wasSet := os.LookupEnv(key)
-	if present {
-		require.NoError(t, os.Setenv(key, value))
-	} else {
+	t.Setenv(key, value)
+	if !present {
 		require.NoError(t, os.Unsetenv(key))
 	}
-
-	t.Cleanup(func() {
-		if wasSet {
-			require.NoError(t, os.Setenv(key, original))
-		} else {
-			require.NoError(t, os.Unsetenv(key))
-		}
-	})
 }
 
 func TestValidateUniqueWatchNames(t *testing.T) {

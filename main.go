@@ -64,7 +64,7 @@ func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 type WatchInstallCmd struct{}
 
-func (w *WatchInstallCmd) Run(parent *PlurCLI) error {
+func (w *WatchInstallCmd) Run() error {
 	return runWatchInstall(true)
 }
 
