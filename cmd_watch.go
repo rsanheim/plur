@@ -21,7 +21,10 @@ import (
 )
 
 func runWatchInstall(force bool) error {
-	configPaths := config.InitConfigPaths()
+	configPaths, err := config.InitConfigPaths()
+	if err != nil {
+		return fmt.Errorf("initialize configuration paths: %w", err)
+	}
 	return watch.InstallBinary(
 		embedded.Watcher,
 		configPaths.BinDir,
@@ -94,13 +97,7 @@ func reload(manager *watch.WatcherManager) error {
 		})
 	}
 
-	env := os.Environ()
-	err = syscall.Exec(execPath, args, env)
-	if err != nil {
-		return fmt.Errorf("failed to exec new process: %w", err)
-	}
-	os.Exit(1)
-	return nil
+	return fmt.Errorf("failed to exec new process: %w", syscall.Exec(execPath, args, os.Environ()))
 }
 
 func printWatchInfo(watchDirs []string) {

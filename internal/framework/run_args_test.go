@@ -14,7 +14,7 @@ func TestBuildRunArgsRSpecDefaults(t *testing.T) {
 
 	cfg := &config.GlobalConfig{
 		ColorOutput: false,
-		ConfigPaths: config.InitConfigPaths(),
+		ConfigPaths: testConfigPaths(t),
 	}
 
 	j := Job{
@@ -39,7 +39,7 @@ func TestBuildRunArgsRSpecDefaults(t *testing.T) {
 func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
 	t.Setenv("PLUR_HOME", t.TempDir())
 
-	cfg := &config.GlobalConfig{ConfigPaths: config.InitConfigPaths()}
+	cfg := &config.GlobalConfig{ConfigPaths: testConfigPaths(t)}
 	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
@@ -60,7 +60,7 @@ func TestBuildRunArgsMinitestRubyRequire(t *testing.T) {
 func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
 	t.Setenv("PLUR_HOME", t.TempDir())
 
-	cfg := &config.GlobalConfig{ConfigPaths: config.InitConfigPaths()}
+	cfg := &config.GlobalConfig{ConfigPaths: testConfigPaths(t)}
 	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
@@ -81,7 +81,7 @@ func TestBuildRunArgsMinitestSingleFile(t *testing.T) {
 func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 	t.Setenv("PLUR_HOME", t.TempDir())
 
-	cfg := &config.GlobalConfig{ConfigPaths: config.InitConfigPaths()}
+	cfg := &config.GlobalConfig{ConfigPaths: testConfigPaths(t)}
 	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
@@ -103,7 +103,7 @@ func TestBuildRunArgsMinitestSingleFileWithExtraArgs(t *testing.T) {
 func TestBuildRunArgsMinitestRubyRequireWithExtraArgs(t *testing.T) {
 	t.Setenv("PLUR_HOME", t.TempDir())
 
-	cfg := &config.GlobalConfig{ConfigPaths: config.InitConfigPaths()}
+	cfg := &config.GlobalConfig{ConfigPaths: testConfigPaths(t)}
 	j := Job{
 		FrameworkName: "minitest",
 		Cmd:           []string{"bundle", "exec", "ruby", "-Itest"},
@@ -127,7 +127,7 @@ func TestBuildRunArgsRSpecWithExtraArgs(t *testing.T) {
 
 	cfg := &config.GlobalConfig{
 		ColorOutput: false,
-		ConfigPaths: config.InitConfigPaths(),
+		ConfigPaths: testConfigPaths(t),
 	}
 
 	j := Job{
@@ -148,4 +148,12 @@ func TestBuildRunArgsRSpecWithExtraArgs(t *testing.T) {
 		"spec/example_spec.rb",
 	}
 	assert.Equal(t, expected, args)
+}
+
+func testConfigPaths(t *testing.T) *config.ConfigPaths {
+	t.Helper()
+
+	paths, err := config.InitConfigPaths()
+	require.NoError(t, err)
+	return paths
 }
