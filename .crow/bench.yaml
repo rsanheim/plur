@@ -1,20 +1,10 @@
 # Plur recurring benchmarks. Runs script/bench-suite over benchmarks/projects.yml,
-# writing results to the dedicated ci-bench:/bench volume. Provision it with
-# infra/script/ci-bench-setup; this workflow alone mounts it. Separate from
-# ci.yaml to stay off the build path. The repo needs Crow's Volumes trust flag.
-#
-# Footgun: Crow substitutes dollar-brace vars over the whole file (comments too),
-# so commands use bare $VAR (shell-expanded); only Crow builtins use braces.
+# writing results to the dedicated ci-bench:/bench volume.
 when:
-  # No unconditional push trigger: a push-to-main bench overlapping the nightly
-  # cron starved the box and got one run killed. Cron + deliberate triggers only;
-  # the push event below fires solely on an explicit commit-message marker.
   - event: cron
     cron: nightly-bench
   - event: manual
   # Opt-in: "[bench]" in the commit message runs benchmarks for that push, once.
-  # (A PR-title marker was tried first but re-ran the suite on every push to the
-  # PR.) Restrict it to Rob's pushes on the canonical repository.
   - event: push
     evaluate: >-
       CI_COMMIT_MESSAGE contains "[bench]" &&
@@ -24,8 +14,11 @@ when:
 labels:
   platform: linux/amd64
 
+depends_on:
+  - ci-images
+
 variables:
-  - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+  - &plur_image "localhost/plur-ci-toolchain:current"
 
 steps:
   - name: bench
@@ -33,9 +26,9 @@ steps:
     volumes:
       - ci-bench:/bench
     environment:
-      CI: 'true'
-      BUNDLE_JOBS: '4'
-      BUNDLE_RETRY: '3'
+      CI: "true"
+      BUNDLE_JOBS: "4"
+      BUNDLE_RETRY: "3"
       # plur's own build/bundle caches stay on the shared /cache volume (fast builds)
       BUNDLE_PATH: /cache/plur/bundle
       GOPATH: /cache/plur/go
@@ -44,9 +37,7 @@ steps:
       # dedicated benchmark volume: targets + results live here, not on /cache
       BENCH_ROOT: /bench/plur
       BENCH_HOST: minibox
-      BENCH_CONTAINER_IMAGE: 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
-      # renovate: datasource=github-releases depName=goreleaser/goreleaser
-      GORELEASER_VERSION: 2.16.0
+      BENCH_CONTAINER_IMAGE: "localhost/plur-ci-toolchain:current"
       # renovate: datasource=github-releases depName=sharkdp/hyperfine
       HYPERFINE_VERSION: 1.19.0
     commands:
@@ -58,14 +49,8 @@ steps:
         # Prefer the freshly built/installed plur (GOBIN) over the image's baked one.
         export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
 
-        # goreleaser is a single static binary, not in the image. Keep it in
-        # $GOPATH/bin on the /cache volume so it persists across runs; re-fetch
-        # only when the pinned version bumps.
-        if ! "$GOPATH/bin/goreleaser" --version 2>/dev/null | grep -qF "$GORELEASER_VERSION"; then
-          curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/goreleaser_Linux_x86_64.tar.gz" -o "$tool_tmp/goreleaser.tar.gz"
-          tar -xzf "$tool_tmp/goreleaser.tar.gz" -C "$GOPATH/bin" goreleaser
-          rm "$tool_tmp/goreleaser.tar.gz"
-        fi
+        go version
+        ruby --version
         goreleaser --version
 
         # hyperfine drives the benchmarks and is not baked into the image; the
@@ -80,9 +65,6 @@ steps:
         fi
         hyperfine --version
 
-        # Build + install plur from this checkout so the suite benchmarks the
-        # just-built binary. vendor:download:current fetches the watcher binaries
-        # that go:embed needs at compile time.
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
         bin/rake vendor:download:current
         bin/rake install
@@ -90,8 +72,6 @@ steps:
         # The suite runs as a non-root user: rubocop + rack have specs that fail
         # under root (root bypasses the permission checks they test). Build and
         # install above stay root; only the benchmarked processes drop privileges.
-        # Rootless podman maps container-root to the host user, so uid 0 in here
-        # is still "root" to Bundler and chmod-based specs.
         id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
         chown -R bench:bench "$PWD" "$BENCH_ROOT"
 

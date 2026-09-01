@@ -2,9 +2,9 @@
 # and the Ruby suite + fixtures driven by `bin/rake` (default task =
 # lint:all -> build -> test:all).
 #
-# Reuses the shared clarice CI image (Ruby 4.0.5 + Go + bundler + shellcheck +
-# plur + node) and fetches goreleaser per run, since plur's install/build rake
-# tasks shell out to goreleaser and it is not baked into the base image.
+# Uses Plur's mise-driven toolchain image. It bakes the versions from
+# `.mise.toml`, including Go 1.27, GoReleaser, shellcheck, govulncheck, and
+# benchstat, while this workflow handles checkout-specific dependencies.
 #
 # CircleCI stays the source of truth for the open-source cloud builds; this is
 # the faster self-hosted mirror.
@@ -17,8 +17,11 @@ when:
 labels:
   platform: linux/amd64
 
+depends_on:
+  - ci-images
+
 variables:
-  - &plur_image 'localhost/clarice-ci-ruby:ruby4.0.5-go1.26.4'
+  - &plur_image 'localhost/plur-ci-toolchain:current'
 
 steps:
   - name: ci
@@ -33,8 +36,6 @@ steps:
       XDG_CACHE_HOME: /cache/plur/xdg
       # minibox has cores to spare; raise plur's CI worker cap (default 4)
       PLUR_WORKERS: '8'
-      # renovate: datasource=github-releases depName=goreleaser/goreleaser
-      GORELEASER_VERSION: 2.16.0
     when:
       - path:
           exclude: ['**/*.md']
@@ -47,33 +48,9 @@ steps:
         # the base image.
         export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
 
-        # goreleaser is a single static binary, not in the image. Keep it in
-        # $GOPATH/bin on the /cache volume so it persists across runs; re-fetch
-        # only when the pinned version bumps.
-        if ! "$GOPATH/bin/goreleaser" --version 2>/dev/null | grep -qF "$GORELEASER_VERSION"; then
-          curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/v$GORELEASER_VERSION/goreleaser_Linux_x86_64.tar.gz" -o /tmp/goreleaser.tar.gz
-          tar -xzf /tmp/goreleaser.tar.gz -C "$GOPATH/bin" goreleaser
-          rm /tmp/goreleaser.tar.gz
-        fi
+        go version
+        ruby --version
         goreleaser --version
-
-        # The rails fixture specs verify migrations with the `sqlite3` CLI, which
-        # isn't in the base image (it ships postgresql-client). The app itself
-        # uses the sqlite3 gem, so only the CLI is missing.
-        #
-        # No compatible official prebuilt binary exists for this image: sqlite.org's
-        # current linux-x64 tools build requires GLIBC_2.38, but ruby:4.0.5-bookworm
-        # ships glibc 2.36; the legacy sqlite.org builds are 32-bit x86. So we fall
-        # back to apt for the CLI.
-        #
-        # tmux comes from apt too: the watch REPL specs drive plur through a real
-        # terminal, and tmux is the terminal emulator they use.
-        missing=""
-        command -v sqlite3 >/dev/null 2>&1 || missing="$missing sqlite3"
-        command -v tmux >/dev/null 2>&1 || missing="$missing tmux"
-        if [ -n "$missing" ]; then
-          apt-get update -qq && apt-get install -y -qq $missing
-        fi
         sqlite3 --version
         tmux -V
 
