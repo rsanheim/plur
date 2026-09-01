@@ -529,10 +529,7 @@ func showFileDiff(dryRun bool, path, original, modified string) {
 	origLines := strings.Split(original, "\n")
 	modLines := strings.Split(modified, "\n")
 
-	maxLen := len(origLines)
-	if len(modLines) > maxLen {
-		maxLen = len(modLines)
-	}
+	maxLen := max(len(modLines), len(origLines))
 
 	for i := range maxLen {
 		origLine := ""

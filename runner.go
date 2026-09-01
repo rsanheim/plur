@@ -373,8 +373,7 @@ func (r *Runner) runCommand(workerIdx int, cmd *exec.Cmd, outputChan chan<- Outp
 // processExitCode reports the exit code from err when it (or an error it wraps)
 // is an *exec.ExitError. The boolean is false for nil or non-exit errors.
 func processExitCode(err error) (int, bool) {
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		return exitErr.ExitCode(), true
 	}
 	return 0, false

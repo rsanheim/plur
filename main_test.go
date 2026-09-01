@@ -16,9 +16,9 @@ import (
 )
 
 func TestWorkerCountCLIDefaultMatchesRuntimeDefault(t *testing.T) {
-	field, ok := reflect.TypeOf(PlurCLI{}).FieldByName("Workers")
+	field, ok := reflect.TypeFor[PlurCLI]().FieldByName("Workers")
 	require.True(t, ok)
-	assert.Equal(t, reflect.TypeOf(WorkerCount(0)), field.Type)
+	assert.Equal(t, reflect.TypeFor[WorkerCount](), field.Type)
 	assert.Equal(t, strconv.Itoa(DefaultWorkerCount), field.Tag.Get("default"))
 }
 
@@ -269,10 +269,10 @@ func TestRspecSplitFlagEnabledByEnv(t *testing.T) {
 }
 
 func TestRspecSplitFlagHelpMarksExperimental(t *testing.T) {
-	_, rootHasRspecSplit := reflect.TypeOf(PlurCLI{}).FieldByName("RspecSplit")
+	_, rootHasRspecSplit := reflect.TypeFor[PlurCLI]().FieldByName("RspecSplit")
 	assert.False(t, rootHasRspecSplit, "RspecSplit should not be a root global flag")
 
-	field, ok := reflect.TypeOf(SpecCmd{}).FieldByName("RspecSplit")
+	field, ok := reflect.TypeFor[SpecCmd]().FieldByName("RspecSplit")
 	require.True(t, ok)
 	help := field.Tag.Get("help")
 	assert.Contains(t, help, "EXPERIMENTAL", "help text should mark the flag experimental")
