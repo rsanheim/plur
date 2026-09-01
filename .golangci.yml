@@ -1,0 +1,67 @@
+# Run locally with `golangci-lint run` (add --fix for autofixable issues).
+# `bin/rake lint:go` runs it after go vet and go mod tidy -diff.
+version: "2"
+
+run:
+  # goreleaser's before-hook leaves a gitignored vendor/ dir; match the -mod=mod
+  # the Rakefile passes to every go command.
+  modules-download-mode: mod
+
+linters:
+  # standard = errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    # error handling
+    - errorlint
+    - nilerr
+    - nilnesserr
+    # modern, concise Go
+    - copyloopvar
+    - intrange
+    - perfsprint
+    - gocritic
+    - exhaustive
+    # dead weight
+    - unparam
+    - unconvert
+    - wastedassign
+    - predeclared
+    - durationcheck
+    - misspell
+    - nolintlint
+    # tests
+    - testifylint
+    - tparallel
+    - usetesting
+  settings:
+    errcheck:
+      check-type-assertions: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    testifylint:
+      disable:
+        - float-compare
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    usetesting:
+      os-setenv: true
+      os-temp-dir: true
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling
+      - common-false-positives
+    rules:
+      - path: _test\.go
+        linters:
+          - unparam
+
+issues:
+  # report everything; the defaults hide repeats of the same message
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt

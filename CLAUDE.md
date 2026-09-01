@@ -10,6 +10,7 @@ bin/rake                      # Run full build -> lint, install, tests
 bin/rake install              # Build & install a global binary sys/contianer wide
 bin/rake test                 # Run full Ruby test suite
 bin/rake standard:fix         # Fix Ruby lint issues
+golangci-lint run --fix       # Fix autofixable Go lint issues
 ```
 
 Notes:
