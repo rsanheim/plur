@@ -36,11 +36,11 @@ func TestBuiltinGoWatchTargetsUseLocalPackagePatterns(t *testing.T) {
 	assert.Empty(t, expected, "missing built-in Go watch mappings")
 }
 
-func writeDetectFile(t *testing.T, path string) {
-	t.Helper()
+func writeDetectFile(tb testing.TB, path string) {
+	tb.Helper()
 	full := filepath.FromSlash(path)
-	require.NoError(t, os.MkdirAll(filepath.Dir(full), 0o755))
-	require.NoError(t, os.WriteFile(full, []byte(""), 0o644))
+	require.NoError(tb, os.MkdirAll(filepath.Dir(full), 0o755))
+	require.NoError(tb, os.WriteFile(full, []byte(""), 0o644))
 }
 
 func builtinResolvedJobs(t *testing.T) map[string]framework.Job {
