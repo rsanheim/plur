@@ -119,6 +119,26 @@ func TestAnyFileMatches(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, found)
 	})
+
+	t.Run("symlinked directory inside the tree is not followed", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		writeDetectFile(t, "elsewhere/other_spec.rb")
+		require.NoError(t, os.Mkdir("project", 0o755))
+		require.NoError(t, os.Symlink(filepath.Join("..", "elsewhere"), filepath.Join("project", "link")))
+
+		found, err := anyFileMatches("project/**/*_spec.rb")
+		require.NoError(t, err)
+		assert.False(t, found)
+	})
+
+	t.Run("files named like ignored directories are not pruned", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		writeDetectFile(t, "spec/vendor")
+
+		found, err := anyFileMatches("spec/*")
+		require.NoError(t, err)
+		assert.True(t, found)
+	})
 }
 
 func TestAutodetectJobNameFindsRealTestFilesNextToVendoredOnes(t *testing.T) {

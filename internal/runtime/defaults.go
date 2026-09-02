@@ -102,20 +102,21 @@ func (d *detectFS) ReadDir(name string) ([]fs.DirEntry, error) {
 		return nil, err
 	}
 	d.lastName = name
-	d.last = slices.DeleteFunc(entries, func(e fs.DirEntry) bool { return detectIgnoredDirs[e.Name()] })
+	d.last = slices.DeleteFunc(entries, func(e fs.DirEntry) bool { return e.IsDir() && detectIgnoredDirs[e.Name()] })
 	return d.last, nil
 }
 
 // anyFileMatches reports whether at least one file matches the doublestar
 // pattern. Detection only needs existence, so the walk stops at the first
-// hit and never descends into hidden or ignored directories.
+// hit. It skips hidden and ignored directories and does not follow symlinks
+// below the pattern's base, so a link cannot pull in another tree's tests.
 func anyFileMatches(pattern string) (bool, error) {
 	base, rest := doublestar.SplitPattern(filepath.ToSlash(pattern))
 	found := false
 	err := doublestar.GlobWalk(&detectFS{FS: os.DirFS(filepath.FromSlash(base))}, rest, func(string, fs.DirEntry) error {
 		found = true
 		return fs.SkipAll
-	}, doublestar.WithFilesOnly(), doublestar.WithNoHidden())
+	}, doublestar.WithFilesOnly(), doublestar.WithNoFollow(), doublestar.WithNoHidden())
 	if errors.Is(err, fs.SkipAll) {
 		err = nil
 	}
