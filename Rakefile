@@ -122,10 +122,11 @@ namespace :lint do
 
   desc "Lint Go code"
   task :go do
-    puts "[lint:go] Running go fmt, go vet, go mod tidy -diff, and golangci-lint"
+    puts "[lint:go] Running go fmt, go vet, go mod tidy -diff, go fix -diff, and golangci-lint"
     sh "go", "fmt", "-mod=mod", "./..."
     sh "go vet -mod=mod ./..."
     sh "go mod tidy -diff"
+    sh "go fix -mod=mod -diff ./..."
     sh "golangci-lint run"
     Rake::Task["vuln:check"].invoke
   end

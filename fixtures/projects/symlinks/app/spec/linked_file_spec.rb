@@ -1,0 +1,1 @@
+../../shared/spec/remote_spec.rb

@@ -36,11 +36,11 @@ func TestBuiltinGoWatchTargetsUseLocalPackagePatterns(t *testing.T) {
 	assert.Empty(t, expected, "missing built-in Go watch mappings")
 }
 
-func writeDetectFile(t *testing.T, path string) {
-	t.Helper()
+func writeDetectFile(tb testing.TB, path string) {
+	tb.Helper()
 	full := filepath.FromSlash(path)
-	require.NoError(t, os.MkdirAll(filepath.Dir(full), 0o755))
-	require.NoError(t, os.WriteFile(full, []byte(""), 0o644))
+	require.NoError(tb, os.MkdirAll(filepath.Dir(full), 0o755))
+	require.NoError(tb, os.WriteFile(full, []byte(""), 0o644))
 }
 
 func builtinResolvedJobs(t *testing.T) map[string]framework.Job {
@@ -116,6 +116,26 @@ func TestAnyFileMatches(t *testing.T) {
 		require.NoError(t, os.Symlink("real", "spec"))
 
 		found, err := anyFileMatches("spec/**/*_spec.rb")
+		require.NoError(t, err)
+		assert.True(t, found)
+	})
+
+	t.Run("symlinked directory inside the tree is not followed", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		writeDetectFile(t, "elsewhere/other_spec.rb")
+		require.NoError(t, os.Mkdir("project", 0o755))
+		require.NoError(t, os.Symlink(filepath.Join("..", "elsewhere"), filepath.Join("project", "link")))
+
+		found, err := anyFileMatches("project/**/*_spec.rb")
+		require.NoError(t, err)
+		assert.False(t, found)
+	})
+
+	t.Run("files named like ignored directories are not pruned", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		writeDetectFile(t, "spec/vendor")
+
+		found, err := anyFileMatches("spec/*")
 		require.NoError(t, err)
 		assert.True(t, found)
 	})

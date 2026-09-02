@@ -21,10 +21,10 @@ const WatcherBufferSize = 256 * 1024
 
 // Event represents a file system event from the watcher
 type Event struct {
-	PathType   string      `json:"path_type"`
-	PathName   string      `json:"path_name"`
-	EffectType string      `json:"effect_type"`
-	Associated interface{} `json:"associated"`
+	PathType   string `json:"path_type"`
+	PathName   string `json:"path_name"`
+	EffectType string `json:"effect_type"`
+	Associated any    `json:"associated"`
 }
 
 // WatcherConfig holds configuration for a single watcher
