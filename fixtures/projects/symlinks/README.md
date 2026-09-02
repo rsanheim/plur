@@ -3,8 +3,8 @@
 Real symlinks for exercising how plur resolves links when detecting and
 collecting spec files. `spec/integration/spec/symlinks_spec.rb` runs
 `plur spec` in each project root below. The Gemfile reuses the root Gemfile
-through `eval_gemfile`, and `Gemfile.lock` is a symlink to the root lockfile,
-so the projects run for real without duplicating gem declarations.
+through `eval_gemfile`, so the projects run for real without duplicating gem
+declarations; `Gemfile.lock` is Bundler's own, generated with `bundle lock`.
 
 Project roots:
 
