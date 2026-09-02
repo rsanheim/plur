@@ -53,6 +53,12 @@ RSpec.describe "plur spec with symlinks" do
       it "collects exactly the files the rows account for" do
         expect(collected_files(project)).to eq(rows.flat_map { |row| row[:collect] }.sort)
       end
+
+      it "runs the collected specs" do
+        result = run_plur("-C", project_fixture("symlinks").join(project), "-n", "1", "spec")
+
+        expect(result.out).to match(/\b#{rows.sum { |row| row[:collect].size }} examples?, 0 failures/)
+      end
     end
   end
 end

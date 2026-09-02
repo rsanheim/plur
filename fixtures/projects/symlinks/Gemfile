@@ -1,0 +1,3 @@
+# Reuses the root Gemfile so this fixture never duplicates gem declarations.
+# Gemfile.lock is a symlink to the root lockfile for the same reason.
+eval_gemfile "../../../Gemfile"
