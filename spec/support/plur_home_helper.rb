@@ -23,7 +23,11 @@ module PlurHomeHelper
   end
 
   def plur_binary
-    ENV.fetch("PLUR_BINARY", "plur")
+    ENV.fetch("PLUR_BINARY") do
+      gobin = `go env GOBIN`.strip
+      gobin = File.join(`go env GOPATH`.strip, "bin") if gobin.empty?
+      File.join(gobin, "plur")
+    end
   end
 
   # Temporarily remove env vars that leak from the outer environment into
