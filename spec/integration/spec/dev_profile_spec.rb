@@ -1,6 +1,10 @@
 require "spec_helper"
 
 RSpec.describe "--dev-profile" do
+  def plur_binary
+    File.expand_path("../../../plur", __dir__)
+  end
+
   it "writes CPU, heap, goroutine and goroutine-leak profiles for the run" do
     Dir.mktmpdir do |dir|
       result = run_plur("-C", default_ruby_dir, "-n", "2", "--dev-profile", dir)
