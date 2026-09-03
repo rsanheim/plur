@@ -2,9 +2,11 @@ package runtime
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -69,55 +71,55 @@ func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("no default spec/test files found using default patterns")
+	return "", errors.New("no default spec/test files found using default patterns")
 }
 
 // detectIgnoredDirs are never descended into when checking for test file
 // presence. They hold third-party or generated code whose test files must
 // not drive detection, and they dominate walk time when present.
 var detectIgnoredDirs = map[string]bool{
-	".git":         true,
 	"node_modules": true,
 	"vendor":       true,
 	"tmp":          true,
 }
 
+// detectFS hides detectIgnoredDirs from doublestar, whose ** expansion has
+// no other hook for pruning a subtree. It also memoizes the last ReadDir,
+// because that expansion reads every directory twice in a row: once to match
+// files in it and once to enumerate its subdirectories.
+type detectFS struct {
+	fs.FS
+	lastName string
+	last     []fs.DirEntry
+}
+
+func (d *detectFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	if name == d.lastName {
+		return d.last, nil
+	}
+	entries, err := fs.ReadDir(d.FS, name)
+	if err != nil {
+		return nil, err
+	}
+	d.lastName = name
+	d.last = slices.DeleteFunc(entries, func(e fs.DirEntry) bool { return e.IsDir() && detectIgnoredDirs[e.Name()] })
+	return d.last, nil
+}
+
 // anyFileMatches reports whether at least one file matches the doublestar
-// pattern. Detection only needs existence, so unlike doublestar.FilepathGlob
-// (which collects every match), this walks from the pattern's fixed base,
-// prunes ignored directories, and stops at the first hit.
+// pattern. Detection only needs existence, so the walk stops at the first
+// hit. It skips hidden and ignored directories and does not follow symlinks
+// below the pattern's base, so a link cannot pull in another tree's tests.
 func anyFileMatches(pattern string) (bool, error) {
 	base, rest := doublestar.SplitPattern(filepath.ToSlash(pattern))
-	base = filepath.FromSlash(base)
-	if resolved, err := filepath.EvalSymlinks(base); err == nil {
-		base = resolved
-	}
-
 	found := false
-	err := filepath.WalkDir(base, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		if d.IsDir() {
-			if path != base && detectIgnoredDirs[d.Name()] {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		rel, relErr := filepath.Rel(base, path)
-		if relErr != nil {
-			return nil
-		}
-		matched, matchErr := doublestar.Match(rest, filepath.ToSlash(rel))
-		if matchErr != nil {
-			return matchErr
-		}
-		if matched {
-			found = true
-			return fs.SkipAll
-		}
-		return nil
-	})
+	err := doublestar.GlobWalk(&detectFS{FS: os.DirFS(filepath.FromSlash(base))}, rest, func(string, fs.DirEntry) error {
+		found = true
+		return fs.SkipAll
+	}, doublestar.WithFilesOnly(), doublestar.WithNoFollow(), doublestar.WithNoHidden())
+	if errors.Is(err, fs.SkipAll) {
+		err = nil
+	}
 	return found, err
 }
 

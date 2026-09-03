@@ -93,7 +93,7 @@ func (h *CustomTextHandler) Handle(_ context.Context, r slog.Record) error {
 	level = fmt.Sprintf("%-5s", level)
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s - %s - %s", timestamp, level, r.Message))
+	fmt.Fprintf(&sb, "%s - %s - %s", timestamp, level, r.Message)
 
 	// Add attributes
 	r.Attrs(func(a slog.Attr) bool {
@@ -108,7 +108,7 @@ func (h *CustomTextHandler) Handle(_ context.Context, r slog.Record) error {
 		default:
 			value = fmt.Sprintf("%v", v)
 		}
-		sb.WriteString(fmt.Sprintf(" %s=%s", a.Key, value))
+		fmt.Fprintf(&sb, " %s=%s", a.Key, value)
 		return true
 	})
 

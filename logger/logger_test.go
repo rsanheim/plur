@@ -136,9 +136,9 @@ func TestToggleDebug_ConcurrentAccess(t *testing.T) {
 	iterations := 100
 	goroutines := 10
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		wg.Go(func() {
-			for j := 0; j < iterations; j++ {
+			for range iterations {
 				ToggleDebug()
 				IsDebugEnabled()
 			}
@@ -199,10 +199,10 @@ func TestCustomTextHandler_ConcurrentWrites(t *testing.T) {
 	goroutines := 10
 	iterations := 100
 
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		workerID := i
 		wg.Go(func() {
-			for j := 0; j < iterations; j++ {
+			for j := range iterations {
 				logger.Info("message", "worker", workerID, "iteration", j)
 			}
 		})
@@ -214,7 +214,7 @@ func TestCustomTextHandler_ConcurrentWrites(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 
 	// Should have exactly goroutines * iterations lines
-	assert.Equal(t, goroutines*iterations, len(lines), "Expected %d log lines", goroutines*iterations)
+	assert.Len(t, lines, goroutines*iterations, "Expected %d log lines", goroutines*iterations)
 
 	// Each line should be complete (contains expected format)
 	for i, line := range lines {

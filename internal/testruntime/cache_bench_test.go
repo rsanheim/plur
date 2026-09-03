@@ -30,7 +30,7 @@ func BenchmarkCache_SaveLargeRspecCache(b *testing.B) {
 	b.ReportAllocs()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		requireBenchmarkNoError(b, SaveCache(cache, path, "bench", "/Users/example/rubocop", savedAt))
 	}
 }
@@ -48,7 +48,7 @@ func BenchmarkCache_LoadLargeRspecCache(b *testing.B) {
 	b.ReportAllocs()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		loaded := LoadCache(path)
 		if len(loaded.Files) != benchFileCount {
 			b.Fatalf("loaded %d files, want %d", len(loaded.Files), benchFileCount)
@@ -77,7 +77,7 @@ func TestCacheLoadBudget(t *testing.T) {
 
 	// best of 3 runs
 	bestMS := 0.0
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		res := testing.Benchmark(BenchmarkCache_LoadLargeRspecCache)
 		ms := float64(res.NsPerOp()) / 1e6
 		if i == 0 || ms < bestMS {
@@ -94,7 +94,7 @@ func TestCacheLoadBudget(t *testing.T) {
 func buildLargeRspecCache() *Cache {
 	cache := NewCache()
 	examplesLeft := benchExampleCount
-	for fileIndex := 0; fileIndex < benchFileCount; fileIndex++ {
+	for fileIndex := range benchFileCount {
 		filesLeft := benchFileCount - fileIndex
 		examplesForFile := examplesLeft / filesLeft
 		if examplesLeft%filesLeft != 0 {
@@ -105,7 +105,7 @@ func buildLargeRspecCache() *Cache {
 		filePath := fmt.Sprintf("spec/rubocop/cop/generated_%03d_spec.rb", fileIndex)
 		examples := make(map[string]*ExampleEntry, examplesForFile)
 		var runtime float64
-		for exampleIndex := 0; exampleIndex < examplesForFile; exampleIndex++ {
+		for exampleIndex := range examplesForFile {
 			line := 10 + exampleIndex*3
 			exampleID := fmt.Sprintf("./%s[1:%d:%d]", filePath, fileIndex+1, exampleIndex+1)
 			exampleRuntime := 0.001 + float64((fileIndex+exampleIndex)%97)/10000

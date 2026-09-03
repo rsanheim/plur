@@ -28,7 +28,7 @@ func TestLoaderParsesValidTOML(t *testing.T) {
 func TestLoaderReturnsErrorForInvalidTOML(t *testing.T) {
 	input := `[broken`
 	resolver, err := Loader(strings.NewReader(input))
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, resolver)
 }
 
@@ -37,7 +37,8 @@ func TestLoaderExtractsFilename(t *testing.T) {
 	r := &namedReader{Reader: strings.NewReader(input), name: ".plur.toml"}
 	resolver, err := Loader(r)
 	require.NoError(t, err)
-	res := resolver.(*Resolver)
+	res, ok := resolver.(*Resolver)
+	require.True(t, ok)
 	assert.Equal(t, ".plur.toml", res.filename)
 }
 
@@ -45,7 +46,8 @@ func TestLoaderNoFilenameForPlainReader(t *testing.T) {
 	input := `workers = 4`
 	resolver, err := Loader(strings.NewReader(input))
 	require.NoError(t, err)
-	res := resolver.(*Resolver)
+	res, ok := resolver.(*Resolver)
+	require.True(t, ok)
 	assert.Empty(t, res.filename)
 }
 
@@ -201,7 +203,8 @@ jobs = ["rspec"]
 `
 	resolver, err := Loader(strings.NewReader(input))
 	require.NoError(t, err)
-	r := resolver.(*Resolver)
+	r, ok := resolver.(*Resolver)
+	require.True(t, ok)
 
 	assert.Equal(t, []string{"job", "use", "watch", "workers"}, topLevelKeys(r.meta))
 }
@@ -217,7 +220,8 @@ cmd = ["bin/rspec"]
 `
 	resolver, err := Loader(strings.NewReader(input))
 	require.NoError(t, err)
-	r := resolver.(*Resolver)
+	r, ok := resolver.(*Resolver)
+	require.True(t, ok)
 
 	var cli struct {
 		Workers int
@@ -232,6 +236,7 @@ cmd = ["bin/rspec"]
 }
 
 func TestUnknownLeafKeysIncludesNestedJobAndWatchTypos(t *testing.T) {
+	//nolint:misspell // the typo is the subject of the test
 	input := `
 use = "rspec"
 
@@ -246,7 +251,8 @@ jobs = ["rspec"]
 `
 	resolver, err := Loader(strings.NewReader(input))
 	require.NoError(t, err)
-	r := resolver.(*Resolver)
+	r, ok := resolver.(*Resolver)
+	require.True(t, ok)
 
 	var cli struct {
 		Use   string
@@ -264,7 +270,9 @@ func TestValidateReturnsNil(t *testing.T) {
 	resolver, err := Loader(strings.NewReader(input))
 	require.NoError(t, err)
 
-	err = resolver.(*Resolver).Validate(nil)
+	r, ok := resolver.(*Resolver)
+	require.True(t, ok)
+	err = r.Validate(nil)
 	assert.NoError(t, err)
 }
 

@@ -164,9 +164,7 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 
 	// Configuration
 	fmt.Println("Configuration:")
-	if err := checkConfiguration(globalConfig, runtimeConfig); err != nil {
-		fmt.Printf("  Error checking configuration: %v\n", err)
-	}
+	checkConfiguration(globalConfig, runtimeConfig)
 
 	return nil
 }
@@ -190,7 +188,7 @@ func envDisplay(key string) string {
 	return strconv.Quote(value)
 }
 
-func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) error {
+func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) {
 	// Show which config files are actually in use
 	fmt.Println("  Active Configuration Files:")
 	if len(globalConfig.LoadedConfigs) == 0 {
@@ -230,7 +228,7 @@ func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtim
 	fmt.Println("\n  Watch Directories:")
 	if len(runtimeConfig.Watches) == 0 {
 		fmt.Println("    Warning: No watch mappings available")
-		return nil
+		return
 	}
 	var watchDirs []string
 	for _, mapping := range runtimeConfig.Watches {
@@ -243,10 +241,9 @@ func checkConfiguration(globalConfig *config.GlobalConfig, runtimeConfig *runtim
 	watchDirs = slices.Compact(watchDirs)
 	if len(watchDirs) == 0 {
 		fmt.Println("    Warning: No watch directories found in watch mappings")
-		return nil
+		return
 	}
 	for _, dir := range watchDirs {
 		fmt.Printf("    %s/ (exists)\n", dir)
 	}
-	return nil
 }

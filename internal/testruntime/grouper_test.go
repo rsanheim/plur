@@ -1,6 +1,7 @@
 package testruntime
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -74,11 +75,8 @@ func TestGroupSpecFilesByRuntime(t *testing.T) {
 		// Find which group has the slowest file
 		var slowestGroup FileGroup
 		for _, g := range groups {
-			for _, f := range g.Files {
-				if f == "spec/integration/cli_integration_spec.rb" {
-					slowestGroup = g
-					break
-				}
+			if slices.Contains(g.Files, "spec/integration/cli_integration_spec.rb") {
+				slowestGroup = g
 			}
 		}
 

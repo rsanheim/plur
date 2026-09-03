@@ -29,7 +29,7 @@ func TestGrouperComplexity(t *testing.T) {
 		files := generateSpecFiles(size)
 
 		start := time.Now()
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			testruntime.GroupSpecFilesBySize(files, workers)
 		}
 		times[idx] = time.Since(start) / time.Duration(iterations)
@@ -57,7 +57,7 @@ func TestGrouperRuntimeComplexity(t *testing.T) {
 		runtimeData := generateRuntimeData(files)
 
 		start := time.Now()
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			testruntime.GroupSpecFilesByRuntime(files, workers, runtimeData)
 		}
 		times[idx] = time.Since(start) / time.Duration(iterations)
@@ -83,7 +83,7 @@ func TestRSpecParserComplexity(t *testing.T) {
 		lines := generateRSpecJSONLines(size, 0.02)
 
 		start := time.Now()
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			parser := rspec.NewOutputParser()
 			for _, line := range lines {
 				parser.ParseLine(line)
@@ -112,7 +112,7 @@ func TestTestCollectorComplexity(t *testing.T) {
 		notifications := generateTestNotifications(size, 0.05)
 
 		start := time.Now()
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			collector := NewTestCollector()
 			for _, n := range notifications {
 				collector.AddNotification(n)

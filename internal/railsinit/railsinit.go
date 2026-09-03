@@ -1,6 +1,7 @@
 package railsinit
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -48,12 +49,12 @@ func Run(cfg *config.GlobalConfig) error {
 
 func verifyRailsProject() error {
 	if !fsutil.FileExists("config/database.yml") {
-		return fmt.Errorf("plur rails:init requires a Rails project (config/database.yml not found)")
+		return errors.New("plur rails:init requires a Rails project (config/database.yml not found)")
 	}
 	hasGemfile := fsutil.FileExists("Gemfile")
 	hasAppRb := fsutil.FileExists("config/application.rb")
 	if !hasGemfile && !hasAppRb {
-		return fmt.Errorf("plur rails:init requires a Rails project (no Gemfile or config/application.rb found)")
+		return errors.New("plur rails:init requires a Rails project (no Gemfile or config/application.rb found)")
 	}
 	return nil
 }
@@ -250,7 +251,7 @@ func splitYAMLValueAndComment(valueWithComment string) (string, string) {
 	inDoubleQuotes := false
 	escaped := false
 
-	for i := 0; i < len(valueWithComment); i++ {
+	for i := range len(valueWithComment) {
 		ch := valueWithComment[i]
 
 		if inDoubleQuotes {
@@ -528,12 +529,9 @@ func showFileDiff(dryRun bool, path, original, modified string) {
 	origLines := strings.Split(original, "\n")
 	modLines := strings.Split(modified, "\n")
 
-	maxLen := len(origLines)
-	if len(modLines) > maxLen {
-		maxLen = len(modLines)
-	}
+	maxLen := max(len(modLines), len(origLines))
 
-	for i := 0; i < maxLen; i++ {
+	for i := range maxLen {
 		origLine := ""
 		modLine := ""
 		if i < len(origLines) {
@@ -564,14 +562,15 @@ func printInitSummary(cfg *config.GlobalConfig, result *initResult) {
 	}
 
 	fmt.Println()
-	if result.changesApplied > 0 && !cfg.DryRun {
+	switch {
+	case result.changesApplied > 0 && !cfg.DryRun:
 		fmt.Println("Next steps:")
 		fmt.Println("  1. Review the changes above")
 		fmt.Println("  2. plur rails db:test:prepare # Setup parallel test databases for existing schema")
 		fmt.Println("  3. plur spec         # Run your tests in parallel")
-	} else if cfg.DryRun {
+	case cfg.DryRun:
 		fmt.Println("Run 'plur rails:init' without --dry-run to apply these changes.")
-	} else if result.changesApplied == 0 && len(result.alreadyDone) > 0 {
+	case result.changesApplied == 0 && len(result.alreadyDone) > 0:
 		fmt.Println("Your project appears ready for parallel testing.")
 		fmt.Println()
 		fmt.Println("Next steps:")

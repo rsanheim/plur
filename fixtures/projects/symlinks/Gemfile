@@ -1,0 +1,2 @@
+# Reuses the root Gemfile so this fixture never duplicates gem declarations.
+eval_gemfile "../../../Gemfile"

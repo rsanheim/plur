@@ -71,7 +71,7 @@ type Resolver struct {
 	meta     toml.MetaData
 }
 
-func (r *Resolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Flag) (interface{}, error) {
+func (r *Resolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Flag) (any, error) {
 	// Environment variables outrank config files (precedence: CLI flag > env > config >
 	// default). Kong applies a flag's env tag during Reset(), before resolvers run; if
 	// that env var is set, defer to it rather than overriding with the config value.
@@ -246,7 +246,7 @@ func nestedConfigSpecForFlag(flag *kong.Flag) (nestedKeySpec, bool) {
 }
 
 func structFieldKeys(typ reflect.Type) map[string]struct{} {
-	for typ.Kind() == reflect.Ptr {
+	for typ.Kind() == reflect.Pointer {
 		typ = typ.Elem()
 	}
 	if typ.Kind() != reflect.Struct {
@@ -254,8 +254,7 @@ func structFieldKeys(typ reflect.Type) map[string]struct{} {
 	}
 
 	allowed := make(map[string]struct{})
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
+	for field := range typ.Fields() {
 		if field.PkgPath != "" && !field.Anonymous {
 			continue
 		}
@@ -274,7 +273,7 @@ func tomlFieldName(field reflect.StructField) string {
 		return ""
 	}
 	if tag != "" {
-		name := strings.Split(tag, ",")[0]
+		name, _, _ := strings.Cut(tag, ",")
 		if name != "" {
 			return name
 		}

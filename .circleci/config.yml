@@ -36,6 +36,14 @@ jobs:
           name: Install shellcheck
           command: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
       - run:
+          name: Install Go lint tools (versions from .mise.toml)
+          command: |
+            gobin="$(go env GOPATH)/bin"
+            echo "export PATH=\"${gobin}:\$PATH\"" >> "$BASH_ENV"
+            version="$(sed -n 's/^golangci-lint = "\(.*\)"$/\1/p' .mise.toml)"
+            curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b "$gobin" "v${version}"
+            go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run:
           name: Build plur
           command: bin/rake build lint
       - run:

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -47,13 +48,13 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	if len(testFiles) == 0 {
 		switch {
 		case len(excludes) > 0:
-			return fmt.Errorf("no test files remain after applying exclude patterns")
+			return errors.New("no test files remain after applying exclude patterns")
 		case len(patterns) > 0:
-			return fmt.Errorf("no test files found matching provided patterns")
+			return errors.New("no test files found matching provided patterns")
 		case len(targetPatterns) > 0:
 			return fmt.Errorf("no test files found (looking for %s)", strings.Join(targetPatterns, ", "))
 		}
-		return fmt.Errorf("no test files found")
+		return errors.New("no test files found")
 	}
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 

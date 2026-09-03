@@ -21,10 +21,10 @@ const WatcherBufferSize = 256 * 1024
 
 // Event represents a file system event from the watcher
 type Event struct {
-	PathType   string      `json:"path_type"`
-	PathName   string      `json:"path_name"`
-	EffectType string      `json:"effect_type"`
-	Associated interface{} `json:"associated"`
+	PathType   string `json:"path_type"`
+	PathName   string `json:"path_name"`
+	EffectType string `json:"effect_type"`
+	Associated any    `json:"associated"`
 }
 
 // WatcherConfig holds configuration for a single watcher
@@ -99,8 +99,8 @@ func (w *Watcher) Start() error {
 	go func() {
 		<-w.stopChan
 		stdinPipe.Close()
-		w.process.Process.Kill()
-		w.process.Wait()
+		_ = w.process.Process.Kill()
+		_ = w.process.Wait()
 		close(w.done) // Signal cleanup complete
 	}()
 

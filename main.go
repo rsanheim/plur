@@ -64,7 +64,7 @@ func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 type WatchInstallCmd struct{}
 
-func (w *WatchInstallCmd) Run(parent *PlurCLI) error {
+func (w *WatchInstallCmd) Run() error {
 	return runWatchInstall(true)
 }
 
@@ -310,8 +310,7 @@ func main() {
 	err = ctx.Run(ctx)
 	if err != nil {
 		// Check if it's a custom exit code (don't log as error)
-		var exitErr ExitCode
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[ExitCode](err); ok {
 			os.Exit(exitErr.Code)
 		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -336,7 +335,7 @@ func colorAwareLoader(r io.Reader) (kong.Resolver, error) {
 
 type colorConfigResolver struct{ kong.Resolver }
 
-func (r colorConfigResolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Flag) (interface{}, error) {
+func (r colorConfigResolver) Resolve(kctx *kong.Context, parent *kong.Path, flag *kong.Flag) (any, error) {
 	value, err := r.Resolver.Resolve(kctx, parent, flag)
 	if err != nil || value == nil || flag.Name != "color" {
 		return value, err

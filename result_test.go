@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -43,7 +43,7 @@ func TestBuildTestSummary(t *testing.T) {
 			ExampleCount: 0,
 			FailureCount: 0,
 			FileLoadTime: 25 * time.Millisecond,
-			Error:        fmt.Errorf("Failed to load spec file"),
+			Error:        errors.New("Failed to load spec file"),
 		},
 	}
 
@@ -53,7 +53,7 @@ func TestBuildTestSummary(t *testing.T) {
 	assert := assert.New(t)
 	assert.Equal(15, summary.TotalExamples)
 	assert.Equal(2, summary.TotalFailures, "total failures")
-	assert.Equal(2, len(summary.AllFailures), "failure details")
+	assert.Len(summary.AllFailures, 2, "failure details")
 
 	assert.Equal(wallTime, summary.WallTime, "wall time")
 	assert.Equal(75*time.Millisecond, summary.TotalFileLoadTime, "file load time should be the max of all workers")
@@ -88,7 +88,7 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 	assert.True(t, summary.Success, "should be successful when all tests pass")
 	assert.Empty(t, summary.AllFailures, "should have no failures")
 	assert.Empty(t, summary.ErroredFiles, "should have no errored files")
-	assert.Equal(t, "", summary.FormattedSummary, "summary with multiple results should be empty")
+	assert.Empty(t, summary.FormattedSummary, "summary with multiple results should be empty")
 }
 
 func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
@@ -106,7 +106,7 @@ func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 
 	assert.Equal(t, 10, summary.TotalExamples)
 	assert.True(t, summary.Success)
-	assert.Equal(t, summary.FormattedSummary, "10 examples, 0 failures")
+	assert.Equal(t, "10 examples, 0 failures", summary.FormattedSummary)
 }
 
 func TestRenumberSummaryOutput(t *testing.T) {

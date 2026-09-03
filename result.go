@@ -100,7 +100,8 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 			summary.HasFailures = true
 			summary.Success = false
 			summary.ErroredFiles = append(summary.ErroredFiles, result)
-			// StateSuccess requires no action - summary.Success defaults to true
+		case types.StateSuccess:
+			// summary.Success defaults to true
 		}
 
 		// Collect formatted failures and pending (concatenate them)

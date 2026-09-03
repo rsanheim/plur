@@ -148,8 +148,9 @@ func (p *outputParser) NotificationToProgress(notification types.TestNotificatio
 		return "failure", true
 	case types.TestPending:
 		return "pending", true
+	default:
+		return "", false
 	}
-	return "", false
 }
 
 // FormatSummary formats a test summary in minitest style

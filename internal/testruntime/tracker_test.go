@@ -33,7 +33,7 @@ func TestRuntimeTracker(t *testing.T) {
 
 		notification := types.TestCaseNotification{
 			FilePath: "spec/test_spec.rb",
-			Duration: time.Duration(123 * time.Millisecond),
+			Duration: 123 * time.Millisecond,
 		}
 
 		rt.AddTestNotification(notification)
@@ -53,7 +53,7 @@ func TestRuntimeTracker(t *testing.T) {
 
 		runtimeFile := rt.RuntimeFilePath()
 		_, err = os.Stat(runtimeFile)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		reloaded := LoadCache(runtimeFile)
 		assert.Equal(t, SchemaVersion, reloaded.Meta.SchemaVersion)
@@ -61,7 +61,7 @@ func TestRuntimeTracker(t *testing.T) {
 		assert.NotEmpty(t, reloaded.Run.Cwd)
 		assert.NotEmpty(t, reloaded.Run.LastRunAt)
 		_, err = time.Parse(time.RFC3339, reloaded.Run.LastRunAt)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		entry := reloaded.File(specPath)
 		require.NotNil(t, entry)
 		assert.Equal(t, 1.5, entry.RuntimeSeconds)

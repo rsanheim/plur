@@ -84,7 +84,7 @@ func TestJobTargetPatterns_PassthroughWithExplicitPattern(t *testing.T) {
 func TestNormalize_CaseInsensitive(t *testing.T) {
 	assert.Equal(t, "rspec", Normalize("RSpec"))
 	assert.Equal(t, "minitest", Normalize("  Minitest  "))
-	assert.Equal(t, "", Normalize("   "))
+	assert.Empty(t, Normalize("   "))
 }
 
 func TestIsKnown(t *testing.T) {

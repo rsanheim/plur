@@ -13,11 +13,11 @@ import (
 
 // BenchmarkTestCollectorRawOutput tests memory allocations in TestCollector's rawOutput string builder
 func BenchmarkTestCollectorRawOutput(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		collector := NewTestCollector()
 
 		// Simulate typical test output - 100 lines of output
-		for j := 0; j < 100; j++ {
+		for range 100 {
 			collector.AddNotification(types.OutputNotification{
 				Event:   types.RawOutput,
 				Content: "This is a typical test output line with some content that might appear during test execution",
@@ -31,11 +31,11 @@ func BenchmarkTestCollectorRawOutput(b *testing.B) {
 
 // BenchmarkTestCollectorWithTests simulates a more realistic scenario with various test notifications
 func BenchmarkTestCollectorWithTests(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		collector := NewTestCollector()
 
 		// Simulate 50 test cases with mixed results
-		for j := 0; j < 50; j++ {
+		for j := range 50 {
 			// Add some output
 			collector.AddNotification(types.OutputNotification{
 				Event:   types.RawOutput,
@@ -78,11 +78,11 @@ func BenchmarkTestCollectorWithTests(b *testing.B) {
 
 // BenchmarkStreamHelperStderr simulates stderr string building in stream_helper.go
 func BenchmarkStreamHelperStderr(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var stderrBuilder strings.Builder
 
 		// Simulate 50 stderr lines
-		for j := 0; j < 50; j++ {
+		for range 50 {
 			line := "STDERR: Warning: This is a typical stderr output line that might appear during test execution\n"
 			stderrBuilder.WriteString("STDERR: " + line + "\n")
 		}
@@ -94,11 +94,11 @@ func BenchmarkStreamHelperStderr(b *testing.B) {
 
 // BenchmarkStreamHelperStderrLarge tests with larger output volumes
 func BenchmarkStreamHelperStderrLarge(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var stderrBuilder strings.Builder
 
 		// Simulate 500 stderr lines (large test suite with warnings)
-		for j := 0; j < 500; j++ {
+		for range 500 {
 			line := "STDERR: Warning: Deprecation warning or other verbose output that Rails apps tend to produce during test runs\n"
 			stderrBuilder.WriteString("STDERR: " + line + "\n")
 		}
@@ -110,11 +110,11 @@ func BenchmarkStreamHelperStderrLarge(b *testing.B) {
 
 // BenchmarkTestCollectorSlices tests the slice allocations in TestCollector
 func BenchmarkTestCollectorSlices(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		collector := NewTestCollector()
 
 		// Add 100 test notifications to trigger slice growth
-		for j := 0; j < 100; j++ {
+		for j := range 100 {
 			collector.AddNotification(types.TestCaseNotification{
 				Event:           types.TestPassed,
 				Description:     "test passes",
@@ -134,7 +134,7 @@ func BenchmarkTestCollectorSlices(b *testing.B) {
 func generateSpecFiles(count int) []string {
 	dirs := []string{"models", "controllers", "services", "lib", "helpers", "jobs", "mailers"}
 	files := make([]string, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		dir := dirs[i%len(dirs)]
 		files[i] = fmt.Sprintf("spec/%s/file_%04d_spec.rb", dir, i)
 	}
@@ -168,7 +168,7 @@ func generateRSpecJSONLines(testCount int, failureRate float64) []string {
 	))
 
 	// Test results
-	for i := 0; i < testCount; i++ {
+	for i := range testCount {
 		status := "passed"
 		msgType := "example_passed"
 		if i < failureThreshold {
@@ -196,7 +196,7 @@ func generateTestNotifications(count int, failureRate float64) []types.TestCaseN
 	notifications := make([]types.TestCaseNotification, 0, count)
 	failureThreshold := int(float64(count) * failureRate)
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		event := types.TestPassed
 		if i < failureThreshold {
 			event = types.TestFailed
@@ -233,7 +233,7 @@ func BenchmarkGroupSpecFilesBySize(b *testing.B) {
 		b.Run(fmt.Sprintf("Files=%d_Workers=%d", tc.count, tc.workers), func(b *testing.B) {
 			files := generateSpecFiles(tc.count)
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				testruntime.GroupSpecFilesBySize(files, tc.workers)
 			}
 		})
@@ -255,7 +255,7 @@ func BenchmarkGroupSpecFilesByRuntime(b *testing.B) {
 			files := generateSpecFiles(tc.count)
 			runtimeData := generateRuntimeData(files)
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				testruntime.GroupSpecFilesByRuntime(files, tc.workers, runtimeData)
 			}
 		})
@@ -285,7 +285,7 @@ func BenchmarkRSpecParseLine(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			parser := rspec.NewOutputParser()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				parser.ParseLine(tc.line)
 			}
 		})
@@ -299,7 +299,7 @@ func BenchmarkRSpecParser(b *testing.B) {
 		b.Run(fmt.Sprintf("Tests=%d", count), func(b *testing.B) {
 			lines := generateRSpecJSONLines(count, 0.02)
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				parser := rspec.NewOutputParser()
 				for _, line := range lines {
 					parser.ParseLine(line)
@@ -320,7 +320,7 @@ func BenchmarkTestCollector(b *testing.B) {
 		b.Run(fmt.Sprintf("Tests=%d", count), func(b *testing.B) {
 			notifications := generateTestNotifications(count, 0.05)
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				collector := NewTestCollector()
 				for _, n := range notifications {
 					collector.AddNotification(n)

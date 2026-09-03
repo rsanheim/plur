@@ -1,7 +1,6 @@
 package buildinfo
 
 import (
-	"fmt"
 	"runtime/debug"
 )
 
@@ -50,7 +49,7 @@ func GetVersionInfo() string {
 			}
 			Commit = shortCommit
 
-			versionStr := fmt.Sprintf("dev-%s", shortCommit)
+			versionStr := "dev-" + shortCommit
 			if vcsModified {
 				versionStr += "-dirty"
 			}
