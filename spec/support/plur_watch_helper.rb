@@ -80,6 +80,54 @@ module PlurWatchHelper
     end
   end
 
+  # A temp watch project whose rspec job runs the given code on SIGINT
+  # (default: exit like an interrupted test run), writes its pid to
+  # runner.pid, and otherwise loops forever. Any leftover job process is
+  # killed on the way out.
+  def with_running_job_project(interrupt: "exit 130")
+    with_temp_watch_project do |project|
+      script = <<~RUBY.gsub("\n", "; ")
+        trap('INT') { #{interrupt} }
+        File.write('runner.pid', Process.pid.to_s)
+        loop { sleep 1 }
+      RUBY
+
+      project.join(".plur.toml").write(<<~TOML)
+        use = "rspec"
+
+        [job.rspec]
+        cmd = ["ruby", "-e", #{script.dump}]
+
+        [[watch]]
+        source = "spec/**/*_spec.rb"
+        jobs = ["rspec"]
+      TOML
+
+      yield project
+    ensure
+      pid = process_pid(project)
+      terminate_process(pid, "KILL") if pid
+    end
+  end
+
+  def process_pid(project)
+    path = project.join("runner.pid")
+    Integer(path.read, exception: false) if path.exist?
+  end
+
+  def process_alive?(pid)
+    Process.kill(0, pid)
+    true
+  rescue Errno::ESRCH
+    false
+  end
+
+  def expect_process_gone(project)
+    pid = process_pid(project)
+    expect(pid).not_to be_nil
+    Timeout.timeout(3) { sleep 0.02 while process_alive?(pid) }
+  end
+
   def capture_plur_watch_process(dir:, timeout:, debounce: nil, env: {})
     Dir.chdir(dir) do
       cmd_args = [plur_binary, "--debug", "watch", "run", "--timeout", timeout.to_s]
