@@ -1,7 +1,12 @@
 # plur CHANGELOG
 
 ## Unreleased
+
+## v0.80.1 - 2026-09-03
 * Add hidden `--dev-profile DIR` flag (or `PLUR_DEV_PROFILE`) that writes CPU, heap, goroutine, and goroutine-leak profiles at exit for any plur command [#145](https://github.com/rsanheim/plur/pull/145)
+* Add goroutine leak checks to the Go test suite [#142](https://github.com/rsanheim/plur/pull/142)
+* Apply go fix modernizers, gate lint:go on go fix -diff, and detect test files with GlobWalk [#141](https://github.com/rsanheim/plur/pull/141)
+* Add golangci-lint, go mod tidy -diff, and govulncheck to lint:go [#140](https://github.com/rsanheim/plur/pull/140)
 
 ## v0.80.0-rc.4 - 2026-08-29
 * Watch runs independent targets concurrently and skips duplicate in-flight targets [#134](https://github.com/rsanheim/plur/pull/134).
