@@ -13,6 +13,7 @@ import (
 	"github.com/rsanheim/plur/embedded"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func TestMain(m *testing.M) {
@@ -20,7 +21,7 @@ func TestMain(m *testing.M) {
 		fmt.Println(version)
 		os.Exit(0)
 	}
-	os.Exit(m.Run())
+	goleak.VerifyTestMain(m)
 }
 
 func skipUnlessWatcherSupported(t *testing.T) string {
