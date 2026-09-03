@@ -108,7 +108,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	PrintResults(summary, cfg.ColorOutput, currentJob)
 
 	if !summary.Success {
-		os.Exit(1)
+		return ExitCode{Code: 1}
 	}
 
 	return nil

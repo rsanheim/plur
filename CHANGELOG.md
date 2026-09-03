@@ -1,6 +1,7 @@
 # plur CHANGELOG
 
 ## Unreleased
+* Add hidden `--dev-profile DIR` flag (or `PLUR_DEV_PROFILE`) that writes CPU, heap, goroutine, and goroutine-leak profiles at exit for any plur command [#145](https://github.com/rsanheim/plur/pull/145)
 
 ## v0.80.0-rc.4 - 2026-08-29
 * Watch runs independent targets concurrently and skips duplicate in-flight targets [#134](https://github.com/rsanheim/plur/pull/134).

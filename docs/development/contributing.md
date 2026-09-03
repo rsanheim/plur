@@ -23,6 +23,10 @@ bin/rake install
 4. Fix any issues with `bin/rake standard:fix`
 5. Commit your changes
 
+## Profiling a Run
+
+The hidden `--dev-profile DIR` flag (or `PLUR_DEV_PROFILE=DIR`) makes any plur command write Go runtime profiles at exit: `cpu.pprof`, `heap.pprof`, `goroutine.txt`, and `goroutineleak.txt` under `DIR/plur-<pid>/`. Inspect the binary profiles with `go tool pprof`; the goroutine files are plain text, and a leak-free run has a `goroutineleak.txt` that starts with `goroutineleak profile: total 0`.
+
 ## Pull Request Process
 
 1. Fork the repository

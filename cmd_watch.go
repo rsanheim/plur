@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/rsanheim/plur/internal/devprofile"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -84,6 +85,7 @@ func reload(manager *watch.WatcherManager) error {
 	// Must cleanup before exec - defers won't run
 	manager.Stop()
 	resetTerminal()
+	devprofile.Stop()
 
 	args := os.Args
 	hasDebugFlag := slices.Contains(args, "--debug") || slices.Contains(args, "-d")

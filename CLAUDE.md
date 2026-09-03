@@ -45,6 +45,7 @@ plur -n 4                 # Specify workers (often fastest)
 plur -C path/to/project   # Change to directory before running (like git -C)
 plur --dry-run            # Preview what will run
 plur doctor               # Debug installation issues
+plur --dev-profile DIR    # Write CPU, heap, goroutine, and leak profiles at exit (hidden)
 plur watch                # Auto-run tests on file changes (experimental)
 plur spec                      # Run tests with detected job
 ```
@@ -128,6 +129,16 @@ plur doctor                      # Shows "Race Detector: true/false"
 ```
 
 Race-enabled binaries run 2-20x slower with 5-10x more memory. Use for debugging, not daily use.
+
+### Profiling a Run
+
+Any plur invocation can write Go runtime profiles at exit with the hidden `--dev-profile DIR` flag or `PLUR_DEV_PROFILE=DIR`. Each process writes `DIR/plur-<pid>/` containing `cpu.pprof`, `heap.pprof`, `goroutine.txt` (crash-dump style list of every goroutine), and `goroutineleak.txt` (goroutines the runtime proved can never wake; a clean run reads `total 0`). A watch reload execs a new process and gets a new directory.
+
+```bash
+plur --dev-profile tmp/prof -n 8                    # profile a spec run
+go tool pprof -top tmp/prof/plur-*/cpu.pprof
+grep -h "^goroutineleak profile" tmp/prof/*/goroutineleak.txt
+```
 
 ### Benchmarking Across Versions
 

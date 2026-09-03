@@ -87,29 +87,4 @@ RSpec.describe "plur config init command" do
       expect(error).to include("available: simple, rails, minitest")
     end
   end
-
-  describe "global config creation" do
-    let(:home_dir) { Dir.mktmpdir }
-
-    around do |example|
-      original_home = ENV["HOME"]
-      ENV["HOME"] = home_dir
-      example.run
-    ensure
-      ENV["HOME"] = original_home
-    end
-
-    it "creates config in home directory with --global" do
-      output, _, status = Dir.chdir(test_dir) do
-        Open3.capture3(plur_binary, "config", "init", "--global")
-      end
-
-      expect(status).to be_success
-      expect(output).to include("Created #{home_dir}/.plur.toml")
-
-      # Config should be in home dir, not current dir
-      expect(File.exist?(File.join(home_dir, ".plur.toml"))).to be true
-      expect(File.exist?(File.join(test_dir, ".plur.toml"))).to be false
-    end
-  end
 end

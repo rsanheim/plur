@@ -1,4 +1,10 @@
 module PlurHomeHelper
+  DEFAULT_PLUR_BINARY = begin
+    gobin = `go env GOBIN`.strip
+    gobin = File.join(`go env GOPATH`.strip, "bin") if gobin.empty?
+    File.join(gobin, "plur")
+  end
+
   module ClassMethods
     def around_with_tmp_plur_home
       around do |example|
@@ -23,7 +29,7 @@ module PlurHomeHelper
   end
 
   def plur_binary
-    ENV.fetch("PLUR_BINARY", "plur")
+    ENV.fetch("PLUR_BINARY", DEFAULT_PLUR_BINARY)
   end
 
   # Temporarily remove env vars that leak from the outer environment into
@@ -32,7 +38,7 @@ module PlurHomeHelper
   # exercise these pass them explicitly via run_plur's env: param.
   def without_plur_parallel_env
     saved = {}
-    %w[PLUR_WORKERS PARALLEL_TEST_PROCESSORS TEST_ENV_NUMBER PARALLEL_TEST_GROUPS NO_COLOR PLUR_COLOR].each do |key|
+    %w[PLUR_WORKERS PARALLEL_TEST_PROCESSORS TEST_ENV_NUMBER PARALLEL_TEST_GROUPS NO_COLOR PLUR_COLOR PLUR_DEV_PROFILE].each do |key|
       saved[key] = ENV.delete(key)
     end
     yield
