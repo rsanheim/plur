@@ -18,6 +18,7 @@ import (
 	"github.com/rsanheim/plur/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 type fakeWatcher struct {
@@ -95,6 +96,8 @@ func startController(t *testing.T, mutate func(*ControllerConfig)) *controllerHa
 	}
 	stdinR, stdinW := io.Pipe()
 	h.stdinW = stdinW
+	t.Cleanup(func() { goleak.VerifyNone(t) })
+	t.Cleanup(func() { _ = stdinW.Close() })
 
 	cfg := ControllerConfig{
 		Planner:       Planner{CWD: t.TempDir()},
