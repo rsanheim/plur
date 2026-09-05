@@ -40,3 +40,29 @@ The hidden `--dev-profile DIR` flag (or `PLUR_DEV_PROFILE=DIR`) makes any plur c
 - Go: Follow standard Go conventions
 - Ruby: Use StandardRB (enforced by `bin/rake`)
 - Keep changes focused and atomic
+
+## Documentation
+
+The docs site is built with [Zensical](https://zensical.org/) from the Markdown under `docs/`. Configuration lives in `mkdocs.yml` in the project root (Zensical reads it directly), and navigation order comes from `docs/.nav.yml`.
+
+Requirements: mise (Python version) and uv (Python dependencies, declared in `pyproject.toml`). mise creates and activates `.venv` automatically when you enter the project root.
+
+```bash
+script/docs              # Serve at http://localhost:8000
+script/docs build        # Build to site/
+script/docs clean-build  # Clean rebuild
+bin/rake lint:docs       # Strict build; part of bin/rake and CI
+script/check-links       # Strict build plus external link check (manual; hits the network)
+```
+
+Add a dependency with `uv add package-name`.
+
+Directory layout under `docs/`:
+
+* `architecture/` - Architecture decisions and designs
+* `benchmarks/` - Benchmarking notes and results
+* `development/` - Development guides and processes
+* `features/` - Feature documentation
+* `overview/` - Project overview and status
+
+Archival, research, and idea notes live in the internal repo at the sibling `../plur-internal/docs/` path from the project root.

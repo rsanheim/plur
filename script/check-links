@@ -8,61 +8,45 @@ readonly PROJECT_ROOT
 DOCS_DIR="${PROJECT_ROOT}/docs"
 readonly DOCS_DIR
 
-# Check if mise and uv are installed
-if ! command -v mise &> /dev/null; then
-    echo "Error: mise is not installed."
-    echo "Install it with: curl https://mise.run | sh"
-    exit 1
-fi
-
+# Check if uv is installed (mise provides it locally, see .mise.toml)
 if ! command -v uv &> /dev/null; then
     echo "Error: uv is not installed."
-    echo "Install it with: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    echo "Install it with: mise install"
     exit 1
 fi
 
 cd "${DOCS_DIR}"
 
 # Ensure dependencies are installed
-if ! uv run mkdocs --version &> /dev/null; then
-    echo "Installing MkDocs and dependencies..."
+if ! uv run zensical --version &> /dev/null; then
+    echo "Installing Zensical and dependencies..."
     uv sync
 fi
 
-# Export DYLD_FALLBACK_LIBRARY_PATH for macOS cairo support
-# This allows Python to find cairo installed via Homebrew
-export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib
-
 echo ">>> Checking markdown links..."
 
-# First, run MkDocs build with strict validation
+# First, run Zensical build with strict validation
 echo ""
-echo ">>> Running MkDocs validation..."
-if uv run mkdocs build --strict -f "${PROJECT_ROOT}/mkdocs.yml" > /tmp/mkdocs-build.log 2>&1; then
-    echo "✓ MkDocs validation passed"
+echo ">>> Running Zensical validation..."
+if uv run zensical build --strict -f "${PROJECT_ROOT}/mkdocs.yml" > "${PROJECT_ROOT}/tmp/zensical-build.log" 2>&1; then
+    echo "✓ Zensical validation passed"
 else
-    echo "✗ MkDocs validation failed"
+    echo "✗ Zensical validation failed"
     echo ""
-    echo "MkDocs errors:"
-    grep -E "WARNING|ERROR" /tmp/mkdocs-build.log || cat /tmp/mkdocs-build.log
+    echo "Zensical errors:"
+    cat "${PROJECT_ROOT}/tmp/zensical-build.log"
     exit_code=1
 fi
 
-# Run linkcheckmd on the docs directory
-# Note: linkcheckmd may report directory links as issues when they're actually valid
+# Run linkcheckmd on the docs directory (checks external links too, so this
+# needs network access and can hit rate limits)
 echo ""
 echo ">>> Running linkcheckmd..."
-if uv run python -m linkcheckmd . 2>&1 | grep -v "seconds to check links"; then
-    # Check if there were actual errors (not just the summary line)
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
-        echo "✓ linkcheckmd passed"
-    else
-        echo "✗ linkcheckmd found broken links"
-        echo "Note: Directory links (e.g., 'architecture/') may be falsely reported as broken"
-        exit_code=1
-    fi
-else
+if uv run python -m linkcheckmd .; then
     echo "✓ linkcheckmd passed"
+else
+    echo "✗ linkcheckmd found broken links"
+    exit_code=1
 fi
 
 # Summary
