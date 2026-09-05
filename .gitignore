@@ -62,7 +62,7 @@ opencode.json
 # Test artifacts
 test-pipes/
 
-# MkDocs
+# Zensical
 site/
 
 # Python

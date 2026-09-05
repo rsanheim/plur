@@ -70,14 +70,10 @@ EOF
 setup_environment() {
   # mise automatically creates .venv via uv when we are in the project root
   # Just ensure dependencies are installed
-  if ! uv run mkdocs --version &> /dev/null 2>&1; then
-    echo "Installing MkDocs and dependencies..."
+  if ! uv run zensical --version &> /dev/null 2>&1; then
+    echo "Installing Zensical and dependencies..."
     uv sync
   fi
-
-  # Export DYLD_FALLBACK_LIBRARY_PATH for macOS cairo support
-  # This allows Python to find cairo installed via Homebrew
-  export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib
 }
 
 # Main script logic
@@ -97,22 +93,22 @@ main() {
 
     build)
       echo "Building documentation..."
-      uv run mkdocs build
+      uv run zensical build
       echo "Documentation built in site/"
       ;;
 
     clean-build)
       echo "Cleaning and building documentation..."
       rm -rf "${PROJECT_ROOT}/site/"
-      uv run mkdocs build
+      uv run zensical build
       echo "✓ Documentation rebuilt in site/"
       ;;
 
     serve)
-      echo "Starting MkDocs server..."
+      echo "Starting Zensical server..."
       echo "Documentation will be available at http://localhost:8000"
       echo "Press Ctrl+C to stop"
-      uv run mkdocs serve
+      uv run zensical serve
       ;;
 
     help|--help|-h)

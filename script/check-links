@@ -24,27 +24,23 @@ fi
 cd "${DOCS_DIR}"
 
 # Ensure dependencies are installed
-if ! uv run mkdocs --version &> /dev/null; then
-    echo "Installing MkDocs and dependencies..."
+if ! uv run zensical --version &> /dev/null; then
+    echo "Installing Zensical and dependencies..."
     uv sync
 fi
 
-# Export DYLD_FALLBACK_LIBRARY_PATH for macOS cairo support
-# This allows Python to find cairo installed via Homebrew
-export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib
-
 echo ">>> Checking markdown links..."
 
-# First, run MkDocs build with strict validation
+# First, run Zensical build with strict validation
 echo ""
-echo ">>> Running MkDocs validation..."
-if uv run mkdocs build --strict -f "${PROJECT_ROOT}/mkdocs.yml" > /tmp/mkdocs-build.log 2>&1; then
-    echo "✓ MkDocs validation passed"
+echo ">>> Running Zensical validation..."
+if uv run zensical build --strict -f "${PROJECT_ROOT}/mkdocs.yml" > "${PROJECT_ROOT}/tmp/zensical-build.log" 2>&1; then
+    echo "✓ Zensical validation passed"
 else
-    echo "✗ MkDocs validation failed"
+    echo "✗ Zensical validation failed"
     echo ""
-    echo "MkDocs errors:"
-    grep -E "WARNING|ERROR" /tmp/mkdocs-build.log || cat /tmp/mkdocs-build.log
+    echo "Zensical errors:"
+    cat "${PROJECT_ROOT}/tmp/zensical-build.log"
     exit_code=1
 fi
 
