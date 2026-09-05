@@ -51,7 +51,8 @@ Requirements: mise (Python version) and uv (Python dependencies, declared in `py
 script/docs              # Serve at http://localhost:8000
 script/docs build        # Build to site/
 script/docs clean-build  # Clean rebuild
-script/check-links       # Strict build plus linkcheckmd
+bin/rake lint:docs       # Strict build; part of bin/rake and CI
+script/check-links       # Strict build plus external link check (manual; hits the network)
 ```
 
 Add a dependency with `uv add package-name`.

@@ -8,16 +8,10 @@ readonly PROJECT_ROOT
 DOCS_DIR="${PROJECT_ROOT}/docs"
 readonly DOCS_DIR
 
-# Check if mise and uv are installed
-if ! command -v mise &> /dev/null; then
-    echo "Error: mise is not installed."
-    echo "Install it with: curl https://mise.run | sh"
-    exit 1
-fi
-
+# Check if uv is installed (mise provides it locally, see .mise.toml)
 if ! command -v uv &> /dev/null; then
     echo "Error: uv is not installed."
-    echo "Install it with: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    echo "Install it with: mise install"
     exit 1
 fi
 
@@ -44,21 +38,15 @@ else
     exit_code=1
 fi
 
-# Run linkcheckmd on the docs directory
-# Note: linkcheckmd may report directory links as issues when they're actually valid
+# Run linkcheckmd on the docs directory (checks external links too, so this
+# needs network access and can hit rate limits)
 echo ""
 echo ">>> Running linkcheckmd..."
-if uv run python -m linkcheckmd . 2>&1 | grep -v "seconds to check links"; then
-    # Check if there were actual errors (not just the summary line)
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
-        echo "✓ linkcheckmd passed"
-    else
-        echo "✗ linkcheckmd found broken links"
-        echo "Note: Directory links (e.g., 'architecture/') may be falsely reported as broken"
-        exit_code=1
-    fi
-else
+if uv run python -m linkcheckmd .; then
     echo "✓ linkcheckmd passed"
+else
+    echo "✗ linkcheckmd found broken links"
+    exit_code=1
 fi
 
 # Summary
