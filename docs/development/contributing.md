@@ -40,4 +40,3 @@ The hidden `--dev-profile DIR` flag (or `PLUR_DEV_PROFILE=DIR`) makes any plur c
 - Go: Follow standard Go conventions
 - Ruby: Use StandardRB (enforced by `bin/rake`)
 - Keep changes focused and atomic
-
