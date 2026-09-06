@@ -25,7 +25,6 @@ fi
 
 echo ">>> Checking markdown links..."
 
-# First, run Zensical build with strict validation
 echo ""
 echo ">>> Running Zensical validation..."
 if uv run zensical build --strict -f "${PROJECT_ROOT}/mkdocs.yml" > "${PROJECT_ROOT}/tmp/zensical-build.log" 2>&1; then
