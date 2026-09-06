@@ -44,6 +44,12 @@ jobs:
             curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b "$gobin" "v${version}"
             go install golang.org/x/vuln/cmd/govulncheck@latest
       - run:
+          name: Install uv (version from .mise.toml)
+          command: |
+            version="$(sed -n 's/^uv = "\(.*\)"$/\1/p' .mise.toml)"
+            curl -LsSf "https://astral.sh/uv/${version}/install.sh" | sh
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$BASH_ENV"
+      - run:
           name: Build plur
           command: bin/rake build lint
       - run:

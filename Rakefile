@@ -117,8 +117,8 @@ namespace :test do
 end
 
 namespace :lint do
-  desc "Run all linting (Go, Ruby, and Shell)"
-  task all: %i[go ruby shell toolchain:check]
+  desc "Run all linting (Go, Ruby, Shell, and docs)"
+  task all: %i[go ruby shell docs toolchain:check]
 
   desc "Lint Go code"
   task :go do
@@ -147,6 +147,12 @@ namespace :lint do
     puts "[lint:shell] Running shellcheck"
     scripts = Dir["install.sh", "script/*"].select { |f| File.file?(f) && File.read(f, 64).start_with?("#!/") && File.read(f, 64).include?("sh") }
     sh "shellcheck", "--severity=warning", *scripts
+  end
+
+  desc "Build the docs in strict mode (external links are checked manually with script/check-links)"
+  task :docs do
+    puts "[lint:docs] Running zensical build --strict"
+    sh "uv run zensical build --strict"
   end
 end
 

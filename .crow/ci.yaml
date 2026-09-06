@@ -24,6 +24,22 @@ variables:
   - &plur_image 'localhost/plur-ci-toolchain:current'
 
 steps:
+  # Docs-only changes skip the heavy step below, so the strict docs build runs
+  # on its own here. `bin/rake` covers the same check via lint:docs.
+  - name: docs
+    image: *plur_image
+    environment:
+      UV_CACHE_DIR: /cache/plur/uv
+    when:
+      - path:
+          include:
+            - 'docs/**'
+            - mkdocs.yml
+            - pyproject.toml
+    commands:
+      - mkdir -p "$UV_CACHE_DIR"
+      - uv run zensical build --strict
+
   - name: ci
     image: *plur_image
     environment:
@@ -34,6 +50,7 @@ steps:
       GOPATH: /cache/plur/go
       GOCACHE: /cache/plur/go-build
       XDG_CACHE_HOME: /cache/plur/xdg
+      UV_CACHE_DIR: /cache/plur/uv
       # minibox has cores to spare; raise plur's CI worker cap (default 4)
       PLUR_WORKERS: '8'
     when:
@@ -43,7 +60,7 @@ steps:
       - |
         set -e
 
-        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME"
+        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$UV_CACHE_DIR"
         # Prefer the freshly built/installed plur (GOBIN) over the one baked into
         # the base image.
         export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
@@ -53,6 +70,7 @@ steps:
         goreleaser --version
         sqlite3 --version
         tmux -V
+        uv --version
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
