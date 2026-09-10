@@ -114,7 +114,7 @@ RSpec.describe "plur spec output handling" do
           Open3.capture3(plur_binary, "-n", "1")
         end
 
-        expect(status.exitstatus).to eq(1)
+        expect(status.exitstatus).to eq(70)
         expect(stderr).to include("WORKER_STDERR_MARKER")
         expect(stdout).not_to include("WORKER_STDERR_MARKER")
         expect(stdout).to include("0 examples, 0 failures")
@@ -142,7 +142,7 @@ RSpec.describe "plur spec output handling" do
           Open3.capture3(plur_binary, "-n", "1")
         end
 
-        expect(status.exitstatus).to eq(1)
+        expect(status.exitstatus).to eq(70)
         expect(stderr).to include("Error: fork/exec ./definitely-missing-command")
         expect(stdout).not_to include("fork/exec ./definitely-missing-command")
         expect(stdout).to include("0 examples, 0 failures")

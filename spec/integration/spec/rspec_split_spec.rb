@@ -39,7 +39,7 @@ RSpec.describe "Plur --rspec-split (experimental)" do
         # Change only the environment: source freshness must still match.
         interrupted_run = run_plur_allowing_errors("-n", "1", "--color=never",
           env: {"PLUR_TEST_EXIT_EARLY" => "1"})
-        expect(interrupted_run.exit_status).to eq(1)
+        expect(interrupted_run.exit_status).to eq(70)
         expect(interrupted_run.out).to include("2 examples, 0 failures")
         cache_after_interruption = File.binread(runtime_file)
 

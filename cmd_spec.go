@@ -83,6 +83,8 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		return nil
 	}
 
+	summary := BuildTestSummary(results, wallTime)
+
 	// Save runtime data if tests actually ran
 	hasValidRuntimeData := false
 	aborted := false
@@ -95,7 +97,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	if hasValidRuntimeData {
+	if hasValidRuntimeData && summary.Success {
 		runKind := testruntime.ClassifyRunKind(patterns, r.Tags, parent.passthroughArgs, aborted)
 		if err := runner.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
@@ -104,11 +106,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		}
 	}
 
-	summary := BuildTestSummary(results, wallTime)
 	PrintResults(summary, cfg.ColorOutput, currentJob)
 
 	if !summary.Success {
-		return ExitCode{Code: 1}
+		return ExitCode{Code: summary.ExitCode}
 	}
 
 	return nil

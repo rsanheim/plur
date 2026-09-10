@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"strings"
 	"testing"
@@ -379,6 +380,22 @@ func TestRunner_RunCommandPreservesSuiteCounts(t *testing.T) {
 	assert.Equal(t, 2, result.FailureCount)
 	assert.Equal(t, 1, result.ErrorCount)
 	assert.Equal(t, 3, result.PendingCount)
+}
+
+func TestProcessExitCode(t *testing.T) {
+	code, isExit := processExitCode(nil)
+	assert.Zero(t, code)
+	assert.False(t, isExit)
+
+	code, isExit = processExitCode(errors.New("process wait failed"))
+	assert.Equal(t, 1, code)
+	assert.False(t, isExit)
+
+	err := exec.Command("sh", "-c", "exit 42").Run()
+	require.Error(t, err)
+	code, isExit = processExitCode(err)
+	assert.Equal(t, 42, code)
+	assert.True(t, isExit)
 }
 
 // === Design Edge Cases ===

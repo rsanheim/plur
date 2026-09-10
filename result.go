@@ -11,9 +11,14 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
+// workerErrorExitCode distinguishes abnormal worker termination from test results.
+const workerErrorExitCode = 70
+
 // WorkerResult represents the accumulated results from a worker executing one or more test files
 type WorkerResult struct {
 	State          types.TestState
+	ExitCode       int // Framework exit code, or workerErrorExitCode for abnormal termination
+	AbnormalExit   bool
 	Output         string
 	Error          error
 	FileLoadTime   time.Duration
@@ -30,7 +35,7 @@ type WorkerResult struct {
 	FormattedSummary  string
 }
 
-// Success returns true if the test execution was successful (no failures or errors)
+// Success reports whether the worker process exited successfully.
 func (r WorkerResult) Success() bool {
 	return r.State == types.StateSuccess
 }
@@ -52,7 +57,9 @@ type TestSummary struct {
 	WallTime          time.Duration
 	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
 	HasFailures       bool
-	Success           bool           // True if no failures and no errors
+	Success           bool           // True if all workers exited successfully
+	ExitCode          int            // Worker exit code; errors outside examples take precedence over failures
+	AbnormalExit      bool           // At least one worker failed to start or terminated abnormally
 	ErroredFiles      []WorkerResult // Workers that had errors running tests
 	TotalPending      int            // Total pending/skipped tests
 
@@ -72,8 +79,19 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 
 	// Track if we're in single-file mode (single worker)
 	singleWorkerMode := len(results) == 1
+	exitCodeFromError := false
 
 	for _, result := range results {
+		if result.AbnormalExit {
+			summary.AbnormalExit = true
+			summary.ExitCode = workerErrorExitCode
+		} else if !summary.AbnormalExit && !result.Success() {
+			isError := result.State == types.StateError || result.ErrorCount > 0
+			if summary.ExitCode == 0 || (isError && !exitCodeFromError) {
+				summary.ExitCode = result.ExitCode
+				exitCodeFromError = isError
+			}
+		}
 		summary.TotalExamples += result.ExampleCount
 		summary.TotalAssertions += result.AssertionCount
 		summary.TotalFailures += result.FailureCount
@@ -222,12 +240,11 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Jo
 		}
 		if result.Output != "" {
 			fmt.Print(result.Output)
-			continue
 		}
 		if result.Error == nil {
 			continue
 		}
-		if _, isExit := processExitCode(result.Error); !isExit {
+		if _, isExit := processExitCode(result.Error); result.AbnormalExit || !isExit {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
 		}
 	}

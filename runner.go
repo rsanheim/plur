@@ -280,7 +280,7 @@ func (r *Runner) frameworkLabel() string {
 func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Duration) {
 	start := time.Now()
 
-	results := make(chan WorkerResult, len(commands))
+	results := make([]WorkerResult, len(commands))
 	outputChan := make(chan OutputMessage, len(commands)*10)
 
 	var outputWg sync.WaitGroup
@@ -293,20 +293,18 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 		workerIdx := i
 		workerCmd := cmd
 		wg.Go(func() {
-			result := r.runCommand(workerIdx, workerCmd, outputChan)
-			results <- result
+			results[workerIdx] = r.runCommand(workerIdx, workerCmd, outputChan)
 		})
 	}
 
 	wg.Wait()
-	close(results)
 
 	close(outputChan)
 	outputWg.Wait()
 
-	var allResults []WorkerResult
-	for result := range results {
-		allResults = append(allResults, result)
+	// Keep command order so selecting an exit code cannot depend on which
+	// worker happened to finish first.
+	for _, result := range results {
 		if result.State != types.StateError && len(result.Tests) > 0 {
 			for _, test := range result.Tests {
 				r.tracker.AddTestNotification(test)
@@ -316,7 +314,7 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 
 	fmt.Println() // newline after dots
 
-	return allResults, time.Since(start)
+	return results, time.Since(start)
 }
 
 func (r *Runner) runCommand(workerIdx int, cmd *exec.Cmd, outputChan chan<- OutputMessage) WorkerResult {
@@ -342,39 +340,38 @@ func (r *Runner) runCommand(workerIdx int, cmd *exec.Cmd, outputChan chan<- Outp
 
 	logger.Logger.Debug("finished", "worker", workerIdx, "success", err == nil)
 
-	exitCode, _ := processExitCode(err)
-	success := exitCode == 0
-	state := types.StateSuccess
-	output := result.Output
+	exitCode, isExit := processExitCode(err)
+	result.ExitCode = exitCode
+	result.Error = err
+	result.State = types.StateSuccess
+	missingSummary := r.job.Framework.Name == "rspec" && !collector.suiteFinished
+	result.AbnormalExit = missingSummary || exitCode < 0 || (err != nil && !isExit)
 
-	if err != nil && result.ExampleCount == 0 {
-		state = types.StateError
-	} else if !success {
-		state = types.StateFailed
+	if result.AbnormalExit {
+		result.State = types.StateError
+		result.ExitCode = workerErrorExitCode
+		if err != nil {
+			result.Error = fmt.Errorf("worker %d terminated abnormally: %w", workerIdx, err)
+		} else {
+			result.Error = fmt.Errorf("worker %d exited without an RSpec completion report", workerIdx)
+		}
+	} else if exitCode != 0 {
+		result.State = types.StateFailed
+		if result.ExampleCount == 0 {
+			result.State = types.StateError
+		}
 	}
-
-	return WorkerResult{
-		State:             state,
-		Output:            output,
-		Error:             err,
-		FileLoadTime:      result.FileLoadTime,
-		ExampleCount:      result.ExampleCount,
-		AssertionCount:    result.AssertionCount,
-		FailureCount:      result.FailureCount,
-		ErrorCount:        result.ErrorCount,
-		PendingCount:      result.PendingCount,
-		Tests:             result.Tests,
-		FormattedFailures: result.FormattedFailures,
-		FormattedPending:  result.FormattedPending,
-		FormattedSummary:  result.FormattedSummary,
-	}
+	return result
 }
 
-// processExitCode reports the exit code from err when it (or an error it wraps)
-// is an *exec.ExitError. The boolean is false for nil or non-exit errors.
+// processExitCode preserves process exit codes, including -1 for signal termination.
+// Non-exit errors use status 1; nil uses 0. The boolean identifies *exec.ExitError.
 func processExitCode(err error) (int, bool) {
 	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		return exitErr.ExitCode(), true
+	}
+	if err != nil {
+		return 1, false
 	}
 	return 0, false
 }
@@ -442,7 +439,9 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 
 func errorResult(err error) WorkerResult {
 	return WorkerResult{
-		State: types.StateError,
-		Error: err,
+		State:        types.StateError,
+		ExitCode:     workerErrorExitCode,
+		AbnormalExit: true,
+		Error:        err,
 	}
 }

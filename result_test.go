@@ -20,6 +20,7 @@ func TestBuildTestSummary(t *testing.T) {
 		},
 		{
 			State:        types.StateFailed,
+			ExitCode:     1,
 			ExampleCount: 5,
 			FailureCount: 2,
 			FileLoadTime: 75 * time.Millisecond,
@@ -40,6 +41,7 @@ func TestBuildTestSummary(t *testing.T) {
 		},
 		{
 			State:        types.StateError,
+			ExitCode:     1,
 			ExampleCount: 0,
 			FailureCount: 0,
 			FileLoadTime: 25 * time.Millisecond,
@@ -60,6 +62,7 @@ func TestBuildTestSummary(t *testing.T) {
 
 	assert.True(summary.HasFailures, "should have failures")
 	assert.False(summary.Success, "should not be successful when there are failures")
+	assert.Equal(1, summary.ExitCode)
 
 	assert.Len(summary.ErroredFiles, 1, "errored files")
 }
@@ -86,9 +89,42 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 	assert.Equal(t, 0, summary.TotalFailures)
 	assert.False(t, summary.HasFailures, "should have no failures when all tests pass")
 	assert.True(t, summary.Success, "should be successful when all tests pass")
+	assert.Zero(t, summary.ExitCode)
 	assert.Empty(t, summary.AllFailures, "should have no failures")
 	assert.Empty(t, summary.ErroredFiles, "should have no errored files")
 	assert.Empty(t, summary.FormattedSummary, "summary with multiple results should be empty")
+}
+
+func TestBuildTestSummaryExitCodePrecedence(t *testing.T) {
+	failure := WorkerResult{State: types.StateFailed, ExitCode: 17, FailureCount: 1}
+	suiteError := WorkerResult{State: types.StateFailed, ExitCode: 3, ErrorCount: 1}
+	loadError := WorkerResult{State: types.StateError, ExitCode: 5, ErrorCount: 1}
+	otherFailure := WorkerResult{State: types.StateFailed, ExitCode: 42}
+	workerError := WorkerResult{State: types.StateError, ExitCode: workerErrorExitCode, AbnormalExit: true}
+	configured70 := WorkerResult{State: types.StateFailed, ExitCode: 70, FailureCount: 1}
+
+	for _, tt := range []struct {
+		name    string
+		results []WorkerResult
+		want    int
+	}{
+		{"failure", []WorkerResult{failure}, 17},
+		{"suite error after failure", []WorkerResult{failure, suiteError}, 3},
+		{"suite error before failure", []WorkerResult{suiteError, failure}, 3},
+		{"load error after failure", []WorkerResult{failure, loadError}, 5},
+		{"first failing worker", []WorkerResult{failure, otherFailure}, 17},
+		{"first errored worker", []WorkerResult{suiteError, loadError}, 3},
+		{"worker error overrides framework error", []WorkerResult{suiteError, workerError}, workerErrorExitCode},
+		{"framework error cannot override worker error", []WorkerResult{workerError, suiteError}, workerErrorExitCode},
+		{"configured code 70 is not a worker error", []WorkerResult{configured70, suiteError}, 3},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			summary := BuildTestSummary(tt.results, 0)
+			assert.False(t, summary.Success)
+			assert.Equal(t, tt.want, summary.ExitCode)
+			assert.Equal(t, tt.want == workerErrorExitCode, summary.AbnormalExit)
+		})
+	}
 }
 
 func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {

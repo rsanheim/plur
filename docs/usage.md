@@ -57,6 +57,22 @@ Or set a permanent default in `.plur.toml`:
 use = "minitest"  # Override default to use Minitest
 ```
 
+### Exit Status
+
+RSpec runs preserve RSpec's exit code when it reports completion and the worker
+exits normally, including configured `failure_exit_code` and `error_exit_code`
+values. Both default to `1` in RSpec.
+
+Plur returns **70** when a worker cannot start, is killed by a signal, or exits
+without an RSpec completion report (even if the process exits `0`). This worker
+error takes precedence over test failures and prevents runtime cache updates.
+Plur prints the worker error to stderr. Avoid configuring RSpec to use `70` if
+your scripts need to distinguish these outcomes by exit status alone.
+
+When multiple workers report normal RSpec failures, errors outside examples take
+precedence over assertion failures. Within the same category, Plur uses the first
+unsuccessful worker in assignment order, independent of completion order.
+
 ### Minitest Integration Notes
 
 Plur integrates with Minitest as a standard minitest plugin: a
