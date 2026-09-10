@@ -26,8 +26,7 @@ jobs:
           version: << pipeline.parameters.go_version >>
       - go/mod-download-cached
       - go/load-build-cache
-      # Gems live outside the repo: goreleaser's `go mod vendor` before-hook
-      # rewrites ./vendor, which would wipe the orb's default vendor/bundle.
+      # Keep installed gems outside the project working directory.
       - ruby/install-deps:
           key: "plur-v3"
           include-branch-in-cache-key: false
@@ -113,7 +112,7 @@ jobs:
       - go/load-build-cache
       - run:
           name: Run Go tests with race detection
-          command: go test -mod=mod -race -short ./...
+          command: go test -race -short ./...
       - go/save-build-cache
 
   test-ruby-integration:
@@ -134,8 +133,7 @@ jobs:
       - run:
           name: Install tmux
           command: sudo apt-get update -qq && sudo apt-get install -y -qq tmux
-      # Gems live outside the repo: goreleaser's `go mod vendor` before-hook
-      # rewrites ./vendor, which would wipe the orb's default vendor/bundle.
+      # Keep installed gems outside the project working directory.
       - ruby/install-deps:
           key: "plur-v3"
           include-branch-in-cache-key: false
