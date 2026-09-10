@@ -1,6 +1,36 @@
 require "spec_helper"
 
 RSpec.describe "Plur Rails and Rake commands" do
+  describe "exit status" do
+    around_with_tmp_plur_home
+
+    %w[rails rake].each do |command|
+      [
+        {name: "success without a completion report", script: "exit 0", code: 0},
+        {name: "custom exit code", script: "exit 7", code: 7, error: "exit status 7"},
+        {name: "configured 70", script: "exit 70", code: 70, error: "exit status 70"},
+        {name: "missing executable", missing: true, code: 70, error: "no such file or directory"},
+        {name: "signal termination", script: "kill -TERM $$", code: 70, error: "signal: terminated"},
+        {name: "assignment order despite completion order", script: 'if [ "$TEST_ENV_NUMBER" = 1 ]; then sleep 0.1; exit 7; else exit 9; fi', code: 7},
+        {name: "abnormal exit overriding a normal failure", script: 'if [ "$TEST_ENV_NUMBER" = 1 ]; then exit 7; else kill -TERM $$; fi', code: 70}
+      ].each do |scenario|
+        it "preserves #{command} #{scenario.fetch(:name)}" do
+          Dir.mktmpdir("command-exit-status-", ROOT_PATH.join("tmp")) do |project|
+            cmd = scenario[:missing] ? ["./missing-command"] : ["sh", "-c", scenario.fetch(:script)]
+            File.write(File.join(project, ".plur.toml"), <<~TOML)
+              [job.#{command}]
+              cmd = #{cmd.to_json}
+            TOML
+            result = run_plur_allowing_errors("-C", project, command, "db:prepare", "-n", "2")
+            expect(result.exit_status).to eq(scenario.fetch(:code)), "#{result.out}\n#{result.err}"
+            expect(result.err).to include(scenario[:error]) if scenario[:error]
+            expect(result.err).not_to include("without an RSpec completion report")
+          end
+        end
+      end
+    end
+  end
+
   def dry_run_worker_line(output, worker)
     line = output.lines.find { |candidate| candidate.include?("[dry-run] Worker #{worker}:") }
     expect(line).not_to be_nil, "expected dry-run command for worker #{worker}, got:\n#{output}"

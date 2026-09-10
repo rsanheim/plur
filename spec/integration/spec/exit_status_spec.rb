@@ -61,58 +61,60 @@ RSpec.describe "Plur RSpec exit status" do
     end
   end
 
-  [1, 2].each do |workers|
-    context "with #{workers} #{(workers == 1) ? "worker" : "workers"}" do
-      [
-        {name: "passing examples", files: %w[passing], code: 0},
-        {name: "a completed run with all examples filtered out", files: %w[passing failing], args: %w[--tag absent], code: 0},
-        {name: "assertion failures", files: %w[passing failing], code: 1},
-        {name: "load errors", files: %w[passing load_error], code: 1},
-        {name: "configured failure codes", files: %w[passing failing], env: {"SPEC_FAILURE_CODE" => "17"}, code: 17},
-        {name: "a configured failure code of 2", files: %w[passing failing], env: {"SPEC_FAILURE_CODE" => "2"}, code: 2},
-        {name: "a configured failure code of 70", files: %w[passing failing], env: {"SPEC_FAILURE_CODE" => "70"}, code: 70},
-        {name: "CLI failure codes", files: %w[passing failing], args: %w[--failure-exit-code 19], code: 19},
-        {name: "load errors using the failure code", files: %w[passing load_error], env: {"SPEC_FAILURE_CODE" => "17"}, code: 17},
-        {name: "configured error codes", files: %w[passing load_error], env: {"SPEC_FAILURE_CODE" => "17", "SPEC_ERROR_CODE" => "3"}, code: 3},
-        {name: "suite errors taking precedence over assertion failures", files: %w[failing suite_error], env: {"SPEC_FAILURE_CODE" => "17", "SPEC_ERROR_CODE" => "3"}, code: 3},
-        {name: "an exit code set after RSpec completion", files: %w[passing after_exit], code: 42}
-      ].each do |scenario|
-        it "matches RSpec for #{scenario.fetch(:name)}" do
-          files = scenario.fetch(:files).map { |name| "spec/#{name}_spec.rb" }
-          env = scenario.fetch(:env, {})
-          args = scenario.fetch(:args, [])
-          rspec_out, rspec_err, rspec_status = Open3.capture3(env,
-            "bundle", "exec", "rspec", *files, *args, "--no-color")
-          rspec_code = rspec_status.exitstatus || (128 + rspec_status.termsig)
-          expect(rspec_code).to eq(scenario.fetch(:code)), "RSpec exited #{rspec_code}:\n#{rspec_out}\n#{rspec_err}"
+  [
+    {name: "passing examples", files: %w[passing], code: 0},
+    {name: "a completed run with all examples filtered out", files: %w[passing failing], args: %w[--tag absent], code: 0},
+    {name: "assertion failures", files: %w[passing failing], code: 1},
+    {name: "load errors", files: %w[passing load_error], code: 1},
+    {name: "configured failure codes", files: %w[passing failing], env: {"SPEC_FAILURE_CODE" => "17"}, code: 17},
+    {name: "a configured failure code of 2", files: %w[passing failing], env: {"SPEC_FAILURE_CODE" => "2"}, code: 2},
+    {name: "a configured failure code of 70", files: %w[passing failing], env: {"SPEC_FAILURE_CODE" => "70"}, code: 70},
+    {name: "CLI failure codes", files: %w[passing failing], args: %w[--failure-exit-code 19], code: 19},
+    {name: "load errors using the failure code", files: %w[passing load_error], env: {"SPEC_FAILURE_CODE" => "17"}, code: 17},
+    {name: "configured error codes", files: %w[passing load_error], env: {"SPEC_FAILURE_CODE" => "17", "SPEC_ERROR_CODE" => "3"}, code: 3},
+    {name: "suite errors taking precedence over assertion failures", files: %w[failing suite_error], env: {"SPEC_FAILURE_CODE" => "17", "SPEC_ERROR_CODE" => "3"}, code: 3},
+    {name: "an exit code set after RSpec completion", files: %w[passing after_exit], code: 42}
+  ].each do |scenario|
+    it "matches RSpec for #{scenario.fetch(:name)}" do
+      files = scenario.fetch(:files).map { |name| "spec/#{name}_spec.rb" }
+      env = scenario.fetch(:env, {})
+      args = scenario.fetch(:args, [])
+      rspec_out, rspec_err, rspec_status = Open3.capture3(env,
+        "bundle", "exec", "rspec", *files, *args, "--no-color")
+      rspec_code = rspec_status.exitstatus || (128 + rspec_status.termsig)
+      expect(rspec_code).to eq(scenario.fetch(:code)), "RSpec exited #{rspec_code}:\n#{rspec_out}\n#{rspec_err}"
 
-          plur_args = ["-n", workers.to_s, "--color=never", *files]
-          plur_args.concat(["--", *args]) unless args.empty?
-          result = run_plur_allowing_errors(*plur_args, env: env)
-          expect(result.exit_status).to eq(rspec_code), "Expected RSpec status #{rspec_code}, got Plur status #{result.exit_status}:\n#{result.out}\n#{result.err}"
-          expect(result.err).not_to include("terminated abnormally", "without an RSpec completion report")
-        end
+      [1, 2].each do |workers|
+        FileUtils.rm_rf(plur_home.join("runtime"))
+        plur_args = ["-n", workers.to_s, "--color=never", *files]
+        plur_args.concat(["--", *args]) unless args.empty?
+        result = run_plur_allowing_errors(*plur_args, env: env)
+        expect(result.exit_status).to eq(rspec_code), "With #{workers} workers: expected RSpec status #{rspec_code}, got Plur status #{result.exit_status}:\n#{result.out}\n#{result.err}"
+        expect(result.err).not_to include("terminated abnormally", "without an RSpec completion report")
       end
+    end
+  end
 
-      [
-        {name: "exit! 0 before completion", files: %w[passing exit], env: {"SPEC_EXIT_CODE" => "0"}, code: 0},
-        {name: "exit! 1 before completion", files: %w[passing exit], env: {"SPEC_EXIT_CODE" => "1"}, code: 1},
-        {name: "exit! 42 before completion", files: %w[passing exit], code: 42},
-        {name: "signal termination", files: %w[passing signal], code: 143},
-        {name: "signal termination after the completion report", files: %w[passing after_signal], code: 143},
-        {name: "an abnormal exit alongside assertion failures", files: %w[failing exit], env: {"SPEC_FAILURE_CODE" => "17"}, code: 42}
-      ].each do |scenario|
-        it "returns Plur's worker error code for #{scenario.fetch(:name)}" do
-          files = scenario.fetch(:files).map { |name| "spec/#{name}_spec.rb" }
-          env = scenario.fetch(:env, {})
-          _out, _err, rspec_status = Open3.capture3(env, "bundle", "exec", "rspec", *files, "--no-color")
-          rspec_code = rspec_status.exitstatus || (128 + rspec_status.termsig)
-          expect(rspec_code).to eq(scenario.fetch(:code))
+  [
+    {name: "exit! 0 before completion", files: %w[passing exit], env: {"SPEC_EXIT_CODE" => "0"}, code: 0},
+    {name: "exit! 1 before completion", files: %w[passing exit], env: {"SPEC_EXIT_CODE" => "1"}, code: 1},
+    {name: "exit! 42 before completion", files: %w[passing exit], code: 42},
+    {name: "signal termination", files: %w[passing signal], code: 143},
+    {name: "signal termination after the completion report", files: %w[passing after_signal], code: 143},
+    {name: "an abnormal exit alongside assertion failures", files: %w[failing exit], env: {"SPEC_FAILURE_CODE" => "17"}, code: 42}
+  ].each do |scenario|
+    it "returns Plur's worker error code for #{scenario.fetch(:name)}" do
+      files = scenario.fetch(:files).map { |name| "spec/#{name}_spec.rb" }
+      env = scenario.fetch(:env, {})
+      _out, _err, rspec_status = Open3.capture3(env, "bundle", "exec", "rspec", *files, "--no-color")
+      rspec_code = rspec_status.exitstatus || (128 + rspec_status.termsig)
+      expect(rspec_code).to eq(scenario.fetch(:code))
 
-          result = run_plur_allowing_errors("-n", workers.to_s, "--color=never", *files, env: env)
-          expect(result.exit_status).to eq(70)
-          expect(result.err).to match(/worker \d+ (terminated abnormally|exited without an RSpec completion report)/)
-        end
+      [1, 2].each do |workers|
+        FileUtils.rm_rf(plur_home.join("runtime"))
+        result = run_plur_allowing_errors("-n", workers.to_s, "--color=never", *files, env: env)
+        expect(result.exit_status).to eq(70), "With #{workers} workers:\n#{result.out}\n#{result.err}"
+        expect(result.err).to match(/worker \d+ (terminated abnormally|exited without an RSpec completion report)/)
       end
     end
   end

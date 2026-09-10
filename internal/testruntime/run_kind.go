@@ -11,7 +11,7 @@ const (
 	// aggregates.
 	RunKindAggregate RunKind = iota
 	// RunKindPartial is any non-aggregate run: focused (file:line), tag
-	// filtered, fail-fast, aborted, or custom-arg. It may merge per-example
+	// filtered, fail-fast, or custom-arg. It may merge per-example
 	// observations but must not touch file-level aggregates.
 	RunKindPartial
 )
@@ -24,27 +24,21 @@ func (k RunKind) IsAggregateEligible() bool {
 
 // ClassifyRunKind determines whether the current invocation should be treated
 // as aggregate-eligible (full default run) or partial. Partial classification
-// is intentionally inclusive: any signal that the run is selective, filtered,
-// or aborted demotes it so that a non-default run cannot overwrite the
-// full-file aggregates produced by a true default run.
+// is intentionally inclusive: tags, focused targets, and any passthrough args
+// prevent a non-default run from overwriting full-file aggregates.
 //
 // Inputs:
 //   - patterns:        positional Patterns from the CLI
 //   - tags:            --tag values
 //   - passthroughArgs: anything after `--`
-//   - aborted:         true if the run did not complete naturally (fail-fast,
-//     ctrl-c, worker error)
-func ClassifyRunKind(patterns, tags, passthroughArgs []string, aborted bool) RunKind {
-	if aborted {
-		return RunKindPartial
-	}
+func ClassifyRunKind(patterns, tags, passthroughArgs []string) RunKind {
 	if len(tags) > 0 {
 		return RunKindPartial
 	}
 	if hasFileLinePattern(patterns) {
 		return RunKindPartial
 	}
-	if hasAggregateBreakingArg(passthroughArgs) {
+	if len(passthroughArgs) > 0 {
 		return RunKindPartial
 	}
 	return RunKindAggregate
@@ -59,25 +53,4 @@ func hasFileLinePattern(patterns []string) bool {
 		}
 	}
 	return false
-}
-
-// hasAggregateBreakingArg reports whether passthrough args contain RSpec
-// options that demote the run to partial. We intentionally err on the side of
-// "partial" rather than enumerate every safe flag.
-func hasAggregateBreakingArg(args []string) bool {
-	for _, a := range args {
-		if a == "--fail-fast" || strings.HasPrefix(a, "--fail-fast=") {
-			return true
-		}
-		if a == "-e" || a == "--example" || strings.HasPrefix(a, "--example=") {
-			return true
-		}
-		if a == "-t" || a == "--tag" || strings.HasPrefix(a, "--tag=") {
-			return true
-		}
-		if strings.HasPrefix(a, "--only-failures") || strings.HasPrefix(a, "--next-failure") {
-			return true
-		}
-	}
-	return len(args) > 0
 }

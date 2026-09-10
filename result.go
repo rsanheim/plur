@@ -11,12 +11,11 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
-// workerErrorExitCode distinguishes abnormal worker termination from test results.
+// workerErrorExitCode is used for abnormal worker termination.
 const workerErrorExitCode = 70
 
 // WorkerResult represents the accumulated results from a worker executing one or more test files
 type WorkerResult struct {
-	State          types.TestState
 	ExitCode       int // Framework exit code, or workerErrorExitCode for abnormal termination
 	AbnormalExit   bool
 	Output         string
@@ -35,11 +34,6 @@ type WorkerResult struct {
 	FormattedSummary  string
 }
 
-// Success reports whether the worker process exited successfully.
-func (r WorkerResult) Success() bool {
-	return r.State == types.StateSuccess
-}
-
 // OutputMessage is a message from workers for output aggregation
 type OutputMessage struct {
 	Type        string // "dot", "failure", "pending", "error_progress", "error", "stderr", "stdout"
@@ -55,9 +49,7 @@ type TestSummary struct {
 	TotalErrors       int
 	AllFailures       []types.TestCaseNotification
 	WallTime          time.Duration
-	TotalFileLoadTime time.Duration // Max file load time across all workers (since they run in parallel)
-	HasFailures       bool
-	Success           bool           // True if all workers exited successfully
+	TotalFileLoadTime time.Duration  // Max file load time across all workers (since they run in parallel)
 	ExitCode          int            // Worker exit code; errors outside examples take precedence over failures
 	AbnormalExit      bool           // At least one worker failed to start or terminated abnormally
 	ErroredFiles      []WorkerResult // Workers that had errors running tests
@@ -69,29 +61,38 @@ type TestSummary struct {
 	FormattedSummary  string
 }
 
+// selectExitCode gives abnormal exits priority, then errors outside examples,
+// then other nonzero exits. Ties retain worker assignment order.
+func selectExitCode(results []WorkerResult) (code int, abnormal bool) {
+	exitCodeFromError := false
+	for _, result := range results {
+		if result.AbnormalExit {
+			return workerErrorExitCode, true
+		}
+		if result.ExitCode == 0 {
+			continue
+		}
+		isError := result.ErrorCount > 0 || result.ExampleCount == 0
+		if code == 0 || (isError && !exitCodeFromError) {
+			code = result.ExitCode
+			exitCodeFromError = isError
+		}
+	}
+	return code, false
+}
+
 // BuildTestSummary collects and calculates summary data from test results
 func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummary {
 	summary := TestSummary{
 		WallTime:     wallTime,
 		ErroredFiles: []WorkerResult{},
-		Success:      true, // Start assuming success
 	}
 
 	// Track if we're in single-file mode (single worker)
 	singleWorkerMode := len(results) == 1
-	exitCodeFromError := false
+	summary.ExitCode, summary.AbnormalExit = selectExitCode(results)
 
 	for _, result := range results {
-		if result.AbnormalExit {
-			summary.AbnormalExit = true
-			summary.ExitCode = workerErrorExitCode
-		} else if !summary.AbnormalExit && !result.Success() {
-			isError := result.State == types.StateError || result.ErrorCount > 0
-			if summary.ExitCode == 0 || (isError && !exitCodeFromError) {
-				summary.ExitCode = result.ExitCode
-				exitCodeFromError = isError
-			}
-		}
 		summary.TotalExamples += result.ExampleCount
 		summary.TotalAssertions += result.AssertionCount
 		summary.TotalFailures += result.FailureCount
@@ -103,23 +104,13 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 			summary.TotalFileLoadTime = result.FileLoadTime
 		}
 
-		// Check the result state to determine success/failure
-		switch result.State {
-		case types.StateFailed:
-			summary.HasFailures = true
-			summary.Success = false
-			// Filter and append only failed test notifications
-			for _, test := range result.Tests {
-				if test.Event == types.TestFailed {
-					summary.AllFailures = append(summary.AllFailures, test)
-				}
+		for _, test := range result.Tests {
+			if test.Event == types.TestFailed {
+				summary.AllFailures = append(summary.AllFailures, test)
 			}
-		case types.StateError:
-			summary.HasFailures = true
-			summary.Success = false
+		}
+		if result.AbnormalExit || (result.ExitCode != 0 && result.ExampleCount == 0) {
 			summary.ErroredFiles = append(summary.ErroredFiles, result)
-		case types.StateSuccess:
-			// summary.Success defaults to true
 		}
 
 		// Collect formatted failures and pending (concatenate them)
@@ -195,7 +186,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Jo
 		fmt.Print(renumberSummaryOutput(summary.FormattedPending))
 	}
 
-	if summary.HasFailures && summary.FormattedFailures != "" {
+	if summary.FormattedFailures != "" {
 		fmt.Print("\nFailures:\n")
 		fmt.Print(renumberSummaryOutput(summary.FormattedFailures))
 	}
@@ -218,7 +209,7 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Jo
 
 	if colorOutput && !hasFormattedSummary {
 		// Only colorize if we generated the summary ourselves
-		summaryText = parser.ColorizeSummary(summaryText, summary.HasFailures)
+		summaryText = parser.ColorizeSummary(summaryText, summary.ExitCode != 0)
 	}
 	fmt.Print(summaryText)
 	fmt.Println()
@@ -235,9 +226,6 @@ func PrintResults(summary TestSummary, colorOutput bool, currentJob framework.Jo
 
 	// Print errored files
 	for _, result := range summary.ErroredFiles {
-		if result.State != types.StateError {
-			continue
-		}
 		if result.Output != "" {
 			fmt.Print(result.Output)
 		}

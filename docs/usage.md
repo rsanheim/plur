@@ -73,6 +73,10 @@ When multiple workers report normal RSpec failures, errors outside examples take
 precedence over assertion failures. Within the same category, Plur uses the first
 unsuccessful worker in assignment order, independent of completion order.
 
+Rails and Rake commands also preserve worker exit codes, using the first nonzero
+code in assignment order. Startup failures and signal termination return `70`
+and take precedence. These commands do not require a completion report.
+
 ### Minitest Integration Notes
 
 Plur integrates with Minitest as a standard minitest plugin: a

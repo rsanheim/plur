@@ -566,7 +566,7 @@ func TestRunnerRunArgsPerWorkerReturnsErrorWhenWorkerFails(t *testing.T) {
 	err = runner.RunArgsPerWorker([]string{"db:prepare"})
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "rails command failed")
+	assert.Equal(t, ExitCode{Code: 7}, err)
 }
 
 // Helper functions for env assertions

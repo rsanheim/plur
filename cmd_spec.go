@@ -13,7 +13,6 @@ import (
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/types"
 )
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {
@@ -85,20 +84,9 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	summary := BuildTestSummary(results, wallTime)
 
-	// Save runtime data if tests actually ran
-	hasValidRuntimeData := false
-	aborted := false
-	for _, result := range results {
-		if result.State == types.StateError {
-			aborted = true
-		}
-		if result.State != types.StateError && result.ExampleCount > 0 {
-			hasValidRuntimeData = true
-		}
-	}
-
-	if hasValidRuntimeData && summary.Success {
-		runKind := testruntime.ClassifyRunKind(patterns, r.Tags, parent.passthroughArgs, aborted)
+	// Save runtime data only for successful invocations with examples.
+	if summary.ExitCode == 0 && summary.TotalExamples > 0 {
+		runKind := testruntime.ClassifyRunKind(patterns, r.Tags, parent.passthroughArgs)
 		if err := runner.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
@@ -108,7 +96,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	PrintResults(summary, cfg.ColorOutput, currentJob)
 
-	if !summary.Success {
+	if summary.ExitCode != 0 {
 		return ExitCode{Code: summary.ExitCode}
 	}
 

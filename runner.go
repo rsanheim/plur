@@ -15,7 +15,6 @@ import (
 	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/types"
 )
 
 const (
@@ -95,15 +94,13 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 	}
 
 	results, _ := r.executeWorkers(commands)
-	failed := 0
-	for _, result := range results {
-		if !result.Success() {
-			failed++
+	for workerIdx, result := range results {
+		if result.Error != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s worker %d: %v\n", r.job.Name, workerIdx, result.Error)
 		}
 	}
-
-	if failed > 0 {
-		return fmt.Errorf("%s command failed for %d %s", r.job.Name, failed, pluralize(failed, "worker", "workers"))
+	if code, _ := selectExitCode(results); code != 0 {
+		return ExitCode{Code: code}
 	}
 
 	return nil
@@ -305,7 +302,7 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	// Keep command order so selecting an exit code cannot depend on which
 	// worker happened to finish first.
 	for _, result := range results {
-		if result.State != types.StateError && len(result.Tests) > 0 {
+		if !result.AbnormalExit {
 			for _, test := range result.Tests {
 				r.tracker.AddTestNotification(test)
 			}
@@ -343,22 +340,15 @@ func (r *Runner) runCommand(workerIdx int, cmd *exec.Cmd, outputChan chan<- Outp
 	exitCode, isExit := processExitCode(err)
 	result.ExitCode = exitCode
 	result.Error = err
-	result.State = types.StateSuccess
 	missingSummary := r.job.Framework.Name == "rspec" && !collector.suiteFinished
 	result.AbnormalExit = missingSummary || exitCode < 0 || (err != nil && !isExit)
 
 	if result.AbnormalExit {
-		result.State = types.StateError
 		result.ExitCode = workerErrorExitCode
 		if err != nil {
 			result.Error = fmt.Errorf("worker %d terminated abnormally: %w", workerIdx, err)
 		} else {
 			result.Error = fmt.Errorf("worker %d exited without an RSpec completion report", workerIdx)
-		}
-	} else if exitCode != 0 {
-		result.State = types.StateFailed
-		if result.ExampleCount == 0 {
-			result.State = types.StateError
 		}
 	}
 	return result
@@ -439,7 +429,6 @@ func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOu
 
 func errorResult(err error) WorkerResult {
 	return WorkerResult{
-		State:        types.StateError,
 		ExitCode:     workerErrorExitCode,
 		AbnormalExit: true,
 		Error:        err,
