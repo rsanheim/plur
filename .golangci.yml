@@ -2,11 +2,6 @@
 # `bin/rake lint:go` runs it after go vet and go mod tidy -diff.
 version: "2"
 
-run:
-  # goreleaser's before-hook leaves a gitignored vendor/ dir; match the -mod=mod
-  # the Rakefile passes to every go command.
-  modules-download-mode: mod
-
 linters:
   # standard = errcheck, govet, ineffassign, staticcheck, unused
   default: standard
