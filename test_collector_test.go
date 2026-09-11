@@ -125,7 +125,6 @@ func TestTestCollector_BuildResult(t *testing.T) {
 	assert.Equal(t, 5, result.AssertionCount)
 	assert.Equal(t, 1, result.FailureCount)
 	assert.Equal(t, 0, result.ErrorCount)
-	assert.Equal(t, types.StateFailed, result.State)
 	assert.Equal(t, 100*time.Millisecond, result.FileLoadTime)
 	assert.Equal(t, "Test output line 1\nTest output line 2\n", result.Output)
 
@@ -157,7 +156,6 @@ func TestTestCollector_BuildResult_Success(t *testing.T) {
 
 	result := collector.BuildResult()
 
-	assert.Equal(t, types.StateSuccess, result.State)
 	assert.Equal(t, 2, result.ExampleCount)
 	assert.Equal(t, 0, result.FailureCount)
 	// Verify no failures in Tests array
@@ -205,7 +203,6 @@ func TestTestCollector_SuiteStartedPreservesLoadTime(t *testing.T) {
 
 	// Verify that LoadTime from SuiteStarted is preserved
 	assert.Equal(t, 1500*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should be preserved")
-	assert.Equal(t, types.StateSuccess, result.State)
 	assert.Equal(t, 2, result.ExampleCount)
 }
 
@@ -266,7 +263,6 @@ func TestTestCollector_BuildResult_SuiteFinishedZerosAreAuthoritative(t *testing
 	assert.Equal(t, 0, result.AssertionCount)
 	assert.Equal(t, 0, result.FailureCount)
 	assert.Equal(t, 2, result.ErrorCount)
-	assert.Equal(t, types.StateFailed, result.State)
 }
 
 func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {

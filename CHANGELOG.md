@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.80.2 - 2026-09-10
+* Preserve RSpec, Rails, and Rake worker exit codes; return `70` for workers that cannot start, are killed by a signal, or exit before RSpec reports completion. [#148](https://github.com/rsanheim/plur/pull/148)
+* Keep runtime history intact after interrupted or failing runs; save only successful runs with examples. [#148](https://github.com/rsanheim/plur/pull/148)
+* Build with Go modules instead of vendored dependencies. [#147](https://github.com/rsanheim/plur/pull/147)
+* Build documentation with Zensical and check strict docs builds in CI. [#146](https://github.com/rsanheim/plur/pull/146)
+
 ## v0.80.1 - 2026-09-03
 * Add hidden `--dev-profile DIR` flag (or `PLUR_DEV_PROFILE`) that writes CPU, heap, goroutine, and goroutine-leak profiles at exit for any plur command [#145](https://github.com/rsanheim/plur/pull/145)
 * Add goroutine leak checks to the Go test suite [#142](https://github.com/rsanheim/plur/pull/142)

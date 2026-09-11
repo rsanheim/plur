@@ -12,14 +12,13 @@ import (
 func TestBuildTestSummary(t *testing.T) {
 	results := []WorkerResult{
 		{
-			State:        types.StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
 			FileLoadTime: 50 * time.Millisecond,
 			Tests:        []types.TestCaseNotification{},
 		},
 		{
-			State:        types.StateFailed,
+			ExitCode:     1,
 			ExampleCount: 5,
 			FailureCount: 2,
 			FileLoadTime: 75 * time.Millisecond,
@@ -39,7 +38,7 @@ func TestBuildTestSummary(t *testing.T) {
 			},
 		},
 		{
-			State:        types.StateError,
+			ExitCode:     1,
 			ExampleCount: 0,
 			FailureCount: 0,
 			FileLoadTime: 25 * time.Millisecond,
@@ -58,8 +57,7 @@ func TestBuildTestSummary(t *testing.T) {
 	assert.Equal(wallTime, summary.WallTime, "wall time")
 	assert.Equal(75*time.Millisecond, summary.TotalFileLoadTime, "file load time should be the max of all workers")
 
-	assert.True(summary.HasFailures, "should have failures")
-	assert.False(summary.Success, "should not be successful when there are failures")
+	assert.Equal(1, summary.ExitCode)
 
 	assert.Len(summary.ErroredFiles, 1, "errored files")
 }
@@ -67,13 +65,11 @@ func TestBuildTestSummary(t *testing.T) {
 func TestBuildTestSummaryNoFailures(t *testing.T) {
 	results := []WorkerResult{
 		{
-			State:        types.StateSuccess,
 			ExampleCount: 10,
 			FailureCount: 0,
 			FileLoadTime: 40 * time.Millisecond,
 		},
 		{
-			State:        types.StateSuccess,
 			ExampleCount: 5,
 			FailureCount: 0,
 			FileLoadTime: 60 * time.Millisecond,
@@ -84,17 +80,48 @@ func TestBuildTestSummaryNoFailures(t *testing.T) {
 
 	assert.Equal(t, 15, summary.TotalExamples)
 	assert.Equal(t, 0, summary.TotalFailures)
-	assert.False(t, summary.HasFailures, "should have no failures when all tests pass")
-	assert.True(t, summary.Success, "should be successful when all tests pass")
+	assert.Zero(t, summary.ExitCode)
 	assert.Empty(t, summary.AllFailures, "should have no failures")
 	assert.Empty(t, summary.ErroredFiles, "should have no errored files")
 	assert.Empty(t, summary.FormattedSummary, "summary with multiple results should be empty")
 }
 
+func TestBuildTestSummaryExitCodePrecedence(t *testing.T) {
+	failure := WorkerResult{ExitCode: 17, ExampleCount: 1, FailureCount: 1}
+	suiteError := WorkerResult{ExitCode: 3, ExampleCount: 1, ErrorCount: 1}
+	loadError := WorkerResult{ExitCode: 5, ErrorCount: 1}
+	otherFailure := WorkerResult{ExitCode: 42, ExampleCount: 1}
+	workerError := WorkerResult{ExitCode: workerErrorExitCode, AbnormalExit: true}
+	configured70 := WorkerResult{ExitCode: 70, ExampleCount: 1, FailureCount: 1}
+
+	for _, tt := range []struct {
+		name     string
+		results  []WorkerResult
+		want     int
+		abnormal bool
+	}{
+		{"normal configured 70", []WorkerResult{configured70}, 70, false},
+		{"failure", []WorkerResult{failure}, 17, false},
+		{"suite error after failure", []WorkerResult{failure, suiteError}, 3, false},
+		{"suite error before failure", []WorkerResult{suiteError, failure}, 3, false},
+		{"load error after failure", []WorkerResult{failure, loadError}, 5, false},
+		{"first failing worker", []WorkerResult{failure, otherFailure}, 17, false},
+		{"first errored worker", []WorkerResult{suiteError, loadError}, 3, false},
+		{"worker error overrides framework error", []WorkerResult{suiteError, workerError}, workerErrorExitCode, true},
+		{"framework error cannot override worker error", []WorkerResult{workerError, suiteError}, workerErrorExitCode, true},
+		{"configured code 70 is not a worker error", []WorkerResult{configured70, suiteError}, 3, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			summary := BuildTestSummary(tt.results, 0)
+			assert.Equal(t, tt.want, summary.ExitCode)
+			assert.Equal(t, tt.abnormal, summary.AbnormalExit)
+		})
+	}
+}
+
 func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 	results := []WorkerResult{
 		{
-			State:            types.StateSuccess,
 			ExampleCount:     10,
 			FailureCount:     0,
 			FileLoadTime:     30 * time.Millisecond,
@@ -105,7 +132,7 @@ func TestSingleWorkerResultIsSingleWorkerMode(t *testing.T) {
 	summary := BuildTestSummary(results, 100*time.Millisecond)
 
 	assert.Equal(t, 10, summary.TotalExamples)
-	assert.True(t, summary.Success)
+	assert.Zero(t, summary.ExitCode)
 	assert.Equal(t, "10 examples, 0 failures", summary.FormattedSummary)
 }
 

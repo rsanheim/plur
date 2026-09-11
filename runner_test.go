@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"strings"
 	"testing"
@@ -381,6 +382,22 @@ func TestRunner_RunCommandPreservesSuiteCounts(t *testing.T) {
 	assert.Equal(t, 3, result.PendingCount)
 }
 
+func TestProcessExitCode(t *testing.T) {
+	code, isExit := processExitCode(nil)
+	assert.Zero(t, code)
+	assert.False(t, isExit)
+
+	code, isExit = processExitCode(errors.New("process wait failed"))
+	assert.Equal(t, 1, code)
+	assert.False(t, isExit)
+
+	err := exec.Command("sh", "-c", "exit 42").Run()
+	require.Error(t, err)
+	code, isExit = processExitCode(err)
+	assert.Equal(t, 42, code)
+	assert.True(t, isExit)
+}
+
 // === Design Edge Cases ===
 // These tests document current behavior and design decisions.
 
@@ -549,7 +566,7 @@ func TestRunnerRunArgsPerWorkerReturnsErrorWhenWorkerFails(t *testing.T) {
 	err = runner.RunArgsPerWorker([]string{"db:prepare"})
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "rails command failed")
+	assert.Equal(t, ExitCode{Code: 7}, err)
 }
 
 // Helper functions for env assertions

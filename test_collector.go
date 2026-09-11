@@ -80,24 +80,17 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 func (collector *TestCollector) BuildResult() WorkerResult {
 	result := WorkerResult{
 		Output:            collector.rawOutput.String(),
+		FileLoadTime:      collector.loadTime,
 		ExampleCount:      len(collector.tests),
 		AssertionCount:    0,
 		FailureCount:      len(collector.failures),
 		ErrorCount:        0,
 		PendingCount:      len(collector.pending),
 		Tests:             collector.tests,
-		State:             types.StateSuccess,
 		FormattedFailures: collector.formattedFailures,
 		FormattedPending:  collector.formattedPending,
 		FormattedSummary:  collector.formattedSummary,
 	}
-
-	// Set state based on failures
-	if len(collector.failures) > 0 {
-		result.State = types.StateFailed
-	}
-
-	result.FileLoadTime = collector.loadTime
 
 	// Counts from suite_finished are authoritative, zeros included: minitest
 	// reports errors separately from failures, so an error-only run has a

@@ -74,12 +74,24 @@ steps:
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
-        # Pre-warm the default-rails fixture (mirrors the CircleCI setup) so the
-        # integration suite doesn't cold-bundle and boot Rails across parallel
-        # workers at once. Shares BUNDLE_PATH, so the suite's own
-        # `bundle check` is then a no-op.
+        # Fixture specs use Bundler.with_unbundled_env so their subprocesses
+        # load the fixture Gemfile rather than this repository's. That removes
+        # BUNDLE_PATH, so configure and install each fixture's bundle first.
+        # Local Bundler config survives the unbundled environment and keeps
+        # the parallel spec workers from racing to build native gems in Ruby's
+        # global gem directory.
+        fixture_bundle_root=/cache/plur/fixture-bundles
+        find fixtures/projects -name Gemfile -print | sort | while IFS= read -r gemfile; do
+          fixture_dir=$(dirname "$gemfile")
+          fixture_name=${fixture_dir#fixtures/projects/}
+          (
+            cd "$fixture_dir"
+            env -u BUNDLE_PATH bundle config set --local path "$fixture_bundle_root/$fixture_name"
+            env -u BUNDLE_PATH bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
+          )
+        done
+
         ( cd fixtures/projects/default-rails \
-          && bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY" \
           && RAILS_ENV=test bundle exec rake db:create db:migrate )
 
         bin/rake
