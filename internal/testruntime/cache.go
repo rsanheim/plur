@@ -39,6 +39,7 @@ type CacheRun struct {
 // aggregate runtime from the most recent aggregate-eligible full run. Examples
 // holds per-example metadata when available.
 type FileEntry struct {
+	SourceCwd      string         `json:"source_cwd"`
 	MtimeUnixNano  int64          `json:"mtime_unix_nano"`
 	SizeBytes      int64          `json:"size_bytes"`
 	RuntimeSeconds float64        `json:"runtime_seconds"`

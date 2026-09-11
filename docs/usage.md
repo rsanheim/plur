@@ -257,6 +257,22 @@ plur doctor
 
 Plur records per-file runtime data to `$PLUR_HOME/runtime/<project-hash>.json`
 so it can balance subsequent worker assignments using historical timing.
+Linked Git worktrees share this file for corresponding project directories. For
+example, `apps/api` shares timings with `apps/api` in another worktree, while
+`apps/web` keeps its own history. Separate clones do not share a cache.
+
+The filename uses the common Git directory and the invocation directory relative
+to the worktree root. Outside Git, or when Git is unavailable, Plur uses the
+canonical working directory instead. `-C` still controls which project runs;
+`plur doctor` shows that project's cache path. Existing cache filenames are left
+alone, and timing history starts fresh with the new names.
+
+File timings can be reused across worktrees, but experimental split selectors
+are used only in the checkout that recorded them with matching source freshness.
+Other checkouts fall back to whole-file execution until they record their own
+examples. Concurrent runs write valid JSON atomically; the last writer wins,
+so overlapping runs can lose some timing updates. Watch sessions remain separate
+for each worktree.
 
 The on-disk format is a versioned runtime cache:
 
@@ -272,6 +288,7 @@ The on-disk format is a versioned runtime cache:
   },
   "files": {
     "spec/slow_spec.rb": {
+      "source_cwd": "/Users/example/src/my-project",
       "mtime_unix_nano": 1778610000000000000,
       "size_bytes": 12345,
       "runtime_seconds": 12.34,
@@ -290,10 +307,11 @@ The on-disk format is a versioned runtime cache:
 
 Behavior:
 
-- File aggregates are rewritten only by default/full-file RSpec runs. Focused
-  (`spec/foo_spec.rb:42`), tag-filtered (`--tag=…`), `--fail-fast`, aborted,
-  and `--`-passthrough runs are classified as *partial* and merge
-  per-example observations without overwriting the file aggregate.
+- Only successful invocations with examples save runtime data. Default/full-file
+  runs replace observed file aggregates. Focused (`spec/foo_spec.rb:42`),
+  tag-filtered (`--tag=…`), and `--`-passthrough runs merge per-example
+  observations only into existing entries from the same checkout with unchanged
+  source, preserving their file totals.
 - `--dry-run` never writes the cache.
 - Invalid, corrupt, or unsupported schema files are ignored and replaced on the next
   successful default run.

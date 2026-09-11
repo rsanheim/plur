@@ -157,7 +157,7 @@ func (r *Runner) expandRspecSplits(fileRuntimes map[string]float64) ([]string, m
 			expandedFiles = append(expandedFiles, file)
 			continue
 		}
-		if !cache.IsExamplesFresh(file) {
+		if !r.tracker.ExamplesFresh(file) {
 			logger.Logger.Debug("rspec-split skipped", "file", file, "reason", "examples not fresh")
 			expandedFiles = append(expandedFiles, file)
 			expandedRuntimes[file] = runtime

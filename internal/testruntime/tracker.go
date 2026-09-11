@@ -1,10 +1,6 @@
 package testruntime
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -121,7 +117,10 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 		examples := rt.pendingExamples[filePath]
 		if runKind.IsAggregateEligible() {
 			rt.cache.MergeAggregateRun(filePath, mtime, size, runtime, examples)
-		} else {
+			entry := rt.cache.Files[filePath]
+			entry.SourceCwd = rt.cwd
+			rt.cache.Files[filePath] = entry
+		} else if rt.ExamplesFresh(filePath) {
 			rt.cache.MergeObservations(filePath, examples)
 		}
 	}
@@ -132,29 +131,17 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 		if _, alreadyHandled := rt.fileRuntimes[filePath]; alreadyHandled {
 			continue
 		}
-		rt.cache.MergeObservations(filePath, examples)
+		if rt.ExamplesFresh(filePath) {
+			rt.cache.MergeObservations(filePath, examples)
+		}
 	}
 
 	return SaveCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
 }
 
-func computeRuntimeFilePath(runtimeDir string) (string, string, error) {
-	projectHash, cwd, err := getProjectHash()
-	if err != nil {
-		return "", "", err
-	}
-	return filepath.Join(runtimeDir, projectHash+".json"), cwd, nil
-}
-
-func getProjectHash() (string, string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", "", err
-	}
-	absPath, err := filepath.Abs(cwd)
-	if err != nil {
-		return "", "", err
-	}
-	hash := sha256.Sum256([]byte(absPath))
-	return hex.EncodeToString(hash[:])[:8], absPath, nil
+// ExamplesFresh requires selectors from this checkout as well as matching source.
+// Shared file totals remain useful for scheduling even when selectors are not.
+func (rt *RuntimeTracker) ExamplesFresh(filePath string) bool {
+	entry, ok := rt.cache.Files[filePath]
+	return ok && entry.SourceCwd == rt.cwd && rt.cache.IsExamplesFresh(filePath)
 }
