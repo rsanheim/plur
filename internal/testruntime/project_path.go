@@ -19,8 +19,7 @@ func computeRuntimeFilePath(runtimeDir string) (string, string, error) {
 	cwd = canonicalPath(cwd)
 	identity := "cwd\x00" + cwd
 
-	// Linked worktrees share a common Git directory. Keep invocation subdirs
-	// separate so two apps in one repository cannot share relative file keys.
+	// Share across worktrees, keeping project subdirectories separate.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel")

@@ -76,7 +76,7 @@ RSpec.describe "Runtime history across linked worktrees" do
     path = cache_path(@checkout)
     original = JSON.parse(File.read(path))
     entry = original.fetch("files").fetch("spec/timed_spec.rb")
-    # Match freshness deliberately: checkout identity must still prevent splitting.
+    # Matching timestamps must not bypass checkout isolation.
     source = File.stat(File.join(@worktree, "spec/timed_spec.rb"))
     entry["mtime_unix_nano"] = source.mtime.to_i * 1_000_000_000 + source.mtime.nsec
     File.write(path, JSON.generate(original))

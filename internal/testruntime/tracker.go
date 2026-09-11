@@ -9,11 +9,7 @@ import (
 	"github.com/rsanheim/plur/types"
 )
 
-// RuntimeTracker accumulates runtime data and persists it to the runtime
-// cache. Used single-threaded after all workers complete, so no mutex is
-// required. Per-example observations are buffered in pendingExamples until
-// SaveToFile decides (per RunKind) whether to merge them as an aggregate-
-// eligible full run or a partial observation.
+// RuntimeTracker collects timings after workers finish; no mutex is needed.
 type RuntimeTracker struct {
 	cache           *Cache
 	fileRuntimes    map[string]float64                  // collected this run, by project-relative file path
@@ -22,9 +18,7 @@ type RuntimeTracker struct {
 	cwd             string
 }
 
-// NewRuntimeTracker creates a tracker, computing the project-specific cache
-// file path and loading any existing runtime data. Missing, v1, or corrupt cache
-// files are silently replaced by an empty cache.
+// NewRuntimeTracker loads this project's runtime cache.
 func NewRuntimeTracker(runtimeDir string) (*RuntimeTracker, error) {
 	runtimeFile, cwd, err := computeRuntimeFilePath(runtimeDir)
 	if err != nil {
@@ -47,14 +41,12 @@ func (rt *RuntimeTracker) RuntimeFilePath() string {
 	return rt.runtimeFile
 }
 
-// LoadedData returns file-level runtime data loaded from the cache. Used by
-// the grouper to balance workers before tests run.
+// LoadedData returns cached file totals for worker grouping.
 func (rt *RuntimeTracker) LoadedData() map[string]float64 {
 	return rt.cache.FileRuntimes()
 }
 
-// Cache returns the underlying cache. Read-only for callers that need
-// per-example data (the splitter).
+// Cache returns cached example data for the splitter.
 func (rt *RuntimeTracker) Cache() *Cache {
 	return rt.cache
 }
@@ -64,11 +56,7 @@ func (rt *RuntimeTracker) AddRuntime(filePath string, runtime float64) {
 	rt.fileRuntimes[filePath] += runtime
 }
 
-// AddTestNotification accumulates runtime from a test notification. The
-// example is attributed to the rerunnable owning spec file derived from
-// LocationRerunArgument (which equals file_path:line for plain examples and
-// points back to the owning spec for shared examples). Both file-level
-// runtime and per-example metadata key by that owner.
+// AddTestNotification records timings under the rerunnable owning spec.
 func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotification) {
 	if notification.FilePath == "" {
 		return
@@ -89,11 +77,7 @@ func (rt *RuntimeTracker) AddTestNotification(notification types.TestCaseNotific
 	}
 }
 
-// owningFileAndLine derives the owning project-relative spec file and line
-// from RSpec's location_rerun_argument, the canonical rerunnable target. For
-// non-shared examples this is just file_path:line_number; for shared
-// examples it points back to the owning spec file. Falls back to the raw
-// notification fields when location_rerun_argument is empty or malformed.
+// Shared examples belong to their rerunnable spec, not the support file.
 func owningFileAndLine(n types.TestCaseNotification) (string, int) {
 	s := strings.TrimPrefix(n.LocationRerunArgument, "./")
 	if i := strings.LastIndex(s, ":"); i > 0 {
@@ -104,10 +88,7 @@ func owningFileAndLine(n types.TestCaseNotification) (string, int) {
 	return n.FilePath, n.LineNumber
 }
 
-// SaveToFile persists the runtime data to the cache file. runKind dictates
-// whether the file-level aggregates are updated (RunKindAggregate) or
-// preserved (RunKindPartial). See MergeAggregateRun and MergeObservations
-// for the lifecycle.
+// SaveToFile replaces full-file totals or merges partial observations.
 func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 	for filePath, runtime := range rt.fileRuntimes {
 		mtime, size, ok := SourceFreshness(filePath)
@@ -125,8 +106,7 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 		}
 	}
 
-	// Files observed only via partial example data (no aggregated runtime)
-	// still merge their example observations.
+	// Include observations with no positive runtime.
 	for filePath, examples := range rt.pendingExamples {
 		if _, alreadyHandled := rt.fileRuntimes[filePath]; alreadyHandled {
 			continue
@@ -139,8 +119,7 @@ func (rt *RuntimeTracker) SaveToFile(runKind RunKind) error {
 	return SaveCache(rt.cache, rt.runtimeFile, buildinfo.GetVersionInfo(), rt.cwd, time.Now().UTC())
 }
 
-// ExamplesFresh requires selectors from this checkout as well as matching source.
-// Shared file totals remain useful for scheduling even when selectors are not.
+// ExamplesFresh checks selector ownership and source freshness.
 func (rt *RuntimeTracker) ExamplesFresh(filePath string) bool {
 	entry, ok := rt.cache.Files[filePath]
 	return ok && entry.SourceCwd == rt.cwd && rt.cache.IsExamplesFresh(filePath)
