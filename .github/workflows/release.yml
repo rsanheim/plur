@@ -26,13 +26,12 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0.6"
-          bundler-cache: true
 
       - name: Extract release notes
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           echo "Extracting release notes for $VERSION"
-          bundle exec script/release extract-notes $VERSION > /tmp/notes.md
+          script/release extract-notes "$VERSION" > /tmp/notes.md
           echo "--- Release notes ---"
           cat /tmp/notes.md
 
