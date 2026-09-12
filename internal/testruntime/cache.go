@@ -65,18 +65,13 @@ func NewCache() *Cache {
 // LoadCache reads a runtime cache from disk. It returns an empty cache for
 // missing files, v1 caches (map[string]float64), corrupt JSON, and entries
 // with an unsupported schema_version.
-func LoadCache(path string) (cache *Cache) {
-	defer func() {
-		if cache == nil {
-			cache = NewCache()
-		}
-	}()
-
+func LoadCache(path string) *Cache {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return NewCache()
 	}
 
+	var cache *Cache
 	if err := json.Unmarshal(data, &cache); err != nil {
 		return NewCache()
 	}
@@ -155,15 +150,6 @@ func (c *Cache) FileRuntimes() map[string]float64 {
 	return out
 }
 
-// File returns the entry for a file path (project-relative), or nil if absent.
-func (c *Cache) File(path string) *FileEntry {
-	entry, ok := c.Files[path]
-	if !ok {
-		return nil
-	}
-	return &entry
-}
-
 // SourceFreshness reads mtime and size of a source file. ok is false if the
 // file cannot be stat'd.
 func SourceFreshness(path string) (mtimeUnixNano, sizeBytes int64, ok bool) {
@@ -172,29 +158,6 @@ func SourceFreshness(path string) (mtimeUnixNano, sizeBytes int64, ok bool) {
 		return 0, 0, false
 	}
 	return info.ModTime().UnixNano(), info.Size(), true
-}
-
-// ExampleLines returns sorted, deduplicated line numbers for the examples
-// recorded against a file. Empty if the file is missing from the cache or
-// has no recorded examples.
-func (c *Cache) ExampleLines(filePath string) []int {
-	entry := c.Files[filePath]
-	if len(entry.Examples) == 0 {
-		return nil
-	}
-	out := make([]int, 0, len(entry.Examples))
-	seen := make(map[int]struct{}, len(entry.Examples))
-	for _, ex := range entry.Examples {
-		if ex.LineNumber <= 0 {
-			continue
-		}
-		if _, dup := seen[ex.LineNumber]; dup {
-			continue
-		}
-		seen[ex.LineNumber] = struct{}{}
-		out = append(out, ex.LineNumber)
-	}
-	return out
 }
 
 // IsExamplesFresh reports whether cached examples for a file match the

@@ -24,7 +24,7 @@ var importantEnvVars = []string{"PARALLEL_TEST_PROCESSORS", "NO_COLOR", "HOME", 
 
 // runtimeStats summarizes the already loaded cache.
 func runtimeStats(cache *testruntime.Cache, size int64) string {
-	if cache == nil || len(cache.Files) == 0 {
+	if len(cache.Files) == 0 {
 		return "(file exists)"
 	}
 	var examples int

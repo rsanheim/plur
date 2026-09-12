@@ -27,19 +27,6 @@ func TestPerWorkerBudget_ZeroWorkers(t *testing.T) {
 	assert.Zero(t, perWorkerBudget(nil, []string{"a"}, 0))
 }
 
-func TestCache_ExampleLines(t *testing.T) {
-	cache := testruntime.NewCache()
-	cache.MergeAggregateRun("spec/foo_spec.rb", 0, 0, 1.0, map[string]*testruntime.ExampleEntry{
-		"./spec/foo_spec.rb[1:1]": {LineNumber: 20, RuntimeSeconds: 1.0},
-		"./spec/foo_spec.rb[1:2]": {LineNumber: 5, RuntimeSeconds: 1.0},
-		"./spec/foo_spec.rb[1:3]": {LineNumber: 5, RuntimeSeconds: 1.0}, // duplicate line — dedup
-		"./spec/foo_spec.rb[2:1]": {LineNumber: 0, RuntimeSeconds: 1.0}, // zero line — skip
-	})
-
-	lines := cache.ExampleLines("spec/foo_spec.rb")
-	assert.ElementsMatch(t, []int{5, 20}, lines, "duplicates and zero-line entries are dropped")
-}
-
 func TestExpandRspecSplits_SplitsLongFile(t *testing.T) {
 	tempDir := t.TempDir()
 	specPath := filepath.Join(tempDir, "slow_spec.rb")

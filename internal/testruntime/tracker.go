@@ -46,7 +46,7 @@ func (rt *RuntimeTracker) LoadedData() map[string]float64 {
 	return rt.cache.FileRuntimes()
 }
 
-// Cache returns cached example data for the splitter.
+// Cache returns the loaded runtime cache.
 func (rt *RuntimeTracker) Cache() *Cache {
 	return rt.cache
 }

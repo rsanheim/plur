@@ -24,8 +24,7 @@ type SplitDecision map[string]float64
 // recorded examples have usable line numbers.
 //
 // Repeated calls with the same cache state and inputs produce identical
-// results. Map iteration order is randomized, but consumers (the grouper)
-// sort by runtime, so order does not affect downstream grouping.
+// results.
 func (c *Cache) SplitFile(filePath string, workerCount int, targetPerWorkerRuntime float64) SplitDecision {
 	file, ok := c.Files[filePath]
 	if !ok {

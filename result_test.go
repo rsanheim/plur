@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -114,7 +115,9 @@ func TestBuildTestSummaryExitCodePrecedence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			summary := BuildTestSummary(tt.results, 0)
 			assert.Equal(t, tt.want, summary.ExitCode)
-			assert.Equal(t, tt.abnormal, summary.AbnormalExit)
+			assert.Equal(t, tt.abnormal, slices.ContainsFunc(summary.ErroredFiles, func(result WorkerResult) bool {
+				return result.AbnormalExit
+			}))
 		})
 	}
 }

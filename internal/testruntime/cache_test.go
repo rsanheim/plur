@@ -91,14 +91,14 @@ func TestCache_SaveAndReload(t *testing.T) {
 	assert.Equal(t, "/Users/example/project", reloaded.Run.Cwd)
 	assert.Equal(t, "2026-05-22T15:04:05Z", reloaded.Run.LastRunAt)
 
-	entry := reloaded.File("spec/foo_spec.rb")
-	require.NotNil(t, entry)
+	entry, ok := reloaded.Files["spec/foo_spec.rb"]
+	require.True(t, ok)
 	assert.Equal(t, int64(123), entry.MtimeUnixNano)
 	assert.Equal(t, int64(456), entry.SizeBytes)
 	assert.Equal(t, 2.5, entry.RuntimeSeconds)
 	assert.Len(t, entry.Examples, 1)
 
-	ex := requireExample(t, entry, "./spec/foo_spec.rb[1:1]")
+	ex := requireExample(t, &entry, "./spec/foo_spec.rb[1:1]")
 	assert.Equal(t, 12, ex.LineNumber)
 	assert.Equal(t, "./spec/foo_spec.rb:12", ex.LocationRerunArgument)
 	assert.Equal(t, 1.0, ex.RuntimeSeconds)
@@ -135,9 +135,9 @@ func TestCache_IgnoresUnknownExampleFields(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte(oldShape), 0644))
 
 	cache := LoadCache(path)
-	entry := cache.File("spec/foo_spec.rb")
-	require.NotNil(t, entry)
-	ex := requireExample(t, entry, "./spec/foo_spec.rb[1:1]")
+	entry, ok := cache.Files["spec/foo_spec.rb"]
+	require.True(t, ok)
+	ex := requireExample(t, &entry, "./spec/foo_spec.rb[1:1]")
 	assert.Equal(t, 12, ex.LineNumber)
 	assert.Equal(t, 0.5, ex.RuntimeSeconds)
 }
@@ -255,8 +255,8 @@ func TestCache_MergeAggregateRunReplacesExamples(t *testing.T) {
 		"./spec/x_spec.rb[1:1]": {LineNumber: 5, RuntimeSeconds: 0.6},
 	})
 
-	entry := cache.File("spec/x_spec.rb")
-	require.NotNil(t, entry)
+	entry, ok := cache.Files["spec/x_spec.rb"]
+	require.True(t, ok)
 	assert.Equal(t, int64(3), entry.MtimeUnixNano)
 	assert.Equal(t, 2.0, entry.RuntimeSeconds)
 	assert.Len(t, entry.Examples, 1, "aggregate run prunes examples missing from the run")
@@ -275,12 +275,12 @@ func TestCache_MergeObservationsPreservesAggregate(t *testing.T) {
 		"./spec/x_spec.rb[1:1]": {LineNumber: 5, RuntimeSeconds: 1.5},
 	})
 
-	entry := cache.File("spec/x_spec.rb")
-	require.NotNil(t, entry)
+	entry, ok := cache.Files["spec/x_spec.rb"]
+	require.True(t, ok)
 	assert.Equal(t, 5.0, entry.RuntimeSeconds, "partial run must not touch file-level runtime")
 	assert.Len(t, entry.Examples, 2, "partial run must not prune missing examples")
-	assert.Equal(t, 1.5, requireExample(t, entry, "./spec/x_spec.rb[1:1]").RuntimeSeconds)
-	assert.Equal(t, 4.0, requireExample(t, entry, "./spec/x_spec.rb[1:2]").RuntimeSeconds)
+	assert.Equal(t, 1.5, requireExample(t, &entry, "./spec/x_spec.rb[1:1]").RuntimeSeconds)
+	assert.Equal(t, 4.0, requireExample(t, &entry, "./spec/x_spec.rb[1:2]").RuntimeSeconds)
 }
 
 func TestCache_MergeObservationsSkipsUnseenFiles(t *testing.T) {
@@ -289,7 +289,7 @@ func TestCache_MergeObservationsSkipsUnseenFiles(t *testing.T) {
 		"./spec/never_seen.rb[1:1]": {LineNumber: 1, RuntimeSeconds: 0.1},
 	})
 
-	assert.Nil(t, cache.File("spec/never_seen.rb"), "partial runs must not create file-level entries")
+	assert.NotContains(t, cache.Files, "spec/never_seen.rb", "partial runs must not create file-level entries")
 }
 
 func TestCache_IsExamplesFresh(t *testing.T) {

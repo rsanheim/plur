@@ -111,7 +111,7 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 			fmt.Fprintf(os.Stderr, "Error: %s worker %d: %v\n", r.job.Name, workerIdx, result.Error)
 		}
 	}
-	if code, _ := selectExitCode(results); code != 0 {
+	if code := selectExitCode(results); code != 0 {
 		return ExitCode{Code: code}
 	}
 
