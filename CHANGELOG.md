@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-* Reuse runtime timing history across linked Git worktrees, keeping separate project directories and checkout-specific split selectors isolated.
+## v0.81.0 - 2026-09-12
 
-## v0.80.2 - 2026-09-10
+* Reuse runtime timing history across linked Git worktrees, keeping separate project directories and checkout-specific split selectors isolated. [#149](https://github.com/rsanheim/plur/pull/149)
 * Preserve RSpec, Rails, and Rake worker exit codes; return `70` for workers that cannot start, are killed by a signal, or exit before RSpec reports completion. [#148](https://github.com/rsanheim/plur/pull/148)
 * Keep runtime history intact after interrupted or failing runs; save only successful runs with examples. [#148](https://github.com/rsanheim/plur/pull/148)
 * Build with Go modules instead of vendored dependencies. [#147](https://github.com/rsanheim/plur/pull/147)
