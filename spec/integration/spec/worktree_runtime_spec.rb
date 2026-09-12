@@ -42,6 +42,27 @@ RSpec.describe "Runtime history across linked worktrees" do
     run_plur("-C", project, "-n", "2", "spec/timed_spec.rb", *args)
   end
 
+  %w[rails rake].each do |command|
+    it "runs #{command} without looking up the runtime cache" do
+      File.write(File.join(@checkout, ".plur.toml"), <<~TOML)
+        [job.#{command}]
+        cmd = ["sh", "-c", "echo task-ran"]
+      TOML
+      trace = File.join(File.dirname(@checkout), "git-trace.json")
+      result = run_plur("-C", @checkout, command, "task", "-n", "1", env: {"GIT_TRACE2_EVENT" => trace})
+      expect(result.out).to include("task-ran")
+      expect(File.exist?(trace)).to be(false)
+    end
+  end
+
+  it "shows loaded runtime counts in doctor and tolerates a corrupt cache" do
+    run_specs(@checkout)
+    path = cache_path(@checkout)
+    expect(run_plur("-C", @checkout, "doctor").out).to include("1 files / 2 examples")
+    File.write(path, "invalid JSON")
+    expect(run_plur("-C", @checkout, "doctor").out).to include("(file exists)")
+  end
+
   it "discovers Git identity in one command with optional locking disabled" do
     trace = File.join(File.dirname(@checkout), "git-trace.json")
     cache_path(@checkout, env: {"GIT_TRACE2_EVENT" => trace, "GIT_OPTIONAL_LOCKS" => "1"})

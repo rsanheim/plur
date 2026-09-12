@@ -22,12 +22,8 @@ import (
 // present in the environment is listed after them.
 var importantEnvVars = []string{"PARALLEL_TEST_PROCESSORS", "NO_COLOR", "HOME", "GOPATH"}
 
-// runtimeStats reads the runtime cache file at path and returns a one-line
-// summary suitable for the plur doctor "Runtime Data:" block. Falls back to
-// the original "(file exists)" wording if the cache is unreadable or in an
-// unexpected shape, so doctor never crashes on a malformed file.
-func runtimeStats(path string, size int64) string {
-	cache := testruntime.LoadCache(path)
+// runtimeStats summarizes the already loaded cache.
+func runtimeStats(cache *testruntime.Cache, size int64) string {
 	if cache == nil || len(cache.Files) == 0 {
 		return "(file exists)"
 	}
@@ -142,8 +138,8 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 	fmt.Printf("Runtime Data:     %s\n", runtimePath)
 
 	// Check if runtime file exists; on hit, show size / files / examples.
-	if info, err := os.Stat(runtimePath); err == nil {
-		fmt.Printf("                  %s\n", runtimeStats(runtimePath, info.Size()))
+	if info, statErr := os.Stat(runtimePath); err == nil && statErr == nil {
+		fmt.Printf("                  %s\n", runtimeStats(rt.Cache(), info.Size()))
 	} else {
 		fmt.Printf("                  (file does not exist)\n")
 	}
