@@ -1,6 +1,12 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Changelog version to verify without publishing
+        required: true
+        type: string
   push:
     tags:
       - "v*"
@@ -28,14 +34,16 @@ jobs:
           ruby-version: "4.0.6"
 
       - name: Extract release notes
+        env:
+          VERSION: ${{ inputs.version || github.ref_name }}
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
           echo "Extracting release notes for $VERSION"
           script/release extract-notes "$VERSION" > /tmp/notes.md
           echo "--- Release notes ---"
           cat /tmp/notes.md
 
       - name: Run GoReleaser
+        if: github.event_name == 'push'
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
@@ -44,3 +52,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      - name: Verify release packaging
+        if: github.event_name == 'workflow_dispatch'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot --clean --skip=publish --release-notes=/tmp/notes.md
+
+      - name: Verify snapshot artifacts
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          test ! -d vendor
+          cd dist
+          sha256sum -c ./*checksums.txt
+          ./plur_linux_amd64_v1/plur --version
