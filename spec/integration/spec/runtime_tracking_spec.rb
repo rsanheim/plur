@@ -20,7 +20,7 @@ RSpec.describe "Plur runtime tracking" do
         expect(File.exist?(temp_runtime_dir)).to be true
         matches = Dir.glob(File.join(temp_runtime_dir, "*.json"))
         expect(matches.size).to eq(1)
-        expect(matches.first).to match(%r{#{temp_runtime_dir}/[a-f0-9]{8}\.json$})
+        expect(matches.first).to match(%r{#{temp_runtime_dir}/[a-f0-9]{16}\.json$})
       end
     end
   end
@@ -57,7 +57,7 @@ RSpec.describe "Plur runtime tracking" do
         expect(sample["line_number"]).to be > 0
         expect(sample["runtime_seconds"]).to be >= 0
 
-        expect(runtime_file).to match(%r{#{tmp_plur_home}/runtime/[a-f0-9]{8}\.json$})
+        expect(runtime_file).to match(%r{#{tmp_plur_home}/runtime/[a-f0-9]{16}\.json$})
       end
     end
 
@@ -75,9 +75,8 @@ RSpec.describe "Plur runtime tracking" do
       Dir.chdir(default_ruby_dir) do
         runtime_dir = File.join(tmp_plur_home, "runtime")
         FileUtils.mkdir_p(runtime_dir)
-        require "digest"
-        project_hash = Digest::SHA256.hexdigest(File.expand_path("."))[0..7]
-        cache_path = File.join(runtime_dir, "#{project_hash}.json")
+        cache_path = run_plur("doctor").out[/^Runtime Data:\s+(.+)$/, 1]
+        expect(cache_path).not_to be_nil
         File.write(cache_path, "{{{ not json")
 
         run_plur("-n", "2")
@@ -104,8 +103,8 @@ RSpec.describe "Plur runtime tracking" do
 
     it "distributes files based on stored runtime_seconds" do
       Dir.chdir(default_ruby_dir) do
-        require "digest"
-        project_hash = Digest::SHA256.hexdigest(File.expand_path("."))[0..7]
+        cache_path = run_plur("doctor").out[/^Runtime Data:\s+(.+)$/, 1]
+        expect(cache_path).not_to be_nil
 
         files = {
           "spec/calculator_spec.rb" => 5.0,
@@ -138,7 +137,7 @@ RSpec.describe "Plur runtime tracking" do
 
         runtime_dir = File.join(tmp_plur_home, "runtime")
         FileUtils.mkdir_p(runtime_dir)
-        File.write(File.join(runtime_dir, "#{project_hash}.json"), JSON.pretty_generate(cache))
+        File.write(cache_path, JSON.pretty_generate(cache))
 
         result = run_plur("--dry-run", "--debug", "-n", "2")
         expect(result.err).to include("Using runtime-based grouped execution")

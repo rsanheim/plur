@@ -255,54 +255,18 @@ plur doctor
 
 ## Runtime Tracking
 
-Plur records per-file runtime data to `$PLUR_HOME/runtime/<project-hash>.json`
-so it can balance subsequent worker assignments using historical timing.
+Plur saves test timings in `$PLUR_HOME/runtime/<project-hash>.json` to balance
+workers. Run `plur doctor` to see the cache path.
 
-The on-disk format is a versioned runtime cache:
-
-```json
-{
-  "meta": {
-    "schema_version": 4,
-    "plur_version": "0.56.0-dev-abc1234"
-  },
-  "run": {
-    "cwd": "/Users/example/src/my-project",
-    "last_run_at": "2026-05-22T15:04:05Z"
-  },
-  "files": {
-    "spec/slow_spec.rb": {
-      "mtime_unix_nano": 1778610000000000000,
-      "size_bytes": 12345,
-      "runtime_seconds": 12.34,
-      "examples": [
-        {
-          "id": "./spec/slow_spec.rb[1:1]",
-          "line_number": 12,
-          "location_rerun_argument": "./spec/slow_spec.rb:12",
-          "runtime_seconds": 0.40
-        }
-      ]
-    }
-  }
-}
-```
-
-Behavior:
-
-- File aggregates are rewritten only by default/full-file RSpec runs. Focused
-  (`spec/foo_spec.rb:42`), tag-filtered (`--tag=…`), `--fail-fast`, aborted,
-  and `--`-passthrough runs are classified as *partial* and merge
-  per-example observations without overwriting the file aggregate.
-- `--dry-run` never writes the cache.
-- Invalid, corrupt, or unsupported schema files are ignored and replaced on the next
-  successful default run.
-- Old v1 caches (`map[string]float64`) are ignored and regenerated.
-- Shared examples are attributed to their rerunnable owning spec file
-  (the file the focused target points back to), not the support file
-  whose source contains the shared block. The runtime cache stores only
-  the fields needed for future balancing: RSpec `id`, rerunnable target,
-  owner line, and runtime.
+- Linked worktrees share timings for matching project directories. Separate apps
+  and clones keep separate caches. Without Git, the working directory identifies
+  the cache.
+- Only successful runs with examples save timings; `--dry-run` never writes.
+- Full-file runs replace file totals. Focused runs, `--tag`, and passthrough
+  arguments preserve totals; example updates require matching checkout and source.
+- Split selectors stay checkout-local. Shared examples belong to their runnable
+  spec file, not their support file.
+- Concurrent writes are atomic; the last writer wins. Invalid caches rebuild.
 
 ### `--rspec-split` (EXPERIMENTAL)
 

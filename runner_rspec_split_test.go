@@ -27,19 +27,6 @@ func TestPerWorkerBudget_ZeroWorkers(t *testing.T) {
 	assert.Zero(t, perWorkerBudget(nil, []string{"a"}, 0))
 }
 
-func TestCache_ExampleLines(t *testing.T) {
-	cache := testruntime.NewCache()
-	cache.MergeAggregateRun("spec/foo_spec.rb", 0, 0, 1.0, map[string]*testruntime.ExampleEntry{
-		"./spec/foo_spec.rb[1:1]": {LineNumber: 20, RuntimeSeconds: 1.0},
-		"./spec/foo_spec.rb[1:2]": {LineNumber: 5, RuntimeSeconds: 1.0},
-		"./spec/foo_spec.rb[1:3]": {LineNumber: 5, RuntimeSeconds: 1.0}, // duplicate line — dedup
-		"./spec/foo_spec.rb[2:1]": {LineNumber: 0, RuntimeSeconds: 1.0}, // zero line — skip
-	})
-
-	lines := cache.ExampleLines("spec/foo_spec.rb")
-	assert.ElementsMatch(t, []int{5, 20}, lines, "duplicates and zero-line entries are dropped")
-}
-
 func TestExpandRspecSplits_SplitsLongFile(t *testing.T) {
 	tempDir := t.TempDir()
 	specPath := filepath.Join(tempDir, "slow_spec.rb")
@@ -65,6 +52,7 @@ func TestExpandRspecSplits_SplitsLongFile(t *testing.T) {
 		"id4": {LineNumber: 20, RuntimeSeconds: 2.0},
 	})
 
+	setExampleSource(t, cache, specPath)
 	fileRuntimes := map[string]float64{specPath: 8.0}
 	expandedFiles, expandedRuntimes := runner.expandRspecSplits(fileRuntimes)
 
@@ -102,6 +90,7 @@ func TestExpandRspecSplits_UnevenRuntimesProduceUnevenChunks(t *testing.T) {
 		"d":     {LineNumber: 25, RuntimeSeconds: 0.5},
 	})
 
+	setExampleSource(t, cache, specPath)
 	_, expandedRuntimes := runner.expandRspecSplits(map[string]float64{specPath: 7.0})
 
 	var maxRT, minRT float64
@@ -144,6 +133,7 @@ func TestExpandRspecSplits_PassesThroughFreshButShortFile(t *testing.T) {
 		"id3": {LineNumber: 1, RuntimeSeconds: 19.5},
 	})
 
+	setExampleSource(t, cache, fastPath, slowPath)
 	// Budget = (0.5 + 19.5) / 4 = 5.0 s. fast (0.5s) is way under; slow has
 	// only one example line so cannot be split.
 	expanded, expandedRuntimes := runner.expandRspecSplits(map[string]float64{
@@ -172,6 +162,7 @@ func TestExpandRspecSplits_PassesThroughStaleCache(t *testing.T) {
 		"id2": {LineNumber: 10, RuntimeSeconds: 4.0},
 	})
 
+	setExampleSource(t, cache, specPath)
 	expanded, expandedRuntimes := runner.expandRspecSplits(map[string]float64{specPath: 8.0})
 	assert.Equal(t, []string{specPath}, expanded, "stale cache must fall back to file-level")
 	assert.Equal(t, 8.0, expandedRuntimes[specPath])
@@ -254,4 +245,17 @@ func captureStderr(t *testing.T, fn func()) string {
 	output, err := io.ReadAll(reader)
 	require.NoError(t, err)
 	return string(output)
+}
+
+func setExampleSource(t *testing.T, cache *testruntime.Cache, paths ...string) {
+	t.Helper()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	cwd, err = filepath.EvalSymlinks(cwd)
+	require.NoError(t, err)
+	for _, path := range paths {
+		entry := cache.Files[path]
+		entry.SourceCwd = cwd
+		cache.Files[path] = entry
+	}
 }

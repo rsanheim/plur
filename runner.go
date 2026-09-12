@@ -42,9 +42,13 @@ func NewRunner(cfg *config.GlobalConfig, files []string, j framework.Job, extraA
 			return nil, err
 		}
 	}
-	tracker, err := testruntime.NewRuntimeTracker(cfg.RuntimeDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create runtime tracker: %w", err)
+	var tracker *testruntime.RuntimeTracker
+	if len(files) > 0 {
+		var err error
+		tracker, err = testruntime.NewRuntimeTracker(cfg.RuntimeDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create runtime tracker: %w", err)
+		}
 	}
 	return &Runner{
 		config:    cfg,
@@ -75,6 +79,14 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 	}
 
 	results, wallTime := r.executeWorkers(commands)
+	for _, result := range results {
+		if !result.AbnormalExit {
+			for _, test := range result.Tests {
+				r.tracker.AddTestNotification(test)
+			}
+		}
+	}
+
 	return results, wallTime, nil
 }
 
@@ -99,7 +111,7 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 			fmt.Fprintf(os.Stderr, "Error: %s worker %d: %v\n", r.job.Name, workerIdx, result.Error)
 		}
 	}
-	if code, _ := selectExitCode(results); code != 0 {
+	if code := selectExitCode(results); code != 0 {
 		return ExitCode{Code: code}
 	}
 
@@ -107,6 +119,9 @@ func (r *Runner) RunArgsPerWorker(args []string) error {
 }
 
 func (r *Runner) groupFiles() []testruntime.FileGroup {
+	if len(r.files) == 0 {
+		return nil
+	}
 	runtimeData := r.tracker.LoadedData()
 
 	files := r.files
@@ -157,7 +172,7 @@ func (r *Runner) expandRspecSplits(fileRuntimes map[string]float64) ([]string, m
 			expandedFiles = append(expandedFiles, file)
 			continue
 		}
-		if !cache.IsExamplesFresh(file) {
+		if !r.tracker.ExamplesFresh(file) {
 			logger.Logger.Debug("rspec-split skipped", "file", file, "reason", "examples not fresh")
 			expandedFiles = append(expandedFiles, file)
 			expandedRuntimes[file] = runtime
@@ -298,16 +313,6 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 
 	close(outputChan)
 	outputWg.Wait()
-
-	// Keep command order so selecting an exit code cannot depend on which
-	// worker happened to finish first.
-	for _, result := range results {
-		if !result.AbnormalExit {
-			for _, test := range result.Tests {
-				r.tracker.AddTestNotification(test)
-			}
-		}
-	}
 
 	fmt.Println() // newline after dots
 

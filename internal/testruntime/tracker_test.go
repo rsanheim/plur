@@ -62,8 +62,8 @@ func TestRuntimeTracker(t *testing.T) {
 		assert.NotEmpty(t, reloaded.Run.LastRunAt)
 		_, err = time.Parse(time.RFC3339, reloaded.Run.LastRunAt)
 		require.NoError(t, err)
-		entry := reloaded.File(specPath)
-		require.NotNil(t, entry)
+		entry, ok := reloaded.Files[specPath]
+		require.True(t, ok)
 		assert.Equal(t, 1.5, entry.RuntimeSeconds)
 	})
 
@@ -109,10 +109,10 @@ func TestRuntimeTracker(t *testing.T) {
 
 		rt2, err := NewRuntimeTracker(tempDir)
 		require.NoError(t, err)
-		entry := rt2.Cache().File(specPath)
-		require.NotNil(t, entry)
+		entry, ok := rt2.Cache().Files[specPath]
+		require.True(t, ok)
 		assert.Len(t, entry.Examples, 2)
-		assert.Equal(t, 5, requireExample(t, entry, "./"+specPath+"[1:1]").LineNumber)
+		assert.Equal(t, 5, requireExample(t, &entry, "./"+specPath+"[1:1]").LineNumber)
 	})
 
 	t.Run("LoadedData reflects loaded cache", func(t *testing.T) {

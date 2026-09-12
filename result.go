@@ -51,7 +51,6 @@ type TestSummary struct {
 	WallTime          time.Duration
 	TotalFileLoadTime time.Duration  // Max file load time across all workers (since they run in parallel)
 	ExitCode          int            // Worker exit code; errors outside examples take precedence over failures
-	AbnormalExit      bool           // At least one worker failed to start or terminated abnormally
 	ErroredFiles      []WorkerResult // Workers that had errors running tests
 	TotalPending      int            // Total pending/skipped tests
 
@@ -63,11 +62,12 @@ type TestSummary struct {
 
 // selectExitCode gives abnormal exits priority, then errors outside examples,
 // then other nonzero exits. Ties retain worker assignment order.
-func selectExitCode(results []WorkerResult) (code int, abnormal bool) {
+func selectExitCode(results []WorkerResult) int {
+	code := 0
 	exitCodeFromError := false
 	for _, result := range results {
 		if result.AbnormalExit {
-			return workerErrorExitCode, true
+			return workerErrorExitCode
 		}
 		if result.ExitCode == 0 {
 			continue
@@ -78,7 +78,7 @@ func selectExitCode(results []WorkerResult) (code int, abnormal bool) {
 			exitCodeFromError = isError
 		}
 	}
-	return code, false
+	return code
 }
 
 // BuildTestSummary collects and calculates summary data from test results
@@ -90,7 +90,7 @@ func BuildTestSummary(results []WorkerResult, wallTime time.Duration) TestSummar
 
 	// Track if we're in single-file mode (single worker)
 	singleWorkerMode := len(results) == 1
-	summary.ExitCode, summary.AbnormalExit = selectExitCode(results)
+	summary.ExitCode = selectExitCode(results)
 
 	for _, result := range results {
 		summary.TotalExamples += result.ExampleCount
