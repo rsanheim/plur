@@ -22,7 +22,7 @@ func computeRuntimeFilePath(runtimeDir string) (string, string, error) {
 	// Share across worktrees, keeping project subdirectories separate.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "git", "-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel")
+	cmd := exec.CommandContext(ctx, "git", "--no-optional-locks", "-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel")
 	cmd.WaitDelay = 100 * time.Millisecond
 	output, err := cmd.Output()
 	if err == nil {

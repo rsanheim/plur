@@ -42,6 +42,14 @@ RSpec.describe "Runtime history across linked worktrees" do
     run_plur("-C", project, "-n", "2", "spec/timed_spec.rb", *args)
   end
 
+  it "discovers Git identity in one command with optional locking disabled" do
+    trace = File.join(File.dirname(@checkout), "git-trace.json")
+    cache_path(@checkout, env: {"GIT_TRACE2_EVENT" => trace, "GIT_OPTIONAL_LOCKS" => "1"})
+    commands = File.readlines(trace).map { |line| JSON.parse(line) }.select { |event| event["event"] == "start" }
+    expect(commands.size).to eq(1)
+    expect(commands.first.fetch("argv")).to include("--no-optional-locks", "rev-parse", "--git-common-dir", "--show-toplevel")
+  end
+
   it "reuses recorded timings and the same filename in a linked worktree" do
     run_specs(@checkout)
     path = cache_path(@checkout)
