@@ -10,6 +10,7 @@ import (
 
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/fileset"
+	"github.com/rsanheim/plur/internal/runner"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/rsanheim/plur/logger"
@@ -58,7 +59,7 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.Logger.Debug("discovered test files", "count", len(testFiles), "exclude_patterns", excludes, "files", testFiles)
 
 	if r.Auto {
-		depManager := NewDependencyManager(cfg.DryRun)
+		depManager := runner.NewDependencyManager(cfg.DryRun)
 		if err := depManager.InstallDependencies(); err != nil {
 			return err
 		}
@@ -69,11 +70,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	extraArgs := buildTagArgs(r.Tags)
 	extraArgs = append(extraArgs, parent.passthroughArgs...)
 
-	runner, err := NewRunner(cfg, testFiles, currentJob, extraArgs)
+	run, err := runner.NewRunner(cfg, testFiles, currentJob, extraArgs)
 	if err != nil {
 		return err
 	}
-	results, wallTime, err := runner.Run()
+	results, wallTime, err := run.Run()
 	if err != nil {
 		return err
 	}
@@ -82,22 +83,22 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 		return nil
 	}
 
-	summary := BuildTestSummary(results, wallTime)
+	summary := runner.BuildTestSummary(results, wallTime)
 
 	// Save runtime data only for successful invocations with examples.
 	if summary.ExitCode == 0 && summary.TotalExamples > 0 {
 		runKind := testruntime.ClassifyRunKind(patterns, r.Tags, parent.passthroughArgs)
-		if err := runner.Tracker().SaveToFile(runKind); err != nil {
+		if err := run.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
 		} else {
-			logger.Logger.Debug("Runtime data saved", "runtime_path", runner.Tracker().RuntimeFilePath(), "run_kind", runKind)
+			logger.Logger.Debug("Runtime data saved", "runtime_path", run.Tracker().RuntimeFilePath(), "run_kind", runKind)
 		}
 	}
 
-	PrintResults(summary, cfg.ColorOutput, currentJob)
+	runner.PrintResults(summary, cfg.ColorOutput, currentJob)
 
 	if summary.ExitCode != 0 {
-		return ExitCode{Code: summary.ExitCode}
+		return runner.ExitCode{Code: summary.ExitCode}
 	}
 
 	return nil

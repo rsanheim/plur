@@ -16,6 +16,7 @@ import (
 	"github.com/rsanheim/plur/internal/devprofile"
 	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
+	"github.com/rsanheim/plur/internal/runner"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/term"
 	"github.com/rsanheim/plur/logger"
@@ -321,7 +322,7 @@ func main() {
 	devprofile.Stop()
 	if err != nil {
 		// Check if it's a custom exit code (don't log as error)
-		if exitErr, ok := errors.AsType[ExitCode](err); ok {
+		if exitErr, ok := errors.AsType[runner.ExitCode](err); ok {
 			os.Exit(exitErr.Code)
 		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -385,11 +386,3 @@ type usageError string
 
 func (e usageError) Error() string { return string(e) }
 func (e usageError) ExitCode() int { return 80 }
-
-type ExitCode struct {
-	Code int
-}
-
-func (e ExitCode) Error() string {
-	return fmt.Sprintf("exit code %d", e.Code)
-}

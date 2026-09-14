@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/rsanheim/plur/internal/runner"
 )
 
 type ConfigInitCmd struct {
@@ -72,7 +74,7 @@ cmd = ["bundle", "exec", "rspec"]
 name = "spec-files"
 source = "spec/**/*_spec.rb"
 jobs = ["rspec"]
-`, DefaultWorkerCount)
+`, runner.DefaultWorkerCount)
 
 const railsConfigTemplate = `# Plur configuration for Rails applications
 # See https://github.com/rsanheim/plur/blob/main/docs/configuration.md
@@ -104,4 +106,4 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 name = "test-files"
 source = "test/**/*_test.rb"
 jobs = ["minitest"]
-`, DefaultWorkerCount)
+`, runner.DefaultWorkerCount)

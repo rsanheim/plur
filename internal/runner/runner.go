@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"context"
@@ -438,4 +438,14 @@ func errorResult(err error) WorkerResult {
 		AbnormalExit: true,
 		Error:        err,
 	}
+}
+
+// ExitCode is returned by commands to exit with a specific status without
+// logging an error.
+type ExitCode struct {
+	Code int
+}
+
+func (e ExitCode) Error() string {
+	return fmt.Sprintf("exit code %d", e.Code)
 }

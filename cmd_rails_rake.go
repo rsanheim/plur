@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/rsanheim/plur/internal/runner"
 
 	"github.com/alecthomas/kong"
 )
@@ -37,11 +38,11 @@ func (r *RailsCmd) Run(parent *PlurCLI, ctx *kong.Context) error {
 	args := append([]string{}, r.Args...)
 	args = append(args, parent.passthroughArgs...)
 
-	runner, err := NewRunner(parent.globalConfig, nil, j, nil)
+	run, err := runner.NewRunner(parent.globalConfig, nil, j, nil)
 	if err != nil {
 		return err
 	}
-	return runner.RunArgsPerWorker(args)
+	return run.RunArgsPerWorker(args)
 }
 
 // railsCommandJobName returns "rake" when the user invoked the rails command

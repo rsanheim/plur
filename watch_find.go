@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rsanheim/plur/internal/runner"
 	"github.com/rsanheim/plur/logger"
 	"github.com/rsanheim/plur/watch"
 )
@@ -33,14 +34,14 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	out.Info("checking watch", "file", path)
 	if !admitted {
 		out.Info("ignored", "file", path)
-		return ExitCode{Code: 2}
+		return runner.ExitCode{Code: 2}
 	}
 
 	plan := planner.Plan(watch.NewTargetSet(path))
 
 	if len(plan.Matches) == 0 {
 		out.Info("found rules", "count", 0)
-		return ExitCode{Code: 2}
+		return runner.ExitCode{Code: 2}
 	}
 
 	for _, m := range plan.Matches {
@@ -87,7 +88,7 @@ func (cmd *WatchFindCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	}
 
 	if len(plan.Runs) == 0 {
-		return ExitCode{Code: 2}
+		return runner.ExitCode{Code: 2}
 	}
 
 	return nil

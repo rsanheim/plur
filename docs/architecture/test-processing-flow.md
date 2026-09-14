@@ -101,7 +101,7 @@ sequenceDiagram
 
 ## Key Components
 
-### 1. **Runner** (runner.go)
+### 1. **Runner** (internal/runner/runner.go)
 Orchestrates the entire test execution:
 * `Run()` - Entry point with three phases: planning, execution, results
 * `groupFiles()` - Groups files by runtime data (preferred) or file size (fallback)
@@ -109,7 +109,7 @@ Orchestrates the entire test execution:
 * `executeWorkers()` - Spawns worker goroutines, manages channels, waits for completion
 * `runCommand()` - Runs a single command: pipes, parser, collector, streamTestOutput
 
-### 2. **streamTestOutput** (stream_helper.go)
+### 2. **streamTestOutput** (internal/runner/stream_helper.go)
 Handles real-time output processing with two concurrent goroutines:
 * **stdout goroutine**: Parses lines via `parser.ParseLine()`, sends progress to `outputChan`
   * Unconsumed lines (puts/pp) have exactly one display path - streamed OR collected, never both
@@ -123,21 +123,21 @@ Framework-specific output parsing:
 * Emits `ProgressEvent` for dots/failures, `TestCaseNotification` for test results
 * `FormatSummary()` for framework-native summary output
 
-### 4. **TestCollector** (test_collector.go)
+### 4. **TestCollector** (internal/runner/test_collector.go)
 Accumulates notifications from parser:
 * Tracks tests, failures, pending counts
 * Carries suite-level counts (assertions/errors/pending) from `SuiteNotification` into `WorkerResult`
 * Stores raw output in `rawOutput` string builder
 * `BuildResult()` creates final `WorkerResult`
 
-### 5. **outputAggregator** (runner.go)
+### 5. **outputAggregator** (internal/runner/runner.go)
 Single goroutine that serializes all output:
 * Reads from `outputChan`
 * Writes colored progress indicators (., F, *) to stdout
 * Writes raw stdout (puts/pp output) to stdout (RSpec only)
 * Writes stderr lines to stderr
 
-### 6. **PrintResults** (result.go)
+### 6. **PrintResults** (internal/runner/result.go)
 Displays final summary:
 * `BuildTestSummary()` aggregates all WorkerResults
 * Framework-aware formatting via `parser.FormatSummary()` (uses suite counts when present)
