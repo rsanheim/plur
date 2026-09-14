@@ -10,6 +10,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
+	"github.com/rsanheim/plur/internal/runner"
 	"github.com/rsanheim/plur/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +20,7 @@ func TestWorkerCountCLIDefaultMatchesRuntimeDefault(t *testing.T) {
 	field, ok := reflect.TypeFor[PlurCLI]().FieldByName("Workers")
 	require.True(t, ok)
 	assert.Equal(t, reflect.TypeFor[WorkerCount](), field.Type)
-	assert.Equal(t, strconv.Itoa(DefaultWorkerCount), field.Tag.Get("default"))
+	assert.Equal(t, strconv.Itoa(runner.DefaultWorkerCount), field.Tag.Get("default"))
 }
 
 func TestWorkerCountValidation(t *testing.T) {
@@ -57,7 +58,7 @@ func TestWorkerCountValidationAcceptsPositiveValues(t *testing.T) {
 	}{
 		{name: "uses CLI value", args: []string{"--workers=8"}, expected: 8},
 		{name: "uses environment value", env: "6", expected: 6},
-		{name: "uses default value", expected: DefaultWorkerCount},
+		{name: "uses default value", expected: runner.DefaultWorkerCount},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			clearWorkerEnv(t)
