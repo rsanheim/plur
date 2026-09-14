@@ -8,7 +8,7 @@ import (
 
 	"github.com/rsanheim/plur/internal/framework/rspec"
 	"github.com/rsanheim/plur/internal/testruntime"
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 )
 
 // BenchmarkTestCollectorRawOutput tests memory allocations in TestCollector's rawOutput string builder

@@ -10,17 +10,16 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"github.com/rsanheim/plur/cmd"
-	"github.com/rsanheim/plur/config"
 	clihelp "github.com/rsanheim/plur/internal/cli"
+	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/devprofile"
 	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
+	"github.com/rsanheim/plur/internal/logger"
 	"github.com/rsanheim/plur/internal/runner"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/term"
-	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/watch"
+	"github.com/rsanheim/plur/internal/watch"
 )
 
 type SpecCmd struct {
@@ -81,13 +80,13 @@ type ConfigCmd struct {
 }
 
 type PlurCLI struct {
-	Spec       SpecCmd        `cmd:"" group:"daily" help:"Run tests" default:"withargs"`
-	Watch      WatchCmd       `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Rails      RailsCmd       `cmd:"" name:"rails" aliases:"rake" group:"advanced" help:"Run a Rails or Rake command once per worker"`
-	Doctor     DoctorCmd      `cmd:"" group:"advanced" help:"Diagnose Plur installation and environment"`
-	Config     ConfigCmd      `cmd:"" help:"Configuration commands"`
-	RailsInit  RailsInitCmd   `cmd:"" name:"rails:init" group:"advanced" help:"Configure a Rails project for parallel testing"`
-	VersionCmd cmd.VersionCmd `cmd:"" name:"version" group:"advanced" help:"Show version information"`
+	Spec       SpecCmd      `cmd:"" group:"daily" help:"Run tests" default:"withargs"`
+	Watch      WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
+	Rails      RailsCmd     `cmd:"" name:"rails" aliases:"rake" group:"advanced" help:"Run a Rails or Rake command once per worker"`
+	Doctor     DoctorCmd    `cmd:"" group:"advanced" help:"Diagnose Plur installation and environment"`
+	Config     ConfigCmd    `cmd:"" help:"Configuration commands"`
+	RailsInit  RailsInitCmd `cmd:"" name:"rails:init" group:"advanced" help:"Configure a Rails project for parallel testing"`
+	VersionCmd VersionCmd   `cmd:"" name:"version" group:"advanced" help:"Show version information"`
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
@@ -136,7 +135,7 @@ func (cli *PlurCLI) AfterApply() error {
 	logger.Init(level)
 
 	if cli.Version {
-		err := (&cmd.VersionCmd{}).Run()
+		err := (&VersionCmd{}).Run()
 		if err != nil {
 			return err
 		}

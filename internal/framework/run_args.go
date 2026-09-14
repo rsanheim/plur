@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/config"
 )
 
 // BuildRunArgs builds command arguments for run mode (plur spec).

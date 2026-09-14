@@ -6,8 +6,8 @@ module Plur
 
     def initialize
       @root_dir = Pathname.new(__dir__).join("../..").expand_path
-      @watcher_dir = @root_dir.join("embedded", "watcher")
-      @edant_watcher_version = @root_dir.join("embedded", "watcher.version").read.strip
+      @watcher_dir = @root_dir.join("internal", "embedded", "watcher")
+      @edant_watcher_version = @root_dir.join("internal", "embedded", "watcher.version").read.strip
 
       @fixtures_dir = @root_dir.join("fixtures", "projects")
       @default_ruby_dir = @fixtures_dir.join("default-ruby")

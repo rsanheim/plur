@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rsanheim/plur/internal/logger"
 	"github.com/rsanheim/plur/internal/runner"
-	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/watch"
+	"github.com/rsanheim/plur/internal/watch"
 )
 
 // WatchFindCmd implements the 'plur watch find' command

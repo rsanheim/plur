@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/logger"
+	"github.com/rsanheim/plur/internal/types"
 )
 
 // ScannerBufferSize is the buffer size for scanning test output.

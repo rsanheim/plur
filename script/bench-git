@@ -50,7 +50,7 @@ def build_plur(worktree, ref)
   end
 
   puts "  Building plur at #{ref}..."
-  if worktree.glob("embedded/watcher/watcher*").empty?
+  if worktree.glob("{internal/,}embedded/watcher/watcher*").empty?
     puts "  watcher binaries missing; download them..."
     Dir.chdir(worktree) do
       system("bundle check || bundle install")

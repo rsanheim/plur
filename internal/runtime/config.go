@@ -9,8 +9,8 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/rsanheim/plur/internal/framework"
-	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/watch"
+	"github.com/rsanheim/plur/internal/logger"
+	"github.com/rsanheim/plur/internal/watch"
 )
 
 type CLIInput struct {

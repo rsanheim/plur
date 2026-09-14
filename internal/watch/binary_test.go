@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsanheim/plur/embedded"
+	"github.com/rsanheim/plur/internal/embedded"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"

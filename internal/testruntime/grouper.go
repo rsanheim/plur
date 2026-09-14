@@ -4,7 +4,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/internal/logger"
 )
 
 // FileGroup represents a group of spec files that will run in one process

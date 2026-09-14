@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/internal/framework"
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 )
 
 // workerErrorExitCode is used for abnormal worker termination.

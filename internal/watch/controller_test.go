@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/internal/framework"
-	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"

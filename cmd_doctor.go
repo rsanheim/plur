@@ -11,11 +11,11 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"github.com/rsanheim/plur/config"
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/testruntime"
-	"github.com/rsanheim/plur/watch"
+	"github.com/rsanheim/plur/internal/watch"
 )
 
 // importantEnvVars always display in doctor, set or not; every PLUR_* var

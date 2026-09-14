@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/framework"
+	"github.com/rsanheim/plur/internal/logger"
 	"github.com/rsanheim/plur/internal/testruntime"
-	"github.com/rsanheim/plur/logger"
 )
 
 const (

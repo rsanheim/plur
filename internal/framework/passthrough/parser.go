@@ -1,7 +1,7 @@
 package passthrough
 
 import (
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 )
 
 // Parser is a passthrough parser that doesn't parse output

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/internal/buildinfo"
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 )
 
 // RuntimeTracker collects timings after workers finish; no mutex is needed.

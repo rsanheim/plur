@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/internal/logger"
 )
 
 // Execution and display share this path so Plur prints exactly what it runs.

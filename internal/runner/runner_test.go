@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/framework"
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

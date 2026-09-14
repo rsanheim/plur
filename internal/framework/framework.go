@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/framework/minitest"
 	"github.com/rsanheim/plur/internal/framework/passthrough"
 	"github.com/rsanheim/plur/internal/framework/rspec"
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 )
 
 type TargetMode int
