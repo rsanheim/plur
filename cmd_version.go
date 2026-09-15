@@ -8,7 +8,6 @@ import (
 
 type VersionCmd struct{}
 
-func (v *VersionCmd) Run() error {
+func (v *VersionCmd) Run() {
 	fmt.Printf("plur version=%s", buildinfo.GetVersionInfo())
-	return nil
 }
