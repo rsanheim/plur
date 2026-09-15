@@ -135,10 +135,7 @@ func (cli *PlurCLI) AfterApply() error {
 	logger.Init(level)
 
 	if cli.Version {
-		err := (&VersionCmd{}).Run()
-		if err != nil {
-			return err
-		}
+		(&VersionCmd{}).Run()
 		os.Exit(0)
 	}
 
