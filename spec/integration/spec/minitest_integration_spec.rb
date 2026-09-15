@@ -41,28 +41,26 @@ RSpec.describe "Minitest integration" do
     # Progress markers are terminal behavior: over a pipe, auto resolves to
     # summary mode (see output_mode_spec.rb), so progress counts run under a PTY.
     it "reports a green run with full progress, live stdout, and RSpec-style duration", :pty do
-      chdir(project_dir) do
-        Bundler.with_unbundled_env do
-          # No --use: the one real exercise of framework auto-detection.
-          result = run_in_pty(plur_binary, "-n", "1", "--color=never", "test/passing_test.rb", chdir: project_dir)
-          expect(result).to be_success
+      Bundler.with_unbundled_env do
+        # No --use: the one real exercise of framework auto-detection.
+        result = run_in_pty(plur_binary, "-n", "1", "--color=never", "test/passing_test.rb", chdir: project_dir)
+        expect(result).to be_success
 
-          expect(result.err).to include("plur version")
-          expect(result.err).to include("Running 1 test [minitest]")
+        expect(result.err).to include("plur version")
+        expect(result.err).to include("Running 1 test [minitest]")
 
-          expect(progress_alphabet(result.out)).to eq(
-            "." => 5, "F" => 0, "E" => 0, "S" => 0, "*" => 0
-          )
-          expect(result.out).to include("5 runs, 6 assertions, 0 failures, 0 errors, 0 skips")
+        expect(progress_alphabet(result.out)).to eq(
+          "." => 5, "F" => 0, "E" => 0, "S" => 0, "*" => 0
+        )
+        expect(result.out).to include("5 runs, 6 assertions, 0 failures, 0 errors, 0 skips")
 
-          # RSpec's "seconds" wording, not minitest's bare "Xs."
-          expect(result.out).to match(/Finished in \d+(?:\.\d{1,5})? seconds/)
-          expect(result.out).not_to match(/Finished in [\d.]+s\./)
+        # RSpec's "seconds" wording, not minitest's bare "Xs."
+        expect(result.out).to match(/Finished in \d+(?:\.\d{1,5})? seconds/)
+        expect(result.out).not_to match(/Finished in [\d.]+s\./)
 
-          # Stdout streams live even on a passing run.
-          expect(result.out.scan("OUT_MID_RUN").length).to eq(1)
-          expect(result.out.scan("OUT_GLOBAL_IO").length).to eq(1)
-        end
+        # Stdout streams live even on a passing run.
+        expect(result.out.scan("OUT_MID_RUN").length).to eq(1)
+        expect(result.out.scan("OUT_GLOBAL_IO").length).to eq(1)
       end
     end
 
@@ -94,33 +92,29 @@ RSpec.describe "Minitest integration" do
     end
 
     it "renders every outcome type with exact progress counts", :pty do
-      chdir(project_dir) do
-        Bundler.with_unbundled_env do
-          result = run_in_pty(plur_binary, "--use", "minitest", "-n", "1", "--color=never",
-            "test/passing_test.rb", "test/outcomes_test.rb", chdir: project_dir)
-          expect(result).to be_failure
+      Bundler.with_unbundled_env do
+        result = run_in_pty(plur_binary, "--use", "minitest", "-n", "1", "--color=never",
+          "test/passing_test.rb", "test/outcomes_test.rb", chdir: project_dir)
+        expect(result).to be_failure
 
-          expect(progress_alphabet(result.out)).to eq(
-            "." => 5, "F" => 2, "E" => 1, "S" => 0, "*" => 1
-          )
-          expect(result.out).to include("9 runs, 8 assertions, 2 failures, 1 error, 1 skip")
-        end
+        expect(progress_alphabet(result.out)).to eq(
+          "." => 5, "F" => 2, "E" => 1, "S" => 0, "*" => 1
+        )
+        expect(result.out).to include("9 runs, 8 assertions, 2 failures, 1 error, 1 skip")
       end
     end
 
     it "counts every test even when an unterminated print shares its line", :pty do
-      chdir(project_dir) do
-        Bundler.with_unbundled_env do
-          result = run_in_pty(plur_binary, "--use", "minitest", "-n", "1", "--color=never", chdir: project_dir)
+      Bundler.with_unbundled_env do
+        result = run_in_pty(plur_binary, "--use", "minitest", "-n", "1", "--color=never", chdir: project_dir)
 
-          # An unterminated print shares a physical line with the next row;
-          # the parser splits them, losing neither the dot nor the text.
-          expect(progress_alphabet(result.out)).to eq(
-            "." => 8, "F" => 2, "E" => 1, "S" => 0, "*" => 1
-          )
-          expect(result.out).to include("PARTIAL_APARTIAL_B")
-          expect(result.out).to include("12 runs, 11 assertions, 2 failures, 1 error, 1 skip")
-        end
+        # An unterminated print shares a physical line with the next row;
+        # the parser splits them, losing neither the dot nor the text.
+        expect(progress_alphabet(result.out)).to eq(
+          "." => 8, "F" => 2, "E" => 1, "S" => 0, "*" => 1
+        )
+        expect(result.out).to include("PARTIAL_APARTIAL_B")
+        expect(result.out).to include("12 runs, 11 assertions, 2 failures, 1 error, 1 skip")
       end
     end
 

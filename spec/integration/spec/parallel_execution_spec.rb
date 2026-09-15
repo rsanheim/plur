@@ -77,7 +77,6 @@ RSpec.describe "Plur parallel execution" do
     end
 
     # Make output more deterministic:
-    # * drop the carriage returns a PTY adds
     # * sort progress characters
     # * filter timing information
     # * remove plur version information
@@ -85,7 +84,7 @@ RSpec.describe "Plur parallel execution" do
     # * normalize path prefixes (rspec uses ./ prefix, plur doesn't)
     # * remove empty lines
     def normalize_test_output(output)
-      lines = output.delete("\r").lines.reject { |l| l.match?(/^plur version|^Running \d+ specs/) }
+      lines = output.lines.reject { |l| l.match?(/^plur version|^Running \d+ specs/) }
       lines = lines.map do |line|
         if line.match?(/^[.F*]+$/)
           line.strip.chars.sort.join + "\n"

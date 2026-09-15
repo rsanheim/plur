@@ -14,7 +14,7 @@ RSpec.describe "Output mode" do
   # Lines made only of progress markers, color stripped. A test that prints a
   # bare dot on its own line would count too, so the fixtures here print words.
   def marker_lines(out)
-    out.gsub(ansi, "").lines.map { |line| line.chomp.delete("\r") }.grep(/\A[.F*E]+\z/)
+    out.gsub(ansi, "").lines.map(&:chomp).grep(/\A[.F*E]+\z/)
   end
 
   def run_failing(*args, env: {})
@@ -112,8 +112,16 @@ RSpec.describe "Output mode" do
     end
   end
 
-  context "explicit summary with forced color over a pipe" do
-    it "suppresses markers but colors the remaining output" do
+  context "explicit summary over a pipe" do
+    it "suppresses markers and keeps the results" do
+      result = run_failing("--output=summary")
+
+      expect(marker_lines(result.out)).to be_empty
+      expect(result.out).to include("8 examples, 2 failures, 3 pending")
+      expect(result.exit_status).to eq(1)
+    end
+
+    it "with forced color, colors the remaining output" do
       result = run_failing("--output=summary", "--color=always")
 
       expect(marker_lines(result.out)).to be_empty
@@ -178,6 +186,12 @@ RSpec.describe "Output mode" do
       expect(marker_lines(result.out)).to eq([".F.F.***"])
       expect(result.out).to include("\e[31mF\e[0m")
       expect(result.exit_status).to eq(1)
+    end
+
+    it "explicit progress keeps the markers" do
+      result = run_failing_in_pty("--output=progress")
+
+      expect(marker_lines(result.out)).to eq([".F.F.***"])
     end
 
     it "explicit summary suppresses markers and keeps the results" do
