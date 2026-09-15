@@ -8,7 +8,7 @@ require "spec_helper"
 # leaks the raw "‽" or mis-numbers failures around the aggregate.
 RSpec.describe "aggregate failure golden test" do
   def normalize_snapshot(snapshot)
-    stdout = snapshot.fetch("stdout", "").gsub(
+    stdout = without_progress_line(snapshot.fetch("stdout", "")).gsub(
       /Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
       "Finished in [fake-time] seconds (files took [fake-time] seconds to load)"
     )

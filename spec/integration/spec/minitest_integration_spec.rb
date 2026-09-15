@@ -38,11 +38,13 @@ RSpec.describe "Minitest integration" do
   end
 
   context "outcomes and progress" do
-    it "reports a green run with full progress, live stdout, and RSpec-style duration" do
+    # Progress markers are terminal behavior: over a pipe, auto resolves to
+    # summary mode (see output_mode_spec.rb), so progress counts run under a PTY.
+    it "reports a green run with full progress, live stdout, and RSpec-style duration", :pty do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
           # No --use: the one real exercise of framework auto-detection.
-          result = run_plur("-n", "1", "--color=never", "test/passing_test.rb")
+          result = run_in_pty(plur_binary, "-n", "1", "--color=never", "test/passing_test.rb", chdir: project_dir)
           expect(result).to be_success
 
           expect(result.err).to include("plur version")
@@ -91,11 +93,11 @@ RSpec.describe "Minitest integration" do
       end
     end
 
-    it "renders every outcome type with exact progress counts" do
+    it "renders every outcome type with exact progress counts", :pty do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "1", "--color=never",
-            "test/passing_test.rb", "test/outcomes_test.rb", allow_error: true)
+          result = run_in_pty(plur_binary, "--use", "minitest", "-n", "1", "--color=never",
+            "test/passing_test.rb", "test/outcomes_test.rb", chdir: project_dir)
           expect(result).to be_failure
 
           expect(progress_alphabet(result.out)).to eq(
@@ -106,10 +108,10 @@ RSpec.describe "Minitest integration" do
       end
     end
 
-    it "counts every test even when an unterminated print shares its line" do
+    it "counts every test even when an unterminated print shares its line", :pty do
       chdir(project_dir) do
         Bundler.with_unbundled_env do
-          result = run_plur("--use", "minitest", "-n", "1", "--color=never", allow_error: true)
+          result = run_in_pty(plur_binary, "--use", "minitest", "-n", "1", "--color=never", chdir: project_dir)
 
           # An unterminated print shares a physical line with the next row;
           # the parser splits them, losing neither the dot nor the text.

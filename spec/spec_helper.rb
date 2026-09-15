@@ -50,6 +50,13 @@ RSpec.configure do |config|
     /\e\[\d+m/
   end
 
+  # Drops the leading per-example progress line (plain or colored). Golden
+  # comparisons run both rspec and plur through pipes; rspec always prints
+  # markers there while plur's auto output mode prints none.
+  def without_progress_line(output)
+    output.sub(/\A(?:(?:\e\[3\dm)?[.F*E](?:\e\[0m)?)+\n/, "")
+  end
+
   def default_ruby_dir
     @default_ruby_dir ||= project_fixture("default-ruby")
   end

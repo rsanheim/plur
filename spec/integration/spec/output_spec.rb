@@ -1,31 +1,29 @@
 require "spec_helper"
 
 RSpec.describe "plur spec output handling" do
-  describe "concurrent output handling" do
+  # Progress markers are terminal behavior: over a pipe, auto resolves to
+  # summary mode (see output_mode_spec.rb), so these run under a PTY.
+  describe "concurrent output handling", :pty do
     it "produces valid output with high worker count" do
-      Dir.chdir(default_ruby_dir) do
-        # Run with many workers to stress-test the output handling
-        result = run_plur("-n", "8")
+      # Run with many workers to stress-test the output handling
+      result = run_in_pty(plur_binary, "-n", "8", chdir: default_ruby_dir)
 
-        # Count the dots in output
-        dot_count = result.out.scan(".").count
+      # Count the dots in output
+      dot_count = result.out.scan(".").count
 
-        # Should have at least some dots (examples)
-        expect(dot_count).to be > 0
+      # Should have at least some dots (examples)
+      expect(dot_count).to be > 0
 
-        # Output should still be valid
-        expect(result.out).to include("examples")
-        expect(result.out).to include("failures")
-      end
+      # Output should still be valid
+      expect(result.out).to include("examples")
+      expect(result.out).to include("failures")
     end
 
     it "maintains colored output when supported" do
-      Dir.chdir(default_ruby_dir) do
-        result = run_plur("-n", "4", "--color=always")
+      result = run_in_pty(plur_binary, "-n", "4", "--color=always", chdir: default_ruby_dir)
 
-        # Should contain ANSI color codes for green dots
-        expect(result.out).to include("\e[32m.\e[0m")
-      end
+      # Should contain ANSI color codes for green dots
+      expect(result.out).to include("\e[32m.\e[0m")
     end
 
     it "handles mixed output types correctly" do
@@ -51,16 +49,14 @@ RSpec.describe "plur spec output handling" do
           end
         RUBY
 
-        Dir.chdir(tmpdir) do
-          # Run specs that include failures
-          result = run_plur("-n", "2", "mixed_spec.rb", allow_error: true)
+        # Run specs that include failures
+        result = run_in_pty(plur_binary, "-n", "2", "mixed_spec.rb", chdir: tmpdir)
 
-          # Should show both dots and F's
-          expect(result.out).to match(/[.F]+/)
+        # Should show both dots and F's
+        expect(result.out).to match(/[.F]+/)
 
-          # Should exit with status 1 for failures
-          expect(result.status).to eq(1)
-        end
+        # Should exit with status 1 for failures
+        expect(result.status).to eq(1)
       end
     end
   end

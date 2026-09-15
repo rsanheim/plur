@@ -2,7 +2,7 @@ require "spec_helper"
 
 RSpec.describe "single failure golden test" do
   def normalize_single_failure_snapshot(snapshot)
-    stdout = snapshot.fetch("stdout", "").gsub(
+    stdout = without_progress_line(snapshot.fetch("stdout", "")).gsub(
       /Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
       "Finished in [fake-time] seconds (files took [fake-time] seconds to load)"
     )
