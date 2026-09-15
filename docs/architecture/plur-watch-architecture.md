@@ -6,35 +6,35 @@ The `plur watch` command provides automatic test execution when files change, us
 
 ## Key Components
 
-### 1. WatcherManager (`watch/watcher_manager.go`)
+### 1. WatcherManager (`internal/watch/watcher_manager.go`)
 
 - Central orchestrator that manages multiple watcher processes
 - Creates one watcher process per directory (spec, lib, app)
 - Aggregates events from all watchers into a single event stream
 - Handles graceful shutdown and process cleanup
 
-### 2. Watcher (`watch/watcher.go`)
+### 2. Watcher (`internal/watch/watcher.go`)
 
 - Wrapper around the external watcher binary (C++ fsnotify implementation)
 - Each instance monitors a single directory
 - Communicates via JSON events over stdout/stderr
 - Keeps process alive via stdin pipe
 
-### 3. Planner (`watch/plan.go`)
+### 3. Planner (`internal/watch/plan.go`)
 
 * Decides what a file change does; shared by `plur watch` and `plur watch find` so both agree on behavior
 * `Admit` normalizes paths to be CWD-relative, rejecting paths outside the project and paths matching global ignore patterns
 * `Plan` matches watch rules against changed paths, renders target templates, skips targets that do not exist on disk, and merges deduplicated targets into per-job runs
 * Built from validated runtime config, so planning cannot fail at runtime
 
-### 4. Debouncer (`watch/debouncer.go`)
+### 4. Debouncer (`internal/watch/debouncer.go`)
 
 * Prevents duplicate test runs when multiple files change rapidly
 * Configurable delay (default 30ms)
 * Batches and deduplicates file paths before processing
 * Timer resets on each new event within the delay window
 
-### 5. Job Execution (`watch/execute.go`)
+### 5. Job Execution (`internal/watch/execute.go`)
 
 * `ExecuteJob` runs each `JobRun` from the plan, streaming output to the terminal
 * `JobRun.Command` builds the argv (job command plus targets) and environment; execution and display both start here so what plur prints is exactly what it runs
@@ -151,7 +151,7 @@ The watcher binaries are downloaded from the [e-dant/watcher](https://github.com
 1. **Development builds** (`bin/rake build`): Downloads only the current platform's watcher binary via `vendor:download:current`
 2. **Cross-platform builds** (`bin/rake build:all`): Downloads all platform binaries via `vendor:download:all` before compilation
 
-The downloaded binaries are stored in `embedded/watcher/` and embedded into the Go binary at compile time.
+The downloaded binaries are stored in `internal/embedded/watcher/` and embedded into the Go binary at compile time.
 
 ## Configuration
 

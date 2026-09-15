@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/rsanheim/plur/internal/format"
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 )
 
 const jsonPrefix string = "PLUR_JSON:"

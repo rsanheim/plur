@@ -3,7 +3,7 @@ package rspec
 import (
 	"testing"
 
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

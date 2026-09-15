@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/fsutil"
 	"gopkg.in/yaml.v3"
 )

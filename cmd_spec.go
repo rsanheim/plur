@@ -10,10 +10,10 @@ import (
 
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/fileset"
+	"github.com/rsanheim/plur/internal/logger"
 	"github.com/rsanheim/plur/internal/runner"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/testruntime"
-	"github.com/rsanheim/plur/logger"
 )
 
 func (r *SpecCmd) Run(parent *PlurCLI) error {

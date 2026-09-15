@@ -7,7 +7,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
-	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/internal/logger"
 )
 
 // Planner holds everything needed to decide what a file change does.

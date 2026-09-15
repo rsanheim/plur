@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/internal/logger"
 )
 
 // GetWatcherBinaryPath returns the path to the installed watcher binary

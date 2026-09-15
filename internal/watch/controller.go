@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rsanheim/plur/logger"
+	"github.com/rsanheim/plur/internal/logger"
 )
 
 // Strip terminal CSI reports that can arrive mixed with user input.

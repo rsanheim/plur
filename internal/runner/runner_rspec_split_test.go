@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rsanheim/plur/config"
+	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/testruntime"
 	"github.com/stretchr/testify/assert"

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rsanheim/plur/types"
+	"github.com/rsanheim/plur/internal/types"
 )
 
 // TestCollector collects test notifications and builds the final test result

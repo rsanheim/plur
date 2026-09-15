@@ -14,13 +14,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rsanheim/plur/config"
-	"github.com/rsanheim/plur/embedded"
 	"github.com/rsanheim/plur/internal/buildinfo"
+	"github.com/rsanheim/plur/internal/config"
+	"github.com/rsanheim/plur/internal/embedded"
+	"github.com/rsanheim/plur/internal/logger"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/term"
-	"github.com/rsanheim/plur/logger"
-	"github.com/rsanheim/plur/watch"
+	"github.com/rsanheim/plur/internal/watch"
 )
 
 func runWatchInstall(force bool) error {

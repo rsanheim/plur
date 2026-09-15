@@ -18,7 +18,7 @@ RSpec.describe Plur::Config do
       expect(config.edant_watcher_version).to be_a(String)
       expect(config.edant_watcher_version).not_to be_empty
       expect(config.edant_watcher_version).to match(/^\d+\.\d+\.\d+$/)
-      expect(config.edant_watcher_version).to eq(ROOT_PATH.join("embedded", "watcher.version").read.strip)
+      expect(config.edant_watcher_version).to eq(ROOT_PATH.join("internal", "embedded", "watcher.version").read.strip)
     end
 
     it "defines root_dir as an existing Pathname" do
@@ -29,7 +29,7 @@ RSpec.describe Plur::Config do
 
     it "defines watcher_dir as a Pathname (may not exist yet)" do
       expect(config.watcher_dir).to be_a(Pathname)
-      expect(config.watcher_dir.to_s).to include("embedded/watcher")
+      expect(config.watcher_dir).to eq(ROOT_PATH.join("internal", "embedded", "watcher"))
     end
   end
 end
