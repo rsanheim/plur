@@ -13,10 +13,11 @@ module PtyHelper
 
   # tty-command silently falls back to pipes when a PTY is unavailable, so
   # :pty specs are excluded (below) rather than left to fail on the fallback.
+  # Returns the TTY::Command::Result; each stream gets its own PTY, so
+  # result.out and result.err stay separate.
   def run_in_pty(*cmd, chdir:, env: {}, timeout: 60)
-    result = TTY::Command.new(uuid: false, printer: :null)
+    TTY::Command.new(uuid: false, printer: :null)
       .run!(*cmd, env: env, chdir: chdir.to_s, pty: true, timeout: timeout)
-    result.out + result.err
   end
 end
 
