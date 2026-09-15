@@ -29,7 +29,7 @@ RSpec.describe Plur::Config do
 
     it "defines watcher_dir as a Pathname (may not exist yet)" do
       expect(config.watcher_dir).to be_a(Pathname)
-      expect(config.watcher_dir.to_s).to include("embedded/watcher")
+      expect(config.watcher_dir).to eq(ROOT_PATH.join("internal", "embedded", "watcher"))
     end
   end
 end
