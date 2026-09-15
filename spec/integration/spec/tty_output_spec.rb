@@ -10,18 +10,18 @@ RSpec.describe "Color resolution under a TTY", :pty do
   end
 
   it "auto emits colored dots on a terminal" do
-    output = run_passing_in_pty
-    expect(output).to include("\e[32m.\e[0m")
+    result = run_passing_in_pty
+    expect(result.out).to include("\e[32m.\e[0m")
   end
 
   it "NO_COLOR disables color even on a terminal" do
-    output = run_passing_in_pty(env: {"NO_COLOR" => "1"})
-    expect(output).not_to match(ansi)
+    result = run_passing_in_pty(env: {"NO_COLOR" => "1"})
+    expect(result.out + result.err).not_to match(ansi)
   end
 
   it "--color=never disables color even on a terminal" do
     fixture = project_fixture("default-ruby")
-    output = run_in_pty(plur_binary, "--color=never", "-n", "2", "spec/calculator_spec.rb", chdir: fixture)
-    expect(output).not_to match(ansi)
+    result = run_in_pty(plur_binary, "--color=never", "-n", "2", "spec/calculator_spec.rb", chdir: fixture)
+    expect(result.out + result.err).not_to match(ansi)
   end
 end
