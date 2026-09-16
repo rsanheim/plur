@@ -139,10 +139,7 @@ func buildResolvedJobs(userJobs map[string]framework.Job) (map[string]framework.
 
 	for jobName := range jobNames {
 		builtin, hasBuiltin := builtinDefaults.Defaults.Jobs[jobName]
-		user, hasUser := framework.Job{}, false
-		if userJobs != nil {
-			user, hasUser = userJobs[jobName]
-		}
+		user, hasUser := userJobs[jobName]
 
 		inherit := InheritedFields{}
 		resolvedJob := framework.Job{}

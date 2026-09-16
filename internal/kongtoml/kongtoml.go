@@ -193,9 +193,6 @@ func allowedConfigKeys(app *kong.Application) configKeySet {
 		flat:   make(map[string]struct{}),
 		nested: make(map[string]nestedKeySpec),
 	}
-	if app == nil || app.Node == nil {
-		return allowed
-	}
 
 	var walk func(node *kong.Node)
 	walk = func(node *kong.Node) {
@@ -219,7 +216,7 @@ func allowedConfigKeys(app *kong.Application) configKeySet {
 }
 
 func nestedConfigSpecForFlag(flag *kong.Flag) (nestedKeySpec, bool) {
-	if flag == nil || flag.Target.Kind() == reflect.Invalid {
+	if flag.Target.Kind() == reflect.Invalid {
 		return nestedKeySpec{}, false
 	}
 
