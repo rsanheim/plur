@@ -6,9 +6,7 @@ require "spec_helper"
 #   --color=always|never  >  NO_COLOR  >  config file  >  auto (tty detection)
 #
 # run_plur drives the real binary through pipes, so "no flags, clean env" means
-# auto resolves to no color. Over a pipe there are no progress markers either
-# (output_mode_spec.rb), so color shows up in the failure details.
-# TTY-side behavior lives in tty_output_spec.rb.
+# auto resolves to no color. TTY-side behavior lives in tty_output_spec.rb.
 RSpec.describe "Color resolution over a pipe" do
   def run_mixed(*args, env: {})
     chdir(project_fixture("failing_specs")) do

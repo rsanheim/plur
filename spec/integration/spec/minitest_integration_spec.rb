@@ -38,8 +38,6 @@ RSpec.describe "Minitest integration" do
   end
 
   context "outcomes and progress" do
-    # Progress markers are terminal behavior: over a pipe, auto resolves to
-    # summary mode (see output_mode_spec.rb), so progress counts run under a PTY.
     it "reports a green run with full progress, live stdout, and RSpec-style duration", :pty do
       Bundler.with_unbundled_env do
         # No --use: the one real exercise of framework auto-detection.

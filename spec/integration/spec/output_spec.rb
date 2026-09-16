@@ -1,8 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "plur spec output handling" do
-  # Progress markers are terminal behavior: over a pipe, auto resolves to
-  # summary mode (see output_mode_spec.rb), so these run under a PTY.
   describe "concurrent output handling", :pty do
     it "produces valid output with high worker count" do
       # Run with many workers to stress-test the output handling

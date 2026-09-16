@@ -1,18 +1,9 @@
 require "spec_helper"
 
-# The output mode contract. `auto` resolves to summary over a pipe (how agents
-# and CI run plur) and to progress under a terminal; an explicit mode wins
-# regardless of where stdout goes:
-#
-#   --output=auto|progress|summary  >  PLUR_OUTPUT  >  config `output = "..."`  >  auto
-#
-# Summary mode drops only the per-example markers (`.`, `F`, `*`, `E`) and the
-# newline that ends them. Test output, failure details, rerun commands, the
-# framework summary, and the exit status are untouched. Color is a separate
-# axis and resolves on its own.
+# --output=auto|progress|summary. auto is summary over a pipe and progress on a
+# terminal; summary drops only the per-example markers and their newline.
 RSpec.describe "Output mode" do
-  # Lines made only of progress markers, color stripped. A test that prints a
-  # bare dot on its own line would count too, so the fixtures here print words.
+  # A test printing a bare dot on its own line would count too; fixtures here print words.
   def marker_lines(out)
     out.gsub(ansi, "").lines.map(&:chomp).grep(/\A[.F*E]+\z/)
   end
@@ -32,7 +23,7 @@ RSpec.describe "Output mode" do
       result = run_passing
 
       expect(marker_lines(result.out)).to be_empty
-      # RSpec's own blank line before the summary, with no marker terminator ahead of it.
+      # rspec's own blank line, with no marker newline ahead of it
       expect(result.out).to start_with("\nFinished in")
       expect(result.out).to include("5 examples, 0 failures")
       expect(result.exit_status).to eq(0)
