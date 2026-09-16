@@ -1,5 +1,5 @@
-// Package term resolves plur's color mode against terminal state and the
-// NO_COLOR convention (https://no-color.org).
+// Package term resolves plur's color and output modes against terminal state
+// and the NO_COLOR convention (https://no-color.org).
 package term
 
 import (
@@ -14,6 +14,28 @@ func IsStdoutTTY() bool {
 
 func IsStdinTTY() bool {
 	return xterm.IsTerminal(int(os.Stdin.Fd()))
+}
+
+// OutputMode is what plur prints on stdout while examples run.
+type OutputMode string
+
+const (
+	OutputProgress OutputMode = "progress" // one marker per example: . F * E
+	OutputSummary  OutputMode = "summary"  // no markers; results only
+)
+
+// In auto mode, a terminal gets progress and anything else gets summary.
+func ResolveOutput(mode string, stdoutIsTTY bool) OutputMode {
+	switch mode {
+	case "progress":
+		return OutputProgress
+	case "summary":
+		return OutputSummary
+	}
+	if stdoutIsTTY {
+		return OutputProgress
+	}
+	return OutputSummary
 }
 
 // In auto mode, NO_COLOR beats TTY detection.

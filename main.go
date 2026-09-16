@@ -92,6 +92,7 @@ type PlurCLI struct {
 	// directory change is handled early in main() before config loading
 	ChangeDir  string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Color      string      `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,true,false" env:"PLUR_COLOR" default:"auto"`
+	Output     string      `help:"What to print while tests run: auto (progress on a terminal, summary otherwise), progress, or summary" enum:"auto,progress,summary" env:"PLUR_OUTPUT" default:"auto"`
 	Debug      bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
 	DryRun     bool        `help:"Print what would be executed without running" default:"false"`
 	FirstIs1   bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
@@ -158,12 +159,16 @@ func (cli *PlurCLI) AfterApply() error {
 		}
 	}
 
-	colorOn, colorSource := term.ResolveColor(cli.Color, term.IsStdoutTTY())
+	stdoutIsTTY := term.IsStdoutTTY()
+	colorOn, colorSource := term.ResolveColor(cli.Color, stdoutIsTTY)
 	slog.Debug("color output resolved", "mode", cli.Color, "enabled", colorOn, "source", colorSource)
+	output := term.ResolveOutput(cli.Output, stdoutIsTTY)
+	slog.Debug("output mode resolved", "mode", cli.Output, "output", output)
 
 	cli.globalConfig = &config.GlobalConfig{
 		ColorOutput:   colorOn,
 		ColorSource:   colorSource,
+		Output:        output,
 		ConfigPaths:   configPaths,
 		Debug:         cli.Debug,
 		Verbose:       cli.Verbose,

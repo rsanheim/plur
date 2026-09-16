@@ -7,6 +7,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestResolveOutput(t *testing.T) {
+	cases := []struct {
+		name string
+		mode string
+		tty  bool
+		want OutputMode
+	}{
+		{name: "auto tty", mode: "auto", tty: true, want: OutputProgress},
+		{name: "auto pipe", mode: "auto", want: OutputSummary},
+		{name: "progress tty", mode: "progress", tty: true, want: OutputProgress},
+		{name: "progress pipe", mode: "progress", want: OutputProgress},
+		{name: "summary tty", mode: "summary", tty: true, want: OutputSummary},
+		{name: "summary pipe", mode: "summary", want: OutputSummary},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, ResolveOutput(tc.mode, tc.tty))
+		})
+	}
+}
+
 func TestResolveColor(t *testing.T) {
 	cases := []struct {
 		name       string

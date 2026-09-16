@@ -177,6 +177,8 @@ Arguments are passed as-is and are not treated as test file patterns. Put Plur f
 
 * `-n, --workers NUMBER` - Number of parallel workers (default: 4)
 * `--dry-run` - Show what would run without executing
+* `--color MODE` - When to color output: `auto` (default), `always`, or `never`
+* `--output MODE` - What to print while tests run: `auto` (default), `progress`, or `summary`
 * `-h, --help` - Show help
 * `-v, --verbose` - Enable verbose logging
 * `--version` - Show version
@@ -185,6 +187,8 @@ Arguments are passed as-is and are not treated as test file patterns. Put Plur f
 
 * `PLUR_WORKERS` - Override number of workers (`PARALLEL_TEST_PROCESSORS` is a legacy fallback)
 * `PLUR_DEBUG` - Enable debug logging
+* `PLUR_COLOR` - Color mode: `auto`, `always`, or `never`
+* `PLUR_OUTPUT` - Output mode: `auto`, `progress`, or `summary`
 * `PLUR_CONFIG_FILE` - Load a specific config file
 * `PLUR_HOME` - Override Plur's home directory (`~/.plur`)
 
@@ -212,15 +216,35 @@ plur -n $(( $(nproc) + 2 ))
 
 ## Output Formats
 
-### Progress Output (Default)
+Plur prints the full results at the end of every run: pending and failure details, rerun commands for RSpec, the framework's summary line, and the exit status. What it prints while tests are still running depends on the output mode.
 
-Shows dots for test progress:
+```bash
+plur --output=auto      # default: progress on a terminal, summary otherwise
+plur --output=progress  # one marker per test, wherever stdout goes
+plur --output=summary   # no markers, wherever stdout goes
+```
+
+### Progress
+
+On a terminal, plur shows one marker per test as it finishes:
 ```
 ....F...*...
 ```
 - `.` - Passing test
 - `F` - Failing test
 - `*` - Pending test
+- `E` - Test that errored
+
+### Summary
+
+When stdout is a pipe or a file, as in CI logs and coding agents, `auto` drops the markers. Everything else is unchanged: output the tests write with `puts` still streams live, and the failure details and summary print at the end.
+
+```bash
+plur | tee run.log        # no markers in run.log
+plur --output=progress | tee run.log   # plain markers in run.log
+```
+
+Output mode and color are independent. `--output=summary --color=always` colors the results without markers; `--output=progress` over a pipe prints plain markers unless color is forced. The setting follows the usual precedence: `--output` flag, then `PLUR_OUTPUT`, then `output = "..."` in a config file, then `auto`.
 
 ## Performance Monitoring
 

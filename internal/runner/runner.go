@@ -14,6 +14,7 @@ import (
 	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/logger"
+	"github.com/rsanheim/plur/internal/term"
 	"github.com/rsanheim/plur/internal/testruntime"
 )
 
@@ -295,9 +296,11 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	results := make([]WorkerResult, len(commands))
 	outputChan := make(chan OutputMessage, len(commands)*10)
 
+	progress := r.config.Output == term.OutputProgress
+
 	var outputWg sync.WaitGroup
 	outputWg.Go(func() {
-		outputAggregator(outputChan, r.config.ColorOutput, r.config.RspecTrace)
+		outputAggregator(outputChan, progress, r.config.ColorOutput, r.config.RspecTrace)
 	})
 
 	var wg sync.WaitGroup
@@ -314,7 +317,9 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	close(outputChan)
 	outputWg.Wait()
 
-	fmt.Println() // newline after dots
+	if progress {
+		fmt.Println() // ends the marker line
+	}
 
 	return results, time.Since(start)
 }
@@ -388,9 +393,16 @@ func GetTestEnvNumber(workerIndex int, config *config.GlobalConfig) string {
 	return strconv.Itoa(workerIndex + 1)
 }
 
-// outputAggregator handles all output from workers to avoid lock contention
-func outputAggregator(outputChan <-chan OutputMessage, colorOutput bool, traceOutput bool) {
+// outputAggregator handles all output from workers to avoid lock contention.
+// Summary mode drops the per-example markers and nothing else.
+func outputAggregator(outputChan <-chan OutputMessage, progress bool, colorOutput bool, traceOutput bool) {
 	for msg := range outputChan {
+		switch msg.Type {
+		case "dot", "failure", "pending", "error_progress":
+			if !progress {
+				continue
+			}
+		}
 		switch msg.Type {
 		case "dot":
 			if colorOutput {

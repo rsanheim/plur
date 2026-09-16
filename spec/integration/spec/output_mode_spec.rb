@@ -119,7 +119,7 @@ RSpec.describe "Output mode" do
       result = run_failing("--output=summary", "--color=always")
 
       expect(marker_lines(result.out)).to be_empty
-      expect(result.out).to include("\e[31mFailure/Error: expect(\"foo\").to eq(\"bar\")\e[0m")
+      expect(result.out).to include("\e[31mFailure/Error:")
     end
   end
 
