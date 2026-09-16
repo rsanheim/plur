@@ -216,35 +216,18 @@ plur -n $(( $(nproc) + 2 ))
 
 ## Output Formats
 
-Plur prints the full results at the end of every run: pending and failure details, rerun commands for RSpec, the framework's summary line, and the exit status. What it prints while tests are still running depends on the formatter.
+Every run ends with the full results: pending and failure details, RSpec rerun commands, the framework's summary line, and the exit status. The formatter controls what prints while tests are still running.
+
+* `progress` shows one marker per test as it finishes: `.` passing, `F` failing, `*` pending, `E` errored.
+* `summary` shows no markers. Output the tests write with `puts` still streams live.
+* `auto` (the default) picks `progress` on a terminal and `summary` when stdout is a pipe or file, as in CI logs and coding agents.
 
 ```bash
-plur --formatter=auto      # default: progress on a terminal, summary otherwise
-plur --formatter=progress  # one marker per test, wherever stdout goes
-plur -f summary            # no markers, wherever stdout goes
+plur -f progress | tee run.log   # markers in run.log
+plur -f summary                  # no markers, even on a terminal
 ```
 
-### Progress
-
-On a terminal, plur shows one marker per test as it finishes:
-```
-....F...*...
-```
-- `.` - Passing test
-- `F` - Failing test
-- `*` - Pending test
-- `E` - Test that errored
-
-### Summary
-
-When stdout is a pipe or a file, as in CI logs and coding agents, `auto` drops the markers. Everything else is unchanged: output the tests write with `puts` still streams live, and the failure details and summary print at the end.
-
-```bash
-plur | tee run.log        # no markers in run.log
-plur --formatter=progress | tee run.log   # plain markers in run.log
-```
-
-Formatter and color are independent. `--formatter=summary --color=always` colors the results without markers; `--formatter=progress` over a pipe prints plain markers unless color is forced. The setting follows the usual precedence: `--formatter` flag, then `PLUR_FORMATTER`, then `formatter = "..."` in a config file, then `auto`.
+Set it with `--formatter`/`-f`, `PLUR_FORMATTER`, or `formatter = "..."` in a config file, in that order of precedence. Formatter and color are independent: `--formatter=summary --color=always` colors the results without markers.
 
 ## Performance Monitoring
 
