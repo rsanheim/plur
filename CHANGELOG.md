@@ -5,12 +5,9 @@
 * Add `--formatter=auto|progress|summary` (`-f`, `PLUR_FORMATTER`, or `formatter` in config). `auto` keeps progress markers on a terminal and drops them when stdout is a pipe or file, so CI logs and coding agents see test output and the final results without the marker stream. [#154](https://github.com/rsanheim/plur/pull/154)
 
 ## v0.81.1 - 2026-09-12
-
-* Reuse runtime timing history across linked Git worktrees, keeping separate project directories and checkout-specific split selectors isolated. [#149](https://github.com/rsanheim/plur/pull/149)
-* Preserve RSpec, Rails, and Rake worker exit codes; return `70` for workers that cannot start, are killed by a signal, or exit before RSpec reports completion. [#148](https://github.com/rsanheim/plur/pull/148)
+* Reuse runtime timing history across linked Git worktrees. [#149](https://github.com/rsanheim/plur/pull/149)
+* Preserve RSpec, Rails, and Rake worker exit codes; return `70` for Plur errors [#148](https://github.com/rsanheim/plur/pull/148)
 * Keep runtime history intact after interrupted or failing runs; save only successful runs with examples. [#148](https://github.com/rsanheim/plur/pull/148)
-* Build with Go modules instead of vendored dependencies. [#147](https://github.com/rsanheim/plur/pull/147)
-* Build documentation with Zensical and check strict docs builds in CI. [#146](https://github.com/rsanheim/plur/pull/146)
 
 ## v0.80.1 - 2026-09-03
 * Add hidden `--dev-profile DIR` flag (or `PLUR_DEV_PROFILE`) that writes CPU, heap, goroutine, and goroutine-leak profiles at exit for any plur command [#145](https://github.com/rsanheim/plur/pull/145)

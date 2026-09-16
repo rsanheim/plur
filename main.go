@@ -88,8 +88,6 @@ type PlurCLI struct {
 	RailsInit  RailsInitCmd `cmd:"" name:"rails:init" group:"advanced" help:"Configure a Rails project for parallel testing"`
 	VersionCmd VersionCmd   `cmd:"" name:"version" group:"advanced" help:"Show version information"`
 
-	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
-	// directory change is handled early in main() before config loading
 	ChangeDir  string         `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Color      string         `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,true,false" env:"PLUR_COLOR" default:"auto"`
 	Formatter  term.Formatter `short:"f" help:"How to render the run: auto (progress on a terminal, summary otherwise), progress, or summary" enum:"auto,progress,summary" env:"PLUR_FORMATTER" default:"auto"`
@@ -102,15 +100,13 @@ type PlurCLI struct {
 	Workers    WorkerCount    `short:"n" help:"Number of parallel workers" env:"PLUR_WORKERS,PARALLEL_TEST_PROCESSORS" default:"4"`
 	DevProfile string         `help:"Write CPU, heap, goroutine and goroutine-leak profiles under DIR at exit" hidden:"" name:"dev-profile" env:"PLUR_DEV_PROFILE" placeholder:"DIR"`
 
-	// Job and watch configuration
 	Job           map[string]framework.Job `help:"Job configurations (config file only)" hidden:""`
 	WatchMappings []watch.WatchMapping     `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
-	// Store the built global config
 	globalConfig  *config.GlobalConfig   `kong:"-"`
 	runtimeConfig *runtime.RuntimeConfig `kong:"-"`
 
-	// Store config files that were attempted (for tracking)
+	// config files that were attempted (for tracking)
 	configFiles []string `kong:"-"`
 
 	// RSpec passthrough args from -- delimiter
@@ -124,8 +120,6 @@ func (cli *PlurCLI) Validate() error {
 	return nil
 }
 
-// Initialize logger with appropriate level
-// At this point, Kong has already resolved r.Debug and r.Verbose
 func (cli *PlurCLI) AfterApply() error {
 	level := slog.LevelWarn
 	if cli.Debug {
