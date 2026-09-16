@@ -94,7 +94,15 @@ steps:
         ( cd fixtures/projects/default-rails \
           && RAILS_ENV=test bundle exec rake db:create db:migrate )
 
-        bin/rake
+        bin/rake install
+        echo "SPIKE stdout is a tty: $([ -t 1 ] && echo yes || echo no)"
+        echo "SPIKE PATH plur: $(command -v plur) $(plur version)"
+        echo "SPIKE GOBIN plur: $(go env GOBIN)/plur $("$(go env GOBIN)/plur" version)"
+        "$(go env GOBIN)/plur" doctor | grep -E "Color|Race"
+        echo "SPIKE run under test, default-ruby, auto:"
+        "$(go env GOBIN)/plur" -C fixtures/projects/default-ruby -n 4
+        echo "SPIKE run under test, default-ruby, summary:"
+        "$(go env GOBIN)/plur" -C fixtures/projects/default-ruby -n 4 -f summary
 
   # Keeps the workflow green when the work above is skipped on a docs-only change.
   - name: docs-only-passthrough
