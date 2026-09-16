@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
+	"github.com/rsanheim/plur/internal/buildinfo"
 	clihelp "github.com/rsanheim/plur/internal/cli"
 	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/devprofile"
@@ -17,6 +18,7 @@ import (
 	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/logger"
+	"github.com/rsanheim/plur/internal/railsinit"
 	"github.com/rsanheim/plur/internal/runner"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/term"
@@ -60,8 +62,13 @@ func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	if err := watch.InstallBinary(embedded.Watcher, paths.BinDir, paths.PlurHome, embedded.WatcherVersion(), false); err != nil {
 		return err
 	}
-
 	return runWatchWithConfig(config, w, parent, globals)
+}
+
+type DoctorCmd struct{}
+
+func (d *DoctorCmd) Run(parent *PlurCLI) error {
+	return runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
 }
 
 type WatchInstallCmd struct{}
@@ -71,24 +78,31 @@ func (w *WatchInstallCmd) Run(globals *PlurCLI) error {
 	return watch.InstallBinary(embedded.Watcher, paths.BinDir, paths.PlurHome, embedded.WatcherVersion(), true)
 }
 
-type DoctorCmd struct{}
-
-func (d *DoctorCmd) Run(parent *PlurCLI) error {
-	return runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
-}
-
 type ConfigCmd struct {
 	Init ConfigInitCmd `cmd:"" group:"advanced" help:"Generate a starter configuration file"`
 }
 
+type RailsInitCmd struct{}
+
+func (r *RailsInitCmd) Run(parent *PlurCLI) error {
+	return railsinit.Run(parent.globalConfig)
+}
+
+type VersionCmd struct{}
+
+func (v *VersionCmd) Run() error {
+	fmt.Printf("plur version=%s", buildinfo.GetVersionInfo())
+	return nil
+}
+
 type PlurCLI struct {
 	Spec       SpecCmd      `cmd:"" group:"daily" help:"Run tests" default:"withargs"`
-	Watch      WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Rails      RailsCmd     `cmd:"" name:"rails" aliases:"rake" group:"advanced" help:"Run a Rails or Rake command once per worker"`
-	Doctor     DoctorCmd    `cmd:"" group:"advanced" help:"Diagnose Plur installation and environment"`
 	Config     ConfigCmd    `cmd:"" help:"Configuration commands"`
+	Doctor     DoctorCmd    `cmd:"" group:"advanced" help:"Diagnose Plur installation and environment"`
+	Rails      RailsCmd     `cmd:"" name:"rails" aliases:"rake" group:"advanced" help:"Run a Rails or Rake command once per worker"`
 	RailsInit  RailsInitCmd `cmd:"" name:"rails:init" group:"advanced" help:"Configure a Rails project for parallel testing"`
 	VersionCmd VersionCmd   `cmd:"" name:"version" group:"advanced" help:"Show version information"`
+	Watch      WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
 
 	ChangeDir  string         `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Color      string         `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,true,false" env:"PLUR_COLOR" default:"auto"`
