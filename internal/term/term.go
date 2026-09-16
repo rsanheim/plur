@@ -1,5 +1,5 @@
-// Package term resolves plur's color and output modes against terminal state
-// and the NO_COLOR convention (https://no-color.org).
+// Package term resolves plur's formatter and color against terminal state and
+// the NO_COLOR convention (https://no-color.org).
 package term
 
 import (
@@ -16,26 +16,25 @@ func IsStdinTTY() bool {
 	return xterm.IsTerminal(int(os.Stdin.Fd()))
 }
 
-// OutputMode is what plur prints on stdout while examples run.
-type OutputMode string
+// Formatter is how plur renders a run on stdout. Kong maps --formatter, its
+// env var, and the config key onto it directly.
+type Formatter string
 
 const (
-	OutputProgress OutputMode = "progress" // one marker per example: . F * E
-	OutputSummary  OutputMode = "summary"  // no markers; results only
+	FormatterAuto     Formatter = "auto"     // progress on a terminal, summary otherwise
+	FormatterProgress Formatter = "progress" // one marker per example: . F * E
+	FormatterSummary  Formatter = "summary"  // no markers; results only
 )
 
-// In auto mode, a terminal gets progress and anything else gets summary.
-func ResolveOutput(mode string, stdoutIsTTY bool) OutputMode {
-	switch mode {
-	case "progress":
-		return OutputProgress
-	case "summary":
-		return OutputSummary
+// ResolveFormatter turns auto into a concrete formatter; anything else is returned as is.
+func ResolveFormatter(formatter Formatter, stdoutIsTTY bool) Formatter {
+	if formatter != FormatterAuto {
+		return formatter
 	}
 	if stdoutIsTTY {
-		return OutputProgress
+		return FormatterProgress
 	}
-	return OutputSummary
+	return FormatterSummary
 }
 
 // In auto mode, NO_COLOR beats TTY detection.

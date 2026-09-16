@@ -1,8 +1,8 @@
 require "spec_helper"
 
-# --output=auto|progress|summary. auto is summary over a pipe and progress on a
-# terminal; summary drops only the per-example markers and their newline.
-RSpec.describe "Output mode" do
+# --formatter=auto|progress|summary. auto is summary over a pipe and progress on
+# a terminal; summary drops only the per-example markers and their newline.
+RSpec.describe "Formatter" do
   # A test printing a bare dot on its own line would count too; fixtures here print words.
   def marker_lines(out)
     out.gsub(ansi, "").lines.map(&:chomp).grep(/\A[.F*E]+\z/)
@@ -60,7 +60,7 @@ RSpec.describe "Output mode" do
     end
 
     it "keeps what the suite writes to stdout" do
-      Dir.mktmpdir("output-mode-puts-", ROOT_PATH.join("tmp")) do |tmpdir|
+      Dir.mktmpdir("formatter-puts-", ROOT_PATH.join("tmp")) do |tmpdir|
         File.write(File.join(tmpdir, "puts_spec.rb"), <<~SPEC)
           RSpec.describe "puts under summary mode" do
             it "prints" do
@@ -82,7 +82,7 @@ RSpec.describe "Output mode" do
 
   context "explicit progress over a pipe" do
     it "emits plain markers when color is auto" do
-      result = run_failing("--output=progress")
+      result = run_failing("--formatter=progress")
 
       expect(marker_lines(result.out)).to eq([".F.F.***"])
       expect(result.out).not_to match(ansi)
@@ -91,7 +91,7 @@ RSpec.describe "Output mode" do
     end
 
     it "colors markers only when color is forced" do
-      result = run_failing("--output=progress", "--color=always")
+      result = run_failing("--formatter=progress", "--color=always")
 
       expect(result.out).to include("\e[32m.\e[0m")
       expect(result.out).to include("\e[31mF\e[0m")
@@ -99,7 +99,13 @@ RSpec.describe "Output mode" do
     end
 
     it "parses after the positional target like --color" do
-      result = chdir(default_ruby_dir) { run_plur("spec/calculator_spec.rb", "--output=progress") }
+      result = chdir(default_ruby_dir) { run_plur("spec/calculator_spec.rb", "--formatter=progress") }
+
+      expect(marker_lines(result.out)).to eq(["....."])
+    end
+
+    it "has the short form -f" do
+      result = chdir(default_ruby_dir) { run_plur("-f", "progress", "spec/calculator_spec.rb") }
 
       expect(marker_lines(result.out)).to eq(["....."])
     end
@@ -107,7 +113,7 @@ RSpec.describe "Output mode" do
 
   context "explicit summary over a pipe" do
     it "suppresses markers and keeps the results" do
-      result = run_failing("--output=summary")
+      result = run_failing("--formatter=summary")
 
       expect(marker_lines(result.out)).to be_empty
       expect(result.out).to start_with("\nPending:")
@@ -116,7 +122,7 @@ RSpec.describe "Output mode" do
     end
 
     it "with forced color, colors the remaining output" do
-      result = run_failing("--output=summary", "--color=always")
+      result = run_failing("--formatter=summary", "--color=always")
 
       expect(marker_lines(result.out)).to be_empty
       expect(result.out).to include("\e[31mFailure/Error:")
@@ -125,32 +131,32 @@ RSpec.describe "Output mode" do
 
   context "configuration" do
     def with_output_config(value)
-      Dir.mktmpdir("output-mode-config-", ROOT_PATH.join("tmp")) do |dir|
-        config_path = File.join(dir, "output.toml")
-        File.write(config_path, %(output = "#{value}"\n))
+      Dir.mktmpdir("formatter-config-", ROOT_PATH.join("tmp")) do |dir|
+        config_path = File.join(dir, "formatter.toml")
+        File.write(config_path, %(formatter = "#{value}"\n))
         yield config_path
       end
     end
 
-    it "PLUR_OUTPUT=progress emits markers over a pipe" do
-      result = run_passing(env: {"PLUR_OUTPUT" => "progress"})
+    it "PLUR_FORMATTER=progress emits markers over a pipe" do
+      result = run_passing(env: {"PLUR_FORMATTER" => "progress"})
 
       expect(marker_lines(result.out)).to eq(["....."])
     end
 
-    it "the --output flag beats PLUR_OUTPUT" do
-      result = run_passing("--output=summary", env: {"PLUR_OUTPUT" => "progress"})
+    it "the --formatter flag beats PLUR_FORMATTER" do
+      result = run_passing("--formatter=summary", env: {"PLUR_FORMATTER" => "progress"})
 
       expect(marker_lines(result.out)).to be_empty
     end
 
-    it "explicit --output=auto beats PLUR_OUTPUT=progress and resolves for the pipe" do
-      result = run_passing("--output=auto", env: {"PLUR_OUTPUT" => "progress"})
+    it "explicit --formatter=auto beats PLUR_FORMATTER=progress and resolves for the pipe" do
+      result = run_passing("--formatter=auto", env: {"PLUR_FORMATTER" => "progress"})
 
       expect(marker_lines(result.out)).to be_empty
     end
 
-    it "config file output = \"progress\" emits markers over a pipe" do
+    it "config file formatter = \"progress\" emits markers over a pipe" do
       with_output_config("progress") do |config_path|
         result = run_passing(env: {"PLUR_CONFIG_FILE" => config_path})
 
@@ -158,24 +164,24 @@ RSpec.describe "Output mode" do
       end
     end
 
-    it "env beats config: PLUR_OUTPUT=summary beats output = \"progress\"" do
+    it "env beats config: PLUR_FORMATTER=summary beats formatter = \"progress\"" do
       with_output_config("progress") do |config_path|
-        result = run_passing(env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_OUTPUT" => "summary"})
+        result = run_passing(env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_FORMATTER" => "summary"})
 
         expect(marker_lines(result.out)).to be_empty
       end
     end
 
-    it "env beats config: PLUR_OUTPUT=auto beats output = \"progress\" and resolves for the pipe" do
+    it "env beats config: PLUR_FORMATTER=auto beats formatter = \"progress\" and resolves for the pipe" do
       with_output_config("progress") do |config_path|
-        result = run_passing(env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_OUTPUT" => "auto"})
+        result = run_passing(env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_FORMATTER" => "auto"})
 
         expect(marker_lines(result.out)).to be_empty
       end
     end
 
     it "rejects an unknown mode" do
-      result = chdir(default_ruby_dir) { run_plur_allowing_errors("--output=bogus") }
+      result = chdir(default_ruby_dir) { run_plur_allowing_errors("--formatter=bogus") }
 
       expect(result.exit_status).not_to eq(0)
       expect(result.err).to include("progress")
@@ -197,13 +203,13 @@ RSpec.describe "Output mode" do
     end
 
     it "explicit progress keeps the markers" do
-      result = run_failing_in_pty("--output=progress")
+      result = run_failing_in_pty("--formatter=progress")
 
       expect(marker_lines(result.out)).to eq([".F.F.***"])
     end
 
     it "explicit summary suppresses markers and keeps the results" do
-      result = run_failing_in_pty("--output=summary")
+      result = run_failing_in_pty("--formatter=summary")
 
       expect(marker_lines(result.out)).to be_empty
       expect(result.out).to include("Failures:")

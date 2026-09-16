@@ -7,23 +7,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestResolveOutput(t *testing.T) {
+func TestResolveFormatter(t *testing.T) {
 	cases := []struct {
-		name string
-		mode string
-		tty  bool
-		want OutputMode
+		name      string
+		formatter Formatter
+		tty       bool
+		want      Formatter
 	}{
-		{name: "auto tty", mode: "auto", tty: true, want: OutputProgress},
-		{name: "auto pipe", mode: "auto", want: OutputSummary},
-		{name: "progress tty", mode: "progress", tty: true, want: OutputProgress},
-		{name: "progress pipe", mode: "progress", want: OutputProgress},
-		{name: "summary tty", mode: "summary", tty: true, want: OutputSummary},
-		{name: "summary pipe", mode: "summary", want: OutputSummary},
+		{name: "auto tty", formatter: FormatterAuto, tty: true, want: FormatterProgress},
+		{name: "auto pipe", formatter: FormatterAuto, want: FormatterSummary},
+		{name: "progress tty", formatter: FormatterProgress, tty: true, want: FormatterProgress},
+		{name: "progress pipe", formatter: FormatterProgress, want: FormatterProgress},
+		{name: "summary tty", formatter: FormatterSummary, tty: true, want: FormatterSummary},
+		{name: "summary pipe", formatter: FormatterSummary, want: FormatterSummary},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.want, ResolveOutput(tc.mode, tc.tty))
+			assert.Equal(t, tc.want, ResolveFormatter(tc.formatter, tc.tty))
 		})
 	}
 }

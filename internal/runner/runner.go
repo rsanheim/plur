@@ -296,7 +296,7 @@ func (r *Runner) executeWorkers(commands []*exec.Cmd) ([]WorkerResult, time.Dura
 	results := make([]WorkerResult, len(commands))
 	outputChan := make(chan OutputMessage, len(commands)*10)
 
-	progress := r.config.Output == term.OutputProgress
+	progress := r.config.Formatter == term.FormatterProgress
 
 	var outputWg sync.WaitGroup
 	outputWg.Go(func() {

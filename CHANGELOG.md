@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-* Add `--output=auto|progress|summary` (also `PLUR_OUTPUT` and `output` in config). `auto` keeps progress markers on a terminal and drops them when stdout is a pipe or file, so CI logs and coding agents see test output and the final results without the marker stream. [#154](https://github.com/rsanheim/plur/pull/154)
+* Add `--formatter=auto|progress|summary` (`-f`, `PLUR_FORMATTER`, or `formatter` in config). `auto` keeps progress markers on a terminal and drops them when stdout is a pipe or file, so CI logs and coding agents see test output and the final results without the marker stream. [#154](https://github.com/rsanheim/plur/pull/154)
 
 ## v0.81.1 - 2026-09-12
 

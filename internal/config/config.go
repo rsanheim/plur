@@ -12,7 +12,7 @@ import (
 type GlobalConfig struct {
 	ColorOutput bool
 	ColorSource string // short source tag from term.ResolveColor, shown by doctor and --verbose
-	Output      term.OutputMode
+	Formatter   term.Formatter
 	ConfigPaths *ConfigPaths
 	Debug       bool
 	Verbose     bool

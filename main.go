@@ -90,17 +90,17 @@ type PlurCLI struct {
 
 	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
 	// directory change is handled early in main() before config loading
-	ChangeDir  string      `short:"C" help:"Change to directory before running (like git -C)" default:""`
-	Color      string      `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,true,false" env:"PLUR_COLOR" default:"auto"`
-	Output     string      `help:"What to print while tests run: auto (progress on a terminal, summary otherwise), progress, or summary" enum:"auto,progress,summary" env:"PLUR_OUTPUT" default:"auto"`
-	Debug      bool        `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
-	DryRun     bool        `help:"Print what would be executed without running" default:"false"`
-	FirstIs1   bool        `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
-	Use        string      `short:"u" help:"Job to use (overrides autodetection)" default:""`
-	Verbose    bool        `short:"v" help:"Enable verbose output for debugging" default:"false"`
-	Version    bool        `help:"Show version information"`
-	Workers    WorkerCount `short:"n" help:"Number of parallel workers" env:"PLUR_WORKERS,PARALLEL_TEST_PROCESSORS" default:"4"`
-	DevProfile string      `help:"Write CPU, heap, goroutine and goroutine-leak profiles under DIR at exit" hidden:"" name:"dev-profile" env:"PLUR_DEV_PROFILE" placeholder:"DIR"`
+	ChangeDir  string         `short:"C" help:"Change to directory before running (like git -C)" default:""`
+	Color      string         `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,true,false" env:"PLUR_COLOR" default:"auto"`
+	Formatter  term.Formatter `short:"f" help:"How to render the run: auto (progress on a terminal, summary otherwise), progress, or summary" enum:"auto,progress,summary" env:"PLUR_FORMATTER" default:"auto"`
+	Debug      bool           `short:"d" help:"Enable debug output (includes verbose)" env:"PLUR_DEBUG" default:"false"`
+	DryRun     bool           `help:"Print what would be executed without running" default:"false"`
+	FirstIs1   bool           `help:"Start TEST_ENV_NUMBER at 1 instead of empty string (default: true)" negatable:"" default:"true"`
+	Use        string         `short:"u" help:"Job to use (overrides autodetection)" default:""`
+	Verbose    bool           `short:"v" help:"Enable verbose output for debugging" default:"false"`
+	Version    bool           `help:"Show version information"`
+	Workers    WorkerCount    `short:"n" help:"Number of parallel workers" env:"PLUR_WORKERS,PARALLEL_TEST_PROCESSORS" default:"4"`
+	DevProfile string         `help:"Write CPU, heap, goroutine and goroutine-leak profiles under DIR at exit" hidden:"" name:"dev-profile" env:"PLUR_DEV_PROFILE" placeholder:"DIR"`
 
 	// Job and watch configuration
 	Job           map[string]framework.Job `help:"Job configurations (config file only)" hidden:""`
@@ -162,13 +162,13 @@ func (cli *PlurCLI) AfterApply() error {
 	stdoutIsTTY := term.IsStdoutTTY()
 	colorOn, colorSource := term.ResolveColor(cli.Color, stdoutIsTTY)
 	slog.Debug("color output resolved", "mode", cli.Color, "enabled", colorOn, "source", colorSource)
-	output := term.ResolveOutput(cli.Output, stdoutIsTTY)
-	slog.Debug("output mode resolved", "mode", cli.Output, "output", output)
+	formatter := term.ResolveFormatter(cli.Formatter, stdoutIsTTY)
+	slog.Debug("formatter resolved", "requested", cli.Formatter, "formatter", formatter)
 
 	cli.globalConfig = &config.GlobalConfig{
 		ColorOutput:   colorOn,
 		ColorSource:   colorSource,
-		Output:        output,
+		Formatter:     formatter,
 		ConfigPaths:   configPaths,
 		Debug:         cli.Debug,
 		Verbose:       cli.Verbose,
