@@ -32,6 +32,8 @@ RSpec.describe "Output mode" do
       result = run_passing
 
       expect(marker_lines(result.out)).to be_empty
+      # RSpec's own blank line before the summary, with no marker terminator ahead of it.
+      expect(result.out).to start_with("\nFinished in")
       expect(result.out).to include("5 examples, 0 failures")
       expect(result.exit_status).to eq(0)
     end
@@ -66,8 +68,8 @@ RSpec.describe "Output mode" do
       expect(result.exit_status).to eq(1)
     end
 
-    it "still streams what the suite writes to stdout" do
-      Dir.mktmpdir do |tmpdir|
+    it "keeps what the suite writes to stdout" do
+      Dir.mktmpdir("output-mode-puts-", ROOT_PATH.join("tmp")) do |tmpdir|
         File.write(File.join(tmpdir, "puts_spec.rb"), <<~SPEC)
           RSpec.describe "puts under summary mode" do
             it "prints" do
@@ -117,6 +119,7 @@ RSpec.describe "Output mode" do
       result = run_failing("--output=summary")
 
       expect(marker_lines(result.out)).to be_empty
+      expect(result.out).to start_with("\nPending:")
       expect(result.out).to include("8 examples, 2 failures, 3 pending")
       expect(result.exit_status).to eq(1)
     end
@@ -131,7 +134,7 @@ RSpec.describe "Output mode" do
 
   context "configuration" do
     def with_output_config(value)
-      Dir.mktmpdir do |dir|
+      Dir.mktmpdir("output-mode-config-", ROOT_PATH.join("tmp")) do |dir|
         config_path = File.join(dir, "output.toml")
         File.write(config_path, %(output = "#{value}"\n))
         yield config_path
@@ -150,6 +153,12 @@ RSpec.describe "Output mode" do
       expect(marker_lines(result.out)).to be_empty
     end
 
+    it "explicit --output=auto beats PLUR_OUTPUT=progress and resolves for the pipe" do
+      result = run_passing("--output=auto", env: {"PLUR_OUTPUT" => "progress"})
+
+      expect(marker_lines(result.out)).to be_empty
+    end
+
     it "config file output = \"progress\" emits markers over a pipe" do
       with_output_config("progress") do |config_path|
         result = run_passing(env: {"PLUR_CONFIG_FILE" => config_path})
@@ -161,6 +170,14 @@ RSpec.describe "Output mode" do
     it "env beats config: PLUR_OUTPUT=summary beats output = \"progress\"" do
       with_output_config("progress") do |config_path|
         result = run_passing(env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_OUTPUT" => "summary"})
+
+        expect(marker_lines(result.out)).to be_empty
+      end
+    end
+
+    it "env beats config: PLUR_OUTPUT=auto beats output = \"progress\" and resolves for the pipe" do
+      with_output_config("progress") do |config_path|
+        result = run_passing(env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_OUTPUT" => "auto"})
 
         expect(marker_lines(result.out)).to be_empty
       end

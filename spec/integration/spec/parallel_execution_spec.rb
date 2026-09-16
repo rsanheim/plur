@@ -43,6 +43,7 @@ RSpec.describe "Plur parallel execution" do
   describe "output synchronization" do
     it "runs multiple workers without interleaving progress output", :pty do
       result = run_in_pty(plur_binary, "-n", "3", chdir: default_ruby_dir)
+      expect(result).to be_success
 
       expect(result.out).to match(/\d+ examples, 0 failures/)
 

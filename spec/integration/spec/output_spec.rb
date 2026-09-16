@@ -7,6 +7,7 @@ RSpec.describe "plur spec output handling" do
     it "produces valid output with high worker count" do
       # Run with many workers to stress-test the output handling
       result = run_in_pty(plur_binary, "-n", "8", chdir: default_ruby_dir)
+      expect(result).to be_success
 
       # Count the dots in output
       dot_count = result.out.scan(".").count
@@ -21,6 +22,7 @@ RSpec.describe "plur spec output handling" do
 
     it "maintains colored output when supported" do
       result = run_in_pty(plur_binary, "-n", "4", "--color=always", chdir: default_ruby_dir)
+      expect(result).to be_success
 
       # Should contain ANSI color codes for green dots
       expect(result.out).to include("\e[32m.\e[0m")
