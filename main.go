@@ -67,7 +67,7 @@ func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 type DoctorCmd struct{}
 
-func (d *DoctorCmd) Run(parent *PlurCLI) error {
+func (d *DoctorCmd) Run(parent *PlurCLI) error { //nolint:unparam // Kong requires Run to return error.
 	runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
 	return nil
 }
