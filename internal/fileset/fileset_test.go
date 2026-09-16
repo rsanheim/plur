@@ -68,8 +68,10 @@ func TestDiscover_PlainFileMissingErrors(t *testing.T) {
 	j := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
 
 	_, err := Discover(j, []string{"does_not_exist.rb"}, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "file not found")
+	require.ErrorIs(t, err, os.ErrNotExist)
+	var pathErr *os.PathError
+	require.ErrorAs(t, err, &pathErr)
+	assert.Equal(t, "does_not_exist.rb", pathErr.Path)
 }
 
 func TestDiscover_DirectoryExpansion(t *testing.T) {
@@ -222,8 +224,7 @@ func TestDiscover_FileLineNonExistentFileErrors(t *testing.T) {
 
 	j := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
 	_, err := Discover(j, []string{"spec/missing_spec.rb:12"}, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "file not found")
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestDiscover_DedupsAcrossInputs(t *testing.T) {

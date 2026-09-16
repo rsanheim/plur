@@ -88,7 +88,7 @@ func classifyInputs(j framework.Job, inputs []string) ([]string, error) {
 		}
 		info, err := os.Stat(in)
 		if err != nil {
-			return nil, fmt.Errorf("file not found: %s", in)
+			return nil, err
 		}
 		if !info.IsDir() {
 			out = append(out, in)

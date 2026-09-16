@@ -116,7 +116,7 @@ RSpec.describe "plur glob pattern support" do
         result = run_plur_allowing_errors("--dry-run", "spec/nonexistent_spec.rb")
 
         expect(result.success?).to be false
-        expect(result.out + result.err).to include("file not found: spec/nonexistent_spec.rb")
+        expect(result.out + result.err).to include("stat spec/nonexistent_spec.rb: no such file or directory")
       end
     end
 

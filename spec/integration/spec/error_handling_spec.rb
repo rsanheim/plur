@@ -109,8 +109,21 @@ RSpec.describe "Plur error handling" do
     result = run_plur_allowing_errors("--dry-run", "spec/nonexistent_spec.rb")
 
     expect(result.exit_status).to eq(1)
-    expect(result.err).to include("Error: file not found: spec/nonexistent_spec.rb")
+    expect(result.err).to include("Error: stat spec/nonexistent_spec.rb: no such file or directory")
     expect(result.err).not_to include("ERROR - Command failed")
     expect(result.err).not_to match(/^\d{2}:\d{2}:\d{2} - ERROR/)
+  end
+
+  it "preserves the filesystem cause when a target cannot be inspected" do
+    Dir.mktmpdir("plur-stat-", ROOT_PATH.join("tmp")) do |dir|
+      file = File.join(dir, "not-a-directory")
+      File.write(file, "")
+      target = File.join(file, "example_spec.rb")
+
+      result = run_plur_allowing_errors("--dry-run", "--use", "rspec", target)
+
+      expect(result.exit_status).to eq(1)
+      expect(result.err).to include("Error: stat #{target}: not a directory")
+    end
   end
 end
