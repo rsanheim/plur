@@ -50,6 +50,11 @@ RSpec.configure do |config|
     /\e\[\d+m/
   end
 
+  # For golden comparisons over a pipe: rspec prints a progress line there, plur does not.
+  def without_progress_line(output)
+    output.sub(/\A(?:(?:\e\[3\dm)?[.F*E](?:\e\[0m)?)+\n/, "")
+  end
+
   def default_ruby_dir
     @default_ruby_dir ||= project_fixture("default-ruby")
   end

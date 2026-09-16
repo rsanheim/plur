@@ -1,5 +1,5 @@
-// Package term resolves plur's color mode against terminal state and the
-// NO_COLOR convention (https://no-color.org).
+// Package term resolves plur's formatter and color against terminal state and
+// the NO_COLOR convention (https://no-color.org).
 package term
 
 import (
@@ -14,6 +14,24 @@ func IsStdoutTTY() bool {
 
 func IsStdinTTY() bool {
 	return xterm.IsTerminal(int(os.Stdin.Fd()))
+}
+
+type Formatter string
+
+const (
+	FormatterAuto     Formatter = "auto"
+	FormatterProgress Formatter = "progress"
+	FormatterSummary  Formatter = "summary"
+)
+
+func ResolveFormatter(formatter Formatter, stdoutIsTTY bool) Formatter {
+	if formatter != FormatterAuto {
+		return formatter
+	}
+	if stdoutIsTTY {
+		return FormatterProgress
+	}
+	return FormatterSummary
 }
 
 // In auto mode, NO_COLOR beats TTY detection.

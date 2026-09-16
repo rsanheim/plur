@@ -7,6 +7,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestResolveFormatter(t *testing.T) {
+	cases := []struct {
+		name      string
+		formatter Formatter
+		tty       bool
+		want      Formatter
+	}{
+		{name: "auto tty", formatter: FormatterAuto, tty: true, want: FormatterProgress},
+		{name: "auto pipe", formatter: FormatterAuto, want: FormatterSummary},
+		{name: "progress tty", formatter: FormatterProgress, tty: true, want: FormatterProgress},
+		{name: "progress pipe", formatter: FormatterProgress, want: FormatterProgress},
+		{name: "summary tty", formatter: FormatterSummary, tty: true, want: FormatterSummary},
+		{name: "summary pipe", formatter: FormatterSummary, want: FormatterSummary},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, ResolveFormatter(tc.formatter, tc.tty))
+		})
+	}
+}
+
 func TestResolveColor(t *testing.T) {
 	cases := []struct {
 		name       string

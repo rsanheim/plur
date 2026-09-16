@@ -18,16 +18,14 @@ RSpec.describe "Color resolution over a pipe" do
     it "emits no ANSI codes on a pipe" do
       result = run_mixed
       expect(result.out).not_to match(ansi)
-      expect(result.out).to include("F")
-      expect(result.out).to include(".")
+      expect(result.out).to include("Failures:")
     end
   end
 
   context "explicit flag" do
     it "--color=always emits ANSI on a pipe" do
       result = run_mixed("--color=always")
-      expect(result.out).to include("\e[31mF\e[0m")
-      expect(result.out).to include("\e[32m.\e[0m")
+      expect(result.out).to include("\e[31mFailure/Error")
     end
 
     it "--color=true is an alias for always" do

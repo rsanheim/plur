@@ -177,6 +177,8 @@ Arguments are passed as-is and are not treated as test file patterns. Put Plur f
 
 * `-n, --workers NUMBER` - Number of parallel workers (default: 4)
 * `--dry-run` - Show what would run without executing
+* `--color MODE` - When to color output: `auto` (default), `always`, or `never`
+* `-f, --formatter NAME` - How to render the run: `auto` (default), `progress`, or `summary`
 * `-h, --help` - Show help
 * `-v, --verbose` - Enable verbose logging
 * `--version` - Show version
@@ -185,6 +187,8 @@ Arguments are passed as-is and are not treated as test file patterns. Put Plur f
 
 * `PLUR_WORKERS` - Override number of workers (`PARALLEL_TEST_PROCESSORS` is a legacy fallback)
 * `PLUR_DEBUG` - Enable debug logging
+* `PLUR_COLOR` - Color mode: `auto`, `always`, or `never`
+* `PLUR_FORMATTER` - Formatter: `auto`, `progress`, or `summary`
 * `PLUR_CONFIG_FILE` - Load a specific config file
 * `PLUR_HOME` - Override Plur's home directory (`~/.plur`)
 
@@ -212,15 +216,18 @@ plur -n $(( $(nproc) + 2 ))
 
 ## Output Formats
 
-### Progress Output (Default)
+Every run ends with the full results: pending and failure details, RSpec rerun commands, the framework's summary line, and the exit status. The formatter controls what prints while tests are still running.
 
-Shows dots for test progress:
+* `progress` shows one marker per test as it finishes: `.` passing, `F` failing, `*` pending, `E` errored.
+* `summary` shows no markers. Output the tests write with `puts` still streams live.
+* `auto` (the default) picks `progress` on a terminal and `summary` when stdout is a pipe or file, as in CI logs and coding agents.
+
+```bash
+plur -f progress | tee run.log   # markers in run.log
+plur -f summary                  # no markers, even on a terminal
 ```
-....F...*...
-```
-- `.` - Passing test
-- `F` - Failing test
-- `*` - Pending test
+
+Set it with `--formatter`/`-f`, `PLUR_FORMATTER`, or `formatter = "..."` in a config file, in that order of precedence. Formatter and color are independent: `--formatter=summary --color=always` colors the results without markers.
 
 ## Performance Monitoring
 

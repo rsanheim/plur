@@ -8,7 +8,7 @@ RSpec.describe "pending specs output" do
   end
 
   def normalize_pending_output_snapshot(snapshot)
-    stdout = snapshot.fetch("stdout", "").gsub(
+    stdout = without_progress_line(snapshot.fetch("stdout", "")).gsub(
       /Finished in \d+\.\d+ seconds \(files took \d+\.\d+ seconds to load\)/,
       "Finished in [TIME] seconds (files took [TIME] seconds to load)"
     )
@@ -47,14 +47,12 @@ RSpec.describe "pending specs output" do
     end
   end
 
-  describe "pending progress indicators" do
+  describe "pending progress indicators", :pty do
     it "shows yellow * for pending specs with color" do
-      chdir project_fixture("failing_specs") do
-        stdout, _stderr, _status = run_plur("spec/mixed_results_spec.rb", "--color=always")
+      result = run_in_pty(plur_binary, "spec/mixed_results_spec.rb", "--color=always", chdir: project_fixture("failing_specs"))
 
-        # Yellow * for pending specs
-        expect(stdout).to include("\e[33m*\e[0m")
-      end
+      # Yellow * for pending specs
+      expect(result.out).to include("\e[33m*\e[0m")
     end
   end
 

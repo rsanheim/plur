@@ -136,7 +136,7 @@ RSpec.describe "Plur --rspec-split (experimental)" do
     end
   end
 
-  it "keeps shared examples grouped under their consumer rerunnable selectors" do
+  it "keeps shared examples grouped under their consumer rerunnable selectors", :pty do
     Dir.chdir(project_fixture("rspec-success-simple")) do
       raw_out, _raw_err, raw_status = Open3.capture3(
         "bundle", "exec", "rspec",
@@ -149,7 +149,7 @@ RSpec.describe "Plur --rspec-split (experimental)" do
       expect(raw_out).to include("5 examples, 0 failures")
       expect(raw_out).not_to include("with a small sum")
 
-      warm_run = run_plur("-n", "2", "--color=never", "spec/shared_example_consumers_spec.rb")
+      warm_run = run_in_pty(plur_binary, "-n", "2", "--color=never", "spec/shared_example_consumers_spec.rb", chdir: Dir.pwd)
       expect(warm_run.out).to match(/\A\.\.\.\.\./)
       expect(warm_run.out).to include("5 examples, 0 failures")
       expect(warm_run.out).not_to include("with a small sum")
@@ -186,7 +186,7 @@ RSpec.describe "Plur --rspec-split (experimental)" do
         expect(occurrences).to eq(1)
       end
 
-      result = run_plur("--rspec-split", "-n", "4", "--color=never", "spec/shared_example_consumers_spec.rb")
+      result = run_in_pty(plur_binary, "--rspec-split", "-n", "4", "--color=never", "spec/shared_example_consumers_spec.rb", chdir: Dir.pwd)
       expect(result.exit_status).to eq(0)
       expect(result.out).to match(/\A\.\.\.\.\./)
       expect(result.out).to include("5 examples, 0 failures")

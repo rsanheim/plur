@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/rsanheim/plur/internal/term"
 )
 
 // GlobalConfig holds settings that are truly global across all commands
 type GlobalConfig struct {
 	ColorOutput bool
 	ColorSource string // short source tag from term.ResolveColor, shown by doctor and --verbose
+	Formatter   term.Formatter
 	ConfigPaths *ConfigPaths
 	Debug       bool
 	Verbose     bool

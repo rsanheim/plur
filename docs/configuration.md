@@ -24,6 +24,7 @@ Plur automatically loads configuration from TOML files using the following order
 # .plur.toml
 workers = 4
 color = "auto"           # colorize when output is a terminal (the default)
+formatter = "auto"       # progress markers on a terminal, summary output otherwise (the default)
 use = "rspec"  # Default job to use
 
 [job.rspec]
@@ -39,6 +40,7 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 
 * `workers` - Number of parallel workers (default: 4)
 * `color` - When to colorize output: `"auto"` (default — on for a terminal, off when piped), `"always"`, or `"never"`
+* `formatter` - How to render the run: `"auto"` (default — progress markers on a terminal, summary output when piped), `"progress"`, or `"summary"`. See [Output Formats](usage.md#output-formats)
 * `verbose` - Enable verbose output (default: false)
 * `use` - Default job to use (default: auto-detect based on project structure)
 
@@ -397,6 +399,7 @@ Plur matches RSpec's behavior:
 * `PLUR_HOME` - Override Plur's home directory (default: `~/.plur`)
 * `PLUR_COLOR` - Color mode from the environment: `auto`, `always`, or `never` (same values as `--color`; `true`/`false` aliases accepted)
 * `NO_COLOR` - Disable colored output when set to any value ([no-color.org](https://no-color.org))
+* `PLUR_FORMATTER` - Formatter from the environment: `auto`, `progress`, or `summary` (same values as `--formatter`)
 
 Precedence: `--color` flag > `PLUR_COLOR` > `NO_COLOR` > config file > terminal detection. `NO_COLOR` and terminal detection decide only when the mode resolves to `auto`. `plur doctor` shows the resolved color decision and its source.
 

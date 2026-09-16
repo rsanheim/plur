@@ -44,7 +44,7 @@ RSpec.describe "Plur stdout streaming" do
       end
     end
 
-    it "shows stdout interleaved with progress indicators" do
+    it "shows stdout interleaved with progress indicators", :pty do
       Dir.mktmpdir do |tmpdir|
         File.write(File.join(tmpdir, "interleaved_spec.rb"), <<~RUBY)
           RSpec.describe 'Interleaved output' do
@@ -56,15 +56,13 @@ RSpec.describe "Plur stdout streaming" do
           end
         RUBY
 
-        chdir(tmpdir) do
-          result = run_plur("interleaved_spec.rb")
+        result = run_in_pty(plur_binary, "interleaved_spec.rb", chdir: tmpdir)
 
-          expect(result.out).to include("BEFORE_ASSERTION")
-          expect(result.out).to include("AFTER_ASSERTION")
-          # Should also have the dot progress indicator
-          expect(result.out).to include(".")
-          expect(result.exit_status).to eq(0)
-        end
+        expect(result.out).to include("BEFORE_ASSERTION")
+        expect(result.out).to include("AFTER_ASSERTION")
+        # Should also have the dot progress indicator
+        expect(result.out).to include(".")
+        expect(result.exit_status).to eq(0)
       end
     end
 

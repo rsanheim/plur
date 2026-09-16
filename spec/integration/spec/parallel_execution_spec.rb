@@ -41,16 +41,15 @@ RSpec.describe "Plur parallel execution" do
   end
 
   describe "output synchronization" do
-    it "runs multiple workers without interleaving progress output" do
-      chdir(default_ruby_dir) do
-        result = run_plur("-n", "3")
+    it "runs multiple workers without interleaving progress output", :pty do
+      result = run_in_pty(plur_binary, "-n", "3", chdir: default_ruby_dir)
+      expect(result).to be_success
 
-        expect(result.out).to match(/\d+ examples, 0 failures/)
+      expect(result.out).to match(/\d+ examples, 0 failures/)
 
-        # Progress dots should appear on one line (not interleaved)
-        progress_lines = result.out.split("\n").select { |l| l =~ /^\e?\[?3?2?m?\.\e?\[?0?m?/ || l =~ /^\.+$/ }
-        expect(progress_lines.size).to be <= 2 # At most "Running..." line and one progress line
-      end
+      # Progress dots should appear on one line (not interleaved)
+      progress_lines = result.out.split("\n").select { |l| l =~ /^\e?\[?3?2?m?\.\e?\[?0?m?/ || l =~ /^\.+$/ }
+      expect(progress_lines.size).to be <= 2 # At most "Running..." line and one progress line
     end
   end
 
@@ -100,10 +99,10 @@ RSpec.describe "Plur parallel execution" do
       lines.sort.reject { |line| line.strip.empty? }.join
     end
 
-    it "matches rspec output and has correct pending and failure output" do
+    it "matches rspec output and has correct pending and failure output", :pty do
       chdir(failing_specs_path) do
         rspec_output, _, _ = system_rspec("spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
-        plur_output, _, _ = run_plur_allowing_errors("--color=never", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", printer: :null)
+        plur_output, _, _ = run_in_pty(plur_binary, "--color=never", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", chdir: failing_specs_path)
         # ensure we get a single Pending: and Failure: header for plur, not one per worker
         pending_headers = plur_output.scan(/^Pending:/).count
         failure_headers = plur_output.scan(/^Failures:/).count
@@ -129,15 +128,13 @@ RSpec.describe "Plur parallel execution" do
       end
     end
 
-    it "shows combined progress from all workers" do
-      chdir(project_fixture("failing_specs")) do
-        result = run_plur_allowing_errors("--color=always", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb")
+    it "shows combined progress from all workers", :pty do
+      result = run_in_pty(plur_binary, "--color=always", "-n", "2", "spec/mixed_results_spec.rb", "spec/expectation_failures_spec.rb", chdir: failing_specs_path)
 
-        expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots
-        expect(result.out).to match(/\e\[31mF\e\[0m/) # Red F's
+      expect(result.out).to match(/\e\[32m\.\e\[0m/) # Green dots
+      expect(result.out).to match(/\e\[31mF\e\[0m/) # Red F's
 
-        expect(result.out).to match(/\d+ examples?, \d+ failures?/)
-      end
+      expect(result.out).to match(/\d+ examples?, \d+ failures?/)
     end
   end
 end
