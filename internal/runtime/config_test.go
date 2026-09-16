@@ -286,10 +286,14 @@ func TestSelectJobFromRuntimeConfig_InfersFrameworkFromPatterns(t *testing.T) {
 		Inherited: map[string]InheritedFields{},
 	}
 
-	selected, err := SelectJobFromRuntimeConfig(rc, []string{"spec/example_spec.rb"})
-	require.NoError(t, err)
-	assert.Equal(t, "rspec", selected.Name)
-	assert.Equal(t, ResolveReasonExplicitPatterns, selected.Reason)
+	for _, target := range []string{"spec/example_spec.rb", "spec/example_spec.rb:12", "spec/example_spec.rb[1:2]", "spec/example_spec.rb[1:2,1:3]"} {
+		t.Run(target, func(t *testing.T) {
+			selected, err := SelectJobFromRuntimeConfig(rc, []string{target})
+			require.NoError(t, err)
+			assert.Equal(t, "rspec", selected.Name)
+			assert.Equal(t, ResolveReasonExplicitPatterns, selected.Reason)
+		})
+	}
 }
 
 func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
@@ -313,6 +317,23 @@ func TestSelectJobFromRuntimeConfig_FallsBackToAutodetect(t *testing.T) {
 	assert.Equal(t, "rspec", selected.Name)
 	assert.Equal(t, ResolveReasonAutodetect, selected.Reason)
 	assert.True(t, selected.Inherited.Framework)
+}
+
+func TestSelectJobFromRuntimeConfig_SelectorLikeInputsDoNotForceRSpec(t *testing.T) {
+	t.Chdir(t.TempDir())
+	require.NoError(t, os.MkdirAll("test", 0o755))
+	require.NoError(t, os.WriteFile("test/example_test.rb", nil, 0o644))
+	rc, err := BuildRuntimeConfig(&CLIInput{})
+	require.NoError(t, err)
+
+	for _, target := range []string{"notes:123", "notes[1]"} {
+		t.Run(target, func(t *testing.T) {
+			selected, err := SelectJobFromRuntimeConfig(rc, []string{target})
+			require.NoError(t, err)
+			assert.Equal(t, "minitest", selected.Name)
+			assert.Equal(t, ResolveReasonAutodetectAfterPatterns, selected.Reason)
+		})
+	}
 }
 
 func TestBuildRuntimeConfigIncludesRailsAndRakeJobs(t *testing.T) {

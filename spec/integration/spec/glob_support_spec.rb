@@ -6,6 +6,19 @@ RSpec.describe "plur glob pattern support" do
   end
 
   context "with glob patterns" do
+    it "expands glob-matched directories before distributing files to workers" do
+      result = run_plur("-C", default_ruby_dir, "--dry-run", "-n", "3", "spec/{models,services}")
+
+      workers = result.err.lines.grep(/\[dry-run\] Worker \d+:/)
+      expect(workers.size).to eq(3)
+      expect(workers.flat_map { |line| line.scan(%r{spec/(?:models|services)/\w+_spec\.rb}) }.sort).to eq(%w[
+        spec/models/system_spec.rb
+        spec/models/user_spec.rb
+        spec/services/email_service_spec.rb
+      ])
+      workers.each { |line| expect(line.scan("_spec.rb").size).to eq(1) }
+    end
+
     it "expands simple glob patterns correctly" do
       chdir(default_ruby_dir) do
         result = run_plur("--dry-run", "spec/*_spec.rb")
@@ -111,12 +124,12 @@ RSpec.describe "plur glob pattern support" do
       end
     end
 
-    it "returns error for non-existent files" do
+    it "passes non-existent files through in dry-run mode" do
       chdir(default_ruby_dir) do
-        result = run_plur_allowing_errors("--dry-run", "spec/nonexistent_spec.rb")
+        result = run_plur("--dry-run", "spec/nonexistent_spec.rb")
 
-        expect(result.success?).to be false
-        expect(result.out + result.err).to include("stat spec/nonexistent_spec.rb: no such file or directory")
+        expect(result.err).to include("[dry-run] Running 1 spec [rspec]")
+        expect(result.err).to include(" spec/nonexistent_spec.rb")
       end
     end
 

@@ -9,116 +9,69 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
+	"github.com/rsanheim/plur/internal/framework/rspec"
+	"github.com/rsanheim/plur/internal/fsutil"
 )
 
-type DiscoverResult struct {
-	Files []string
-}
-
-// Discover returns sorted, deduped, exclude-filtered files for a job.
-// When inputs is empty, framework target patterns drive discovery; otherwise
-// each input is classified as a glob, an existing file (passthrough), or a
-// directory (joined with framework target tails). Exclude patterns are applied
-// after expansion using doublestar semantics.
-func Discover(j framework.Job, inputs, excludes []string) (DiscoverResult, error) {
-	patterns, err := classifyInputs(j, inputs)
-	if err != nil {
-		return DiscoverResult{}, err
-	}
-
-	var files []string
-	for _, p := range patterns {
-		if !hasGlobMeta(p) {
-			files = append(files, p)
-			continue
-		}
-		matches, err := doublestar.FilepathGlob(p)
-		if err != nil {
-			return DiscoverResult{}, fmt.Errorf("error finding files with pattern %q: %w", p, err)
-		}
-		files = append(files, matches...)
-	}
-
+// Discover expands files, directories, globs, and RSpec selectors, then returns
+// sorted, deduplicated files with excludes applied. Empty inputs use job defaults.
+func Discover(j framework.Job, inputs, excludes []string) ([]string, error) {
 	for _, ex := range excludes {
-		if _, err := doublestar.PathMatch(ex, ""); err != nil {
-			return DiscoverResult{}, fmt.Errorf("invalid exclude pattern %q: %w", ex, err)
+		if !doublestar.ValidatePathPattern(ex) {
+			return nil, fmt.Errorf("invalid exclude pattern %q: %w", ex, doublestar.ErrBadPattern)
 		}
 	}
-
-	slices.Sort(files)
-	files = slices.Compact(files)
-
-	files = slices.DeleteFunc(files, func(f string) bool {
-		s := filepath.ToSlash(filePathForExcludeMatch(f))
-		for _, ex := range excludes {
-			if ok, _ := doublestar.PathMatch(ex, s); ok {
-				return true
-			}
+	targetPath := func(target string) string {
+		if j.Framework.Name == "rspec" {
+			return rspec.TargetPath(target)
 		}
-		return false
-	})
-
-	return DiscoverResult{Files: files}, nil
-}
-
-// hasGlobMeta reports whether s contains any doublestar metacharacters.
-func hasGlobMeta(s string) bool { return strings.ContainsAny(s, "*?[{") }
-
-func filePathForExcludeMatch(s string) string {
-	if isFileLineTarget(s) {
-		return s[:strings.IndexByte(s, ':')]
+		return target
 	}
-	return s
-}
-
-func classifyInputs(j framework.Job, inputs []string) ([]string, error) {
 	if len(inputs) == 0 {
-		return j.TargetPatterns()
-	}
-	var targets []string
-	var out []string
-	for _, in := range inputs {
-		if hasGlobMeta(in) {
-			out = append(out, in)
-			continue
-		}
-		if isFileLineTarget(in) {
-			out = append(out, in)
-			continue
-		}
-		info, err := os.Stat(in)
+		var err error
+		inputs, err = j.TargetPatterns()
 		if err != nil {
 			return nil, err
 		}
-		if !info.IsDir() {
-			out = append(out, in)
-			continue
-		}
-		if targets == nil {
+	}
+	var files []string
+	for _, input := range inputs {
+		matches := []string{input}
+		if targetPath(input) == input && strings.ContainsAny(input, "*?[{") {
 			var err error
-			targets, err = j.TargetPatterns()
+			matches, err = doublestar.FilepathGlob(input)
+			if err != nil {
+				return nil, fmt.Errorf("error finding files with pattern %q: %w", input, err)
+			}
+		}
+		for _, match := range matches {
+			if !fsutil.DirExists(match) {
+				files = append(files, match)
+				continue
+			}
+			targets, err := j.TargetPatterns()
 			if err != nil {
 				return nil, err
 			}
-		}
-		for _, t := range targets {
-			_, tail := doublestar.SplitPattern(t)
-			out = append(out, filepath.Join(in, filepath.FromSlash(tail)))
+			for _, target := range targets {
+				_, tail := doublestar.SplitPattern(target)
+				// Keep the matched directory literal, including names such as [id].
+				children, err := doublestar.Glob(os.DirFS(match), tail, doublestar.WithFilesOnly())
+				if err != nil {
+					return nil, fmt.Errorf("error finding files in %q with pattern %q: %w", match, tail, err)
+				}
+				for _, child := range children {
+					files = append(files, filepath.Join(match, filepath.FromSlash(child)))
+				}
+			}
 		}
 	}
-	return out, nil
-}
-
-// isFileLineTarget reports whether s looks like an RSpec focused target:
-// the substring before the first ':' is an existing regular file. We pass the
-// full string through to the framework and let RSpec interpret the suffix
-// (line numbers, scoped IDs, etc.) — plur does not parse what comes after the
-// colon.
-func isFileLineTarget(s string) bool {
-	idx := strings.IndexByte(s, ':')
-	if idx <= 0 {
-		return false
-	}
-	info, err := os.Stat(s[:idx])
-	return err == nil && !info.IsDir()
+	files = slices.DeleteFunc(files, func(file string) bool {
+		path := filepath.ToSlash(targetPath(file))
+		return slices.ContainsFunc(excludes, func(ex string) bool {
+			return doublestar.PathMatchUnvalidated(ex, path)
+		})
+	})
+	slices.Sort(files)
+	return slices.Compact(files), nil
 }

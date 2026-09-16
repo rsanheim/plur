@@ -11,6 +11,31 @@ RSpec.describe "RSpec CLI args" do
     snapshot.merge("stderr" => normalize_dry_run_output(snapshot.fetch("stderr", "")))
   end
 
+  context "with scoped example selectors" do
+    {
+      "[1:1:1]" => [[], 1],
+      "[1:1]" => [[], 2],
+      "[1:1:1,1:2:1]" => [["--use=rspec"], 2]
+    }.each do |selector, (flags, count)|
+      it "runs only the examples selected by #{selector}" do
+        result = run_plur("-C", default_ruby_dir, *flags, "spec/calculator_spec.rb#{selector}")
+
+        expect(result.out).to match(/\b#{count} examples?, 0 failures/)
+      end
+    end
+
+    it "excludes a scoped selector by its underlying file" do
+      result = run_plur(
+        "-C", default_ruby_dir, "--dry-run",
+        "spec/calculator_spec.rb[1:1:1]", "spec/counter_spec.rb[1:1]",
+        "--exclude-pattern", "spec/calculator_spec.rb"
+      )
+
+      expect(result.err).to include("[dry-run] Running 1 spec [rspec]", "spec/counter_spec.rb[1:1]")
+      expect(result.err).not_to include("spec/calculator_spec.rb[1:1:1]")
+    end
+  end
+
   context "with explicit --tag" do
     it "places tag args before file arguments" do
       Dir.chdir(default_ruby_dir) do
