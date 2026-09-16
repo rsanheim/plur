@@ -105,9 +105,7 @@ func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize RSpec formatter: %w", err)
 	}
-	if formatterPath != "" {
-		args = append(args, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
-	}
+	args = append(args, "-r", formatterPath, "--format", "Plur::JsonRowsFormatter")
 
 	if !cfg.ColorOutput {
 		args = append(args, "--no-color")

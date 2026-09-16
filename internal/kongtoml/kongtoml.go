@@ -160,9 +160,6 @@ func (c configKeySet) matches(key string) bool {
 	}
 
 	parts := strings.Split(key, ".")
-	if len(parts) == 0 {
-		return false
-	}
 
 	spec, ok := c.nested[parts[0]]
 	if !ok {
@@ -180,9 +177,6 @@ func (s nestedKeySpec) matches(parts []string) bool {
 			return true
 		}
 		parts = parts[1:]
-	}
-	if len(parts) == 0 {
-		return true
 	}
 	_, ok := s.allowed[strings.Join(parts, ".")]
 	return ok
