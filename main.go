@@ -68,7 +68,8 @@ func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 type DoctorCmd struct{}
 
 func (d *DoctorCmd) Run(parent *PlurCLI) error {
-	return runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
+	runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
+	return nil
 }
 
 type WatchInstallCmd struct{}
@@ -91,8 +92,12 @@ func (r *RailsInitCmd) Run(parent *PlurCLI) error {
 type VersionCmd struct{}
 
 func (v *VersionCmd) Run() error {
-	fmt.Printf("plur version=%s", buildinfo.GetVersionInfo())
+	printVersion()
 	return nil
+}
+
+func printVersion() {
+	fmt.Printf("plur version=%s", buildinfo.GetVersionInfo())
 }
 
 type PlurCLI struct {
@@ -146,10 +151,7 @@ func (cli *PlurCLI) AfterApply() error {
 	logger.Init(level)
 
 	if cli.Version {
-		err := (&VersionCmd{}).Run()
-		if err != nil {
-			return err
-		}
+		printVersion()
 		os.Exit(0)
 	}
 

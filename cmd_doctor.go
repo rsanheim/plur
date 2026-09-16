@@ -46,7 +46,7 @@ func humanSize(n int64) string {
 	return fmt.Sprintf("%dB", n)
 }
 
-func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) error {
+func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runtime.RuntimeConfig) {
 	fmt.Println("Plur Doctor")
 	fmt.Println("==========")
 	fmt.Println()
@@ -161,8 +161,6 @@ func runDoctorWithConfig(globalConfig *config.GlobalConfig, runtimeConfig *runti
 	// Configuration
 	fmt.Println("Configuration:")
 	checkConfiguration(globalConfig, runtimeConfig)
-
-	return nil
 }
 
 func getCommandOutput(name string, args ...string) (string, error) {
