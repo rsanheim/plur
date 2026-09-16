@@ -206,8 +206,15 @@ func (p *outputParser) FormatSummary(suite *types.SuiteNotification, totalExampl
 
 // FormatFailuresList returns empty string since minitest doesn't use failure lists
 func (p *outputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
-	// Minitest doesn't typically show a re-run command list like RSpec
-	return ""
+	var sb strings.Builder
+	for _, failure := range failures {
+		if failure.Location != "" {
+			fmt.Fprintf(&sb, "%s [%s]\n", failure.TestID, failure.Location)
+		} else {
+			fmt.Fprintf(&sb, "%s\n", failure.TestID)
+		}
+	}
+	return sb.String()
 }
 
 // ColorizeSummary applies color to a summary based on success/failure state

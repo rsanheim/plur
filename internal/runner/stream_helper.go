@@ -76,9 +76,13 @@ func streamTestOutput(
 				// Handle progress notifications
 				if isProgress {
 					if outputChan != nil {
-						outputChan <- OutputMessage{
-							Type: progressType,
+						msg := OutputMessage{Type: progressType}
+						if progressType == "failure" || progressType == "error_progress" {
+							if test, ok := notification.(types.TestCaseNotification); ok {
+								msg.Content = parser.FormatFailuresList([]types.TestCaseNotification{test})
+							}
 						}
+						outputChan <- msg
 					}
 				}
 

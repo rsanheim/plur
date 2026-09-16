@@ -400,6 +400,8 @@ func outputAggregator(outputChan <-chan OutputMessage, progress bool, colorOutpu
 		switch msg.Type {
 		case "dot", "failure", "pending", "error_progress":
 			if !progress {
+				// Summary mode: the failure's rerun line, as it happens
+				fmt.Fprint(os.Stdout, msg.Content)
 				continue
 			}
 		}
