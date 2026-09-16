@@ -13,6 +13,7 @@ import (
 	clihelp "github.com/rsanheim/plur/internal/cli"
 	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/devprofile"
+	"github.com/rsanheim/plur/internal/embedded"
 	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/logger"
@@ -55,8 +56,8 @@ type WatchRunCmd struct {
 
 func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	config := globals.globalConfig
-
-	if err := runWatchInstall(false); err != nil {
+	paths := config.ConfigPaths
+	if err := watch.InstallBinary(embedded.Watcher, paths.BinDir, paths.PlurHome, embedded.WatcherVersion(), false); err != nil {
 		return err
 	}
 
@@ -65,8 +66,9 @@ func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 
 type WatchInstallCmd struct{}
 
-func (w *WatchInstallCmd) Run() error {
-	return runWatchInstall(true)
+func (w *WatchInstallCmd) Run(globals *PlurCLI) error {
+	paths := globals.globalConfig.ConfigPaths
+	return watch.InstallBinary(embedded.Watcher, paths.BinDir, paths.PlurHome, embedded.WatcherVersion(), true)
 }
 
 type DoctorCmd struct{}

@@ -91,10 +91,6 @@ func DetectPatterns(name string) []string {
 // minitest 5.x; on 6.x the worker script calls Minitest.load_plugins
 // (see BuildRunArgs).
 func minitestDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
-	if cfg == nil || cfg.ConfigPaths == nil {
-		return nil, errors.New("config paths are required for minitest plugin")
-	}
-
 	loadPath, err := minitest.GetPluginLoadPath(cfg.ConfigPaths.RubyLibDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize minitest plugin: %w", err)
@@ -104,10 +100,6 @@ func minitestDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
 }
 
 func rspecDefaultArgs(cfg *config.GlobalConfig) ([]string, error) {
-	if cfg == nil || cfg.ConfigPaths == nil {
-		return nil, errors.New("config paths are required for rspec formatter")
-	}
-
 	args := []string{}
 	formatterPath, err := rspec.GetFormatterPath(cfg.ConfigPaths.FormatterDir)
 	if err != nil {

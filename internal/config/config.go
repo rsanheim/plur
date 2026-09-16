@@ -13,7 +13,7 @@ type GlobalConfig struct {
 	ColorOutput bool
 	ColorSource string // short source tag from term.ResolveColor, shown by doctor and --verbose
 	Formatter   term.Formatter
-	ConfigPaths *ConfigPaths
+	ConfigPaths ConfigPaths
 	Debug       bool
 	Verbose     bool
 	DryRun      bool
@@ -43,7 +43,7 @@ type ConfigPaths struct {
 
 // InitConfigPaths initializes PLUR_HOME if necessary, as well as subdirs inside it.
 // By default this will be ~/.plur unless PLUR_HOME is set by the user.
-func InitConfigPaths() *ConfigPaths {
+func InitConfigPaths() ConfigPaths {
 	plurHome, ok := os.LookupEnv("PLUR_HOME")
 	if !ok {
 		homeDir, err := os.UserHomeDir()
@@ -74,7 +74,7 @@ func InitConfigPaths() *ConfigPaths {
 		}
 	}
 
-	configPaths := ConfigPaths{
+	return ConfigPaths{
 		PlurHome:     plurHome,
 		BinDir:       binDir,
 		CacheDir:     cacheDir,
@@ -82,6 +82,4 @@ func InitConfigPaths() *ConfigPaths {
 		FormatterDir: formatterDir,
 		RubyLibDir:   rubyLibDir,
 	}
-
-	return &configPaths
 }

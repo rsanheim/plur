@@ -23,6 +23,36 @@ func TestWorkerCountCLIDefaultMatchesRuntimeDefault(t *testing.T) {
 	assert.Equal(t, strconv.Itoa(runner.DefaultWorkerCount), field.Tag.Get("default"))
 }
 
+func TestKongStartupInitializesConfigBeforeDispatch(t *testing.T) {
+	commands := [][]string{
+		{}, {"spec"}, {"watch"}, {"watch", "run"}, {"watch", "install"},
+		{"watch", "find", "spec/example_spec.rb"}, {"doctor"}, {"rails"},
+		{"rake"}, {"rails:init"}, {"config", "init"}, {"version"},
+	}
+	for _, args := range commands {
+		t.Run(fmt.Sprint(args), func(t *testing.T) {
+			home := filepath.Join(t.TempDir(), "plur")
+			t.Setenv("PLUR_HOME", home)
+			t.Setenv("PLUR_DEV_PROFILE", "")
+			var cli PlurCLI
+			parser, err := kong.New(&cli)
+			require.NoError(t, err)
+
+			ctx, err := parser.Parse(args)
+			require.NoError(t, err)
+			require.NotNil(t, ctx)
+			require.NotNil(t, cli.globalConfig)
+			require.NotNil(t, cli.runtimeConfig)
+			paths := cli.globalConfig.ConfigPaths
+			assert.Equal(t, home, paths.PlurHome)
+			for _, dir := range []string{paths.BinDir, paths.CacheDir, paths.RuntimeDir, paths.FormatterDir, paths.RubyLibDir} {
+				assert.DirExists(t, dir)
+			}
+			assert.Contains(t, cli.runtimeConfig.Jobs, "rspec")
+		})
+	}
+}
+
 func TestWorkerCountValidation(t *testing.T) {
 	for _, tt := range []struct {
 		name string
