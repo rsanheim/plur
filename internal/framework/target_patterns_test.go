@@ -57,15 +57,34 @@ func TestJobTargetPatterns_PassthroughNoDetectPatterns(t *testing.T) {
 	assert.Contains(t, err.Error(), "no detect patterns")
 }
 
-func TestResolveFramework_UnknownFramework(t *testing.T) {
-	j := Job{
-		Name:          "bad",
-		FrameworkName: "nope",
-	}
+func TestNormalize_CaseInsensitive(t *testing.T) {
+	assert.Equal(t, "rspec", Normalize("RSpec"))
+	assert.Equal(t, "minitest", Normalize("  Minitest  "))
+	assert.Empty(t, Normalize("   "))
+}
 
-	_, err := j.ResolveFramework()
+func mustResolveJob(t *testing.T, j Job) Job {
+	t.Helper()
+	fw, err := Get(j.FrameworkName)
+	require.NoError(t, err)
+	j.Framework = fw
+	return j
+}
+
+func TestGet(t *testing.T) {
+	fw, err := Get("  RSpec ")
+	require.NoError(t, err)
+	assert.Equal(t, "rspec", fw.Name)
+	assert.NotNil(t, fw.Parser)
+	assert.NotEmpty(t, fw.DetectPatterns)
+
+	_, err = Get("unknown")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown framework")
+
+	_, err = Get("   ")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "framework is required")
 }
 
 func TestJobTargetPatterns_PassthroughWithExplicitPattern(t *testing.T) {
@@ -79,27 +98,6 @@ func TestJobTargetPatterns_PassthroughWithExplicitPattern(t *testing.T) {
 	patterns, err := j.TargetPatterns()
 	require.NoError(t, err)
 	assert.Equal(t, []string{"app/**/*.rb"}, patterns)
-}
-
-func TestNormalize_CaseInsensitive(t *testing.T) {
-	assert.Equal(t, "rspec", Normalize("RSpec"))
-	assert.Equal(t, "minitest", Normalize("  Minitest  "))
-	assert.Empty(t, Normalize("   "))
-}
-
-func TestIsKnown(t *testing.T) {
-	assert.True(t, IsKnown("rspec"))
-	assert.True(t, IsKnown("RSpec"))
-	assert.True(t, IsKnown("minitest"))
-	assert.True(t, IsKnown("go-test"))
-	assert.False(t, IsKnown("unknown"))
-}
-
-func mustResolveJob(t *testing.T, j Job) Job {
-	t.Helper()
-	resolved, err := j.ResolveFramework()
-	require.NoError(t, err)
-	return resolved
 }
 
 func TestJobTargetPatterns_UnresolvedFrameworkReturnsError(t *testing.T) {

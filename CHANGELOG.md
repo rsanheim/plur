@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* Resolve each job's framework once at config load; the resolved jobs map, selection, and runner now share fully-resolved jobs, removing lazy resolution in the runner and duplicate registry lookups (`IsKnown`, `DetectPatterns`, `ResolveFramework` deleted)
 * Split `plur rails` and `plur rake` into separate commands (previously `rake` was an alias of `rails`); each runs its own configured job — `bin/rails` or `bundle exec rake` — once per worker, with dedicated help
 * Add `--formatter=auto|progress|summary` (`-f`, `PLUR_FORMATTER`, or `formatter` in config). `auto` keeps progress markers on a terminal and drops them when stdout is a pipe or file, so CI logs and coding agents see test output and the final results without the marker stream. [#154](https://github.com/rsanheim/plur/pull/154)
 

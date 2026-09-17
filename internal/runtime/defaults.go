@@ -45,10 +45,14 @@ type InheritedFields struct {
 	ExcludePatterns bool
 }
 
+// autodetectCandidates is the priority order for framework autodetection
+// and explicit-pattern inference. Only canonical job names participate.
+var autodetectCandidates = []string{"rspec", "minitest", "go-test"}
+
 // autodetectJobName runs autodetection against the given resolved jobs and returns the
 // name of the best-matching job based on file system presence.
 func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
-	priority := []string{"rspec", "minitest", "go-test"}
+	priority := autodetectCandidates
 	for _, name := range priority {
 		j, exists := resolvedJobs[name]
 		if !exists {
@@ -56,7 +60,7 @@ func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 		}
 		patterns := []string{j.TargetPattern}
 		if j.TargetPattern == "" {
-			patterns = framework.DetectPatterns(j.FrameworkName)
+			patterns = j.Framework.DetectPatterns
 		}
 		if len(patterns) == 0 {
 			continue
@@ -196,12 +200,13 @@ func buildResolvedJobs(userJobs map[string]framework.Job) (map[string]framework.
 			resolvedJob.FrameworkName = "passthrough"
 		}
 
-		// Validate framework
-		normalizedFramework := framework.Normalize(resolvedJob.FrameworkName)
-		if !framework.IsKnown(normalizedFramework) {
+		// Resolve the framework once; every job in the map is born fully resolved.
+		fw, err := framework.Get(resolvedJob.FrameworkName)
+		if err != nil {
 			return nil, nil, fmt.Errorf("job %q has unknown framework %q", jobName, resolvedJob.FrameworkName)
 		}
-		resolvedJob.FrameworkName = normalizedFramework
+		resolvedJob.FrameworkName = fw.Name
+		resolvedJob.Framework = fw
 
 		resolved[jobName] = resolvedJob
 		inherited[jobName] = inherit
@@ -215,7 +220,7 @@ func inferFrameworkFromPatterns(patterns []string) (string, error) {
 		return "", nil
 	}
 
-	candidates := []string{"rspec", "minitest", "go-test"}
+	candidates := autodetectCandidates
 	counts := make(map[string]int)
 	union := make(map[string]struct{})
 
@@ -256,11 +261,14 @@ func inferFrameworkFromPatterns(patterns []string) (string, error) {
 func frameworksMatchingPattern(pattern string, candidates []string) (map[string]struct{}, error) {
 	matched := make(map[string]struct{})
 	for _, name := range candidates {
-		detectPatterns := framework.DetectPatterns(name)
-		if len(detectPatterns) == 0 {
+		fw, err := framework.Get(name)
+		if err != nil {
+			return nil, err
+		}
+		if len(fw.DetectPatterns) == 0 {
 			continue
 		}
-		ok, err := patternMatchesFramework(pattern, detectPatterns)
+		ok, err := patternMatchesFramework(pattern, fw.DetectPatterns)
 		if err != nil {
 			return nil, err
 		}

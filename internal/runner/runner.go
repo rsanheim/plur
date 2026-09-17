@@ -36,13 +36,6 @@ type Runner struct {
 }
 
 func NewRunner(cfg *config.GlobalConfig, files []string, j framework.Job, extraArgs []string) (*Runner, error) {
-	if j.Framework.Name == "" {
-		var err error
-		j, err = j.ResolveFramework()
-		if err != nil {
-			return nil, err
-		}
-	}
 	var tracker *testruntime.RuntimeTracker
 	if len(files) > 0 {
 		var err error
