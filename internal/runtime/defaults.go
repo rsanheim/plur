@@ -45,20 +45,16 @@ type InheritedFields struct {
 	ExcludePatterns bool
 }
 
-// autodetectCandidates is the priority order for framework autodetection
-// and explicit-pattern inference. Only canonical job names participate.
 var autodetectCandidates = []string{"rspec", "minitest", "go-test"}
 
 // autodetectJobName runs autodetection against the given resolved jobs and returns the
 // name of the best-matching job based on file system presence.
 func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
-	priority := autodetectCandidates
-	for _, name := range priority {
+	for _, name := range autodetectCandidates {
 		j, exists := resolvedJobs[name]
 		if !exists {
 			continue
 		}
-		// Jobs without usable patterns (e.g. passthrough) cannot drive autodetection.
 		patterns, err := j.TargetPatterns()
 		if err != nil {
 			continue
@@ -198,7 +194,6 @@ func buildResolvedJobs(userJobs map[string]framework.Job) (map[string]framework.
 			resolvedJob.FrameworkName = "passthrough"
 		}
 
-		// Resolve the framework once; every job in the map is born fully resolved.
 		fw, err := framework.Get(resolvedJob.FrameworkName)
 		if err != nil {
 			return nil, nil, fmt.Errorf("job %q has unknown framework %q", jobName, resolvedJob.FrameworkName)
