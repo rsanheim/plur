@@ -10,12 +10,15 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
+	"github.com/rsanheim/plur/internal/buildinfo"
 	clihelp "github.com/rsanheim/plur/internal/cli"
 	"github.com/rsanheim/plur/internal/config"
 	"github.com/rsanheim/plur/internal/devprofile"
+	"github.com/rsanheim/plur/internal/embedded"
 	"github.com/rsanheim/plur/internal/framework"
 	kongtoml "github.com/rsanheim/plur/internal/kongtoml"
 	"github.com/rsanheim/plur/internal/logger"
+	"github.com/rsanheim/plur/internal/railsinit"
 	"github.com/rsanheim/plur/internal/runner"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/term"
@@ -55,41 +58,57 @@ type WatchRunCmd struct {
 
 func (w *WatchRunCmd) Run(parent *WatchCmd, globals *PlurCLI) error {
 	config := globals.globalConfig
-
-	if err := runWatchInstall(false); err != nil {
+	paths := config.ConfigPaths
+	if err := watch.InstallBinary(embedded.Watcher, paths.BinDir, paths.PlurHome, embedded.WatcherVersion(), false); err != nil {
 		return err
 	}
-
 	return runWatchWithConfig(config, w, parent, globals)
-}
-
-type WatchInstallCmd struct{}
-
-func (w *WatchInstallCmd) Run() error {
-	return runWatchInstall(true)
 }
 
 type DoctorCmd struct{}
 
-func (d *DoctorCmd) Run(parent *PlurCLI) error {
-	return runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
+func (d *DoctorCmd) Run(parent *PlurCLI) error { //nolint:unparam // Kong requires Run to return error.
+	runDoctorWithConfig(parent.globalConfig, parent.runtimeConfig)
+	return nil
+}
+
+type WatchInstallCmd struct{}
+
+func (w *WatchInstallCmd) Run(globals *PlurCLI) error {
+	paths := globals.globalConfig.ConfigPaths
+	return watch.InstallBinary(embedded.Watcher, paths.BinDir, paths.PlurHome, embedded.WatcherVersion(), true)
 }
 
 type ConfigCmd struct {
 	Init ConfigInitCmd `cmd:"" group:"advanced" help:"Generate a starter configuration file"`
 }
 
+type RailsInitCmd struct{}
+
+func (r *RailsInitCmd) Run(parent *PlurCLI) error {
+	return railsinit.Run(parent.globalConfig)
+}
+
+type VersionCmd struct{}
+
+func (v *VersionCmd) Run() error {
+	printVersion()
+	return nil
+}
+
+func printVersion() {
+	fmt.Printf("plur version=%s", buildinfo.GetVersionInfo())
+}
+
 type PlurCLI struct {
 	Spec       SpecCmd      `cmd:"" group:"daily" help:"Run tests" default:"withargs"`
-	Watch      WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
-	Rails      RailsCmd     `cmd:"" name:"rails" aliases:"rake" group:"advanced" help:"Run a Rails or Rake command once per worker"`
-	Doctor     DoctorCmd    `cmd:"" group:"advanced" help:"Diagnose Plur installation and environment"`
 	Config     ConfigCmd    `cmd:"" help:"Configuration commands"`
+	Doctor     DoctorCmd    `cmd:"" group:"advanced" help:"Diagnose Plur installation and environment"`
+	Rails      RailsCmd     `cmd:"" name:"rails" aliases:"rake" group:"advanced" help:"Run a Rails or Rake command once per worker"`
 	RailsInit  RailsInitCmd `cmd:"" name:"rails:init" group:"advanced" help:"Configure a Rails project for parallel testing"`
 	VersionCmd VersionCmd   `cmd:"" name:"version" group:"advanced" help:"Show version information"`
+	Watch      WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
 
-	// ChangeDir is kept for Kong's help text and CLI compatibility, but the actual
-	// directory change is handled early in main() before config loading
 	ChangeDir  string         `short:"C" help:"Change to directory before running (like git -C)" default:""`
 	Color      string         `help:"When to color output: auto (detect terminal), always, or never" enum:"auto,always,never,true,false" env:"PLUR_COLOR" default:"auto"`
 	Formatter  term.Formatter `short:"f" help:"How to render the run: auto (progress on a terminal, summary otherwise), progress, or summary" enum:"auto,progress,summary" env:"PLUR_FORMATTER" default:"auto"`
@@ -102,15 +121,13 @@ type PlurCLI struct {
 	Workers    WorkerCount    `short:"n" help:"Number of parallel workers" env:"PLUR_WORKERS,PARALLEL_TEST_PROCESSORS" default:"4"`
 	DevProfile string         `help:"Write CPU, heap, goroutine and goroutine-leak profiles under DIR at exit" hidden:"" name:"dev-profile" env:"PLUR_DEV_PROFILE" placeholder:"DIR"`
 
-	// Job and watch configuration
 	Job           map[string]framework.Job `help:"Job configurations (config file only)" hidden:""`
 	WatchMappings []watch.WatchMapping     `help:"Watch mappings (config file only)" hidden:"" name:"watch" toml:"watch"`
 
-	// Store the built global config
 	globalConfig  *config.GlobalConfig   `kong:"-"`
 	runtimeConfig *runtime.RuntimeConfig `kong:"-"`
 
-	// Store config files that were attempted (for tracking)
+	// config files that were attempted (for tracking)
 	configFiles []string `kong:"-"`
 
 	// RSpec passthrough args from -- delimiter
@@ -124,8 +141,6 @@ func (cli *PlurCLI) Validate() error {
 	return nil
 }
 
-// Initialize logger with appropriate level
-// At this point, Kong has already resolved r.Debug and r.Verbose
 func (cli *PlurCLI) AfterApply() error {
 	level := slog.LevelWarn
 	if cli.Debug {
@@ -136,10 +151,7 @@ func (cli *PlurCLI) AfterApply() error {
 	logger.Init(level)
 
 	if cli.Version {
-		err := (&VersionCmd{}).Run()
-		if err != nil {
-			return err
-		}
+		printVersion()
 		os.Exit(0)
 	}
 

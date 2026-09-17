@@ -40,11 +40,10 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.FrameworkName, "patterns", patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
-	discovery, err := fileset.Discover(currentJob, patterns, excludes)
+	testFiles, err := fileset.Discover(currentJob, patterns, excludes)
 	if err != nil {
 		return err
 	}
-	testFiles := discovery.Files
 	if len(testFiles) == 0 {
 		switch {
 		case len(excludes) > 0:

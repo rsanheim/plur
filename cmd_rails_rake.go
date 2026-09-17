@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/rsanheim/plur/internal/runner"
 
 	"github.com/alecthomas/kong"
@@ -63,10 +64,6 @@ func (r *RailsCmd) Run(parent *PlurCLI, ctx *kong.Context) error {
 // where path.Remainder() is the slice of unparsed args appearing after this
 // Path element.
 func railsCommandJobName(ctx *kong.Context) string {
-	if ctx == nil {
-		return "rails"
-	}
-
 	for _, path := range ctx.Path {
 		if path.Command == nil || path.Command.Name != "rails" {
 			continue

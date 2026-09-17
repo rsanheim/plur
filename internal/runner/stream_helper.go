@@ -75,18 +75,14 @@ func streamTestOutput(
 				progressType, isProgress := parser.NotificationToProgress(notification)
 				// Handle progress notifications
 				if isProgress {
-					if outputChan != nil {
-						outputChan <- OutputMessage{
-							Type: progressType,
-						}
-					}
+					outputChan <- OutputMessage{Type: progressType}
 				}
 
 				collector.AddNotification(notification)
 
 				// Test output the parser split off a consumed line (e.g. a
 				// partial write glued to a structured row) still streams live
-				if notification.GetEvent() == types.TestStdout && outputChan != nil {
+				if notification.GetEvent() == types.TestStdout {
 					if out, ok := notification.(types.OutputNotification); ok {
 						outputChan <- OutputMessage{
 							Type:        "stdout",
@@ -102,7 +98,7 @@ func streamTestOutput(
 			// rawOutput holds only consumed framework messages (e.g. RSpec
 			// syntax errors) and re-printing it for errored workers cannot
 			// duplicate lines that already streamed.
-			if !consumed && outputChan != nil {
+			if !consumed {
 				outputChan <- OutputMessage{
 					Type:        "stdout",
 					Content:     line,
@@ -139,11 +135,9 @@ func streamTestOutput(
 				}
 			}
 
-			if outputChan != nil {
-				outputChan <- OutputMessage{
-					Type:    "stderr",
-					Content: line,
-				}
+			outputChan <- OutputMessage{
+				Type:    "stderr",
+				Content: line,
 			}
 
 			if err == io.EOF {

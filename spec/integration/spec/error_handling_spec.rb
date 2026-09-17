@@ -105,12 +105,13 @@ RSpec.describe "Plur error handling" do
     end
   end
 
-  it "prints missing target errors as plain user-facing errors" do
-    result = run_plur_allowing_errors("--dry-run", "spec/nonexistent_spec.rb")
+  it "lets RSpec report missing target errors" do
+    chdir(default_ruby_dir) do
+      result = run_plur_allowing_errors("spec/nonexistent_spec.rb")
 
-    expect(result.exit_status).to eq(1)
-    expect(result.err).to include("Error: file not found: spec/nonexistent_spec.rb")
-    expect(result.err).not_to include("ERROR - Command failed")
-    expect(result.err).not_to match(/^\d{2}:\d{2}:\d{2} - ERROR/)
+      expect(result.exit_status).not_to eq(0)
+      expect(result.out + result.err).to include("cannot load such file", "nonexistent_spec")
+      expect(result.err).not_to include("Error: stat")
+    end
   end
 end

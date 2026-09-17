@@ -272,7 +272,12 @@ func TestValidateReturnsNil(t *testing.T) {
 
 	r, ok := resolver.(*Resolver)
 	require.True(t, ok)
-	err = r.Validate(nil)
+	var cli struct {
+		Workers int
+	}
+	parser, err := kong.New(&cli)
+	require.NoError(t, err)
+	err = r.Validate(parser.Model)
 	assert.NoError(t, err)
 }
 

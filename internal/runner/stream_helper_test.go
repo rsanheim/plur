@@ -117,10 +117,9 @@ func TestStreamTestOutput_LongLineDoesNotHang(t *testing.T) {
 	parser := &mockParser{}
 	collector := NewTestCollector()
 
-	// Run streamTestOutput - this should NOT hang
 	done := make(chan struct{})
 	go func() {
-		streamTestOutput(stdout, stderr, parser, collector, nil, 0)
+		drainStderr(stdout, stderr, parser, collector)
 		done <- struct{}{}
 	}()
 
@@ -164,7 +163,7 @@ func TestStreamTestOutput_LineWithoutTrailingNewline(t *testing.T) {
 	parser := &mockParser{}
 	collector := NewTestCollector()
 
-	streamTestOutput(stdout, stderr, parser, collector, nil, 0)
+	drainStderr(stdout, stderr, parser, collector)
 
 	assert.Len(t, parser.linesReceived, 2)
 	assert.Equal(t, []string{"line1", "final"}, parser.linesReceived)

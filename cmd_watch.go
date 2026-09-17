@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/rsanheim/plur/internal/devprofile"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,25 +13,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rsanheim/plur/internal/devprofile"
+
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/config"
-	"github.com/rsanheim/plur/internal/embedded"
 	"github.com/rsanheim/plur/internal/logger"
 	"github.com/rsanheim/plur/internal/runtime"
 	"github.com/rsanheim/plur/internal/term"
 	"github.com/rsanheim/plur/internal/watch"
 )
-
-func runWatchInstall(force bool) error {
-	configPaths := config.InitConfigPaths()
-	return watch.InstallBinary(
-		embedded.Watcher,
-		configPaths.BinDir,
-		configPaths.PlurHome,
-		embedded.WatcherVersion(),
-		force,
-	)
-}
 
 // buildWatchPlanner resolves the inputs both watch commands share: the
 // symlink-resolved cwd, global ignore patterns, and the planner that maps
