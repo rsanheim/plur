@@ -58,11 +58,9 @@ func autodetectJobName(resolvedJobs map[string]framework.Job) (string, error) {
 		if !exists {
 			continue
 		}
-		patterns := []string{j.TargetPattern}
-		if j.TargetPattern == "" {
-			patterns = j.Framework.DetectPatterns
-		}
-		if len(patterns) == 0 {
+		// Jobs without usable patterns (e.g. passthrough) cannot drive autodetection.
+		patterns, err := j.TargetPatterns()
+		if err != nil {
 			continue
 		}
 		for _, pattern := range patterns {
