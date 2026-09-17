@@ -65,7 +65,7 @@ plur rails db:test:prepare      # Prepare test DBs for your configured worker co
 plur rails db:test:prepare -n 8 # Prepare test DBs for eight test databases
 plur rails db:drop db:create RAILS_ENV=test   # Run drop and create n times for our test env
 plur rails app:my_task  # Run an app Rake task n times
-plur rake app:my_task   # Run the same task with the Rake alias
+plur rake app:my_task   # Run the same task with bundle exec rake
 plur rake app:my_task -n 1 -- --option1      # Pass Rake-specific flags after --
 ```
 

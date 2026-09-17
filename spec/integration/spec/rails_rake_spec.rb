@@ -141,8 +141,8 @@ RSpec.describe "Plur Rails and Rake commands" do
     end
   end
 
-  context "rake alias (dry-run)" do
-    it "uses the configured rake job through the Kong alias" do
+  context "rake command (dry-run)" do
+    it "uses the configured rake job" do
       Dir.chdir(project_fixture("database-tasks")) do
         output = run_plur("--dry-run", "rake", "db:setup", "-n", "2").err
 

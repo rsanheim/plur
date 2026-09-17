@@ -153,7 +153,7 @@ plur rails db:test:prepare -n 8 # Run db:test:prepare 8 times
 plur rails db:setup                           # Run db:setup n times with TEST_ENV_NUMBER set
 plur rails db:drop db:create RAILS_ENV=test   # Drop and recreate your test databases
 plur rails app:my_task                        # Run an app Rake task n times
-plur rake app:my_task                         # Run the same task with the Rake alias
+plur rake app:my_task                         # Run the same task with bundle exec rake
 plur rake app:my_task -n 1 -- --my-flag       # Pass Rake-specific flags after --
 ```
 
