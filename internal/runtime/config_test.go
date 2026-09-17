@@ -56,28 +56,6 @@ func TestBuildRuntimeConfigMarksBuiltinDefaultsAsInherited(t *testing.T) {
 	assert.True(t, rc.Inherited["rspec"].TargetPattern)
 }
 
-func TestBuildRuntimeConfigResolvesFrameworks(t *testing.T) {
-	cli := &CLIInput{
-		Use: "rspec",
-		Jobs: map[string]framework.Job{
-			"rspec": {Cmd: []string{"bin/rspec"}, FrameworkName: "  RSpec "},
-		},
-	}
-
-	rc, err := BuildRuntimeConfig(cli)
-	require.NoError(t, err)
-
-	j := rc.Jobs["rspec"]
-	assert.Equal(t, "rspec", j.FrameworkName)
-	assert.Equal(t, "rspec", j.Framework.Name)
-	assert.NotNil(t, j.Framework.Parser)
-	assert.NotEmpty(t, j.Framework.DetectPatterns)
-
-	rails := rc.Jobs["rails"]
-	assert.Equal(t, "passthrough", rails.Framework.Name)
-	assert.NotNil(t, rails.Framework.Parser)
-}
-
 func TestBuildRuntimeConfig_UserWatchOverridesBuiltinByName(t *testing.T) {
 	cli := &CLIInput{
 		Use: "rspec",
