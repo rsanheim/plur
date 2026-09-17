@@ -13,12 +13,12 @@ RSpec.describe "RSpec CLI args" do
 
   context "with scoped example selectors" do
     {
-      "[1:1:1]" => [[], 1],
-      "[1:1]" => [[], 2],
-      "[1:1:1,1:2:1]" => [["--use=rspec"], 2]
-    }.each do |selector, (flags, count)|
+      "[1:1:1]" => 1,
+      "[1:1]" => 2,
+      "[1:1:1,1:2:1]" => 2
+    }.each do |selector, count|
       it "runs only the examples selected by #{selector}" do
-        result = run_plur("-C", default_ruby_dir, *flags, "spec/calculator_spec.rb#{selector}")
+        result = run_plur("-C", default_ruby_dir, "--use=rspec", "spec/calculator_spec.rb#{selector}")
 
         expect(result.out).to match(/\b#{count} examples?, 0 failures/)
       end

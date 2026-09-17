@@ -117,7 +117,6 @@ func TestStreamTestOutput_LongLineDoesNotHang(t *testing.T) {
 	parser := &mockParser{}
 	collector := NewTestCollector()
 
-	// Run streamTestOutput - this should NOT hang
 	done := make(chan struct{})
 	go func() {
 		drainStderr(stdout, stderr, parser, collector)

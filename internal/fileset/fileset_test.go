@@ -53,25 +53,6 @@ func TestDiscover_NoInputsUsesFrameworkPatterns(t *testing.T) {
 	}, files, "no inputs => framework patterns drive discovery, sorted")
 }
 
-func TestDiscover_PlainFilePassthrough(t *testing.T) {
-	discoverChdir(t)
-	writeStubFiles(t, "spec/foo_spec.rb")
-	j := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
-
-	files, err := Discover(j, []string{"spec/foo_spec.rb"}, nil)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/foo_spec.rb"}, files)
-}
-
-func TestDiscover_MissingFilePassthrough(t *testing.T) {
-	discoverChdir(t)
-	j := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
-
-	files, err := Discover(j, []string{"does_not_exist.rb"}, nil)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"does_not_exist.rb"}, files)
-}
-
 func TestDiscover_DirectoryExpansion(t *testing.T) {
 	discoverChdir(t)
 	writeStubFiles(t,
@@ -109,20 +90,6 @@ func TestDiscover_GlobDirectories(t *testing.T) {
 			assert.Equal(t, tc.want, files)
 		})
 	}
-}
-
-func TestDiscover_GlobPassthrough(t *testing.T) {
-	discoverChdir(t)
-	writeStubFiles(t,
-		"spec/a_spec.rb",
-		"spec/b_spec.rb",
-		"spec/sub/c_spec.rb",
-	)
-
-	j := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
-	files, err := Discover(j, []string{"spec/*_spec.rb"}, nil)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/a_spec.rb", "spec/b_spec.rb"}, files)
 }
 
 func TestDiscover_MixedInputs(t *testing.T) {
@@ -196,26 +163,19 @@ func TestDiscover_EmptyResultIsOk(t *testing.T) {
 	assert.Empty(t, files)
 }
 
-func TestDiscover_PassthroughJobWithExplicitFile(t *testing.T) {
-	// Regression: a passthrough job has no target_pattern. When the user
-	// passes an explicit file we must not call into the framework's target
-	// pattern lookup, since passthrough has no detect patterns.
+func TestDiscover_InputsAndExclusions(t *testing.T) {
 	discoverChdir(t)
-	writeStubFiles(t, "spec/calculator_spec.rb")
-
-	j := resolveJob(t, framework.Job{Name: "lint", FrameworkName: "passthrough"})
-	files, err := Discover(j, []string{"spec/calculator_spec.rb"}, nil)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/calculator_spec.rb"}, files)
-}
-
-func TestDiscover_SelectorsAndExclusions(t *testing.T) {
-	discoverChdir(t)
-	writeStubFiles(t, "spec/foo_spec.rb", "spec/bar_spec.rb")
+	writeStubFiles(t, "spec/foo_spec.rb", "spec/bar_spec.rb", "spec/sub/nested_spec.rb")
 	for _, tc := range []struct {
 		name, framework        string
 		inputs, excludes, want []string
 	}{
+		{"plain file", "rspec", []string{"spec/foo_spec.rb"}, nil, []string{"spec/foo_spec.rb"}},
+		{"missing literal file", "rspec", []string{"does_not_exist.rb"}, nil, []string{"does_not_exist.rb"}},
+		{"shallow glob", "rspec", []string{"spec/*_spec.rb"}, nil, []string{"spec/bar_spec.rb", "spec/foo_spec.rb"}},
+		{"unmatched glob", "rspec", []string{"missing/**/*_spec.rb"}, nil, nil},
+		{"passthrough without target pattern", "passthrough", []string{"spec/foo_spec.rb"}, nil, []string{"spec/foo_spec.rb"}},
+		{"duplicates across inputs", "rspec", []string{"spec/foo_spec.rb", "spec/foo_spec.rb", "spec/*_spec.rb"}, nil, []string{"spec/bar_spec.rb", "spec/foo_spec.rb"}},
 		{"line", "rspec", []string{"spec/foo_spec.rb:12"}, nil, []string{"spec/foo_spec.rb:12"}},
 		{"multiple lines", "rspec", []string{"spec/foo_spec.rb:12:38"}, nil, []string{"spec/foo_spec.rb:12:38"}},
 		{"missing file", "rspec", []string{"spec/missing_spec.rb:12"}, nil, []string{"spec/missing_spec.rb:12"}},
@@ -239,14 +199,4 @@ func TestDiscover_SelectorsAndExclusions(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestDiscover_DedupsAcrossInputs(t *testing.T) {
-	discoverChdir(t)
-	writeStubFiles(t, "spec/a_spec.rb")
-
-	j := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
-	files, err := Discover(j, []string{"spec/a_spec.rb", "spec/a_spec.rb", "spec/*_spec.rb"}, nil)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"spec/a_spec.rb"}, files)
 }

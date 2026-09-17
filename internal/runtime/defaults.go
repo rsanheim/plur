@@ -14,7 +14,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
-	"github.com/rsanheim/plur/internal/framework/rspec"
 	"github.com/rsanheim/plur/internal/fsutil"
 	"github.com/rsanheim/plur/internal/watch"
 )
@@ -261,11 +260,7 @@ func frameworksMatchingPattern(pattern string, candidates []string) (map[string]
 		if len(detectPatterns) == 0 {
 			continue
 		}
-		target := pattern
-		if name == "rspec" {
-			target = rspec.TargetPath(target)
-		}
-		ok, err := patternMatchesFramework(target, detectPatterns)
+		ok, err := patternMatchesFramework(pattern, detectPatterns)
 		if err != nil {
 			return nil, err
 		}

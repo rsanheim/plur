@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rsanheim/plur/internal/framework"
-	"github.com/rsanheim/plur/internal/framework/rspec"
 	"github.com/rsanheim/plur/internal/fsutil"
 )
+
+// RSpec line and scoped-example suffixes are passed through to the runner.
+var rspecSelector = regexp.MustCompile(`(?::[0-9]+)+$|\[[0-9\s:,]+\]$`)
 
 // Discover expands files, directories, globs, and RSpec selectors, then returns
 // sorted, deduplicated files with excludes applied. Empty inputs use job defaults.
@@ -20,12 +23,6 @@ func Discover(j framework.Job, inputs, excludes []string) ([]string, error) {
 		if !doublestar.ValidatePathPattern(ex) {
 			return nil, fmt.Errorf("invalid exclude pattern %q: %w", ex, doublestar.ErrBadPattern)
 		}
-	}
-	targetPath := func(target string) string {
-		if j.Framework.Name == "rspec" {
-			return rspec.TargetPath(target)
-		}
-		return target
 	}
 	if len(inputs) == 0 {
 		var err error
@@ -37,7 +34,8 @@ func Discover(j framework.Job, inputs, excludes []string) ([]string, error) {
 	var files []string
 	for _, input := range inputs {
 		matches := []string{input}
-		if targetPath(input) == input && strings.ContainsAny(input, "*?[{") {
+		selector := j.Framework.Name == "rspec" && rspecSelector.MatchString(input)
+		if !selector && strings.ContainsAny(input, "*?[{") {
 			var err error
 			matches, err = doublestar.FilepathGlob(input)
 			if err != nil {
@@ -67,7 +65,10 @@ func Discover(j framework.Job, inputs, excludes []string) ([]string, error) {
 		}
 	}
 	files = slices.DeleteFunc(files, func(file string) bool {
-		path := filepath.ToSlash(targetPath(file))
+		if j.Framework.Name == "rspec" {
+			file = strings.TrimSuffix(file, rspecSelector.FindString(file))
+		}
+		path := filepath.ToSlash(file)
 		return slices.ContainsFunc(excludes, func(ex string) bool {
 			return doublestar.PathMatchUnvalidated(ex, path)
 		})
