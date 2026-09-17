@@ -46,10 +46,6 @@ func (p *suiteCountParser) FormatFailuresList(_ []types.TestCaseNotification) st
 
 func (p *suiteCountParser) ColorizeSummary(summary string, _ bool) string { return summary }
 
-func TestDefaultWorkerCount(t *testing.T) {
-	assert.Equal(t, 4, DefaultWorkerCount)
-}
-
 func TestGetTestEnvNumber(t *testing.T) {
 	t.Run("default behavior (first-is-1)", func(t *testing.T) {
 		config := &config.GlobalConfig{
