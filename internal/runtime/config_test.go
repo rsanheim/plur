@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/rsanheim/plur/internal/framework"
+	"github.com/rsanheim/plur/internal/framework/passthrough"
 	"github.com/rsanheim/plur/internal/watch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -324,6 +325,8 @@ func TestBuildRuntimeConfigIncludesRailsAndRakeJobs(t *testing.T) {
 
 	assert.Equal(t, []string{"bin/rails"}, rc.Jobs["rails"].Cmd)
 	assert.Equal(t, "passthrough", rc.Jobs["rails"].FrameworkName)
+	assert.Equal(t, "passthrough", rc.Jobs["rails"].Framework.Name)
+	assert.IsType(t, passthrough.NewOutputParser(), rc.Jobs["rails"].Framework.Parser())
 	assert.Empty(t, rc.Jobs["rails"].Env)
 
 	assert.Equal(t, []string{"bundle", "exec", "rake"}, rc.Jobs["rake"].Cmd)
