@@ -37,7 +37,7 @@ func TestExpandRspecSplits_SplitsLongFile(t *testing.T) {
 		RuntimeDir:  tempDir,
 		RspecSplit:  true,
 	}
-	rspecJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
+	rspecJob := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
 	runner, err := NewRunner(cfg, []string{specPath}, rspecJob, nil)
 	require.NoError(t, err)
 
@@ -72,7 +72,7 @@ func TestExpandRspecSplits_UnevenRuntimesProduceUnevenChunks(t *testing.T) {
 	writeFile(t, specPath, "# slow spec\n")
 
 	cfg := &config.GlobalConfig{WorkerCount: 4, RuntimeDir: tempDir, RspecSplit: true}
-	rspecJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
+	rspecJob := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
 	runner, err := NewRunner(cfg, []string{specPath}, rspecJob, nil)
 	require.NoError(t, err)
 
@@ -115,7 +115,7 @@ func TestExpandRspecSplits_PassesThroughFreshButShortFile(t *testing.T) {
 	writeFile(t, slowPath, "# slow spec\n")
 
 	cfg := &config.GlobalConfig{WorkerCount: 4, RuntimeDir: tempDir, RspecSplit: true}
-	rspecJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
+	rspecJob := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
 	runner, err := NewRunner(cfg, []string{fastPath, slowPath}, rspecJob, nil)
 	require.NoError(t, err)
 
@@ -151,7 +151,7 @@ func TestExpandRspecSplits_PassesThroughStaleCache(t *testing.T) {
 	writeFile(t, specPath, "# original\n")
 
 	cfg := &config.GlobalConfig{WorkerCount: 4, RuntimeDir: tempDir, RspecSplit: true}
-	rspecJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
+	rspecJob := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
 	runner, err := NewRunner(cfg, []string{specPath}, rspecJob, nil)
 	require.NoError(t, err)
 
@@ -170,8 +170,8 @@ func TestExpandRspecSplits_PassesThroughStaleCache(t *testing.T) {
 
 func TestShouldExpandSplits(t *testing.T) {
 	tempDir := t.TempDir()
-	rspecJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
-	minitestJob := framework.Job{Name: "minitest", FrameworkName: "minitest"}
+	rspecJob := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
+	minitestJob := resolveJob(t, framework.Job{Name: "minitest", FrameworkName: "minitest"})
 
 	cases := []struct {
 		name string
@@ -196,7 +196,7 @@ func TestShouldExpandSplits(t *testing.T) {
 func TestPrintSummary_IncludesSplitInFrameworkLabel(t *testing.T) {
 	tempDir := t.TempDir()
 	cfg := &config.GlobalConfig{WorkerCount: 8, RuntimeDir: tempDir, RspecSplit: true}
-	rspecJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
+	rspecJob := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
 	runner, err := NewRunner(cfg, []string{"spec/project_spec.rb", "spec/rubocop/target_finder_spec.rb"}, rspecJob, nil)
 	require.NoError(t, err)
 
@@ -210,7 +210,7 @@ func TestPrintSummary_IncludesSplitInFrameworkLabel(t *testing.T) {
 func TestPrintSummary_LeavesFrameworkLabelAloneWithoutSplit(t *testing.T) {
 	tempDir := t.TempDir()
 	cfg := &config.GlobalConfig{WorkerCount: 8, RuntimeDir: tempDir}
-	rspecJob := framework.Job{Name: "rspec", FrameworkName: "rspec"}
+	rspecJob := resolveJob(t, framework.Job{Name: "rspec", FrameworkName: "rspec"})
 	runner, err := NewRunner(cfg, []string{"spec/project_spec.rb", "spec/rubocop/target_finder_spec.rb"}, rspecJob, nil)
 	require.NoError(t, err)
 

@@ -214,35 +214,6 @@ func TestValidateUniqueWatchNames(t *testing.T) {
 	})
 }
 
-func TestRailsCommandAliasSelectsRakeJob(t *testing.T) {
-	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
-
-	var cli PlurCLI
-	parser, err := kong.New(&cli)
-	require.NoError(t, err)
-
-	ctx, err := parser.Parse([]string{"--dry-run", "rake", "db:setup", "-n", "2"})
-	require.NoError(t, err)
-
-	assert.Equal(t, []string{"db:setup"}, cli.Rails.Args)
-	assert.Equal(t, 2, int(cli.Workers))
-	assert.Equal(t, "rake", railsCommandJobName(ctx))
-}
-
-func TestRailsCommandNameIgnoresFlagValues(t *testing.T) {
-	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
-
-	var cli PlurCLI
-	parser, err := kong.New(&cli)
-	require.NoError(t, err)
-
-	ctx, err := parser.Parse([]string{"-C", "rake", "rails", "db:prepare"})
-	require.NoError(t, err)
-
-	assert.Equal(t, []string{"db:prepare"}, cli.Rails.Args)
-	assert.Equal(t, "rails", railsCommandJobName(ctx))
-}
-
 func TestRspecSplitFlagDefaultsOff(t *testing.T) {
 	setTestEnv(t, "PLUR_HOME", t.TempDir(), true)
 	setTestEnv(t, "PLUR_RSPEC_SPLIT", "", false)
@@ -314,6 +285,7 @@ func TestRspecSplitFlagHelpMarksExperimental(t *testing.T) {
 func TestCommandSupportsPassthrough(t *testing.T) {
 	assert.True(t, commandSupportsPassthrough("spec <patterns>"))
 	assert.True(t, commandSupportsPassthrough("rails <args>"))
+	assert.True(t, commandSupportsPassthrough("rake <args>"))
 	assert.False(t, commandSupportsPassthrough("watch run"))
 	assert.False(t, commandSupportsPassthrough("doctor"))
 }

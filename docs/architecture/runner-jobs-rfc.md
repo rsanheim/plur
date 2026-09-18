@@ -64,8 +64,8 @@ Fields and meaning:
   it replaces (does not append to) any built-in Env.
 - `FrameworkName` (string): normalized framework identity from config
   (rspec/minitest/passthrough/go-test).
-- `Framework` (internal): resolved registry entry populated only for the selected
-  runnable job.
+- `Framework` (internal): resolved registry entry populated for every job in
+  the resolved jobs map at construction time.
 - `TargetPattern` (string): glob for file discovery (autodetect and directory
   expansion). Uses doublestar semantics.
   - `TargetPattern` is job-specific and can override framework detection
@@ -120,7 +120,8 @@ Notes:
 
 ### Framework defaulting rules
 After overlaying:
-- If `resolved.FrameworkName` is non-empty, normalize and validate it.
+- If `resolved.FrameworkName` is non-empty, normalize and validate it, and
+  resolve it into the internal `Framework` field.
 - Else if a built-in job exists for the same name, use that framework.
 - Else default to `passthrough`.
 - Unknown framework values MUST error during config load.
@@ -134,10 +135,10 @@ After framework defaulting:
 ## Resolution order
 All resolution steps MUST use the resolved jobs map.
 
-After a job is selected, runtime constructs the selected runnable job by
-resolving `FrameworkName` into the internal `Framework` field once. Downstream
-discovery, runner command construction, parsing, and result printing use that
-resolved `framework.Job` instead of looking up the framework again.
+Every job in the resolved jobs map carries its `Framework` resolved at
+construction time. Downstream discovery, runner command construction, parsing,
+and result printing use that resolved `framework.Job` without looking up the
+framework again.
 
 1) Explicit name
 - If `--use` / `use = "..."` is provided, select the job by name.

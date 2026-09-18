@@ -9,7 +9,7 @@ spec derived from the runner-jobs RFC:
 - Keep watch mode flexible for guard-like mappings.
 - Centralize framework-specific behavior (parser + default args) in one place.
 - Preserve minitest multi-file execution via ruby -e require list.
-- Keep selected-job framework resolution explicit and easy to audit.
+- Keep framework resolution explicit and easy to audit.
 
 ## Definitions
 - Run mode: `plur spec ...` and default `plur`.
@@ -62,9 +62,9 @@ Notes:
 - Run mode does not attempt to place args before file tokens; files always trail.
 - If a job omits `cmd`, it is invalid (no implicit defaults beyond built-ins).
 - In run mode, job.Env is applied (align with watch mode).
-- The selected run job resolves its framework once during `runtime.SelectedJob`
-  construction. Discovery, command building, parsing, and summaries use the
-  resolved `framework.Job`.
+- Every job in the resolved jobs map carries its framework resolved at
+  construction time. Discovery, command building, parsing, and summaries use
+  the resolved `framework.Job`.
 
 ## Minitest target mode (ruby-require)
 - When files > 1, build:
@@ -122,11 +122,11 @@ The integration spec asserts:
 ## Implementation status (current)
 - Framework registry is implemented in `internal/framework` with TargetMode,
   DefaultArgs, Parser, and DetectPatterns.
-- `runtime.SelectedJob.Job` resolves the selected framework once before run-mode
-  consumers receive it.
+- `buildResolvedJobs` resolves every job's framework at construction; run-mode
+  consumers receive fully-resolved jobs.
 - `framework.Job` owns target pattern lookup and run-argument construction.
 - Run mode starts from `job.cmd`, appends framework defaults, then adds targets.
-- Minitest uses ruby `-e` require list for multi-file runs (single file appends directly).
+- Minitest uses a ruby `-e` require list (with the plugin epilogue) for runs.
 - Jobs default framework by name (built-ins) or `passthrough` for custom jobs when omitted.
 - Dry-run summary includes `[framework]`; verbose logs include `framework="..."`.
 - Job.Env now applies in run mode (aligns with watch mode).

@@ -16,20 +16,6 @@ type Job struct {
 	ExcludePatterns []string  `toml:"exclude_patterns,omitempty" json:"exclude_patterns,omitempty"` // Glob patterns to exclude during file discovery
 }
 
-func (j Job) ResolveFramework() (Job, error) {
-	if j.Framework.Name != "" {
-		return j, nil
-	}
-
-	fw, err := Get(j.FrameworkName)
-	if err != nil {
-		return Job{}, err
-	}
-	j.FrameworkName = fw.Name
-	j.Framework = fw
-	return j, nil
-}
-
 func (j Job) TargetPatterns() ([]string, error) {
 	if j.TargetPattern != "" {
 		return []string{j.TargetPattern}, nil

@@ -66,22 +66,8 @@ func Get(name string) (Framework, error) {
 	return Framework{}, fmt.Errorf("unknown framework %q", name)
 }
 
-func IsKnown(name string) bool {
-	normalized := Normalize(name)
-	_, ok := registry[normalized]
-	return ok
-}
-
 func Normalize(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
-}
-
-func DetectPatterns(name string) []string {
-	fw, ok := registry[Normalize(name)]
-	if !ok {
-		return nil
-	}
-	return fw.DetectPatterns
 }
 
 // minitestDefaultArgs extends ruby's $LOAD_PATH with plur's plugin dir so

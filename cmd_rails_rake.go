@@ -4,77 +4,65 @@ import (
 	"fmt"
 
 	"github.com/rsanheim/plur/internal/runner"
-
-	"github.com/alecthomas/kong"
 )
 
 type RailsCmd struct {
-	Args []string `arg:"" optional:"" name:"args" help:"Rails or Rake arguments to run once per worker"`
+	Args []string `arg:"" optional:"" name:"args" help:"Rails command arguments to run once per worker"`
 }
 
 func (r *RailsCmd) Help() string {
-	return `Runs the configured rails or rake job once per worker, appending the
+	return `Runs the configured rails job once per worker, appending the
 given arguments literally. Each worker gets PARALLEL_TEST_GROUPS and
 TEST_ENV_NUMBER in its environment.
 
 Put plur flags before the command args. Use -- to pass flags through
-to rails/rake unchanged.
+to rails unchanged.
 
 Examples:
 
 	plur rails db:test:prepare
 	plur rails db:test:prepare -n 4
-	plur rails db:migrate -n 4 -- --trace
+	plur rails db:migrate -n 4 -- --trace`
+}
+
+func (r *RailsCmd) Run(parent *PlurCLI) error {
+	return runPerWorkerJob(parent, "rails", r.Args)
+}
+
+type RakeCmd struct {
+	Args []string `arg:"" optional:"" name:"args" help:"Rake task arguments to run once per worker"`
+}
+
+func (r *RakeCmd) Help() string {
+	return `Runs the configured rake job once per worker, appending the
+given arguments literally. Each worker gets PARALLEL_TEST_GROUPS and
+TEST_ENV_NUMBER in its environment.
+
+Put plur flags before the command args. Use -- to pass flags through
+to rake unchanged.
+
+Examples:
+
 	plur rake db:setup -n 4
 	plur rake -n 1 -- --tasks`
 }
 
-func (r *RailsCmd) Run(parent *PlurCLI, ctx *kong.Context) error {
-	jobName := railsCommandJobName(ctx)
+func (r *RakeCmd) Run(parent *PlurCLI) error {
+	return runPerWorkerJob(parent, "rake", r.Args)
+}
+
+func runPerWorkerJob(parent *PlurCLI, jobName string, args []string) error {
 	j, ok := parent.runtimeConfig.Jobs[jobName]
 	if !ok {
 		return fmt.Errorf("job %q not found", jobName)
 	}
 
-	args := append([]string{}, r.Args...)
-	args = append(args, parent.passthroughArgs...)
+	allArgs := append([]string{}, args...)
+	allArgs = append(allArgs, parent.passthroughArgs...)
 
 	run, err := runner.NewRunner(parent.globalConfig, nil, j, nil)
 	if err != nil {
 		return err
 	}
-	return run.RunArgsPerWorker(args)
-}
-
-// railsCommandJobName returns "rake" when the user invoked the rails command
-// via its "rake" alias, otherwise "rails".
-//
-// Kong destructively rewrites alias tokens to the canonical command name
-// during parsing (see github.com/alecthomas/kong/context.go, the block that
-// assigns token values to a branch name when tagged as an alias). By the
-// time Run() executes, ctx.Command() and ctx.Path[*].Command.Name both
-// return "rails" regardless of which alias was typed, so we cannot use them
-// to distinguish.
-//
-// Instead we inspect ctx.Args (the original argv passed to Kong) at the
-// position where the command token was matched:
-//
-//	commandPos = len(ctx.Args) - len(path.Remainder()) - 1
-//
-// where path.Remainder() is the slice of unparsed args appearing after this
-// Path element.
-func railsCommandJobName(ctx *kong.Context) string {
-	for _, path := range ctx.Path {
-		if path.Command == nil || path.Command.Name != "rails" {
-			continue
-		}
-
-		commandPos := len(ctx.Args) - len(path.Remainder()) - 1
-		if commandPos >= 0 && commandPos < len(ctx.Args) && ctx.Args[commandPos] == "rake" {
-			return "rake"
-		}
-		return "rails"
-	}
-
-	return "rails"
+	return run.RunArgsPerWorker(allArgs)
 }

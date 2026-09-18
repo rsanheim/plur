@@ -27,7 +27,8 @@ RSpec.describe "help output" do
     expect(daily_commands).not_to include("watch install")
 
     expect(advanced_commands).to include("watch install")
-    expect(advanced_commands).to include("rails (rake)")
+    expect(advanced_commands).to include("rails")
+    expect(advanced_commands).to include("rake")
     expect(advanced_commands).to include("doctor")
     expect(advanced_commands).to include("config init")
     expect(advanced_commands).to include("rails:init")

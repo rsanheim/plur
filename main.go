@@ -104,7 +104,8 @@ type PlurCLI struct {
 	Spec       SpecCmd      `cmd:"" group:"daily" help:"Run tests" default:"withargs"`
 	Config     ConfigCmd    `cmd:"" help:"Configuration commands"`
 	Doctor     DoctorCmd    `cmd:"" group:"advanced" help:"Diagnose Plur installation and environment"`
-	Rails      RailsCmd     `cmd:"" name:"rails" aliases:"rake" group:"advanced" help:"Run a Rails or Rake command once per worker"`
+	Rails      RailsCmd     `cmd:"" name:"rails" group:"advanced" help:"Run a Rails command once per worker"`
+	Rake       RakeCmd      `cmd:"" name:"rake" group:"advanced" help:"Run a Rake task once per worker"`
 	RailsInit  RailsInitCmd `cmd:"" name:"rails:init" group:"advanced" help:"Configure a Rails project for parallel testing"`
 	VersionCmd VersionCmd   `cmd:"" name:"version" group:"advanced" help:"Show version information"`
 	Watch      WatchCmd     `cmd:"" help:"Watch for file changes and run tests automatically"`
@@ -347,7 +348,7 @@ func main() {
 }
 
 func commandSupportsPassthrough(command string) bool {
-	return strings.HasPrefix(command, "spec") || strings.HasPrefix(command, "rails")
+	return strings.HasPrefix(command, "spec") || strings.HasPrefix(command, "rails") || strings.HasPrefix(command, "rake")
 }
 
 // colorAwareLoader wraps the TOML config loader to keep the color key's

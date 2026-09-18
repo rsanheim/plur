@@ -27,9 +27,10 @@ func writeStubFiles(t *testing.T, paths ...string) {
 
 func resolveJob(t *testing.T, j framework.Job) framework.Job {
 	t.Helper()
-	resolved, err := j.ResolveFramework()
+	fw, err := framework.Get(j.FrameworkName)
 	require.NoError(t, err)
-	return resolved
+	j.Framework = fw
+	return j
 }
 
 func TestDiscover_NoInputsUsesFrameworkPatterns(t *testing.T) {

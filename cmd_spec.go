@@ -33,11 +33,11 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 	runtime.LogInheritedFields(currentJob.Name, selected.Inherited)
 
 	if len(r.Tags) > 0 && currentJob.Framework.Name != "rspec" {
-		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.FrameworkName)
+		return fmt.Errorf("--tag is only supported for rspec (current framework: %s)", currentJob.Framework.Name)
 	}
 
 	targetPatterns, _ := currentJob.TargetPatterns()
-	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.FrameworkName, "patterns", patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
+	logger.Logger.Debug("SpecCmd.Run", "job", currentJob.Name, "framework", currentJob.Framework.Name, "patterns", patterns, "target_patterns", targetPatterns, "reason", selected.Reason)
 
 	excludes := slices.Concat(currentJob.ExcludePatterns, r.ExcludePatterns)
 	testFiles, err := fileset.Discover(currentJob, patterns, excludes)
