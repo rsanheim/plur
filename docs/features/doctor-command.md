@@ -17,9 +17,9 @@ plur doctor
 * Environment variables, active configuration files, worker count, and color settings
 * Selected job, command, target patterns, and existing watch directories
 
-Doctor prints diagnostic findings; missing tools or an unavailable job can appear
-in its output without causing a nonzero exit status. In CI, use it to collect
-troubleshooting information rather than as a pass/fail environment check.
+Doctor can report missing tools or job selection errors and still exit
+successfully. Use its output to troubleshoot CI failures; its exit status does
+not tell you whether the environment is ready to run tests.
 
 For debug logging during configuration loading:
 

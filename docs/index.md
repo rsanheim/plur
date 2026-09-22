@@ -1,4 +1,6 @@
-Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
+# Plur
+
+Plur runs Ruby tests in parallel and reruns them when files change.
 
 ## Getting Started
 

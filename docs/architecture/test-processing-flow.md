@@ -1,7 +1,7 @@
 # Test Processing Flow
 
 RSpec and Minitest use the same runner with framework-specific parsers. Job
-selection and command construction are described in [Jobs and Frameworks](runner-jobs-framework.md).
+selection and command construction are covered in [Jobs and Frameworks](runner-jobs-framework.md).
 
 ```mermaid
 flowchart TD
@@ -34,23 +34,23 @@ how worker errors affect the command's exit code.
 `internal/runner/stream_helper.go` reads stdout and stderr concurrently:
 
 * The parser converts structured stdout rows into notifications. The collector
-  accumulates test results and suite counts, while progress events enter the
+  stores test results and suite counts, while progress events enter the
   shared output channel.
-* Test-written stdout streams live for both RSpec and Minitest. Unconsumed lines
+* Output from tests streams live for both RSpec and Minitest. Unconsumed lines
   are not stored for later printing, which avoids duplicate output.
 * Test output extracted from a structured row also streams live.
 * Stderr goes directly to the output channel.
 
-A single `outputAggregator` goroutine serializes writes. It prints test output
-to stdout and stderr to stderr. Progress markers (`.`, `F`, `*`, `E`) appear only
+A single `outputAggregator` goroutine writes output, keeping stdout and stderr
+separate. Progress markers (`.`, `F`, `*`, `E`) appear only
 with the `progress` formatter; color is controlled independently. See
 [Output Formats](../usage.md#output-formats).
 
 ## Results
 
 `internal/runner/test_collector.go` builds each `WorkerResult` from notifications.
-It retains framework diagnostic output for reporting errored workers, alongside
-test results and suite counts.
+It stores test results, suite counts, and framework diagnostics for reporting
+worker errors.
 
 After workers finish and the output channel drains, `SpecCmd.Run` combines their
 results through `internal/runner/result.go`. Final output uses the framework's

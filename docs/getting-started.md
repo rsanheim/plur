@@ -1,8 +1,7 @@
 # Getting Started
 
-Get up and running with plur for running parallel tests or watch mode.
-
-Plur works with Ruby projects that use RSpec, Minitest, or both. No Ruby gem installation is needed — plur is a standalone binary.
+Plur runs tests in Ruby projects that use RSpec, Minitest, or both. Install the
+standalone binary to get started; Plur needs no additional Ruby gem.
 
 ## Installation
 
@@ -14,7 +13,10 @@ brew install rsanheim/tap/plur
 
 ### Shell script (macOS / Linux)
 
-The direct install script detects your platform, downloads the latest release, verifies its checksum, and installs the binary. It installs to `~/.local/bin` by default. If that directory doesn't exist, it uses `/usr/local/bin` when that's present and writable, otherwise it creates `~/.local/bin`. Set `PLUR_INSTALL_PATH` to override.
+The script detects your platform, downloads the latest release, and verifies its
+checksum. It installs to `~/.local/bin` if that directory exists. Otherwise, it
+uses `/usr/local/bin` if writable, or creates `~/.local/bin`. Set
+`PLUR_INSTALL_PATH` to choose another directory.
 
 ```bash
 curl -fsSL https://github.com/rsanheim/plur/raw/main/install.sh | sh

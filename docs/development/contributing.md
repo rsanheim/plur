@@ -1,4 +1,6 @@
-We welcome contributions! This guide will help you get started.
+# Contributing
+
+Build Plur locally and run the checks before submitting a pull request.
 
 ## Development Setup
 

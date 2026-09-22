@@ -1,8 +1,11 @@
-Plur aims for zero-configuration operation, but provides flexible configuration options through TOML files, environment variables, and command-line flags.
+# Configuration
+
+Plur provides defaults for common projects. Use TOML files, environment variables,
+or command-line flags to change them.
 
 ## Configuration Methods
 
-Plur supports multiple configuration methods with the following precedence (highest to lowest):
+Settings take precedence in this order, from highest to lowest:
 
 1. Command-line flags
 2. Environment variables (e.g., `PLUR_WORKERS`, `PLUR_DEBUG`)
@@ -46,16 +49,8 @@ cmd = ["bundle", "exec", "ruby", "-Itest"]
 
 ## Job Configuration
 
-Jobs are the core of Plur's test execution system. They define how to run tests, linters, or other commands.
-
-### Job Overview
-
-A Job in Plur encapsulates:
-
-* The command to run (as an array)
-* File patterns to match for test discovery
-
-Plur comes with built-in jobs for RSpec, Minitest, Go tests, Rails, and Rake, but you can define custom jobs for any tool.
+A job defines a command and the files it runs against. Plur includes jobs for
+RSpec, Minitest, Go tests, Rails, and Rake. You can also define your own.
 
 ### Job Selection Priority
 
@@ -66,8 +61,8 @@ Jobs are selected in the following priority order:
 3. Explicit paths: Infer the framework from the supplied files, directories, or globs
 4. Auto-detection: Select the first job with matching files, in order: `rspec`, `minitest`, `go-test`
 
-Custom jobs are selected with `--use` or `use`; they are not auto-detected.
-Mixed framework inputs require an explicit job selection or separate runs.
+Select custom jobs with `--use` or `use`. To run files from multiple frameworks,
+choose a job explicitly or run each framework separately.
 
 > **Tip for Projects with Multiple Frameworks**
 >
@@ -95,9 +90,9 @@ Mixed framework inputs require an explicit job selection or separate runs.
 | `exclude_patterns` | string[] | Glob patterns to exclude from discovered test files | No | `[]` |
 | `env` | string[] | Environment variables (e.g., `["VAR=value"]`) | No | `[]` |
 
-In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
-its fixed flags. Plur appends discovered targets automatically (or expands
-Minitest targets into `-e` requires). Job commands must not contain the
+For `plur` and `plur spec`, set `cmd` to the executable and its fixed flags.
+Plur adds the discovered files to the command. For Minitest, it loads them
+through a Ruby `-e` script. Job commands must not contain the
 `{{target}}` placeholder; target templates are only supported in watch target
 mappings.
 
@@ -137,17 +132,15 @@ target_pattern = "spec/api/**/*_spec.rb"
 
 ### Exclude Patterns
 
-Use `exclude_patterns` to drop matching files from discovery. Patterns use
-doublestar semantics. Multiple entries are OR'd together. Patterns that match no
-selected files are ignored.
+Use `exclude_patterns` to skip files that match any listed pattern. Patterns
+support `**` to match across directories; unmatched patterns have no effect.
 
 ```toml
 [job.rspec]
 exclude_patterns = ["spec/system/**/*_spec.rb"]
 ```
 
-The CLI flag `--exclude-pattern` (repeatable) is *additive* on top of
-`exclude_patterns`. Given the config above, this command excludes both
+Each `--exclude-pattern` flag adds to the configured exclusions. Given the config above, this command excludes both
 `spec/system/**` and `spec/legacy/**`:
 
 ```bash
@@ -313,10 +306,8 @@ plur watch --use=custom-job   # Watch with specific job
 
 ## Worker Configuration
 
-Plur uses intelligent distribution of specs/tests across workers:
-
-* **Runtime-based**: When historical runtime data exists, tests are distributed based on previous execution times for optimal load balancing
-* **Size-based**: When no runtime data exists, tests are distributed based on file sizes as a heuristic for complexity
+Plur balances work using saved test runtimes, falling back to file sizes when
+no timings are available.
 
 Note: Watch mode (`plur watch`) can run independent job targets concurrently.
 It skips a target that is already running in the same job.
@@ -342,8 +333,8 @@ plur
 
 Set `formatter = "auto"`, `"progress"`, or `"summary"` to control progress
 markers during test runs. The default, `auto`, shows markers on a terminal
-and omits them when stdout is piped or redirected. Test-written output and
-final results are still printed. See [Output Formats](usage.md#output-formats).
+and omits them when stdout is piped or redirected. Output from tests and
+final results still print. See [Output Formats](usage.md#output-formats).
 
 ### Verbosity
 
@@ -358,7 +349,7 @@ plur
 
 ### Glob Pattern Support
 
-Plur supports advanced glob patterns for selecting test files:
+Use glob patterns to select test files:
 
 * `**` - Matches any number of directories (e.g., `spec/**/*_spec.rb`)
 * `*` - Matches any characters except path separator
@@ -426,12 +417,6 @@ Ensure the first element of your `cmd` array is executable and in your PATH:
 # Test the command directly
 bundle exec rspec --version
 ```
-
-## Tips and Best Practices
-
-1. **Start Simple**: Begin with just overriding the `cmd` for existing jobs
-2. **Use Descriptive Names**: Name custom jobs clearly (e.g., `rspec-fast`, `integration-tests`)
-3. **Leverage Glob Patterns**: Use standard glob patterns for `target_pattern`
 
 ## Next Steps
 

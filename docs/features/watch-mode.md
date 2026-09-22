@@ -2,9 +2,11 @@
 
 ## Overview
 
-`plur watch` provides automatic test/spec execution when files change. Imagine [guard](https://github.com/guard/guard), but much faster, zero-config (by default), and no gem/ruby setup necessary. It's designed to be a "one stop shop" - just run `plur watch` in any Ruby project and get instant feedback as you code.
+`plur watch` reruns tests when files change. Built-in mappings connect source
+files to their tests, and you can add mappings for your project.
 
-It uses a [fast, lean embedded C++ watcher](https://github.com/e-dant/watcher) to monitor file changes and trigger test/spec execution, using the best platform-specific fsevent library. (FSEvents, inotify, ReadDirectoryChangesW, etc.)
+Plur bundles [e-dant/watcher](https://github.com/e-dant/watcher) to monitor changes
+using the operating system's file events.
 
 ## Usage
 
@@ -46,12 +48,13 @@ Default watch mappings do not include helper files such as
 
 ### Global Exclusions
 
-By default, events from certain directories are ignored to reduce noise:
+Plur ignores events from these directories by default:
 
 * `.git/**` - Git internal files
 * `node_modules/**` - JavaScript dependencies
 
-These patterns are applied globally before any watch rules are evaluated. You can customize them in `.plur.toml` with the `watch-ignore` option:
+Plur applies these exclusions before matching watch rules. Set `watch-ignore` in
+`.plur.toml` to change them:
 
 ```toml
 watch-ignore = [".git/**", "node_modules/**", "vendor/**", ".bundle/**"]
@@ -63,7 +66,8 @@ Or customize a single watch session with the repeatable `--ignore` flag:
 plur watch --ignore ".git/**" --ignore "node_modules/**" --ignore "vendor/**" --ignore ".bundle/**"
 ```
 
-Setting either `watch-ignore` or `--ignore` replaces the defaults entirely - include `.git/**` and `node_modules/**` if you still want them ignored.
+Both `watch-ignore` and `--ignore` replace the default list. Include `.git/**` and
+`node_modules/**` to keep ignoring them.
 
 ## Platform Support
 
@@ -82,54 +86,38 @@ and automatically replaced when Plur ships a newer watcher version.
 - Plur tracks direct child jobs and waits for them to exit
 - The first Ctrl-C lets Plur and test runners stop normally; a second force-stops remaining jobs
 - Without a terminal, SIGINT stops remaining jobs after a short grace period
-- All ordinary shutdown paths reap active jobs; SIGKILL cannot and may leave jobs running
+- On shutdown, Plur waits for child jobs to exit; SIGKILL prevents cleanup and may leave jobs running
 
-### Event Types
+## File Changes
 
-Plur considers `create` and `modify` events for a test run (see the effect-type
-filter in `internal/watch/controller.go`); events with other effect types are skipped before
-the usual ignore and watch-mapping rules are applied.
+Plur runs tests for `create` and `modify` events that match a watch rule.
+Other event types are ignored.
 
-On macOS and Linux, this makes watch mode driven by **content** changes, not
-timestamps. A bare `touch` that only bumps a file's modification time is not
-reported as `create` or `modify`, so it does *not* trigger a run. That is
-deliberate: modern editors, formatters, build tools, and sync agents churn file
-timestamps constantly, and reacting to every mtime bump would make watch mode
-far too noisy.
+On macOS and Linux, `touch` alone does not trigger a run. Change the file's
+contents to trigger its watch rules.
 
 ### Debouncing
 
-* Default 30ms delay to batch related changes
-* Prevents test runs from overlapping file saves
-* Configurable via `--debounce` flag
+Plur batches changes over a 30ms window before running tests. Set `--debounce`
+to adjust the delay in milliseconds.
 
 ## Known Issues and Limitations
 
 ### Concurrent Output
-Watch runs independent work concurrently. A target already running in the same
-job is skipped and reported:
+Watch mode runs independent jobs and targets concurrently. If a target is already
+running in the same job, Plur skips it and reports:
 
 ```text
 [plur] skipped spec/user_spec.rb reason=running
 ```
 
-When only part of a run overlaps, the free targets still start. Different jobs
-do not block each other. A `no_targets = true` run only blocks another
-no-targets run of the same job.
+If only some targets are already running, Plur starts the rest. Different jobs
+do not block each other. A `no_targets = true` run only blocks another run
+without targets in the same job.
 
-Concurrent runs currently share the terminal, which can lead to:
+Concurrent runs share the terminal, so their output can interleave. Enable debug
+logging to see the job and targets when each run starts and finishes.
 
-- Interleaved output from different test runs
-- Output that is harder to attribute to one run
-
-The run and completion log lines identify the job and targets when debug output
-is enabled.
-
-### Current Limitations
-
-- No output panes or per-run output grouping
-- Limited to Ruby/Rails conventions by default (custom mappings available via `[[watch]]` config)
-
-See [Watch Configuration](../configuration.md#watch-configuration) for custom file mapping options.
-
-See [Watch Architecture](../architecture/plur-watch-architecture.md) for implementation details.
+See [Watch Configuration](../configuration.md#watch-configuration) for custom
+mappings and [Watch Architecture](../architecture/plur-watch-architecture.md)
+for implementation details.

@@ -9,13 +9,13 @@ file changes to jobs. See [Watch Mode](../features/watch-mode.md) for usage and
 | Component | Responsibility |
 |-----------|----------------|
 | `cmd_watch.go` | Builds the planner, filters watch directories, and configures the controller |
-| `internal/watch/watcher_manager.go` | Starts watchers and aggregates their events and errors |
+| `internal/watch/watcher_manager.go` | Starts watchers and combines their events and errors |
 | `internal/watch/watcher.go` | Manages one embedded C++ watcher process and reads its JSON events |
 | `internal/watch/controller.go` | Handles events, interactive commands, job completion, timeout, and signals |
-| `internal/watch/plan.go` | Admits paths and maps changed files to job targets; also used by `plur watch find` |
+| `internal/watch/plan.go` | Filters paths and maps changed files to job targets; also used by `plur watch find` |
 | `internal/watch/debouncer.go` | Batches and deduplicates paths, with a default 30ms delay |
 | `internal/watch/scheduler.go` | Tracks active jobs and skips targets already running in the same job |
-| `internal/watch/execute.go` | Builds commands, starts child jobs, streams output, and reaps processes |
+| `internal/watch/execute.go` | Builds commands, starts child jobs, streams output, and waits for processes to exit |
 
 ## Event Flow
 
@@ -32,8 +32,8 @@ flowchart TD
 ```
 
 The planner rejects paths outside the project and paths matching global ignore
-patterns. It renders watch target templates, skips targets missing on disk, and
-merges deduplicated targets into per-job runs.
+patterns. It expands target templates, skips targets missing on disk, removes
+duplicates, and groups targets by job.
 
 Independent runs execute concurrently. An active target only blocks the same
 target in the same job. Runs without targets only block other runs without
@@ -43,9 +43,9 @@ concurrent output can interleave.
 ## Watcher Processes
 
 The embedded watcher monitors directories recursively. Before starting one
-process per directory, Plur validates that directories remain within the project,
-resolves duplicate symlink paths, and removes overlapping subdirectories. For
-example, `[., lib, spec]` becomes `[.]`, while `[lib, spec, app]` remains three
+process per directory, Plur checks that each directory is within the project,
+removes paths that resolve to the same directory, and skips subdirectories
+already covered by a parent. For example, `[., lib, spec]` becomes `[.]`, while `[lib, spec, app]` remains three
 separate watchers.
 
 Watcher binaries live under `internal/embedded/watcher/` and are embedded at
