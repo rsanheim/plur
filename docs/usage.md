@@ -85,7 +85,7 @@ to ruby's load path, where minitest's own plugin discovery finds it. The
 plugin replaces minitest's progress and summary reporters with one that
 reports structured results to plur; test-written stdout streams through
 untouched. On minitest 6, where plugin loading is opt-in, plur's worker
-script calls `Minitest.load_plugins` itself.
+script calls `Minitest.load "plur"` to load only the Plur plugin.
 
 Setting `MT_NO_PLUGINS=1` (minitest's own plugin opt-out) disables plur's
 plugin too; plur then reports zero results while the suite's native output
@@ -157,7 +157,6 @@ plur rake app:my_task                         # Run the same task with bundle ex
 plur rake app:my_task -n 1 -- --my-flag       # Pass Rake-specific flags after --
 ```
 
-All `plur rake` and `plur rails` commands run once per worker, with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set.
 Use `--dry-run` to print commands without running them:
 
 ```text

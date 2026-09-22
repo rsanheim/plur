@@ -63,7 +63,11 @@ Jobs are selected in the following priority order:
 
 1. CLI flag: `plur --use=custom-job`
 2. Config file: `use = "custom-job"` in `.plur.toml`
-3. Auto-detection: Based on directory structure (spec/ → rspec, test/ → minitest)
+3. Explicit paths: Infer the framework from the supplied files, directories, or globs
+4. Auto-detection: Select the first job with matching files, in order: `rspec`, `minitest`, `go-test`
+
+Custom jobs are selected with `--use` or `use`; they are not auto-detected.
+Mixed framework inputs require an explicit job selection or separate runs.
 
 > **Tip for Projects with Multiple Frameworks**
 >
@@ -85,7 +89,7 @@ Jobs are selected in the following priority order:
 
 | Field | Type | Description | Required | Default |
 |-------|------|-------------|----------|---------|
-| `cmd` | string[] | Command array to execute | Yes | Built-in default for canonical jobs (`rspec`, `minitest`, `go-test`) |
+| `cmd` | string[] | Command array to execute | For custom jobs | Inherited for built-in jobs (`rspec`, `minitest`, `go-test`, `rails`, `rake`) |
 | `framework` | string | Framework identity (`rspec`, `minitest`, `go-test`, `passthrough`) | No | Built-in framework for canonical jobs, otherwise `passthrough` |
 | `target_pattern` | string | Glob pattern for test files | No | Built-in default for canonical jobs; for custom jobs with a framework uses framework detect patterns; passthrough jobs default to empty |
 | `exclude_patterns` | string[] | Glob patterns to exclude from discovered test files | No | `[]` |
@@ -93,7 +97,7 @@ Jobs are selected in the following priority order:
 
 In run mode (`plur` / `plur spec`), keep `cmd` focused on the executable and
 its fixed flags. Plur appends discovered targets automatically (or expands
-Minitest targets into `-e` requires). Job commands must not contain the legacy
+Minitest targets into `-e` requires). Job commands must not contain the
 `{{target}}` placeholder; target templates are only supported in watch target
 mappings.
 
@@ -320,7 +324,7 @@ It skips a target that is already running in the same job.
 ### Specifying Number of Workers
 
 ```bash
-# Auto-detection (default)
+# Default: 4 workers
 plur
 
 # specify number of workers
@@ -336,10 +340,10 @@ plur
 
 ### Formatters
 
-Plur always uses dual formatters:
-
-* Progress formatter (for visual feedback)
-* JSON formatter (for result parsing)
+Set `formatter = "auto"`, `"progress"`, or `"summary"` to control progress
+markers during test runs. The default, `auto`, shows markers on a terminal
+and omits them when stdout is piped or redirected. Test-written output and
+final results are still printed. See [Output Formats](usage.md#output-formats).
 
 ### Verbosity
 

@@ -7,6 +7,9 @@ We welcome contributions! This guide will help you get started.
 git clone https://github.com/rsanheim/plur.git
 cd plur
 
+# Install the toolchain pinned in .mise.toml
+mise install --yes
+
 # Install dependencies
 bundle install
 go mod download

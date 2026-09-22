@@ -1,144 +1,59 @@
 # Test Processing Flow
 
-This document provides a comprehensive view of how Plur processes test output, from the runner through all components including the parser, collector, and output aggregator.
-
-The architecture is framework-agnostic: RSpec and Minitest use the same flow with framework-specific parsers.
-
-## Full System Flow - Test Execution
+RSpec and Minitest use the same runner with framework-specific parsers. Job
+selection and command construction are described in [Jobs and Frameworks](runner-jobs-framework.md).
 
 ```mermaid
-sequenceDiagram
-    participant CLI as SpecCmd.Run
-    participant Runner as Runner
-    participant Worker as Worker Goroutine
-    participant Cmd as exec.Command
-    participant Stream as streamTestOutput
-    participant Parser as Parser (RSpec/Minitest)
-    participant Collector as TestCollector
-    participant OutChan as outputChan
-    participant Agg as outputAggregator
-    participant Console as Console
-
-    CLI->>Runner: NewRunner(config, files, job)
-    CLI->>Runner: Run()
-
-    Note over Runner: Phase 1: Planning
-    Runner->>Runner: groupFiles() - by runtime or size
-    Runner->>Runner: buildCommands() - exec.Cmd per group
-
-    Note over Runner: Phase 2: Execution
-    Runner->>OutChan: Create buffered channel
-    Runner->>Agg: Start goroutine
-
-    loop For each command
-        Runner->>Worker: Spawn goroutine
-        Worker->>Worker: runCommand(cmd, outputChan)
-
-        Worker->>Cmd: StdoutPipe(), StderrPipe()
-        Worker->>Cmd: Start()
-        Worker->>Parser: job.CreateParser()
-        Worker->>Collector: NewTestCollector()
-        Worker->>Stream: streamTestOutput(stdout, stderr, parser, collector, outputChan)
-
-        rect rgb(240, 248, 255)
-            Note over Stream,Agg: Concurrent Output Processing
-
-            par stdout goroutine
-                loop For each line
-                    Stream->>Parser: ParseLine(line)
-                    Parser-->>Stream: notifications, consumed
-
-                    alt !consumed (raw output like puts)
-                        alt RSpec (streamStdout=true)
-                            Stream->>OutChan: {Type: "stdout", Content: line}
-                        else Minitest (streamStdout=false)
-                            Stream->>Collector: AddNotification(RawOutput)
-                        end
-                    end
-
-                    loop For each notification
-                        Stream->>Collector: AddNotification(n)
-                        alt ProgressEvent
-                            Stream->>OutChan: {Type: dot/failure/pending}
-                        end
-                    end
-                end
-            and stderr goroutine
-                loop For each line
-                    Stream->>OutChan: {Type: "stderr", Content: line}
-                end
-            and aggregator goroutine
-                loop For each message
-                    alt dot
-                        Agg->>Console: Write green .
-                    else failure
-                        Agg->>Console: Write red F
-                    else pending
-                        Agg->>Console: Write yellow *
-                    else stderr
-                        Agg->>Console: Write to stderr
-                    else stdout
-                        Agg->>Console: Write to stdout
-                    end
-                end
-            end
-        end
-
-        Stream-->>Worker: stderrOutput
-        Worker->>Cmd: Wait()
-        Worker->>Collector: BuildResult(duration)
-        Collector-->>Worker: WorkerResult
-    end
-
-    Runner->>Runner: Close outputChan, wait for aggregator
-    Runner->>Console: Print newline
-
-    Note over Runner: Phase 3: Summary
-    Runner-->>CLI: []WorkerResult, wallTime
-    CLI->>CLI: BuildTestSummary(results)
-    CLI->>Console: PrintResults(summary)
+flowchart TD
+    CLI[SpecCmd.Run] --> Plan[Group targets by runtime or file size]
+    Plan --> Commands[Build commands and worker environments]
+    Commands --> Workers[Run workers concurrently]
+    Workers --> Stdout[Parse stdout into notifications and test output]
+    Workers --> Stderr[Read stderr]
+    Stdout --> Collector[Collect results per worker]
+    Stdout --> Channel[Shared output channel]
+    Stderr --> Channel
+    Channel --> Aggregator[Print live output and optional progress markers]
+    Collector --> Results[Combine worker results after completion]
+    Results --> Summary[Print failures, pending details, and summary]
 ```
 
-## Key Components
+## Execution
 
-### 1. **Runner** (internal/runner/runner.go)
-Orchestrates the entire test execution:
-* `Run()` - Entry point with three phases: planning, execution, results
-* `groupFiles()` - Groups files by runtime data (preferred) or file size (fallback)
-* `buildCommands()` - Creates `exec.Cmd` for each file group with framework-specific args
-* `executeWorkers()` - Spawns worker goroutines, manages channels, waits for completion
-* `runCommand()` - Runs a single command: pipes, parser, collector, streamTestOutput
+`internal/runner/runner.go` groups targets using recorded runtimes, falling back
+to file sizes. It builds one command per group and starts a goroutine for each
+worker. A dry run prints the commands without starting workers.
 
-### 2. **streamTestOutput** (internal/runner/stream_helper.go)
-Handles real-time output processing with two concurrent goroutines:
-* **stdout goroutine**: Parses lines via `parser.ParseLine()`, sends progress to `outputChan`
-  * Unconsumed lines (puts/pp) have exactly one display path - streamed OR collected, never both
-  * For RSpec: Streamed in real-time via `outputChan` (the JSON formatter makes this safe)
-  * For Minitest: Collected for the errored-worker re-print, NOT streamed (Minitest returns consumed=false for all lines)
-* **stderr goroutine**: Passes through to `outputChan` with type "stderr"
+Each worker creates its own framework parser and `TestCollector`, drains stdout
+and stderr, then waits for the process and records its exit status. RSpec workers
+must also report suite completion. See [Exit Status](../usage.md#exit-status) for
+how worker errors affect the command's exit code.
 
-### 3. **Parser** (`internal/framework/rspec/` or `internal/framework/minitest/`)
-Framework-specific output parsing:
-* `ParseLine(line)` returns `(notifications, consumed)`
-* Emits `ProgressEvent` for dots/failures, `TestCaseNotification` for test results
-* `FormatSummary()` for framework-native summary output
+## Live Output
 
-### 4. **TestCollector** (internal/runner/test_collector.go)
-Accumulates notifications from parser:
-* Tracks tests, failures, pending counts
-* Carries suite-level counts (assertions/errors/pending) from `SuiteNotification` into `WorkerResult`
-* Stores raw output in `rawOutput` string builder
-* `BuildResult()` creates final `WorkerResult`
+`internal/runner/stream_helper.go` reads stdout and stderr concurrently:
 
-### 5. **outputAggregator** (internal/runner/runner.go)
-Single goroutine that serializes all output:
-* Reads from `outputChan`
-* Writes colored progress indicators (., F, *) to stdout
-* Writes raw stdout (puts/pp output) to stdout (RSpec only)
-* Writes stderr lines to stderr
+* The parser converts structured stdout rows into notifications. The collector
+  accumulates test results and suite counts, while progress events enter the
+  shared output channel.
+* Test-written stdout streams live for both RSpec and Minitest. Unconsumed lines
+  are not stored for later printing, which avoids duplicate output.
+* Test output extracted from a structured row also streams live.
+* Stderr goes directly to the output channel.
 
-### 6. **PrintResults** (internal/runner/result.go)
-Displays final summary:
-* `BuildTestSummary()` aggregates all WorkerResults
-* Framework-aware formatting via `parser.FormatSummary()` (uses suite counts when present)
-* Shows failures, then summary line
+A single `outputAggregator` goroutine serializes writes. It prints test output
+to stdout and stderr to stderr. Progress markers (`.`, `F`, `*`, `E`) appear only
+with the `progress` formatter; color is controlled independently. See
+[Output Formats](../usage.md#output-formats).
+
+## Results
+
+`internal/runner/test_collector.go` builds each `WorkerResult` from notifications.
+It retains framework diagnostic output for reporting errored workers, alongside
+test results and suite counts.
+
+After workers finish and the output channel drains, `SpecCmd.Run` combines their
+results through `internal/runner/result.go`. Final output uses the framework's
+summary format and includes failure details and RSpec rerun commands where
+applicable. Successful runs with examples update the
+[runtime cache](../usage.md#runtime-tracking).

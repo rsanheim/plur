@@ -12,7 +12,7 @@ Plur works with Ruby projects that use RSpec, Minitest, or both. No Ruby gem ins
 brew install rsanheim/tap/plur
 ```
 
-### Direct install (all platforms)
+### Shell script (macOS / Linux)
 
 The direct install script detects your platform, downloads the latest release, verifies its checksum, and installs the binary. It installs to `~/.local/bin` by default. If that directory doesn't exist, it uses `/usr/local/bin` when that's present and writable, otherwise it creates `~/.local/bin`. Set `PLUR_INSTALL_PATH` to override.
 

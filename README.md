@@ -2,7 +2,7 @@
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/rsanheim/plur/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/rsanheim/plur/tree/main)
 
-`plur` is a fast, parallel, drop-in test runner and watcher primarily targeting Ruby and Rails using RSpec or Minitest. Its written in Go, so just a single binary to install, once, and use across all projects.
+`plur` is a fast, parallel, drop-in test runner and watcher primarily targeting Ruby and Rails using RSpec or Minitest. It's written in Go, so just a single binary to install, once, and use across all projects.
 
 ## Installation
 
@@ -110,7 +110,7 @@ See `docs/examples/` directory for more configuration examples.
 
 ### Environment Variables
 * `PLUR_WORKERS`: Number of workers
-* `TEST_ENV_NUMBER`: Worker 0 gets `""`, worker N gets `"N+1"`
+* `TEST_ENV_NUMBER`: Workers receive `"1"`, `"2"`, etc. Use `--no-first-is1` to give the first worker `""` instead
 * `PARALLEL_TEST_GROUPS`: Total number of workers
 * `PARALLEL_TEST_PROCESSORS`: Legacy fallback for `PLUR_WORKERS` (parallel_tests compatibility)
 

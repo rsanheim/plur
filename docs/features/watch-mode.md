@@ -12,8 +12,8 @@ It uses a [fast, lean embedded C++ watcher](https://github.com/e-dant/watcher) t
 # Start watching for file changes
 plur watch
 
-# Dry run to see what would be watched
-plur watch --dry-run
+# Preview the jobs a file change would trigger
+plur watch find lib/foo.rb
 
 # Set custom debounce delay (milliseconds)
 plur watch --debounce 250
@@ -21,11 +21,14 @@ plur watch --debounce 250
 
 ### What Gets Watched
 
-By default, plur watch monitors:
+For an RSpec project, the default watch mappings monitor:
 
 - `spec/**/*_spec.rb` - Test files (runs the changed spec)
 - `lib/**/*.rb` - Library files (runs corresponding spec)
 - `app/**/*.rb` - Rails app files (runs corresponding spec)
+
+Minitest projects use corresponding `test/**/*_test.rb` mappings. Go projects
+map Go source changes to package test commands.
 
 Default watch mappings do not include helper files such as
 `spec/spec_helper.rb` or `spec/rails_helper.rb`. Add a project-specific
@@ -62,70 +65,9 @@ plur watch --ignore ".git/**" --ignore "node_modules/**" --ignore "vendor/**" --
 
 Setting either `watch-ignore` or `--ignore` replaces the defaults entirely - include `.git/**` and `node_modules/**` if you still want them ignored.
 
-## Architecture
+## Platform Support
 
-### Multi-Process Design
-
-Watch mode uses a multi-process architecture. Before spawning watchers, directories are
-filtered to remove overlaps (e.g., if watching `.`, subdirectories like `lib/` are removed
-to prevent duplicate events):
-
-```
-┌─────────────────┐
-│   plur watch    │
-└────────┬────────┘
-         │
-  filterWatchDirectories()
-  (remove overlaps, validate paths)
-         │
-┌────────▼────────┐
-│ WatcherManager  │
-└────────┬────────┘
-         │
-   ┌─────┴─────┬─────────┐
-   │           │         │
-┌──▼──┐    ┌──▼──┐  ┌──▼──┐
-│  .  │ or │ lib │  │spec │  (Filtered directories → Watcher Processes)
-└──┬──┘    └──┬──┘  └──┬──┘
-   │          │        │
-   └──────────┴───┬────┘
-                  │
-           ┌──────▼──────┐
-           │Event Channel│  (Aggregated Events)
-           └──────┬──────┘
-                  │
-           ┌──────▼──────┐
-           │  Debouncer  │
-           └──────┬──────┘
-                  │
-           ┌──────▼──────┐
-           │ Test Runner │
-           └─────────────┘
-```
-
-### Key Components
-
-1. **WatcherManager**: Orchestrates multiple watcher processes, aggregating their events into a single stream
-2. **Watcher**: Wrapper around the external C++ watcher binary, one per directory
-3. **Planner**: Matches changed files against watch mappings and renders the targets each job runs
-4. **Debouncer**: Batches rapid changes to prevent duplicate test runs
-5. **Scheduler**: Prevents the same job target from running twice while allowing unrelated runs to overlap
-6. **Embedded Binary**: Platform-specific watcher binaries embedded at compile time
-
-### Event Processing
-
-1. File system change detected by C++ watcher process
-2. JSON event emitted via stdout
-3. Watcher parses and forwards to WatcherManager
-4. Events filtered by file type and effect, then admitted by the planner (paths outside the project or matching ignore patterns are dropped)
-5. Debouncer batches changes (default 30ms window)
-6. Planner maps the batched files to job runs via watch mappings
-7. The scheduler drops targets already running in the same job
-8. Runs with remaining targets execute concurrently, streaming output to the terminal
-
-### Platform Support
-
-Embedded watcher binaries via [e-dant/watcher](https://github.com/e-dant/watcher) auto-installed for.
+Watcher binaries are embedded for these platforms:
 
 - macOS ARM64 (Apple Silicon)
 - Linux x86_64
@@ -135,13 +77,7 @@ Embedded watcher binaries via [e-dant/watcher](https://github.com/e-dant/watcher
 Binaries are extracted on first use to `~/.plur/bin/` (or `$PLUR_HOME/bin/`)
 and automatically replaced when Plur ships a newer watcher version.
 
-## Implementation Details
-
-### Binary Management
-
-The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-performance C++ file watcher. Platform-specific binaries are embedded in the plur executable using Go's `embed` package and extracted on demand.
-
-### Process Lifecycle
+## Process Lifecycle
 
 - Plur tracks direct child jobs and waits for them to exit
 - The first Ctrl-C lets Plur and test runners stop normally; a second force-stops remaining jobs
@@ -151,7 +87,7 @@ The watcher uses [e-dant/watcher](https://github.com/e-dant/watcher), a high-per
 ### Event Types
 
 Plur considers `create` and `modify` events for a test run (see the effect-type
-filter in `cmd_watch.go`); events with other effect types are skipped before
+filter in `internal/watch/controller.go`); events with other effect types are skipped before
 the usual ignore and watch-mapping rules are applied.
 
 On macOS and Linux, this makes watch mode driven by **content** changes, not
@@ -196,10 +132,4 @@ is enabled.
 
 See [Watch Configuration](../configuration.md#watch-configuration) for custom file mapping options.
 
-## Technical Decision Log
-
-### Why e-dant/watcher?
-
-- Go alternatives have troubled macOS history, and fsnotify would require CGO
-- C++ binary works "out of the box" on all platforms
-- Excellent performance and low resource usage
+See [Watch Architecture](../architecture/plur-watch-architecture.md) for implementation details.
