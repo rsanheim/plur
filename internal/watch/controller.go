@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rsanheim/plur/internal/fileset"
+	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/logger"
 )
 
@@ -108,7 +110,11 @@ func (c *Controller) Run() error {
 			switch input {
 			case "":
 				fmt.Fprintln(c.cfg.Stdout, "Running all tests...")
-				if !c.startRun(scheduler, doneChan, c.cfg.RunAllJob) {
+				run, err := c.runAllJob()
+				if err != nil {
+					c.reportRunError(c.cfg.RunAllJob, err)
+					c.showPrompt()
+				} else if !c.startRun(scheduler, doneChan, run) {
 					c.showPrompt()
 				}
 			case "help":
@@ -208,6 +214,21 @@ func (c *Controller) Run() error {
 			fmt.Fprint(c.cfg.Stdout, "[plur] > ")
 		}
 	}
+}
+
+func (c *Controller) runAllJob() (JobRun, error) {
+	run := c.cfg.RunAllJob
+	if run.Job.Framework.TargetMode == framework.TargetModeRubyRequire {
+		files, err := fileset.Discover(run.Job, nil, run.Job.ExcludePatterns)
+		if err != nil {
+			return run, err
+		}
+		if len(files) == 0 {
+			return run, fmt.Errorf("no test files found for job %q", run.Job.Name)
+		}
+		run.Targets = NewTargetSet(files...)
+	}
+	return run, nil
 }
 
 func (c *Controller) startRun(scheduler *scheduler, doneChan chan<- runResult, run JobRun) bool {

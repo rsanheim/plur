@@ -88,6 +88,10 @@ and automatically replaced when Plur ships a newer watcher version.
 - Without a terminal, SIGINT stops remaining jobs after a short grace period
 - On shutdown, Plur waits for child jobs to exit; SIGKILL prevents cleanup and may leave jobs running
 
+For Minitest, Enter discovers the selected job's test files on every run, applies
+its exclude patterns, and loads all matching files in one Ruby process. New
+test files are included on the next run. An empty match reports an error.
+
 ## File Changes
 
 Plur runs tests for `create` and `modify` events that match a watch rule.
