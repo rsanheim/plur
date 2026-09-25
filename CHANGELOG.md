@@ -2,9 +2,14 @@
 
 ## Unreleased
 
-* Resolve each job's framework once at config load; the resolved jobs map, selection, and runner now share fully-resolved jobs, removing lazy resolution in the runner and duplicate registry lookups (`IsKnown`, `DetectPatterns`, `ResolveFramework` deleted)
-* Split `plur rails` and `plur rake` into separate commands (previously `rake` was an alias of `rails`); each runs its own configured job — `bin/rails` or `bundle exec rake` — once per worker, with dedicated help
-* Add `--formatter=auto|progress|summary` (`-f`, `PLUR_FORMATTER`, or `formatter` in config). `auto` keeps progress markers on a terminal and drops them when stdout is a pipe or file, so CI logs and coding agents see test output and the final results without the marker stream. [#154](https://github.com/rsanheim/plur/pull/154)
+## v0.82.0 - 2026-09-25
+
+* Add `--formatter=auto|progress|summary` (`-f`, `PLUR_FORMATTER`, or `formatter` in config). By default, terminals show progress markers while pipes and files show summary output. [#154](https://github.com/rsanheim/plur/pull/154)
+* Stream RSpec rerun commands and Minitest failure identities as tests fail in summary mode. Keep full failure details and results at the end, and preserve RSpec's scoped rerun selectors across workers.
+* Split `plur rails` and `plur rake` into separate commands, each running its own configured job once per worker. [#158](https://github.com/rsanheim/plur/pull/158)
+* Expand matched directories before distributing tests and preserve RSpec selectors during discovery. [#157](https://github.com/rsanheim/plur/pull/157)
+* Simplify configuration and job framework resolution; move execution and supporting packages under `internal/`. [#150](https://github.com/rsanheim/plur/pull/150), [#151](https://github.com/rsanheim/plur/pull/151), [#157](https://github.com/rsanheim/plur/pull/157), [#158](https://github.com/rsanheim/plur/pull/158)
+* Refresh documentation and CI image publishing. [#159](https://github.com/rsanheim/plur/pull/159), [#160](https://github.com/rsanheim/plur/pull/160), [#161](https://github.com/rsanheim/plur/pull/161)
 
 ## v0.81.1 - 2026-09-12
 * Reuse runtime timing history across linked Git worktrees. [#149](https://github.com/rsanheim/plur/pull/149)

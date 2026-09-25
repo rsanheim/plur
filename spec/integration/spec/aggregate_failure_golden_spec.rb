@@ -19,7 +19,7 @@ RSpec.describe "aggregate failure golden test" do
     result = chdir project_fixture("failing_specs") do
       Backspin.compare(
         reference: ["bundle", "exec", "rspec", "spec/aggregate_failure_spec.rb", "--force-color"],
-        actual: [plur_binary, "--color=always", "spec/aggregate_failure_spec.rb"],
+        actual: [plur_binary, "--formatter=progress", "--color=always", "spec/aggregate_failure_spec.rb"],
         filter: ->(snapshot) { normalize_snapshot(snapshot) }
       )
     end

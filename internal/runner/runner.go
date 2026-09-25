@@ -387,12 +387,15 @@ func GetTestEnvNumber(workerIndex int, config *config.GlobalConfig) string {
 }
 
 // outputAggregator handles all output from workers to avoid lock contention.
-// Summary mode drops the per-example markers and nothing else.
+// Summary mode prints failure identities instead of progress markers.
 func outputAggregator(outputChan <-chan OutputMessage, progress bool, colorOutput bool, traceOutput bool) {
 	for msg := range outputChan {
 		switch msg.Type {
 		case "dot", "failure", "pending", "error_progress":
 			if !progress {
+				if msg.Content != "" {
+					fmt.Fprintln(os.Stdout, msg.Content)
+				}
 				continue
 			}
 		}

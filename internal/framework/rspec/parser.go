@@ -197,6 +197,7 @@ func (p *outputParser) parseStreamExample(msgType string, ex *StreamExample) typ
 		ScopedID:              ex.ScopedID,
 		Status:                ex.Status,
 		Duration:              time.Duration(ex.RunTime * float64(time.Second)),
+		FailureLine:           ex.FailureLine,
 	}
 
 	if msgType == "example_pending" {
@@ -208,21 +209,11 @@ func (p *outputParser) parseStreamExample(msgType string, ex *StreamExample) typ
 
 // FormatFailuresList formats a list of failures with file:line references for re-running
 func (p *outputParser) FormatFailuresList(failures []types.TestCaseNotification) string {
-	if len(failures) == 0 {
-		return ""
-	}
-
-	// Convert to FailureDetail and use existing formatter
-	var details []FailureDetail
+	var output strings.Builder
 	for _, failure := range failures {
-		details = append(details, FailureDetail{
-			Description: failure.FullDescription,
-			FilePath:    failure.FilePath,
-			LineNumber:  failure.LineNumber,
-		})
+		fmt.Fprintln(&output, failure.FailureLine)
 	}
-
-	return FormatFailedExamples(details)
+	return output.String()
 }
 
 // ColorizeSummary applies color to a summary based on success/failure state

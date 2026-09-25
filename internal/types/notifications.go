@@ -31,6 +31,7 @@ type TestCaseNotification struct {
 	LineNumber      int
 	Status          string // Original status from framework
 	Duration        time.Duration
+	FailureLine     string // Framework-formatted identity for live failure output
 
 	// RSpec-specific identifiers (empty for other frameworks)
 	AbsoluteFilePath      string // file_path metadata.absolute_file_path

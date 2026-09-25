@@ -333,8 +333,8 @@ plur
 
 Set `formatter = "auto"`, `"progress"`, or `"summary"` to control progress
 markers during test runs. The default, `auto`, shows markers on a terminal
-and omits them when stdout is piped or redirected. Output from tests and
-final results still print. See [Output Formats](usage.md#output-formats).
+and streams failure identities when stdout is piped or redirected. Output
+from tests and final results still print. See [Output Formats](usage.md#output-formats).
 
 ### Verbosity
 

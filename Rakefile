@@ -52,9 +52,9 @@ end
 
 desc "Install plur globally to $GOBIN"
 task :install do
-  gobin = ENV.fetch("GOBIN") { File.join(`go env GOPATH`.strip, "bin") }
+  final = Plur.config.plur_binary
+  gobin = File.dirname(final)
   FileUtils.mkdir_p(gobin)
-  final = File.join(gobin, "plur")
   temp = File.join(gobin, "plur-new-#{Time.now.to_i}")
 
   sh %(goreleaser build --snapshot --single-target --clean -o #{temp} > /dev/null 2>&1)
@@ -89,7 +89,7 @@ namespace :test do
   desc "Run plur against default-ruby fixture project"
   task default_ruby: :install do
     puts "[test:default_ruby] Running default-ruby specs with plur..."
-    sh "plur", "-C", Plur.config.default_ruby_dir.to_s, "-n", PLUR_CORES.to_s, err: "/dev/null"
+    sh Plur.config.plur_binary, "-C", Plur.config.default_ruby_dir.to_s, "-n", PLUR_CORES.to_s, err: "/dev/null"
   end
 
   desc "Run default-rails specs using plur"
@@ -98,7 +98,7 @@ namespace :test do
     rails_dir = Plur.config.default_rails_dir.to_s
     Bundler.with_unbundled_env do
       Dir.chdir(rails_dir) { sh "bundle", "install", "--quiet" }
-      sh "plur", "-C", rails_dir, "-n", PLUR_CORES.to_s, err: "/dev/null"
+      sh Plur.config.plur_binary, "-C", rails_dir, "-n", PLUR_CORES.to_s, err: "/dev/null"
     end
   end
 
@@ -162,7 +162,7 @@ end
 desc "Run all Ruby specs"
 task test: :install do
   puts "[test] Running all ruby specs with plur..."
-  sh "plur", "-n", PLUR_CORES.to_s
+  sh Plur.config.plur_binary, "-n", PLUR_CORES.to_s
 end
 
 desc "Run all linting"

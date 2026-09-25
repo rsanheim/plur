@@ -1,7 +1,7 @@
 require "spec_helper"
 
 # --formatter=auto|progress|summary. auto is summary over a pipe and progress on
-# a terminal; summary drops only the per-example markers and their newline.
+# a terminal; summary streams failure identities without progress markers.
 RSpec.describe "Formatter" do
   # A test printing a bare dot on its own line would count too; fixtures here print words.
   def marker_lines(out)
@@ -116,7 +116,7 @@ RSpec.describe "Formatter" do
       result = run_failing("--formatter=summary")
 
       expect(marker_lines(result.out)).to be_empty
-      expect(result.out).to start_with("\nPending:")
+      expect(result.out).to start_with("rspec ./spec/mixed_results_spec.rb:7 #")
       expect(result.out).to include("8 examples, 2 failures, 3 pending")
       expect(result.exit_status).to eq(1)
     end
