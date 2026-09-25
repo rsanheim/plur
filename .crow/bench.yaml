@@ -14,11 +14,8 @@ when:
 labels:
   platform: linux/amd64
 
-depends_on:
-  - ci-images
-
 variables:
-  - &plur_image "localhost/plur-ci-toolchain:current"
+  - &plur_image "registry.shark-tet.ts.net/plur/ci:2026-09-25-0e8d48b5"
 
 steps:
   - name: bench
@@ -37,7 +34,7 @@ steps:
       # dedicated benchmark volume: targets + results live here, not on /cache
       BENCH_ROOT: /bench/plur
       BENCH_HOST: minibox
-      BENCH_CONTAINER_IMAGE: "localhost/plur-ci-toolchain:current"
+      BENCH_CONTAINER_IMAGE: *plur_image
       # renovate: datasource=github-releases depName=sharkdp/hyperfine
       HYPERFINE_VERSION: 1.19.0
     commands:

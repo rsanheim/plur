@@ -1,3 +1,10 @@
+# Build Plur's CI image with script/build in the official Buildah image and
+# publish it to Zot under one immutable YYYY-MM-DD-<shortsha> tag. Publication
+# is automatic: a pull request or default-branch push that changes an image
+# input publishes that revision's tag. Publishing is not validation; ci and
+# bench prove an image once a commit adopts its tag, and nothing depends on
+# this workflow.
+# Requires the repo Security (privileged) flag.
 labels:
   platform: linux/amd64
 
@@ -5,40 +12,20 @@ when:
   - event: pull_request
   - event: push
     branch: ${CI_REPO_DEFAULT_BRANCH}
-  - event: manual
-  - event: cron
-    cron: nightly-bench
 
 steps:
-  - name: build-ci-images
-    image: localhost/shared-ci-image-builder:v1
+  - name: publish
+    image: quay.io/buildah/stable:v1.43.4-immutable
     privileged: true
-    volumes:
-      - /run/user/1000/podman/podman.sock:/run/podman/podman.sock
-    settings:
-      rebuild_key: '1'
     when:
-      - event: manual
-      - event: pull_request
-        evaluate: >-
-          CI_REPO == "rsanheim/plur" &&
-          CI_PIPELINE_AUTHOR == "rsanheim"
-        path:
+      - path:
           include:
             - .mise.toml
             - ci/images/*.Containerfile
+            - script/build
             - .crow/ci-images.yaml
           on_empty: false
-      - event: push
-        branch: ${CI_REPO_DEFAULT_BRANCH}
-        path:
-          include:
-            - .mise.toml
-            - ci/images/*.Containerfile
-            - .crow/ci-images.yaml
-          on_empty: false
-
-  - name: no-op
-    image: docker.io/library/busybox:1.37.0
     commands:
-      - 'echo "no CI image change; base image already current"'
+      - |-
+        tag="$(date -u +%Y-%m-%d)-$(git rev-parse --short=8 HEAD)"
+        script/build "$tag" --push

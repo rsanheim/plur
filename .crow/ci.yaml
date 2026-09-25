@@ -2,9 +2,13 @@
 # and the Ruby suite + fixtures driven by `bin/rake` (default task =
 # lint:all -> build -> test:all).
 #
-# Uses Plur's mise-driven toolchain image. It bakes the versions from
-# `.mise.toml`, including Go 1.27, GoReleaser, shellcheck, govulncheck, and
-# benchstat, while this workflow handles checkout-specific dependencies.
+# Uses Plur's mise-driven toolchain image, `plur/ci` in Zot, built from
+# `ci/images/plur-ci-toolchain.Containerfile` and published by ci-images.yaml.
+# It bakes the versions from `.mise.toml`, including Go 1.27, GoReleaser,
+# shellcheck, govulncheck, and benchstat, while this workflow handles
+# checkout-specific dependencies. The image is pinned to one immutable tag
+# here and in bench.yaml; adopting a newer image is a commit that changes
+# both pins.
 #
 # CircleCI stays the source of truth for the open-source cloud builds; this is
 # the faster self-hosted mirror.
@@ -17,11 +21,8 @@ when:
 labels:
   platform: linux/amd64
 
-depends_on:
-  - ci-images
-
 variables:
-  - &plur_image 'localhost/plur-ci-toolchain:current'
+  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-09-25-0e8d48b5'
 
 steps:
   # Docs-only changes skip the heavy step below, so the strict docs build runs

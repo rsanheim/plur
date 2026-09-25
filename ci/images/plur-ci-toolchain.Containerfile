@@ -1,6 +1,3 @@
-# crow-image: localhost/plur-ci-toolchain:current
-# crow-context: .
-
 FROM docker.io/library/debian:trixie-slim
 
 ARG USERNAME=plur

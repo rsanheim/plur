@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Build the Containerfile below as a linux/amd64 + linux/arm64 OCI image with
+# buildah, with layer cache in Zot's mutable buildcache/ namespace; --push
+# publishes the manifest list and both images, or skips a tag already in Zot.
+# Copy to another repo by changing the three constants. The revision label
+# reflects HEAD, so publish from a clean checkout. On macOS, run it inside the Linux
+# machine: orb script/build TAG [--push]
+#
+# TAG is the one immutable tag, YYYY-MM-DD-<shortsha> of the revision built:
+#
+#   tag="$(date -u +%Y-%m-%d)-$(git rev-parse --short=8 HEAD)"
+#   script/build "$tag"          # build into local buildah storage
+#   script/build "$tag" --push   # build, then publish
+set -euo pipefail
+
+REGISTRY=registry.shark-tet.ts.net
+REPOSITORY=plur/ci
+CONTAINERFILE=ci/images/plur-ci-toolchain.Containerfile
+
+usage="usage: script/build TAG [--push]"
+[[ $# -eq 1 || ( $# -eq 2 && $2 == --push ) ]] || { echo "$usage" >&2; exit 2; }
+tag=$1
+push=${2:-}
+[[ $tag =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] || { echo "invalid image tag: $tag" >&2; exit 2; }
+
+cd "$(dirname "$0")/.."
+image="$REGISTRY/$REPOSITORY:$tag"
+cache="$REGISTRY/buildcache/$REPOSITORY"
+revision=$(git rev-parse HEAD)
+
+# Tags are write-once, so a rerun for an already-published tag is a no-op.
+if [[ $push == --push ]] && curl -fs -o /dev/null -I \
+  -H 'Accept: application/vnd.oci.image.index.v1+json' \
+  "https://$REGISTRY/v2/$REPOSITORY/manifests/$tag"; then
+  echo "skipped $image: already published"; exit 0
+fi
+command -v buildah >/dev/null || { echo "buildah not found on PATH" >&2; exit 1; }
+
+# Start from an empty manifest list so a rerun cannot accumulate stale images.
+if buildah manifest exists "$image"; then buildah manifest rm "$image"; fi
+buildah build --format oci --layers --jobs 2 --cache-from "$cache" --cache-to "$cache" \
+  --platform linux/amd64,linux/arm64 --manifest "$image" \
+  --label "org.opencontainers.image.revision=$revision" --file "$CONTAINERFILE" .
+echo "built $image (local buildah storage)"
+
+[[ $push == --push ]] || exit 0
+buildah manifest push --all --format oci "$image" "docker://$image"
+echo "published $image"
