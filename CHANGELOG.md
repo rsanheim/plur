@@ -6,8 +6,6 @@
 
 * Add `--formatter=auto|progress|summary` (`-f`, `PLUR_FORMATTER`, or `formatter` in config). By default, terminals show progress markers while pipes and files show summary output. [#154](https://github.com/rsanheim/plur/pull/154)
 * Stream RSpec rerun commands and Minitest failure identities as tests fail in summary mode. Keep full failure details and results at the end, and preserve RSpec's scoped rerun selectors across workers.
-* Fix watch reload and shutdown hanging when a job ignores SIGINT: reload, exit, SIGTERM, timeout, and non-terminal SIGINT force-stop remaining jobs after 500ms.
-* Fix Minitest watch run-all: Enter discovers all matching test files, applies the job's excludes, includes newly added files, and reports an empty suite. Batched file changes load every target in the Ruby process.
 * Split `plur rails` and `plur rake` into separate commands, each running its own configured job once per worker. [#158](https://github.com/rsanheim/plur/pull/158)
 * Expand matched directories before distributing tests and preserve RSpec selectors during discovery. [#157](https://github.com/rsanheim/plur/pull/157)
 * Simplify configuration and job framework resolution; move execution and supporting packages under `internal/`. [#150](https://github.com/rsanheim/plur/pull/150), [#151](https://github.com/rsanheim/plur/pull/151), [#157](https://github.com/rsanheim/plur/pull/157), [#158](https://github.com/rsanheim/plur/pull/158)

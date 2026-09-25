@@ -66,55 +66,6 @@ RSpec.describe "plur watch process lifecycle" do
     end
   end
 
-  ["SIGHUP", "reload"].each do |trigger|
-    it "bounds #{trigger} reload when the active job ignores SIGINT" do
-      with_running_job_project(interrupt: "") do |project|
-        entered = false
-        reload_triggered = false
-
-        result = capture_plur_watch_process(dir: project, timeout: 10) do |process|
-          if !entered && watch_ready?(process.err, process.ready_state, ready_dirs: :detected)
-            process.stdin.puts("")
-            entered = true
-          elsif entered && !reload_triggered && process_pid(project)
-            (trigger == "SIGHUP") ? Process.kill("HUP", process.pid) : process.stdin.puts("reload")
-            reload_triggered = true
-          elsif reload_triggered && process.err.scan("plur watch starting!").count >= 2
-            :terminate
-          end
-        end
-
-        expect(result.err.scan("plur watch starting!").count).to eq(2), result.out + result.err
-        expect(result.out).to include("Shutdown grace period elapsed")
-        expect_process_gone(project)
-      end
-    end
-  end
-
-  ["exit", "SIGTERM", "timeout"].each do |trigger|
-    it "bounds #{trigger} shutdown when the active job ignores SIGINT" do
-      with_running_job_project(interrupt: "") do |project|
-        entered = false
-        stopping = false
-
-        result = capture_plur_watch_process(dir: project, timeout: 3) do |process|
-          if !entered && watch_ready?(process.err, process.ready_state, ready_dirs: :detected)
-            process.stdin.puts("")
-            entered = true
-          elsif entered && !stopping && process_pid(project)
-            process.stdin.puts("exit") if trigger == "exit"
-            Process.kill("TERM", process.pid) if trigger == "SIGTERM"
-            stopping = true
-          end
-        end
-
-        expect(result).to be_success
-        expect(result.out).to include("Shutdown grace period elapsed")
-        expect_process_gone(project)
-      end
-    end
-  end
-
   def with_running_job_project(interrupt: "exit 130")
     with_temp_watch_project do |project|
       script = <<~RUBY.gsub("\n", "; ")

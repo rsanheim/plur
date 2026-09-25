@@ -2,8 +2,6 @@ package framework
 
 import (
 	"fmt"
-	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/rsanheim/plur/internal/config"
@@ -31,7 +29,7 @@ func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []
 
 	switch fw.TargetMode {
 	case TargetModeRubyRequire:
-		args = append(args, "-e", rubyRequireScript(files)+"; "+minitestPluginEpilogue)
+		args = appendMinitestRequireArgs(args, files)
 		if len(extraArgs) > 0 {
 			// ruby keeps parsing its own options after "-e script"; "--"
 			// ends that so the extra args reach ARGV for minitest.
@@ -48,7 +46,7 @@ func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []
 	return args, nil
 }
 
-// Minitest workers load the target files via an -e script rather
+// appendMinitestRequireArgs loads the target files via an -e script rather
 // than script arguments, so the script can end with the plugin epilogue:
 // minitest 5.x discovers plur's plugin automatically inside Minitest.run,
 // but minitest 6 made plugin loading opt-in, so the worker asks for it via
@@ -62,20 +60,12 @@ func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []
 // convention and doubles as plur's escape hatch.
 const minitestPluginEpilogue = `Minitest.load "plur" if defined?(Minitest) && Minitest.respond_to?(:load) && !ENV["MT_NO_PLUGINS"]`
 
-// BuildWatchArgs preserves native framework output while loading every Ruby target.
-func (j Job) BuildWatchArgs(files []string) []string {
-	args := slices.Clone(j.Cmd)
-	if j.Framework.TargetMode == TargetModeRubyRequire && len(files) > 0 {
-		return append(args, "-e", rubyRequireScript(files))
-	}
-	return append(args, files...)
-}
-
-func rubyRequireScript(files []string) string {
+func appendMinitestRequireArgs(args []string, files []string) []string {
 	requires := make([]string, 0, len(files))
 	for _, file := range files {
-		requires = append(requires, strings.ReplaceAll(strconv.Quote(file), "#", `\#`))
+		requires = append(requires, `"`+file+`"`)
 	}
 
-	return `[` + strings.Join(requires, `, `) + `].each { |f| require File.expand_path(f) }`
+	script := `[` + strings.Join(requires, `, `) + `].each { |f| require File.expand_path(f) }; ` + minitestPluginEpilogue
+	return append(args, "-e", script)
 }

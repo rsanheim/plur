@@ -10,8 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rsanheim/plur/internal/fileset"
-	"github.com/rsanheim/plur/internal/framework"
 	"github.com/rsanheim/plur/internal/logger"
 )
 
@@ -74,7 +72,7 @@ func (c *Controller) Run() error {
 	batchChan := make(chan TargetSet, 16)
 	doneChan := make(chan runResult, 16)
 	interruptAlreadyDelivered := false
-	forceAfter := 500 * time.Millisecond
+	var forceAfter time.Duration
 	defer func() {
 		c.stopRuns(scheduler, doneChan, !interruptAlreadyDelivered, forceAfter)
 	}()
@@ -110,11 +108,7 @@ func (c *Controller) Run() error {
 			switch input {
 			case "":
 				fmt.Fprintln(c.cfg.Stdout, "Running all tests...")
-				run, err := c.runAllJob()
-				if err != nil {
-					c.reportRunError(c.cfg.RunAllJob, err)
-					c.showPrompt()
-				} else if !c.startRun(scheduler, doneChan, run) {
+				if !c.startRun(scheduler, doneChan, c.cfg.RunAllJob) {
 					c.showPrompt()
 				}
 			case "help":
@@ -190,12 +184,12 @@ func (c *Controller) Run() error {
 			switch sig {
 			case syscall.SIGINT:
 				if c.cfg.StdinIsTTY {
-					forceAfter = 0
 					interruptAlreadyDelivered = true
 					fmt.Fprintln(c.cfg.Stdout)
 					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT. Pausing new jobs and waiting for active jobs.")
 					fmt.Fprintln(c.cfg.Stdout, "Press Ctrl-C again to terminate.")
 				} else {
+					forceAfter = 500 * time.Millisecond
 					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT, stopping active jobs...")
 				}
 				return nil
@@ -214,21 +208,6 @@ func (c *Controller) Run() error {
 			fmt.Fprint(c.cfg.Stdout, "[plur] > ")
 		}
 	}
-}
-
-func (c *Controller) runAllJob() (JobRun, error) {
-	run := c.cfg.RunAllJob
-	if run.Job.Framework.TargetMode == framework.TargetModeRubyRequire {
-		files, err := fileset.Discover(run.Job, nil, run.Job.ExcludePatterns)
-		if err != nil {
-			return run, err
-		}
-		if len(files) == 0 {
-			return run, fmt.Errorf("no test files found for job %q", run.Job.Name)
-		}
-		run.Targets = NewTargetSet(files...)
-	}
-	return run, nil
 }
 
 func (c *Controller) startRun(scheduler *scheduler, doneChan chan<- runResult, run JobRun) bool {
@@ -341,7 +320,7 @@ func (c *Controller) printSkips(skipped *JobRun) {
 }
 
 func (c *Controller) attemptReload(scheduler *scheduler, doneChan <-chan runResult) error {
-	c.stopRuns(scheduler, doneChan, true, 500*time.Millisecond)
+	c.stopRuns(scheduler, doneChan, true, 0)
 	err := c.cfg.Reload()
 	if err != nil {
 		logger.Logger.Error("Failed to reload", "error", err)
