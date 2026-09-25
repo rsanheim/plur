@@ -7,7 +7,7 @@
 # It bakes the versions from `.mise.toml`, including Go 1.27, GoReleaser,
 # shellcheck, govulncheck, and benchstat, while this workflow handles
 # checkout-specific dependencies. The image is pinned to one immutable tag
-# here and in bench.yaml; moving to a newer image is a commit that changes
+# here and in bench.yaml; adopting a newer image is a commit that changes
 # both pins.
 #
 # CircleCI stays the source of truth for the open-source cloud builds; this is

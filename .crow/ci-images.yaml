@@ -1,27 +1,24 @@
-# Build Plur's CI image with script/build in the official Buildah image,
-# publish it to Zot under one immutable YYYY-MM-DD-<shortsha> tag, and verify
-# that exact tag. Consumers pin a published tag, so nothing depends on this
-# workflow; promotion is a commit that moves those pins. It publishes on manual
-# pipelines and on default-branch pushes that change an image input, never on
-# pull requests (that would mint an image per pushed commit).
+# Build Plur's CI image with script/build in the official Buildah image and
+# publish it to Zot under one immutable YYYY-MM-DD-<shortsha> tag. Publication
+# is automatic: a pull request or default-branch push that changes an image
+# input publishes that revision's tag. Publishing is not validation; ci and
+# bench prove an image once a commit adopts its tag, and nothing depends on
+# this workflow.
 # Requires the repo Security (privileged) flag.
 labels:
   platform: linux/amd64
 
 when:
+  - event: pull_request
   - event: push
     branch: ${CI_REPO_DEFAULT_BRANCH}
-  - event: manual
 
 steps:
   - name: publish
     image: quay.io/buildah/stable:v1.43.4-immutable
     privileged: true
     when:
-      - event: manual
-      - event: push
-        branch: ${CI_REPO_DEFAULT_BRANCH}
-        path:
+      - path:
           include:
             - .mise.toml
             - ci/images/*.Containerfile
@@ -29,15 +26,6 @@ steps:
             - .crow/ci-images.yaml
           on_empty: false
     commands:
-      # Publish, then read that exact tag back from Zot over HTTPS and fail
-      # unless its index lists both platforms.
       - |-
         tag="$(date -u +%Y-%m-%d)-$(git rev-parse --short=8 HEAD)"
         script/build "$tag" --push
-        index=$(curl -fsS -H 'Accept: application/vnd.oci.image.index.v1+json' \
-          "https://registry.shark-tet.ts.net/v2/plur/ci/manifests/$tag")
-        echo "$index"
-        for arch in amd64 arm64; do
-          echo "$index" | grep -qE "\"architecture\" *: *\"$arch\"" || { echo "published index is missing linux/$arch" >&2; exit 1; }
-        done
-        echo "published and verified plur/ci:$tag (linux/amd64, linux/arm64)"
