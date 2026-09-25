@@ -14,9 +14,6 @@ when:
 labels:
   platform: linux/amd64
 
-depends_on:
-  - ci-images
-
 variables:
   - &plur_image "localhost/plur-ci-toolchain:current"
 

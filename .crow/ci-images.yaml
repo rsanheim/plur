@@ -1,44 +1,43 @@
+# Build Plur's CI image with script/build in the official Buildah image,
+# publish it to Zot under one immutable YYYY-MM-DD-<shortsha> tag, and verify
+# that exact tag. Consumers pin a published tag, so nothing depends on this
+# workflow; promotion is a commit that moves those pins. It publishes on manual
+# pipelines and on default-branch pushes that change an image input, never on
+# pull requests (that would mint an image per pushed commit).
+# Requires the repo Security (privileged) flag.
 labels:
   platform: linux/amd64
 
 when:
-  - event: pull_request
   - event: push
     branch: ${CI_REPO_DEFAULT_BRANCH}
   - event: manual
-  - event: cron
-    cron: nightly-bench
 
 steps:
-  - name: build-ci-images
-    image: localhost/shared-ci-image-builder:v1
+  - name: publish
+    image: quay.io/buildah/stable:v1.43.4-immutable
     privileged: true
-    volumes:
-      - /run/user/1000/podman/podman.sock:/run/podman/podman.sock
-    settings:
-      rebuild_key: '1'
     when:
       - event: manual
-      - event: pull_request
-        evaluate: >-
-          CI_REPO == "rsanheim/plur" &&
-          CI_PIPELINE_AUTHOR == "rsanheim"
-        path:
-          include:
-            - .mise.toml
-            - ci/images/*.Containerfile
-            - .crow/ci-images.yaml
-          on_empty: false
       - event: push
         branch: ${CI_REPO_DEFAULT_BRANCH}
         path:
           include:
             - .mise.toml
             - ci/images/*.Containerfile
+            - script/build
             - .crow/ci-images.yaml
           on_empty: false
-
-  - name: no-op
-    image: docker.io/library/busybox:1.37.0
     commands:
-      - 'echo "no CI image change; base image already current"'
+      # Publish, then read that exact tag back from Zot over HTTPS and fail
+      # unless its index lists both platforms.
+      - |-
+        tag="$(date -u +%Y-%m-%d)-$(git rev-parse --short=8 HEAD)"
+        script/build "$tag" --push
+        index=$(curl -fsS -H 'Accept: application/vnd.oci.image.index.v1+json' \
+          "https://registry.shark-tet.ts.net/v2/plur/ci/manifests/$tag")
+        echo "$index"
+        for arch in amd64 arm64; do
+          echo "$index" | grep -qE "\"architecture\" *: *\"$arch\"" || { echo "published index is missing linux/$arch" >&2; exit 1; }
+        done
+        echo "published and verified plur/ci:$tag (linux/amd64, linux/arm64)"
