@@ -22,8 +22,8 @@ plur --dry-run
 plur -C path/to/project
 ```
 
-Explicit path inputs are normalized before discovery and execution. For example,
-`./spec/models/user_spec.rb` is run as `spec/models/user_spec.rb`.
+Plur normalizes paths before finding and running tests. For example,
+`./spec/models/user_spec.rb` becomes `spec/models/user_spec.rb`.
 
 ### Selecting Test Framework
 
@@ -79,17 +79,14 @@ and take precedence. These commands do not require a completion report.
 
 ### Minitest Integration Notes
 
-Plur integrates with Minitest as a standard minitest plugin: a
-`minitest/plur_plugin.rb` file (written to `$PLUR_HOME/config/ruby/`) is added
-to ruby's load path, where minitest's own plugin discovery finds it. The
-plugin replaces minitest's progress and summary reporters with one that
-reports structured results to plur; test-written stdout streams through
-untouched. On minitest 6, where plugin loading is opt-in, plur's worker
-script calls `Minitest.load_plugins` itself.
+Plur installs `minitest/plur_plugin.rb` under `$PLUR_HOME/config/ruby/` and
+adds that directory to Ruby's load path. The plugin sends structured results
+to Plur in place of Minitest's progress and summary output. Output from tests
+still streams live. On Minitest 6, the worker calls `Minitest.load "plur"`
+to load the plugin.
 
-Setting `MT_NO_PLUGINS=1` (minitest's own plugin opt-out) disables plur's
-plugin too; plur then reports zero results while the suite's native output
-streams through, with exit codes still reflecting the suite result.
+Setting `MT_NO_PLUGINS=1` disables the plugin. Plur then reports zero results
+and streams Minitest's native output. Exit codes still reflect the suite result.
 
 ### Excluding Tests From Discovery
 
@@ -109,8 +106,8 @@ plur --exclude-pattern 'spec/system/**/*_spec.rb' \
      --exclude-pattern 'spec/legacy/**/*_spec.rb'
 ```
 
-Excludes can also be configured per-job in `.plur.toml`. CLI excludes are
-*additive on top of* configured excludes — they do not replace them. See
+Set exclusions for each job in `.plur.toml`. Each CLI exclusion adds to
+those already configured. See
 [Configuration](configuration.md) for details.
 
 ### Watch Mode
@@ -157,7 +154,6 @@ plur rake app:my_task                         # Run the same task with bundle ex
 plur rake app:my_task -n 1 -- --my-flag       # Pass Rake-specific flags after --
 ```
 
-All `plur rake` and `plur rails` commands run once per worker, with `PARALLEL_TEST_GROUPS` and `TEST_ENV_NUMBER` set.
 Use `--dry-run` to print commands without running them:
 
 ```text
@@ -197,6 +193,7 @@ Arguments are passed as-is and are not treated as test file patterns. Put Plur f
 ### Default Behavior
 
 Plur uses 4 workers by default:
+
 - Override with `-n` or `--workers`
 - Respects `PLUR_WORKERS` (or the legacy `PARALLEL_TEST_PROCESSORS`) if set
 - Project config can set a different default
@@ -253,12 +250,9 @@ plur doctor
 
 ### Performance Tuning
 
-1. **Start with the default**: Try `4` workers first
-2. **Measure and adjust**: Experiment with different worker counts
-3. **Consider test characteristics**:
-- Many small tests: More workers
-- Few large tests: Fewer workers
-- I/O heavy tests: More workers than CPU cores
+Start with four workers, then measure runs with different worker counts. More
+workers can help suites with many small tests or time spent waiting on I/O.
+Suites with only a few large test files may benefit less.
 
 ## Runtime Tracking
 
@@ -294,8 +288,7 @@ How it works:
   `mtime_unix_nano`/`size_bytes` still match the source file, plur considers
   the example data fresh enough for split planning.
 - A file is split only if its historical `runtime_seconds` exceeds the
-  per-worker budget (`total_runtime / worker_count`). This is the simple
-  experimental rule — no multipliers, no floors.
+  per-worker budget (`total_runtime / worker_count`).
 - Split chunks are built by bin-packing the file's cached per-example
   runtimes using longest-processing-time greedy: each example lands in
   the bin with the smallest current sum, so a single heavy example ends
@@ -320,8 +313,7 @@ Known pitfalls:
 - Splitting is cache-driven: a cold run (no runtime cache entries yet) falls back
   to file-level grouping. The next default run populates the cache.
 
-Splitting is intentionally experimental. The semantics may change as
-real-world data is collected; do not rely on stable split behavior yet.
+Splitting is experimental, and its behavior may change between releases.
 
 ## Next Steps
 

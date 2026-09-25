@@ -1,4 +1,6 @@
-We welcome contributions! This guide will help you get started.
+# Contributing
+
+Build Plur locally and run the checks before submitting a pull request.
 
 ## Development Setup
 
@@ -6,6 +8,9 @@ We welcome contributions! This guide will help you get started.
 # Clone the repository
 git clone https://github.com/rsanheim/plur.git
 cd plur
+
+# Install the toolchain pinned in .mise.toml
+mise install --yes
 
 # Install dependencies
 bundle install

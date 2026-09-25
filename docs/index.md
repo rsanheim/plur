@@ -1,4 +1,6 @@
-Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
+# Plur
+
+Plur runs Ruby tests in parallel and reruns them when files change.
 
 ## Getting Started
 
@@ -15,6 +17,7 @@ Welcome to Plur! Plur is a fast, friendly test runner & watcher for Ruby.
 
 Technical implementation details:
 
+* [Jobs and Frameworks](architecture/runner-jobs-framework.md) - Job resolution and command construction
 * [Test Processing Flow](architecture/test-processing-flow.md) - How tests are distributed
 * [Watch Architecture](architecture/plur-watch-architecture.md) - Watch mode internals
 
@@ -27,5 +30,4 @@ Guides for contributors:
 
 ## Reference
 
-* [Overview](overview/index.md) - Project overview
 * [Benchmarks](benchmarks/oss-benchmarks.md) - Performance benchmarks
