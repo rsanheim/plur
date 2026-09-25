@@ -14,6 +14,12 @@ module Plur
       @default_rails_dir = @fixtures_dir.join("default-rails")
     end
 
+    def plur_binary
+      gobin = `go env GOBIN`.strip
+      gobin = File.join(`go env GOPATH`.strip, "bin") if gobin.empty?
+      File.join(gobin, "plur")
+    end
+
     # lock things down a bit for CI; PLUR_WORKERS lets a CI host with more
     # cores (e.g. crow on minibox) raise the cap without a code change
     def plur_cores
