@@ -8,6 +8,7 @@ RSpec.describe "Live failure output" do
       if framework == "minitest"
         fixture = project_fixture!("minitest-outcomes")
         FileUtils.cp([fixture.join("Gemfile"), fixture.join("Gemfile.lock")], project)
+        FileUtils.cp_r(fixture.join(".bundle"), project) if fixture.join(".bundle").exist?
         project.join("test").mkpath
         project.join("test/failure_test.rb").write(<<~TEST)
           require "minitest/autorun"
@@ -51,17 +52,27 @@ RSpec.describe "Live failure output" do
     end
   end
 
+  def with_framework_environment(framework, &block)
+    if framework == "minitest"
+      Bundler.with_unbundled_env(&block)
+    else
+      yield
+    end
+  end
+
   ["rspec", "minitest"].each do |framework|
     it "streams #{framework} failures through a pipe before another worker finishes" do
       with_live_project(framework) do |project|
-        Bundler.with_unbundled_env do
+        with_framework_environment(framework) do
           Open3.popen3(plur_binary, "--use", framework, "-n", "2", "--color=never", chdir: project) do |stdin, stdout, stderr, process|
             stdin.close
             live = +""
             begin
               Timeout.timeout(10) do
                 loop do
-                  live << stdout.readline
+                  line = stdout.gets
+                  raise "Workers exited before live failures:\n#{live}\n#{stderr.read}" unless line
+                  live << line
                   break if live.lines.grep(/\A(?:rspec |LiveFailureTest#)/).size == 2
                 end
               end

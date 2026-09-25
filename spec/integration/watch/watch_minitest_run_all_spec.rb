@@ -8,6 +8,7 @@ RSpec.describe "plur watch minitest run all" do
       project = Pathname.new(dir)
       fixture = project_fixture!("minitest-outcomes")
       FileUtils.cp([fixture.join("Gemfile"), fixture.join("Gemfile.lock")], project)
+      FileUtils.cp_r(fixture.join(".bundle"), project) if fixture.join(".bundle").exist?
       project.join("test").mkpath
       %w[First Second Excluded].each do |name|
         project.join("test/#{name.downcase}_test.rb").write(<<~TEST)
@@ -61,7 +62,7 @@ RSpec.describe "plur watch minitest run all" do
       end
 
       expect(result).to be_success
-      expect(result.out).to include("2 runs,", "3 runs,", "0 failures, 0 errors")
+      expect(result.out).to include("2 runs,", "3 runs,", "0 failures, 0 errors"), result.out + result.err
       expect(result.out).not_to include("ExcludedTest#", "PLUR_JSON:")
       expect(stage).to eq(3), result.out + result.err
     end
