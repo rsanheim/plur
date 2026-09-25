@@ -21,11 +21,12 @@ type streamRow struct {
 	Type string `json:"type"`
 
 	// test_result fields -> TestCaseNotification
-	Status     string  `json:"status"` // "passed", "failed", "error", "skipped"
-	ID         string  `json:"id"`     // Klass#test_name -> TestID
-	FilePath   string  `json:"file_path"`
-	LineNumber int     `json:"line_number"`
-	RunTime    float64 `json:"run_time"` // seconds -> Duration
+	Status      string  `json:"status"` // "passed", "failed", "error", "skipped"
+	ID          string  `json:"id"`     // Klass#test_name -> TestID
+	FilePath    string  `json:"file_path"`
+	LineNumber  int     `json:"line_number"`
+	RunTime     float64 `json:"run_time"` // seconds -> Duration
+	FailureLine string  `json:"failure_line"`
 
 	// dump_failures field -> FormattedFailuresNotification
 	FormattedOutput string `json:"formatted_output"`
@@ -129,6 +130,7 @@ func testNotification(row streamRow) types.TestCaseNotification {
 		LineNumber:      row.LineNumber,
 		Status:          row.Status,
 		Duration:        time.Duration(row.RunTime * float64(time.Second)),
+		FailureLine:     row.FailureLine,
 	}
 	if row.FilePath != "" {
 		notification.Location = fmt.Sprintf("%s:%d", row.FilePath, row.LineNumber)

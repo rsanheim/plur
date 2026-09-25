@@ -105,24 +105,14 @@ func TestOutputParser_ParseLine_ExamplePassedFallsBackToLocationWhenNoID(t *test
 	assert.Equal(t, "spec/legacy_spec.rb", tc.FilePath)
 }
 
-func TestOutputParser_FormatFailuresList(t *testing.T) {
+func TestOutputParser_PreservesNativeFailureIdentity(t *testing.T) {
 	parser := &outputParser{}
-	failures := []types.TestCaseNotification{
-		{
-			FullDescription: "Calculator#add returns the sum",
-			FilePath:        "spec/calculator_spec.rb",
-			LineNumber:      10,
-		},
-		{
-			FullDescription: "Calculator#subtract returns the difference",
-			FilePath:        "spec/calculator_spec.rb",
-			LineNumber:      20,
-		},
-	}
-
-	expected := `rspec spec/calculator_spec.rb:10 # Calculator#add returns the sum
-rspec spec/calculator_spec.rb:20 # Calculator#subtract returns the difference
-`
-
-	assert.Equal(t, expected, parser.FormatFailuresList(failures))
+	line := `PLUR_JSON:{"type":"example_failed","example":{"file_path":"./spec/generated_spec.rb","line_number":10,"failure_line":"rspec ./spec/generated_spec.rb[1:2] # generated example"}}`
+	notifications, consumed := parser.ParseLine(line)
+	require.True(t, consumed)
+	require.Len(t, notifications, 1)
+	failure, ok := notifications[0].(types.TestCaseNotification)
+	require.True(t, ok)
+	assert.Equal(t, "rspec ./spec/generated_spec.rb[1:2] # generated example", failure.FailureLine)
+	assert.Equal(t, failure.FailureLine+"\n", parser.FormatFailuresList([]types.TestCaseNotification{failure}))
 }

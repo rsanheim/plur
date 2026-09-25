@@ -42,6 +42,7 @@ module Plur
         id: "#{class_name_of(result)}##{result.name}",
         file_path: file,
         line_number: line,
+        failure_line: (result.location unless result.passed? || result.skipped?),
         run_time: result.time
       )
     end

@@ -21,7 +21,7 @@ RSpec.describe "pending specs output" do
       result = chdir project_fixture("failing_specs") do
         Backspin.compare(
           reference: ["bundle", "exec", "rspec", "spec/mixed_results_spec.rb", "--force-color"],
-          actual: [plur_binary, "--color=always", "spec/mixed_results_spec.rb"],
+          actual: [plur_binary, "--formatter=progress", "--color=always", "spec/mixed_results_spec.rb"],
           filter: ->(snapshot) { normalize_pending_output_snapshot(snapshot) }
         )
       end

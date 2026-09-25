@@ -37,6 +37,7 @@ type StreamExample struct {
 	Status                string  `json:"status"`
 	RunTime               float64 `json:"run_time"`
 	PendingMessage        string  `json:"pending_message,omitempty"`
+	FailureLine           string  `json:"failure_line,omitempty"`
 }
 
 // LoadSummary represents the load_summary message's summary field

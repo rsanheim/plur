@@ -77,9 +77,12 @@ module Plur
     end
 
     def example_failed(notification)
+      @failure_summary ||= RSpec::Core::Notifications::SummaryNotification.new
+      @failure_summary.failed_examples = [notification.example]
+      failure_line = @failure_summary.colorized_rerun_commands.delete_prefix("\nFailed examples:\n\n")
       output_row(
         type: :example_failed,
-        example: example_to_json(notification.example)
+        example: example_to_json(notification.example).merge(failure_line: failure_line)
       )
     end
 

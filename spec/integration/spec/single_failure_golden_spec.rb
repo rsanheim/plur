@@ -13,7 +13,7 @@ RSpec.describe "single failure golden test" do
     result = chdir project_fixture("failing_specs") do
       Backspin.compare(
         reference: ["bundle", "exec", "rspec", "spec/single_failure_spec.rb", "--force-color"],
-        actual: [plur_binary, "--color=always", "spec/single_failure_spec.rb"],
+        actual: [plur_binary, "--formatter=progress", "--color=always", "spec/single_failure_spec.rb"],
         filter: ->(snapshot) { normalize_single_failure_snapshot(snapshot) }
       )
     end

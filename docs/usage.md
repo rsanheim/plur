@@ -216,7 +216,7 @@ plur -n $(( $(nproc) + 2 ))
 Every run ends with the full results: pending and failure details, RSpec rerun commands, the framework's summary line, and the exit status. The formatter controls what prints while tests are still running.
 
 * `progress` shows one marker per test as it finishes: `.` passing, `F` failing, `*` pending, `E` errored.
-* `summary` shows no markers. Output the tests write with `puts` still streams live.
+* `summary` prints each failure as it happens: an RSpec rerun command or Minitest's test identity. It shows no progress markers. Output the tests write with `puts` still streams live.
 * `auto` (the default) picks `progress` on a terminal and `summary` when stdout is a pipe or file, as in CI logs and coding agents.
 
 ```bash
@@ -225,6 +225,8 @@ plur -f summary                  # no markers, even on a terminal
 ```
 
 Set it with `--formatter`/`-f`, `PLUR_FORMATTER`, or `formatter = "..."` in a config file, in that order of precedence. Formatter and color are independent: `--formatter=summary --color=always` colors the results without markers.
+
+Live failure lines arrive in completion order across workers. Full failure details still print at the end. Errors outside RSpec examples, such as failures while loading a spec, appear in the final results without a live example line.
 
 ## Performance Monitoring
 
