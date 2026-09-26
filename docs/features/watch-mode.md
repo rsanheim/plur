@@ -85,7 +85,7 @@ and automatically replaced when Plur ships a newer watcher version.
 
 - Plur tracks direct child jobs and waits for them to exit
 - The first Ctrl-C lets Plur and test runners stop normally; a second force-stops remaining jobs
-- Without a terminal, SIGINT stops remaining jobs after a short grace period
+- Reload (`reload` or SIGHUP), `exit`, SIGTERM, timeout, and non-terminal SIGINT give jobs 500ms to stop before force-stopping them
 - On shutdown, Plur waits for child jobs to exit; SIGKILL prevents cleanup and may leave jobs running
 
 ## File Changes
