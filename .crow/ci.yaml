@@ -22,7 +22,7 @@ labels:
   platform: linux/amd64
 
 variables:
-  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-09-25-0e8d48b5'
+  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-09-28-570ed690'
 
 steps:
   # Docs-only changes skip the heavy step below, so the strict docs build runs
