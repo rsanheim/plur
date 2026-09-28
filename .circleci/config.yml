@@ -3,10 +3,10 @@ version: 2.1
 parameters:
   go_version:
     type: string
-    default: "1.27.0"
+    default: "1.27.1"
   ruby_version:
     type: string
-    default: "4.0.6"
+    default: "4.0.7"
 
 orbs:
   ruby: circleci/ruby@2.6.0
@@ -71,7 +71,8 @@ jobs:
       - checkout
       - go/mod-download-cached
       - go/load-build-cache
-      - go/install-goreleaser
+      - go/install-goreleaser:
+          version: "v2.18.2"
       - run:
           name: Verify GoReleaser installation
           command: goreleaser --version
@@ -126,7 +127,8 @@ jobs:
           version: << pipeline.parameters.go_version >>
       - go/mod-download-cached
       - go/load-build-cache
-      - go/install-goreleaser
+      - go/install-goreleaser:
+          version: "v2.18.2"
       - run:
           name: Add GOPATH/bin to PATH
           command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"
