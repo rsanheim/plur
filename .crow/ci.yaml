@@ -3,7 +3,7 @@
 # lint:all -> build -> test:all).
 #
 # Uses Plur's mise-driven toolchain image, `plur/ci` in Zot, built from
-# `ci/images/plur-ci-toolchain.Containerfile` and published by ci-images.yaml.
+# `ci/images/ci.Containerfile` and published by ci-images.yaml.
 # It bakes the versions from `.mise.toml`, including Go 1.27, GoReleaser,
 # shellcheck, govulncheck, and benchstat, while this workflow handles
 # checkout-specific dependencies. The image is pinned to one immutable tag
@@ -22,7 +22,14 @@ labels:
   platform: linux/amd64
 
 variables:
-  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-09-28-570ed690'
+  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-09-28-2cf02b1a'
+
+clone:
+  - name: git
+    image: registry.shark-tet.ts.net/infra/clone:2026-09-28-043458fe
+    settings:
+      cache_path: /cache/repos/github.com/rsanheim/plur.git
+      cache_refresh: true
 
 steps:
   # Docs-only changes skip the heavy step below, so the strict docs build runs
