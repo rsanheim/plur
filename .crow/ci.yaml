@@ -26,7 +26,7 @@ variables:
 
 clone:
   - name: git
-    image: registry.shark-tet.ts.net/infra/clone:2026-09-30-3a21261e
+    image: registry.shark-tet.ts.net/infra/clone:2026-09-30-dbd7093e
     settings:
       cache_path: /cache/repos/github.com/rsanheim/plur.git
       cache_refresh: true
