@@ -171,3 +171,4 @@ end
 
 desc "Run all linting"
 task lint: ["lint:all"]
+# testing ci: shared-checkout clone plugin
