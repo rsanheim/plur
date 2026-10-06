@@ -69,9 +69,10 @@ steps:
         set -e
 
         mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$UV_CACHE_DIR"
-        # Prefer the freshly built/installed plur (GOBIN) over the one baked into
-        # the base image.
-        export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
+        # Install into mise's Go bin directory and prefer it over cached binaries.
+        GOBIN="$(mise where go)/bin"
+        export GOBIN
+        export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
 
         go version
         ruby --version
