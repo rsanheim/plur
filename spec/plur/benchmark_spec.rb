@@ -104,7 +104,7 @@ RSpec.describe Plur::Benchmark do
       it "loads the pinned backspin target, inheriting the command from defaults" do
         projects = runner.send(:load_manifest)
         backspin = projects.find { |p| p["name"] == "backspin" }
-        expect(backspin["ref"]).to eq("v0.12.0")
+        expect(backspin["ref"]).to eq("v0.15.1")
         # the standard command + worker sweep come from manifest defaults
         argv = runner.send(:build_hyperfine_argv, backspin, "/out/h.json")
         expect(argv).to include("--parameter-list", "workers", "4,8")
@@ -151,6 +151,18 @@ RSpec.describe Plur::Benchmark do
           expect { runner.send(:provision, project) }
             .to raise_error(/post_checkout failed for fixture: exit 3/)
           expect(runner).not_to have_received(:bundle_install)
+        end
+      end
+
+      it "provisions every manifest target without benchmarking" do
+        with_fixture("touch provisioned") do |runner, project|
+          allow(runner).to receive(:load_manifest).and_return([project])
+          expect(runner).not_to receive(:benchmark_project)
+
+          runner.provision_all
+
+          expect(File).to exist(File.join(runner.send(:checkout_dir, project), "provisioned"))
+          expect(runner).to have_received(:bundle_install).once
         end
       end
     end

@@ -31,6 +31,7 @@ OptionParser.new do |opts|
   opts.on("--host SLUG", "Override host slug (default: $BENCH_HOST or short hostname)") { |v| options[:host] = v }
   opts.on("--only NAME", "Run only the named project from the manifest") { |v| options[:only] = v }
   opts.on("--no-report", "Skip the post-project bench-report hook") { options[:run_report] = false }
+  opts.on("--provision-only", "Clone, check out, and bundle each target; run no benchmarks") { options[:provision_only] = true }
   opts.on("-h", "--help", "Show this help") do
     puts opts
     exit 0
@@ -45,4 +46,4 @@ runner = Plur::Benchmark::SuiteRunner.new(
   only: options[:only],
   run_report: options[:run_report]
 )
-runner.run
+options[:provision_only] ? runner.provision_all : runner.run

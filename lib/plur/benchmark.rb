@@ -72,6 +72,14 @@ module Plur
         run_dir
       end
 
+      # Prepares each target without benchmarking it, for CodSpeed.
+      def provision_all
+        load_manifest.each do |project|
+          log "=== provision #{project.fetch("name")} (#{project["repo"]} @ #{project["ref"]}) ==="
+          provision(project)
+        end
+      end
+
       private
 
       def load_manifest
