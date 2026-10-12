@@ -118,6 +118,43 @@ RSpec.describe Plur::Benchmark do
       end
     end
 
+    describe "#provision" do
+      def with_fixture(post_checkout)
+        tmp = Plur.config.root_dir.join("tmp")
+        FileUtils.mkdir_p(tmp)
+        Dir.mktmpdir("provision", tmp.to_s) do |root|
+          repo = File.join(root, "repo")
+          FileUtils.mkdir_p(repo)
+          [["init", "--quiet"], ["config", "user.email", "t@example.com"], ["config", "user.name", "t"],
+            ["commit", "--quiet", "--allow-empty", "-m", "init"], ["tag", "v1"]].each do |args|
+            system("git", "-C", repo, *args, exception: true)
+          end
+          runner = Plur::Benchmark::SuiteRunner.new(manifest_path: manifest, out_root: File.join(root, "out"))
+          allow(runner).to receive(:bundle_install)
+          yield runner, {"name" => "fixture", "repo" => repo, "ref" => "v1", "post_checkout" => post_checkout}
+        end
+      end
+
+      it "runs post_checkout in the checkout with PLUR_ROOT set, before bundle install" do
+        with_fixture(%(pwd > ran.txt && echo "$PLUR_ROOT" >> ran.txt)) do |runner, project|
+          run_in = runner.send(:provision, project)
+
+          lines = File.readlines(File.join(run_in, "ran.txt"), chomp: true)
+          expect(File.realpath(lines.first)).to eq(File.realpath(run_in))
+          expect(lines.last).to eq(Dir.pwd)
+          expect(runner).to have_received(:bundle_install).with(run_in)
+        end
+      end
+
+      it "raises naming the project and command when post_checkout fails" do
+        with_fixture("exit 3") do |runner, project|
+          expect { runner.send(:provision, project) }
+            .to raise_error(/post_checkout failed for fixture: exit 3/)
+          expect(runner).not_to have_received(:bundle_install)
+        end
+      end
+    end
+
     describe "#capture_host" do
       it "captures live host facts as a JSON-ready hash" do
         host = runner.send(:capture_host)
