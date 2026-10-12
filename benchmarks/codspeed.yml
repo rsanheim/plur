@@ -4,14 +4,14 @@
 # in sync with that manifest so a pin bump starts a new series instead of reading
 # as a plur regression.
 benchmarks:
-  - name: "backspin@v0.12.0 -n 4"
+  - name: "backspin@v0.15.1 -n 4"
     exec: plur -C /bench/plur-codspeed/targets/backspin -n 4
     options: { warmup-time: "2s", max-time: "30s" }
 
   # Control: no plur. If this moves with the plur benchmarks, the cause is the
   # host or Ruby, not plur. Progress format overrides backspin's .rspec
   # (documentation), which would print every example on every round.
-  - name: "backspin@v0.12.0 rspec"
+  - name: "backspin@v0.15.1 rspec"
     exec: bash -c "cd /bench/plur-codspeed/targets/backspin && exec bundle exec rspec --format progress"
     options: { warmup-time: "2s", max-time: "30s" }
 

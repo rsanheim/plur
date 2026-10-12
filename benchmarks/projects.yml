@@ -26,7 +26,7 @@ defaults:
 projects:
   - name: backspin
     repo: https://github.com/rsanheim/backspin.git
-    ref: v0.12.0                          # RSpec, ~12 specs
+    ref: v0.15.1                          # RSpec
 
   # RSpec flagship, ~31.7k examples. Compare HEAD against the last release.
   - name: rubocop

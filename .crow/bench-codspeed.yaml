@@ -83,7 +83,7 @@ steps:
         # - BUNDLE_PATH is unset so each target uses its own vendor/bundle.
         # - plur's Ruby bin dir comes first so ruby/bundle in a target resolve
         #   to it, not to a mise shim that would try to install the target's
-        #   own pinned Ruby (backspin pins 4.0.0).
+        #   own pinned Ruby.
         # - The BUILDKITE_* vars make the runner report a push run on this
         #   branch; CodSpeed has no Crow/Woodpecker provider.
         # - --skip-setup avoids the runner's sudo sysctl calls; the profiler is

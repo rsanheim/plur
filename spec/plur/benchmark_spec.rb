@@ -104,7 +104,7 @@ RSpec.describe Plur::Benchmark do
       it "loads the pinned backspin target, inheriting the command from defaults" do
         projects = runner.send(:load_manifest)
         backspin = projects.find { |p| p["name"] == "backspin" }
-        expect(backspin["ref"]).to eq("v0.12.0")
+        expect(backspin["ref"]).to eq("v0.15.1")
         # the standard command + worker sweep come from manifest defaults
         argv = runner.send(:build_hyperfine_argv, backspin, "/out/h.json")
         expect(argv).to include("--parameter-list", "workers", "4,8")
