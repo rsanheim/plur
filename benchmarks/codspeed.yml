@@ -1,0 +1,22 @@
+# CodSpeed walltime benchmarks, run by .crow/bench.yaml after bench-suite.
+# Targets are the checkouts bench-suite prepares under /bench/plur/targets from
+# projects.yml; keep the refs in the names below in sync with that manifest so a
+# pin bump starts a new series instead of reading as a plur regression.
+benchmarks:
+  - name: "backspin@v0.12.0 -n 4"
+    exec: plur -C /bench/plur/targets/backspin -n 4
+    options: { warmup-time: "2s", max-time: "30s" }
+
+  # Control: no plur. If this moves with the plur benchmarks, the cause is the
+  # host or Ruby, not plur.
+  - name: "backspin@v0.12.0 rspec"
+    exec: bash -c "cd /bench/plur/targets/backspin && exec bundle exec rspec"
+    options: { warmup-time: "2s", max-time: "30s" }
+
+  - name: "rack@v3.2.6 -n 4"
+    exec: plur -C /bench/plur/targets/rack test/spec_*.rb --use minitest -n 4
+    options: { warmup-time: "5s", max-time: "45s" }
+
+  - name: "rubocop@v1.88.0 -n 8"
+    exec: plur -C /bench/plur/targets/rubocop -n 8
+    options: { warmup-time: "1s", min-rounds: 5, max-rounds: 5 }
