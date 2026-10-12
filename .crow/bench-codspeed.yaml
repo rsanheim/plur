@@ -53,6 +53,18 @@ steps:
         ruby --version
         goreleaser --version
 
+        # TEMP diagnostics: cached codspeed could not be replaced (Crow 555).
+        id
+        cat /proc/self/uid_map
+        ls -lan "$GOPATH/bin"
+        stat "$GOPATH/bin/codspeed" || true
+        "$GOPATH/bin/codspeed" --version || echo "codspeed --version exit=$?"
+        if ! rm -v "$GOPATH/bin/codspeed"; then
+          echo "root rm failed; trying as bench"
+          id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
+          runuser -u bench -- rm -v "$GOPATH/bin/codspeed" || echo "bench rm failed"
+        fi
+
         # The CodSpeed CLI is not baked into the image; it lives in $GOPATH/bin
         # on the /cache volume, re-fetched only on a version bump.
         if ! "$GOPATH/bin/codspeed" --version 2>/dev/null | grep -qF "$CODSPEED_VERSION"; then
