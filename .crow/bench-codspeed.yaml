@@ -1,7 +1,5 @@
-# CodSpeed walltime benchmarks. Provisions the benchmarks/projects.yml targets
-# with script/bench-suite --provision-only, then runs benchmarks/codspeed.yml
-# over them and uploads the results to CodSpeed. Checkouts live under their own
-# root on the ci-bench:/bench volume, apart from bench.yaml's.
+# CodSpeed walltime benchmarks: provision the benchmarks/projects.yml targets,
+# run benchmarks/codspeed.yml over them, and upload the results to CodSpeed.
 when:
   - event: cron
     cron: nightly-codspeed
@@ -33,7 +31,6 @@ steps:
       GOPATH: /cache/plur/go
       GOCACHE: /cache/plur/go-build
       XDG_CACHE_HOME: /cache/plur/xdg
-      # target checkouts for benchmarks/codspeed.yml
       BENCH_ROOT: /bench/plur-codspeed
       # renovate: datasource=github-releases depName=CodSpeedHQ/codspeed
       CODSPEED_VERSION: 5.4.2
@@ -54,11 +51,8 @@ steps:
         ruby --version
         goreleaser --version
 
-        # The CodSpeed CLI is not baked into the image; it lives in $GOPATH/bin
-        # on the /cache volume, re-fetched only on a version bump. The installer
-        # mv's from the container's /tmp, which keeps this container's private
-        # SELinux label and locks later steps out of the file, so it installs
-        # into the workspace and `install` writes a fresh copy to the cache.
+        # Cached in $GOPATH/bin, re-fetched on a version bump. `install` (not the
+        # installer's mv) gives the cached copy the volume's shared SELinux label.
         if ! "$GOPATH/bin/codspeed" --version 2>/dev/null | grep -qF "$CODSPEED_VERSION"; then
           curl -fsSL "https://codspeed.io/v$CODSPEED_VERSION/install.sh" | CODSPEED_RUNNER_UNMANAGED_INSTALL="$tool_tmp" sh
           install "$tool_tmp/codspeed" "$GOPATH/bin/codspeed"
@@ -69,27 +63,17 @@ steps:
         bin/rake vendor:download:current
         bin/rake install
 
-        # Targets run as a non-root user: rubocop + rack have specs that fail
-        # under root. Build and install above stay root.
+        # rubocop and rack have specs that fail under root.
         id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
         chown -R bench:bench "$PWD" "$BENCH_ROOT"
 
-        # XDG_CACHE_HOME is for the root-owned build caches above; it must not
-        # leak into the benchmarked suites (rubocop has specs asserting the
-        # default cache dir in $HOME).
+        # XDG_CACHE_HOME is for root's build caches; rubocop's specs expect the default.
         runuser -u bench -- env -u XDG_CACHE_HOME PATH="$PATH" HOME=/home/bench CI=true \
           script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --provision-only
 
-        # - BUNDLE_PATH is unset so each target uses its own vendor/bundle.
-        # - plur's Ruby bin dir comes first so ruby/bundle in a target resolve
-        #   to it, not to a mise shim that would try to install the target's
-        #   own pinned Ruby.
-        # - The BUILDKITE_* vars make the runner report a push run on this
-        #   branch; CodSpeed has no Crow/Woodpecker provider.
-        # - --skip-setup avoids the runner's sudo sysctl calls; the profiler is
-        #   off and isolation needs systemd-run, so neither is needed here.
-        # - The runner installs its exec-harness into ~/.cargo/bin and then
-        #   looks it up on PATH.
+        # Targets use plur's Ruby (not a mise shim) and their own vendor/bundle.
+        # BUILDKITE_* make CodSpeed record a push run on this branch, as it has no
+        # Crow provider. --skip-setup avoids sudo; exec-harness lands in ~/.cargo/bin.
         runuser -u bench -- env -u XDG_CACHE_HOME -u BUNDLE_PATH PATH="$(mise where ruby)/bin:/home/bench/.cargo/bin:$PATH" HOME=/home/bench CI=true \
           CODSPEED_TOKEN="$CODSPEED_TOKEN" CODSPEED_ISOLATION=false CODSPEED_PROFILER_ENABLED=false \
           BUILDKITE=true BUILDKITE_REPO=https://github.com/rsanheim/plur.git BUILDKITE_BRANCH="$CI_COMMIT_BRANCH" BUILDKITE_PULL_REQUEST=false \
