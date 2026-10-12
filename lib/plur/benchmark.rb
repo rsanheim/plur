@@ -144,8 +144,17 @@ module Plur
         git!(["checkout", "--quiet", "--detach", project.fetch("ref")], dir)
 
         run_in = project["subdir"] ? File.join(dir, project["subdir"]) : dir
+        post_checkout(project, run_in)
         bundle_install(run_in)
         run_in
+      end
+
+      # Runs the manifest's post_checkout string through a shell in the checkout,
+      # with PLUR_ROOT pointing at the plur repository.
+      def post_checkout(project, run_in)
+        command = project["post_checkout"] or return
+        ok = Bundler.with_unbundled_env { system({"PLUR_ROOT" => @plur_root}, command, chdir: run_in) }
+        raise "post_checkout failed for #{project.fetch("name")}: #{command} (in #{run_in})" unless ok
       end
 
       def clone(repo, dest)
