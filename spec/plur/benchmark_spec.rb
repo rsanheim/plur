@@ -153,6 +153,18 @@ RSpec.describe Plur::Benchmark do
           expect(runner).not_to have_received(:bundle_install)
         end
       end
+
+      it "provisions every manifest target without benchmarking" do
+        with_fixture("touch provisioned") do |runner, project|
+          allow(runner).to receive(:load_manifest).and_return([project])
+          expect(runner).not_to receive(:benchmark_project)
+
+          runner.provision_all
+
+          expect(File).to exist(File.join(runner.send(:checkout_dir, project), "provisioned"))
+          expect(runner).to have_received(:bundle_install).once
+        end
+      end
     end
 
     describe "#capture_host" do

@@ -1,6 +1,5 @@
 # Plur recurring benchmarks. Runs script/bench-suite over benchmarks/projects.yml,
-# writing results to the dedicated ci-bench:/bench volume, then uploads
-# benchmarks/codspeed.yml walltime results to CodSpeed for the same checkouts.
+# writing results to the dedicated ci-bench:/bench volume.
 when:
   - event: cron
     cron: nightly-bench
@@ -38,10 +37,6 @@ steps:
       BENCH_CONTAINER_IMAGE: *plur_image
       # renovate: datasource=github-releases depName=sharkdp/hyperfine
       HYPERFINE_VERSION: 1.19.0
-      # renovate: datasource=github-releases depName=CodSpeedHQ/codspeed
-      CODSPEED_VERSION: 5.4.2
-      CODSPEED_TOKEN:
-        from_secret: codspeed_token
     commands:
       - |
         set -e
@@ -67,12 +62,6 @@ steps:
         fi
         hyperfine --version
 
-        # Same caching approach for the CodSpeed CLI.
-        if ! "$GOPATH/bin/codspeed" --version 2>/dev/null | grep -qF "$CODSPEED_VERSION"; then
-          curl -fsSL "https://codspeed.io/v$CODSPEED_VERSION/install.sh" | CODSPEED_RUNNER_UNMANAGED_INSTALL="$GOPATH/bin" sh
-        fi
-        codspeed --version
-
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
         bin/rake vendor:download:current
         bin/rake install
@@ -88,19 +77,3 @@ steps:
         # default cache dir in $HOME). The bench user gets stock XDG defaults.
         # Trigger label is the Crow event (cron/manual/push), set as a step env var.
         runuser -u bench -- env -u XDG_CACHE_HOME PATH="$PATH" HOME=/home/bench CI=true BENCH_HOST="$BENCH_HOST" script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --trigger "$CI_PIPELINE_EVENT"
-
-        # CodSpeed walltime run over the checkouts bench-suite just prepared.
-        # - BUNDLE_PATH is unset so each target uses its own vendor/bundle.
-        # - PLUR_HOME is separate so plur's runtime cache starts from this run
-        #   alone, not from hyperfine's runs above.
-        # - The BUILDKITE_* vars make the runner report a push run on this
-        #   branch; CodSpeed has no Crow/Woodpecker provider.
-        # - --skip-setup avoids the runner's sudo sysctl calls; the profiler is
-        #   off and isolation needs systemd-run, so neither is needed here.
-        # - The runner installs its exec-harness into ~/.cargo/bin and then
-        #   looks it up on PATH.
-        runuser -u bench -- env -u XDG_CACHE_HOME -u BUNDLE_PATH PATH="/home/bench/.cargo/bin:$PATH" HOME=/home/bench CI=true \
-          PLUR_HOME=/home/bench/.plur-codspeed CODSPEED_TOKEN="$CODSPEED_TOKEN" \
-          CODSPEED_ISOLATION=false CODSPEED_PROFILER_ENABLED=false \
-          BUILDKITE=true BUILDKITE_REPO=https://github.com/rsanheim/plur.git BUILDKITE_BRANCH="$CI_COMMIT_BRANCH" BUILDKITE_PULL_REQUEST=false \
-          codspeed run --skip-setup -m walltime --config benchmarks/codspeed.yml
