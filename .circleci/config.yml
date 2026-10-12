@@ -3,7 +3,7 @@ version: 2.1
 parameters:
   go_version:
     type: string
-    default: "1.27.1"
+    default: "1.27.2"
   ruby_version:
     type: string
     default: "4.0.7"
@@ -72,7 +72,7 @@ jobs:
       - go/mod-download-cached
       - go/load-build-cache
       - go/install-goreleaser:
-          version: "v2.18.2"
+          version: "v2.18.3"
       - run:
           name: Verify GoReleaser installation
           command: goreleaser --version
@@ -128,7 +128,7 @@ jobs:
       - go/mod-download-cached
       - go/load-build-cache
       - go/install-goreleaser:
-          version: "v2.18.2"
+          version: "v2.18.3"
       - run:
           name: Add GOPATH/bin to PATH
           command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"

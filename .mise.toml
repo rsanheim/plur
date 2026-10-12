@@ -1,13 +1,13 @@
 [tools]
 ruby = "4.0.7"
-go = "1.27.1"
+go = "1.27.2"
 python = "3.14.0"
 uv = "0.12.9"
-goreleaser = "2.18.2"
+goreleaser = "2.18.3"
 golangci-lint = "2.14.0"
 shellcheck = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
-"go:golang.org/x/perf/cmd/benchstat" = "latest"
+"go:golang.org/x/perf/cmd/benchstat" = "0.0.0-20261009192801-be2c69fb417e"
 
 [env]
 # Ruby tooling or Finder can create vendor/; Go dependencies use go.mod.
