@@ -53,10 +53,12 @@ steps:
         ruby --version
         goreleaser --version
 
-        # TEMP diagnostics: cached codspeed could not be replaced (Crow 555).
+        # TEMP diagnostics: cached codspeed could not be replaced (Crow 555, 557).
         id
         cat /proc/self/uid_map
-        ls -lan "$GOPATH/bin"
+        ls -lanZ "$GOPATH/bin"
+        cat /proc/self/attr/current; echo
+        lsattr "$GOPATH/bin" || true
         stat "$GOPATH/bin/codspeed" || true
         "$GOPATH/bin/codspeed" --version || echo "codspeed --version exit=$?"
         if ! rm -v "$GOPATH/bin/codspeed"; then
