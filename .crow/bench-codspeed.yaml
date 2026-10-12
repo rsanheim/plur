@@ -43,7 +43,8 @@ steps:
       - |
         set -e
 
-        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$BENCH_ROOT"
+        tool_tmp="$PWD/tmp/bench-tools"
+        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$BENCH_ROOT" "$tool_tmp"
         # Install into mise's Go bin directory and prefer it over cached binaries.
         GOBIN="$(mise where go)/bin"
         export GOBIN
@@ -53,24 +54,14 @@ steps:
         ruby --version
         goreleaser --version
 
-        # TEMP diagnostics: cached codspeed could not be replaced (Crow 555, 557).
-        id
-        cat /proc/self/uid_map
-        ls -lanZ "$GOPATH/bin"
-        cat /proc/self/attr/current; echo
-        lsattr "$GOPATH/bin" || true
-        stat "$GOPATH/bin/codspeed" || true
-        "$GOPATH/bin/codspeed" --version || echo "codspeed --version exit=$?"
-        if ! rm -v "$GOPATH/bin/codspeed"; then
-          echo "root rm failed; trying as bench"
-          id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
-          runuser -u bench -- rm -v "$GOPATH/bin/codspeed" || echo "bench rm failed"
-        fi
-
         # The CodSpeed CLI is not baked into the image; it lives in $GOPATH/bin
-        # on the /cache volume, re-fetched only on a version bump.
+        # on the /cache volume, re-fetched only on a version bump. The installer
+        # mv's from the container's /tmp, which keeps this container's private
+        # SELinux label and locks later steps out of the file, so it installs
+        # into the workspace and `install` writes a fresh copy to the cache.
         if ! "$GOPATH/bin/codspeed" --version 2>/dev/null | grep -qF "$CODSPEED_VERSION"; then
-          curl -fsSL "https://codspeed.io/v$CODSPEED_VERSION/install.sh" | CODSPEED_RUNNER_UNMANAGED_INSTALL="$GOPATH/bin" sh
+          curl -fsSL "https://codspeed.io/v$CODSPEED_VERSION/install.sh" | CODSPEED_RUNNER_UNMANAGED_INSTALL="$tool_tmp" sh
+          install "$tool_tmp/codspeed" "$GOPATH/bin/codspeed"
         fi
         codspeed --version
 
