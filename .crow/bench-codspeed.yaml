@@ -44,8 +44,10 @@ steps:
         set -e
 
         mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$BENCH_ROOT"
-        # Prefer the freshly built/installed plur (GOBIN) over the image's baked one.
-        export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
+        # Install into mise's Go bin directory and prefer it over cached binaries.
+        GOBIN="$(mise where go)/bin"
+        export GOBIN
+        export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
 
         go version
         ruby --version
@@ -74,13 +76,16 @@ steps:
           script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --provision-only
 
         # - BUNDLE_PATH is unset so each target uses its own vendor/bundle.
+        # - plur's Ruby bin dir comes first so ruby/bundle in a target resolve
+        #   to it, not to a mise shim that would try to install the target's
+        #   own pinned Ruby (backspin pins 4.0.0).
         # - The BUILDKITE_* vars make the runner report a push run on this
         #   branch; CodSpeed has no Crow/Woodpecker provider.
         # - --skip-setup avoids the runner's sudo sysctl calls; the profiler is
         #   off and isolation needs systemd-run, so neither is needed here.
         # - The runner installs its exec-harness into ~/.cargo/bin and then
         #   looks it up on PATH.
-        runuser -u bench -- env -u XDG_CACHE_HOME -u BUNDLE_PATH PATH="/home/bench/.cargo/bin:$PATH" HOME=/home/bench CI=true \
+        runuser -u bench -- env -u XDG_CACHE_HOME -u BUNDLE_PATH PATH="$(mise where ruby)/bin:/home/bench/.cargo/bin:$PATH" HOME=/home/bench CI=true \
           CODSPEED_TOKEN="$CODSPEED_TOKEN" CODSPEED_ISOLATION=false CODSPEED_PROFILER_ENABLED=false \
           BUILDKITE=true BUILDKITE_REPO=https://github.com/rsanheim/plur.git BUILDKITE_BRANCH="$CI_COMMIT_BRANCH" BUILDKITE_PULL_REQUEST=false \
           codspeed run --skip-setup -m walltime --config benchmarks/codspeed.yml
