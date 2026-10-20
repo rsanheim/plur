@@ -6,16 +6,18 @@ RSpec.describe "Plur error handling" do
   let(:fixture_dir) { project_fixture("rspec-errors") }
 
   it "properly shows syntax error details" do
-    chdir(fixture_dir) do
-      result = run_plur_allowing_errors("spec/syntax_error_spec.rb")
+    Dir.mktmpdir do |plur_home|
+      chdir(fixture_dir) do
+        result = run_plur_allowing_errors("spec/syntax_error_spec.rb", env: {"PLUR_HOME" => plur_home})
 
-      expect(result.exit_status).to eq(1)
-      expect(result.out).to include("0 examples, 0 failures, 1 error occurred outside of examples")
-      expect(result.out).to include("SyntaxError")
-      expect(result.out.downcase).to include("syntax error")
+        expect(result.exit_status).to eq(1)
+        expect(result.out).to include("0 examples, 0 failures, 1 error occurred outside of examples")
+        expect(result.out).to include("SyntaxError")
+        expect(result.out.downcase).to include("syntax error")
 
-      # Should NOT save runtime data when tests fail to start
-      expect(result.err).not_to include("Runtime data saved to:")
+        # Should NOT save runtime data when tests fail to start
+        expect(Dir.glob(File.join(plur_home, "runtime", "*.json"))).to be_empty
+      end
     end
   end
 

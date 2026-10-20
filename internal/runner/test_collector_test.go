@@ -288,3 +288,24 @@ func TestTestCollector_SuiteStartedAndFinishedBothHaveLoadTime(t *testing.T) {
 	// Should preserve LoadTime from SuiteStarted, not SuiteFinished
 	assert.Equal(t, 800*time.Millisecond, result.FileLoadTime, "LoadTime from SuiteStarted should take precedence")
 }
+
+func TestTestCollector_BuildResult_Incomplete(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		started    int
+		finished   int
+		incomplete bool
+	}{
+		{"all started tests finished", 4, 4, false},
+		{"fewer tests finished than started", 4, 2, true},
+		{"framework does not report a started count", 0, 2, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			collector := NewTestCollector()
+			collector.AddNotification(types.SuiteNotification{Event: types.SuiteStarted, TestCount: tt.started})
+			collector.AddNotification(types.SuiteNotification{Event: types.SuiteFinished, TestCount: tt.finished})
+
+			assert.Equal(t, tt.incomplete, collector.BuildResult().Incomplete)
+		})
+	}
+}

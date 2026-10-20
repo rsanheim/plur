@@ -92,7 +92,7 @@ func TestBuildTestSummaryExitCodePrecedence(t *testing.T) {
 	suiteError := WorkerResult{ExitCode: 3, ExampleCount: 1, ErrorCount: 1}
 	loadError := WorkerResult{ExitCode: 5, ErrorCount: 1}
 	otherFailure := WorkerResult{ExitCode: 42, ExampleCount: 1}
-	workerError := WorkerResult{ExitCode: workerErrorExitCode, AbnormalExit: true}
+	workerError := WorkerResult{ExitCode: WorkerErrorExitCode, AbnormalExit: true}
 	configured70 := WorkerResult{ExitCode: 70, ExampleCount: 1, FailureCount: 1}
 
 	for _, tt := range []struct {
@@ -108,8 +108,8 @@ func TestBuildTestSummaryExitCodePrecedence(t *testing.T) {
 		{"load error after failure", []WorkerResult{failure, loadError}, 5, false},
 		{"first failing worker", []WorkerResult{failure, otherFailure}, 17, false},
 		{"first errored worker", []WorkerResult{suiteError, loadError}, 3, false},
-		{"worker error overrides framework error", []WorkerResult{suiteError, workerError}, workerErrorExitCode, true},
-		{"framework error cannot override worker error", []WorkerResult{workerError, suiteError}, workerErrorExitCode, true},
+		{"worker error overrides framework error", []WorkerResult{suiteError, workerError}, WorkerErrorExitCode, true},
+		{"framework error cannot override worker error", []WorkerResult{workerError, suiteError}, WorkerErrorExitCode, true},
 		{"configured code 70 is not a worker error", []WorkerResult{configured70, suiteError}, 3, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
