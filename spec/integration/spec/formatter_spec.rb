@@ -50,8 +50,6 @@ RSpec.describe "Formatter" do
         run_plur_allowing_errors("--use", "minitest", "-n", "2")
       end
 
-      puts result.err
-      puts result.out
       expect(marker_lines(result.out)).to be_empty
       expect(result.out).to include("Failures:")
       expect(result.out).to include("MixedResultsTest#test_display_name_failure [test/mixed_results_test.rb:46]")
