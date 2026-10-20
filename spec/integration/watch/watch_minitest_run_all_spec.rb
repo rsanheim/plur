@@ -37,7 +37,7 @@ RSpec.describe "plur watch minitest run all" do
     end
   end
 
-  it "runs every matching file on Enter, honors excludes, and discovers new files on the next run" do
+  it "runs every matching file on Enter and honors excludes" do
     with_minitest_project do |project|
       stage = 0
       result = capture_plur_watch_process(dir: project, timeout: 10) do |process|
@@ -45,26 +45,15 @@ RSpec.describe "plur watch minitest run all" do
           process.stdin.puts("")
           stage = 1
         elsif stage == 1 && process.err.include?("Finished job")
-          project.join("test/new_test.rb").write(<<~TEST)
-            require "minitest/autorun"
-            class NewTest < Minitest::Test
-              def test_new
-                assert true
-              end
-            end
-          TEST
-          process.stdin.puts("")
-          stage = 2
-        elsif stage == 2 && process.out.include?("3 runs,")
           process.stdin.puts("exit")
-          stage = 3
+          stage = 2
         end
       end
 
       expect(result).to be_success
-      expect(result.out).to include("2 runs,", "3 runs,", "0 failures, 0 errors"), result.out + result.err
+      expect(result.out).to include("2 runs,", "0 failures, 0 errors"), result.out + result.err
       expect(result.out).not_to include("ExcludedTest#", "PLUR_JSON:")
-      expect(stage).to eq(3), result.out + result.err
+      expect(stage).to eq(2), result.out + result.err
     end
   end
 

@@ -3,7 +3,6 @@ package framework
 import (
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/rsanheim/plur/internal/config"
@@ -74,7 +73,7 @@ func (j Job) BuildWatchArgs(files []string) []string {
 func rubyRequireScript(files []string) string {
 	requires := make([]string, 0, len(files))
 	for _, file := range files {
-		requires = append(requires, strings.ReplaceAll(strconv.Quote(file), "#", `\#`))
+		requires = append(requires, `"`+file+`"`)
 	}
 
 	return `[` + strings.Join(requires, `, `) + `].each { |f| require File.expand_path(f) }`
