@@ -11,12 +11,12 @@ import (
 	"github.com/rsanheim/plur/internal/types"
 )
 
-// workerErrorExitCode is used for abnormal worker termination.
-const workerErrorExitCode = 70
+// WorkerErrorExitCode is used for abnormal worker termination.
+const WorkerErrorExitCode = 70
 
 // WorkerResult represents the accumulated results from a worker executing one or more test files
 type WorkerResult struct {
-	ExitCode       int // Framework exit code, or workerErrorExitCode for abnormal termination
+	ExitCode       int // Framework exit code, or WorkerErrorExitCode for abnormal termination
 	AbnormalExit   bool
 	Output         string
 	Error          error
@@ -67,7 +67,7 @@ func selectExitCode(results []WorkerResult) int {
 	exitCodeFromError := false
 	for _, result := range results {
 		if result.AbnormalExit {
-			return workerErrorExitCode
+			return WorkerErrorExitCode
 		}
 		if result.ExitCode == 0 {
 			continue

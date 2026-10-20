@@ -347,7 +347,7 @@ func (r *Runner) runCommand(workerIdx int, cmd *exec.Cmd, outputChan chan<- Outp
 	result.AbnormalExit = missingSummary || exitCode < 0 || (err != nil && !isExit)
 
 	if result.AbnormalExit {
-		result.ExitCode = workerErrorExitCode
+		result.ExitCode = WorkerErrorExitCode
 		if err != nil {
 			result.Error = fmt.Errorf("worker %d terminated abnormally: %w", workerIdx, err)
 		} else {
@@ -439,7 +439,7 @@ func outputAggregator(outputChan <-chan OutputMessage, progress bool, colorOutpu
 
 func errorResult(err error) WorkerResult {
 	return WorkerResult{
-		ExitCode:     workerErrorExitCode,
+		ExitCode:     WorkerErrorExitCode,
 		AbnormalExit: true,
 		Error:        err,
 	}
