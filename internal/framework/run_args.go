@@ -47,8 +47,7 @@ func (j Job) BuildRunArgs(files []string, cfg *config.GlobalConfig, extraArgs []
 	return args, nil
 }
 
-// Minitest workers load the target files via an -e script rather
-// than script arguments, so the script can end with the plugin epilogue:
+// minitestPluginEpilogue ends a Minitest worker's -e script:
 // minitest 5.x discovers plur's plugin automatically inside Minitest.run,
 // but minitest 6 made plugin loading opt-in, so the worker asks for it via
 // the documented Minitest.load - which loads only the named plugin. Using
