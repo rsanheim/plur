@@ -74,7 +74,7 @@ func (r *Runner) Run() ([]WorkerResult, time.Duration, error) {
 
 	results, wallTime := r.executeWorkers(commands)
 	for _, result := range results {
-		if !result.AbnormalExit {
+		if !result.AbnormalExit && !result.Incomplete {
 			for _, test := range result.Tests {
 				r.tracker.AddTestNotification(test)
 			}

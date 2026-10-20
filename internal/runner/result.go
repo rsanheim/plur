@@ -18,6 +18,7 @@ const WorkerErrorExitCode = 70
 type WorkerResult struct {
 	ExitCode       int // Framework exit code, or WorkerErrorExitCode for abnormal termination
 	AbnormalExit   bool
+	Incomplete     bool // Worker finished without running every test it started with
 	Output         string
 	Error          error
 	FileLoadTime   time.Duration

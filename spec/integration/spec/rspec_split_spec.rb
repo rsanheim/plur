@@ -53,6 +53,41 @@ RSpec.describe "Plur --rspec-split (experimental)" do
     end
   end
 
+  it "runs every example after an .rspec --fail-fast run stops partway through a file" do
+    tmp_root = ROOT_PATH.join("tmp")
+    FileUtils.mkdir_p(tmp_root)
+
+    Dir.mktmpdir("fail-fast-split-", tmp_root.to_s) do |project|
+      FileUtils.mkdir_p(File.join(project, "spec"))
+      File.write(File.join(project, ".rspec"), "--fail-fast\n--order defined\n")
+      File.write(File.join(project, "spec", "fail_fast_spec.rb"), <<~RUBY)
+        RSpec.describe "Fail fast" do
+          it("first") { expect(1 + 1).to eq(2) }
+          it("second") { expect(ENV["PLUR_TEST_FAIL"]).to be_nil }
+          it("third") { expect(3 + 3).to eq(6) }
+          it("fourth") { expect(4 + 4).to eq(8) }
+        end
+      RUBY
+
+      Dir.chdir(project) do
+        warm_run = run_plur("-n", "1", "--color=never")
+        expect(warm_run.out).to include("4 examples, 0 failures")
+
+        # Change only the environment: source freshness must still match.
+        failed_run = run_plur_allowing_errors("-n", "1", "--color=never",
+          env: {"PLUR_TEST_FAIL" => "1"})
+        expect(failed_run.exit_status).to eq(1)
+        expect(failed_run.out).to include("2 examples, 1 failure")
+
+        split_run = run_plur("--rspec-split", "-n", "2", "--color=never", "--debug")
+        aggregate_failures do
+          expect(split_run.err).to include("rspec-split applied")
+          expect(split_run.out).to include("4 examples, 0 failures")
+        end
+      end
+    end
+  end
+
   it "passes through file-level targets in dry-run when cache lacks examples" do
     Dir.chdir(default_ruby_dir) do
       # Without a cache, splitting is impossible.

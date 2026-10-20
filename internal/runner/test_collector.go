@@ -13,6 +13,7 @@ type TestCollector struct {
 	failures          []types.TestCaseNotification
 	pending           []types.TestCaseNotification
 	loadTime          time.Duration // from suite_started, else suite_finished
+	startedTestCount  int           // from suite_started; 0 when the framework doesn't report it
 	suiteFinished     bool
 	suiteCounts       types.SuiteNotification // counts from suite_finished; authoritative once suiteFinished
 	rawOutput         strings.Builder
@@ -52,6 +53,7 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 	case types.SuiteStarted:
 		if suite, ok := n.(types.SuiteNotification); ok {
 			collector.loadTime = suite.LoadTime
+			collector.startedTestCount = suite.TestCount
 		}
 	case types.SuiteFinished:
 		if suite, ok := n.(types.SuiteNotification); ok {
@@ -103,6 +105,8 @@ func (collector *TestCollector) BuildResult() WorkerResult {
 		result.FailureCount = collector.suiteCounts.FailureCount
 		result.ErrorCount = collector.suiteCounts.ErrorCount
 		result.PendingCount = collector.suiteCounts.PendingCount
+		// Fewer tests finished than started means the run stopped early (e.g. fail-fast).
+		result.Incomplete = collector.startedTestCount > 0 && collector.suiteCounts.TestCount != collector.startedTestCount
 	}
 
 	return result
