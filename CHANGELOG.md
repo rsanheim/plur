@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-* Fix Minitest watch run-all: Enter discovers all matching test files, applies the job's excludes, includes newly added files, and reports an empty suite. Batched file changes load every target in the Ruby process. [#164](https://github.com/rsanheim/plur/pull/164)
+* Fix Enter in Minitest watch mode running no tests. [#164](https://github.com/rsanheim/plur/pull/164)
 
 ## v0.82.1 - 2026-10-20
 
