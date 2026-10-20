@@ -74,7 +74,7 @@ func (c *Controller) Run() error {
 	batchChan := make(chan TargetSet, 16)
 	doneChan := make(chan runResult, 16)
 	interruptAlreadyDelivered := false
-	var forceAfter time.Duration
+	forceAfter := 500 * time.Millisecond
 	defer func() {
 		c.stopRuns(scheduler, doneChan, !interruptAlreadyDelivered, forceAfter)
 	}()
@@ -190,12 +190,12 @@ func (c *Controller) Run() error {
 			switch sig {
 			case syscall.SIGINT:
 				if c.cfg.StdinIsTTY {
+					forceAfter = 0
 					interruptAlreadyDelivered = true
 					fmt.Fprintln(c.cfg.Stdout)
 					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT. Pausing new jobs and waiting for active jobs.")
 					fmt.Fprintln(c.cfg.Stdout, "Press Ctrl-C again to terminate.")
 				} else {
-					forceAfter = 500 * time.Millisecond
 					fmt.Fprintln(c.cfg.Stdout, "Received SIGINT, stopping active jobs...")
 				}
 				return nil
@@ -341,7 +341,7 @@ func (c *Controller) printSkips(skipped *JobRun) {
 }
 
 func (c *Controller) attemptReload(scheduler *scheduler, doneChan <-chan runResult) error {
-	c.stopRuns(scheduler, doneChan, true, 0)
+	c.stopRuns(scheduler, doneChan, true, 500*time.Millisecond)
 	err := c.cfg.Reload()
 	if err != nil {
 		logger.Logger.Error("Failed to reload", "error", err)

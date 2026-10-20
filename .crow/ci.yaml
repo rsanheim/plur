@@ -3,7 +3,7 @@
 # lint:all -> build -> test:all).
 #
 # Uses Plur's mise-driven toolchain image, `plur/ci` in Zot, built from
-# `ci/images/plur-ci-toolchain.Containerfile` and published by ci-images.yaml.
+# `ci/images/ci.Containerfile` and published by ci-images.yaml.
 # It bakes the versions from `.mise.toml`, including Go 1.27, GoReleaser,
 # shellcheck, govulncheck, and benchstat, while this workflow handles
 # checkout-specific dependencies. The image is pinned to one immutable tag
@@ -22,7 +22,14 @@ labels:
   platform: linux/amd64
 
 variables:
-  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-09-25-0e8d48b5'
+  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-10-20-d7ba966f'
+
+clone:
+  - name: git
+    image: registry.shark-tet.ts.net/infra/clone:2026-09-30-dbd7093e
+    settings:
+      cache_path: /cache/repos/github.com/rsanheim/plur.git
+      cache_refresh: true
 
 steps:
   # Docs-only changes skip the heavy step below, so the strict docs build runs
@@ -62,9 +69,10 @@ steps:
         set -e
 
         mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$UV_CACHE_DIR"
-        # Prefer the freshly built/installed plur (GOBIN) over the one baked into
-        # the base image.
-        export PATH="$GOPATH/bin:/usr/local/bin:$PATH"
+        # Install into mise's Go bin directory and prefer it over cached binaries.
+        GOBIN="$(mise where go)/bin"
+        export GOBIN
+        export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
 
         go version
         ruby --version

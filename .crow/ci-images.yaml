@@ -4,7 +4,7 @@
 # input publishes that revision's tag. Publishing is not validation; ci and
 # bench prove an image once a commit adopts its tag, and nothing depends on
 # this workflow.
-# Requires the repo Security (privileged) flag.
+# Unprivileged, so Buildah uses vfs storage.
 labels:
   platform: linux/amd64
 
@@ -16,7 +16,8 @@ when:
 steps:
   - name: publish
     image: quay.io/buildah/stable:v1.43.4-immutable
-    privileged: true
+    environment:
+      STORAGE_DRIVER: vfs
     when:
       - path:
           include:

@@ -47,7 +47,7 @@ RSpec.describe "Formatter" do
 
     it "keeps minitest failure details and the exit status" do
       result = chdir(project_fixture!("minitest-failures")) do
-        Bundler.with_unbundled_env { run_plur_allowing_errors("--use", "minitest", "-n", "2") }
+        run_plur_allowing_errors("--use", "minitest", "-n", "2")
       end
 
       expect(marker_lines(result.out)).to be_empty

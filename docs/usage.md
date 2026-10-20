@@ -226,16 +226,9 @@ plur -f summary                  # no markers, even on a terminal
 
 Set it with `--formatter`/`-f`, `PLUR_FORMATTER`, or `formatter = "..."` in a config file, in that order of precedence. Formatter and color are independent: `--formatter=summary --color=always` colors the results without markers.
 
-## Performance Monitoring
+## Debugging / Tuning
 
-### Basic Timing
-
-RSpec output includes timing details, for example:
-```
-Finished in 0.35 seconds (files took 0.12 seconds to load)
-```
-
-### Debugging Test Failures
+### Show more details
 
 ```bash
 # Run with debug output
@@ -256,24 +249,16 @@ Suites with only a few large test files may benefit less.
 
 ## Runtime Tracking
 
-Plur saves test timings in `$PLUR_HOME/runtime/<project-hash>.json` to balance
-workers. Run `plur doctor` to see the cache path.
+Plur saves test timings in `$PLUR_HOME/runtime/<project-hash>.json`. Run `plur doctor` to see the cache path.
 
-- Linked worktrees share timings for matching project directories. Separate apps
-  and clones keep separate caches. Without Git, the working directory identifies
-  the cache.
-- Only successful runs with examples save timings; `--dry-run` never writes.
-- Full-file runs replace file totals. Focused runs, `--tag`, and passthrough
-  arguments preserve totals; example updates require matching checkout and source.
-- Split selectors stay checkout-local. Shared examples belong to their runnable
-  spec file, not their support file.
-- Concurrent writes are atomic; the last writer wins. Invalid caches rebuild.
+- Git worktrees share timings for the same repo. Without Git, the working directory is used.
+- Complete runs with examples save timings, including runs with failures. 
+- We skip saving for plur errors/aborted runs and rspec fail-fast runs.
 
 ### `--rspec-split` (EXPERIMENTAL)
 
-`--rspec-split` is an opt-in, RSpec-only flag that expands long-running
-spec files into focused `file:line:line:line` targets, then lets the
-existing runtime grouper balance them across workers.
+`--rspec-split` is an opt-in, RSpec-only flag that expands long-running spec files into `file:line:line:line` targets.
+Plur then balances per 'target' (per individual example basically) for better balancing.
 
 ```bash
 plur --rspec-split -n 8
@@ -282,36 +267,19 @@ PLUR_RSPEC_SPLIT=1 plur -n 8
 
 How it works:
 
-- Splitting requires `--rspec-split == true`, an RSpec job, and worker
-  count greater than 1.
-- For each file, plur consults the runtime cache. If the recorded
-  `mtime_unix_nano`/`size_bytes` still match the source file, plur considers
-  the example data fresh enough for split planning.
-- A file is split only if its historical `runtime_seconds` exceeds the
-  per-worker budget (`total_runtime / worker_count`).
-- Split chunks are built by bin-packing the file's cached per-example
-  runtimes using longest-processing-time greedy: each example lands in
-  the bin with the smallest current sum, so a single heavy example ends
-  up isolated in its own chunk. Examples with no recorded runtime fall
-  back to the file's mean per-example runtime.
-- Each chunk's summed runtime feeds back into the grouper as the
-  target's runtime weight, so worker balancing reflects the actual
-  bin-pack distribution. The generated `file:line:line:...` targets are
-  not persisted in the cache.
+- Splitting requires `--rspec-split == true`, an RSpec job, and worker count greater than 1.
+- A file is split only if its historical `runtime_seconds` exceeds  per-worker budget (`total_runtime / worker_count`).
+- Split chunks are built by bin-packing the file's cached per-example runtimes using longest-processing-time greedily: each example lands in
+  the bin with the smallest current sum. So a single heavy example stays isolated in its own chunk.
 
 Known pitfalls:
 
-- `before(:all)` / `before(:context)` state may run once per chunk
-  process instead of once per file, which can break suites that rely on
+- `before(:all)` / `before(:context)` state may run once per chunk process instead of once per file, which can break suites that rely on
   shared context fixtures.
-- Suites that define examples dynamically (from environment, time,
-  random data, database state, or metaprogramming) may produce different
+- Suites that define examples dynamically (from environment, time, random data, database state, or metaprogramming) may produce different
   example sets between cache generation and split execution.
-- Shared examples and custom DSLs can produce surprising source
-  locations. Plur stores `id` and `location_rerun_argument` so
-  divergence can be debugged.
-- Splitting is cache-driven: a cold run (no runtime cache entries yet) falls back
-  to file-level grouping. The next default run populates the cache.
+- Shared examples and custom DSLs can produce surprising source locations.
+- Splitting is cache-driven: a cold run (no runtime cache entries yet) falls back to file-level grouping. The next default run populates the cache.
 
 Splitting is experimental, and its behavior may change between releases.
 

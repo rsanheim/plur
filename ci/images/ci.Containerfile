@@ -1,4 +1,4 @@
-FROM docker.io/library/debian:trixie-slim
+FROM registry.shark-tet.ts.net/docker.io/library/debian:trixie-slim
 
 ARG USERNAME=plur
 ARG USER_UID=1000

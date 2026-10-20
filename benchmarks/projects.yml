@@ -1,11 +1,15 @@
 # Pinned benchmark targets. Fields are either hyperfine flags passed through
 # verbatim (warmup, runs, parameter-lists, commands, setup, command-name,
-# ignore-failure, show-output) or ours (name, repo, ref, subdir, plur-tags).
+# ignore-failure, show-output) or ours (name, repo, ref, subdir, plur-tags,
+# post_checkout).
 # See the recurring-benchmarks plan in plur-internal for the full design.
 #
 # warmup/runs/parameter-lists/commands/show-output fall back to `defaults`;
 # plur-tags names published plur releases to benchmark alongside HEAD
-# ("latest" = newest tag).
+# ("latest" = newest tag). post_checkout is a command run verbatim through a
+# shell in the project's checkout (honoring subdir) with PLUR_ROOT set to the
+# plur checkout, after `git checkout` and before `bundle install`; a non-zero
+# exit fails the run.
 
 defaults:
   warmup: 2
@@ -22,12 +26,14 @@ defaults:
 projects:
   - name: backspin
     repo: https://github.com/rsanheim/backspin.git
-    ref: v0.12.0                          # RSpec, ~12 specs
+    ref: v0.15.1                          # RSpec
 
   # RSpec flagship, ~31.7k examples. Compare HEAD against the last release.
   - name: rubocop
     repo: https://github.com/rubocop/rubocop.git
     ref: v1.88.0
+    # Regenerate benchmarks/rubocop_Gemfile.lock whenever ref is bumped.
+    post_checkout: cp "$PLUR_ROOT/benchmarks/rubocop_Gemfile.lock" Gemfile.lock
     plur-tags: [latest]
 
   # Minitest; files are test/spec_*.rb (outside plur's default patterns), so the
@@ -35,5 +41,7 @@ projects:
   - name: rack
     repo: https://github.com/rack/rack.git
     ref: v3.2.6
+    # Regenerate benchmarks/rack_Gemfile.lock whenever ref is bumped.
+    post_checkout: cp "$PLUR_ROOT/benchmarks/rack_Gemfile.lock" Gemfile.lock
     commands:
       - "plur test/spec_*.rb --use minitest --workers {workers}"

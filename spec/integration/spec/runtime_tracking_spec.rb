@@ -87,6 +87,29 @@ RSpec.describe "Plur runtime tracking" do
       end
     end
 
+    it "saves runtime data when the suite finishes with failing examples" do
+      chdir(project_fixture("failing_specs")) do
+        result = run_plur_allowing_errors("-n", "2")
+        expect(result.exit_status).to eq(1)
+
+        data, _ = runtime_cache_data
+        entry = data["files"]["spec/mixed_results_spec.rb"]
+        expect(entry["runtime_seconds"]).to be > 0
+        expect(entry["examples"]).not_to be_empty
+      end
+    end
+
+    it "saves runtime data for files that ran when another file fails to load" do
+      chdir(project_fixture("rspec-errors")) do
+        result = run_plur_allowing_errors("-n", "2", "spec/load_error_spec.rb", "spec/passing_spec.rb")
+        expect(result.exit_status).to eq(1)
+
+        data, _ = runtime_cache_data
+        expect(data["files"].keys).to eq(["spec/passing_spec.rb"])
+        expect(data["files"]["spec/passing_spec.rb"]["runtime_seconds"]).to be > 0
+      end
+    end
+
     it "does not create or modify the runtime cache during --dry-run" do
       Dir.chdir(default_ruby_dir) do
         runtime_dir = File.join(tmp_plur_home, "runtime")
