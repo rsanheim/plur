@@ -226,16 +226,9 @@ plur -f summary                  # no markers, even on a terminal
 
 Set it with `--formatter`/`-f`, `PLUR_FORMATTER`, or `formatter = "..."` in a config file, in that order of precedence. Formatter and color are independent: `--formatter=summary --color=always` colors the results without markers.
 
-## Performance Monitoring
+## Debugging / Tuning
 
-### Basic Timing
-
-RSpec output includes timing details, for example:
-```
-Finished in 0.35 seconds (files took 0.12 seconds to load)
-```
-
-### Debugging Test Failures
+### Show more details
 
 ```bash
 # Run with debug output
@@ -256,11 +249,11 @@ Suites with only a few large test files may benefit less.
 
 ## Runtime Tracking
 
-Plur saves test timings in `$PLUR_HOME/runtime/<project-hash>.json` to balance tests across. Run `plur doctor` to see the cache path.
+Plur saves test timings in `$PLUR_HOME/runtime/<project-hash>.json`. Run `plur doctor` to see the cache path.
 
-- Git worktrees share timings for the same repo. Without Git, the working directory identifies
+- Git worktrees share timings for the same repo. Without Git, the working directory is used.
 - Complete runs with examples save timings, including runs with failures. 
-- We skip saving for: plur errors/aborts, focused runs, tagged runs, fail-fast (rspec-only), any rspec passthrough flags
+- We skip saving for plur errors/aborted runs and rspec fail-fast runs.
 
 ### `--rspec-split` (EXPERIMENTAL)
 

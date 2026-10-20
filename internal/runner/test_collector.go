@@ -106,7 +106,7 @@ func (collector *TestCollector) BuildResult() WorkerResult {
 		result.ErrorCount = collector.suiteCounts.ErrorCount
 		result.PendingCount = collector.suiteCounts.PendingCount
 		// Fewer tests finished than started means the run stopped early (e.g. fail-fast).
-		result.Incomplete = collector.startedTestCount > 0 && collector.suiteCounts.TestCount != collector.startedTestCount
+		result.Incomplete = collector.startedTestCount > 0 && collector.suiteCounts.TestCount < collector.startedTestCount
 	}
 
 	return result
