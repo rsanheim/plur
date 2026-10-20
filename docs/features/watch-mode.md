@@ -75,9 +75,9 @@ if you still want them ignored.
 ## Platform Support
 
 File watching is powered by the excellent
-[e-dant/watcher](https://github.com/e-dant/watcher). Plur bundles it for macOS (Apple Silicon), Linux x86_64 and
-ARM64, and Windows x86_64 (experimental). It gets unpacked to `~/.plur/bin/`
-the first time you run `plur watch`.
+[e-dant/watcher](https://github.com/e-dant/watcher). Plur bundles it for macOS
+(Apple Silicon), Linux x86_64 and ARM64, and Windows x86_64 (experimental). It
+gets unpacked to `~/.plur/bin/` the first time you run `plur watch`.
 
 For how it all works under the hood, see
 [Watch Architecture](../architecture/plur-watch-architecture.md).
