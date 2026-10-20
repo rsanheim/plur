@@ -84,8 +84,8 @@ func (r *SpecCmd) Run(parent *PlurCLI) error {
 
 	summary := runner.BuildTestSummary(results, wallTime)
 
-	// Save runtime data only for successful invocations with examples.
-	if summary.ExitCode == 0 && summary.TotalExamples > 0 {
+	// Save runtime data unless a worker crashed or failed to run examples.
+	if len(summary.ErroredFiles) == 0 && summary.TotalExamples > 0 {
 		runKind := testruntime.ClassifyRunKind(patterns, r.Tags, parent.passthroughArgs)
 		if err := run.Tracker().SaveToFile(runKind); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to save runtime data: %v\n", err)
