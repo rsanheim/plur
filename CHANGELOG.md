@@ -4,11 +4,7 @@
 
 ## v0.82.1 - 2026-10-20
 
-* Save runtime data from runs with failing examples. Worker errors and workers that stop early (RSpec fail-fast) still skip the save, so a partial run can't replace complete timings. [#177](https://github.com/rsanheim/plur/pull/177)
-* Update Go to 1.27.3 for its security release. [#178](https://github.com/rsanheim/plur/pull/178)
-* Update Go to 1.27.2, GoReleaser to 2.18.3, Ruby, and Go module deps. [#165](https://github.com/rsanheim/plur/pull/165), [#172](https://github.com/rsanheim/plur/pull/172)
-* Fix sqlite3 security alert in the Rails fixture. [#176](https://github.com/rsanheim/plur/pull/176)
-* CI and build maintenance: unprivileged CI image builds, Crow toolchain fixes, stray vendor directory guard, nightly CodSpeed benchmarks, and pinned bench lockfiles. [#166](https://github.com/rsanheim/plur/pull/166), [#167](https://github.com/rsanheim/plur/pull/167), [#168](https://github.com/rsanheim/plur/pull/168), [#169](https://github.com/rsanheim/plur/pull/169), [#171](https://github.com/rsanheim/plur/pull/171), [#174](https://github.com/rsanheim/plur/pull/174), [#175](https://github.com/rsanheim/plur/pull/175)
+* Save runtime data from runs with failing examples. [#177](https://github.com/rsanheim/plur/pull/177)
 
 ## v0.82.0 - 2026-09-26
 
