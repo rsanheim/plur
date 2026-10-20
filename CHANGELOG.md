@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.82.1 - 2026-10-20
+
+* Save runtime data from runs with failing examples. [#177](https://github.com/rsanheim/plur/pull/177)
+
 ## v0.82.0 - 2026-09-26
 
 * Add `--formatter=auto|progress|summary` (`-f`, `PLUR_FORMATTER`, or `formatter` in config). By default, terminals show progress markers while pipes and files show test output and final results without the marker stream. [#154](https://github.com/rsanheim/plur/pull/154)
