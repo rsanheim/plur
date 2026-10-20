@@ -22,7 +22,7 @@ labels:
   platform: linux/amd64
 
 variables:
-  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-10-10-9e0bbbe6'
+  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-10-20-d7ba966f'
 
 clone:
   - name: git
