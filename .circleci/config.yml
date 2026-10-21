@@ -149,7 +149,7 @@ jobs:
       - run:
           name: plur doctor
           command: |
-            which plur
+            which -a plur
             plur doctor
       - run:
           name: Run Ruby tests with plur
