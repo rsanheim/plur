@@ -49,6 +49,7 @@ jobs:
           ruby_bin="$(mise where ruby)/bin"
           export PATH="$GOBIN:$ruby_bin:$PATH"
           echo "$GOBIN" >> "$GITHUB_PATH"
+          bundle config set --local path vendor/bundle
           bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
           bin/rake vendor:download:current
           bin/rake install
