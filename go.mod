@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/alecthomas/kong v1.16.1
-	github.com/bmatcuk/doublestar/v4 v4.10.2
+	github.com/bmatcuk/doublestar/v4 v4.10.3
 	github.com/goccy/go-json v0.11.2
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/goleak v1.3.0
