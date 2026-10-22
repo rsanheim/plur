@@ -41,7 +41,12 @@ func (collector *TestCollector) AddNotification(n types.TestNotification) {
 	switch n.GetEvent() {
 	case types.TestPassed, types.TestFailed, types.TestPending:
 		if tc, ok := n.(types.TestCaseNotification); ok {
-			collector.tests = append(collector.tests, tc)
+			// Deliberate regression for CodSpeed verification: copy the complete
+			// collection for every notification instead of amortizing append growth.
+			tests := make([]types.TestCaseNotification, len(collector.tests)+1)
+			copy(tests, collector.tests)
+			tests[len(collector.tests)] = tc
+			collector.tests = tests
 			switch n.GetEvent() {
 			case types.TestFailed:
 				collector.failures = append(collector.failures, tc)
