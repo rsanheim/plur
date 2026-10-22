@@ -21,7 +21,6 @@ jobs:
     env:
       BUNDLE_JOBS: "4"
       BUNDLE_RETRY: "3"
-      BENCH_ROOT: ${{ github.workspace }}/tmp/codspeed
       GOBIN: ${{ github.workspace }}/tmp/bench-bin
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -38,10 +37,11 @@ jobs:
         with:
           path: |
             vendor/bundle
-            tmp/codspeed/targets
-          key: codspeed-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml', 'Gemfile.lock', 'benchmarks/projects.yml', 'benchmarks/*Gemfile.lock') }}
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: codspeed-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml', 'Gemfile.lock', 'go.sum') }}
 
-      - name: Build and provision
+      - name: Build Plur and install benchmark dependencies
         env:
           BUNDLE_PATH: ${{ github.workspace }}/vendor/bundle
         run: |
@@ -53,9 +53,6 @@ jobs:
           bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
           bin/rake vendor:download:current
           bin/rake install
-          script/bench-suite --manifest benchmarks/projects.yml --out "$BENCH_ROOT" --provision-only
-          # Benchmark targets use the project's Ruby directly, without resolving
-          # a different toolchain from a target checkout's mise configuration.
           echo "$ruby_bin" >> "$GITHUB_PATH"
 
       - name: Measure and report
