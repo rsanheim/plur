@@ -1,123 +1,83 @@
 # Plur Watch Mode
 
-## Overview
-
-`plur watch` reruns tests when files change. Built-in mappings connect source
-files to their tests, and you can add mappings for your project.
-
-Plur bundles [e-dant/watcher](https://github.com/e-dant/watcher) to monitor changes
-using the operating system's file events.
-
-## Usage
+`plur watch` reruns your tests when files change. It knows the usual Ruby
+layouts out of the box, and you can add your own mappings in `.plur.toml`.
 
 ```bash
-# Start watching for file changes
-plur watch
-
-# Preview the jobs a file change would trigger
-plur watch find lib/foo.rb
-
-# Set custom debounce delay (milliseconds)
-plur watch --debounce 250
+plur watch                    # start watching
+plur watch --debounce 250     # wait 250ms for changes to settle (default is 30ms)
+plur watch find lib/foo.rb    # show what a change to lib/foo.rb would run
 ```
 
-### What Gets Watched
+## While It's Running
 
-For an RSpec project, the default watch mappings monitor:
+| Type | To |
+|------|----|
+| Enter | Run all tests |
+| `reload` | Restart plur, picking up any config changes |
+| `debug` | Toggle debug output |
+| `help` | List these commands |
+| `exit` or Ctrl-C | Quit |
 
-- `spec/**/*_spec.rb` - Test files (runs the changed spec)
-- `lib/**/*.rb` - Library files (runs corresponding spec)
-- `app/**/*.rb` - Rails app files (runs corresponding spec)
+Ctrl-C once lets running tests wrap up. Press it again to force-stop them.
 
-Minitest projects use corresponding `test/**/*_test.rb` mappings. Go projects
-map Go source changes to package test commands.
+With Minitest, Enter runs every test file your job matches (minus its
+excludes), including files you just added.
 
-Default watch mappings do not include helper files such as
-`spec/spec_helper.rb` or `spec/rails_helper.rb`. Add a project-specific
-`[[watch]]` rule if helper changes should run tests.
+## What Gets Watched
 
-### File Mapping Examples
+For RSpec projects:
 
 | Changed File | Runs |
 |--------------|------|
-| `lib/foo.rb` | `spec/foo_spec.rb` |
 | `lib/foo/bar.rb` | `spec/foo/bar_spec.rb` |
 | `app/models/user.rb` | `spec/models/user_spec.rb` |
-| `app/controllers/posts_controller.rb` | `spec/controllers/posts_controller_spec.rb` |
-| `spec/models/user_spec.rb` | `spec/models/user_spec.rb` (itself) |
+| `spec/models/user_spec.rb` | itself |
 
-### Global Exclusions
+Minitest projects work the same way with `test/**/*_test.rb`, and Go projects
+run the changed package's tests.
 
-Plur ignores events from these directories by default:
+Helpers like `spec/spec_helper.rb` aren't watched by default. Add a `[[watch]]`
+rule if you want changes there to run tests. See
+[Watch Configuration](../configuration.md#watch-configuration).
 
-* `.git/**` - Git internal files
-* `node_modules/**` - JavaScript dependencies
+## Ignoring Files
 
-Plur applies these exclusions before matching watch rules. Set `watch-ignore` in
-`.plur.toml` to change them:
+Plur ignores `.git/**` and `node_modules/**` by default. To change that, set
+`watch-ignore` in `.plur.toml`:
 
 ```toml
-watch-ignore = [".git/**", "node_modules/**", "vendor/**", ".bundle/**"]
+watch-ignore = [".git/**", "node_modules/**", "vendor/**"]
 ```
 
-Or customize a single watch session with the repeatable `--ignore` flag:
+Or use `--ignore` for a single session:
 
 ```bash
-plur watch --ignore ".git/**" --ignore "node_modules/**" --ignore "vendor/**" --ignore ".bundle/**"
+plur watch --ignore ".git/**" --ignore "node_modules/**" --ignore "vendor/**"
 ```
 
-Both `watch-ignore` and `--ignore` replace the default list. Include `.git/**` and
-`node_modules/**` to keep ignoring them.
+Either one replaces the defaults, so list `.git/**` and `node_modules/**` again
+if you still want them ignored.
+
+## Good to Know
+
+- Creating or editing a file triggers a run. A bare `touch` doesn't, so change
+  the contents.
+- If a test is already running when its file changes again, plur skips it
+  instead of queueing it up:
+
+  ```text
+  [plur] skipped spec/user_spec.rb reason=running
+  ```
+
+- Different jobs run side by side, so their output can interleave.
 
 ## Platform Support
 
-Watcher binaries are embedded for these platforms:
+File watching is powered by the excellent
+[e-dant/watcher](https://github.com/e-dant/watcher). Plur bundles it for macOS
+(Apple Silicon), Linux x86_64 and ARM64, and Windows x86_64 (experimental). It
+gets unpacked to `~/.plur/bin/` the first time you run `plur watch`.
 
-- macOS ARM64 (Apple Silicon)
-- Linux x86_64
-- Linux ARM64
-- Windows x86_64 (experimental)
-
-Binaries are extracted on first use to `~/.plur/bin/` (or `$PLUR_HOME/bin/`)
-and automatically replaced when Plur ships a newer watcher version.
-
-## Process Lifecycle
-
-- Plur tracks direct child jobs and waits for them to exit
-- The first Ctrl-C lets Plur and test runners stop normally; a second force-stops remaining jobs
-- Reload (`reload` or SIGHUP), `exit`, SIGTERM, timeout, and non-terminal SIGINT give jobs 500ms to stop before force-stopping them
-- On shutdown, Plur waits for child jobs to exit; SIGKILL prevents cleanup and may leave jobs running
-
-## File Changes
-
-Plur runs tests for `create` and `modify` events that match a watch rule.
-Other event types are ignored.
-
-On macOS and Linux, `touch` alone does not trigger a run. Change the file's
-contents to trigger its watch rules.
-
-### Debouncing
-
-Plur batches changes over a 30ms window before running tests. Set `--debounce`
-to adjust the delay in milliseconds.
-
-## Known Issues and Limitations
-
-### Concurrent Output
-Watch mode runs independent jobs and targets concurrently. If a target is already
-running in the same job, Plur skips it and reports:
-
-```text
-[plur] skipped spec/user_spec.rb reason=running
-```
-
-If only some targets are already running, Plur starts the rest. Different jobs
-do not block each other. A `no_targets = true` run only blocks another run
-without targets in the same job.
-
-Concurrent runs share the terminal, so their output can interleave. Enable debug
-logging to see the job and targets when each run starts and finishes.
-
-See [Watch Configuration](../configuration.md#watch-configuration) for custom
-mappings and [Watch Architecture](../architecture/plur-watch-architecture.md)
-for implementation details.
+For how it all works under the hood, see
+[Watch Architecture](../architecture/plur-watch-architecture.md).
