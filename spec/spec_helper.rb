@@ -15,6 +15,17 @@ require "backspin"
 # of failing. No effect when `plur` is a plain binary, since mise never runs.
 ENV["MISE_YES"] ||= "1"
 
+# Env vars that would leak from the outer environment into spawned plur
+# processes: plur's own settings (the suite may itself run under plur),
+# parallel_tests conventions, and color settings a machine or CI may export.
+# Removed once at boot, including from the boot snapshot that
+# Bundler.with_unbundled_env restores. Specs that exercise these pass them
+# explicitly via run_plur's env: param.
+LEAKY_ENV_KEY = /\A(?:PLUR_(?!BINARY\z)\w+|PARALLEL_TEST_\w+|TEST_ENV_NUMBER|NO_COLOR)\z/
+[ENV, Bundler::ORIGINAL_ENV].each do |env|
+  env.keys.grep(LEAKY_ENV_KEY).each { |key| env.delete(key) }
+end
+
 ROOT_PATH = Pathname.new(__dir__).parent
 DEFAULT_RUBY_SPEC_FILE_COUNT = 13
 
@@ -32,12 +43,6 @@ RSpec.configure do |config|
   config.disable_monkey_patching!
   config.filter_run_excluding :skip_if_ci if ENV["CI"]
   config.shared_context_metadata_behavior = :apply_to_host_groups
-
-  # Scrub plur's parallel env vars before each spec so the outer test
-  # runner (which may itself be plur) doesn't leak into child processes.
-  config.around do |example|
-    without_plur_parallel_env { example.run }
-  end
 
   def chdir(path)
     Dir.chdir(path) do
