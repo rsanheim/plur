@@ -104,6 +104,10 @@ Keep git operations simple:
 * Avoid `--force` pushes unless absolutely necessary
 * Don't squash commits unnecessarily - commit history is useful
 
+### PR Checks
+* CodSpeed is a non-required check - ignore a failing CodSpeed when deciding whether a PR can merge. Its WallTime benchmarks swing with GitHub runner hardware.
+* To retrigger CI on a PR, push an empty commit (`git commit --allow-empty -m "kick ci"`).
+
 ## Testing from Outside-In
 
 ALWAYS use integration specs as guardrails - we have many, see `spec/integration`.
