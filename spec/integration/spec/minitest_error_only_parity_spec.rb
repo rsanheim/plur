@@ -23,33 +23,33 @@ RSpec.describe "Minitest error-only parity" do
   end
 
   it "reports the same counts as minitest when every test errors" do
-    chdir(project_fixture!("minitest-outcomes")) do
-      Bundler.with_unbundled_env do
-        error_file = "test/errors_only_test.rb"
-        File.write(error_file, <<~RUBY)
-          require "minitest/autorun"
+    with_fixture_copy(project_fixture!("minitest-outcomes")) do |project_dir|
+      chdir(project_dir) do
+        Bundler.with_unbundled_env do
+          error_file = "test/errors_only_test.rb"
+          File.write(error_file, <<~RUBY)
+            require "minitest/autorun"
 
-          class ErrorsOnlyTest < Minitest::Test
-            def test_raises
-              raise "TOKEN_ERR_ONE"
+            class ErrorsOnlyTest < Minitest::Test
+              def test_raises
+                raise "TOKEN_ERR_ONE"
+              end
+
+              def test_also_raises
+                raise "TOKEN_ERR_TWO"
+              end
             end
+          RUBY
 
-            def test_also_raises
-              raise "TOKEN_ERR_TWO"
-            end
-          end
-        RUBY
+          result = Backspin.compare(
+            reference: ["bundle", "exec", "ruby", "-Itest", "-e", %(require "errors_only_test")],
+            actual: [plur_binary, "--use", "minitest", "-n", "1", "--color=never", error_file],
+            filter: ->(snapshot) { outcome_facts(snapshot) }
+          )
 
-        result = Backspin.compare(
-          reference: ["bundle", "exec", "ruby", "-Itest", "-e", %(require "errors_only_test")],
-          actual: [plur_binary, "--use", "minitest", "-n", "1", "--color=never", error_file],
-          filter: ->(snapshot) { outcome_facts(snapshot) }
-        )
-
-        expect(result.verified?).to be true
-        expect(result.actual.status).to eq(1)
-      ensure
-        FileUtils.rm_f(error_file)
+          expect(result.verified?).to be true
+          expect(result.actual.status).to eq(1)
+        end
       end
     end
   end

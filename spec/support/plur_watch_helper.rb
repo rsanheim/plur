@@ -70,14 +70,8 @@ module PlurWatchHelper
     end
   end
 
-  def with_temp_watch_project(source: default_ruby_dir)
-    FileUtils.mkdir_p(ROOT_PATH.join("tmp"))
-
-    Dir.mktmpdir("plur-watch-project", ROOT_PATH.join("tmp").to_s) do |tmpdir|
-      project_dir = Pathname.new(tmpdir).join("project")
-      FileUtils.cp_r(source, project_dir)
-      yield project_dir
-    end
+  def with_temp_watch_project(source: default_ruby_dir, &block)
+    with_fixture_copy(source, &block)
   end
 
   def capture_plur_watch_process(dir:, timeout:, debounce: nil, env: {})
