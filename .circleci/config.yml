@@ -6,7 +6,7 @@ parameters:
     default: "1.27.3"
   ruby_version:
     type: string
-    default: "4.0.7"
+    default: "4.0.9"
 
 orbs:
   ruby: circleci/ruby@2.6.0
