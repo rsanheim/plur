@@ -15,7 +15,7 @@ labels:
   platform: linux/amd64
 
 variables:
-  - &plur_image "registry.shark-tet.ts.net/plur/ci:2026-10-25-6da114ae"
+  - &plur_image "registry.shark-tet.ts.net/plur/ci:2026-10-25-a405a7b7"
 
 steps:
   - name: bench
