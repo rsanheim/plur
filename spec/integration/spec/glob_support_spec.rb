@@ -105,11 +105,11 @@ RSpec.describe "plur glob pattern support" do
     end
 
     it "passes non-spec files through to RSpec without warnings" do
-      chdir(default_ruby_dir) do
-        # Create a temporary non-spec file (doesn't end with _spec.rb)
-        File.write("spec/helper.rb", "# helper file")
+      with_fixture_copy(default_ruby_dir) do |project_dir|
+        chdir(project_dir) do
+          # A non-spec file (doesn't end with _spec.rb)
+          File.write("spec/helper.rb", "# helper file")
 
-        begin
           result = run_plur("--dry-run", "spec/helper.rb")
 
           # Should succeed with dry-run (matching RSpec's behavior of accepting any file)
@@ -118,8 +118,6 @@ RSpec.describe "plur glob pattern support" do
           expect(result.err).to include("[dry-run] Running 1 spec [rspec]")
           expect(result.err).to include("spec/helper.rb")
           expect(result.err).not_to include("[warn]")
-        ensure
-          File.delete("spec/helper.rb") if File.exist?("spec/helper.rb")
         end
       end
     end
