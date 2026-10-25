@@ -25,7 +25,10 @@ RSpec.describe "Minitest error-only parity" do
   it "reports the same counts as minitest when every test errors" do
     chdir(project_fixture!("minitest-outcomes")) do
       Bundler.with_unbundled_env do
-        error_file = "test/errors_only_test.rb"
+        # Outside test/ so specs running in parallel against this fixture
+        # never discover it; plur still runs it as an explicit target.
+        error_file = "tmp/errors_only_test.rb"
+        FileUtils.mkdir_p("tmp")
         File.write(error_file, <<~RUBY)
           require "minitest/autorun"
 
@@ -41,7 +44,7 @@ RSpec.describe "Minitest error-only parity" do
         RUBY
 
         result = Backspin.compare(
-          reference: ["bundle", "exec", "ruby", "-Itest", "-e", %(require "errors_only_test")],
+          reference: ["bundle", "exec", "ruby", "-Itmp", "-e", %(require "errors_only_test")],
           actual: [plur_binary, "--use", "minitest", "-n", "1", "--color=never", error_file],
           filter: ->(snapshot) { outcome_facts(snapshot) }
         )
