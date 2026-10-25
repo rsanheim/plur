@@ -36,14 +36,19 @@ module PlurHomeHelper
   # spawned plur processes: parallel vars when the suite itself runs via plur,
   # and color conventions a developer machine or CI may export. Specs that
   # exercise these pass them explicitly via run_plur's env: param.
+  # Bundler.with_unbundled_env restores Bundler::ORIGINAL_ENV, a boot-time
+  # snapshot, so the vars are removed there as well.
   def without_plur_parallel_env
     saved = {}
+    saved_original = {}
     %w[PLUR_WORKERS PARALLEL_TEST_PROCESSORS TEST_ENV_NUMBER PARALLEL_TEST_GROUPS NO_COLOR PLUR_COLOR PLUR_FORMATTER PLUR_DEV_PROFILE].each do |key|
       saved[key] = ENV.delete(key)
+      saved_original[key] = Bundler::ORIGINAL_ENV.delete(key)
     end
     yield
   ensure
     saved.each { |key, value| ENV[key] = value if value }
+    saved_original.each { |key, value| Bundler::ORIGINAL_ENV[key] = value if value }
   end
 
   # Generic method to run plur with any subcommands
