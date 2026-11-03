@@ -14,7 +14,7 @@ import (
 // Execution and display share this path so Plur prints exactly what it runs.
 // Job.Env wins over inherited variables. Job.Cmd must be non-empty.
 func (r JobRun) Command(cwd string) *exec.Cmd {
-	argv := append(slices.Clone(r.Job.Cmd), r.Targets.Values()...)
+	argv := r.Job.BuildWatchArgs(r.Targets.Values())
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), r.Job.Env...)

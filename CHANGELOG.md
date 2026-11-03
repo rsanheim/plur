@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Fix Enter in Minitest watch mode running no tests. [#164](https://github.com/rsanheim/plur/pull/164)
+
 ## v0.82.1 - 2026-10-20
 
 * Save runtime data from runs with failing examples. [#177](https://github.com/rsanheim/plur/pull/177)
