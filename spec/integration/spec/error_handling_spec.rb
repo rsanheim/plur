@@ -55,25 +55,25 @@ RSpec.describe "Plur error handling" do
   end
 
   it "shows an errored worker's pre-crash stdout once, alongside the load error" do
-    chdir(fixture_dir) do
-      error_file = "spec/stdout_then_load_error_spec.rb"
-      File.write(error_file, <<~RUBY)
-        puts "Seeding test database..."
-        require "this_gem_does_not_exist_surely"
-      RUBY
+    with_fixture_copy(fixture_dir) do |project_dir|
+      chdir(project_dir) do
+        error_file = "spec/stdout_then_load_error_spec.rb"
+        File.write(error_file, <<~RUBY)
+          puts "Seeding test database..."
+          require "this_gem_does_not_exist_surely"
+        RUBY
 
-      result = run_plur_allowing_errors("-n", "2", "--color=never",
-        "spec/passing_spec.rb", error_file)
+        result = run_plur_allowing_errors("-n", "2", "--color=never",
+          "spec/passing_spec.rb", error_file)
 
-      expect(result.exit_status).to eq(1)
-      # The load error itself must still be reported...
-      expect(result.out).to include("cannot load such file")
-      # ...but the stdout printed before the crash streamed live and must
-      # not be re-printed with the error summary.
-      expect(result.out.scan("Seeding test database...").length).to eq(1),
-        "errored worker stdout should appear once (streamed live), not re-dumped"
-    ensure
-      FileUtils.rm_f(error_file)
+        expect(result.exit_status).to eq(1)
+        # The load error itself must still be reported...
+        expect(result.out).to include("cannot load such file")
+        # ...but the stdout printed before the crash streamed live and must
+        # not be re-printed with the error summary.
+        expect(result.out.scan("Seeding test database...").length).to eq(1),
+          "errored worker stdout should appear once (streamed live), not re-dumped"
+      end
     end
   end
 

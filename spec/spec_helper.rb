@@ -81,6 +81,28 @@ RSpec.configure do |config|
     end
   end
 
+  # Yields a private copy of a fixture project. Specs that write files must
+  # use one: other plur workers run the shared fixtures concurrently.
+  def with_fixture_copy(source)
+    FileUtils.mkdir_p(ROOT_PATH.join("tmp"))
+
+    Dir.mktmpdir("plur-fixture", ROOT_PATH.join("tmp").to_s) do |tmpdir|
+      project_dir = Pathname.new(tmpdir).join("project")
+      FileUtils.cp_r(source, project_dir)
+      yield project_dir
+    end
+  end
+
+  # A file written into a shared fixture's spec/ or test/ tree, even briefly,
+  # races every worker discovering tests there. Fail the run if any changed.
+  fixture_test_dirs = -> { Dir.glob(ROOT_PATH.join("fixtures/projects/*/{spec,test}/**/").to_s).to_h { |dir| [dir, File.mtime(dir)] } }
+  fixture_test_dirs_before = nil
+  config.before(:suite) { fixture_test_dirs_before = fixture_test_dirs.call }
+  config.after(:suite) do
+    changed = fixture_test_dirs.call.reject { |dir, mtime| fixture_test_dirs_before[dir] == mtime }
+    raise "Specs modified shared fixture dirs (use with_fixture_copy): #{changed.keys.join(", ")}" if changed.any?
+  end
+
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
   end

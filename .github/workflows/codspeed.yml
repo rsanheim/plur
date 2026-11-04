@@ -1,0 +1,66 @@
+name: CodSpeed
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      BUNDLE_JOBS: "4"
+      BUNDLE_RETRY: "3"
+      GOBIN: ${{ github.workspace }}/tmp/bench-bin
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          install_args: ruby go goreleaser
+
+      - name: Cache benchmark dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            vendor/bundle
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: codspeed-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise.toml', 'Gemfile.lock', 'go.sum') }}
+
+      - name: Build Plur and install benchmark dependencies
+        env:
+          BUNDLE_PATH: ${{ github.workspace }}/vendor/bundle
+        run: |
+          mkdir -p "$GOBIN"
+          ruby_bin="$(mise where ruby)/bin"
+          export PATH="$GOBIN:$ruby_bin:$PATH"
+          echo "$GOBIN" >> "$GITHUB_PATH"
+          bundle config set --local path vendor/bundle
+          bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
+          bin/rake vendor:download:current
+          bin/rake install
+          echo "$ruby_bin" >> "$GITHUB_PATH"
+
+      - name: Measure and report
+        uses: CodSpeedHQ/action@db8507ae9a4959541cb4cddaf26530f371d6223c # v5.5.0
+        env:
+          CODSPEED_PROFILER_ENABLED: "false"
+          CODSPEED_ISOLATION: "false"
+        with:
+          mode: walltime
+          runner-version: "5.4.2"
+          config: benchmarks/codspeed.yml

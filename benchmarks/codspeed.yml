@@ -1,20 +1,10 @@
-# Run by .crow/bench-codspeed.yaml over the projects.yml checkouts. Names carry
-# the pinned ref so a pin bump starts a new series, not a fake regression.
+# Commands run relative to this config's directory. The fixed workload isolates
+# Plur's notification overhead; plain RSpec is the control for Ruby/host drift.
 benchmarks:
-  - name: "backspin@v0.15.1 -n 4"
-    exec: plur -C /bench/plur-codspeed/targets/backspin -n 4
-    options: { warmup-time: "2s", max-time: "30s" }
+  - name: "rspec-notifications@20000 -n 1"
+    exec: plur -C fixtures/rspec-notifications --use rspec -n 1
+    options: { warmup-time: "2s", min-rounds: 5, max-rounds: 5 }
 
-  # Control without plur, to tell host/Ruby drift from plur changes. Progress
-  # format keeps backspin's documentation output out of the logs.
-  - name: "backspin@v0.15.1 rspec"
-    exec: bash -c "cd /bench/plur-codspeed/targets/backspin && exec bundle exec rspec --format progress"
-    options: { warmup-time: "2s", max-time: "30s" }
-
-  - name: "rack@v3.2.6 -n 4"
-    exec: plur -C /bench/plur-codspeed/targets/rack test/spec_*.rb --use minitest -n 4
-    options: { warmup-time: "5s", max-time: "45s" }
-
-  - name: "rubocop@v1.88.0 -n 8"
-    exec: plur -C /bench/plur-codspeed/targets/rubocop -n 8
-    options: { warmup-time: "1s", min-rounds: 5, max-rounds: 5 }
+  - name: "rspec-notifications@20000 rspec"
+    exec: bash -c "cd fixtures/rspec-notifications && exec bundle exec rspec --format progress"
+    options: { warmup-time: "2s", min-rounds: 5, max-rounds: 5 }
