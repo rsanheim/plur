@@ -58,7 +58,9 @@ RSpec.describe "plur doctor command" do
       .gsub(/HOME:\s+.+/, "HOME:                     [HOME_PATH]")
       .gsub(/Local Config:\s+.+/, "Local Config:   [LOCAL_CONFIG_PATH]")
       .gsub(/Global Config:\s+.+/, "Global Config:  [GLOBAL_CONFIG_PATH]")
-      .gsub(/\s+- .*\.plur\.toml.*/, "    [CONFIG_FILE]")
+      # Match by label, not path: Backspin's credential scrubber can mask paths
+      # (e.g. "-profile/..." looks like a MySQL -p password)
+      .gsub(/(Active Configuration Files:)(?:\n\s+- .+)+/, "\\1    [CONFIG_FILE]")
       .gsub(/\s+Using defaults.*/, "    [DEFAULT_CONFIG_MESSAGE]")
       .gsub(/Source:\s+.+/, "Source: [CONFIG_SOURCE]")
       .gsub(/Workers:\s+\d+/, "Workers: [WORKER_COUNT]")
