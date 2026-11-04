@@ -32,6 +32,12 @@ bin/rake install
 
 The hidden `--dev-profile DIR` flag (or `PLUR_DEV_PROFILE=DIR`) makes any plur command write Go runtime profiles at exit: `cpu.pprof`, `heap.pprof`, `goroutine.txt`, and `goroutineleak.txt` under `DIR/plur-<pid>/`. Inspect the binary profiles with `go tool pprof`; the goroutine files are plain text, and a leak-free run has a `goroutineleak.txt` that starts with `goroutineleak profile: total 0`.
 
+## CodSpeed Benchmarks
+
+The GitHub Actions benchmark workflow uses `benchmarks/codspeed.yml` to define commands and timing options. See the [CodSpeed configuration schema](https://github.com/CodSpeedHQ/codspeed/blob/main/schemas/codspeed.schema.json) for supported fields, including warmup duration, time limits, and round counts.
+
+Performance-check settings, including **Informational Status Checks on Failure**, are managed in the CodSpeed repository dashboard rather than this configuration file. See [CodSpeed customization](https://codspeed.io/docs/features/customization#informational-status-check-on-failure).
+
 ## Pull Request Process
 
 1. Fork the repository
