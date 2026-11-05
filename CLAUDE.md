@@ -106,6 +106,7 @@ Keep git operations simple:
 
 ### PR Checks
 * CodSpeed is a non-required check - ignore a failing CodSpeed when deciding whether a PR can merge. Its WallTime benchmarks swing with GitHub runner hardware.
+* In CodSpeed's repository Settings, enable **Informational Status Checks on Failure** to report performance regressions without a failed analysis check. This setting lives in CodSpeed, not workflow YAML, and applies to all regressions. Benchmark execution failures should still fail the GitHub Actions job. See [CodSpeed customization](https://codspeed.io/docs/features/customization#informational-status-check-on-failure).
 * To retrigger CI on a PR, push an empty commit (`git commit --allow-empty -m "kick ci"`).
 
 ## Testing from Outside-In

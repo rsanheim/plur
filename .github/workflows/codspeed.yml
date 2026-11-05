@@ -55,6 +55,8 @@ jobs:
           bin/rake install
           echo "$ruby_bin" >> "$GITHUB_PATH"
 
+      # Configure "Informational Status Checks on Failure" in CodSpeed repository Settings.
+      # CodSpeed posts its analysis check separately; execution failures still fail this job.
       - name: Measure and report
         uses: CodSpeedHQ/action@db8507ae9a4959541cb4cddaf26530f371d6223c # v5.5.0
         env:
