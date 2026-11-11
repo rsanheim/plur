@@ -1,8 +1,9 @@
-site_name: Plur Documentation
-site_description: Fast parallel test runner for Ruby/RSpec
-site_url: https://github.com/rsanheim/plur
+site_name: Plur
+site_description: Fast parallel test runner for Ruby, with RSpec and Minitest support
+site_url: https://plur.run/
 repo_name: rsanheim/plur
 repo_url: https://github.com/rsanheim/plur
+edit_uri: edit/main/docs/
 
 theme:
   name: material
@@ -13,13 +14,15 @@ theme:
     text: Lato
     code: JetBrains Mono
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
       primary: teal
       accent: indigo
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
       primary: teal
       accent: indigo
       toggle:
@@ -27,12 +30,16 @@ theme:
         name: Switch to light mode
   features:
     - navigation.instant
+    - navigation.instant.prefetch
     - navigation.sections
-    - navigation.expand
     - navigation.indexes
-    - toc.integrate
-    - search.suggest
+    - navigation.path
+    - navigation.footer
+    - navigation.top
+    - navigation.tracking
+    - toc.follow
     - search.highlight
+    - content.action.edit
     - content.code.copy
     - content.code.annotate
 
@@ -59,11 +66,16 @@ markdown_extensions:
   - attr_list
   - md_in_html
 
+exclude_docs: |
+  .DS_Store
+
 # Navigation handled by awesome-nav (docs/.nav.yml)
 
 plugins:
   - search
   - awesome-nav
+  - privacy:
+      cache_dir: !ENV [PLUR_DOCS_PRIVACY_CACHE_DIR, .cache/plugin/privacy]
 
 validation:
   nav:

@@ -23,15 +23,13 @@ Usage: ${SCRIPT_NAME} [COMMAND]
 Commands (_note that the command will default to 'serve' if not provided_)
 
   serve       Start development server at http://localhost:8000 (default)
-  build       Build documentation to site/
+  build       Remove site/ and build documentation to site/
   clean       Remove site/ directory
-  clean-build Clean and rebuild documentation
   help        Show this help message
 
 Examples:
   ${SCRIPT_NAME}                    # Start dev server
-  ${SCRIPT_NAME} build              # Build static site
-  ${SCRIPT_NAME} clean-build        # Clean rebuild
+  ${SCRIPT_NAME} build              # Clean rebuild of the static site
 
 Environment:
   Uses mise + uv for Python dependency management.
@@ -93,15 +91,9 @@ main() {
 
     build)
       echo "Building documentation..."
-      uv run zensical build
-      echo "Documentation built in site/"
-      ;;
-
-    clean-build)
-      echo "Cleaning and building documentation..."
       rm -rf "${PROJECT_ROOT}/site/"
       uv run zensical build
-      echo "✓ Documentation rebuilt in site/"
+      echo "Documentation built in site/"
       ;;
 
     serve)
