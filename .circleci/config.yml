@@ -64,11 +64,13 @@ jobs:
 
   test-goreleaser:
     docker:
-      - image: cimg/go:<< pipeline.parameters.go_version >>
+      - image: cimg/base:2026.10
     resource_class: medium
     working_directory: ~/project
     steps:
       - checkout
+      - go/install:
+          version: << pipeline.parameters.go_version >>
       - go/mod-download-cached
       - go/load-build-cache
       - go/install-goreleaser:
@@ -104,11 +106,13 @@ jobs:
 
   test-go-race:
     docker:
-      - image: cimg/go:<< pipeline.parameters.go_version >>
+      - image: cimg/base:2026.10
     resource_class: medium
     working_directory: ~/project
     steps:
       - checkout
+      - go/install:
+          version: << pipeline.parameters.go_version >>
       - go/mod-download-cached
       - go/load-build-cache
       - run:
