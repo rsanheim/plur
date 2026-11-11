@@ -76,6 +76,15 @@ plugins:
   - awesome-nav
   - privacy:
       cache_dir: !ENV [PLUR_DOCS_PRIVACY_CACHE_DIR, .cache/plugin/privacy]
+      assets_exclude:
+        - cdn.plyr.io/*
+        - imasdk.googleapis.com/*
+        - pagead2.googlesyndication.com/*
+        - player.vimeo.com/*
+        - s0.2mdn.net/*
+        - unpkg.com/ace-builds*
+        - unpkg.com/glightbox*
+        - unpkg.com/pyodide*
 
 validation:
   nav:
