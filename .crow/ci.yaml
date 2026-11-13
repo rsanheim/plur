@@ -38,6 +38,7 @@ steps:
     image: *plur_image
     environment:
       UV_CACHE_DIR: /cache/plur/uv
+      PLUR_DOCS_PRIVACY_CACHE_DIR: /cache/plur/docs-privacy
     when:
       - path:
           include:
@@ -45,7 +46,7 @@ steps:
             - mkdocs.yml
             - pyproject.toml
     commands:
-      - mkdir -p "$UV_CACHE_DIR"
+      - mkdir -p "$UV_CACHE_DIR" "$PLUR_DOCS_PRIVACY_CACHE_DIR"
       - uv run zensical build --strict
 
   - name: ci
@@ -59,6 +60,7 @@ steps:
       GOCACHE: /cache/plur/go-build
       XDG_CACHE_HOME: /cache/plur/xdg
       UV_CACHE_DIR: /cache/plur/uv
+      PLUR_DOCS_PRIVACY_CACHE_DIR: /cache/plur/docs-privacy
       # minibox has cores to spare; raise plur's CI worker cap (default 4)
       PLUR_WORKERS: '8'
     when:
@@ -68,7 +70,7 @@ steps:
       - |
         set -e
 
-        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$UV_CACHE_DIR"
+        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$UV_CACHE_DIR" "$PLUR_DOCS_PRIVACY_CACHE_DIR"
         # Install into mise's Go bin directory and prefer it over cached binaries.
         GOBIN="$(mise where go)/bin"
         export GOBIN

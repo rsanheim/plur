@@ -1,8 +1,9 @@
-site_name: Plur Documentation
-site_description: Fast parallel test runner for Ruby/RSpec
-site_url: https://github.com/rsanheim/plur
+site_name: Plur
+site_description: Fast parallel test runner for Ruby, with RSpec and Minitest support
+site_url: https://plur.run/
 repo_name: rsanheim/plur
 repo_url: https://github.com/rsanheim/plur
+edit_uri: edit/main/docs/
 
 theme:
   name: material
@@ -13,26 +14,38 @@ theme:
     text: Lato
     code: JetBrains Mono
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme)"
       primary: teal
       accent: indigo
       toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
-    - scheme: slate
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
       primary: teal
       accent: indigo
       toggle:
         icon: material/weather-sunny
-        name: Switch to light mode
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to system preference
   features:
     - navigation.instant
+    - navigation.instant.prefetch
     - navigation.sections
-    - navigation.expand
     - navigation.indexes
-    - toc.integrate
-    - search.suggest
+    - navigation.path
+    - navigation.footer
+    - navigation.top
+    - navigation.tracking
+    - toc.follow
     - search.highlight
+    - content.action.edit
     - content.code.copy
     - content.code.annotate
 
@@ -59,11 +72,25 @@ markdown_extensions:
   - attr_list
   - md_in_html
 
+exclude_docs: |
+  .DS_Store
+
 # Navigation handled by awesome-nav (docs/.nav.yml)
 
 plugins:
   - search
   - awesome-nav
+  - privacy:
+      cache_dir: !ENV [PLUR_DOCS_PRIVACY_CACHE_DIR, .cache/plugin/privacy]
+      assets_exclude:
+        - cdn.plyr.io/*
+        - imasdk.googleapis.com/*
+        - pagead2.googlesyndication.com/*
+        - player.vimeo.com/*
+        - s0.2mdn.net/*
+        - unpkg.com/ace-builds*
+        - unpkg.com/glightbox*
+        - unpkg.com/pyodide*
 
 validation:
   nav:
