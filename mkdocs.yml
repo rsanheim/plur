@@ -14,20 +14,26 @@ theme:
     text: Lato
     code: JetBrains Mono
   palette:
+    - media: "(prefers-color-scheme)"
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: teal
       accent: indigo
       toggle:
-        icon: material/weather-night
+        icon: material/weather-sunny
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: teal
       accent: indigo
       toggle:
-        icon: material/weather-sunny
-        name: Switch to light mode
+        icon: material/weather-night
+        name: Switch to system preference
   features:
     - navigation.instant
     - navigation.instant.prefetch
