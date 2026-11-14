@@ -76,6 +76,12 @@ steps:
         export GOBIN
         export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
 
+        # Keep plur's test timings on /cache so each run balances workers with
+        # the previous run's data. Only runtime/ is shared; the rest of ~/.plur
+        # (formatter, watcher binary) stays private to this container.
+        mkdir -p /cache/plur/plur-runtime "$HOME/.plur"
+        ln -s /cache/plur/plur-runtime "$HOME/.plur/runtime"
+
         go version
         ruby --version
         goreleaser --version

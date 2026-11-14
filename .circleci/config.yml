@@ -150,6 +150,12 @@ jobs:
       - run:
           name: Install plur watcher
           command: plur watch install
+      # Test timings from earlier runs let plur balance workers by runtime.
+      - restore_cache:
+          name: Restore plur runtime data
+          keys:
+            - v1-plur-runtime-{{ .Branch }}-
+            - v1-plur-runtime-
       - run:
           name: plur doctor
           command: |
@@ -184,6 +190,11 @@ jobs:
           name: Run all Ruby specs
           command: |
             bin/rake test
+      - save_cache:
+          name: Save plur runtime data
+          key: v1-plur-runtime-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.plur/runtime
       - go/save-build-cache
 
 workflows:
