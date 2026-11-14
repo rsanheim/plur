@@ -9,12 +9,13 @@ module PlurHomeHelper
     def around_with_tmp_plur_home
       around do |example|
         Dir.mktmpdir do |tmpdir|
+          previous_plur_home = ENV["PLUR_HOME"]
           @tmp_plur_home = tmpdir
           ENV["PLUR_HOME"] = tmpdir
           example.run
         ensure
           @tmp_plur_home = nil
-          ENV.delete("PLUR_HOME")
+          ENV["PLUR_HOME"] = previous_plur_home
         end
       end
     end
