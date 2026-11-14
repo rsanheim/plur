@@ -190,6 +190,15 @@ jobs:
           name: Run all Ruby specs
           command: |
             bin/rake test
+      # The specs also leave runtime files for throwaway projects, which
+      # would pile up in the cache.
+      - run:
+          name: Keep only this suite's runtime data
+          command: |
+            runtime_file="$(plur doctor | sed -n 's/^Runtime Data: *//p')"
+            test -f "$runtime_file"
+            find ~/.plur/runtime -type f ! -path "$runtime_file" -delete
+            ls -la ~/.plur/runtime
       - save_cache:
           name: Save plur runtime data
           key: v1-plur-runtime-{{ .Branch }}-{{ .Revision }}
