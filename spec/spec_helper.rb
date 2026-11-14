@@ -15,6 +15,14 @@ require "backspin"
 # of failing. No effect when `plur` is a plain binary, since mise never runs.
 ENV["MISE_YES"] ||= "1"
 
+# Spawned plur processes save runtime data and install the watcher under
+# PLUR_HOME. Give each spec process its own, so they never write to the home
+# of whoever runs the suite.
+suite_plur_home = Dir.mktmpdir("plur-home")
+ENV["PLUR_HOME"] = suite_plur_home
+# Bundler.with_unbundled_env resets ENV to this snapshot, which predates the line above.
+Bundler::ORIGINAL_ENV["PLUR_HOME"] = suite_plur_home
+
 ROOT_PATH = Pathname.new(__dir__).parent
 DEFAULT_RUBY_SPEC_FILE_COUNT = 13
 
@@ -98,7 +106,11 @@ RSpec.configure do |config|
   fixture_test_dirs = -> { Dir.glob(ROOT_PATH.join("fixtures/projects/*/{spec,test}/**/").to_s).to_h { |dir| [dir, File.mtime(dir)] } }
   fixture_test_dirs_before = nil
   config.before(:suite) { fixture_test_dirs_before = fixture_test_dirs.call }
+  config.before(:suite) do
+    system(ENV.fetch("PLUR_BINARY", PlurHomeHelper::DEFAULT_PLUR_BINARY), "watch", "install", out: File::NULL, exception: true)
+  end
   config.after(:suite) do
+    FileUtils.remove_entry(suite_plur_home)
     changed = fixture_test_dirs.call.reject { |dir, mtime| fixture_test_dirs_before[dir] == mtime }
     raise "Specs modified shared fixture dirs (use with_fixture_copy): #{changed.keys.join(", ")}" if changed.any?
   end
