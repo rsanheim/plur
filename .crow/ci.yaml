@@ -76,9 +76,6 @@ steps:
         export GOBIN
         export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
 
-        # TEMP: clear files left by the earlier shared-directory approach
-        rm /cache/plur/plur-runtime/*.json
-
         # Start from the previous run's test timings so plur balances workers
         # by runtime instead of file size.
         mkdir -p /cache/plur/plur-runtime "$HOME/.plur/runtime"
