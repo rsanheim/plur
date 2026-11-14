@@ -110,20 +110,11 @@ steps:
         ( cd fixtures/projects/default-rails \
           && RAILS_ENV=test bundle exec rake db:create db:migrate )
 
-        # TEMP: runtime cache state before the suite runs
-        ls -la /cache/plur/plur-runtime
-        bin/rake vendor:download:current install
-        plur doctor
-        plur --debug --dry-run -n 8 2>&1 | grep -E "group|Worker 0" | cut -c1-300
-        # toolchain:check runs before install in bin/rake and rejects an unshimmed plur
-        rm "$GOBIN/plur"
-
         bin/rake
 
         # Save only this suite's timings. The specs also leave runtime files
         # for throwaway projects in ~/.plur/runtime, which would pile up.
         cp "$(plur doctor | sed -n 's/^Runtime Data: *//p')" /cache/plur/plur-runtime/
-        ls -la /cache/plur/plur-runtime
 
   # Keeps the workflow green when the work above is skipped on a docs-only change.
   - name: docs-only-passthrough
