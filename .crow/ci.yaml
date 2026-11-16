@@ -77,6 +77,9 @@ steps:
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
+        # Parallel spec workers otherwise race to install fixture bundles.
+        script/bundle-fixtures /cache/plur/fixture-bundles
+
         bin/rake
 
   # Keeps the workflow green when the work above is skipped on a docs-only change.

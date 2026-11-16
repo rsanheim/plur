@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Install the bundle for every fixture project, one at a time.
+#
+# Specs run `bundle install` for a fixture when its bundle is missing. With
+# parallel workers, two of those can build the same native gem at once and
+# fail. Running this first means the specs find every bundle already there.
+#
+# Usage: script/bundle-fixtures [BUNDLE_ROOT]
+#
+# With BUNDLE_ROOT, each fixture installs into BUNDLE_ROOT/<fixture> through
+# local Bundler config, so a CI cache directory can hold the gems.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+bundle_root="${1:-}"
+
+mapfile -t gemfiles < <(find fixtures/projects -name Gemfile -not -path '*/vendor/*' | sort)
+
+for gemfile in "${gemfiles[@]}"; do
+  fixture_dir=$(dirname "$gemfile")
+  echo "[bundle-fixtures] $fixture_dir"
+  (
+    cd "$fixture_dir"
+    # The fixture's own Gemfile and install path apply, not the caller's.
+    unset BUNDLE_GEMFILE BUNDLE_PATH
+    if [[ -n "$bundle_root" ]]; then
+      bundle config set --local path "$bundle_root/${fixture_dir#fixtures/projects/}"
+    fi
+    bundle install --quiet
+  )
+done
