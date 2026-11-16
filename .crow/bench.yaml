@@ -74,7 +74,10 @@ steps:
         # under root (root bypasses the permission checks they test). Build and
         # install above stay root; only the benchmarked processes drop privileges.
         id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
-        chown -R bench:bench "$PWD" "$BENCH_ROOT"
+        # It writes only to tmp/ and the benchmark volume, and git requires it to
+        # own the checkout it reads. The cached build paths stay root-owned.
+        chown bench:bench "$PWD" "$PWD/.git"
+        chown -R bench:bench "$PWD/tmp" "$BENCH_ROOT"
 
         # XDG_CACHE_HOME is for the root-owned build caches above; it must not
         # leak into the benchmarked suites (rubocop has specs asserting the
