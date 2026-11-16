@@ -73,7 +73,7 @@ func LoadCache(path string) *Cache {
 	}
 
 	var cache *Cache
-	if err := json.Unmarshal(data, &cache, jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true)); err != nil {
+	if err := json.Unmarshal(data, &cache); err != nil {
 		return NewCache()
 	}
 	if cache == nil {

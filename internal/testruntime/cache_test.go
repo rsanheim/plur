@@ -233,19 +233,17 @@ func TestCache_SaveIsAtomic(t *testing.T) {
 	}
 }
 
-func TestCache_LoadDuplicateNames(t *testing.T) {
+func TestCache_IgnoresDuplicateNames(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "runtime.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"meta":{"plur_version":"duplicate-names","schema_version":0,"schema_version":4},"files":{}}`), 0644))
 
-	cache := LoadCache(path)
-	assert.Equal(t, SchemaVersion, cache.Meta.SchemaVersion)
-	assert.Equal(t, "duplicate-names", cache.Meta.PlurVersion)
+	assert.Equal(t, NewCache(), LoadCache(path))
 }
 
 func TestCache_InvalidUTF8(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "runtime.json")
 	require.NoError(t, os.WriteFile(path, []byte("{\"meta\":{\"schema_version\":4,\"plur_version\":\"v\xff\"},\"files\":{}}"), 0644))
-	assert.Equal(t, "v\ufffd", LoadCache(path).Meta.PlurVersion)
+	assert.Equal(t, NewCache(), LoadCache(path))
 
 	require.NoError(t, SaveCache(NewCache(), path, "v\xff", "/project", time.Now()))
 	assert.Equal(t, "v\ufffd", LoadCache(path).Meta.PlurVersion)
