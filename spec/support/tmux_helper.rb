@@ -10,7 +10,10 @@ require "securerandom"
 # delivers focus reports to a pane when a client is attached, and switching
 # windows is what makes it send them.
 module TmuxHelper
-  TMUX_AVAILABLE = system("tmux", "-V", out: File::NULL, err: File::NULL)
+  def self.tmux_available
+    @tmux_available ||= system("tmux", "-V", out: File::NULL, err: File::NULL)
+  end
+
   SHELL = "bash --noprofile --norc".freeze
   WORK_PANE = "work:0.0".freeze
 
@@ -102,5 +105,5 @@ end
 
 RSpec.configure do |config|
   config.include TmuxHelper
-  config.filter_run_excluding(:tmux) unless TmuxHelper::TMUX_AVAILABLE
+  config.filter_run_excluding(:tmux) unless TmuxHelper.tmux_available
 end
