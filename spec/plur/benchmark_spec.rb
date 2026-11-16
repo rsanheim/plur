@@ -53,6 +53,13 @@ RSpec.describe Plur::Benchmark do
         expect(argv).to include("--ignore-failure")
       end
 
+      it "bounds each benchmarked run when the project sets a timeout" do
+        project = {"name" => "x", "repo" => "r", "ref" => "v1", "warmup" => 1, "runs" => 5,
+                   "timeout" => 300, "commands" => ["plur --workers {workers}"]}
+        argv = runner.send(:build_hyperfine_argv, project, "/out/h.json", plur_refs: ["HEAD", "v1.0.0"], plur_bindir: "/bin-dir")
+        expect(argv.last).to eq("timeout --signal QUIT 300 /bin-dir/plur-{plur_ref} --workers {workers}")
+      end
+
       it "keeps multiple benchmark commands as whole verbatim argv elements" do
         project = {
           "name" => "x", "repo" => "r", "ref" => "v1",
