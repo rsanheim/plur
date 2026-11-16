@@ -4,7 +4,6 @@ when:
   - event: cron
     cron: nightly-bench
   - event: manual
-  # Opt-in: "[bench]" in the commit message runs benchmarks for that push, once.
   - event: push
     evaluate: >-
       CI_COMMIT_MESSAGE contains "[bench]" &&
@@ -70,9 +69,7 @@ steps:
         bin/rake vendor:download:current
         bin/rake install
 
-        # The suite runs as a non-root user: rubocop + rack have specs that fail
-        # under root (root bypasses the permission checks they test). Build and
-        # install above stay root; only the benchmarked processes drop privileges.
+        # The suite runs as a non-root user: rubocop + rack have specs that fail under root (root bypasses the permission checks they test). 
         id -u bench >/dev/null 2>&1 || useradd --create-home --shell /bin/bash bench
         # It writes only to tmp/ and the benchmark volume, and git requires it to
         # own the checkout it reads. The cached build paths stay root-owned.
