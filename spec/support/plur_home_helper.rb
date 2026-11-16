@@ -27,6 +27,7 @@ module PlurHomeHelper
 
   def with_unbundled_env
     Bundler.with_unbundled_env do
+      ENV["HOME"] = @isolated_home.to_s
       yield
     end
   end

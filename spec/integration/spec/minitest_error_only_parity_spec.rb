@@ -5,7 +5,7 @@ require "spec_helper"
 # which see every non-passing test as a failure. Minitest run directly on the
 # same file is the oracle.
 RSpec.describe "Minitest error-only parity" do
-  before(:all) do
+  before(:each) do
     chdir(project_fixture!("minitest-outcomes")) do
       with_unbundled_env do
         system("bundle check", out: File::NULL, err: File::NULL) ||

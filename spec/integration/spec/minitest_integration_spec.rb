@@ -9,7 +9,7 @@ require_relative "../../spec_helper"
 # progress region, so live interleaving of output and progress characters
 # cannot skew them.
 RSpec.describe "Minitest integration" do
-  before(:all) do
+  before(:each) do
     %w[minitest-outcomes minitest-failures minitest-extra-plugin].each do |fixture|
       chdir(project_fixture!(fixture)) do
         with_unbundled_env do

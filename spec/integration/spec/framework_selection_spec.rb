@@ -12,7 +12,7 @@ RSpec.describe "Framework Selection" do
   describe "with both spec/ and test/ directories" do
     let(:project_dir) { project_fixture!("mixed-rspec-minitest") }
 
-    before(:all) do
+    before(:each) do
       # Ensure dependencies are installed
       chdir(project_fixture!("mixed-rspec-minitest")) do
         with_unbundled_env do
