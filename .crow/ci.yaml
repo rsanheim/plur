@@ -28,7 +28,7 @@ cache:
     paths: [tmp/bundle, tmp/fixture-bundles]
   - key: 'go-v1-{{ arch }}-{{ checksum ".mise.toml" "go.sum" }}'
     restore_keys: ['go-v1-{{ arch }}-']
-    paths: [tmp/go, tmp/go-build, tmp/xdg]
+    paths: [tmp/.go, tmp/go-build, tmp/xdg]
   - key: 'docs-v1-{{ arch }}-{{ checksum "uv.lock" "mkdocs.yml" }}'
     restore_keys: ['docs-v1-{{ arch }}-']
     paths: [tmp/uv, tmp/docs-privacy]
@@ -58,7 +58,8 @@ steps:
       BUNDLE_JOBS: '4'
       BUNDLE_RETRY: '3'
       BUNDLE_PATH: ${CI_WORKSPACE}/tmp/bundle
-      GOPATH: ${CI_WORKSPACE}/tmp/go
+      # A dot directory, so Go's ./... patterns skip the module cache.
+      GOPATH: ${CI_WORKSPACE}/tmp/.go
       GOCACHE: ${CI_WORKSPACE}/tmp/go-build
       XDG_CACHE_HOME: ${CI_WORKSPACE}/tmp/xdg
       UV_CACHE_DIR: ${CI_WORKSPACE}/tmp/uv
