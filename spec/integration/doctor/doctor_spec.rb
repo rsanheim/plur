@@ -94,6 +94,7 @@ RSpec.describe "plur doctor command" do
   end
 
   it "shows e-dant/watcher availability" do
+    run_plur("watch", "install")
     stdout, _stderr, _status = run_plur_doctor
 
     expect(stdout).to match(/Status:\s+Available/)
@@ -108,6 +109,7 @@ RSpec.describe "plur doctor command" do
   end
 
   it "produces consistent output using Backspin golden testing", :skip_if_ci do
+    run_plur("watch", "install")
     Backspin.run(
       [plur_binary, "doctor"],
       name: "plur_doctor_golden",

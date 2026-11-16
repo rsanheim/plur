@@ -1,17 +1,5 @@
-# Plur CI on self-hosted Crow. Mirrors the CircleCI build: lint, Go build/tests,
-# and the Ruby suite + fixtures driven by `bin/rake` (default task =
-# lint:all -> build -> test:all).
-#
 # Uses Plur's mise-driven toolchain image, `plur/ci` in Zot, built from
 # `ci/images/ci.Containerfile` and published by ci-images.yaml.
-# It bakes the versions from `.mise.toml`, including Go 1.27, GoReleaser,
-# shellcheck, govulncheck, and benchstat, while this workflow handles
-# checkout-specific dependencies. The image is pinned to one immutable tag
-# here and in bench.yaml; adopting a newer image is a commit that changes
-# both pins.
-#
-# CircleCI stays the source of truth for the open-source cloud builds; this is
-# the faster self-hosted mirror.
 when:
   - event: pull_request
   - event: push
@@ -30,6 +18,11 @@ clone:
     settings:
       cache_path: /cache/repos/github.com/rsanheim/plur.git
       cache_refresh: true
+
+cache:
+  - key: 'plur-runtime-v1-{{ checksum "spec/**/*_spec.rb" }}'
+    restore_keys: ['plur-runtime-v1-']
+    paths: [tmp/plur-runtime]
 
 steps:
   # Docs-only changes skip the heavy step below, so the strict docs build runs
@@ -61,8 +54,7 @@ steps:
       XDG_CACHE_HOME: /cache/plur/xdg
       UV_CACHE_DIR: /cache/plur/uv
       PLUR_DOCS_PRIVACY_CACHE_DIR: /cache/plur/docs-privacy
-      # minibox has cores to spare; raise plur's CI worker cap (default 4)
-      PLUR_WORKERS: '8'
+      PLUR_WORKERS: '4'
     when:
       - path:
           exclude: ['**/*.md']
@@ -76,6 +68,9 @@ steps:
         export GOBIN
         export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
 
+        mkdir -p tmp/plur-runtime "$HOME/.plur"
+        ln -s "$PWD/tmp/plur-runtime" "$HOME/.plur/runtime"
+
         go version
         ruby --version
         goreleaser --version
@@ -85,25 +80,7 @@ steps:
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
-        # Fixture specs use Bundler.with_unbundled_env so their subprocesses
-        # load the fixture Gemfile rather than this repository's. That removes
-        # BUNDLE_PATH, so configure and install each fixture's bundle first.
-        # Local Bundler config survives the unbundled environment and keeps
-        # the parallel spec workers from racing to build native gems in Ruby's
-        # global gem directory.
-        fixture_bundle_root=/cache/plur/fixture-bundles
-        find fixtures/projects -name Gemfile -print | sort | while IFS= read -r gemfile; do
-          fixture_dir=$(dirname "$gemfile")
-          fixture_name=${fixture_dir#fixtures/projects/}
-          (
-            cd "$fixture_dir"
-            env -u BUNDLE_PATH bundle config set --local path "$fixture_bundle_root/$fixture_name"
-            env -u BUNDLE_PATH bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
-          )
-        done
-
-        ( cd fixtures/projects/default-rails \
-          && RAILS_ENV=test bundle exec rake db:create db:migrate )
+        script/bundle-fixtures /cache/plur/fixture-bundles
 
         bin/rake
 

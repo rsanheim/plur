@@ -3,31 +3,27 @@ require "time"
 
 RSpec.describe "Plur runtime tracking" do
   def runtime_cache_data
-    runtime_files = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
+    runtime_files = Dir.glob(File.join(plur_home, "runtime", "*.json"))
     expect(runtime_files.size).to eq(1)
     [JSON.parse(File.read(runtime_files.first)), runtime_files.first]
   end
 
   context "explicit runtime dir" do
-    around_with_tmp_plur_home
-
     it "uses PLUR_HOME environment variable if provided" do
-      temp_runtime_dir = File.join(tmp_plur_home, "runtime")
+      Dir.mktmpdir do |custom_plur_home|
+        Dir.chdir(default_ruby_dir) do
+          run_plur("-n", "2", env: {"PLUR_HOME" => custom_plur_home})
 
-      Dir.chdir(default_ruby_dir) do
-        run_plur("-n", "2")
-
-        expect(File.exist?(temp_runtime_dir)).to be true
-        matches = Dir.glob(File.join(temp_runtime_dir, "*.json"))
-        expect(matches.size).to eq(1)
-        expect(matches.first).to match(%r{#{temp_runtime_dir}/[a-f0-9]{16}\.json$})
+          matches = Dir.glob(File.join(custom_plur_home, "runtime", "*.json"))
+          expect(matches.size).to eq(1)
+          expect(matches.first).to match(%r{#{custom_plur_home}/runtime/[a-f0-9]{16}\.json$})
+          expect(plur_home).not_to exist
+        end
       end
     end
   end
 
   context "runtime data collection (versioned schema)" do
-    around_with_tmp_plur_home
-
     it "writes a cache with meta, run metadata, file aggregates, and example index" do
       Dir.chdir(default_ruby_dir) do
         run_plur("-n", "2")
@@ -57,7 +53,7 @@ RSpec.describe "Plur runtime tracking" do
         expect(sample["line_number"]).to be > 0
         expect(sample["runtime_seconds"]).to be >= 0
 
-        expect(runtime_file).to match(%r{#{tmp_plur_home}/runtime/[a-f0-9]{16}\.json$})
+        expect(runtime_file).to match(%r{#{plur_home}/runtime/[a-f0-9]{16}\.json$})
       end
     end
 
@@ -73,7 +69,7 @@ RSpec.describe "Plur runtime tracking" do
 
     it "ignores corrupt cache files and replaces them with valid JSON" do
       Dir.chdir(default_ruby_dir) do
-        runtime_dir = File.join(tmp_plur_home, "runtime")
+        runtime_dir = File.join(plur_home, "runtime")
         FileUtils.mkdir_p(runtime_dir)
         cache_path = run_plur("doctor").out[/^Runtime Data:\s+(.+)$/, 1]
         expect(cache_path).not_to be_nil
@@ -112,7 +108,7 @@ RSpec.describe "Plur runtime tracking" do
 
     it "does not create or modify the runtime cache during --dry-run" do
       Dir.chdir(default_ruby_dir) do
-        runtime_dir = File.join(tmp_plur_home, "runtime")
+        runtime_dir = File.join(plur_home, "runtime")
         run_plur("--dry-run", "-n", "2")
 
         matches = Dir.glob(File.join(runtime_dir, "*.json"))
@@ -122,8 +118,6 @@ RSpec.describe "Plur runtime tracking" do
   end
 
   context "runtime-based grouping from cache aggregates" do
-    around_with_tmp_plur_home
-
     it "distributes files based on stored runtime_seconds" do
       Dir.chdir(default_ruby_dir) do
         cache_path = run_plur("doctor").out[/^Runtime Data:\s+(.+)$/, 1]
@@ -158,7 +152,7 @@ RSpec.describe "Plur runtime tracking" do
           }
         }
 
-        runtime_dir = File.join(tmp_plur_home, "runtime")
+        runtime_dir = File.join(plur_home, "runtime")
         FileUtils.mkdir_p(runtime_dir)
         File.write(cache_path, JSON.pretty_generate(cache))
 
@@ -181,8 +175,6 @@ RSpec.describe "Plur runtime tracking" do
   end
 
   context "aggregate-eligibility rules" do
-    around_with_tmp_plur_home
-
     it "preserves the full-file aggregate when a focused file:line run executes a subset" do
       Dir.chdir(default_ruby_dir) do
         run_plur("-n", "2")

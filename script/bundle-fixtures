@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+bundle_root="${1:-}"
+
+mapfile -t gemfiles < <(find fixtures/projects -name Gemfile -not -path '*/vendor/*' | sort)
+
+for gemfile in "${gemfiles[@]}"; do
+  fixture_dir=$(dirname "$gemfile")
+  echo "[bundle-fixtures] $fixture_dir"
+  (
+    cd "$fixture_dir"
+    unset BUNDLE_GEMFILE BUNDLE_PATH
+    if [[ -n "$bundle_root" ]]; then
+      bundle config set --local path "$bundle_root/${fixture_dir#fixtures/projects/}"
+    fi
+    bundle check > /dev/null || bundle install --quiet
+  )
+done

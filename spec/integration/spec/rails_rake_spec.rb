@@ -2,8 +2,6 @@ require "spec_helper"
 
 RSpec.describe "Plur Rails and Rake commands" do
   describe "exit status" do
-    around_with_tmp_plur_home
-
     %w[rails rake].each do |command|
       [
         {name: "success without a completion report", script: "exit 0", code: 0},
@@ -238,7 +236,7 @@ RSpec.describe "Plur Rails and Rake commands" do
 
     it "correctly sets up test dbs using standard db:test:prepare" do
       Dir.chdir(default_rails_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           ensure_default_rails_bundle_installed
 
           test_dbs = default_rails_dir.glob("storage/test?.sqlite3")
@@ -258,7 +256,7 @@ RSpec.describe "Plur Rails and Rake commands" do
 
     it "creates and migrates databases for parallel testing" do
       Dir.chdir(default_rails_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           ensure_default_rails_bundle_installed
 
           env = {"RAILS_ENV" => "test"}
@@ -277,7 +275,7 @@ RSpec.describe "Plur Rails and Rake commands" do
 
     it "passes VERSION=... through to bin/rails db:migrate for each worker" do
       Dir.chdir(default_rails_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           ensure_default_rails_bundle_installed
 
           env = {"RAILS_ENV" => "test"}

@@ -2,12 +2,10 @@ require "spec_helper"
 
 RSpec.describe "Plur --rspec-split (experimental)" do
   def runtime_cache_data
-    runtime_files = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
+    runtime_files = Dir.glob(File.join(plur_home, "runtime", "*.json"))
     expect(runtime_files.size).to eq(1)
     [JSON.parse(File.read(runtime_files.first)), runtime_files.first]
   end
-
-  around_with_tmp_plur_home
 
   it "preserves the cache and runs every example after a worker exits early" do
     tmp_root = ROOT_PATH.join("tmp")

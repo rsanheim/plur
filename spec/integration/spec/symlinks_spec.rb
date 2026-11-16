@@ -31,7 +31,7 @@ RSpec.describe "plur spec with symlinks" do
   # Runs plur under the fixture's own Gemfile rather than the one the outer
   # Bundler exported, so these examples prove the fixture runs standalone.
   def run_standalone(dir)
-    Bundler.with_unbundled_env do
+    with_unbundled_env do
       Dir.chdir(dir) do
         _, _, status = Open3.capture3("bundle", "check")
         Open3.capture3("bundle", "install", "--quiet") unless status.success?

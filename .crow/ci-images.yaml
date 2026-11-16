@@ -1,10 +1,4 @@
-# Build Plur's CI image with script/build in the official Buildah image and
-# publish it to Zot under one immutable YYYY-MM-DD-<shortsha> tag. Publication
-# is automatic: a pull request or default-branch push that changes an image
-# input publishes that revision's tag. Publishing is not validation; ci and
-# bench prove an image once a commit adopts its tag, and nothing depends on
-# this workflow.
-# Unprivileged, so Buildah uses vfs storage.
+# Build Plur's CI image with script/build
 labels:
   platform: linux/amd64
 

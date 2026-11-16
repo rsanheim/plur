@@ -9,7 +9,7 @@ require "tty-command"
 require "backspin"
 
 # The suite shells out to the `plur` binary, which on dev machines is usually a
-# mise shim. Several integration specs spawn it with an isolated HOME, so mise
+# mise shim. Every example spawns it with an isolated HOME, so mise
 # can't reach its trust store and aborts with "config not trusted", polluting
 # the subprocess stderr. Our mise configs are trusted, so auto-confirm instead
 # of failing. No effect when `plur` is a plain binary, since mise never runs.
@@ -20,23 +20,21 @@ DEFAULT_RUBY_SPEC_FILE_COUNT = 13
 
 Backspin.configure do |config|
   config.backspin_dir = ROOT_PATH.join("fixtures", "backspin")
+  config.scrub_credentials = false
 end
 
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
   config.include PlurHomeHelper
-  config.extend PlurHomeHelper::ClassMethods
 
   config.filter_run_when_matching :focus
   config.disable_monkey_patching!
   config.filter_run_excluding :skip_if_ci if ENV["CI"]
   config.shared_context_metadata_behavior = :apply_to_host_groups
 
-  # Scrub plur's parallel env vars before each spec so the outer test
-  # runner (which may itself be plur) doesn't leak into child processes.
   config.around do |example|
-    without_plur_parallel_env { example.run }
+    with_isolated_env { example.run }
   end
 
   def chdir(path)

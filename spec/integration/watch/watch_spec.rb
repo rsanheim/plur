@@ -15,11 +15,12 @@ RSpec.describe "plur watch command", :skip_if_ci do
     end
 
     it "shows watcher availability on supported platforms" do
+      run_plur("watch", "install")
       result = run_plur_watch(timeout: 1)
 
       if RUBY_PLATFORM.include?("darwin") && RUBY_PLATFORM.include?("arm64")
         expect(result.err).to include("e-dant/watcher installed")
-        expect(result.err).to include("path=\"#{ENV["HOME"]}/.plur/bin/watcher-aarch64-apple-darwin\"")
+        expect(result.err).to include("path=\"#{plur_home}/bin/watcher-aarch64-apple-darwin\"")
       end
     end
   end

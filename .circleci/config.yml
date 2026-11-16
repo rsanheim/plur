@@ -150,6 +150,11 @@ jobs:
       - run:
           name: Install plur watcher
           command: plur watch install
+      - restore_cache:
+          name: Restore plur runtime data
+          keys:
+            - v1-plur-runtime-{{ .Branch }}-
+            - v1-plur-runtime-
       - run:
           name: plur doctor
           command: |
@@ -177,6 +182,9 @@ jobs:
           paths:
             - fixtures/projects/default-rails/vendor/bundle
       - run:
+          name: Install fixture bundles
+          command: script/bundle-fixtures
+      - run:
           name: Run test_app specs with plur
           working_directory: fixtures/projects/default-rails
           command: plur
@@ -184,6 +192,11 @@ jobs:
           name: Run all Ruby specs
           command: |
             bin/rake test
+      - save_cache:
+          name: Save plur runtime data
+          key: v1-plur-runtime-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.plur/runtime
       - go/save-build-cache
 
 workflows:

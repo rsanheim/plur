@@ -115,6 +115,18 @@ ALWAYS use integration specs as guardrails - we have many, see `spec/integration
 
 Run all specs via: `bin/rake test` or target specific: `bundle exec rspec spec/[file]`
 
+### Spec Isolation
+
+Every example runs with its own empty `HOME` and without the outer environment's plur settings (`with_isolated_env` in `spec/support/plur_home_helper.rb`), so spawned processes never touch the real `~/.plur`, `~/.plur.toml`, or other dotfiles.
+
+- Build paths from `isolated_home` and `plur_home`. Only set `HOME` or `PLUR_HOME` in a spec when that variable is what the spec tests.
+- Use the suite's `with_unbundled_env`, not `Bundler.with_unbundled_env`, which restores the real `HOME` for its block.
+- A new home has no watcher binary: `plur watch run` installs it, `plur doctor` does not.
+
+### Flaky Specs
+
+Fix a flaky spec in the branch where you find it, or note it in the PR. Do not open an issue for each one.
+
 ### Go Testing Guidelines
 - Use testify assertions (`assert` and `require`) for all new Go tests
 - `require` for critical assertions that should stop the test
