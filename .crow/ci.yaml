@@ -19,6 +19,11 @@ clone:
       cache_path: /cache/repos/github.com/rsanheim/plur.git
       cache_refresh: true
 
+cache:
+  - key: 'plur-runtime-v1-{{ checksum "spec/**/*_spec.rb" }}'
+    restore_keys: ['plur-runtime-v1-']
+    paths: [tmp/plur-runtime]
+
 steps:
   # Docs-only changes skip the heavy step below, so the strict docs build runs
   # on its own here. `bin/rake` covers the same check via lint:docs.
@@ -63,6 +68,9 @@ steps:
         export GOBIN
         export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
 
+        mkdir -p tmp/plur-runtime "$HOME/.plur"
+        ln -s "$PWD/tmp/plur-runtime" "$HOME/.plur/runtime"
+
         go version
         ruby --version
         goreleaser --version
@@ -71,6 +79,8 @@ steps:
         uv --version
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
+
+        script/bundle-fixtures /cache/plur/fixture-bundles
 
         bin/rake
 

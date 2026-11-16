@@ -123,6 +123,10 @@ Every example runs with its own empty `HOME` and without the outer environment's
 - Use the suite's `with_unbundled_env`, not `Bundler.with_unbundled_env`, which restores the real `HOME` for its block.
 - A new home has no watcher binary: `plur watch run` installs it, `plur doctor` does not.
 
+### Flaky Specs
+
+Fix a flaky spec in the branch where you find it, or note it in the PR. Do not open an issue for each one.
+
 ### Go Testing Guidelines
 - Use testify assertions (`assert` and `require`) for all new Go tests
 - `require` for critical assertions that should stop the test

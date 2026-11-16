@@ -20,6 +20,7 @@ DEFAULT_RUBY_SPEC_FILE_COUNT = 13
 
 Backspin.configure do |config|
   config.backspin_dir = ROOT_PATH.join("fixtures", "backspin")
+  config.scrub_credentials = false
 end
 
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
