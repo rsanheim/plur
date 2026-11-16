@@ -20,8 +20,6 @@ DEFAULT_RUBY_SPEC_FILE_COUNT = 13
 
 Backspin.configure do |config|
   config.backspin_dir = ROOT_PATH.join("fixtures", "backspin")
-  # No snapshot holds a credential, and the scrubber's patterns can match the
-  # random temp HOME path before a spec's own filter normalizes it.
   config.scrub_credentials = false
 end
 

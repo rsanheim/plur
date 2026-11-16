@@ -21,7 +21,6 @@ module PlurHomeHelper
     yield
   ensure
     ENV.replace(saved)
-    # Best effort: a process the example spawned may still be writing here.
     FileUtils.rm_rf(@isolated_home) if @isolated_home
   end
 
