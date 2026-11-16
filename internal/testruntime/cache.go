@@ -1,12 +1,13 @@
 package testruntime
 
 import (
+	"bufio"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"slices"
 	"time"
-
-	json "github.com/goccy/go-json"
 )
 
 // SchemaVersion is the on-disk schema version Plur reads and writes.
@@ -72,7 +73,7 @@ func LoadCache(path string) *Cache {
 	}
 
 	var cache *Cache
-	if err := json.Unmarshal(data, &cache); err != nil {
+	if err := json.Unmarshal(data, &cache, jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true)); err != nil {
 		return NewCache()
 	}
 	if cache == nil {
@@ -114,9 +115,12 @@ func SaveCache(cache *Cache, path, plurVersion, cwd string, lastRunAt time.Time)
 		}
 	}()
 
-	enc := json.NewEncoder(tmp)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(cache); err != nil {
+	writer := bufio.NewWriterSize(tmp, 64*1024)
+	if err := json.MarshalWrite(writer, cache, jsontext.AllowInvalidUTF8(true)); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := writer.Flush(); err != nil {
 		tmp.Close()
 		return err
 	}

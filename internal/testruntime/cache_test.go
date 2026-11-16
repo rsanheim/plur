@@ -2,6 +2,7 @@ package testruntime
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -230,6 +231,39 @@ func TestCache_SaveIsAtomic(t *testing.T) {
 	for _, e := range entries {
 		assert.NotContains(t, e.Name(), ".tmp", "atomic write must clean up temp files")
 	}
+}
+
+func TestCache_LoadDuplicateNames(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "runtime.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"meta":{"plur_version":"duplicate-names","schema_version":0,"schema_version":4},"files":{}}`), 0644))
+
+	cache := LoadCache(path)
+	assert.Equal(t, SchemaVersion, cache.Meta.SchemaVersion)
+	assert.Equal(t, "duplicate-names", cache.Meta.PlurVersion)
+}
+
+func TestCache_InvalidUTF8(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "runtime.json")
+	require.NoError(t, os.WriteFile(path, []byte("{\"meta\":{\"schema_version\":4,\"plur_version\":\"v\xff\"},\"files\":{}}"), 0644))
+	assert.Equal(t, "v\ufffd", LoadCache(path).Meta.PlurVersion)
+
+	require.NoError(t, SaveCache(NewCache(), path, "v\xff", "/project", time.Now()))
+	assert.Equal(t, "v\ufffd", LoadCache(path).Meta.PlurVersion)
+}
+
+func TestCache_SaveEncodingErrorPreservesExistingCache(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "runtime.json")
+	require.NoError(t, SaveCache(NewCache(), path, "original", "/project", time.Now()))
+	cache := NewCache()
+	cache.Files["spec/invalid_spec.rb"] = FileEntry{RuntimeSeconds: math.Inf(1)}
+
+	require.Error(t, SaveCache(cache, path, "replacement", "/project", time.Now()))
+	assert.Equal(t, "original", LoadCache(path).Meta.PlurVersion)
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, "runtime.json", entries[0].Name())
 }
 
 func TestCache_FileRuntimesSkipsZero(t *testing.T) {
