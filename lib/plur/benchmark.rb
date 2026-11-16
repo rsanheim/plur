@@ -113,10 +113,16 @@ module Plur
         log "  cwd=#{run_in}"
         log "  #{argv.join(" ")}"
 
+        # A failed attempt (a benchmarked run that exits non-zero or hits its
+        # timeout) gets one retry; output.log keeps both attempts.
         ok = nil
         Bundler.with_unbundled_env do
           File.open(output_log, "w") do |f|
-            ok = system(*argv, chdir: run_in, out: f, err: [:child, :out])
+            2.times do |attempt|
+              log "  hyperfine failed for #{name}; retrying once" if attempt > 0
+              ok = system(*argv, chdir: run_in, out: f, err: [:child, :out])
+              break if ok
+            end
           end
         end
 
@@ -208,6 +214,8 @@ module Plur
         argv += ["--export-json", hyperfine_json]
         commands = Array(project["commands"] || @defaults.fetch("commands"))
         commands = commands.map { |c| c.sub(/\Aplur(?=\s|$)/, "#{plur_bindir}/plur-{plur_ref}") } if plur_refs
+        # SIGQUIT makes a hung plur print its goroutine stacks before exiting.
+        commands = commands.map { |c| "timeout --signal QUIT #{project["timeout"]} #{c}" } if project["timeout"]
         argv + commands
       end
 

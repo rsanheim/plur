@@ -1,7 +1,7 @@
 # Pinned benchmark targets. Fields are either hyperfine flags passed through
 # verbatim (warmup, runs, parameter-lists, commands, setup, command-name,
 # ignore-failure, show-output) or ours (name, repo, ref, subdir, plur-tags,
-# post_checkout).
+# post_checkout, timeout).
 # See the recurring-benchmarks plan in plur-internal for the full design.
 #
 # warmup/runs/parameter-lists/commands/show-output fall back to `defaults`;
@@ -9,7 +9,8 @@
 # ("latest" = newest tag). post_checkout is a command run verbatim through a
 # shell in the project's checkout (honoring subdir) with PLUR_ROOT set to the
 # plur checkout, after `git checkout` and before `bundle install`; a non-zero
-# exit fails the run.
+# exit fails the run. timeout is the seconds one benchmarked run may take before
+# it is killed and the project's hyperfine invocation fails.
 
 defaults:
   warmup: 2
@@ -35,6 +36,12 @@ projects:
     # Regenerate benchmarks/rubocop_Gemfile.lock whenever ref is bumped.
     post_checkout: cp "$PLUR_ROOT/benchmarks/rubocop_Gemfile.lock" Gemfile.lock
     plur-tags: [latest]
+    # The slow target: four command variants at roughly 40 seconds a run, so
+    # fewer runs than the defaults keep the suite short. A run occasionally
+    # hangs without output; the timeout bounds it.
+    warmup: 1
+    runs: 5
+    timeout: 300
 
   # Minitest; files are test/spec_*.rb (outside plur's default patterns), so the
   # command overrides with an explicit pattern + --use minitest.
