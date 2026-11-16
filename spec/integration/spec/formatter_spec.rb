@@ -219,7 +219,7 @@ RSpec.describe "Formatter" do
     end
   end
 
-  context "in a real terminal", :tmux do
+  context "in a real terminal", :tmux, :skip_if_ci do
     it "auto shows the progress markers on screen" do
       tmux_terminal(dir: default_ruby_dir) do |terminal|
         terminal.submit("#{plur_binary} -n 2 spec/calculator_spec.rb")
