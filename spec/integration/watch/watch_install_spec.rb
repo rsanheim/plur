@@ -1,8 +1,6 @@
 RSpec.describe "plur watch install command" do
   include PlurWatchHelper
 
-  around_with_tmp_plur_home
-
   def watcher_filename
     case RUBY_PLATFORM
     when /aarch64-darwin/, /arm64-darwin/

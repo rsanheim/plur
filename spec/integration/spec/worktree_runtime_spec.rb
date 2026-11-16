@@ -1,8 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Runtime history across linked worktrees" do
-  around_with_tmp_plur_home
-
   around do |example|
     Dir.mktmpdir("runtime-worktrees-", ROOT_PATH.join("tmp")) do |dir|
       @checkout = File.join(dir, "main")
@@ -79,7 +77,7 @@ RSpec.describe "Runtime history across linked worktrees" do
     result = run_specs(@worktree, "--dry-run", "--debug")
     expect(result.err).to include("Using runtime-based grouped execution")
     run_specs(@worktree)
-    expect(Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))).to eq([path])
+    expect(Dir.glob(File.join(plur_home, "runtime", "*.json"))).to eq([path])
   end
 
   it "shares corresponding project subdirectories but keeps separate apps apart" do
@@ -97,7 +95,7 @@ RSpec.describe "Runtime history across linked worktrees" do
     run_specs(@checkout)
     run_specs(clone)
     expect(cache_path(clone)).not_to eq(cache_path(@checkout))
-    expect(Dir.glob(File.join(tmp_plur_home, "runtime", "*.json")).size).to eq(2)
+    expect(Dir.glob(File.join(plur_home, "runtime", "*.json")).size).to eq(2)
   end
 
   it "does not use or change another worktree's example selectors" do
@@ -151,7 +149,7 @@ RSpec.describe "Runtime history across linked worktrees" do
       out, err, status = thread.value
       expect(status.success?).to be(true), "#{out}\n#{err}"
     end
-    paths = Dir.glob(File.join(tmp_plur_home, "runtime", "*.json"))
+    paths = Dir.glob(File.join(plur_home, "runtime", "*.json"))
     expect(paths.size).to eq(1)
     expect(JSON.parse(File.read(paths.first)).fetch("files")).to include("spec/timed_spec.rb")
   end

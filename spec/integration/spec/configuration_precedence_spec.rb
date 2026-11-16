@@ -13,27 +13,11 @@ require "spec_helper"
 # blind spot that let the earlier precedence specs pass while asserting the wrong
 # direction.
 #
-# Every run is hermetic: a fresh project dir (no stray .plur.toml), a fresh
-# HOME/PLUR_HOME (no user ~/.plur.toml), NO_COLOR so the number parses cleanly,
-# and the worker env vars stripped from the parent process for the duration of
-# each example so a suite running under plur/parallel_tests cannot taint the child.
+# Every run is hermetic: a fresh project dir (no stray .plur.toml), NO_COLOR so
+# the number parses cleanly, and the suite-wide isolated env, which supplies a
+# fresh HOME (no user ~/.plur.toml) and strips the worker env vars so a suite
+# running under plur/parallel_tests cannot taint the child.
 RSpec.describe "Configuration precedence (worker count)" do
-  # Env vars that determine, or could leak into, worker-count resolution. They are
-  # stripped from the parent for each example; every example re-adds only the ones
-  # it is exercising.
-  around do |example|
-    keys = %w[PLUR_WORKERS PARALLEL_TEST_PROCESSORS PARALLEL_TEST_GROUPS TEST_ENV_NUMBER PLUR_CONFIG_FILE PLUR_DEBUG]
-    saved = keys.to_h { |key| [key, ENV[key]] }
-    keys.each { |key| ENV.delete(key) }
-    begin
-      example.run
-    ensure
-      saved.each do |key, value|
-        value.nil? ? ENV.delete(key) : ENV[key] = value
-      end
-    end
-  end
-
   it "uses the built-in default of 4 when nothing is set" do
     expect(resolved_workers).to eq(4)
   end
@@ -81,29 +65,22 @@ RSpec.describe "Configuration precedence (worker count)" do
   # adds child environment variables; args are extra CLI arguments.
   def resolved_workers(config_workers: nil, env: {}, args: [])
     Dir.mktmpdir do |project|
-      Dir.mktmpdir do |home|
-        if config_workers
-          File.write(File.join(project, ".plur.toml"), "workers = #{config_workers}\n")
-        end
-
-        base_env = {
-          "HOME" => home,
-          "PLUR_HOME" => File.join(home, ".plur"),
-          "NO_COLOR" => "1"
-        }
-        output, error, status = Open3.capture3(
-          base_env.merge(env),
-          plur_binary, "doctor", *args,
-          chdir: project
-        )
-
-        expect(status).to be_success, "plur doctor failed (#{status.exitstatus}):\n#{error}"
-        # Anchored + title-case on purpose: `Workers:` must not match doctor's
-        # raw `  PLUR_WORKERS:` echo line, only the resolved `  Workers:` line.
-        workers = output[/^\s*Workers:\s+(\d+)/, 1]
-        expect(workers).not_to be_nil, "no 'Workers:' line in doctor output:\n#{output}"
-        Integer(workers)
+      if config_workers
+        File.write(File.join(project, ".plur.toml"), "workers = #{config_workers}\n")
       end
+
+      output, error, status = Open3.capture3(
+        {"NO_COLOR" => "1"}.merge(env),
+        plur_binary, "doctor", *args,
+        chdir: project
+      )
+
+      expect(status).to be_success, "plur doctor failed (#{status.exitstatus}):\n#{error}"
+      # Anchored + title-case on purpose: `Workers:` must not match doctor's
+      # raw `  PLUR_WORKERS:` echo line, only the resolved `  Workers:` line.
+      workers = output[/^\s*Workers:\s+(\d+)/, 1]
+      expect(workers).not_to be_nil, "no 'Workers:' line in doctor output:\n#{output}"
+      Integer(workers)
     end
   end
 end
