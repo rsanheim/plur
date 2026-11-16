@@ -23,6 +23,15 @@ cache:
   - key: 'plur-runtime-v1-{{ checksum "spec/**/*_spec.rb" }}'
     restore_keys: ['plur-runtime-v1-']
     paths: [tmp/plur-runtime]
+  - key: 'gems-v1-{{ arch }}-{{ checksum ".mise.toml" "Gemfile.lock" "fixtures/projects/*/Gemfile.lock" }}'
+    restore_keys: ['gems-v1-{{ arch }}-']
+    paths: [vendor/bundle, vendor/fixture-bundles]
+  - key: 'go-v1-{{ arch }}-{{ checksum ".mise.toml" "go.sum" }}'
+    restore_keys: ['go-v1-{{ arch }}-']
+    paths: [.cache/go-build, .cache/golangci-lint]
+  - key: 'docs-v1-{{ arch }}-{{ checksum ".mise.toml" "pyproject.toml" }}'
+    restore_keys: ['docs-v1-{{ arch }}-']
+    paths: [.cache/uv, .cache/plugin/privacy]
 
 steps:
   # Docs-only changes skip the heavy step below, so the strict docs build runs
@@ -30,8 +39,7 @@ steps:
   - name: docs
     image: *plur_image
     environment:
-      UV_CACHE_DIR: /cache/plur/uv
-      PLUR_DOCS_PRIVACY_CACHE_DIR: /cache/plur/docs-privacy
+      XDG_CACHE_HOME: ${CI_WORKSPACE}/.cache
     when:
       - path:
           include:
@@ -39,7 +47,6 @@ steps:
             - mkdocs.yml
             - pyproject.toml
     commands:
-      - mkdir -p "$UV_CACHE_DIR" "$PLUR_DOCS_PRIVACY_CACHE_DIR"
       - uv run zensical build --strict
 
   - name: ci
@@ -48,12 +55,8 @@ steps:
       CI: 'true'
       BUNDLE_JOBS: '4'
       BUNDLE_RETRY: '3'
-      BUNDLE_PATH: /cache/plur/bundle
-      GOPATH: /cache/plur/go
-      GOCACHE: /cache/plur/go-build
-      XDG_CACHE_HOME: /cache/plur/xdg
-      UV_CACHE_DIR: /cache/plur/uv
-      PLUR_DOCS_PRIVACY_CACHE_DIR: /cache/plur/docs-privacy
+      BUNDLE_PATH: ${CI_WORKSPACE}/vendor/bundle
+      XDG_CACHE_HOME: ${CI_WORKSPACE}/.cache
       PLUR_WORKERS: '4'
     when:
       - path:
@@ -62,11 +65,10 @@ steps:
       - |
         set -e
 
-        mkdir -p "$BUNDLE_PATH" "$GOPATH/bin" "$GOCACHE" "$XDG_CACHE_HOME" "$UV_CACHE_DIR" "$PLUR_DOCS_PRIVACY_CACHE_DIR"
-        # Install into mise's Go bin directory and prefer it over cached binaries.
+        # Install into mise's Go bin directory.
         GOBIN="$(mise where go)/bin"
         export GOBIN
-        export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
+        export PATH="$GOBIN:/opt/mise/shims:/usr/local/bin:$PATH"
 
         mkdir -p tmp/plur-runtime "$HOME/.plur"
         ln -s "$PWD/tmp/plur-runtime" "$HOME/.plur/runtime"
@@ -80,7 +82,7 @@ steps:
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
-        script/bundle-fixtures /cache/plur/fixture-bundles
+        script/bundle-fixtures "$PWD/vendor/fixture-bundles"
 
         bin/rake
 
