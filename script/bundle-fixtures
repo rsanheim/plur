@@ -26,6 +26,6 @@ for gemfile in "${gemfiles[@]}"; do
     if [[ -n "$bundle_root" ]]; then
       bundle config set --local path "$bundle_root/${fixture_dir#fixtures/projects/}"
     fi
-    bundle install --quiet
+    bundle check > /dev/null || bundle install --quiet
   )
 done

@@ -20,10 +20,10 @@ clone:
       cache_refresh: true
 
 # Test timings from earlier runs let plur balance workers by runtime instead of
-# file size. Keys are immutable, so each commit saves its own entry and
-# restores the newest earlier one.
+# file size. Keys are immutable, so timings are saved again only when the
+# spec files change; until then runs reuse the entry they restored.
 cache:
-  - key: plur-runtime-v1-${CI_COMMIT_SHA}
+  - key: 'plur-runtime-v1-{{ checksum "spec/**/*_spec.rb" }}'
     restore_keys: ['plur-runtime-v1-']
     paths: [tmp/plur-runtime]
 
