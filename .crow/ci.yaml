@@ -23,6 +23,15 @@ cache:
   - key: 'plur-runtime-v1-{{ checksum "spec/**/*_spec.rb" }}'
     restore_keys: ['plur-runtime-v1-']
     paths: [tmp/plur-runtime]
+  - key: 'gems-v1-{{ arch }}-{{ checksum ".mise.toml" "Gemfile.lock" "fixtures/projects/*/Gemfile.lock" }}'
+    restore_keys: ['gems-v1-{{ arch }}-']
+    paths: [tmp/bundle, tmp/fixture-bundles]
+  - key: 'go-v1-{{ arch }}-{{ checksum ".mise.toml" "go.sum" }}'
+    restore_keys: ['go-v1-{{ arch }}-']
+    paths: [tmp/go, tmp/go-build, tmp/xdg]
+  - key: 'docs-v1-{{ arch }}-{{ checksum "uv.lock" "mkdocs.yml" }}'
+    restore_keys: ['docs-v1-{{ arch }}-']
+    paths: [tmp/uv, tmp/docs-privacy]
 
 steps:
   # Docs-only changes skip the heavy step below, so the strict docs build runs
@@ -30,8 +39,8 @@ steps:
   - name: docs
     image: *plur_image
     environment:
-      UV_CACHE_DIR: /cache/plur/uv
-      PLUR_DOCS_PRIVACY_CACHE_DIR: /cache/plur/docs-privacy
+      UV_CACHE_DIR: ${CI_WORKSPACE}/tmp/uv
+      PLUR_DOCS_PRIVACY_CACHE_DIR: ${CI_WORKSPACE}/tmp/docs-privacy
     when:
       - path:
           include:
@@ -48,12 +57,12 @@ steps:
       CI: 'true'
       BUNDLE_JOBS: '4'
       BUNDLE_RETRY: '3'
-      BUNDLE_PATH: /cache/plur/bundle
-      GOPATH: /cache/plur/go
-      GOCACHE: /cache/plur/go-build
-      XDG_CACHE_HOME: /cache/plur/xdg
-      UV_CACHE_DIR: /cache/plur/uv
-      PLUR_DOCS_PRIVACY_CACHE_DIR: /cache/plur/docs-privacy
+      BUNDLE_PATH: ${CI_WORKSPACE}/tmp/bundle
+      GOPATH: ${CI_WORKSPACE}/tmp/go
+      GOCACHE: ${CI_WORKSPACE}/tmp/go-build
+      XDG_CACHE_HOME: ${CI_WORKSPACE}/tmp/xdg
+      UV_CACHE_DIR: ${CI_WORKSPACE}/tmp/uv
+      PLUR_DOCS_PRIVACY_CACHE_DIR: ${CI_WORKSPACE}/tmp/docs-privacy
       PLUR_WORKERS: '4'
     when:
       - path:
@@ -80,7 +89,7 @@ steps:
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
-        script/bundle-fixtures /cache/plur/fixture-bundles
+        script/bundle-fixtures "$PWD/tmp/fixture-bundles"
 
         bin/rake
 

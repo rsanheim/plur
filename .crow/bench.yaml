@@ -17,6 +17,14 @@ labels:
 variables:
   - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-11-11-9ba56568'
 
+cache:
+  - key: 'bench-gems-v1-{{ arch }}-{{ checksum ".mise.toml" "Gemfile.lock" }}'
+    restore_keys: ['bench-gems-v1-{{ arch }}-']
+    paths: [tmp/bundle]
+  - key: 'bench-go-v1-{{ arch }}-{{ checksum ".mise.toml" "go.sum" ".crow/bench.yaml" }}'
+    restore_keys: ['bench-go-v1-{{ arch }}-']
+    paths: [tmp/go, tmp/go-build, tmp/xdg]
+
 steps:
   - name: bench
     image: *plur_image
@@ -26,12 +34,11 @@ steps:
       CI: "true"
       BUNDLE_JOBS: "4"
       BUNDLE_RETRY: "3"
-      # plur's own build/bundle caches stay on the shared /cache volume (fast builds)
-      BUNDLE_PATH: /cache/plur/bundle
-      GOPATH: /cache/plur/go
-      GOCACHE: /cache/plur/go-build
-      XDG_CACHE_HOME: /cache/plur/xdg
-      # dedicated benchmark volume: targets + results live here, not on /cache
+      BUNDLE_PATH: ${CI_WORKSPACE}/tmp/bundle
+      GOPATH: ${CI_WORKSPACE}/tmp/go
+      GOCACHE: ${CI_WORKSPACE}/tmp/go-build
+      XDG_CACHE_HOME: ${CI_WORKSPACE}/tmp/xdg
+      # dedicated benchmark volume: targets + results live here, not in the build cache
       BENCH_ROOT: /bench/plur
       BENCH_HOST: minibox
       BENCH_CONTAINER_IMAGE: *plur_image
@@ -53,8 +60,8 @@ steps:
         goreleaser --version
 
         # hyperfine drives the benchmarks and is not baked into the image; the
-        # static musl build (no glibc dependency) lives in $GOPATH/bin on the
-        # /cache volume too, re-fetched only on a version bump.
+        # static musl build (no glibc dependency) lives in $GOPATH/bin, inside
+        # the cached tmp/go, re-fetched only on a version bump.
         if ! "$GOPATH/bin/hyperfine" --version 2>/dev/null | grep -qF "$HYPERFINE_VERSION"; then
           hf="hyperfine-v$HYPERFINE_VERSION-x86_64-unknown-linux-musl"
           curl -fsSL "https://github.com/sharkdp/hyperfine/releases/download/v$HYPERFINE_VERSION/$hf.tar.gz" -o "$tool_tmp/hyperfine.tar.gz"
