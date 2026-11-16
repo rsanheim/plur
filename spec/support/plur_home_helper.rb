@@ -5,45 +5,52 @@ module PlurHomeHelper
     File.join(gobin, "plur")
   end
 
-  module ClassMethods
-    def around_with_tmp_plur_home
-      around do |example|
-        Dir.mktmpdir do |tmpdir|
-          @tmp_plur_home = tmpdir
-          ENV["PLUR_HOME"] = tmpdir
-          example.run
-        ensure
-          @tmp_plur_home = nil
-          ENV.delete("PLUR_HOME")
-        end
-      end
+  # Outer-environment settings that may be set via the actual 'plur' run for the suite.
+  # We don't want these to leak into any environments for the plur under test.
+  OUTER_PLUR_ENV = %w[
+    PLUR_HOME PLUR_CONFIG_FILE PLUR_DEBUG PLUR_WORKERS PARALLEL_TEST_PROCESSORS TEST_ENV_NUMBER
+    PARALLEL_TEST_GROUPS NO_COLOR PLUR_COLOR PLUR_FORMATTER PLUR_DEV_PROFILE
+  ].freeze
+
+  # Every example runs inside its own isolated HOME dir to avoid global state pollution
+  # across specs.
+  def with_isolated_env
+    saved = ENV.to_h
+    Dir.mktmpdir("plur-spec-home-") do |home|
+      @isolated_home = Pathname.new(home)
+      isolate_env(home)
+      yield
+    end
+  ensure
+    ENV.replace(saved)
+  end
+
+  # Bundler's version resets ENV to its load-time snapshot, which brings back
+  # the real HOME. Only usable inside an example.
+  def with_unbundled_env
+    Bundler.with_unbundled_env do
+      ENV["HOME"] = @isolated_home.to_s
+      yield
     end
   end
 
-  def tmp_plur_home
-    @tmp_plur_home
+  def isolate_env(home)
+    ENV["HOME"] = home
+    OUTER_PLUR_ENV.each { |key| ENV.delete(key) }
+  end
+
+  # Specs build paths from this rather than ENV["HOME"], so code that runs
+  # outside an example can never write to or delete from the real home.
+  def isolated_home
+    @isolated_home || raise("isolated_home is only available inside an example")
   end
 
   def plur_home
-    @plur_home ||= Pathname.new(ENV["PLUR_HOME"])
+    isolated_home.join(".plur")
   end
 
   def plur_binary
     ENV.fetch("PLUR_BINARY", DEFAULT_PLUR_BINARY)
-  end
-
-  # Temporarily remove env vars that leak from the outer environment into
-  # spawned plur processes: parallel vars when the suite itself runs via plur,
-  # and color conventions a developer machine or CI may export. Specs that
-  # exercise these pass them explicitly via run_plur's env: param.
-  def without_plur_parallel_env
-    saved = {}
-    %w[PLUR_WORKERS PARALLEL_TEST_PROCESSORS TEST_ENV_NUMBER PARALLEL_TEST_GROUPS NO_COLOR PLUR_COLOR PLUR_FORMATTER PLUR_DEV_PROFILE].each do |key|
-      saved[key] = ENV.delete(key)
-    end
-    yield
-  ensure
-    saved.each { |key, value| ENV[key] = value if value }
   end
 
   # Generic method to run plur with any subcommands

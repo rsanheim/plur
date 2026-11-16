@@ -31,7 +31,6 @@ RSpec.describe "plur watch integration" do
         jobs = ["rspec"]
       TOML
 
-      plur_home = File.join(tmpdir, "plur-home")
       with_temp_watch_project do |project_dir|
         calculator_file = project_dir.join("lib/calculator.rb")
         original_content = calculator_file.read
@@ -39,7 +38,7 @@ RSpec.describe "plur watch integration" do
         result = run_plur_watch(
           dir: project_dir,
           timeout: 10,
-          env: {"PLUR_CONFIG_FILE" => config_path, "PLUR_HOME" => plur_home},
+          env: {"PLUR_CONFIG_FILE" => config_path},
           stop_on: "targets=\"[spec/calculator_spec.rb]\""
         ) do
           calculator_file.write(original_content + "\n# Modified by test")
