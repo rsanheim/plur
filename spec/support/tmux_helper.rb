@@ -25,7 +25,7 @@ module TmuxHelper
     # What is on screen, as rendered - escape sequences are interpreted by tmux
     # the same way they would be by any other terminal.
     def screen
-      `tmux -L #{@socket} capture-pane -p -t #{WORK_PANE}`
+      `tmux -S #{@socket} capture-pane -p -t #{WORK_PANE}`
     end
 
     def type(text)
@@ -59,18 +59,18 @@ module TmuxHelper
     private
 
     def tmux(*args)
-      system("tmux", "-L", @socket, *args, out: File::NULL, err: File::NULL)
+      system("tmux", "-S", @socket, *args, out: File::NULL, err: File::NULL)
     end
   end
 
   def tmux_terminal(dir:, width: 200, height: 50)
-    socket = "plur-spec-#{Process.pid}-#{SecureRandom.hex(4)}"
+    socket = "#{Dir.tmpdir}/plur-#{Process.pid}-#{SecureRandom.hex(4)}"
     tmux_control(socket, "new-session", "-d", "-s", "work", "-x", width.to_s, "-y", height.to_s, "-c", dir.to_s, SHELL)
     tmux_control(socket, "set-option", "-g", "focus-events", "on")
     tmux_control(socket, "new-window", "-t", "work", "-c", dir.to_s, SHELL)
     tmux_control(socket, "select-window", "-t", "work:0")
 
-    reader, _writer, client_pid = PTY.spawn({"TERM" => "xterm-256color"}, "tmux", "-L", socket, "attach", "-t", "work")
+    reader, _writer, client_pid = PTY.spawn({"TERM" => "xterm-256color"}, "tmux", "-S", socket, "attach", "-t", "work")
     drain = Thread.new do
       loop { reader.readpartial(4096) }
     rescue IOError, Errno::EIO
@@ -90,13 +90,13 @@ module TmuxHelper
   end
 
   def tmux_control(socket, *args)
-    system("tmux", "-L", socket, *args, out: File::NULL, err: File::NULL)
+    system("tmux", "-S", socket, *args, out: File::NULL, err: File::NULL)
   end
 
   # Focus reports depend on an attached client, so wait for one before typing.
   def wait_for_tmux_client(socket, timeout: 10)
     deadline = Time.now + timeout
-    until `tmux -L #{socket} list-clients 2>/dev/null`.strip != ""
+    until `tmux -S #{socket} list-clients 2>/dev/null`.strip != ""
       raise "no tmux client attached after #{timeout}s" if Time.now > deadline
       sleep 0.1
     end
