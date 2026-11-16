@@ -29,7 +29,7 @@ cache:
   - key: 'go-v1-{{ arch }}-{{ checksum ".mise.toml" "go.sum" }}'
     restore_keys: ['go-v1-{{ arch }}-']
     paths: [.cache/go-build, .cache/golangci-lint]
-  - key: 'docs-v1-{{ arch }}-{{ checksum "uv.lock" "mkdocs.yml" }}'
+  - key: 'docs-v1-{{ arch }}-{{ checksum ".mise.toml" "pyproject.toml" }}'
     restore_keys: ['docs-v1-{{ arch }}-']
     paths: [.cache/uv, .cache/plugin/privacy]
 
