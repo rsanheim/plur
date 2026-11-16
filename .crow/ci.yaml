@@ -63,10 +63,10 @@ steps:
         export GOBIN
         export PATH="$GOBIN:/opt/mise/shims:$GOPATH/bin:/usr/local/bin:$PATH"
 
-        # Start from the previous run's test timings so plur balances workers
-        # by runtime instead of file size.
-        mkdir -p /cache/plur/plur-runtime "$HOME/.plur/runtime"
-        cp -a /cache/plur/plur-runtime/. "$HOME/.plur/runtime/"
+        # Keep plur's test timings on /cache so each run balances workers with
+        # the previous run's data instead of by file size.
+        mkdir -p /cache/plur/plur-runtime "$HOME/.plur"
+        ln -s /cache/plur/plur-runtime "$HOME/.plur/runtime"
 
         go version
         ruby --version
@@ -77,11 +77,10 @@ steps:
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
+        # TEMP: runtime cache contents before and after the run
+        ls -la /cache/plur/plur-runtime
         bin/rake
-
-        # Save only this suite's timings. The specs also leave runtime files
-        # for throwaway projects in ~/.plur/runtime, which would pile up.
-        cp "$(plur doctor | sed -n 's/^Runtime Data: *//p')" /cache/plur/plur-runtime/
+        ls -la /cache/plur/plur-runtime
 
   # Keeps the workflow green when the work above is skipped on a docs-only change.
   - name: docs-only-passthrough
