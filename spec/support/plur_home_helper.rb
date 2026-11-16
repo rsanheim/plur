@@ -16,13 +16,13 @@ module PlurHomeHelper
   # across specs.
   def with_isolated_env
     saved = ENV.to_h
-    Dir.mktmpdir("plur-spec-home-") do |home|
-      @isolated_home = Pathname.new(home)
-      isolate_env(home)
-      yield
-    end
+    @isolated_home = Pathname.new(Dir.mktmpdir("plur-spec-home-"))
+    isolate_env(@isolated_home.to_s)
+    yield
   ensure
     ENV.replace(saved)
+    # Best effort: a process the example spawned may still be writing here.
+    FileUtils.rm_rf(@isolated_home) if @isolated_home
   end
 
   # Bundler's version resets ENV to its load-time snapshot, which brings back
