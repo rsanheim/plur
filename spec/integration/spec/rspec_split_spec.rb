@@ -31,7 +31,7 @@ RSpec.describe "Plur --rspec-split (experimental)" do
         warm_run = run_plur("-n", "1", "--color=never")
         expect(warm_run.out).to include("4 examples, 0 failures")
         cache, runtime_file = runtime_cache_data
-        expect(cache.fetch("files").fetch("spec/interrupted_spec.rb").fetch("examples").size).to eq(4)
+        expect(cache.fetch("files").fetch("spec/interrupted_spec.rb").fetch("examples").fetch("id").size).to eq(4)
         original_cache = File.binread(runtime_file)
 
         # Change only the environment: source freshness must still match.
@@ -140,14 +140,14 @@ RSpec.describe "Plur --rspec-split (experimental)" do
       cache, runtime_file = runtime_cache_data
 
       entry = cache.fetch("files").fetch("spec/generated_examples_spec.rb")
-      duplicate_selector, duplicate_examples = entry.fetch("examples")
-        .group_by { |example| example.fetch("location_rerun_argument") }
-        .find { |_selector, examples| examples.size > 1 }
-      expect(duplicate_examples.size).to eq(4)
+      duplicate_selector, count = entry.fetch("examples").fetch("location_rerun_argument")
+        .tally.find { |_selector, count| count > 1 }
+      expect(count).to eq(4)
 
       entry["runtime_seconds"] = 80.0
-      entry.fetch("examples").each do |example|
-        example["runtime_seconds"] = if example.fetch("location_rerun_argument") == duplicate_selector
+      examples = entry.fetch("examples")
+      examples["runtime_seconds"] = examples.fetch("location_rerun_argument").map do |selector|
+        if selector == duplicate_selector
           10.0
         else
           1.0
@@ -194,14 +194,14 @@ RSpec.describe "Plur --rspec-split (experimental)" do
       expect(files).not_to include("spec/support/shared_examples/arithmetic_examples.rb")
 
       entry = files.fetch("spec/shared_example_consumers_spec.rb")
-      selectors = entry.fetch("examples").map { |example| example.fetch("location_rerun_argument") }
+      selectors = entry.fetch("examples").fetch("location_rerun_argument")
       shared_selectors = selectors.select { |selector| selector.include?("shared_example_consumers_spec.rb") }
       expect(shared_selectors.uniq.size).to be >= 2
       expect(selectors).not_to include(match(%r{spec/support/shared_examples}))
 
       entry["runtime_seconds"] = 80.0
-      entry.fetch("examples").each do |example|
-        example["runtime_seconds"] = if shared_selectors.include?(example.fetch("location_rerun_argument"))
+      entry["examples"]["runtime_seconds"] = selectors.map do |selector|
+        if shared_selectors.include?(selector)
           10.0
         else
           1.0

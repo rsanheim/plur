@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"time"
 )
@@ -13,7 +14,7 @@ import (
 // SchemaVersion is the on-disk schema version Plur reads and writes.
 // Older caches with an unsupported schema_version are ignored and replaced on
 // the next aggregate-eligible run.
-const SchemaVersion = 4
+const SchemaVersion = 5
 
 // Cache is the persisted runtime cache. The schema shape and lifecycle rules
 // are covered by the cache tests in this package.
@@ -44,7 +45,7 @@ type FileEntry struct {
 	MtimeUnixNano  int64          `json:"mtime_unix_nano"`
 	SizeBytes      int64          `json:"size_bytes"`
 	RuntimeSeconds float64        `json:"runtime_seconds"`
-	Examples       []ExampleEntry `json:"examples,omitempty"`
+	Examples       exampleEntries `json:"examples,omitempty"`
 }
 
 // ExampleEntry is the per-example record.
@@ -73,8 +74,12 @@ func LoadCache(path string) *Cache {
 	}
 
 	var cache *Cache
-	if err := json.Unmarshal(data, &cache); err != nil {
-		return NewCache()
+	if len(data) >= 2<<20 && runtime.GOMAXPROCS(0) > 1 {
+		cache = decodeCacheParallel(data)
+	} else {
+		if err := json.Unmarshal(data, &cache, jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true)); err != nil {
+			return NewCache()
+		}
 	}
 	if cache == nil {
 		return NewCache()

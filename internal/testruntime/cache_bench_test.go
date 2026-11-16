@@ -103,6 +103,7 @@ func BenchmarkCache_Scale(b *testing.B) {
 		{"Medium", 250, 5000},
 		{"RuboCop", benchFileCount, benchExampleCount},
 		{"ExtraLarge", 3000, 150000},
+		{"OneLargeFile", 1, 150000},
 		{"HalfMillion", 10000, 500000},
 		{"Million", 20000, 1000000},
 		{"FilesOnly", 10000, 0},

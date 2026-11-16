@@ -29,7 +29,7 @@ RSpec.describe "Plur runtime tracking" do
         run_plur("-n", "2")
 
         data, runtime_file = runtime_cache_data
-        expect(data["meta"]["schema_version"]).to eq(4)
+        expect(data["meta"]["schema_version"]).to eq(5)
         expect(data["meta"]["plur_version"]).to be_a(String).and(satisfy { |v| !v.empty? })
         expect(data["run"]["cwd"]).to eq(default_ruby_dir.to_s)
         expect(Time.iso8601(data["run"]["last_run_at"]).utc.iso8601).to eq(data["run"]["last_run_at"])
@@ -45,13 +45,11 @@ RSpec.describe "Plur runtime tracking" do
         expect(entry).not_to include("example_index_complete")
 
         examples = entry["examples"]
-        expect(examples).to be_a(Array)
+        expect(examples).to be_a(Hash)
         expect(examples).not_to be_empty
-        sample = examples.first
-        sample_id = sample["id"]
-        expect(sample_id).to include("calculator_spec.rb")
-        expect(sample["line_number"]).to be > 0
-        expect(sample["runtime_seconds"]).to be >= 0
+        expect(examples["id"].first).to include("calculator_spec.rb")
+        expect(examples["line_number"].first).to be > 0
+        expect(examples["runtime_seconds"].first).to be >= 0
 
         expect(runtime_file).to match(%r{#{plur_home}/runtime/[a-f0-9]{16}\.json$})
       end
@@ -78,7 +76,7 @@ RSpec.describe "Plur runtime tracking" do
         run_plur("-n", "2")
 
         data = JSON.parse(File.read(cache_path))
-        expect(data["meta"]["schema_version"]).to eq(4)
+        expect(data["meta"]["schema_version"]).to eq(5)
         expect(data["files"]).to include("spec/calculator_spec.rb")
       end
     end
@@ -140,7 +138,7 @@ RSpec.describe "Plur runtime tracking" do
 
         cache = {
           "meta" => {
-            "schema_version" => 4,
+            "schema_version" => 5,
             "plur_version" => "fixture"
           },
           "run" => {
@@ -182,8 +180,8 @@ RSpec.describe "Plur runtime tracking" do
         original = initial["files"]["spec/calculator_spec.rb"]
         expect(original["runtime_seconds"]).to be > 0
 
-        original_example_count = original["examples"].size
-        focused_line = original["examples"].first["line_number"]
+        original_example_count = original["examples"]["id"].size
+        focused_line = original["examples"]["line_number"].first
 
         run_plur("-n", "1", "spec/calculator_spec.rb:#{focused_line}")
 
@@ -191,7 +189,7 @@ RSpec.describe "Plur runtime tracking" do
         entry = updated["files"]["spec/calculator_spec.rb"]
         expect(entry["runtime_seconds"]).to eq(original["runtime_seconds"])
         expect(entry).not_to include("example_index_complete")
-        expect(entry["examples"].size).to eq(original_example_count)
+        expect(entry["examples"]["id"].size).to eq(original_example_count)
       end
     end
 
@@ -200,16 +198,15 @@ RSpec.describe "Plur runtime tracking" do
         run_plur("-n", "2")
         initial, _ = runtime_cache_data
         examples = initial["files"]["spec/calculator_spec.rb"]["examples"]
-        original_example_count = examples.size
-        first_entry = examples.first
-        first_id = first_entry.fetch("id")
+        original_example_count = examples["id"].size
+        first_id = examples["id"].first
 
-        run_plur("-n", "1", "spec/calculator_spec.rb:#{first_entry["line_number"]}")
+        run_plur("-n", "1", "spec/calculator_spec.rb:#{examples["line_number"].first}")
 
         updated, _ = runtime_cache_data
         merged_examples = updated["files"]["spec/calculator_spec.rb"]["examples"]
-        expect(merged_examples.size).to eq(original_example_count)
-        expect(merged_examples.map { |example| example.fetch("id") }).to include(first_id)
+        expect(merged_examples["id"].size).to eq(original_example_count)
+        expect(merged_examples["id"]).to include(first_id)
       end
     end
 
