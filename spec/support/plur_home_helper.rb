@@ -5,19 +5,15 @@ module PlurHomeHelper
     File.join(gobin, "plur")
   end
 
-  # Outer-environment settings that would change how a spawned plur behaves: its
-  # home and config file, debug logging, parallel vars when the suite itself
-  # runs via plur, and color conventions a developer machine or CI may export.
-  # Specs that exercise these pass them explicitly via run_plur's env: param.
+  # Outer-environment settings that may be set via the actual 'plur' run for the suite.
+  # We don't want these to leak into any environments for the plur under test.
   OUTER_PLUR_ENV = %w[
     PLUR_HOME PLUR_CONFIG_FILE PLUR_DEBUG PLUR_WORKERS PARALLEL_TEST_PROCESSORS TEST_ENV_NUMBER
     PARALLEL_TEST_GROUPS NO_COLOR PLUR_COLOR PLUR_FORMATTER PLUR_DEV_PROFILE
   ].freeze
 
-  # Every example runs inside this. Spawned processes get a new, empty HOME and
-  # none of OUTER_PLUR_ENV, so whatever they keep under HOME (plur's ~/.plur and
-  # ~/.plur.toml, tool dotfiles) starts clean and never touches the home of
-  # whoever runs the suite.
+  # Every example runs inside its own isolated HOME dir to avoid global state pollution
+  # across specs.
   def with_isolated_env
     saved = ENV.to_h
     Dir.mktmpdir("plur-spec-home-") do |home|
@@ -29,8 +25,6 @@ module PlurHomeHelper
     ENV.replace(saved)
   end
 
-  # Use instead of Bundler.with_unbundled_env, which resets ENV to what it was
-  # when Bundler loaded and so would hand the block the real HOME.
   def with_unbundled_env
     Bundler.with_unbundled_env do
       yield
