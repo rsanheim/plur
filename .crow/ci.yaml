@@ -77,10 +77,7 @@ steps:
 
         bundle install --jobs "$BUNDLE_JOBS" --retry "$BUNDLE_RETRY"
 
-        # TEMP: runtime cache contents before and after the run
-        ls -la /cache/plur/plur-runtime
         bin/rake
-        ls -la /cache/plur/plur-runtime
 
   # Keeps the workflow green when the work above is skipped on a docs-only change.
   - name: docs-only-passthrough

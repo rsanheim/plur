@@ -190,10 +190,6 @@ jobs:
           name: Run all Ruby specs
           command: |
             bin/rake test
-      # TEMP: runtime cache contents after the run
-      - run:
-          name: List runtime data
-          command: ls -la ~/.plur/runtime
       - save_cache:
           name: Save plur runtime data
           key: v1-plur-runtime-{{ .Branch }}-{{ .Revision }}
