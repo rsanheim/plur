@@ -32,9 +32,7 @@ module PlurHomeHelper
   # Use instead of Bundler.with_unbundled_env, which resets ENV to what it was
   # when Bundler loaded and so would hand the block the real HOME.
   def with_unbundled_env
-    home = Dir.home
     Bundler.with_unbundled_env do
-      isolate_env(home)
       yield
     end
   end
