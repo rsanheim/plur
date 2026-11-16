@@ -137,7 +137,7 @@ RSpec.describe "Plur general integration" do
 
   describe "parallel test execution with databases" do
     it "runs tests in parallel", skip: "Database setup needs investigation" do
-      Bundler.with_unbundled_env do
+      with_unbundled_env do
         Dir.chdir(default_rails_dir) do
           run_plur("rails", "db:create", "-n", "3", printer: :quiet, allow_error: true, env: {"RAILS_ENV" => "test"})
           system({"RAILS_ENV" => "test"}, plur_binary, "rails", "db:migrate", "-n", "3", out: File::NULL, err: File::NULL)

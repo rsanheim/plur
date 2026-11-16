@@ -1,8 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Framework output (dry-run + verbose)" do
-  around_with_tmp_plur_home
-
   def with_fast_rspec_project
     Dir.mktmpdir do |dir|
       spec_dir = File.join(dir, "spec")

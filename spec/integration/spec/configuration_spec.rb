@@ -82,40 +82,31 @@ RSpec.describe "Configuration" do
     # which asserts via `plur doctor` (not capped by fixture file count).
 
     it "project config overrides home config" do
-      Dir.mktmpdir do |home_dir|
-        Dir.mktmpdir do |project_dir|
-          FileUtils.mkdir_p(File.join(project_dir, "spec"))
-          8.times do |i|
-            File.write(File.join(project_dir, "spec", "example_#{i}_spec.rb"), <<~RUBY)
-              RSpec.describe "Example#{i}" do
-                it "passes" do
-                  expect(1).to eq(1)
-                end
+      Dir.mktmpdir do |project_dir|
+        FileUtils.mkdir_p(File.join(project_dir, "spec"))
+        8.times do |i|
+          File.write(File.join(project_dir, "spec", "example_#{i}_spec.rb"), <<~RUBY)
+            RSpec.describe "Example#{i}" do
+              it "passes" do
+                expect(1).to eq(1)
               end
-            RUBY
-          end
-
-          File.write(File.join(home_dir, ".plur.toml"), <<~TOML)
-            workers = 6
-          TOML
-
-          File.write(File.join(project_dir, ".plur.toml"), <<~TOML)
-            workers = 3
-          TOML
-
-          result = run_plur(
-            "-C", project_dir,
-            "--dry-run",
-            env: {
-              "HOME" => home_dir,
-              "PLUR_HOME" => File.join(home_dir, ".plur")
-            }
-          )
-
-          expect(result).to be_success
-          expect(result.err).to include("using 3 workers")
-          expect(result.err).not_to include("using 6 workers")
+            end
+          RUBY
         end
+
+        File.write(isolated_home.join(".plur.toml"), <<~TOML)
+          workers = 6
+        TOML
+
+        File.write(File.join(project_dir, ".plur.toml"), <<~TOML)
+          workers = 3
+        TOML
+
+        result = run_plur("-C", project_dir, "--dry-run")
+
+        expect(result).to be_success
+        expect(result.err).to include("using 3 workers")
+        expect(result.err).not_to include("using 6 workers")
       end
     end
 

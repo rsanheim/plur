@@ -15,7 +15,7 @@ RSpec.describe "Framework Selection" do
     before(:all) do
       # Ensure dependencies are installed
       chdir(project_fixture!("mixed-rspec-minitest")) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           system("bundle check", out: File::NULL, err: File::NULL) ||
             system("bundle install", out: File::NULL, err: File::NULL, exception: true)
         end
@@ -24,7 +24,7 @@ RSpec.describe "Framework Selection" do
 
     it "defaults to RSpec when no --use flag is provided" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--dry-run")
           expect(result).to be_success
           expect(result.err).to include("spec/example_spec.rb")
@@ -35,7 +35,7 @@ RSpec.describe "Framework Selection" do
 
     it "runs RSpec tests when -t rspec is specified" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("spec", "-u", "rspec", "--dry-run")
           expect(result).to be_success
           expect(result.err).to include("spec/example_spec.rb")
@@ -46,7 +46,7 @@ RSpec.describe "Framework Selection" do
 
     it "runs Minitest tests when -t minitest is specified" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("spec", "-u", "minitest", "--dry-run")
           expect(result).to be_success
           expect(result.err).to include("test/example_test.rb")
@@ -68,7 +68,7 @@ RSpec.describe "Framework Selection" do
 
       it "uses Minitest as default" do
         chdir(project_dir) do
-          Bundler.with_unbundled_env do
+          with_unbundled_env do
             result = run_plur("--dry-run")
             expect(result).to be_success
             expect(result.err).to include("test/example_test.rb")
@@ -79,7 +79,7 @@ RSpec.describe "Framework Selection" do
 
       it "allows CLI flag to override config file" do
         chdir(project_dir) do
-          Bundler.with_unbundled_env do
+          with_unbundled_env do
             result = run_plur("spec", "-u", "rspec", "--dry-run")
             expect(result).to be_success
             expect(result.err).to include("spec/example_spec.rb")

@@ -7,7 +7,7 @@ require "spec_helper"
 RSpec.describe "Minitest error-only parity" do
   before(:all) do
     chdir(project_fixture!("minitest-outcomes")) do
-      Bundler.with_unbundled_env do
+      with_unbundled_env do
         system("bundle check", out: File::NULL, err: File::NULL) ||
           system("bundle install", out: File::NULL, err: File::NULL, exception: true)
       end
@@ -25,7 +25,7 @@ RSpec.describe "Minitest error-only parity" do
   it "reports the same counts as minitest when every test errors" do
     with_fixture_copy(project_fixture!("minitest-outcomes")) do |project_dir|
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           error_file = "test/errors_only_test.rb"
           File.write(error_file, <<~RUBY)
             require "minitest/autorun"

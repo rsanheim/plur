@@ -137,7 +137,6 @@ RSpec.describe "plur watch config edge cases" do
   it "shows no watch mappings in an empty project without a detectable framework" do
     Dir.mktmpdir do |tmpdir|
       stdout, stderr, status = Open3.capture3(
-        {"HOME" => tmpdir},
         plur_binary, "watch", "find", "lib/foo.rb",
         chdir: tmpdir
       )
@@ -185,7 +184,6 @@ RSpec.describe "plur watch config edge cases" do
       File.write(File.join(tmpdir, "pkg", "runner.go"), "package pkg\n")
 
       stdout, stderr, status = Open3.capture3(
-        {"HOME" => tmpdir},
         plur_binary, "-u", "go-test", "watch", "find", "pkg/runner.go",
         chdir: tmpdir
       )

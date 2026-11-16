@@ -1,8 +1,6 @@
 require "spec_helper"
 
 RSpec.describe "Plur RSpec exit status" do
-  around_with_tmp_plur_home
-
   around do |example|
     FileUtils.mkdir_p(ROOT_PATH.join("tmp"))
     Dir.mktmpdir("rspec-exit-status-", ROOT_PATH.join("tmp")) do |project|

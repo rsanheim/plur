@@ -11,7 +11,7 @@ module FixtureRunner
   def run_fixture_tests(project_name, framework:, printer: :null)
     project_path = project_fixture!(project_name).expand_path
 
-    Bundler.with_unbundled_env do
+    with_unbundled_env do
       Dir.chdir(project_path) do
         # Install dependencies if needed
         if File.exist?("Gemfile")

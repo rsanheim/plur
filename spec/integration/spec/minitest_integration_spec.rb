@@ -12,7 +12,7 @@ RSpec.describe "Minitest integration" do
   before(:all) do
     %w[minitest-outcomes minitest-failures minitest-extra-plugin].each do |fixture|
       chdir(project_fixture!(fixture)) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           system("bundle check", out: File::NULL, err: File::NULL) ||
             system("bundle install", out: File::NULL, err: File::NULL, exception: true)
         end
@@ -39,7 +39,7 @@ RSpec.describe "Minitest integration" do
 
   context "outcomes and progress" do
     it "reports a green run with full progress, live stdout, and RSpec-style duration", :pty do
-      Bundler.with_unbundled_env do
+      with_unbundled_env do
         # No --use: the one real exercise of framework auto-detection.
         result = run_in_pty(plur_binary, "-n", "1", "--color=never", "test/passing_test.rb", chdir: project_dir)
         expect(result).to be_success
@@ -64,7 +64,7 @@ RSpec.describe "Minitest integration" do
 
     it "sums all-green workers into one passing summary" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "2", "--color=never",
             "test/passing_test.rb", "test/output_test.rb")
           expect(result).to be_success
@@ -76,7 +76,7 @@ RSpec.describe "Minitest integration" do
 
     it "forwards passthrough args after -- to minitest instead of ruby" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "2", "--color=never",
             "test/passing_test.rb", "test/output_test.rb",
             "--", "--seed", "1234", "--name", "test_addition")
@@ -90,7 +90,7 @@ RSpec.describe "Minitest integration" do
     end
 
     it "renders every outcome type with exact progress counts", :pty do
-      Bundler.with_unbundled_env do
+      with_unbundled_env do
         result = run_in_pty(plur_binary, "--use", "minitest", "-n", "1", "--color=never",
           "test/passing_test.rb", "test/outcomes_test.rb", chdir: project_dir)
         expect(result).to be_failure
@@ -103,7 +103,7 @@ RSpec.describe "Minitest integration" do
     end
 
     it "counts every test even when an unterminated print shares its line", :pty do
-      Bundler.with_unbundled_env do
+      with_unbundled_env do
         result = run_in_pty(plur_binary, "--use", "minitest", "-n", "1", "--color=never", chdir: project_dir)
 
         # An unterminated print shares a physical line with the next row;
@@ -118,7 +118,7 @@ RSpec.describe "Minitest integration" do
 
     it "aggregates outcomes across parallel workers with all stdout visible" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "3", "--color=never", allow_error: true)
           expect(result).to be_failure
 
@@ -136,7 +136,7 @@ RSpec.describe "Minitest integration" do
   context "failure reporting" do
     it "attributes each failure and error to its test with its message" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "1", "--color=never", allow_error: true)
 
           expect(result.out).to include("OutcomesTest#test_failing_assertion")
@@ -151,7 +151,7 @@ RSpec.describe "Minitest integration" do
 
     it "sums and reports failures from two failing workers" do
       chdir(project_fixture!("minitest-failures")) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "2", "--color=never", allow_error: true)
           expect(result).to be_failure
 
@@ -171,7 +171,7 @@ RSpec.describe "Minitest integration" do
   context "stdout visibility" do
     it "shows a failed worker's mid-run stdout once, without streaming a duplicate" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "1", "--color=never", allow_error: true)
 
           %w[OUT_MID_RUN OUT_GLOBAL_IO OUT_B4_KABOOM MULTI_1].each do |token|
@@ -184,7 +184,7 @@ RSpec.describe "Minitest integration" do
     it "shows an errored worker's output once, not duplicated at the end" do
       with_fixture_copy(project_dir) do |copy_dir|
         chdir(copy_dir) do
-          Bundler.with_unbundled_env do
+          with_unbundled_env do
             error_file = "test/error_load_test.rb"
             File.write(error_file, <<~RUBY)
               puts "STDOUT_BEFORE_CRASH"
@@ -212,7 +212,7 @@ RSpec.describe "Minitest integration" do
     # `ruby -Itest` run would not activate; neither should plur.
     it "does not activate other minitest plugins on the project's behalf" do
       chdir(project_fixture!("minitest-extra-plugin")) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--use", "minitest", "-n", "1", "--color=never")
           expect(result).to be_success
 
@@ -226,7 +226,7 @@ RSpec.describe "Minitest integration" do
   context "parity with raw minitest" do
     it "reports the same outcome counts and failing tests as running minitest directly" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = Backspin.compare(
             reference: ["bundle", "exec", "ruby", "-Itest",
               "-e", %(require "passing_test"; require "outcomes_test"; require "output_test")],
@@ -244,7 +244,7 @@ RSpec.describe "Minitest integration" do
   context "discovery and detection" do
     it "detects minitest from the test directory and discovers every test file" do
       chdir(project_dir) do
-        Bundler.with_unbundled_env do
+        with_unbundled_env do
           result = run_plur("--dry-run", "-n", "2")
           expect(result).to be_success
 
