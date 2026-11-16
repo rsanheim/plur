@@ -3,29 +3,27 @@ set -euo pipefail
 
 REGISTRY=registry.shark-tet.ts.net
 
-usage="usage: script/build TAG [--push]"
+usage="usage: script/build TAG [--push]
+
+Builds <CI_REPO_NAME>/<Containerfile basename>:TAG; --push publishes it to $REGISTRY.
+
+environment:
+  CI_REPO_NAME   image namespace; set by Crow
+  CONTAINERFILE  default ci/images/ci.Containerfile
+  PLATFORMS      default linux/amd64"
 [[ $# -eq 1 || ( $# -eq 2 && $2 == --push ) ]] || { echo "$usage" >&2; exit 2; }
 tag=$1
 push=${2:-}
-platforms=${PLATFORMS:-linux/amd64,linux/arm64}
+platforms=${PLATFORMS:-linux/amd64}
 [[ $tag =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] || { echo "invalid image tag: $tag" >&2; exit 2; }
 
 cd "$(dirname "$0")/.."
-namespace=${NAMESPACE:-${CI_REPO_NAME:-$(basename -s .git "$(git remote get-url origin)")}}
 containerfile=${CONTAINERFILE:-ci/images/ci.Containerfile}
-repository="$namespace/$(basename "$containerfile" .Containerfile)"
+repository="$CI_REPO_NAME/$(basename "$containerfile" .Containerfile)"
 image="$REGISTRY/$repository:$tag"
 cache="$REGISTRY/buildcache/$repository"
 revision=$(git rev-parse HEAD)
 
-if [[ $push == --push ]] && curl -fs -o /dev/null -I \
-  -H 'Accept: application/vnd.oci.image.index.v1+json' \
-  "https://$REGISTRY/v2/$repository/manifests/$tag"; then
-  echo "skipped $image: already published"; exit 0
-fi
-command -v buildah >/dev/null || { echo "buildah not found on PATH" >&2; exit 1; }
-
-if buildah manifest exists "$image"; then buildah manifest rm "$image"; fi
 buildah build --format oci --layers --jobs 2 --cache-from "$cache" --cache-to "$cache" \
   --platform "$platforms" --manifest "$image" \
   --label "org.opencontainers.image.revision=$revision" --file "$containerfile" .
