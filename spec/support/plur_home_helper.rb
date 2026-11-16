@@ -25,6 +25,8 @@ module PlurHomeHelper
     ENV.replace(saved)
   end
 
+  # Bundler's version resets ENV to its load-time snapshot, which brings back
+  # the real HOME. Only usable inside an example.
   def with_unbundled_env
     Bundler.with_unbundled_env do
       ENV["HOME"] = @isolated_home.to_s
