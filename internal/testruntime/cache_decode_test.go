@@ -1,7 +1,6 @@
 package testruntime
 
 import (
-	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
 	"os"
@@ -56,32 +55,23 @@ func TestCache_ParallelDecodeRejectsIncompleteDocument(t *testing.T) {
 	assert.Nil(t, decodeCacheParallel(append(data, []byte(" null")...)))
 }
 
-func TestCache_ParallelDecodeDuplicateAndNullFiles(t *testing.T) {
-	data := fmt.Sprintf(`{"meta":{"schema_version":%d},"files":{"spec/x.rb":{"source_cwd":"/project","runtime_seconds":1},"spec/x.rb":{"runtime_seconds":2},"spec/null.rb":null}}`, SchemaVersion)
+func TestCache_ParallelDecodeNullFile(t *testing.T) {
+	data := fmt.Sprintf(`{"meta":{"schema_version":%d},"files":{"spec/null.rb":null}}`, SchemaVersion)
 	cache := decodeCacheParallel([]byte(data))
 	require.NotNil(t, cache)
-	assert.Equal(t, float64(2), cache.Files["spec/x.rb"].RuntimeSeconds)
 	assert.Equal(t, FileEntry{}, cache.Files["spec/null.rb"])
-	var serial *Cache
-	require.NoError(t, json.Unmarshal([]byte(data), &serial, jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true)))
-	assert.Equal(t, serial, cache)
-
-	invalid := fmt.Sprintf(`{"meta":{"schema_version":%d},"files":{"spec/x.rb":{"runtime_seconds":"invalid"},"spec/x.rb":{"runtime_seconds":2}}}`, SchemaVersion)
-	assert.Nil(t, decodeCacheParallel([]byte(invalid)))
 }
 
-func TestCache_ParallelDecodeNullSequences(t *testing.T) {
+func TestCache_ParallelDecodeRejectsDuplicateFiles(t *testing.T) {
 	for _, records := range []string{
-		`"spec/x.rb":null`,
+		`"spec/x.rb":{"source_cwd":"/project"},"spec/x.rb":{"runtime_seconds":2}`,
 		`"spec/x.rb":{"runtime_seconds":1},"spec/x.rb":null`,
 		`"spec/x.rb":null,"spec/x.rb":{"runtime_seconds":2}`,
-		`"spec/x.rb":{"source_cwd":"/project"},"spec/x.rb":null,"spec/x.rb":{"runtime_seconds":2}`,
+		`"spec/x.rb":{"runtime_seconds":"invalid"},"spec/x.rb":{"runtime_seconds":2}`,
 	} {
 		t.Run(records, func(t *testing.T) {
-			data := []byte(fmt.Sprintf(`{"meta":{"schema_version":%d},"files":{%s}}`, SchemaVersion, records))
-			var serial *Cache
-			require.NoError(t, json.Unmarshal(data, &serial, jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true)))
-			assert.Equal(t, serial, decodeCacheParallel(data))
+			data := fmt.Sprintf(`{"meta":{"schema_version":%d},"files":{%s}}`, SchemaVersion, records)
+			assert.Nil(t, decodeCacheParallel([]byte(data)))
 		})
 	}
 }
