@@ -2,6 +2,7 @@ package testruntime
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -104,31 +105,27 @@ func TestCache_SaveAndReload(t *testing.T) {
 	assert.Equal(t, 1.0, ex.RuntimeSeconds)
 }
 
-// TestCache_IgnoresUnknownExampleFields ensures that cache JSON with obsolete
-// per-example keys still loads. These extra fields should be silently dropped
-// on the next save.
-func TestCache_IgnoresUnknownExampleFields(t *testing.T) {
+// Unknown columns do not prevent loading the recorded examples.
+func TestCache_IgnoresUnknownExampleColumns(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
 	oldShape := `{
-	  "meta": {"schema_version": 4, "plur_version": "v0"},
+	  "meta": {"schema_version": 5, "plur_version": "v0"},
 	  "run": {"cwd": "/tmp/project", "last_run_at": "2026-05-22T01:02:03Z"},
 	  "files": {
 	    "spec/foo_spec.rb": {
 	      "mtime_unix_nano": 1,
 	      "size_bytes": 2,
 	      "runtime_seconds": 1.0,
-	      "examples": [
-	        {
-	          "id": "./spec/foo_spec.rb[1:1]",
-	          "line_number": 12,
-	          "location_rerun_argument": "./spec/foo_spec.rb:12",
-	          "scoped_id": "1:1",
-	          "runtime_seconds": 0.5,
-	          "status": "passed"
-	        }
-	      ]
+	      "examples": {
+	        "id": ["./spec/foo_spec.rb[1:1]"],
+	        "line_number": [12],
+	        "location_rerun_argument": ["./spec/foo_spec.rb:12"],
+	        "runtime_seconds": [0.5],
+	        "scoped_id": ["1:1"],
+	        "status": ["passed"]
+	      }
 	    }
 	  }
 	}`
@@ -154,11 +151,11 @@ func TestCache_SaveWritesCompactJSON(t *testing.T) {
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), "\n  \"", "runtime cache should avoid pretty-print indentation")
-	assert.Contains(t, string(data), `"meta":{"schema_version":4,"plur_version":"plur-test"}`)
+	assert.Contains(t, string(data), `"meta":{"schema_version":5,"plur_version":"plur-test"}`)
 	assert.Contains(t, string(data), `"run":{"cwd":"/tmp/project","last_run_at":"2026-05-22T01:02:03Z"}`)
 }
 
-func TestCache_SaveSerializesExamplesAsArrayWithID(t *testing.T) {
+func TestCache_SaveSerializesExamplesAsColumns(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -184,13 +181,12 @@ func TestCache_SaveSerializesExamplesAsArrayWithID(t *testing.T) {
 		} `json:"files"`
 	}
 	require.NoError(t, json.Unmarshal(data, &raw))
-	examples, ok := raw.Files["spec/foo_spec.rb"].Examples.([]any)
-	require.True(t, ok, "examples should serialize as an array, not an object keyed by example ID")
-	require.Len(t, examples, 1)
-	example, ok := examples[0].(map[string]any)
+	columns, ok := raw.Files["spec/foo_spec.rb"].Examples.(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "./spec/foo_spec.rb[1:1]", example["id"])
-	assert.Equal(t, float64(12), example["line_number"])
+	assert.Equal(t, []any{"./spec/foo_spec.rb[1:1]"}, columns["id"])
+	assert.Equal(t, []any{float64(12)}, columns["line_number"])
+	assert.Equal(t, []any{"./spec/foo_spec.rb:12"}, columns["location_rerun_argument"])
+	assert.Equal(t, []any{float64(1)}, columns["runtime_seconds"])
 }
 
 func TestCache_SaveDoesNotEscapeHTML(t *testing.T) {
@@ -230,6 +226,39 @@ func TestCache_SaveIsAtomic(t *testing.T) {
 	for _, e := range entries {
 		assert.NotContains(t, e.Name(), ".tmp", "atomic write must clean up temp files")
 	}
+}
+
+func TestCache_LoadDuplicateNames(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "runtime.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"meta":{"plur_version":"duplicate-names","schema_version":0,"schema_version":5},"files":{}}`), 0644))
+
+	cache := LoadCache(path)
+	assert.Equal(t, SchemaVersion, cache.Meta.SchemaVersion)
+	assert.Equal(t, "duplicate-names", cache.Meta.PlurVersion)
+}
+
+func TestCache_InvalidUTF8(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "runtime.json")
+	require.NoError(t, os.WriteFile(path, []byte("{\"meta\":{\"schema_version\":5,\"plur_version\":\"v\xff\"},\"files\":{}}"), 0644))
+	assert.Equal(t, "v\ufffd", LoadCache(path).Meta.PlurVersion)
+
+	require.NoError(t, SaveCache(NewCache(), path, "v\xff", "/project", time.Now()))
+	assert.Equal(t, "v\ufffd", LoadCache(path).Meta.PlurVersion)
+}
+
+func TestCache_SaveEncodingErrorPreservesExistingCache(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "runtime.json")
+	require.NoError(t, SaveCache(NewCache(), path, "original", "/project", time.Now()))
+	cache := NewCache()
+	cache.Files["spec/invalid_spec.rb"] = FileEntry{RuntimeSeconds: math.Inf(1)}
+
+	require.Error(t, SaveCache(cache, path, "replacement", "/project", time.Now()))
+	assert.Equal(t, "original", LoadCache(path).Meta.PlurVersion)
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, "runtime.json", entries[0].Name())
 }
 
 func TestCache_FileRuntimesSkipsZero(t *testing.T) {

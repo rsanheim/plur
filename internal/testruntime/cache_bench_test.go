@@ -10,6 +10,7 @@ import (
 
 	"github.com/rsanheim/plur/internal/buildinfo"
 	"github.com/rsanheim/plur/internal/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -17,26 +18,8 @@ const (
 	benchExampleCount = 31672
 )
 
-func BenchmarkCache_SaveLargeRspecCache(b *testing.B) {
-	cache := buildLargeRspecCache()
-	dir := b.TempDir()
-	path := filepath.Join(dir, "runtime.json")
-	savedAt := time.Date(2026, 5, 22, 20, 48, 43, 0, time.UTC)
-
-	requireBenchmarkNoError(b, SaveCache(cache, path, "bench", "/Users/example/rubocop", savedAt))
-	stat, err := os.Stat(path)
-	requireBenchmarkNoError(b, err)
-	b.SetBytes(stat.Size())
-	b.ReportAllocs()
-
-	b.ResetTimer()
-	for range b.N {
-		requireBenchmarkNoError(b, SaveCache(cache, path, "bench", "/Users/example/rubocop", savedAt))
-	}
-}
-
 func BenchmarkCache_LoadLargeRspecCache(b *testing.B) {
-	cache := buildLargeRspecCache()
+	cache := buildRspecCache(benchFileCount, benchExampleCount)
 	dir := b.TempDir()
 	path := filepath.Join(dir, "runtime.json")
 	savedAt := time.Date(2026, 5, 22, 20, 48, 43, 0, time.UTC)
@@ -91,11 +74,57 @@ func TestCacheLoadBudget(t *testing.T) {
 	}
 }
 
-func buildLargeRspecCache() *Cache {
+func BenchmarkCache_Scale(b *testing.B) {
+	for _, size := range []struct {
+		name     string
+		files    int
+		examples int
+	}{
+		{"Empty", 0, 0},
+		{"Small", 25, 250},
+		{"Medium", 250, 5000},
+		{"RuboCop", benchFileCount, benchExampleCount},
+		{"ExtraLarge", 3000, 150000},
+		{"OneLargeFile", 1, 150000},
+		{"HalfMillion", 10000, 500000},
+		{"Million", 20000, 1000000},
+		{"FilesOnly", 10000, 0},
+	} {
+		b.Run(size.name, func(b *testing.B) {
+			cache := buildRspecCache(size.files, size.examples)
+			path := filepath.Join(b.TempDir(), "runtime.json")
+			savedAt := time.Date(2026, 5, 22, 20, 48, 43, 0, time.UTC)
+			requireBenchmarkNoError(b, SaveCache(cache, path, "bench", "/Users/example/rubocop", savedAt))
+			require.Equal(b, cache, LoadCache(path))
+			stat, err := os.Stat(path)
+			requireBenchmarkNoError(b, err)
+
+			b.Run("Load", func(b *testing.B) {
+				b.SetBytes(stat.Size())
+				b.ReportAllocs()
+				for b.Loop() {
+					loaded := LoadCache(path)
+					if len(loaded.Files) != size.files {
+						b.Fatalf("loaded %d files, want %d", len(loaded.Files), size.files)
+					}
+				}
+			})
+			b.Run("Save", func(b *testing.B) {
+				b.SetBytes(stat.Size())
+				b.ReportAllocs()
+				for b.Loop() {
+					requireBenchmarkNoError(b, SaveCache(cache, path, "bench", "/Users/example/rubocop", savedAt))
+				}
+			})
+		})
+	}
+}
+
+func buildRspecCache(fileCount, exampleCount int) *Cache {
 	cache := NewCache()
-	examplesLeft := benchExampleCount
-	for fileIndex := range benchFileCount {
-		filesLeft := benchFileCount - fileIndex
+	examplesLeft := exampleCount
+	for fileIndex := range fileCount {
+		filesLeft := fileCount - fileIndex
 		examplesForFile := examplesLeft / filesLeft
 		if examplesLeft%filesLeft != 0 {
 			examplesForFile++
