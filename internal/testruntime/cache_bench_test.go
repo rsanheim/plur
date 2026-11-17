@@ -18,24 +18,6 @@ const (
 	benchExampleCount = 31672
 )
 
-func BenchmarkCache_SaveLargeRspecCache(b *testing.B) {
-	cache := buildRspecCache(benchFileCount, benchExampleCount)
-	dir := b.TempDir()
-	path := filepath.Join(dir, "runtime.json")
-	savedAt := time.Date(2026, 5, 22, 20, 48, 43, 0, time.UTC)
-
-	requireBenchmarkNoError(b, SaveCache(cache, path, "bench", "/Users/example/rubocop", savedAt))
-	stat, err := os.Stat(path)
-	requireBenchmarkNoError(b, err)
-	b.SetBytes(stat.Size())
-	b.ReportAllocs()
-
-	b.ResetTimer()
-	for range b.N {
-		requireBenchmarkNoError(b, SaveCache(cache, path, "bench", "/Users/example/rubocop", savedAt))
-	}
-}
-
 func BenchmarkCache_LoadLargeRspecCache(b *testing.B) {
 	cache := buildRspecCache(benchFileCount, benchExampleCount)
 	dir := b.TempDir()
