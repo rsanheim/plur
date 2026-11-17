@@ -70,6 +70,22 @@ func TestCache_ParallelDecodeDuplicateAndNullFiles(t *testing.T) {
 	assert.Nil(t, decodeCacheParallel([]byte(invalid)))
 }
 
+func TestCache_ParallelDecodeNullSequences(t *testing.T) {
+	for _, records := range []string{
+		`"spec/x.rb":null`,
+		`"spec/x.rb":{"runtime_seconds":1},"spec/x.rb":null`,
+		`"spec/x.rb":null,"spec/x.rb":{"runtime_seconds":2}`,
+		`"spec/x.rb":{"source_cwd":"/project"},"spec/x.rb":null,"spec/x.rb":{"runtime_seconds":2}`,
+	} {
+		t.Run(records, func(t *testing.T) {
+			data := []byte(fmt.Sprintf(`{"meta":{"schema_version":%d},"files":{%s}}`, SchemaVersion, records))
+			var serial *Cache
+			require.NoError(t, json.Unmarshal(data, &serial, jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true)))
+			assert.Equal(t, serial, decodeCacheParallel(data))
+		})
+	}
+}
+
 func TestCache_IgnoresPreviousSchema(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "runtime.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"meta":{"schema_version":4},"files":{"spec/x.rb":{"runtime_seconds":1}}}`), 0644))

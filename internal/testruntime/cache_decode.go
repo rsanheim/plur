@@ -11,7 +11,6 @@ import (
 // Scan file boundaries while a bounded worker pool decodes their contents.
 // Offsets refer to the original input, so records do not need to be copied.
 func decodeCacheParallel(data []byte) *Cache {
-	type pending struct{ entry *FileEntry }
 	type task struct {
 		data  []byte
 		entry *FileEntry
@@ -29,23 +28,24 @@ func decodeCacheParallel(data []byte) *Cache {
 			}
 		})
 	}
-	unmarshaler := json.UnmarshalFromFunc(func(dec *jsontext.Decoder, out *pending) error {
+	unmarshaler := json.UnmarshalFromFunc(func(dec *jsontext.Decoder, out **FileEntry) error {
 		value, err := dec.ReadValue()
 		if err != nil {
 			return err
 		}
 		end := dec.InputOffset()
 		start := end - int64(len(value))
-		duplicateFiles = duplicateFiles || out.entry != nil
+		duplicateFiles = duplicateFiles || *out != nil
 		// A duplicate file key gets a separate result; workers never share a destination.
-		out.entry = new(FileEntry)
-		jobs <- task{data: data[start:end], entry: out.entry}
+		entry := new(FileEntry)
+		*out = entry
+		jobs <- task{data: data[start:end], entry: entry}
 		return nil
 	})
 	var raw *struct {
-		Meta  CacheMeta           `json:"meta"`
-		Run   CacheRun            `json:"run"`
-		Files map[string]*pending `json:"files"`
+		Meta  CacheMeta             `json:"meta"`
+		Run   CacheRun              `json:"run"`
+		Files map[string]*FileEntry `json:"files"`
 	}
 	err := json.Unmarshal(data, &raw, jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true), json.WithUnmarshalers(unmarshaler))
 	close(jobs)
@@ -62,12 +62,8 @@ func decodeCacheParallel(data []byte) *Cache {
 		return cache
 	}
 	cache := &Cache{Meta: raw.Meta, Run: raw.Run, Files: make(map[string]FileEntry, len(raw.Files))}
-	for path, record := range raw.Files {
-		if record == nil {
-			cache.Files[path] = FileEntry{}
-			continue
-		}
-		cache.Files[path] = *record.entry
+	for path, entry := range raw.Files {
+		cache.Files[path] = *entry
 	}
 	return cache
 }
