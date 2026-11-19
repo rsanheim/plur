@@ -125,6 +125,10 @@ jobs:
       - image: ruby:<< pipeline.parameters.ruby_version >>
     resource_class: medium+
     working_directory: ~/project/
+    # The ruby image shares one Bundler config across apps; keep it per app so
+    # the fixture's bundle settings stay separate from plur's.
+    environment:
+      BUNDLE_APP_CONFIG: .bundle
     steps:
       - checkout
       - go/install:
