@@ -14,7 +14,7 @@ labels:
   platform: linux/amd64
 
 variables:
-  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-11-16-331af83d'
+  - &plur_image 'registry.shark-tet.ts.net/plur/ci:2026-11-19-17a1a052'
 
 cache:
   - key: 'bench-gems-v1-{{ arch }}-{{ checksum ".mise.toml" "Gemfile.lock" }}'
