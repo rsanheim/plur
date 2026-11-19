@@ -141,8 +141,8 @@ jobs:
           name: Add GOPATH/bin to PATH
           command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"
       - run:
-          name: Install tmux
-          command: apt-get update -qq && apt-get install -y -qq tmux
+          name: Install tmux and sqlite3
+          command: apt-get update -qq && apt-get install -y -qq tmux sqlite3
       # Keep installed gems outside the project working directory.
       - ruby/install-deps:
           key: "plur-v4"
