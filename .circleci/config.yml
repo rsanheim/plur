@@ -6,7 +6,7 @@ parameters:
     default: "1.27.4"
   ruby_version:
     type: string
-    default: "4.0.9"
+    default: "4.0.10"
 
 orbs:
   ruby: circleci/ruby@2.6.0
@@ -15,7 +15,7 @@ orbs:
 jobs:
   build-and-test-go:
     docker:
-      - image: cimg/ruby:<< pipeline.parameters.ruby_version >>
+      - image: ruby:<< pipeline.parameters.ruby_version >>
     working_directory: ~/project
     resource_class: medium
     environment:
@@ -28,12 +28,12 @@ jobs:
       - go/load-build-cache
       # Keep installed gems outside the project working directory.
       - ruby/install-deps:
-          key: "plur-v3"
+          key: "plur-v4"
           include-branch-in-cache-key: false
-          path: /home/circleci/bundle
+          path: /root/bundle
       - run:
           name: Install shellcheck
-          command: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          command: apt-get update -qq && apt-get install -y -qq shellcheck
       - run:
           name: Install Go lint tools (versions from .mise.toml)
           command: |
@@ -122,9 +122,13 @@ jobs:
 
   test-ruby-integration:
     docker:
-      - image: cimg/ruby:<< pipeline.parameters.ruby_version >>
+      - image: ruby:<< pipeline.parameters.ruby_version >>
     resource_class: medium+
     working_directory: ~/project/
+    # The ruby image shares one Bundler config across apps; keep it per app so
+    # the fixture's bundle settings stay separate from plur's.
+    environment:
+      BUNDLE_APP_CONFIG: .bundle
     steps:
       - checkout
       - go/install:
@@ -137,13 +141,13 @@ jobs:
           name: Add GOPATH/bin to PATH
           command: echo 'export PATH="$HOME/go/bin:$PATH"' >> "$BASH_ENV"
       - run:
-          name: Install tmux
-          command: sudo apt-get update -qq && sudo apt-get install -y -qq tmux
+          name: Install tmux and sqlite3
+          command: apt-get update -qq && apt-get install -y -qq tmux sqlite3
       # Keep installed gems outside the project working directory.
       - ruby/install-deps:
-          key: "plur-v3"
+          key: "plur-v4"
           include-branch-in-cache-key: false
-          path: /home/circleci/bundle
+          path: /root/bundle
       - run:
           name: Install plur globally
           command: bin/rake install
