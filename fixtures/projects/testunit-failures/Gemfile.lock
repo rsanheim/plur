@@ -13,4 +13,4 @@ DEPENDENCIES
   test-unit (~> 3.6)
 
 BUNDLED WITH
-  4.0.20
+  4.1.0
